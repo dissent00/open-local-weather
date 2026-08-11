@@ -76,8 +76,24 @@ a public repo.
 
 ## Status
 
-This repository is under active initial development — see open issues and
-commit history for current phase. Not yet running in production.
+**Live**: [dissent00.github.io/open-local-weather](https://dissent00.github.io/open-local-weather/)
+runs daily at 06:00 EAT for Kisumu, Kenya. Every forecast is committed to
+`data/log/` — the full, auditable history of every prediction and its later
+verification.
+
+Email delivery currently goes out via direct Gmail SMTP rather than a
+third-party ESP — see [`publish/email_gmail.py`](src/openlocalweather/publish/email_gmail.py)'s
+module docstring for why (short version: any third-party sender needs a
+verified custom domain under Google/Yahoo/Microsoft's 2024 bulk-sender
+rules, which a bare Gmail "from" address can't satisfy). No public
+self-serve subscribe form yet for the same reason; subscribers are added
+manually. Migrating to a verified-domain ESP (e.g. Brevo) is a one-line
+swap of `EmailSender` implementations whenever that's set up — see
+`pipeline.py`'s `EmailSender` Protocol.
+
+A weekly health check (`.github/workflows/health_check.yml`) watches for
+Gemini model deprecation and repo-inactivity risk — see
+[`health_check.py`](src/openlocalweather/health_check.py).
 
 ## License
 
