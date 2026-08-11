@@ -1,0 +1,72 @@
+name: Daily Forecast
+
+on:
+  schedule:
+    # 06:00 Africa/Nairobi (EAT, UTC+3 year-round — no DST) = 03:00 UTC.
+    #
+    # NOTE: GitHub auto-disables scheduled workflows after 60 days without
+    # any repo activity. Since this workflow commits daily on success, the
+    # repo stays active as long as it's succeeding — the real risk is a
+    # SILENT failure running unnoticed until the 60-day disable kicks in.
+    # GitHub emails the repo owner on workflow failure by default; that's
+    # the mitigation relied on in v1, not a custom alerting path.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run fetch/verify/LLM for real but skip writes, commit, and email"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Prevents a slow run overlapping with the next scheduled trigger from
+# racing on the same data/ files.
+concurrency:
+  group: daily-forecast
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Determine public Pages URL
+        id: pages_url
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          echo "url=https://${OWNER,,}.github.io/${REPO,,}/" >> "$GITHUB_OUTPUT"
+
+      - name: Run daily pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          olw run-daily --public-url "${{ steps.pages_url.outputs.url }}" $DRY_RUN_FLAG
+
+      - name: Commit and push data/docs changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ docs/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "forecast: $(date -u +%Y-%m-%d)"
+            git push
+          fi
