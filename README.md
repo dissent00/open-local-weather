@@ -81,15 +81,21 @@ runs daily at 06:00 EAT for Kisumu, Kenya. Every forecast is committed to
 `data/log/` — the full, auditable history of every prediction and its later
 verification.
 
-Email delivery currently goes out via direct Gmail SMTP rather than a
-third-party ESP — see [`publish/email_gmail.py`](src/openlocalweather/publish/email_gmail.py)'s
-module docstring for why (short version: any third-party sender needs a
-verified custom domain under Google/Yahoo/Microsoft's 2024 bulk-sender
-rules, which a bare Gmail "from" address can't satisfy). No public
-self-serve subscribe form yet for the same reason; subscribers are added
-manually. Migrating to a verified-domain ESP (e.g. Brevo) is a one-line
-swap of `EmailSender` implementations whenever that's set up — see
-`pipeline.py`'s `EmailSender` Protocol.
+Email delivery goes out via [`mailer/AppsScriptMailer.gs`](mailer/), a
+standalone Google Apps Script companion — **not** the Python pipeline's
+own `publish/email_gmail.py` (built first, but blocked: Gmail app
+passwords aren't available on all accounts, and third-party ESPs like
+Brevo need a verified custom domain under Google/Yahoo/Microsoft's 2024
+bulk-sender rules, which a bare Gmail address can't satisfy either way).
+The Apps Script sends via `MailApp` — Google's own infrastructure, OAuth
+auth, no app password needed — on its own daily trigger, fetching that
+day's committed forecast JSON straight from GitHub. See
+[`mailer/README.md`](mailer/README.md) for the full rationale and setup.
+No public self-serve subscribe form yet for the same domain-verification
+reason; subscribers are added manually via Script Properties. Migrating to
+a verified-domain ESP later is a contained swap either way — a new
+`EmailSender` implementation behind `pipeline.py`'s Protocol for the
+Python-native path, or just retiring the Apps Script.
 
 A weekly health check (`.github/workflows/health_check.yml`) watches for
 Gemini model deprecation and repo-inactivity risk — see
