@@ -236,3 +236,28 @@ def test_rescore_rolling_window_uses_correct_lead_time_offset():
     )
     assert result.checks_found == 1
     assert result.rain_pct == pytest.approx(100.0)
+
+
+def test_score_prediction_returns_none_when_rain_is_unknown():
+    """A model with no data at this lead time must produce no check at all,
+    rather than a spurious hit/miss that inflates its track record."""
+    assert score_prediction(prediction(rain=None), actual(rain=True), 0) is None
+    assert score_prediction(prediction(rain=None), actual(rain=False), 0) is None
+
+
+def test_rolling_window_skips_unknown_rain_predictions():
+    import datetime as _dt
+    yesterday = date(2026, 8, 20)
+    logs, actuals = {}, {}
+    for i in range(5):
+        d = yesterday - _dt.timedelta(days=i)
+        # Model never has data — should yield zero scoreable checks, not 5.
+        logs[d] = log_entry(d, day0_predictions=[prediction(model="ukmo_seamless", rain=None)])
+        actuals[d] = actual(rain=False)
+
+    result = rescore_rolling_window(
+        "ukmo_seamless", 0, window_size=10, yesterday=yesterday,
+        log_lookup=lambda d: logs.get(d), actuals=actuals,
+    )
+    assert result.checks_found == 0
+    assert result.rain_pct is None

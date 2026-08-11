@@ -32,7 +32,12 @@ def extract_day0_predictions_from_hourly(
         temp = h.get(f"temperature_2m_{model}") or h.get("temperature_2m") or []
         press = h.get(f"pressure_msl_{model}") or h.get("pressure_msl") or []
 
-        rain = any((v or 0) >= threshold for v in precip)
+        # An entirely absent/all-null precip series means no data for this
+        # model, which is not the same as a confident dry forecast — see
+        # ModelPrediction.rain. (A present series that simply never crosses
+        # the threshold IS a real "no rain" call.)
+        has_precip_data = any(v is not None for v in precip)
+        rain = any((v or 0) >= threshold for v in precip) if has_precip_data else None
         onset = get_onset_hour(times, precip, threshold) if rain else None
 
         wind_vals = [v for v in wind if v is not None]
@@ -76,6 +81,11 @@ def extract_day_n_predictions_from_daily(
         high = high_arr[day_index] if day_index < len(high_arr) else None
         low = low_arr[day_index] if day_index < len(low_arr) else None
 
+        # No precipitation value means this model's forecast horizon doesn't
+        # reach this lead time (UKMO stops around 7.2 days, so it has no
+        # Day+7 at all). Record that as "unknown", never as "no rain" — see
+        # ModelPrediction.rain.
+
         mslp_trend = None
         if day_index > 0 and day_index < len(press_arr):
             prev = press_arr[day_index - 1]
@@ -86,7 +96,7 @@ def extract_day_n_predictions_from_daily(
         predictions.append(
             ModelPrediction(
                 model=model,
-                rain=(precip or 0) >= threshold,
+                rain=None if precip is None else precip >= threshold,
                 onset=None,
                 wind_kmh=wind,
                 high_c=high,

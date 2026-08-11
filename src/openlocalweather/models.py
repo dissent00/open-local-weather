@@ -37,7 +37,15 @@ class ModelPrediction(BaseModel):
     """
 
     model: str
-    rain: bool
+    # None means "this model had no data at this lead time" — NOT "no rain".
+    # The distinction is load-bearing: not every model reaches Day+7 (UKMO
+    # tops out around 7.2 days, so it has no Day+7 value at all). Recording
+    # that absence as rain=False would manufacture a confident dry
+    # prediction out of missing data, and since dry days outnumber wet ones
+    # it would accrue a flattering, entirely fake accuracy score — which the
+    # prompt then instructs the LLM to trust when weighting the extended
+    # outlook. score_prediction() refuses to score a None.
+    rain: bool | None = None
     onset: str | None = None  # "HH:MM", Day+0 only — no onset data at Day+3/+7
     wind_kmh: float | None = None
     high_c: float | None = None

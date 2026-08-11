@@ -101,3 +101,57 @@ def test_extract_day_n_falls_back_to_unsuffixed_key():
     }
     predictions = extract_day_n_predictions_from_daily(daily, 3, ["some_model"])
     assert predictions[0].rain is True
+
+
+# ---------------------------------------------------------------------------
+# Missing-data must never become a confident "no rain" (regression)
+# ---------------------------------------------------------------------------
+
+
+def test_day_n_missing_precip_yields_rain_none_not_false():
+    """UKMO's horizon stops around 7.2 days, so it has no Day+7 value at
+    all. Recording that as rain=False would manufacture a confident dry
+    forecast from a gap and accrue fake accuracy — dry days outnumber wet
+    ones, so it would score well for no reason."""
+    daily = {
+        "daily": {
+            # 8 slots, but nothing at index 7 — exactly what UKMO returns.
+            "precipitation_sum_ukmo_seamless": [0.0] * 7 + [None],
+            "temperature_2m_max_ukmo_seamless": [27.0] * 7 + [None],
+        }
+    }
+    day7 = extract_day_n_predictions_from_daily(daily, 7, ["ukmo_seamless"])[0]
+    assert day7.rain is None, "missing data must be None, never False"
+
+    day6 = extract_day_n_predictions_from_daily(daily, 6, ["ukmo_seamless"])[0]
+    assert day6.rain is False, "a real 0.0mm reading IS a genuine no-rain call"
+
+
+def test_day_n_index_beyond_array_yields_rain_none():
+    daily = {"daily": {"precipitation_sum_gfs_seamless": [0.0, 0.0]}}
+    p = extract_day_n_predictions_from_daily(daily, 7, ["gfs_seamless"])[0]
+    assert p.rain is None
+
+
+def test_day0_all_null_precip_series_yields_rain_none():
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00"],
+            "precipitation_ukmo_seamless": [None, None],
+            "temperature_2m_ukmo_seamless": [18.0, 22.0],
+        }
+    }
+    p = extract_day0_predictions_from_hourly(hourly, ["ukmo_seamless"])[0]
+    assert p.rain is None
+
+
+def test_day0_real_dry_series_still_yields_rain_false():
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0],
+            "temperature_2m_gfs_seamless": [18.0, 22.0],
+        }
+    }
+    p = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])[0]
+    assert p.rain is False

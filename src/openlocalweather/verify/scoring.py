@@ -41,6 +41,11 @@ def score_prediction(
     """
     if predicted is None or actual is None:
         return None
+    # rain=None means the model had no data at this lead time (see
+    # ModelPrediction.rain). There is nothing to score — counting it would
+    # invent skill data out of a gap.
+    if predicted.rain is None:
+        return None
 
     rain_correct = predicted.rain == actual.rain
 
