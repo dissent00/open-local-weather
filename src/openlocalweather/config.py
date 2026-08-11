@@ -29,6 +29,8 @@ class SecondaryPoint(Point):
     enabled: bool = False
     name: str = ""
     section_label: str = ""
+    lat: float = 0.0
+    lon: float = 0.0
 
 
 class LocationConfig(BaseModel):
