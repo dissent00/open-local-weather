@@ -1,0 +1,295 @@
+from datetime import date, datetime, timezone
+
+import pytest
+
+from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
+from openlocalweather.defaults import MODELS
+from openlocalweather.fetch import metar as metar_fetch
+from openlocalweather.fetch import open_meteo
+from openlocalweather.fetch import waqi as waqi_fetch
+from openlocalweather.fetch.bulletin import NullBulletinFetcher
+from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties, VerificationNote
+from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.store import log_store
+
+LOCATION = LocationConfig(
+    region_name="Test Region",
+    primary_place_name="Test Town",
+    timezone="UTC",
+    primary_point=Point(lat=1.0, lon=2.0),
+    secondary_point=SecondaryPoint(),  # disabled — keeps fixtures simpler
+    region_points=[RegionPoint(name="Neighbor", lat=1.5, lon=2.5)],
+    metar_station_icao="",  # skip METAR
+    waqi_station_id="",  # skip WAQI
+    local_bulletin_url="",  # NullBulletinFetcher
+)
+
+
+def hourly_fixture() -> dict:
+    fields: dict[str, list] = {"time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"]}
+    for model in MODELS:
+        fields[f"precipitation_{model}"] = [0.0, 0.0, 0.0]
+        fields[f"windgusts_10m_{model}"] = [10.0, 12.0, 15.0]
+        fields[f"temperature_2m_{model}"] = [18.0, 22.0, 26.0]
+        fields[f"pressure_msl_{model}"] = [1012.0, 1011.0, 1010.0]
+    return {"hourly": fields}
+
+
+def daily_fixture() -> dict:
+    fields: dict[str, list] = {}
+    for model in MODELS:
+        fields[f"precipitation_sum_{model}"] = [0.0] * 8
+        fields[f"windgusts_10m_max_{model}"] = [15.0] * 8
+        fields[f"temperature_2m_max_{model}"] = [27.0] * 8
+        fields[f"temperature_2m_min_{model}"] = [18.0] * 8
+        fields[f"pressure_msl_mean_{model}"] = [1010.0] * 8
+    return {"daily": fields}
+
+
+def archive_fixture(day: date) -> dict:
+    return {
+        "hourly": {
+            "time": [f"{day.isoformat()}T00:00", f"{day.isoformat()}T12:00"],
+            "temperature_2m": [18.0, 26.0],
+            "precipitation": [0.0, 0.0],
+            "windgusts_10m": [10.0, 15.0],
+            "pressure_msl": [1012.0, 1010.0],
+        }
+    }
+
+
+class FakeLLMProvider:
+    model = "fake-model"
+
+    def __init__(self, response: GeminiForecastResponse | None = None):
+        self.response = response or self._default_response()
+        self.calls: list[tuple[str, str]] = []
+
+    def _default_response(self) -> GeminiForecastResponse:
+        return GeminiForecastResponse(
+            yesterday_verification="All models did fine yesterday.",
+            verification_notes=[VerificationNote(lead_time_days=0, note="Rain call was accurate.")],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Unlikely",
+                temp_high_c=27.0,
+                temp_low_c=18.0,
+                temp_high_low="27°C / 81°F",
+            ),
+            today_narrative="## Overview\nDry and warm.",
+            whatsapp_summary=None,
+        )
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        self.calls.append((system_prompt, user_prompt))
+        return self.response
+
+
+@pytest.fixture(autouse=True)
+def patch_fetches(monkeypatch):
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: hourly_fixture())
+    monkeypatch.setattr(open_meteo, "fetch_forecast_daily_extended", lambda *a, **k: daily_fixture())
+    monkeypatch.setattr(open_meteo, "fetch_regional_pressure", lambda *a, **k: {"daily": {}})
+    monkeypatch.setattr(open_meteo, "fetch_air_quality", lambda *a, **k: {"hourly": {}})
+    monkeypatch.setattr(
+        open_meteo, "fetch_archive_single_day", lambda lat, lon, day, tz: archive_fixture(day)
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_archive_range", lambda lat, lon, start, end, tz: archive_fixture(end)
+    )
+    monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
+    monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi", lambda station, token: None)
+
+
+def make_deps(tmp_path, llm=None) -> PipelineDeps:
+    return PipelineDeps(
+        location=LOCATION,
+        data_dir=tmp_path,
+        llm_provider=llm or FakeLLMProvider(),
+        public_webpage_url="https://example.org",
+        bulletin_fetcher=NullBulletinFetcher(),
+    )
+
+
+def test_dry_run_does_not_write_any_files(tmp_path):
+    deps = make_deps(tmp_path)
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    assert result.log_entry.rain_expected == "Unlikely"
+    assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
+    assert not (tmp_path / "track_record.json").exists()
+    assert not (tmp_path / "actuals_cache" / "actuals.json").exists()
+    assert result.published is False
+    assert result.emailed is False
+
+
+def test_real_run_writes_log_entry_and_track_record(tmp_path):
+    deps = make_deps(tmp_path)
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert written is not None
+    assert written.rain_expected == "Unlikely"
+    assert written.temp_high_c == 27.0
+    assert (tmp_path / "track_record.json").exists()
+    assert (tmp_path / "actuals_cache" / "actuals.json").exists()
+    assert result.published is False  # no publisher configured
+    assert result.emailed is False  # no email_sender configured
+
+
+def test_today_entry_carries_extracted_model_predictions(tmp_path):
+    deps = make_deps(tmp_path)
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    assert len(result.log_entry.model_predictions.day0) == len(MODELS)
+    assert len(result.log_entry.model_predictions.day3) == len(MODELS)
+    assert len(result.log_entry.model_predictions.day7) == len(MODELS)
+
+
+def _seed_yesterday_log_entry(tmp_path, d: date) -> None:
+    entry = DailyLogEntry(
+        date=d,
+        rain_expected="Likely",
+        temp_high_c=26.0,
+        temp_low_c=18.0,
+        temp_high_low_display="26/18",
+        mslp_trend_24h="falling",
+        synoptic_pattern="trough",
+        narrative_markdown="narrative",
+        model_predictions=ModelPredictionsByLead(
+            day0=[
+                {
+                    "model": m,
+                    "rain": False,
+                    "onset": None,
+                    "wind_kmh": 15.0,
+                    "high_c": 27.0,
+                    "low_c": 18.0,
+                    "mslp_trend": -1.0,
+                }
+                for m in MODELS
+            ]
+        ),
+        meta=LogEntryMeta(
+            generated_at_utc=datetime.now(timezone.utc), llm_provider="test", llm_model="test", pipeline_version="0"
+        ),
+    )
+    log_store.write_log_entry(tmp_path, entry)
+
+
+def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
+    today = date(2026, 8, 11)
+    yesterday = date(2026, 8, 10)
+    _seed_yesterday_log_entry(tmp_path, yesterday)
+
+    llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="Correct no-rain call.",
+            verification_notes=[VerificationNote(lead_time_days=0, note="Rain correctly not predicted.")],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Unlikely", temp_high_c=27.0, temp_low_c=18.0, temp_high_low="27°C / 81°F"
+            ),
+            today_narrative="## Overview\nDry.",
+        )
+    )
+    deps = make_deps(tmp_path, llm=llm)
+    result = run_daily_pipeline(deps, today=today, dry_run=False)
+
+    assert (yesterday, 0) in result.newly_verified
+
+    patched = log_store.read_log_entry(tmp_path, yesterday)
+    assert patched.verification.day0.verified is True
+    assert patched.verification.day0.note == "Rain correctly not predicted."
+
+
+def test_publisher_and_email_sender_invoked_when_configured(tmp_path):
+    published_entries = []
+    emailed_entries = []
+
+    class FakePublisher:
+        def publish(self, entry):
+            published_entries.append(entry)
+
+    class FakeEmailSender:
+        def send(self, entry):
+            emailed_entries.append(entry)
+
+    deps = make_deps(tmp_path)
+    deps.publisher = FakePublisher()
+    deps.email_sender = FakeEmailSender()
+
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert result.published is True
+    assert result.emailed is True
+    assert len(published_entries) == 1
+    assert len(emailed_entries) == 1
+
+
+def test_publisher_not_invoked_on_dry_run_even_if_configured(tmp_path):
+    class FakePublisher:
+        def publish(self, entry):
+            raise AssertionError("publish() must not be called during --dry-run")
+
+    deps = make_deps(tmp_path)
+    deps.publisher = FakePublisher()
+
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    assert result.published is False
+
+
+def test_weekly_batch_day_triggers_full_archive_refetch(tmp_path, monkeypatch):
+    calls = {"range": 0, "single": 0}
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_archive_range",
+        lambda *a, **k: (calls.__setitem__("range", calls["range"] + 1), archive_fixture(date(2026, 8, 10)))[1],
+    )
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_archive_single_day",
+        lambda *a, **k: (calls.__setitem__("single", calls["single"] + 1), archive_fixture(date(2026, 8, 10)))[1],
+    )
+
+    # 2026-08-10 is a Monday (WEEKLY_BATCH_WEEKDAY default).
+    monday = date(2026, 8, 10)
+    assert monday.weekday() == 0
+    deps = make_deps(tmp_path)
+    run_daily_pipeline(deps, today=monday, dry_run=False)
+
+    assert calls["range"] == 1
+    assert calls["single"] == 0
+
+
+def test_non_weekly_day_uses_single_day_upsert(tmp_path, monkeypatch):
+    calls = {"range": 0, "single": 0}
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_archive_range",
+        lambda *a, **k: (calls.__setitem__("range", calls["range"] + 1), archive_fixture(date(2026, 8, 10)))[1],
+    )
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_archive_single_day",
+        lambda *a, **k: (calls.__setitem__("single", calls["single"] + 1), archive_fixture(date(2026, 8, 10)))[1],
+    )
+
+    tuesday = date(2026, 8, 11)
+    assert tuesday.weekday() == 1
+    deps = make_deps(tmp_path)
+    run_daily_pipeline(deps, today=tuesday, dry_run=False)
+
+    assert calls["range"] == 0
+    assert calls["single"] == 1
+
+
+def test_llm_receives_system_and_user_prompt(tmp_path):
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    assert len(llm.calls) == 1
+    system_prompt, user_prompt = llm.calls[0]
+    assert "Test Town" in system_prompt
+    assert "2026-08-11" in user_prompt
