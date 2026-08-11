@@ -24,12 +24,38 @@ from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.publish.pages import GitHubPagesPublisher
+from openlocalweather.store.log_store import list_log_dates
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "config" / "location.yaml"
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
+DEFAULT_DOCS_DIR = REPO_ROOT / "docs"
 
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+
+
+def _github_repo_slug() -> str:
+    """Best-effort "owner/repo" for building the site's "View source on
+    GitHub" link. GITHUB_REPOSITORY is set automatically by GitHub Actions;
+    the git-remote fallback covers local runs. Returns "" (a harmless,
+    non-fatal broken link) if neither source is available."""
+    env_value = os.environ.get("GITHUB_REPOSITORY", "")
+    if env_value:
+        return env_value
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"], capture_output=True, text=True, check=True, cwd=REPO_ROOT
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+    url = result.stdout.strip()
+    # Handles both "git@github.com:owner/repo.git" and
+    # "https://github.com/owner/repo.git" remote URL forms.
+    for prefix in ("git@github.com:", "https://github.com/", "http://github.com/"):
+        if url.startswith(prefix):
+            return url[len(prefix):].removesuffix(".git")
+    return ""
 
 
 def _build_bulletin_fetcher(local_bulletin_url: str) -> BulletinFetcher:
@@ -43,8 +69,9 @@ def _build_bulletin_fetcher(local_bulletin_url: str) -> BulletinFetcher:
     return KenyaKMDBulletinFetcher(local_bulletin_url)
 
 
-def _build_pipeline_deps(config_path: str, data_dir: str, public_webpage_url: str) -> PipelineDeps:
+def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_webpage_url: str) -> PipelineDeps:
     location = load_location_config(config_path)
+    data_path = Path(data_dir)
 
     gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
     if not gemini_api_key:
@@ -52,21 +79,35 @@ def _build_pipeline_deps(config_path: str, data_dir: str, public_webpage_url: st
     gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
     waqi_token = os.environ.get("WAQI_TOKEN", "")
 
+    # Publisher needs an absolute base URL to build sane nav links (see
+    # publish/pages.py's module docstring) — skip it gracefully rather than
+    # publish broken-relative-link pages if none was given, same "None =
+    # skip" pattern pipeline.py already uses for publisher/email_sender.
+    publisher = None
+    if public_webpage_url:
+        publisher = GitHubPagesPublisher(
+            docs_dir=Path(docs_dir),
+            location=location,
+            base_url=public_webpage_url,
+            github_repo=_github_repo_slug(),
+            all_dates_provider=lambda: list_log_dates(data_path),
+        )
+
     return PipelineDeps(
         location=location,
-        data_dir=Path(data_dir),
+        data_dir=data_path,
         llm_provider=GeminiProvider(api_key=gemini_api_key, model=gemini_model),
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
         bulletin_fetcher=_build_bulletin_fetcher(location.local_bulletin_url),
-        # publisher / email_sender stay unset until publish.pages /
-        # publish.email_brevo land (later phases) — run_daily_pipeline
-        # treats either being None as "skip that step", not an error.
+        publisher=publisher,
+        # email_sender stays unset until publish.email_brevo lands —
+        # run_daily_pipeline treats it being None as "skip that step".
     )
 
 
 def _run_daily(args: argparse.Namespace) -> int:
-    deps = _build_pipeline_deps(args.config, args.data_dir, args.public_url)
+    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
     try:
         result = run_daily_pipeline(deps, dry_run=args.dry_run)
     except OpenMeteoFetchError as e:
@@ -148,7 +189,12 @@ def main(argv: list[str] | None = None) -> int:
     run_daily = sub.add_parser("run-daily", help="Run the daily forecast pipeline.")
     run_daily.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
     run_daily.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
-    run_daily.add_argument("--public-url", default="", help="Public GitHub Pages URL, included in the LLM prompt")
+    run_daily.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
+    run_daily.add_argument(
+        "--public-url",
+        default="",
+        help="Public GitHub Pages URL. Included in the LLM prompt; also enables GitHub Pages publishing if set.",
+    )
     run_daily.add_argument(
         "--dry-run", action="store_true", help="Run fetch/verify/LLM for real but skip writes, publish, and email."
     )

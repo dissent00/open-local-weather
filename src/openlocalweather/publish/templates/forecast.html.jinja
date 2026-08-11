@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ location.primary_place_name }} Weather — {{ entry.date.isoformat() }}</title>
+<meta name="description" content="{{ entry.rain_expected }}. High {{ entry.temp_high_low_display }}.">
+<link rel="stylesheet" href="{{ nav.css }}">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{{ nav.home }}">{{ location.primary_place_name }} Weather</a>
+    <nav>
+      <a href="{{ nav.home }}">Today</a>
+      <a href="{{ nav.archive }}">Archive</a>
+      <a href="{{ nav.subscribe }}">Subscribe</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  {% if not is_latest %}
+  <p class="banner">This is an archived forecast for {{ entry.date.isoformat() }}. <a href="{{ nav.home }}">See today's forecast</a>.</p>
+  {% endif %}
+
+  <h1>{{ location.primary_place_name }}</h1>
+  <p class="meta">Forecast for {{ entry.date.isoformat() }} &middot; multi-model synthesis via {{ entry.meta.llm_model }}</p>
+
+  <div class="stat-grid">
+    <div class="stat"><span class="label">High / Low</span><span class="value">{{ entry.temp_high_low_display }}</span></div>
+    <div class="stat"><span class="label">Rain</span><span class="value">{{ entry.rain_expected }}</span></div>
+    {% if entry.onset_window %}
+    <div class="stat"><span class="label">Onset Window</span><span class="value">{{ entry.onset_window }}</span></div>
+    {% endif %}
+    {% if entry.uv_index_max %}
+    <div class="stat"><span class="label">UV Index</span><span class="value">{{ entry.uv_index_max }}</span></div>
+    {% endif %}
+    {% if entry.air_quality_aqi %}
+    <div class="stat"><span class="label">Air Quality</span><span class="value">{{ entry.air_quality_aqi }}</span></div>
+    {% endif %}
+  </div>
+
+  {{ narrative_html | safe }}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Open-source, location-agnostic, multi-model synoptic forecasting for {{ location.region_name }} — genuine model synthesis with a self-improving accuracy loop, not a relayed single-source number.
+    <a href="{{ nav.github }}">View source on GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>
