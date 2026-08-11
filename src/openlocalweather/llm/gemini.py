@@ -3,10 +3,15 @@ original pipeline's free-tier Gemini usage.
 
 Uses Gemini's native structured-output support (responseMimeType=
 application/json + responseSchema) rather than asking for JSON in the prompt
-and hoping — same mechanism the original pipeline relied on. Note: the
-reference script's CONFIG.GEMINI_MODEL value ("gemini-3.6-flash") does not
-match any real Gemini model id and was very likely a placeholder — callers
-must pass an actual current model id, not that string.
+and hoping — same mechanism the original pipeline relied on. Note: at the
+time this was first written, "gemini-3.6-flash" (the reference script's
+CONFIG.GEMINI_MODEL value) didn't match any known Gemini model id and was
+assumed to be a placeholder or typo — it has since turned out to be a real,
+current model, and is this project's default (see cli.py's
+DEFAULT_GEMINI_MODEL). Whatever id is used, Gemini's available models
+change over time — if generate() starts returning 404s, check
+`GET /v1beta/models?key=...` for the current lineup rather than assuming
+the id is still wrong.
 """
 
 from __future__ import annotations

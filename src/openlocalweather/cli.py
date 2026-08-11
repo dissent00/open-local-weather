@@ -26,7 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "config" / "location.yaml"
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
 
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 
 
 def _build_bulletin_fetcher(local_bulletin_url: str) -> BulletinFetcher:
