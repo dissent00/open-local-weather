@@ -24,6 +24,7 @@ from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
 from openlocalweather.store.log_store import list_log_dates
 
@@ -93,6 +94,22 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
             all_dates_provider=lambda: list_log_dates(data_path),
         )
 
+    # Gmail SMTP direct-send — see publish/email_gmail.py's module
+    # docstring for why this path was chosen over a third-party ESP.
+    # Skipped gracefully (same "None = skip" pattern as publisher above)
+    # unless both credentials AND at least one recipient are configured.
+    email_sender = None
+    gmail_address = os.environ.get("GMAIL_ADDRESS", "")
+    gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD", "")
+    recipients = parse_recipient_list(os.environ.get("SUBSCRIBER_EMAILS", ""))
+    if gmail_address and gmail_app_password and recipients:
+        email_sender = GmailSMTPSender(
+            gmail_address=gmail_address,
+            gmail_app_password=gmail_app_password,
+            recipients=recipients,
+            location_name=location.primary_place_name,
+        )
+
     return PipelineDeps(
         location=location,
         data_dir=data_path,
@@ -101,8 +118,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         waqi_token=waqi_token,
         bulletin_fetcher=_build_bulletin_fetcher(location.local_bulletin_url),
         publisher=publisher,
-        # email_sender stays unset until publish.email_brevo lands —
-        # run_daily_pipeline treats it being None as "skip that step".
+        email_sender=email_sender,
     )
 
 

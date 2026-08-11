@@ -84,7 +84,8 @@ def test_render_forecast_page_includes_key_stats_and_narrative():
     assert "<strong>likely</strong>" in html
     assert nav.css in html
     assert nav.archive in html
-    assert nav.subscribe in html
+    # nav.subscribe deliberately isn't linked from any template yet — see
+    # NavLinks' docstring comment.
 
 
 def test_render_forecast_page_archived_banner_only_when_not_latest():

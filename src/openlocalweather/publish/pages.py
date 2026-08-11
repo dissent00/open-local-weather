@@ -49,6 +49,11 @@ def _narrative_html(entry: DailyLogEntry) -> str:
 class NavLinks:
     home: str
     archive: str
+    # Not yet linked from any template — there's no subscribe.html to point
+    # to yet (see publish/email_gmail.py's module docstring for why: no
+    # safe self-serve form without a verified-domain ESP). Kept here so
+    # re-adding the nav link later is a one-line template change, not a
+    # NavLinks/build_nav_links rework.
     subscribe: str
     css: str
     github: str
