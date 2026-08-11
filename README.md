@@ -27,10 +27,23 @@ and also the reference example for forking to a new location.
    narrative. The LLM is never asked to do arithmetic.
 4. **Publish** — commit the day's result as JSON back to this repo (git is the
    database — free, versioned, fully auditable), regenerate a static site on
-   GitHub Pages, and email subscribers via Brevo.
+   GitHub Pages, and email subscribers (see [Status](#status) for the current
+   delivery mechanism).
 
 All of this runs daily on GitHub Actions' free scheduled-workflow minutes, on
 a public repo.
+
+## Documentation
+
+- **[docs-internal/ARCHITECTURE.md](docs-internal/ARCHITECTURE.md)** — how the
+  system works and why, the invariants that keep it trustworthy, and the
+  extension points for forking.
+- **[docs-internal/ROADMAP.md](docs-internal/ROADMAP.md)** — what's next, with
+  the measurements and constraints behind each decision.
+- **[mailer/README.md](mailer/README.md)** — email delivery setup.
+
+(`docs/` is the *generated* Pages site — don't hand-edit it; the pipeline
+overwrites it every run.)
 
 ## Design principles
 
@@ -73,13 +86,23 @@ a public repo.
   overclaim precision the underlying data doesn't support.
 - Local bulletin fetching is genuinely location-specific and will likely need
   rewriting per fork.
+- The 06:00 EAT run is built on model data roughly 9 hours old. Model runs
+  land 3.8–7.3 h after their initialisation time (measured; see
+  [ARCHITECTURE.md](docs-internal/ARCHITECTURE.md#timing-and-why-it-matters)),
+  so at 03:00 UTC the 00z runs haven't arrived yet and the previous day's
+  18z runs are the freshest available. A deliberate trade for a 6 AM email;
+  a second afternoon run is the planned fix
+  ([ROADMAP.md](docs-internal/ROADMAP.md)).
+- Accuracy statistics are meaningless until roughly 10 verified checks have
+  accumulated per model per lead time. The system says so in its own
+  forecaster-confidence notes rather than implying more rigour than it has.
 
 ## Status
 
 **Live**: [dissent00.github.io/open-local-weather](https://dissent00.github.io/open-local-weather/)
-runs daily at 06:00 EAT for Kisumu, Kenya. Every forecast is committed to
-`data/log/` — the full, auditable history of every prediction and its later
-verification.
+runs daily at 06:00 EAT for Kisumu, Kenya, with the subscriber email
+following at ~06:20 EAT. Every forecast is committed to `data/log/` — the
+full, auditable history of every prediction and its later verification.
 
 Email delivery goes out via [`mailer/AppsScriptMailer.gs`](mailer/), a
 standalone Google Apps Script companion — **not** the Python pipeline's
