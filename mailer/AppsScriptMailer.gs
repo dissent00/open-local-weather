@@ -29,6 +29,17 @@
  * not a scrape of the rendered GitHub Pages HTML. Same underlying
  * forecast either way, but immune to any future page-template change.
  *
+ * TIMING: the trigger fires at ~06:20 in TIMEZONE, only 20 minutes after
+ * the main pipeline's own 06:00 cron. Both GitHub Actions' scheduled
+ * triggers and Apps Script's own time-based triggers are documented as
+ * able to fire several minutes later than requested under load — two
+ * independent sources of jitter with only a 20-minute gap between them.
+ * To de-risk that, fetchForecastEntryWithRetry() retries a few times with
+ * a short delay before giving up for the day, comfortably within Apps
+ * Script's 6-minute execution limit for consumer accounts. A day where
+ * BOTH systems are unusually late can still be missed silently (by
+ * design — see fetchForecastEntry()'s doc comment) rather than erroring.
+ *
  * ============================== SETUP ==============================
  * 1. script.google.com -> New project -> replace Code.gs's contents with
  *    this file.
@@ -45,11 +56,11 @@
  * 3. Run createDailyTrigger() once from the editor (Run menu). Apps
  *    Script will prompt for authorization the first time — that consent
  *    screen IS the auth mechanism; there's no separate app password step.
- * 4. Done. The trigger fires daily at 07:00 in TIMEZONE — one hour after
- *    the main pipeline's own 06:00 run, giving it time to commit that
- *    day's file first. If a day's file isn't there yet (pipeline failed,
- *    or hasn't run), sendDailyForecastEmail() logs it and skips sending
- *    rather than erroring or sending stale content.
+ * 4. Done. The trigger fires daily at ~06:20 in TIMEZONE, retrying a few
+ *    times (see TIMING above) if that day's file isn't committed yet. If
+ *    it's still not there after retrying, sendDailyForecastEmail() logs it
+ *    and skips sending for the day rather than erroring or sending stale
+ *    content.
  * =====================================================================
  */
 
@@ -66,6 +77,9 @@ function getConfig() {
   };
 }
 
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 90 * 1000; // 90s between attempts — 3 attempts is ~3 min of sleep, well under the 6-min consumer execution cap
+
 function sendDailyForecastEmail() {
   const config = getConfig();
   if (!config.subscriberEmails.length) {
@@ -74,9 +88,9 @@ function sendDailyForecastEmail() {
   }
 
   const todayStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd');
-  const entry = fetchForecastEntry(config, todayStr);
+  const entry = fetchForecastEntryWithRetry(config, todayStr);
   if (!entry) {
-    Logger.log(`No forecast entry found for ${todayStr} yet — skipping (the pipeline may not have run/committed yet).`);
+    Logger.log(`No forecast entry found for ${todayStr} after ${RETRY_MAX_ATTEMPTS} attempts — skipping (the pipeline may not have run/committed yet, or is running later than usual today).`);
     return;
   }
 
@@ -96,6 +110,21 @@ function sendDailyForecastEmail() {
   });
 
   Logger.log(`Sent ${todayStr} forecast to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
+}
+
+/** Retries fetchForecastEntry a few times with a short delay between
+ * attempts — see the TIMING note in the module header for why a tight gap
+ * between two independently-jittery schedulers needs this. */
+function fetchForecastEntryWithRetry(config, dateStr) {
+  for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
+    const entry = fetchForecastEntry(config, dateStr);
+    if (entry) return entry;
+    if (attempt < RETRY_MAX_ATTEMPTS) {
+      Logger.log(`Forecast entry for ${dateStr} not found yet (attempt ${attempt}/${RETRY_MAX_ATTEMPTS}) — waiting ${RETRY_DELAY_MS / 1000}s and retrying.`);
+      Utilities.sleep(RETRY_DELAY_MS);
+    }
+  }
+  return null;
 }
 
 /** Fetches data/log/{dateStr}.json from GitHub's raw-content CDN. Returns
@@ -143,6 +172,6 @@ function createDailyTrigger() {
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
   const config = getConfig();
   ScriptApp.newTrigger('sendDailyForecastEmail')
-    .timeBased().atHour(7).everyDays(1).inTimezone(config.timezone).create();
-  Logger.log(`Daily 7 AM ${config.timezone} email trigger registered.`);
+    .timeBased().atHour(6).nearMinute(20).everyDays(1).inTimezone(config.timezone).create();
+  Logger.log(`Daily ~6:20 AM ${config.timezone} email trigger registered.`);
 }
