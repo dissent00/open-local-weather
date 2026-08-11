@@ -1,0 +1,44 @@
+# Open Local Weather — location config for this deployment (Kisumu, Kenya).
+#
+# See location.example.yaml for field-by-field documentation. This is the
+# real, live config for the first deployment of this project — a direct port
+# of the LOCATION block from the original Apps Script pipeline
+# (KisumuForecastPipeline_v2.gs).
+
+location:
+  region_name: "Nyanza Basin"
+  primary_place_name: "Kisumu, Kenya"
+  timezone: "Africa/Nairobi"
+
+  primary_point:
+    lat: -0.0917
+    lon: 34.7680
+
+  secondary_point:
+    enabled: true
+    name: "Lake Victoria"
+    section_label: "Conditions for Boaters"
+    lat: -0.75
+    lon: 33.15
+
+  region_points:
+    - name: "Siaya"
+      lat: 0.0607
+      lon: 34.2881
+    - name: "Homa Bay"
+      lat: -0.5273
+      lon: 34.4571
+    - name: "Kisii"
+      lat: -0.6773
+      lon: 34.7796
+    - name: "Migori"
+      lat: -1.0634
+      lon: 34.4731
+
+  metar_station_icao: "HKKI"
+
+  # Verified manually at waqi.info, carried over from the Apps Script config.
+  waqi_station_id: "A418534"
+
+  local_bulletin_url: "https://meteo.go.ke/our-products/7-days-forecast/"
+  local_bulletin_source_name: "Kenya Meteorological Department (KMD)"

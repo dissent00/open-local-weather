@@ -1,0 +1,52 @@
+# Open Local Weather — location config
+#
+# This is the ONLY file you should need to edit to fork this project for a
+# new place. Everything else (the system prompt, the fetch calls, the
+# narrative sections) is built dynamically from this block. Copy this file to
+# config/location.yaml and fill in your own values.
+#
+# Local met-bulletin scraping is inherently location-specific and can't be
+# meaningfully generalized — leave local_bulletin_url empty to skip it, or
+# see src/openlocalweather/fetch/bulletin/ for how to write your own.
+
+location:
+  # Human-readable names used throughout the narrative and system prompt.
+  region_name: "Example Region"
+  primary_place_name: "Example Town, Country"
+  timezone: "UTC" # any IANA tz name, e.g. "Africa/Nairobi"
+
+  # Main forecast point (a town/city).
+  primary_point:
+    lat: 0.0
+    lon: 0.0
+
+  # Optional second point of interest — a lake, coastline, mountain, etc.
+  # Set enabled: false to skip this entire section (data + narrative) for
+  # locations without a relevant secondary feature.
+  secondary_point:
+    enabled: false
+    name: ""
+    section_label: ""
+    lat: 0.0
+    lon: 0.0
+
+  # Neighboring points for the regional pressure-gradient snapshot (used in
+  # the Synoptic Overview section). 3-6 points spread across the wider area
+  # works well; more adds fetch cost without much narrative benefit.
+  region_points: []
+  # - name: "Neighbor Town"
+  #   lat: 0.0
+  #   lon: 0.0
+
+  # ICAO code for a nearby airport with METAR reporting (aviationweather.gov
+  # covers most of the world, not just the US). Leave "" to skip METAR.
+  metar_station_icao: ""
+
+  # WAQI ground air-quality station ID. VERIFY THIS MANUALLY at waqi.info —
+  # it cannot be checked from code, and a wrong ID silently poisons the
+  # "ground truth" AQI comparison. Leave "" to skip ground AQI entirely.
+  waqi_station_id: ""
+
+  # Optional local met-service bulletin. Leave "" to skip gracefully.
+  local_bulletin_url: ""
+  local_bulletin_source_name: ""
