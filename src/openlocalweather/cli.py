@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openlocalweather import __version__
@@ -19,6 +21,7 @@ from openlocalweather.config import load_location_config
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
+from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
 
@@ -87,6 +90,56 @@ def _run_daily(args: argparse.Namespace) -> int:
     return 0
 
 
+def _days_since_last_commit() -> int:
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%ct"],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=REPO_ROOT,
+    )
+    last_commit = datetime.fromtimestamp(int(result.stdout.strip()), tz=timezone.utc)
+    return (datetime.now(timezone.utc) - last_commit).days
+
+
+def _run_check_health(args: argparse.Namespace) -> int:
+    gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not gemini_api_key:
+        raise SystemExit("GEMINI_API_KEY environment variable is required for check-health.")
+    gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+    llm = GeminiProvider(api_key=gemini_api_key, model=gemini_model)
+
+    ok = True
+
+    print(f"Checking whether '{gemini_model}' is listed on Gemini's deprecations page...")
+    try:
+        result = check_model_deprecation(llm, gemini_model)
+    except LLMResponseError as e:
+        print(f"  Could not complete the model-deprecation check: {e}", file=sys.stderr)
+        ok = False
+    else:
+        if result.deprecated_or_scheduled:
+            print(f"  WARNING: '{gemini_model}' may be deprecated or scheduled for shutdown.")
+            print(f"  {result.notes}")
+            ok = False
+        else:
+            print(f"  OK — {result.notes}")
+
+    days = _days_since_last_commit()
+    print(f"Days since last commit: {days}")
+    if check_repo_staleness(days):
+        print(
+            f"  WARNING: last commit was {days} days ago. GitHub auto-disables scheduled "
+            "workflows after 60 days of repo inactivity — investigate why daily.yml isn't "
+            "running or isn't pushing."
+        )
+        ok = False
+    else:
+        print("  OK.")
+
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="olw", description="Open Local Weather")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -103,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
     check_config = sub.add_parser("check-config", help="Load and validate a location.yaml, then exit.")
     check_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
 
+    sub.add_parser(
+        "check-health",
+        help="Weekly health checks: Gemini model deprecation status + repo staleness.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "check-config":
@@ -112,6 +170,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run-daily":
         return _run_daily(args)
+
+    if args.command == "check-health":
+        return _run_check_health(args)
 
     parser.print_help()
     return 0

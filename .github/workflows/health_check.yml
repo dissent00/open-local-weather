@@ -1,0 +1,32 @@
+name: Weekly Health Check
+
+# Decoupled from daily.yml's own cron on purpose — a health-check failure
+# should never block or depend on that day's forecast run, and vice versa.
+# See health_check.py's module docstring for what these two checks catch
+# and why (in short: a live Gemini deprecations-page read, since a bare
+# model-list check missed a real account-tier restriction during initial
+# setup; and days-since-last-commit, a proxy for "is daily.yml actually
+# running and pushing," warned at 50 days to give real lead time before
+# GitHub's 60-day scheduled-workflow auto-disable).
+on:
+  schedule:
+    - cron: "0 4 * * 1" # 04:00 UTC every Monday
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Run health checks
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: olw check-health
