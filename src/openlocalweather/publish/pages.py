@@ -98,6 +98,7 @@ class GitHubPagesPublisher:
         base_url: str,
         github_repo: str,
         all_dates_provider: Callable[[], list[date]],
+        entry_provider: Callable[[date], DailyLogEntry | None] | None = None,
     ):
         self.docs_dir = Path(docs_dir)
         self.location = location
@@ -107,6 +108,9 @@ class GitHubPagesPublisher:
         # beyond what the caller (pipeline.py, via cli.py's wiring) already
         # has, matching the same pattern as verify/scoring's LogLookup.
         self.all_dates_provider = all_dates_provider
+        # Same injection pattern, for backfilling archive pages — see
+        # publish()'s backfill step for why that's needed.
+        self.entry_provider = entry_provider
 
     def publish(self, entry: DailyLogEntry) -> None:
         self.docs_dir.mkdir(parents=True, exist_ok=True)
@@ -120,5 +124,26 @@ class GitHubPagesPublisher:
         (archive_dir / f"{format_date(entry.date)}.html").write_text(entry_html)
 
         all_dates = self.all_dates_provider()
+
+        # Backfill any archive page that's missing. The index is generated
+        # from data/log/ (the source of truth), but only TODAY's page is
+        # written above — so any date whose page was never rendered would
+        # otherwise be listed in the index as a dead link. That isn't
+        # hypothetical: it happens to every entry written by a run where
+        # publishing was skipped (no --public-url configured), which is
+        # exactly how this repo's own first forecast was created before
+        # Pages was wired up. Cheap: a no-op once every page exists.
+        if self.entry_provider is not None:
+            for d in all_dates:
+                page = archive_dir / f"{format_date(d)}.html"
+                if page.exists():
+                    continue
+                past_entry = self.entry_provider(d)
+                if past_entry is None:
+                    continue
+                page.write_text(
+                    render_forecast_page(past_entry, self.location, self.nav, is_latest=False)
+                )
+
         archive_index_html = render_archive_index_page(all_dates, self.location, self.nav)
         (archive_dir / "index.html").write_text(archive_index_html)

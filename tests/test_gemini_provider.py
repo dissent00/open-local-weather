@@ -29,6 +29,14 @@ def gemini_envelope(payload: dict) -> dict:
     return {"candidates": [{"content": {"parts": [{"text": json.dumps(payload)}]}}]}
 
 
+@pytest.fixture(autouse=True)
+def _no_real_sleep(monkeypatch):
+    """No test should ever actually sleep through the retry backoff —
+    without this, the retryable-status tests below take ~35s each."""
+    import openlocalweather.llm.gemini as gemini_mod
+    monkeypatch.setattr(gemini_mod.time, "sleep", lambda s: None)
+
+
 def test_requires_api_key():
     with pytest.raises(ValueError):
         GeminiProvider(api_key="", model=MODEL)
@@ -119,3 +127,60 @@ def test_response_failing_schema_validation_raises():
         provider = GeminiProvider(api_key="key", model=MODEL)
         with pytest.raises(LLMResponseError):
             provider.generate("s", "u", GeminiForecastResponse)
+
+
+# ---------------------------------------------------------------------------
+# Transient-failure retry (regression: a real 503 aborted a live run)
+# ---------------------------------------------------------------------------
+
+
+def test_retries_transient_503_then_succeeds():
+    import openlocalweather.llm.gemini as gemini_mod
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, [
+            {"status_code": 503, "json": {"error": {"code": 503, "message": "high demand"}}},
+            {"status_code": 503, "json": {"error": {"code": 503, "message": "high demand"}}},
+            {"json": gemini_envelope(VALID_PAYLOAD)},
+        ])
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        result = provider.generate("s", "u", GeminiForecastResponse)
+
+    assert result.today_properties.temp_high_c == 26.0
+    assert m.call_count == 3
+
+
+def test_retries_exhausted_raises():
+    import openlocalweather.llm.gemini as gemini_mod
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, status_code=503, json={"error": {"code": 503, "message": "high demand"}})
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        with pytest.raises(LLMResponseError, match="after 4 attempts"):
+            provider.generate("s", "u", GeminiForecastResponse)
+    assert m.call_count == gemini_mod.MAX_ATTEMPTS
+
+
+def test_non_retryable_error_fails_fast_without_retrying():
+    # identically on retry — burning quota and time for nothing.
+    import openlocalweather.llm.gemini as gemini_mod
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, status_code=404, json={"error": {"code": 404, "message": "model not found"}})
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        with pytest.raises(LLMResponseError, match="404"):
+            provider.generate("s", "u", GeminiForecastResponse)
+    assert m.call_count == 1
+
+
+def test_retries_on_network_error_then_succeeds():
+    import openlocalweather.llm.gemini as gemini_mod
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, [
+            {"exc": requests.exceptions.ConnectionError("boom")},
+            {"json": gemini_envelope(VALID_PAYLOAD)},
+        ])
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        result = provider.generate("s", "u", GeminiForecastResponse)
+    assert result.yesterday_verification == "Rain call was accurate."

@@ -226,3 +226,68 @@ def test_result_covers_all_requested_models_and_lead_times():
     )
     keys = {(e.model, e.lead_time_days) for e in result.updated_track_record.entries}
     assert keys == {(m, k) for m in MODELS for k in LEAD_TIMES}
+
+
+# ---------------------------------------------------------------------------
+# All-time counter idempotency (regression)
+# ---------------------------------------------------------------------------
+
+
+def test_all_time_counters_do_not_double_count_on_repeat_same_day_runs():
+    """All-time checks/correct are the one piece of carried-forward (not
+    re-derived) state, so a double-count is permanent — it never washes out
+    the way rolling windows do. Repeated runs against the SAME yesterday
+    (manual workflow_dispatch, a retry, or a second scheduled run later the
+    same day) must not inflate them."""
+    today = date(2026, 8, 11)
+    yesterday = date(2026, 8, 10)
+    logs = {yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", rain=True)])}
+    actuals = {yesterday: actual(rain=True)}
+
+    track_record = empty_track_record()
+    for _ in range(3):
+        result = run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=track_record,
+            actuals_primary=actuals,
+            today=today,
+            yesterday=yesterday,
+            models=MODELS,
+            lead_times_days=LEAD_TIMES,
+        )
+        track_record = result.updated_track_record  # as read-modify-write of the file does
+
+    entry = track_record.get("gfs_seamless", 0)
+    assert entry.all_time_checks == 1
+    assert entry.all_time_correct == 1
+    assert entry.last_verified_target_date == yesterday
+
+
+def test_all_time_counters_still_advance_on_a_genuinely_new_day():
+    """The guard must not freeze the counters — a new target date still counts."""
+    day1_today, day1_yesterday = date(2026, 8, 11), date(2026, 8, 10)
+    day2_today, day2_yesterday = date(2026, 8, 12), date(2026, 8, 11)
+
+    logs = {
+        day1_yesterday: log_entry(day1_yesterday, day0=[prediction(model="gfs_seamless", rain=True)]),
+        day2_yesterday: log_entry(day2_yesterday, day0=[prediction(model="gfs_seamless", rain=True)]),
+    }
+    actuals = {day1_yesterday: actual(rain=True), day2_yesterday: actual(rain=True)}
+
+    track_record = empty_track_record()
+    for today, yesterday in [(day1_today, day1_yesterday), (day2_today, day2_yesterday)]:
+        result = run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=track_record,
+            actuals_primary=actuals,
+            today=today,
+            yesterday=yesterday,
+            models=MODELS,
+            lead_times_days=LEAD_TIMES,
+        )
+        track_record = result.updated_track_record
+
+    entry = track_record.get("gfs_seamless", 0)
+    assert entry.all_time_checks == 2
+    assert entry.all_time_correct == 2
+    assert entry.last_verified_target_date == day2_yesterday

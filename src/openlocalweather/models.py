@@ -186,6 +186,14 @@ class TrackRecordEntry(BaseModel):
     avg_mslp_trend_error_hpa_10: float | None = None
     checks_in_window_10: int = 0  # how many of the last 10 actually had data (cold-start visibility)
     last_updated: date | None = None
+    # The TARGET date whose result was last counted into all_time_checks /
+    # all_time_correct. Guards those two incremental fields against being
+    # counted more than once for the same real check — which happens
+    # whenever the pipeline runs more than once against the same
+    # yesterday: a manual workflow_dispatch, a retry after a partial
+    # failure, or a second scheduled run later the same day. Distinct from
+    # last_updated, which is just "when did any run last touch this row".
+    last_verified_target_date: date | None = None
     skill_profile_summary: str | None = None  # LLM-written, qualitative
     notes: str = ""
 

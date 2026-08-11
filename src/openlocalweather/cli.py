@@ -26,7 +26,7 @@ from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
-from openlocalweather.store.log_store import list_log_dates
+from openlocalweather.store.log_store import list_log_dates, make_log_lookup
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "config" / "location.yaml"
@@ -92,6 +92,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
             base_url=public_webpage_url,
             github_repo=_github_repo_slug(),
             all_dates_provider=lambda: list_log_dates(data_path),
+            entry_provider=make_log_lookup(data_path),
         )
 
     # Gmail SMTP direct-send — see publish/email_gmail.py's module

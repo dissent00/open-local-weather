@@ -17,6 +17,8 @@ the id is still wrong.
 from __future__ import annotations
 
 import json
+import sys
+import time
 from typing import TypeVar
 
 import requests
@@ -28,6 +30,16 @@ T = TypeVar("T", bound=BaseModel)
 
 GEMINI_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 REQUEST_TIMEOUT_S = 60
+
+# Transient, retryable HTTP statuses: 429 rate-limited, 500/502/503/504
+# server-side or capacity errors. Observed in practice — a "This model is
+# currently experiencing high demand" 503 aborted a real run during
+# development. Without a retry, a demand spike coinciding with the daily
+# cron silently costs a whole day's forecast (and, downstream, that day's
+# verification check), so a few cheap retries are well worth it.
+RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+MAX_ATTEMPTS = 4
+RETRY_BASE_DELAY_S = 5  # exponential: 5s, 10s, 20s — ~35s worst case
 
 
 class LLMResponseError(RuntimeError):
@@ -48,6 +60,39 @@ class GeminiProvider:
         self.api_key = api_key
         self.model = model
 
+    def _post_with_retry(self, url: str, payload: dict) -> requests.Response:
+        """POSTs with bounded exponential backoff on transient failures.
+
+        Network errors and RETRYABLE_STATUS_CODES are retried; everything
+        else (a bad API key, a deprecated model id, a malformed request)
+        is returned immediately for the caller to raise on — retrying those
+        just wastes time and quota, since they'll fail identically.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                resp = requests.post(
+                    url, params={"key": self.api_key}, json=payload, timeout=REQUEST_TIMEOUT_S
+                )
+                if resp.status_code not in RETRYABLE_STATUS_CODES:
+                    return resp
+                last_exc = LLMResponseError(f"Gemini returned HTTP {resp.status_code}")
+            except requests.RequestException as e:
+                last_exc = e
+
+            if attempt < MAX_ATTEMPTS:
+                delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                print(
+                    f"Gemini call failed ({last_exc}); retrying in {delay}s "
+                    f"(attempt {attempt}/{MAX_ATTEMPTS}).",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+
+        raise LLMResponseError(
+            f"Gemini request failed after {MAX_ATTEMPTS} attempts: {last_exc}"
+        ) from last_exc
+
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:
         url = GEMINI_API_URL_TEMPLATE.format(model=self.model)
         payload = {
@@ -59,10 +104,7 @@ class GeminiProvider:
             },
         }
 
-        try:
-            resp = requests.post(url, params={"key": self.api_key}, json=payload, timeout=REQUEST_TIMEOUT_S)
-        except requests.RequestException as e:
-            raise LLMResponseError(f"Gemini request failed: {e}") from e
+        resp = self._post_with_retry(url, payload)
 
         try:
             body = resp.json()

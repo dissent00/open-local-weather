@@ -101,10 +101,20 @@ def run_deterministic_verification_and_scoring(
             if track_entry is None:
                 track_entry = TrackRecordEntry(model=model, lead_time_days=k)
 
+            # All-time counters are the ONE piece of state that is carried
+            # forward rather than re-derived, so a double-count is permanent
+            # — it never washes out the way the rolling windows do. Guard
+            # against counting the same target date twice, which happens
+            # whenever the pipeline runs more than once against the same
+            # yesterday (manual workflow_dispatch, a retry, or a second
+            # scheduled run later the same day).
             new_check = per_model_scores.get(model)
-            new_all_time_checks = track_entry.all_time_checks + (1 if new_check else 0)
+            already_counted = track_entry.last_verified_target_date == yesterday
+            count_this_run = new_check is not None and not already_counted
+
+            new_all_time_checks = track_entry.all_time_checks + (1 if count_this_run else 0)
             new_all_time_correct = track_entry.all_time_correct + (
-                1 if (new_check is not None and new_check.rain_correct) else 0
+                1 if (count_this_run and new_check.rain_correct) else 0
             )
             all_time_pct = (
                 100 * new_all_time_correct / new_all_time_checks if new_all_time_checks > 0 else None
@@ -123,6 +133,8 @@ def run_deterministic_verification_and_scoring(
             track_entry.avg_mslp_trend_error_hpa_10 = short.mslp_err
             track_entry.checks_in_window_10 = short.checks_found
             track_entry.last_updated = today
+            if count_this_run:
+                track_entry.last_verified_target_date = yesterday
             # skill_profile_summary / notes are intentionally left untouched
             # here — they're LLM-written qualitative text, filled in on a
             # later pass once the LLM has this run's numbers as context (see

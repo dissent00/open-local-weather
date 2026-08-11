@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
@@ -154,3 +155,61 @@ def test_publisher_writes_index_archive_entry_and_archive_index(tmp_path):
     assert "Rain" in index_text
     assert "archived forecast" not in index_text  # index.html is always "latest"
     assert "archived forecast" in archive_entry_text
+
+
+def test_publisher_backfills_missing_archive_pages(tmp_path):
+    """The archive index is generated from data/log/ (the source of truth),
+    but only today's page is rendered directly — so any earlier entry whose
+    page was never rendered would be listed as a dead link. Regression test
+    for exactly that."""
+    entries = {
+        date(2026, 8, 9): make_entry(date(2026, 8, 9)),
+        date(2026, 8, 10): make_entry(date(2026, 8, 10)),
+        date(2026, 8, 11): make_entry(date(2026, 8, 11)),
+    }
+    publisher = GitHubPagesPublisher(
+        docs_dir=tmp_path,
+        location=LOCATION,
+        base_url="https://example.com",
+        github_repo="owner/repo",
+        all_dates_provider=lambda: sorted(entries),
+        entry_provider=lambda d: entries.get(d),
+    )
+    publisher.publish(entries[date(2026, 8, 11)])
+
+    for d in entries:
+        assert (tmp_path / "archive" / f"{d.isoformat()}.html").exists(), f"missing page for {d}"
+
+    index_html = (tmp_path / "archive" / "index.html").read_text()
+    linked = re.findall(r'href="(\d{4}-\d{2}-\d{2}\.html)"', index_html)
+    on_disk = {p.name for p in (tmp_path / "archive").glob("*.html")}
+    assert linked, "archive index should link to at least one page"
+    assert not [l for l in linked if l not in on_disk], "archive index has dead links"
+
+
+def test_publisher_backfill_is_a_noop_without_entry_provider(tmp_path):
+    # entry_provider is optional — omitting it must not crash, just skip
+    # backfill (the pre-existing behavior).
+    publisher = GitHubPagesPublisher(
+        docs_dir=tmp_path,
+        location=LOCATION,
+        base_url="https://example.com",
+        github_repo="owner/repo",
+        all_dates_provider=lambda: [date(2026, 8, 10), date(2026, 8, 11)],
+    )
+    publisher.publish(make_entry(date(2026, 8, 11)))
+    assert (tmp_path / "archive" / "2026-08-11.html").exists()
+    assert not (tmp_path / "archive" / "2026-08-10.html").exists()
+
+
+def test_publisher_backfill_skips_dates_with_no_entry(tmp_path):
+    publisher = GitHubPagesPublisher(
+        docs_dir=tmp_path,
+        location=LOCATION,
+        base_url="https://example.com",
+        github_repo="owner/repo",
+        all_dates_provider=lambda: [date(2026, 8, 10), date(2026, 8, 11)],
+        entry_provider=lambda d: None,  # entry vanished / unreadable
+    )
+    publisher.publish(make_entry(date(2026, 8, 11)))  # must not raise
+    assert (tmp_path / "archive" / "2026-08-11.html").exists()
