@@ -86,13 +86,14 @@ overwrites it every run.)
   overclaim precision the underlying data doesn't support.
 - Local bulletin fetching is genuinely location-specific and will likely need
   rewriting per fork.
-- The 06:00 EAT run is built on model data roughly 9 hours old. Model runs
-  land 3.8–7.3 h after their initialisation time (measured; see
-  [ARCHITECTURE.md](docs-internal/ARCHITECTURE.md#timing-and-why-it-matters)),
-  so at 03:00 UTC the 00z runs haven't arrived yet and the previous day's
-  18z runs are the freshest available. A deliberate trade for a 6 AM email;
-  a second afternoon run is the planned fix
-  ([ROADMAP.md](docs-internal/ROADMAP.md)).
+- Forecasts are built on model data ~8–9 hours old, and that is close to
+  the floor: the slowest models take 6.6–7.3 h to become available after
+  their run time, so no schedule can do much better (measured; see
+  [ARCHITECTURE.md](docs-internal/ARCHITECTURE.md#timing-and-why-it-matters)).
+- Not every model reaches Day+7 — UKMO's horizon ends around 7.2 days and
+  ICON's around 7.5. The extended outlook at that range draws on fewer
+  models than the near-term forecast. Absent data is recorded as unknown,
+  never silently as "no rain".
 - Accuracy statistics are meaningless until roughly 10 verified checks have
   accumulated per model per lead time. The system says so in its own
   forecaster-confidence notes rather than implying more rigour than it has.

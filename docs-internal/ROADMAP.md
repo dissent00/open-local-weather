@@ -7,39 +7,114 @@ Status legend: **Next** · **Planned** · **Deferred** · **Done**
 
 ---
 
-## 1. Second daily forecast run — fresher model data · **Next**
+## 1. Second daily forecast run — 6 AM + 6 PM · **Next**
 
-### The problem, measured
+### Measured inputs
 
-The daily run fires at 03:00 UTC (06:00 EAT). Model runs land on a delay,
-measured from Open-Meteo's own per-model metadata endpoints
-(`https://api.open-meteo.com/data/{model}/static/meta.json`) on 2026-08-11:
+All models run 4 cycles a day (00/06/12/18z) and take several hours to
+arrive. Delays measured twice on 2026-08-11 from Open-Meteo's per-model
+metadata endpoints (`/data/{model}/static/meta.json`), consistent both times:
 
-| Model | Delay after run time | 00z lands at |
+| Model | Availability delay | Usable horizon |
 |---|---|---|
-| ICON | ~3.8 h | ~03:48 UTC |
-| GFS 0.13 | ~6.6 h | ~06:36 UTC |
-| ECMWF IFS 0.25 | ~7.1 h | ~07:06 UTC |
-| UKMO 10 km | ~7.3 h | ~07:18 UTC |
+| ICON | ~3.8 h | ~7.5 d |
+| GFS 0.13 | ~6.6 h | ~16 d |
+| ECMWF IFS 0.25 | ~7.1 h | ~8 d |
+| UKMO 10 km | ~7.3 h | ~7.2 d |
 
-At 03:00 UTC **none of the 00z runs have landed**. The morning forecast is
-therefore built almost entirely on the *previous day's 18z* runs — roughly
-9 hours stale at issue time, and initialised before the previous evening.
+**The 6.6–7.3 h delays set a hard floor: model data can never be fresher
+than ~8 hours old, at any hour of the day.** That reframes an earlier note
+in this repo that called the morning run "~9 hours stale" — technically
+true, but only *one hour* worse than the theoretical best. The morning slot
+is not the problem it first appeared to be.
 
-Moving the morning run later would fix the staleness but breaks the 6 AM
-email, which is the actual product. So: add a second run instead.
+What actually varies by hour is **cycle alignment** — whether all four
+models are on the same run, or some are a cycle behind:
 
-### Recommended timing: 14:00 UTC (17:00 EAT)
+| Run at (UTC) | (EAT) | ECMWF | GFS | ICON | UKMO | Oldest data |
+|---|---|---|---|---|---|---|
+| 02:00 | 05:00 | 18z | 18z | 18z | 18z | 8 h |
+| **03:00** | **06:00** | 18z | 18z | 18z | 18z | **9 h** ← current |
+| 07:00 | 10:00 | 18z | 00z | 00z | 18z | 13 h ✗ split |
+| 08:00 | 11:00 | 00z | 00z | 00z | 00z | 8 h |
+| 13:00 | 16:00 | 00z | 06z | 06z | 00z | 13 h ✗ split |
+| 14:00 | 17:00 | 06z | 06z | 06z | 06z | 8 h |
+| **15:00** | **18:00** | 06z | 06z | 06z | 06z | **9 h** |
+| 19:00 | 22:00 | 06z | 12z | 12z | 06z | 13 h ✗ split |
+| 20:00 | 23:00 | 12z | 12z | 12z | 12z | 8 h |
 
-By 13:19 UTC every model's **06z** run has landed (ICON ~09:48, GFS ~12:38,
-ECMWF ~13:07, UKMO ~13:19). 14:00 UTC gives a ~40-minute safety margin.
+Aligned windows open at **02:00, 08:00, 14:00 and 20:00 UTC** and stay clean
+for about two hours before the faster models jump a cycle ahead. Landing in
+a *split* window is the thing to avoid — mixing a 06z ECMWF with a 12z ICON
+makes model disagreement partly an artefact of run age rather than genuine
+forecast uncertainty, which is exactly the signal the whole synthesis
+depends on reading correctly.
 
-That's a model cycle initialised **12 hours later** than what the morning
-run used, and 17:00 EAT is a sensible "this evening and tonight" delivery
-slot for readers.
+### Recommendation: keep 03:00 UTC, add 15:00 UTC
 
-Rejected alternative: waiting for the 12z runs (all landed by ~19:30 UTC =
-22:30 EAT) — genuinely freshest, but too late at night to be useful.
+| | Morning | Evening |
+|---|---|---|
+| Cron | `0 3 * * *` (unchanged) | `0 15 * * *` |
+| Delivery | 06:00 EAT | 18:00 EAT ✓ your target |
+| Cycle | 18z (prev. day) | **06z (same day)** |
+| Age | 9 h | 9 h |
+| Alignment | all four aligned ✓ | all four aligned ✓ |
+
+15:00 UTC hits 6 PM EAT exactly, has all four models on the same cycle, and
+uses a run initialised **12 hours later** than the morning's. Same freshness,
+genuinely newer information — most valuable for "tonight and tomorrow",
+which is what an evening forecast is for.
+
+If you'd rather trade an hour of clock time for an hour of data freshness,
+**14:00 UTC (17:00 EAT)** is the optimum (8 h). You said afternoon/evening
+is flexible, so this is a real option — but 18:00 is the better *product*
+time and the difference is one hour of model age.
+
+Do **not** pick 16:00 or 17:00 UTC (19:00/20:00 EAT): still aligned, but
+10–11 h old with nothing gained.
+
+### Why not wait for 12z?
+
+The 12z cycle is the freshest same-day data, but all four models aren't in
+until ~19:20 UTC — a 20:00 UTC (23:00 EAT) run. Too late to be useful, and
+the 06z run at 15:00 UTC already covers the evening well.
+
+### The design question this forces
+
+A second run re-forecasts a day that already has a committed entry. What
+happens to `data/log/YYYY-MM-DD.json`?
+
+This matters more than it looks: that file's `model_predictions` are what
+tomorrow's verification scores. Overwrite them and you're no longer scoring
+what you actually published at 6 AM.
+
+**Recommended: phase it.**
+
+**Phase 1 — refresh mode (low risk, most of the value).**
+Add `olw run-daily --mode=refresh`, which:
+- fetches fresh model data and re-synthesises the narrative
+- rewrites `narrative_markdown`, `today_properties`, and republishes `docs/`
+- **skips** verification entirely (yesterday's actuals don't change during
+  the day — nothing new to score)
+- **preserves** the morning run's stored `model_predictions`, so the
+  accuracy loop keeps scoring what was actually published
+- records `refreshed_at` in `meta` so the audit trail stays honest
+
+Public-facing forecast improves; the skill-tracking machinery is untouched.
+
+**Phase 2 — first-class issuances (only if Phase 1 proves the value).**
+Make each run a separately-scored issuance so the *evening* forecast's skill
+is tracked too — plausibly the more accurate one, and worth knowing. Needs a
+schema change (`issuances: [...]` per day, or date-plus-label files) and a
+lead-time lookup that's issuance-aware. Real complexity; don't take it on
+speculatively.
+
+### Prompt note
+
+The evening narrative shouldn't read like a stale copy of the morning's. Add
+a mode-aware line to the system prompt: for the evening run, lead with
+tonight and tomorrow, and explicitly note what changed since the morning
+issuance — that's the reason someone would read both.
 
 ### The design question this forces
 
@@ -142,9 +217,44 @@ records every warning ID ever seen; only genuinely new IDs proceed. KMD
 sometimes posts an "updated" advisory for an ongoing event — treat as new
 only if content materially changed, not merely re-listed.
 
-**Cost:** hourly is 24 runs/day, free on a public repo. The LLM is only
-called when something new appears (rare — a handful of times a month), so
-Gemini free-tier limits are a non-issue.
+### Cost — measured, not estimated
+
+**Compute: free.** GitHub Actions gives public repos unlimited scheduled
+minutes. Real per-step timings from this repo's CI:
+
+| Step | Time |
+|---|---|
+| checkout | 2 s |
+| setup-python | 0 s (cached) |
+| `pip install` | **11 s** ← dominates |
+| actual work | 1–2 s |
+| **total** | **~16 s** |
+
+24 runs/day ≈ **6.5 minutes of Actions time daily**, all free. Worth
+installing only `requests` for this job rather than the full package —
+`pdfplumber`, `jinja2`, `pydantic` and friends aren't needed to poll a web
+page, and that cuts the 11 s install to ~3 s.
+
+**Network: negligible.** The warnings page is 111 KB and returns in ~0.11 s.
+24 fetches/day ≈ 2.7 MB — trivial for us, and polite toward meteo.go.ke.
+
+Note: the page sends **no `ETag` and no `Last-Modified`**, so cheap
+conditional GETs aren't possible — every poll downloads the full 111 KB.
+It does send `Cache-Control: max-age=14400`, i.e. the server itself
+considers the content good for **4 hours**. Hourly polling is therefore
+already 4× more frequent than the origin expects to change, which is a
+reasonable margin for alerting but argues against going below hourly.
+
+**LLM: near-zero.** Triage only runs when a genuinely new warning appears —
+realistically a handful of times a month, not 24× a day. Well inside the
+Gemini free tier.
+
+**Real limitation to accept up front:** GitHub's scheduled workflows are
+routinely delayed 5–20 minutes under load, and the guarantee is
+best-effort, not punctual. Combined with hourly polling, this system
+delivers *"usually within the hour"*, **not** *"within minutes"*. That is
+fine for heavy-rainfall advisories issued hours ahead. It is **not** a
+flash-flood warning system, and the site copy should not imply otherwise.
 
 **Alert fatigue guardrails:**
 - severity floor — advisories below a threshold go to the site, not to email
@@ -163,15 +273,34 @@ Gemini free-tier limits are a non-issue.
 - Never let the LLM *invent* urgency. Its job is triage and plain-language
   summary of a warning that already exists, nothing more.
 
+### Effort estimate
+
+Roughly a day's work, in dependency order:
+
+| Piece | Effort | Notes |
+|---|---|---|
+| `fetch/alerts/kenya_kmd_warnings.py` | ~2 h | Mirrors the proven `kenya_kmd.py` pattern |
+| `store/alerts_store.py` (dedup) | ~1 h | The part that must be right |
+| `llm/alert_triage.py` | ~1.5 h | New pydantic schema; provider layer already exists |
+| `.github/workflows/alerts.yml` | ~0.5 h | Minimal deps, `0 * * * *` |
+| Site banner + `docs/alerts/` | ~1.5 h | New template + publisher hook |
+| `sendAlertEmail()` in the mailer | ~1.5 h | New Apps Script function + trigger + harness cases |
+| `fetch/alerts/gdacs.py` | ~1.5 h | Real feed; geo-filter is the fiddly bit |
+| Scraper-health alarm | ~0.5 h | Zero-posts-parsed ⇒ notify, never "all clear" |
+
+A useful first slice is the first four rows plus the health alarm: that
+gets alerts onto the site, with email and GDACS following once the dedup
+behaviour has been observed against real KMD posting patterns for a while.
+
 ### Tasks
 - [ ] `fetch/alerts/kenya_kmd_warnings.py` — scrape, parse, stable IDs
-- [ ] `fetch/alerts/gdacs.py` — RSS + bounding-box filter
 - [ ] `store/alerts_store.py` — `alerts_seen.json`, dedup, `alerts/<id>.json`
 - [ ] `llm/alert_triage.py` — relevance/severity/summary schema
-- [ ] `.github/workflows/alerts.yml` — `0 * * * *`
+- [ ] `.github/workflows/alerts.yml` — `0 * * * *`, minimal deps
+- [ ] Scraper-health alarm (zero-posts-parsed ⇒ notify, don't assume calm)
 - [ ] Site alert banner + `docs/alerts/`
 - [ ] `sendAlertEmail()` in the Apps Script mailer, own trigger
-- [ ] Scraper-health alarm (zero-posts-parsed ⇒ notify, don't assume calm)
+- [ ] `fetch/alerts/gdacs.py` — RSS + bounding-box filter
 
 ---
 

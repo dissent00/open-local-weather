@@ -150,6 +150,7 @@ Break these and the system quietly stops being trustworthy:
 | All-time counters increment at most once per target date | `last_verified_target_date` guard | The one non-self-healing field |
 | The LLM's numbers are never read back as data | `verify/` owns all math | Prevents silent arithmetic drift |
 | Onset is scored only at Day+0 | `verify/scoring.score_prediction()` | Day+3/+7 never had onset data |
+| Missing model data is `rain=None`, never `False` | `extract.py` + `score_prediction()` | "No data" scored as "no rain" manufactures fake skill |
 | `docs/` is generated, never hand-edited | `publish/pages.py` | Overwritten every run |
 
 ## Extension points
@@ -181,19 +182,32 @@ together.
 Model runs land on a delay. Measured from Open-Meteo's per-model metadata
 endpoints (`/data/{model}/static/meta.json`) on 2026-08-11:
 
-| Model | Availability delay after run time |
-|---|---|
-| ICON | ~3.8 h |
-| GFS 0.13 | ~6.6 h |
-| ECMWF IFS 0.25 | ~7.1 h |
-| UKMO 10 km | ~7.3 h |
+| Model | Availability delay | Usable horizon |
+|---|---|---|
+| ICON | ~3.8 h | ~7.5 d |
+| GFS 0.13 | ~6.6 h | ~16 d |
+| ECMWF IFS 0.25 | ~7.1 h | ~8 d |
+| UKMO 10 km | ~7.3 h | ~7.2 d |
 
-The daily run fires at 03:00 UTC. With those delays, the 00z runs have *not*
-landed yet — so the morning forecast is built on the **previous day's 18z
-runs**, roughly 9 hours old at issue time. That's a deliberate trade
-(subscribers want a 6 AM email more than they want marginally fresher
-model data), but it's a real limitation, and it's the entire motivation for
-the second-run roadmap item. See [ROADMAP.md](ROADMAP.md).
+Two consequences worth internalising:
+
+**There is an ~8-hour floor on data freshness.** Because the slowest models
+take 6.6–7.3 h to arrive, no run at any hour can use data fresher than about
+8 hours. The 03:00 UTC run's data is ~9 h old — one hour off the theoretical
+best, not the serious staleness it might first appear.
+
+**Cycle alignment matters more than raw age.** All four models run 00/06/12/18z
+but arrive at different speeds, so at some hours they're split across
+different cycles. Mixing a 06z ECMWF with a 12z ICON makes part of the
+model disagreement an artefact of run age rather than genuine forecast
+uncertainty — and reading that disagreement correctly is the entire point of
+the synthesis. Aligned windows open at **02:00, 08:00, 14:00 and 20:00 UTC**;
+03:00 UTC sits inside one. Full hour-by-hour table in [ROADMAP.md](ROADMAP.md).
+
+**Not every model reaches every lead time.** UKMO tops out around 7.2 days
+and ICON around 7.5, so at Day+7 one or both may have no data at all. That
+absence is recorded as `rain=None`, never `False` — see the invariants table
+above; conflating the two manufactures fake skill scores.
 
 ## Testing
 
