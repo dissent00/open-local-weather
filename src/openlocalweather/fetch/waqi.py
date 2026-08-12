@@ -1,12 +1,17 @@
-"""Optional ground-truth AQI fetch via waqi.info.
+"""Optional ground-truth AQI fetch via waqi.info, across 1-N stations.
 
 Best-effort only, same rationale as metar.py: WAQI ground sensors go offline
 sometimes, and the system prompt already instructs the narrative to fall
-back to CAMS model-only air-quality data and say so explicitly when this
-returns None. The station ID cannot be validated from code — a wrong ID
-silently poisons the "ground truth" comparison, so it must be verified
-manually at waqi.info when configuring a new location (see
-config/location.example.yaml).
+back to CAMS model-only air-quality data and say so explicitly when no
+station returns data. Station IDs cannot be validated from code — a wrong
+one silently poisons the "ground truth" comparison, so each must be
+verified manually at waqi.info when configuring a location (see
+config/location.example.yaml and config.WaqiStation).
+
+Each station is fetched and sanitized independently, so one station being
+offline never takes the others down with it — same "one bad element
+shouldn't abort the batch" pattern used throughout this module and its
+callers.
 """
 
 from __future__ import annotations
@@ -14,7 +19,8 @@ from __future__ import annotations
 import requests
 from pydantic import ValidationError
 
-from openlocalweather.models import GroundAQI
+from openlocalweather.config import WaqiStation
+from openlocalweather.models import GroundAQIReading
 
 WAQI_URL_TEMPLATE = "https://api.waqi.info/feed/{station_id}/"
 REQUEST_TIMEOUT_S = 15
@@ -22,13 +28,13 @@ REQUEST_TIMEOUT_S = 15
 
 def _as_int_or_none(value) -> int | None:
     """WAQI uses the literal string "-" for "no value available" — not
-    absent, not null, an actual dash in the field. Confirmed live: this
-    project's own configured station returned aqi="-" while its individual
-    pollutant readings (iaqi.pm25.v etc.) were present and numeric, so the
-    station clearly had data, just no *composite* AQI computed at that
-    moment. Silently coercing that into None (rather than letting pydantic
-    reject the string and crash the whole pipeline run) is exactly the
-    "degrade gracefully" contract this fetch module is supposed to honor.
+    absent, not null, an actual dash in the field. Confirmed live: a real
+    station returned aqi="-" while its individual pollutant readings
+    (iaqi.pm25.v etc.) were present and numeric, so the station clearly had
+    data, just no *composite* AQI computed at that moment. Silently
+    coercing that into None (rather than letting pydantic reject the string
+    and crash the whole pipeline run) is exactly the "degrade gracefully"
+    contract this fetch module is supposed to honor.
     """
     if isinstance(value, int):
         return value
@@ -38,11 +44,7 @@ def _as_int_or_none(value) -> int | None:
 
 
 def _as_number_or_none(value) -> float | None:
-    """Same "-" sentinel handling as _as_int_or_none, for pm25/pm10 —
-    GroundAQI types those as float | str | None specifically so a literal
-    "-" doesn't crash the run the way the strictly-int aqi field did, but
-    we still don't want a bare dash string leaking into the published
-    narrative or the LLM prompt as if it meant something."""
+    """Same "-" sentinel handling as _as_int_or_none, for pm25/pm10."""
     if isinstance(value, (int, float)):
         return float(value)
     if value == "-":
@@ -53,7 +55,12 @@ def _as_number_or_none(value) -> float | None:
         return None
 
 
-def fetch_ground_aqi(station_id: str, token: str) -> GroundAQI | None:
+def fetch_ground_aqi_reading(name: str, station_id: str, token: str) -> GroundAQIReading | None:
+    """Fetches and sanitizes one station's current reading. Returns None on
+    any failure — missing config, network error, non-200, malformed JSON,
+    a WAQI status other than "ok", or a response shape pydantic rejects
+    even after sanitization — never raises into the caller.
+    """
     if not station_id or not token:
         return None
     try:
@@ -76,14 +83,26 @@ def fetch_ground_aqi(station_id: str, token: str) -> GroundAQI | None:
     data = payload.get("data") or {}
     iaqi = data.get("iaqi") or {}
     try:
-        return GroundAQI(
+        return GroundAQIReading(
+            name=name,
+            station_id=station_id,
             aqi=_as_int_or_none(data.get("aqi")),
             pm25=_as_number_or_none((iaqi.get("pm25") or {}).get("v")),
             pm10=_as_number_or_none((iaqi.get("pm10") or {}).get("v")),
-            station=(data.get("city") or {}).get("name"),
         )
     except ValidationError:
         # Belt-and-suspenders: WAQI's response shape is outside our
-        # control, and this function's contract (like metar.py's) is to
-        # degrade to None on any failure, never to raise into the pipeline.
+        # control, and this function's contract is to degrade to None on
+        # any failure, never to raise into the pipeline.
         return None
+
+
+def fetch_ground_aqi_stations(stations: list[WaqiStation], token: str) -> list[GroundAQIReading]:
+    """Fetches every configured station independently; stations that fail
+    are simply absent from the result, not a reason to drop the others."""
+    readings = []
+    for station in stations:
+        reading = fetch_ground_aqi_reading(station.name, station.station_id, token)
+        if reading is not None:
+            readings.append(reading)
+    return readings

@@ -21,7 +21,7 @@ LOCATION = LocationConfig(
     secondary_point=SecondaryPoint(),  # disabled — keeps fixtures simpler
     region_points=[RegionPoint(name="Neighbor", lat=1.5, lon=2.5)],
     metar_station_icao="",  # skip METAR
-    waqi_station_id="",  # skip WAQI
+    waqi_stations=[],  # skip WAQI
     local_bulletin_url="",  # NullBulletinFetcher
 )
 
@@ -99,7 +99,7 @@ def patch_fetches(monkeypatch):
         open_meteo, "fetch_archive_range", lambda lat, lon, start, end, tz: archive_fixture(end)
     )
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
-    monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi", lambda station, token: None)
+    monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: [])
 
 
 def make_deps(tmp_path, llm=None) -> PipelineDeps:
@@ -293,3 +293,97 @@ def test_llm_receives_system_and_user_prompt(tmp_path):
     system_prompt, user_prompt = llm.calls[0]
     assert "Test Town" in system_prompt
     assert "2026-08-11" in user_prompt
+
+
+# ---------------------------------------------------------------------------
+# Multi-station ground AQI, end-to-end through the pipeline
+# ---------------------------------------------------------------------------
+
+
+def test_multi_station_aqi_readings_flow_through_to_log_entry(tmp_path, monkeypatch):
+    from openlocalweather.config import WaqiStation
+    from openlocalweather.models import GroundAQIReading
+
+    location_with_stations = LOCATION.model_copy(
+        update={
+            "waqi_stations": [
+                WaqiStation(name="Kisumu Airport", station_id="A418534"),
+                WaqiStation(name="Dunga Beach", station_id="A418504"),
+            ]
+        }
+    )
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="Kisumu Airport", station_id="A418534", aqi=42, pm25=18.0, pm10=30.0),
+            GroundAQIReading(name="Dunga Beach", station_id="A418504", aqi=171, pm25=171.0, pm10=37.0),
+        ],
+    )
+
+    deps = PipelineDeps(
+        location=location_with_stations,
+        data_dir=tmp_path,
+        llm_provider=FakeLLMProvider(),
+        public_webpage_url="https://example.org",
+        bulletin_fetcher=NullBulletinFetcher(),
+    )
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert len(result.log_entry.ground_aqi) == 2
+    names = {r.name for r in result.log_entry.ground_aqi}
+    assert names == {"Kisumu Airport", "Dunga Beach"}
+
+    written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert len(written.ground_aqi) == 2
+
+
+def test_llm_receives_precomputed_aqi_range_and_worst_station(tmp_path, monkeypatch):
+    from openlocalweather.config import WaqiStation
+    from openlocalweather.models import GroundAQIReading
+
+    location_with_stations = LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="A", station_id="A1"), WaqiStation(name="B", station_id="A2")]}
+    )
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="A", station_id="A1", aqi=42),
+            GroundAQIReading(name="B", station_id="A2", aqi=168),
+        ],
+    )
+
+    llm = FakeLLMProvider()
+    deps = PipelineDeps(
+        location=location_with_stations,
+        data_dir=tmp_path,
+        llm_provider=llm,
+        public_webpage_url="https://example.org",
+        bulletin_fetcher=NullBulletinFetcher(),
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    _, user_prompt = llm.calls[0]
+    assert '"aqi_min": 42' in user_prompt
+    assert '"aqi_max": 168' in user_prompt
+    assert '"highest_station_name": "B"' in user_prompt
+
+
+def test_no_stations_configured_yields_empty_ground_aqi_and_no_summary(tmp_path):
+    # LOCATION already has waqi_stations=[] — confirms the pre-existing
+    # zero-station path (fetch_ground_aqi_stations mocked to [] by the
+    # autouse fixture) still degrades cleanly, not just the new multi path.
+    llm = FakeLLMProvider()
+    deps = PipelineDeps(
+        location=LOCATION,
+        data_dir=tmp_path,
+        llm_provider=llm,
+        public_webpage_url="https://example.org",
+        bulletin_fetcher=NullBulletinFetcher(),
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    _, user_prompt = llm.calls[0]
+    assert "no ground station reported data" in user_prompt
+    assert "Not applicable" in user_prompt

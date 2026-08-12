@@ -33,12 +33,13 @@ subscribers.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
 from openlocalweather import __version__
+from openlocalweather.aqi import summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, today_in_tz
 from openlocalweather.defaults import (
@@ -129,7 +130,8 @@ def run_daily_pipeline(
         )
 
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
-    ground_aqi = waqi_fetch.fetch_ground_aqi(location.waqi_station_id, deps.waqi_token)
+    ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
+    ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings)
     bulletin_text = deps.bulletin_fetcher.fetch()
 
     # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
@@ -223,7 +225,8 @@ def run_daily_pipeline(
         verification_context=verification_context,
         track_record_context=track_record_context,
         historical_logs=historical_logs,
-        ground_aqi=ground_aqi.model_dump() if ground_aqi is not None else None,
+        ground_aqi_readings=[r.model_dump() for r in ground_aqi_readings],
+        ground_aqi_summary=asdict(ground_aqi_summary) if ground_aqi_summary is not None else None,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
             "primary_extended_daily": primary_daily,
@@ -254,7 +257,7 @@ def run_daily_pipeline(
         synoptic_pattern=tp.synoptic_pattern or "",
         uv_index_max=tp.uv_index_max,
         air_quality_aqi=tp.air_quality_aqi,
-        ground_aqi=ground_aqi,
+        ground_aqi=ground_aqi_readings,
         model_predictions=ModelPredictionsByLead(
             day0=day0_predictions, day3=day3_predictions, day7=day7_predictions
         ),

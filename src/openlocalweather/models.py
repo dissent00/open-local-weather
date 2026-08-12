@@ -117,11 +117,16 @@ class VerificationByLead(BaseModel):
         return {0: self.day0, 3: self.day3, 7: self.day7}[lead_time_days]
 
 
-class GroundAQI(BaseModel):
+class GroundAQIReading(BaseModel):
+    """One ground-truth AQI station's current reading. `name` is OUR
+    configured display name (config.WaqiStation.name), not WAQI's own
+    city.name — kept consistent everywhere a station gets named."""
+
+    name: str
+    station_id: str
     aqi: int | None = None
-    pm25: float | str | None = None
-    pm10: float | str | None = None
-    station: str | None = None
+    pm25: float | None = None
+    pm10: float | None = None
 
 
 class LogEntryMeta(BaseModel):
@@ -151,7 +156,12 @@ class DailyLogEntry(BaseModel):
     synoptic_pattern: str
     uv_index_max: str | None = None
     air_quality_aqi: str | None = None
-    ground_aqi: GroundAQI | None = None
+    # Raw per-station readings only — the range/highest-station summary
+    # used in the narrative and on the site is deterministically recomputed
+    # from this on demand (see aqi.summarize_ground_aqi), not persisted
+    # redundantly, matching the project's "recompute, don't accumulate"
+    # rolling-stats philosophy.
+    ground_aqi: list[GroundAQIReading] = Field(default_factory=list)
 
     model_predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
     verification: VerificationByLead = Field(default_factory=VerificationByLead)

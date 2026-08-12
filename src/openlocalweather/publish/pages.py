@@ -25,6 +25,7 @@ from typing import Callable
 import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from openlocalweather.aqi import summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import format_date
 from openlocalweather.models import DailyLogEntry
@@ -80,6 +81,10 @@ def render_forecast_page(
         nav=nav,
         is_latest=is_latest,
         narrative_html=_narrative_html(entry),
+        # Rendered deterministically from the raw per-station readings, not
+        # trusted to LLM narrative — same "code does the data, LLM does the
+        # prose" split as everywhere else in this project. See aqi.py.
+        ground_aqi_summary=summarize_ground_aqi(entry.ground_aqi),
     )
 
 

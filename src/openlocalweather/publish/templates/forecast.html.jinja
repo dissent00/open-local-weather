@@ -40,6 +40,23 @@
   </div>
 
   {{ narrative_html | safe }}
+
+  {% if entry.ground_aqi %}
+  <h2>Ground AQI Stations</h2>
+  {% if ground_aqi_summary %}
+  <p class="meta">Range across {{ ground_aqi_summary.stations_with_aqi }} reporting station{{ "s" if ground_aqi_summary.stations_with_aqi != 1 }}: AQI {{ ground_aqi_summary.aqi_min }}&ndash;{{ ground_aqi_summary.aqi_max }}, highest at <strong>{{ ground_aqi_summary.highest_station_name }}</strong>.</p>
+  {% endif %}
+  <ul class="archive-list">
+    {% for station in entry.ground_aqi %}
+    <li>
+      <strong>{{ station.name }}</strong>
+      {% if station.aqi is not none %}&mdash; AQI {{ station.aqi }}{% else %}&mdash; AQI unavailable{% endif %}
+      {% if station.pm25 is not none %}<span class="summary">PM2.5 {{ station.pm25 }}</span>{% endif %}
+      {% if station.pm10 is not none %}<span class="summary">PM10 {{ station.pm10 }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </main>
 <footer class="site-footer">
   <div class="wrap">

@@ -33,6 +33,18 @@ class SecondaryPoint(Point):
     lon: float = 0.0
 
 
+class WaqiStation(BaseModel):
+    """One ground-truth AQI monitoring station. `name` is OUR configured
+    display name — used everywhere a station is named (site, email, the
+    LLM prompt) — not WAQI's own `city.name`, which can be verbose or
+    inconsistent between stations. Verify the station_id manually at
+    waqi.info; it cannot be validated from code, and a wrong ID silently
+    poisons the "ground truth" comparison (see fetch/waqi.py)."""
+
+    name: str
+    station_id: str
+
+
 class LocationConfig(BaseModel):
     region_name: str
     primary_place_name: str
@@ -41,7 +53,7 @@ class LocationConfig(BaseModel):
     secondary_point: SecondaryPoint = Field(default_factory=SecondaryPoint)
     region_points: list[RegionPoint] = Field(default_factory=list)
     metar_station_icao: str = ""
-    waqi_station_id: str = ""
+    waqi_stations: list[WaqiStation] = Field(default_factory=list)
     local_bulletin_url: str = ""
     local_bulletin_source_name: str = ""
 

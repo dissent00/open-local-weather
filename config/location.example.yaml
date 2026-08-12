@@ -42,10 +42,20 @@ location:
   # covers most of the world, not just the US). Leave "" to skip METAR.
   metar_station_icao: ""
 
-  # WAQI ground air-quality station ID. VERIFY THIS MANUALLY at waqi.info —
-  # it cannot be checked from code, and a wrong ID silently poisons the
-  # "ground truth" AQI comparison. Leave "" to skip ground AQI entirely.
-  waqi_station_id: ""
+  # Ground air-quality monitoring stations — any number, including zero.
+  # `name` is YOUR display name (used everywhere a station is named: the
+  # site, the email, the LLM prompt), not WAQI's own city.name, which can be
+  # verbose or inconsistent between stations. VERIFY EACH station_id
+  # MANUALLY at waqi.info — it cannot be checked from code, and a wrong ID
+  # silently poisons the "ground truth" AQI comparison. Leave the list
+  # empty to skip ground AQI entirely. With 2+ stations, the narrative
+  # states the AQI range and names whichever station is currently worst
+  # (computed in code, never left to the LLM — see aqi.py).
+  waqi_stations: []
+  # - name: "Downtown"
+  #   station_id: ""
+  # - name: "Airport"
+  #   station_id: ""
 
   # Optional local met-service bulletin. Leave "" to skip gracefully.
   local_bulletin_url: ""

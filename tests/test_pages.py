@@ -213,3 +213,56 @@ def test_publisher_backfill_skips_dates_with_no_entry(tmp_path):
     )
     publisher.publish(make_entry(date(2026, 8, 11)))  # must not raise
     assert (tmp_path / "archive" / "2026-08-11.html").exists()
+
+
+# ---------------------------------------------------------------------------
+# Ground AQI stations block (deterministic, not LLM-dependent)
+# ---------------------------------------------------------------------------
+
+
+def test_render_forecast_page_omits_aqi_section_when_no_stations():
+    entry = make_entry(date(2026, 8, 11), ground_aqi=[])
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+    assert "Ground AQI Stations" not in html
+
+
+def test_render_forecast_page_lists_each_station_by_name():
+    from openlocalweather.models import GroundAQIReading
+
+    entry = make_entry(
+        date(2026, 8, 11),
+        ground_aqi=[
+            GroundAQIReading(name="Kisumu Airport", station_id="A418534", aqi=42, pm25=18.0, pm10=30.0),
+            GroundAQIReading(name="Dunga Beach", station_id="A418504", aqi=171, pm25=171.0, pm10=37.0),
+        ],
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "Ground AQI Stations" in html
+    assert "Kisumu Airport" in html
+    assert "Dunga Beach" in html
+    assert "AQI 42" in html
+    assert "AQI 171" in html
+    # Deterministic range/highest-station summary, computed in code —
+    # must be correct regardless of what the LLM wrote in the narrative.
+    assert "42" in html and "171" in html
+    assert "highest at" in html
+    assert "<strong>Dunga Beach</strong>" in html
+
+
+def test_render_forecast_page_shows_aqi_unavailable_for_missing_composite():
+    from openlocalweather.models import GroundAQIReading
+
+    entry = make_entry(
+        date(2026, 8, 11),
+        ground_aqi=[GroundAQIReading(name="Kisumu Airport", station_id="A418534", aqi=None, pm25=157.0, pm10=15.0)],
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+    assert "AQI unavailable" in html
+    assert "PM2.5 157.0" in html
+    # A single station with no composite AQI has nothing to summarize a
+    # range from — the summary line must not appear.
+    assert "highest at" not in html

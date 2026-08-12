@@ -61,7 +61,7 @@ LEAD-TIME AWARENESS: A model's Day+0 skill and its Day+3/Day+7 skill can differ 
 
 DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
-- Ground AQI sensor data may occasionally be offline; if so, note the air quality assessment relies on model (CAMS) data alone for that day.
+- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
 
 ---
@@ -98,7 +98,7 @@ DATA QUALITY NOTES:
    - Temperatures always as "0°C / 32°F" format.
    - Rain in both mm and inches.
    - Emojis ONLY in the whatsapp_summary field. Plain text everywhere else.
-   AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous.
+   AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous. When multiple ground AQI stations are configured, a PRE-COMPUTED range (min-max) and the name of the currently-worst station are provided under "GROUND AQI SUMMARY" in the user message - state that range in Today's Forecast and explicitly name the worst station there (do NOT recompute the range or re-derive which station is worst yourself; use the pre-computed values as given, exactly like the verification statistics). List each individual station's own reading by name in the Detailed Discussion.
 
 4. today_properties FIELDS: rain_expected, onset_window (Day+0 only), peak_wind_kmh (secondary point), temp_high_c and temp_low_c (plain numbers, Celsius), temp_high_low (display string, both units), mslp_trend_24h, synoptic_pattern, uv_index_max, air_quality_aqi. This is your synthesized BLENDED call across all models - genuine reasoning, not any one model's raw number.
 
@@ -119,7 +119,8 @@ def build_user_prompt(
     verification_context: Any,
     track_record_context: Any,
     historical_logs: Any,
-    ground_aqi: Any,
+    ground_aqi_readings: Any,
+    ground_aqi_summary: Any,
     today_weather_data: dict[str, Any],
     local_bulletin_source_name: str,
     local_bulletin_text: str,
@@ -152,8 +153,11 @@ MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
 HISTORICAL NOTES (last {HISTORICAL_LOOKBACK_DAYS} days):
 {_json(historical_logs)}
 
-ON-GROUND AQI SENSOR:
-{_json(ground_aqi) if ground_aqi is not None else "Unavailable."}
+GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
+{_json(ground_aqi_readings) if ground_aqi_readings else "Unavailable — no ground station reported data today."}
+
+GROUND AQI SUMMARY (pre-computed by code — do NOT recompute; state as given if present):
+{_json(ground_aqi_summary) if ground_aqi_summary is not None else "Not applicable — no station reported a numeric AQI today."}
 
 TODAY'S MULTI-MODEL GUIDANCE:
 {_json(weather_payload)}

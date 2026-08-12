@@ -1,7 +1,7 @@
 import re
 from datetime import date
 
-from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
+from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint, WaqiStation
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 
 KISUMU = LocationConfig(
@@ -14,7 +14,7 @@ KISUMU = LocationConfig(
     ),
     region_points=[RegionPoint(name="Siaya", lat=0.0607, lon=34.2881)],
     metar_station_icao="HKKI",
-    waqi_station_id="A418534",
+    waqi_stations=[WaqiStation(name="Kisumu Airport", station_id="A418534")],
 )
 
 NO_SECONDARY = KISUMU.model_copy(update={"secondary_point": SecondaryPoint()})
@@ -106,7 +106,8 @@ def test_user_prompt_includes_dates_and_url():
         verification_context={"lead_time_results": []},
         track_record_context=[],
         historical_logs=[],
-        ground_aqi=None,
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
         today_weather_data={},
         local_bulletin_source_name="Kenya Meteorological Department (KMD)",
         local_bulletin_text="No bulletin available.",
@@ -114,12 +115,13 @@ def test_user_prompt_includes_dates_and_url():
     assert "2026-08-11" in prompt
     assert "2026-08-10" in prompt
     assert "https://dissent00.github.io/open-local-weather/" in prompt
-    assert "Unavailable." in prompt  # ground_aqi=None path
+    assert "no ground station reported data" in prompt  # empty ground_aqi_readings path
+    assert "Not applicable" in prompt  # ground_aqi_summary=None path
     assert "Kenya Meteorological Department (KMD)" in prompt
     assert "No bulletin available." in prompt
 
 
-def test_user_prompt_serializes_ground_aqi_when_present():
+def test_user_prompt_serializes_ground_aqi_readings_and_summary_when_present():
     prompt = build_user_prompt(
         today=date(2026, 8, 11),
         yesterday=date(2026, 8, 10),
@@ -127,13 +129,21 @@ def test_user_prompt_serializes_ground_aqi_when_present():
         verification_context={},
         track_record_context=[],
         historical_logs=[],
-        ground_aqi={"aqi": 42, "station": "Kisumu"},
+        ground_aqi_readings=[
+            {"name": "Kisumu Airport", "station_id": "A418534", "aqi": 42, "pm25": 18.0, "pm10": 30.0},
+            {"name": "Dunga Beach", "station_id": "A418504", "aqi": 90, "pm25": 40.0, "pm10": 12.0},
+        ],
+        ground_aqi_summary={
+            "aqi_min": 42, "aqi_max": 90, "highest_station_name": "Dunga Beach",
+            "stations_with_aqi": 2, "stations_total": 2,
+        },
         today_weather_data={},
         local_bulletin_source_name="KMD",
         local_bulletin_text="text",
     )
     assert '"aqi": 42' in prompt
-    assert "Kisumu" in prompt
+    assert "Kisumu Airport" in prompt
+    assert '"highest_station_name": "Dunga Beach"' in prompt
 
 
 def test_user_prompt_includes_weather_data_sections():
@@ -144,7 +154,8 @@ def test_user_prompt_includes_weather_data_sections():
         verification_context={},
         track_record_context=[],
         historical_logs=[],
-        ground_aqi=None,
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
         today_weather_data={"primary_today_hourly": {"hourly": {"time": ["2026-08-11T00:00"]}}},
         local_bulletin_source_name="KMD",
         local_bulletin_text="text",
