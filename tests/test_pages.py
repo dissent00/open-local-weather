@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.models import LogEntryMeta, ModelPredictionsByLead
@@ -230,11 +230,19 @@ def test_render_forecast_page_omits_aqi_section_when_no_stations():
 def test_render_forecast_page_lists_each_station_by_name():
     from openlocalweather.models import GroundAQIReading
 
+    generated_at = datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc)
     entry = make_entry(
         date(2026, 8, 11),
+        meta=LogEntryMeta(
+            generated_at_utc=generated_at, llm_provider="gemini", llm_model="test", pipeline_version="0"
+        ),
         ground_aqi=[
-            GroundAQIReading(name="Kisumu Airport", station_id="A418534", aqi=42, pm25=18.0, pm10=30.0),
-            GroundAQIReading(name="Dunga Beach", station_id="A418504", aqi=171, pm25=171.0, pm10=37.0),
+            GroundAQIReading(
+                name="Kisumu Airport", station_id="A418534", aqi=42, pm25=18.0, pm10=30.0, measured_at=generated_at
+            ),
+            GroundAQIReading(
+                name="Dunga Beach", station_id="A418504", aqi=171, pm25=171.0, pm10=37.0, measured_at=generated_at
+            ),
         ],
     )
     nav = build_nav_links("https://example.com", "owner/repo")
@@ -250,14 +258,54 @@ def test_render_forecast_page_lists_each_station_by_name():
     assert "42" in html and "171" in html
     assert "highest at" in html
     assert "<strong>Dunga Beach</strong>" in html
+    assert "measured 0.0h ago" in html
+
+
+def test_render_forecast_page_excludes_stale_reading_from_summary_but_still_shows_it():
+    from openlocalweather.models import GroundAQIReading
+
+    generated_at = datetime(2026, 8, 12, 5, 0, tzinfo=timezone.utc)
+    entry = make_entry(
+        date(2026, 8, 12),
+        meta=LogEntryMeta(
+            generated_at_utc=generated_at, llm_provider="gemini", llm_model="test", pipeline_version="0"
+        ),
+        ground_aqi=[
+            GroundAQIReading(
+                name="Stale Station",
+                station_id="A1",
+                aqi=200,
+                measured_at=generated_at - timedelta(hours=7.2),
+            ),
+        ],
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    # Reading is still shown, transparently, but flagged stale...
+    assert "Stale Station" in html
+    assert "AQI 200" in html
+    assert "stale" in html
+    assert "measured 7.2h ago" in html
+    # ...and must NOT be presented as a trustworthy "current" range.
+    assert "highest at" not in html
+    assert "No station has a sufficiently current" in html
 
 
 def test_render_forecast_page_shows_aqi_unavailable_for_missing_composite():
     from openlocalweather.models import GroundAQIReading
 
+    generated_at = datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc)
     entry = make_entry(
         date(2026, 8, 11),
-        ground_aqi=[GroundAQIReading(name="Kisumu Airport", station_id="A418534", aqi=None, pm25=157.0, pm10=15.0)],
+        meta=LogEntryMeta(
+            generated_at_utc=generated_at, llm_provider="gemini", llm_model="test", pipeline_version="0"
+        ),
+        ground_aqi=[
+            GroundAQIReading(
+                name="Kisumu Airport", station_id="A418534", aqi=None, pm25=157.0, pm10=15.0, measured_at=generated_at
+            )
+        ],
     )
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)

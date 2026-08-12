@@ -25,7 +25,7 @@ from typing import Callable
 import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from openlocalweather.aqi import summarize_ground_aqi
+from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import format_date
 from openlocalweather.models import DailyLogEntry
@@ -74,6 +74,13 @@ def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
 def render_forecast_page(
     entry: DailyLogEntry, location: LocationConfig, nav: NavLinks, is_latest: bool
 ) -> str:
+    # Staleness is judged relative to when the FORECAST was generated, not
+    # when this page happens to be rendered — the archive backfill (see
+    # GitHubPagesPublisher.publish) can re-render an old entry's page long
+    # after the fact, and real wall-clock "now" would then mark every
+    # archived reading as impossibly stale relative to whoever's viewing it
+    # today. generated_at_utc is the correct fixed reference point.
+    reference_time = entry.meta.generated_at_utc
     template = _env().get_template("forecast.html.jinja")
     return template.render(
         entry=entry,
@@ -84,7 +91,11 @@ def render_forecast_page(
         # Rendered deterministically from the raw per-station readings, not
         # trusted to LLM narrative — same "code does the data, LLM does the
         # prose" split as everywhere else in this project. See aqi.py.
-        ground_aqi_summary=summarize_ground_aqi(entry.ground_aqi),
+        ground_aqi_summary=summarize_ground_aqi(entry.ground_aqi, now=reference_time),
+        ground_aqi_stations=[
+            (station, hours_old(station, reference_time), is_stale(station, reference_time))
+            for station in entry.ground_aqi
+        ],
     )
 
 

@@ -16,6 +16,8 @@ callers.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import requests
 from pydantic import ValidationError
 
@@ -55,6 +57,20 @@ def _as_number_or_none(value) -> float | None:
         return None
 
 
+def _parse_measured_at(data: dict) -> datetime | None:
+    """WAQI reports when the reading was actually taken in data.time.iso,
+    e.g. "2026-08-11T22:00:00Z". Missing or unparseable -> None, treated as
+    unknown freshness by aqi.summarize_ground_aqi() (excluded from the
+    "confidently fresh" range, not assumed fresh)."""
+    iso = (data.get("time") or {}).get("iso")
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def fetch_ground_aqi_reading(name: str, station_id: str, token: str) -> GroundAQIReading | None:
     """Fetches and sanitizes one station's current reading. Returns None on
     any failure — missing config, network error, non-200, malformed JSON,
@@ -89,6 +105,7 @@ def fetch_ground_aqi_reading(name: str, station_id: str, token: str) -> GroundAQ
             aqi=_as_int_or_none(data.get("aqi")),
             pm25=_as_number_or_none((iaqi.get("pm25") or {}).get("v")),
             pm10=_as_number_or_none((iaqi.get("pm10") or {}).get("v")),
+            measured_at=_parse_measured_at(data),
         )
     except ValidationError:
         # Belt-and-suspenders: WAQI's response shape is outside our

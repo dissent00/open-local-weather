@@ -118,15 +118,26 @@ class VerificationByLead(BaseModel):
 
 
 class GroundAQIReading(BaseModel):
-    """One ground-truth AQI station's current reading. `name` is OUR
-    configured display name (config.WaqiStation.name), not WAQI's own
-    city.name — kept consistent everywhere a station gets named."""
+    """One ground-truth AQI station's reading. `name` is OUR configured
+    display name (config.WaqiStation.name), not WAQI's own city.name — kept
+    consistent everywhere a station gets named.
+
+    `measured_at` is WHEN this reading was actually taken, not when we
+    fetched it — WAQI (and the low-cost sensor networks it aggregates, e.g.
+    AirQo) can and do serve hours-old readings without any obvious signal
+    on their own site, which just shows the last known value with a quiet
+    "updated Xh ago" caption. Confirmed live: all three of this project's
+    configured stations were serving readings 7.2 hours old at once. Never
+    assume a reading is current without checking this field — see
+    aqi.hours_old() and the staleness handling in aqi.summarize_ground_aqi().
+    """
 
     name: str
     station_id: str
     aqi: int | None = None
     pm25: float | None = None
     pm10: float | None = None
+    measured_at: datetime | None = None
 
 
 class LogEntryMeta(BaseModel):

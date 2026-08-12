@@ -178,3 +178,47 @@ def test_fetch_ground_aqi_stations_one_failure_does_not_drop_the_others():
 
 def test_fetch_ground_aqi_stations_empty_list_returns_empty_list():
     assert fetch_ground_aqi_stations([], "tok") == []
+
+
+# ---------------------------------------------------------------------------
+# measured_at parsing (regression: this timestamp was being ignored
+# entirely, so a 7.2h-old reading had no way to be recognized as stale)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_ground_aqi_reading_parses_measured_at():
+    with requests_mock.Mocker() as m:
+        m.get(
+            url_for("A418534"),
+            json={
+                "status": "ok",
+                "data": {
+                    "aqi": 42,
+                    "iaqi": {},
+                    "time": {"iso": "2026-08-11T22:00:00Z", "s": "2026-08-12 01:00:00", "tz": "+03:00"},
+                },
+            },
+        )
+        result = fetch_ground_aqi_reading("Kisumu Airport", "A418534", "tok")
+
+    from datetime import datetime, timezone
+
+    assert result.measured_at == datetime(2026, 8, 11, 22, 0, tzinfo=timezone.utc)
+
+
+def test_fetch_ground_aqi_reading_missing_time_field_yields_none_measured_at():
+    with requests_mock.Mocker() as m:
+        m.get(url_for("A418534"), json={"status": "ok", "data": {"aqi": 42, "iaqi": {}}})
+        result = fetch_ground_aqi_reading("Kisumu Airport", "A418534", "tok")
+    assert result.measured_at is None
+
+
+def test_fetch_ground_aqi_reading_malformed_time_yields_none_measured_at_not_raises():
+    with requests_mock.Mocker() as m:
+        m.get(
+            url_for("A418534"),
+            json={"status": "ok", "data": {"aqi": 42, "iaqi": {}, "time": {"iso": "not-a-real-timestamp"}}},
+        )
+        result = fetch_ground_aqi_reading("Kisumu Airport", "A418534", "tok")
+    assert result is not None
+    assert result.measured_at is None

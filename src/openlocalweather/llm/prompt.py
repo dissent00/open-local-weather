@@ -61,7 +61,7 @@ LEAD-TIME AWARENESS: A model's Day+0 skill and its Day+3/Day+7 skill can differ 
 
 DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
-- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day.
+- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor's most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading's number into that summary yourself.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
 
 ---

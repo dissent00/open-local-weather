@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Protocol
 
 from openlocalweather import __version__
-from openlocalweather.aqi import summarize_ground_aqi
+from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, today_in_tz
 from openlocalweather.defaults import (
@@ -130,8 +130,9 @@ def run_daily_pipeline(
         )
 
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
+    aqi_fetch_time = datetime.now(timezone.utc)
     ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
-    ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings)
+    ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
     bulletin_text = deps.bulletin_fetcher.fetch()
 
     # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
@@ -225,7 +226,17 @@ def run_daily_pipeline(
         verification_context=verification_context,
         track_record_context=track_record_context,
         historical_logs=historical_logs,
-        ground_aqi_readings=[r.model_dump() for r in ground_aqi_readings],
+        ground_aqi_readings=[
+            {
+                **r.model_dump(),
+                # Pre-computed, not left for the LLM to derive from a raw
+                # timestamp — same "state the fact, don't ask for a
+                # calculation" rule as everywhere else in this prompt.
+                "hours_old": round(h, 1) if (h := hours_old(r, aqi_fetch_time)) is not None else None,
+                "stale": is_stale(r, aqi_fetch_time),
+            }
+            for r in ground_aqi_readings
+        ],
         ground_aqi_summary=asdict(ground_aqi_summary) if ground_aqi_summary is not None else None,
         today_weather_data={
             "primary_today_hourly": primary_hourly,

@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -349,8 +349,8 @@ def test_llm_receives_precomputed_aqi_range_and_worst_station(tmp_path, monkeypa
         waqi_fetch,
         "fetch_ground_aqi_stations",
         lambda stations, token: [
-            GroundAQIReading(name="A", station_id="A1", aqi=42),
-            GroundAQIReading(name="B", station_id="A2", aqi=168),
+            GroundAQIReading(name="A", station_id="A1", aqi=42, measured_at=datetime.now(timezone.utc)),
+            GroundAQIReading(name="B", station_id="A2", aqi=168, measured_at=datetime.now(timezone.utc)),
         ],
     )
 
@@ -368,6 +368,45 @@ def test_llm_receives_precomputed_aqi_range_and_worst_station(tmp_path, monkeypa
     assert '"aqi_min": 42' in user_prompt
     assert '"aqi_max": 168' in user_prompt
     assert '"highest_station_name": "B"' in user_prompt
+
+
+def test_llm_receives_stale_flag_and_hours_old_per_reading(tmp_path, monkeypatch):
+    from openlocalweather.config import WaqiStation
+    from openlocalweather.models import GroundAQIReading
+
+    location_with_stations = LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="Stale Station", station_id="A1")]}
+    )
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(
+                name="Stale Station",
+                station_id="A1",
+                aqi=200,
+                measured_at=datetime.now(timezone.utc) - timedelta(hours=7.2),
+            ),
+        ],
+    )
+
+    llm = FakeLLMProvider()
+    deps = PipelineDeps(
+        location=location_with_stations,
+        data_dir=tmp_path,
+        llm_provider=llm,
+        public_webpage_url="https://example.org",
+        bulletin_fetcher=NullBulletinFetcher(),
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    _, user_prompt = llm.calls[0]
+    assert '"stale": true' in user_prompt
+    assert '"hours_old": 7.2' in user_prompt
+    # A single stale-only station has nothing fresh to summarize a range
+    # from — GROUND AQI SUMMARY must fall back to "Not applicable", not
+    # present the stale 200 reading as if it were current.
+    assert "Not applicable" in user_prompt
 
 
 def test_no_stations_configured_yields_empty_ground_aqi_and_no_summary(tmp_path):
