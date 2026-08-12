@@ -8,6 +8,14 @@
       "peak_wind_kmh": 36.0,
       "mslp_trend": -0.1999999999999318,
       "onset_hour": "17:00"
+    },
+    "2026-08-11": {
+      "rain": false,
+      "high_c": 29.4,
+      "low_c": 16.2,
+      "peak_wind_kmh": 36.0,
+      "mslp_trend": 0.8999999999999773,
+      "onset_hour": null
     }
   },
   "secondary": {
@@ -17,6 +25,14 @@
       "low_c": 16.3,
       "peak_wind_kmh": 32.8,
       "mslp_trend": 0.0,
+      "onset_hour": null
+    },
+    "2026-08-11": {
+      "rain": false,
+      "high_c": 18.3,
+      "low_c": 16.7,
+      "peak_wind_kmh": 25.9,
+      "mslp_trend": 1.6999999999999318,
       "onset_hour": null
     }
   }
