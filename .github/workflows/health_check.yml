@@ -10,7 +10,9 @@ name: Weekly Health Check
 # GitHub's 60-day scheduled-workflow auto-disable).
 on:
   schedule:
-    - cron: "0 4 * * 1" # 04:00 UTC every Monday
+    # Deliberately off the exact hour — see daily.yml's schedule comment
+    # for why ":00" schedules are the least reliable slot GitHub offers.
+    - cron: "17 4 * * 1" # ~04:17 UTC every Monday
   workflow_dispatch:
 
 jobs:

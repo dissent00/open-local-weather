@@ -2,7 +2,17 @@ name: Daily Forecast
 
 on:
   schedule:
-    # 06:00 Africa/Nairobi (EAT, UTC+3 year-round — no DST) = 03:00 UTC.
+    # ~06:07 Africa/Nairobi (EAT, UTC+3 year-round — no DST) = 03:07 UTC.
+    #
+    # Deliberately NOT on the hour. GitHub's own docs flag exact-hour
+    # schedules (":00") as the highest-congestion slot for Actions
+    # scheduling and warn that "in some cases the scheduled workflow may
+    # not run" at all, not just run late. Confirmed the hard way: the
+    # original "0 3 * * *" simply never fired on its first scheduled
+    # occurrence (2026-08-12) — no run appears in the history at any
+    # status, delayed or otherwise. An off-hour minute is cheap insurance;
+    # the mailer's retry window (see mailer/AppsScriptMailer.gs) easily
+    # absorbs a few minutes of shift either way.
     #
     # NOTE: GitHub auto-disables scheduled workflows after 60 days without
     # any repo activity. Since this workflow commits daily on success, the
@@ -10,7 +20,7 @@ on:
     # SILENT failure running unnoticed until the 60-day disable kicks in.
     # GitHub emails the repo owner on workflow failure by default; that's
     # the mitigation relied on in v1, not a custom alerting path.
-    - cron: "0 3 * * *"
+    - cron: "7 3 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
