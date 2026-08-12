@@ -3,7 +3,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openlocalweather.models import DailyActual, DailyLogEntry, LogEntryMeta, ModelPrediction, ModelPredictionsByLead
-from openlocalweather.verify.scoring import mean, rescore_rolling_window, score_prediction
+from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, rescore_rolling_window, score_prediction
 
 
 def prediction(**overrides) -> ModelPrediction:
@@ -261,3 +261,53 @@ def test_rolling_window_skips_unknown_rain_predictions():
     )
     assert result.checks_found == 0
     assert result.rain_pct is None
+
+
+# --- compute_rain_pct_trend ---
+
+TREND_ARGS = dict(min_checks_short=5, min_checks_long=10, threshold_pct=15.0)
+
+
+def test_trend_none_when_either_window_lacks_data():
+    assert compute_rain_pct_trend(None, 80.0, 10, 20, **TREND_ARGS) == (None, None)
+    assert compute_rain_pct_trend(80.0, None, 10, 20, **TREND_ARGS) == (None, None)
+
+
+def test_trend_none_when_short_window_below_min_checks():
+    # 4 checks found, min_checks_short=5 — not enough for a meaningful trend,
+    # even though both percentages are present.
+    assert compute_rain_pct_trend(80.0, 60.0, 4, 20, **TREND_ARGS) == (None, None)
+
+
+def test_trend_none_when_long_window_below_min_checks():
+    # 9 checks found, min_checks_long=10.
+    assert compute_rain_pct_trend(80.0, 60.0, 10, 9, **TREND_ARGS) == (None, None)
+
+
+def test_trend_improving_when_recent_exceeds_threshold_above_longterm():
+    label, delta = compute_rain_pct_trend(90.0, 60.0, 10, 20, **TREND_ARGS)
+    assert label == "improving"
+    assert delta == pytest.approx(30.0)
+
+
+def test_trend_declining_when_recent_exceeds_threshold_below_longterm():
+    label, delta = compute_rain_pct_trend(40.0, 70.0, 10, 20, **TREND_ARGS)
+    assert label == "declining"
+    assert delta == pytest.approx(-30.0)
+
+
+def test_trend_stable_when_gap_is_within_threshold():
+    label, delta = compute_rain_pct_trend(65.0, 60.0, 10, 20, **TREND_ARGS)
+    assert label == "stable"
+    assert delta == pytest.approx(5.0)
+
+
+def test_trend_exactly_at_threshold_counts_as_improving_or_declining():
+    # >= threshold_pct, not > — boundary is inclusive per the implementation.
+    label_up, delta_up = compute_rain_pct_trend(75.0, 60.0, 10, 20, **TREND_ARGS)
+    assert label_up == "improving"
+    assert delta_up == pytest.approx(15.0)
+
+    label_down, delta_down = compute_rain_pct_trend(45.0, 60.0, 10, 20, **TREND_ARGS)
+    assert label_down == "declining"
+    assert delta_down == pytest.approx(-15.0)

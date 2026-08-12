@@ -212,6 +212,14 @@ class TrackRecordEntry(BaseModel):
     lead_time_days: LeadTime
     rolling_10_rain_pct: float | None = None
     rolling_30_rain_pct: float | None = None
+    # Deterministic comparison of rolling_10 against rolling_30 — see
+    # verify/scoring.compute_rain_pct_trend. Computed in code so the LLM is
+    # handed a ready-made "is recent skill diverging from the longer-term
+    # baseline" signal instead of inferring it itself from the raw numbers.
+    # None/None means either window doesn't yet have enough checks for the
+    # comparison to be meaningful (see defaults.TREND_MIN_CHECKS_*).
+    rain_pct_trend: str | None = None  # "improving" | "declining" | "stable" | None
+    rain_pct_trend_delta: float | None = None  # rolling_10_rain_pct - rolling_30_rain_pct
     all_time_checks: int = 0
     all_time_correct: int = 0
     all_time_rain_pct: float | None = None

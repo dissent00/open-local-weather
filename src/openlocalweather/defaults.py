@@ -55,3 +55,31 @@ LOG_RETENTION_DAYS = 180
 # Rain threshold, mm/hour, used consistently for both "did it rain" scoring
 # and onset-hour detection.
 RAIN_THRESHOLD_MM = 0.5
+
+# --- Rain-skill trend (recent vs. longer-term window) ---
+#
+# The LLM prompt already tells the model to weight recent (rolling_10)
+# evidence over longer-term (rolling_30/all_time) evidence when they
+# conflict — but "do they conflict" was left for the model to notice by
+# eyeballing three separate numbers per (model, lead time) and subtracting
+# them in its head. That's exactly the kind of small arithmetic this
+# project's "all arithmetic in code, never the LLM" principle exists to
+# rule out; see verify/scoring.compute_rain_pct_trend, which now does that
+# subtraction deterministically and hands the model a ready-made label.
+#
+# Minimum sample sizes before a trend is even attempted — below these, the
+# comparison is more likely to reflect small-sample noise than real skill
+# drift, and TREND_MIN_CHECKS_LONG in particular exists because a 30-check
+# window still short on data (early in a fork's life, or after a long gap)
+# shouldn't be compared against a fuller 10-check window as if both were
+# equally reliable.
+TREND_MIN_CHECKS_SHORT = 5
+TREND_MIN_CHECKS_LONG = 10
+
+# Minimum |rolling_10 - rolling_30| percentage-point gap to call it a real
+# trend rather than noise. For a binary hit/miss rate at n=10, binomial
+# sampling noise alone gives a standard deviation of roughly 14-15
+# percentage points around p=0.5-0.7 — so a 15-point threshold is set
+# close to that noise floor, deliberately not more sensitive than the
+# sample size can actually support.
+TREND_THRESHOLD_PCT = 15.0

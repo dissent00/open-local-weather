@@ -68,6 +68,72 @@ def test_marks_newly_verified_when_target_row_and_actual_both_exist():
     assert day0_result.per_model_scores["gfs_seamless"].rain_correct is True
 
 
+def test_rain_pct_trend_is_computed_and_populated_on_track_record_entry():
+    """Genuinely divergent recent-vs-longer-term skill (hand-constructed,
+    not just "some data exists") should come out the other end as a
+    populated rain_pct_trend/rain_pct_trend_delta, not left for the LLM to
+    notice by comparing rolling_10_rain_pct against rolling_30_rain_pct
+    itself."""
+    today = date(2026, 8, 21)
+    yesterday = date(2026, 8, 20)
+    logs, actuals = {}, {}
+    # 10 consecutive days ending yesterday, lead_time=0 (so the prediction
+    # row date equals the target date — no offset to account for). Model
+    # always predicts rain; the most recent 5 days actually did rain
+    # (5/5 correct), the older 5 days did not (0/5 correct) — recent skill
+    # is genuinely, unambiguously better than the longer-term average.
+    for i in range(10):
+        d = yesterday - timedelta(days=i)
+        logs[d] = log_entry(d, day0=[prediction(model="gfs_seamless", rain=True)])
+        actuals[d] = actual(rain=(i < 5))
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=[0],
+        window_short=5,
+        window_long=10,
+    )
+
+    entry = next(
+        e for e in result.updated_track_record.entries if e.model == "gfs_seamless" and e.lead_time_days == 0
+    )
+    assert entry.rolling_10_rain_pct == pytest.approx(100.0)
+    assert entry.rolling_30_rain_pct == pytest.approx(50.0)
+    assert entry.rain_pct_trend == "improving"
+    assert entry.rain_pct_trend_delta == pytest.approx(50.0)
+
+
+def test_rain_pct_trend_is_none_when_history_is_too_thin():
+    """A single verified check is nowhere near TREND_MIN_CHECKS_SHORT/LONG
+    — the trend must stay None rather than fabricate a label off one data
+    point."""
+    today = date(2026, 8, 21)
+    yesterday = date(2026, 8, 20)
+    logs = {yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", rain=True)])}
+    actuals = {yesterday: actual(rain=True)}
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=[0],
+    )
+
+    entry = next(
+        e for e in result.updated_track_record.entries if e.model == "gfs_seamless" and e.lead_time_days == 0
+    )
+    assert entry.rain_pct_trend is None
+    assert entry.rain_pct_trend_delta is None
+
+
 def test_no_verification_when_no_actual_for_yesterday():
     today = date(2026, 8, 11)
     yesterday = date(2026, 8, 10)

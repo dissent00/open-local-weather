@@ -138,3 +138,44 @@ def rescore_rolling_window(
         low_err=mean([s.low_error_c for s in scores]),
         mslp_err=mean([s.mslp_error_hpa for s in scores]),
     )
+
+
+def compute_rain_pct_trend(
+    rolling_10_rain_pct: float | None,
+    rolling_30_rain_pct: float | None,
+    checks_in_window_10: int,
+    checks_in_window_30: int,
+    min_checks_short: int,
+    min_checks_long: int,
+    threshold_pct: float,
+) -> tuple[str | None, float | None]:
+    """Deterministically compares the recent (rolling_10) rain-call rate
+    against the longer-term (rolling_30) one, so the LLM is handed a
+    ready-made "is recent skill diverging from the longer-term baseline"
+    signal instead of having to notice that itself by comparing raw
+    numbers. See defaults.py's TREND_* constants for the sample-size and
+    threshold rationale.
+
+    Returns (label, delta) where label is one of "improving" /
+    "declining" / "stable", or (None, None) if either window doesn't yet
+    have enough checks to make the comparison meaningful — "insufficient
+    data" is itself information (this project never fabricates a trend
+    off too little history), and the prompt is expected to say so rather
+    than guess.
+    """
+    if (
+        rolling_10_rain_pct is None
+        or rolling_30_rain_pct is None
+        or checks_in_window_10 < min_checks_short
+        or checks_in_window_30 < min_checks_long
+    ):
+        return None, None
+
+    delta = rolling_10_rain_pct - rolling_30_rain_pct
+    if delta >= threshold_pct:
+        label = "improving"
+    elif delta <= -threshold_pct:
+        label = "declining"
+    else:
+        label = "stable"
+    return label, delta

@@ -25,9 +25,18 @@ from openlocalweather.defaults import (
     MODELS,
     ROLLING_WINDOW_LONG,
     ROLLING_WINDOW_SHORT,
+    TREND_MIN_CHECKS_LONG,
+    TREND_MIN_CHECKS_SHORT,
+    TREND_THRESHOLD_PCT,
 )
 from openlocalweather.models import DailyActual, TrackRecord, TrackRecordEntry, VerificationScore
-from openlocalweather.verify.scoring import LogLookup, predictions_by_model, rescore_rolling_window, score_prediction
+from openlocalweather.verify.scoring import (
+    LogLookup,
+    compute_rain_pct_trend,
+    predictions_by_model,
+    rescore_rolling_window,
+    score_prediction,
+)
 
 
 @dataclass
@@ -122,6 +131,15 @@ def run_deterministic_verification_and_scoring(
 
             track_entry.rolling_10_rain_pct = short.rain_pct
             track_entry.rolling_30_rain_pct = long.rain_pct
+            track_entry.rain_pct_trend, track_entry.rain_pct_trend_delta = compute_rain_pct_trend(
+                rolling_10_rain_pct=short.rain_pct,
+                rolling_30_rain_pct=long.rain_pct,
+                checks_in_window_10=short.checks_found,
+                checks_in_window_30=long.checks_found,
+                min_checks_short=TREND_MIN_CHECKS_SHORT,
+                min_checks_long=TREND_MIN_CHECKS_LONG,
+                threshold_pct=TREND_THRESHOLD_PCT,
+            )
             track_entry.all_time_checks = new_all_time_checks
             track_entry.all_time_correct = new_all_time_correct
             track_entry.all_time_rain_pct = all_time_pct
