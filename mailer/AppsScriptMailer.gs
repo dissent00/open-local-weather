@@ -20,9 +20,14 @@
  * and it isn't sending from a shared/rotating CI IP the way GitHub
  * Actions -> smtp.gmail.com would have been.
  *
- * Reuses sendEmailBroadcast()/convertMarkdownToSimpleHtml() from the
- * original KisumuForecastPipeline_v2.gs reference almost verbatim — see
- * reference/KisumuForecastPipeline_v2.gs in the main repo.
+ * Reuses sendEmailBroadcast() from the original KisumuForecastPipeline_v2.gs
+ * reference for the per-recipient send loop — see
+ * reference/KisumuForecastPipeline_v2.gs in the main repo. The email body
+ * itself is NOT ported from that reference: it's rendered as a plain-text,
+ * fixed-width layout styled as a nod to NOAA's Area Forecast Discussion
+ * (AFD) product — dot-leader ".SECTION..." headers, "&&" dividers, Courier
+ * in HTML-capable clients — rather than the original's styled HTML email.
+ * See buildEmailPlainText()'s doc comment for the rationale.
  *
  * WHAT IT FETCHES: the day's committed forecast JSON directly from
  * GitHub's raw-content CDN (data/log/YYYY-MM-DD.json) — structured data,
@@ -95,12 +100,18 @@ function sendDailyForecastEmail() {
   }
 
   const subject = `[${config.locationName} Weather] Daily Forecast — ${todayStr}`;
+  const body = buildEmailPlainText(config, entry, todayStr);
   const htmlBody = buildEmailHtml(config, entry, todayStr);
 
   let sentCount = 0;
   config.subscriberEmails.forEach(email => {
     try {
-      MailApp.sendEmail({ to: email, subject, htmlBody });
+      // Both `body` (true plain text) and `htmlBody` (the same text,
+      // monospaced) are sent together: MailApp uses htmlBody for
+      // HTML-capable clients and falls back to `body` for anything that
+      // can't render HTML — see buildEmailHtml()'s doc comment for why
+      // that split matters here.
+      MailApp.sendEmail({ to: email, subject, body, htmlBody });
       sentCount++;
     } catch (e) {
       // Best-effort per-recipient — one bad address shouldn't block the
@@ -142,30 +153,166 @@ function fetchForecastEntry(config, dateStr) {
   }
 }
 
-function buildEmailHtml(config, entry, dateStr) {
-  const narrativeHtml = convertMarkdownToSimpleHtml(entry.narrative_markdown || '');
-  const publicUrlLine = config.publicUrl
-    ? `<p style="font-size: 0.85em;"><a href="${config.publicUrl}">View on the web</a> &middot; <a href="${config.publicUrl}archive/">Archive</a></p>`
-    : '';
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto;">
-      <h2 style="color: #1a73e8; margin-bottom: 5px;">${config.locationName} Daily Forecast</h2>
-      <p style="font-size: 0.9em; color: #666; margin-top: 0;">Date: ${dateStr}</p>
-      <hr style="border: 0; border-top: 1px solid #ccc;"/>
-      <div>${narrativeHtml}</div>
-      <hr style="border: 0; border-top: 1px solid #ccc; margin-top: 20px;"/>
-      ${publicUrlLine}
-      <p style="font-size: 0.8em; color: #888;">You are receiving this because you subscribed to this forecast service.</p>
-    </div>`;
+// Column width the AFD-style body wraps to. 78 rather than a round 80 —
+// matches NOAA's own AFD product convention and leaves a little slack for
+// quoted-reply ">" prefixes without the reflow looking cramped.
+const AFD_WRAP_WIDTH = 78;
+const AFD_DIVIDER = '&&';
+
+/** Builds the true plain-text email body: a nod to NOAA's Area Forecast
+ * Discussion format (dot-leader ".SECTION NAME..." headers, "&&" segment
+ * dividers, fixed-width reflowed prose) rather than a styled HTML layout.
+ * This is what non-HTML mail clients see, and it's also the text reused
+ * (verbatim, inside a monospace <pre>) by buildEmailHtml() below — so the
+ * two representations can never drift apart or say different things.
+ *
+ * Deliberately NOT a literal AFD clone: no fake WMO transmission header
+ * ("000", station ID, product code) — this is a hobby project's forecast,
+ * not an NWS product, and a convincing-looking official header would cut
+ * against the disclaimer this function exists partly to carry.
+ */
+function buildEmailPlainText(config, entry, dateStr) {
+  const issuedStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd HH:mm');
+  const discussion = convertMarkdownToAfdText(entry.narrative_markdown || '');
+
+  const lines = [];
+  lines.push('Open Local Weather — Experimental Forecast Discussion');
+  lines.push(config.locationName);
+  lines.push(`Issued ${issuedStr} (${config.timezone})`);
+  lines.push('');
+  lines.push(AFD_DIVIDER);
+  lines.push('');
+  lines.push('.DISCLAIMER...');
+  lines.push(wrapText(
+    'This is an experimental, AI-assisted hobby forecast product, not an ' +
+    'official government forecast. It is provided for general interest ' +
+    'only and must NOT be relied on for life-safety decisions. For ' +
+    'official warnings and advisories, consult your national ' +
+    'meteorological service (in Kenya: the Kenya Meteorological ' +
+    'Department, meteo.go.ke).',
+    AFD_WRAP_WIDTH
+  ));
+  lines.push('');
+  lines.push(AFD_DIVIDER);
+  lines.push('');
+  lines.push(discussion);
+  lines.push('');
+  lines.push(AFD_DIVIDER);
+  lines.push('');
+  lines.push('.ABOUT THIS PRODUCT...');
+  lines.push(wrapText(
+    "Open Local Weather synthesizes multiple numerical weather models " +
+    "and tracks each one's real-world accuracy over time, broken out by " +
+    "forecast lead time. Full forecast, model verification history, and " +
+    "methodology are published here:",
+    AFD_WRAP_WIDTH
+  ));
+  lines.push('');
+  if (config.publicUrl) {
+    lines.push(`  ${config.publicUrl}`);
+    lines.push('');
+    lines.push('Past forecasts and the full accuracy record:');
+    lines.push(`  ${config.publicUrl}archive/`);
+    lines.push('');
+  }
+  lines.push('You are receiving this because you subscribed to this experimental');
+  lines.push('forecast service.');
+  lines.push('');
+  lines.push(AFD_DIVIDER);
+  lines.push('$$');
+
+  return lines.join('\n');
 }
 
-/** Ported verbatim from the original KisumuForecastPipeline_v2.gs. */
-function convertMarkdownToSimpleHtml(md) {
-  return md
-    .replace(/^## (.*$)/gim, '<h3 style="color: #202124; margin-top: 18px; border-bottom: 1px solid #eee; padding-bottom: 4px;">$1</h3>')
-    .replace(/^### (.*$)/gim, '<h4 style="color: #3c4043; margin-top: 12px;">$1</h4>')
-    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-    .replace(/\n/g, '<br/>');
+/** HTML companion to buildEmailPlainText(): the exact same text, wrapped
+ * in a monospace <pre> block so HTML-capable clients render it in
+ * Courier/fixed-width too (a plain-text `body` alone typically renders in
+ * a client's default sans-serif font, not monospace — this is what
+ * actually delivers the "plaintext/courier" look for most subscribers,
+ * since most mail clients prefer htmlBody when both are present). Never
+ * builds the HTML from markdown independently — see buildEmailPlainText's
+ * doc comment for why that would risk the two versions saying different
+ * things.
+ */
+function buildEmailHtml(config, entry, dateStr) {
+  const plainText = buildEmailPlainText(config, entry, dateStr);
+  const escaped = escapeHtml(plainText);
+  return `<pre style="font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; margin: 0;">${escaped}</pre>`;
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Converts the LLM's narrative_markdown into AFD-style plain text:
+ * "## Heading" -> ".HEADING..." (dot-leader, matches AFD's own
+ * ".NEAR TERM..."-style segment headers), "### Subheading" -> an indented
+ * "...Subheading..." one level down, "**bold**" markers stripped (plain
+ * text can't bold), and prose reflowed to AFD_WRAP_WIDTH columns. Blank
+ * lines separate paragraphs; "- " / "* " bullets are preserved as an
+ * indented list rather than being folded into paragraph prose.
+ */
+function convertMarkdownToAfdText(md) {
+  const lines = (md || '').replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let paragraphBuf = [];
+
+  function flushParagraph() {
+    if (paragraphBuf.length) {
+      const text = paragraphBuf.join(' ').replace(/\s+/g, ' ').trim();
+      if (text) out.push(wrapText(text, AFD_WRAP_WIDTH));
+      paragraphBuf = [];
+    }
+  }
+
+  lines.forEach(rawLine => {
+    const line = rawLine.replace(/\*\*(.*?)\*\*/g, '$1').trim();
+    const h2 = line.match(/^##\s+(.*)$/);
+    const h3 = line.match(/^###\s+(.*)$/);
+    if (h2) {
+      flushParagraph();
+      out.push('');
+      out.push(`.${h2[1].toUpperCase()}...`);
+    } else if (h3) {
+      flushParagraph();
+      out.push('');
+      out.push(`...${h3[1]}...`);
+    } else if (line === '') {
+      flushParagraph();
+    } else if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      out.push(wrapText('- ' + line.replace(/^[-*]\s+/, ''), AFD_WRAP_WIDTH));
+    } else {
+      paragraphBuf.push(line);
+    }
+  });
+  flushParagraph();
+
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** Greedy word-wrap to `width` columns — no external formatting library
+ * is available inside Apps Script, and the reflow only needs to be good
+ * enough for a monospace email body, not typographically perfect. */
+function wrapText(text, width) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  words.forEach(word => {
+    if (line.length === 0) {
+      line = word;
+    } else if ((line + ' ' + word).length <= width) {
+      line += ' ' + word;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  });
+  if (line) lines.push(line);
+  return lines.join('\n');
 }
 
 function createDailyTrigger() {

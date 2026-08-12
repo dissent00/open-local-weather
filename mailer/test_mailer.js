@@ -85,6 +85,15 @@ global.ScriptApp = {
 
 eval(fs.readFileSync(path.join(__dirname, 'AppsScriptMailer.gs'), 'utf8'));
 
+// Local copies (not calls into the .gs sandbox) purely for building
+// expected values in assertions below — kept trivial and independent of
+// the script's own AFD_DIVIDER/escapeHtml so a bug in the script can't
+// mask itself by also breaking the thing checking it.
+const AFD_DIVIDER_FOR_TEST = '&&';
+function escapeHtmlForTest(text) {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function reset() {
   sentEmails.length = 0;
   sleepCalls = [];
@@ -99,8 +108,18 @@ sendDailyForecastEmail();
 assert.strictEqual(sentEmails.length, 2, `expected 2 emails, got ${sentEmails.length}`);
 assert.strictEqual(sentEmails[0].to, 'alice@example.com');
 assert.ok(sentEmails[0].subject.includes('[Kisumu, Kenya Weather] Daily Forecast — 2026-08-11'), 'subject line wrong');
-assert.ok(sentEmails[0].htmlBody.includes('<h3'), 'narrative markdown was not converted to HTML');
-assert.ok(sentEmails[0].htmlBody.includes('View on the web'), 'public URL footer missing');
+assert.ok(sentEmails[0].body, 'plain-text body missing');
+assert.ok(sentEmails[0].body.includes('.DISCLAIMER...'), 'AFD-style disclaimer header missing from plain-text body');
+assert.ok(/not[\s\S]*?for life-safety decisions/i.test(sentEmails[0].body), 'beta/not-for-life-safety disclaimer text missing');
+assert.ok(sentEmails[0].body.includes('https://dissent00.github.io/open-local-weather/'), 'public URL missing from plain-text body');
+assert.ok(sentEmails[0].body.includes(AFD_DIVIDER_FOR_TEST), '"&&" AFD-style divider missing from plain-text body');
+assert.ok(!sentEmails[0].body.includes('**'), 'markdown bold markers should be stripped, not left as literal "**"');
+sentEmails[0].body.split('\n').forEach(line => {
+  assert.ok(line.length <= 78, `plain-text body line exceeds 78 columns: "${line}"`);
+});
+assert.ok(sentEmails[0].htmlBody.includes('<pre'), 'HTML body should be a monospace <pre> block');
+assert.ok(sentEmails[0].htmlBody.includes('Courier'), 'HTML body should be styled in Courier for the AFD nod');
+assert.strictEqual(sentEmails[0].htmlBody.replace(/<\/?pre[^>]*>/g, '').trim(), escapeHtmlForTest(sentEmails[0].body), 'HTML body should be the plain-text body verbatim (escaped), not an independent rendering');
 assert.strictEqual(sleepCalls.length, 0, 'should not sleep/retry when the entry is found on the first try');
 console.log('PASS: happy path — sent', sentEmails.length, 'emails, no retries needed');
 

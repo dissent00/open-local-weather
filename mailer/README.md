@@ -20,6 +20,16 @@ raw-content CDN (`data/log/YYYY-MM-DD.json`) — not a scrape of the
 rendered [GitHub Pages site](https://dissent00.github.io/open-local-weather/) —
 so it's immune to any future page-template change.
 
+**Email format**: plain text, styled as a nod to NOAA's Area Forecast
+Discussion (AFD) product — dot-leader `.SECTION...` headers, `&&` segment
+dividers, prose reflowed to a fixed width — rather than a styled marketing-
+style HTML layout. `buildEmailPlainText()` builds the one true body; an
+identical `<pre>`-wrapped Courier `htmlBody` is generated from that same
+text (never independently) so the two representations can't drift apart.
+Every email carries an explicit beta/experimental disclaimer and a link to
+the live site — see `buildEmailPlainText()`'s doc comment in
+[`AppsScriptMailer.gs`](AppsScriptMailer.gs) for the full rationale.
+
 See the setup instructions in the header comment of
 [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for deployment steps
 (script.google.com, Script Properties, authorizing the trigger).
