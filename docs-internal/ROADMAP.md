@@ -292,7 +292,7 @@ Roughly a day's work, in dependency order:
 | `fetch/alerts/kenya_kmd_warnings.py` | ~2 h | Mirrors the proven `kenya_kmd.py` pattern |
 | `store/alerts_store.py` (dedup) | ~1 h | The part that must be right |
 | `llm/alert_triage.py` | ~1.5 h | New pydantic schema; provider layer already exists |
-| `.github/workflows/alerts.yml` | ~0.5 h | Minimal deps, `0 * * * *` |
+| `.github/workflows/alerts.yml` | ~0.5 h | Minimal deps, `13 * * * *` (offset off the exact hour — see the cron-congestion note in ARCHITECTURE.md; `daily.yml`/`health_check.yml` already learned this the hard way) |
 | Site banner + `docs/alerts/` | ~1.5 h | New template + publisher hook |
 | `sendAlertEmail()` in the mailer | ~1.5 h | New Apps Script function + trigger + harness cases |
 | `fetch/alerts/gdacs.py` | ~1.5 h | Real feed; geo-filter is the fiddly bit |
@@ -306,7 +306,7 @@ behaviour has been observed against real KMD posting patterns for a while.
 - [ ] `fetch/alerts/kenya_kmd_warnings.py` — scrape, parse, stable IDs
 - [ ] `store/alerts_store.py` — `alerts_seen.json`, dedup, `alerts/<id>.json`
 - [ ] `llm/alert_triage.py` — relevance/severity/summary schema
-- [ ] `.github/workflows/alerts.yml` — `0 * * * *`, minimal deps
+- [ ] `.github/workflows/alerts.yml` — `13 * * * *` (not `0 * * * *`), minimal deps
 - [ ] Scraper-health alarm (zero-posts-parsed ⇒ notify, don't assume calm)
 - [ ] Site alert banner + `docs/alerts/`
 - [ ] `sendAlertEmail()` in the Apps Script mailer, own trigger
