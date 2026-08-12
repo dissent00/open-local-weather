@@ -161,3 +161,59 @@ def test_user_prompt_includes_weather_data_sections():
         local_bulletin_text="text",
     )
     assert "2026-08-11T00:00" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Refresh mode (evening second run)
+# ---------------------------------------------------------------------------
+
+
+def test_system_prompt_refresh_block_absent_by_default():
+    prompt = build_system_prompt(KISUMU)
+    assert "REFRESH MODE" not in prompt
+
+
+def test_system_prompt_refresh_block_present_when_requested():
+    prompt = build_system_prompt(KISUMU, is_refresh=True)
+    assert "REFRESH MODE" in prompt
+    assert "MORNING NARRATIVE" in prompt
+    assert "not a repeat" in prompt
+    assert 'empty array for "skill_profile_summaries"' in prompt
+
+
+def test_system_prompt_refresh_does_not_disturb_heading_order():
+    # The refresh block is instructional text, not a narrative heading —
+    # must not add or reorder the actual ## headings the LLM is told to use.
+    prompt = build_system_prompt(KISUMU, is_refresh=True)
+    top_level = [t for level, t in headings(prompt) if level == "##"]
+    assert top_level == [
+        "Overview",
+        "Today's Forecast",
+        "Extended Outlook",
+        "Severe Weather / Hazard Potential",
+        "Lake Victoria — Conditions for Boaters",
+        "Detailed Discussion",
+    ]
+
+
+def test_user_prompt_omits_morning_narrative_block_by_default():
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
+        verification_context={}, track_record_context=[], historical_logs=[],
+        ground_aqi_readings=[], ground_aqi_summary=None, today_weather_data={},
+        local_bulletin_source_name="KMD", local_bulletin_text="text",
+    )
+    assert "MORNING NARRATIVE" not in prompt
+
+
+def test_user_prompt_includes_morning_narrative_when_given():
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
+        verification_context={}, track_record_context=[], historical_logs=[],
+        ground_aqi_readings=[], ground_aqi_summary=None, today_weather_data={},
+        local_bulletin_source_name="KMD", local_bulletin_text="text",
+        morning_narrative="## Overview\nSunny and warm today.",
+    )
+    assert "MORNING NARRATIVE" in prompt
+    assert "Sunny and warm today." in prompt
+    assert "not a repeat" in prompt

@@ -10,19 +10,21 @@ location.
 
 ## The one-paragraph version
 
-Once a day, GitHub Actions runs a Python pipeline that pulls raw forecasts
-from five weather models, scores *yesterday's* predictions against what
-actually happened, hands an LLM the raw disagreeing model data plus that
-scoring history, and asks it to write a forecast narrative. The result is
-committed back to this repo as JSON (git is the database), rendered to a
-static site, and emailed to subscribers. Over time the scoring history
-tells the LLM which models to trust, per variable and per lead time.
+Every morning, GitHub Actions runs a Python pipeline that pulls raw
+forecasts from five weather models, scores *yesterday's* predictions
+against what actually happened, hands an LLM the raw disagreeing model data
+plus that scoring history, and asks it to write a forecast narrative. The
+result is committed back to this repo as JSON (git is the database),
+rendered to a static site, and emailed to subscribers. An optional evening
+run re-synthesizes the narrative on a fresher model cycle without touching
+the accuracy loop at all — see step 7. Over time the scoring history tells
+the LLM which models to trust, per variable and per lead time.
 
 ## Data flow
 
 ```
                     ┌─────────────────────────────────────┐
-                    │  GitHub Actions cron (03:00 UTC)    │
+                    │  GitHub Actions cron (~03:07 UTC)   │
                     └──────────────────┬──────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
@@ -73,6 +75,23 @@ tells the LLM which models to trust, per variable and per lead time.
    │ 7. EMAIL (separate system, ~06:20 EAT)                             │
    │    mailer/AppsScriptMailer.gs pulls the committed JSON from        │
    │    GitHub raw and sends via MailApp. Not part of the pipeline.     │
+   └────────────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────────────────────────────┐
+                    │  GitHub Actions cron (~15:07 UTC)   │  optional, same
+                    └──────────────────┬──────────────────┘  concurrency
+                                       │                       group as above
+   ┌───────────────────────────────────▼────────────────────────────────┐
+   │ EVENING REFRESH   pipeline.run_refresh_pipeline()                  │
+   │    • repeats step 1 only (fresh guidance, later model cycle)       │
+   │    • re-runs step 5 in refresh mode (LLM sees the morning          │
+   │      narrative, writes an update — "what's changed", not a repeat) │
+   │    • merges narrative/today_properties into the EXISTING entry —   │
+   │      model_predictions/verification/generated_at_utc untouched     │
+   │    • republishes docs/; web-only, does not email                  │
+   │    • steps 2-4 (actuals, verify, extract) never run — nothing new  │
+   │      to verify mid-day, and predictions must stay what was         │
+   │      actually published at 6 AM                                    │
    └────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -211,7 +230,7 @@ above; conflating the two manufactures fake skill scores.
 
 ## Testing
 
-168 tests, all offline and deterministic — no network, no LLM calls, no
+219 tests, all offline and deterministic — no network, no LLM calls, no
 sleeps. `pytest -q` runs in under a second, and CI runs it on every push.
 
 The verification/scoring module carries the deepest coverage on purpose:

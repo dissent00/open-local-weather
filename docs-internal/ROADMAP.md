@@ -7,7 +7,33 @@ Status legend: **Next** · **Planned** · **Deferred** · **Done**
 
 ---
 
-## 1. Second daily forecast run — 6 AM + 6 PM · **Next**
+## 1. Second daily forecast run — 6 AM + 6 PM · **Done**
+
+Shipped: `olw refresh-forecast` (`pipeline.run_refresh_pipeline`), scheduled
+via `.github/workflows/evening_refresh.yml` at `7 15 * * *` (~18:07 EAT).
+Live-verified end-to-end against a real committed entry — the narrative
+correctly read as an update ("no material changes... since the morning
+issuance") rather than a repeat, and staleness detection carried over
+correctly since the fetch step is shared code with the morning run. 219
+tests passing, including that `model_predictions`/`verification`/
+`meta.generated_at_utc` survive a refresh byte-for-byte.
+
+Went with Phase 1 (refresh mode) as designed below, as a genuinely separate
+CLI subcommand and workflow file rather than a mode flag on the existing
+ones — cleaner given how different the step sequence actually is (no
+verification, must read the existing entry first). One addition beyond the
+original design: `evening_refresh.yml` shares daily.yml's concurrency group
+(both write the same `data/log/<date>.json`, so a delayed morning run and
+the evening run must never race on it), and refresh fails loudly
+(`RefreshWithoutMorningRunError`) rather than silently no-oping if the
+morning run never happened — which doubles as an earlier, second daily
+health signal: if `daily.yml` silently doesn't fire again, the evening run
+now fails and emails at ~15:07 UTC instead of the gap only surfacing the
+next morning.
+
+Phase 2 (first-class scored issuances, tracking the evening forecast's own
+skill separately) stays a real option — not taken up, per the original
+"only if Phase 1 proves the value" plan.
 
 ### Measured inputs
 
@@ -54,8 +80,8 @@ depends on reading correctly.
 
 | | Morning | Evening |
 |---|---|---|
-| Cron | `0 3 * * *` (unchanged) | `0 15 * * *` |
-| Delivery | 06:00 EAT | 18:00 EAT ✓ your target |
+| Cron | `7 3 * * *` (unchanged, off-hour) | `7 15 * * *` (off-hour, shipped) |
+| Delivery | ~06:07 EAT | ~18:07 EAT ✓ your target |
 | Cycle | 18z (prev. day) | **06z (same day)** |
 | Age | 9 h | 9 h |
 | Alignment | all four aligned ✓ | all four aligned ✓ |
@@ -109,56 +135,40 @@ schema change (`issuances: [...]` per day, or date-plus-label files) and a
 lead-time lookup that's issuance-aware. Real complexity; don't take it on
 speculatively.
 
-### Prompt note
+### Prompt design
 
-The evening narrative shouldn't read like a stale copy of the morning's. Add
-a mode-aware line to the system prompt: for the evening run, lead with
-tonight and tomorrow, and explicitly note what changed since the morning
-issuance — that's the reason someone would read both.
+The evening narrative shouldn't read like a stale copy of the morning's.
+`build_system_prompt(..., is_refresh=True)` adds an instruction block: lead
+with what's changed since the morning issuance (or say explicitly that
+nothing material has changed), shift emphasis to tonight and tomorrow, and
+`build_user_prompt(..., morning_narrative=...)` gives the LLM the actual
+morning text to update rather than blindly rewrite. Confirmed live — see
+above.
 
-### The design question this forces
+### The design question this forced — resolved
 
-A second run re-forecasts a day that already has a committed entry. What
-happens to `data/log/YYYY-MM-DD.json`?
+A second run re-forecasts a day that already has a committed entry.
+`data/log/YYYY-MM-DD.json`'s `model_predictions` are what tomorrow's
+verification scores, so a refresh must never overwrite them — see "Shipped"
+above for how this was implemented (`run_refresh_pipeline` reads the
+existing entry, merges only narrative/today_properties/ground_aqi/
+whatsapp_summary/meta.refreshed_at into a copy, leaves everything else
+byte-for-byte untouched).
 
-This matters more than it looks, because that file's `model_predictions`
-are what tomorrow's verification scores. Overwrite them and you're no
-longer scoring what you actually published at 6 AM.
-
-**Recommended: phase it.**
-
-**Phase 1 — refresh mode (low risk, most of the value).**
-Add `olw run-daily --mode=refresh`, which:
-- fetches fresh model data and re-synthesises the narrative
-- rewrites `narrative_markdown`, `today_properties`, and republishes `docs/`
-- **skips** verification entirely (yesterday's actuals don't change during
-  the day — nothing new to score)
-- **preserves** the morning run's stored `model_predictions`, so the
-  accuracy loop keeps scoring what was actually published
-- records `refreshed_at` in `meta` so the audit trail stays honest
-
-Public-facing forecast improves; the skill-tracking machinery is untouched.
-
-**Phase 2 — first-class issuances (only if Phase 1 proves the value).**
-Make each run a separately-scored issuance so the *evening* forecast's skill
-is tracked too — plausibly the more accurate one, and worth knowing. Needs a
-schema change (`issuances: [...]` per day, or date-plus-label files) and a
-lead-time lookup that's issuance-aware. Real complexity; don't take it on
-speculatively.
-
-### Prerequisite — already handled
+### Prerequisite — already handled before this shipped
 
 A second run would have double-counted `all_time_checks` every single day
 (the counters are the one non-self-healing piece of state). Fixed and
 regression-tested via the `last_verified_target_date` guard before this item
-was written. Refresh mode skipping verification makes it doubly safe.
+was implemented. Refresh mode skipping verification entirely makes it
+doubly safe.
 
-### Tasks
-- [ ] `--mode=refresh` in `cli.py` + `pipeline.py` (skip verify, preserve predictions)
-- [ ] `meta.refreshed_at` field on `DailyLogEntry`
-- [ ] Second workflow (or a matrix/input on `daily.yml`) at `0 14 * * *`
-- [ ] Site shows issue time so readers can tell morning from evening
-- [ ] Decide whether the evening refresh also emails, or is web-only
+### Remaining open question
+
+Whether the evening refresh should also email, or stay web-only. Shipped as
+**web-only** (no `email_sender` call in `run_refresh_pipeline` by design) —
+revisit if there's a real desire for an evening email distinct from the
+morning one.
 
 ---
 
@@ -438,3 +448,5 @@ worth doing.
 - Weekly model-deprecation + repo-staleness health check
 - Apps Script email delivery with retry against scheduler jitter
 - Review fixes: all-time double-count guard, archive backfill, LLM retry
+- Multi-station ground AQI with deterministic range/worst-station + staleness detection
+- Second daily forecast run (evening refresh, web-only, morning predictions preserved)

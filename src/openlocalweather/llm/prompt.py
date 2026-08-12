@@ -27,7 +27,17 @@ def build_system_prompt(
     historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
+    is_refresh: bool = False,
 ) -> str:
+    refresh_block = (
+        """
+
+REFRESH MODE (this run only): this is a same-day UPDATE issued after the morning forecast, using a fresher model cycle - not a new day's forecast. No new verification has happened since the morning run (yesterday's actuals don't change during the day), so for "yesterday_verification" and "verification_notes" write a brief one-line placeholder noting this is a same-day refresh with no new verification - these two fields are read but NOT stored from a refresh response, so their exact wording doesn't matter, just don't leave them empty or fabricate new verification content. Return an empty array for "skill_profile_summaries" this run. The user message includes MORNING NARRATIVE - the forecast already published around 6 AM. Your job is to write an UPDATE, not a repeat: open the Overview by saying what has changed since the morning issuance (or say explicitly that nothing material has changed), shift emphasis toward tonight and tomorrow rather than re-covering the whole day, and only revisit the extended outlook if the fresher model cycle meaningfully altered it. Still follow the exact heading structure and every other instruction below."""
+        if is_refresh
+        else ""
+    )
+
+
     secondary_enabled = location.secondary_point.enabled
     secondary_heading_block = (
         f"\n   ## {location.secondary_point.name} — {location.secondary_point.section_label}\n"
@@ -63,7 +73,7 @@ DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
 - Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor's most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading's number into that summary yourself.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
-
+{refresh_block}
 ---
 
 ### WORKFLOW & INSTRUCTIONS:
@@ -124,13 +134,24 @@ def build_user_prompt(
     today_weather_data: dict[str, Any],
     local_bulletin_source_name: str,
     local_bulletin_text: str,
+    morning_narrative: str | None = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
     pydantic models with .model_dump()) — this module doesn't care where
     they came from, only that they serialize; pipeline.py is what actually
     wires verify/fetch/store output into these parameters.
+
+    `morning_narrative`, when given, is an evening REFRESH run's only
+    refresh-specific input: the narrative already published around 6 AM,
+    so the LLM can write an update rather than an unrelated repeat. See
+    build_system_prompt's `is_refresh` for the matching instructions.
     """
+    morning_narrative_block = (
+        f"\n\nMORNING NARRATIVE (already published ~6 AM — this refresh should read as an update to it, not a repeat):\n{morning_narrative}"
+        if morning_narrative
+        else ""
+    )
     weather_payload = {
         "primary_today_hourly": today_weather_data.get("primary_today_hourly"),
         "primary_extended_daily": today_weather_data.get("primary_extended_daily"),
@@ -163,5 +184,5 @@ TODAY'S MULTI-MODEL GUIDANCE:
 {_json(weather_payload)}
 
 LOCAL BULLETIN ({local_bulletin_source_name}):
-{local_bulletin_text}
+{local_bulletin_text}{morning_narrative_block}
 """

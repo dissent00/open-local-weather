@@ -426,3 +426,162 @@ def test_no_stations_configured_yields_empty_ground_aqi_and_no_summary(tmp_path)
     _, user_prompt = llm.calls[0]
     assert "no ground station reported data" in user_prompt
     assert "Not applicable" in user_prompt
+
+
+# ---------------------------------------------------------------------------
+# run_refresh_pipeline — the evening second run
+# ---------------------------------------------------------------------------
+
+
+from openlocalweather.pipeline import (
+    RefreshWithoutMorningRunError,
+    run_refresh_pipeline,
+)
+
+
+def test_refresh_requires_existing_morning_entry(tmp_path):
+    deps = make_deps(tmp_path)
+    with pytest.raises(RefreshWithoutMorningRunError):
+        run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+
+def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
+    # First, a real morning run.
+    morning_deps = make_deps(tmp_path)
+    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    original_predictions = morning_result.log_entry.model_predictions
+
+    # Then an evening refresh with DIFFERENT fresh model data.
+    evening_llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="n/a — refresh",
+            verification_notes=[],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Now raining", temp_high_c=25.0, temp_low_c=17.0, temp_high_low="25°C / 77°F"
+            ),
+            today_narrative="## Overview\nRain has moved in this evening.",
+        )
+    )
+    refresh_deps = make_deps(tmp_path, llm=evening_llm)
+    refresh_result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=False)
+
+    # Narrative/properties changed...
+    assert refresh_result.log_entry.rain_expected == "Now raining"
+    assert refresh_result.log_entry.temp_high_c == 25.0
+    assert "Rain has moved in" in refresh_result.log_entry.narrative_markdown
+    # ...but model_predictions (what tomorrow's verification scores) did NOT.
+    assert refresh_result.log_entry.model_predictions == original_predictions
+
+
+def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
+    morning_deps = make_deps(tmp_path)
+    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    original_generated_at = morning_result.log_entry.meta.generated_at_utc
+    original_verification = morning_result.log_entry.verification
+
+    refresh_deps = make_deps(tmp_path)
+    refresh_result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert refresh_result.log_entry.meta.generated_at_utc == original_generated_at
+    assert refresh_result.log_entry.verification == original_verification
+    assert refresh_result.log_entry.meta.refreshed_at is not None
+    assert refresh_result.log_entry.meta.refreshed_at > original_generated_at
+
+
+def test_refresh_dry_run_does_not_write_or_publish(tmp_path):
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    before = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    class FailingPublisher:
+        def publish(self, entry):
+            raise AssertionError("publish() must not be called during --dry-run")
+
+    deps = make_deps(tmp_path)
+    deps.publisher = FailingPublisher()
+    result = run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    assert result.published is False
+    after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert after == before  # nothing written to disk
+
+
+def test_refresh_real_run_writes_and_publishes(tmp_path):
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    published_entries = []
+
+    class FakePublisher:
+        def publish(self, entry):
+            published_entries.append(entry)
+
+    deps = make_deps(tmp_path)
+    deps.publisher = FakePublisher()
+    result = run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert result.published is True
+    assert len(published_entries) == 1
+    on_disk = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert on_disk.meta.refreshed_at is not None
+
+
+def test_refresh_never_emails_even_when_email_sender_configured(tmp_path):
+    # Web-only by design in this first version — see pipeline.py's comment.
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    emailed_entries = []
+
+    class FakeEmailSender:
+        def send(self, entry):
+            emailed_entries.append(entry)
+
+    deps = make_deps(tmp_path)
+    deps.email_sender = FakeEmailSender()
+    run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert emailed_entries == []
+
+
+def test_refresh_llm_receives_refresh_mode_prompt_and_morning_narrative(tmp_path):
+    morning_llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
+
+    evening_llm = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
+
+    system_prompt, user_prompt = evening_llm.calls[0]
+    assert "REFRESH MODE" in system_prompt
+    assert "MORNING NARRATIVE" in user_prompt
+    assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
+
+
+def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
+    from openlocalweather.config import WaqiStation
+    from openlocalweather.models import GroundAQIReading
+
+    location_with_station = LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="Test Station", station_id="A1")]}
+    )
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="Test Station", station_id="A1", aqi=30, measured_at=datetime.now(timezone.utc))
+        ],
+    )
+    morning_deps = make_deps(tmp_path)
+    morning_deps.location = location_with_station
+    run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="Test Station", station_id="A1", aqi=90, measured_at=datetime.now(timezone.utc))
+        ],
+    )
+    refresh_deps = make_deps(tmp_path)
+    refresh_deps.location = location_with_station
+    result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=True)
+
+    assert result.log_entry.ground_aqi[0].aqi == 90  # the fresh evening reading, not the morning's 30

@@ -23,7 +23,12 @@ from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
-from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.pipeline import (
+    PipelineDeps,
+    RefreshWithoutMorningRunError,
+    run_daily_pipeline,
+    run_refresh_pipeline,
+)
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
 from openlocalweather.store.log_store import list_log_dates, make_log_lookup
@@ -76,7 +81,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
 
     gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
     if not gemini_api_key:
-        raise SystemExit("GEMINI_API_KEY environment variable is required for run-daily.")
+        raise SystemExit("GEMINI_API_KEY environment variable is required.")
     gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
     waqi_token = os.environ.get("WAQI_TOKEN", "")
 
@@ -144,6 +149,33 @@ def _run_daily(args: argparse.Namespace) -> int:
     print(f"  emailed:         {result.emailed}")
     if args.dry_run:
         print("\n--- narrative preview (not written to data/, nothing published/emailed) ---\n")
+        print(entry.narrative_markdown)
+    return 0
+
+
+def _run_refresh(args: argparse.Namespace) -> int:
+    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
+    try:
+        result = run_refresh_pipeline(deps, dry_run=args.dry_run)
+    except RefreshWithoutMorningRunError as e:
+        print(f"Critical Error: {e}", file=sys.stderr)
+        return 1
+    except OpenMeteoFetchError as e:
+        print(f"Critical Error: refresh aborted, a required weather fetch failed: {e}", file=sys.stderr)
+        return 1
+    except LLMResponseError as e:
+        print(f"Critical Error: refresh aborted, the LLM call failed: {e}", file=sys.stderr)
+        return 1
+
+    entry = result.log_entry
+    print(f"Refresh run complete for {result.today} (dry_run={args.dry_run}).")
+    print(f"  rain_expected:   {entry.rain_expected}")
+    print(f"  temp:            {entry.temp_high_low_display}")
+    print(f"  synoptic:        {entry.synoptic_pattern}")
+    print(f"  refreshed_at:    {entry.meta.refreshed_at}")
+    print(f"  published:       {result.published}")
+    if args.dry_run:
+        print("\n--- narrative preview (not written to data/, nothing published) ---\n")
         print(entry.narrative_markdown)
     return 0
 
@@ -216,6 +248,22 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Run fetch/verify/LLM for real but skip writes, publish, and email."
     )
 
+    refresh = sub.add_parser(
+        "refresh-forecast",
+        help="Optional same-day evening refresh — fresher narrative, morning's model_predictions preserved.",
+    )
+    refresh.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    refresh.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    refresh.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
+    refresh.add_argument(
+        "--public-url",
+        default="",
+        help="Public GitHub Pages URL. Included in the LLM prompt; also enables GitHub Pages publishing if set.",
+    )
+    refresh.add_argument(
+        "--dry-run", action="store_true", help="Run fetch/LLM for real but skip writes and publish."
+    )
+
     check_config = sub.add_parser("check-config", help="Load and validate a location.yaml, then exit.")
     check_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
 
@@ -233,6 +281,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "run-daily":
         return _run_daily(args)
+
+    if args.command == "refresh-forecast":
+        return _run_refresh(args)
 
     if args.command == "check-health":
         return _run_check_health(args)

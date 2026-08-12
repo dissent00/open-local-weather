@@ -1,0 +1,82 @@
+name: Evening Forecast Refresh
+
+# Optional same-day update — see docs-internal/ROADMAP.md's "Second daily
+# forecast run" section for the full rationale and timing analysis. Fresh
+# narrative on a later model cycle, but deliberately does NOT touch the
+# accuracy loop: no verification, and the morning run's model_predictions
+# are preserved byte-for-byte (see pipeline.run_refresh_pipeline). Requires
+# the morning run (daily.yml) to have already run successfully today —
+# fails loudly, not silently, if there's nothing to refresh.
+
+on:
+  schedule:
+    # ~18:07 Africa/Nairobi (EAT) = 15:07 UTC. Chosen from the measured
+    # model-availability table in ROADMAP.md: by 13:19 UTC every model's
+    # 06z cycle has landed, and the aligned window (all four models on the
+    # same cycle) holds from 14:00 UTC to just before 19:00 UTC, when the
+    # faster models start jumping to 12z. 15:07 UTC sits solidly inside
+    # that window with margin on both sides. Same off-hour reasoning as
+    # daily.yml's schedule comment — ":00" is the least reliable minute
+    # GitHub Actions scheduling offers.
+    - cron: "7 15 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run fetch/LLM for real but skip writes and publish"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Deliberately the SAME group as daily.yml, not a separate one — both
+# workflows write to the same data/log/<date>.json file, so if a delayed
+# morning run is still in progress when this fires, they need to be
+# serialized (queued), not run concurrently and race on that file.
+concurrency:
+  group: daily-forecast
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Determine public Pages URL
+        id: pages_url
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          echo "url=https://${OWNER,,}.github.io/${REPO,,}/" >> "$GITHUB_OUTPUT"
+
+      - name: Run evening refresh
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+          olw refresh-forecast --public-url "${{ steps.pages_url.outputs.url }}" $DRY_RUN_FLAG
+
+      - name: Commit and push data/docs changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ docs/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "forecast refresh: $(date -u +%Y-%m-%d)"
+            git push
+          fi

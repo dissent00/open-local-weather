@@ -101,9 +101,13 @@ overwrites it every run.)
 ## Status
 
 **Live**: [dissent00.github.io/open-local-weather](https://dissent00.github.io/open-local-weather/)
-runs daily at 06:00 EAT for Kisumu, Kenya, with the subscriber email
-following at ~06:20 EAT. Every forecast is committed to `data/log/` — the
-full, auditable history of every prediction and its later verification.
+runs twice daily for Kisumu, Kenya — a full forecast+verification cycle at
+~06:07 EAT, with the subscriber email following at ~06:20 EAT, and an
+optional evening refresh at ~18:07 EAT that re-synthesizes the narrative on
+a fresher model cycle without touching the accuracy loop (see
+[ARCHITECTURE.md](docs-internal/ARCHITECTURE.md) for why that distinction
+matters). Every forecast is committed to `data/log/` — the full, auditable
+history of every prediction and its later verification.
 
 Email delivery goes out via [`mailer/AppsScriptMailer.gs`](mailer/), a
 standalone Google Apps Script companion — **not** the Python pipeline's

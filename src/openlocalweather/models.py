@@ -145,6 +145,13 @@ class LogEntryMeta(BaseModel):
     llm_provider: str
     llm_model: str
     pipeline_version: str
+    # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
+    # — generated_at_utc stays the ORIGINAL morning creation time even after
+    # a refresh, so the audit trail keeps showing when this entry first
+    # existed; refreshed_at records the most recent narrative refresh on
+    # top of it. model_predictions/verification are never touched by a
+    # refresh, only this field and the narrative/today_properties fields.
+    refreshed_at: datetime | None = None
 
 
 class DailyLogEntry(BaseModel):

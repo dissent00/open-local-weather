@@ -2,11 +2,14 @@
 KisumuForecastPipeline_v2.gs step-for-step, adapted to git-as-database.
 
 git commit/push is deliberately NOT done here — that's the GitHub Actions
-workflow's job (see .github/workflows/daily.yml) after this function
-returns, keeping this module free of any git dependency and testable purely
-as "run this, inspect the files/return value."
+workflow's job (see .github/workflows/daily.yml and evening_refresh.yml)
+after these functions return, keeping this module free of any git
+dependency and testable purely as "run this, inspect the files/return
+value."
 
-Step order:
+Two entry points:
+
+run_daily_pipeline() — the morning run. Step order:
   1. Fetch today's forward-looking multi-model guidance + optional sources
      (METAR, ground AQI, local bulletin).
   2. Fetch/refresh yesterday's actual into the actuals cache — a cheap
@@ -25,8 +28,18 @@ Step order:
      configured — both are optional hooks so this module doesn't need to
      know about either concrete implementation.
 
---dry-run (see cli.py) skips step 8/9's file writes and publish/email —
-the fetch/verify/LLM steps still run for real, so a maintainer can see the
+run_refresh_pipeline() — an optional same-day evening run (see
+docs-internal/ROADMAP.md's "Second daily forecast run" for the full design
+rationale). Re-fetches forward guidance on a fresher model cycle and
+re-synthesizes the narrative, but deliberately does NOT touch the accuracy
+loop: no verification runs (yesterday's actuals don't change during the
+day), and critically, the morning run's stored model_predictions are
+preserved byte-for-byte. Those are what tomorrow's verification scores, and
+they must reflect what was actually published at 6 AM, not silently get
+overwritten by evening data.
+
+--dry-run (see cli.py) skips both functions' file-write/publish/email
+steps — the fetch/LLM steps still run for real, so a maintainer can see the
 pipeline actually working without polluting committed data or emailing real
 subscribers.
 """
@@ -39,7 +52,7 @@ from pathlib import Path
 from typing import Protocol
 
 from openlocalweather import __version__
-from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.aqi import GroundAQISummary, hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, today_in_tz
 from openlocalweather.defaults import (
@@ -59,7 +72,13 @@ from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
-from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead, TrackRecord
+from openlocalweather.models import (
+    DailyLogEntry,
+    GroundAQIReading,
+    LogEntryMeta,
+    ModelPredictionsByLead,
+    TrackRecord,
+)
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
 from openlocalweather.store import track_record as track_record_store
@@ -97,14 +116,44 @@ class PipelineRunResult:
     emailed: bool
 
 
-def run_daily_pipeline(
-    deps: PipelineDeps, today: date | None = None, dry_run: bool = False
-) -> PipelineRunResult:
-    location = deps.location
-    today = today or today_in_tz(location.timezone)
-    yesterday = add_days(today, -1)
+@dataclass
+class RefreshRunResult:
+    today: date
+    log_entry: DailyLogEntry
+    published: bool
 
-    # --- Step 1: today's forward-looking guidance + optional sources ---
+
+class RefreshWithoutMorningRunError(RuntimeError):
+    """Raised when run_refresh_pipeline() is called for a date with no
+    existing log entry — there is nothing to refresh, and silently creating
+    a "morning" entry from an evening run would mean model_predictions were
+    extracted from evening-cycle data, not what was actually true at 6 AM
+    when a run_daily_pipeline() call would normally have captured them.
+    """
+
+
+@dataclass
+class ForwardGuidance:
+    """Everything Step 1 fetches — shared verbatim between the morning and
+    evening-refresh runs so the two can never silently drift apart on what
+    "today's forward-looking guidance" means.
+    """
+
+    primary_hourly: dict
+    primary_daily: dict
+    regional_pressure: dict
+    air_quality: dict
+    secondary_hourly: dict | None
+    secondary_daily: dict | None
+    airport_metar: list[dict] | None
+    ground_aqi_readings: list[GroundAQIReading]
+    ground_aqi_summary: GroundAQISummary | None
+    aqi_fetch_time: datetime
+    bulletin_text: str
+
+
+def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
+    location = deps.location
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
         location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
     )
@@ -134,6 +183,47 @@ def run_daily_pipeline(
     ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
     ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
     bulletin_text = deps.bulletin_fetcher.fetch()
+
+    return ForwardGuidance(
+        primary_hourly=primary_hourly,
+        primary_daily=primary_daily,
+        regional_pressure=regional_pressure,
+        air_quality=air_quality,
+        secondary_hourly=secondary_hourly,
+        secondary_daily=secondary_daily,
+        airport_metar=airport_metar,
+        ground_aqi_readings=ground_aqi_readings,
+        ground_aqi_summary=ground_aqi_summary,
+        aqi_fetch_time=aqi_fetch_time,
+        bulletin_text=bulletin_text,
+    )
+
+
+def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
+    """The per-station reading list as sent to the LLM: pre-computed
+    hours_old/stale flags attached, never left for the LLM to derive from a
+    raw timestamp — same rule as everywhere else in this prompt."""
+    return [
+        {
+            **r.model_dump(),
+            "hours_old": round(h, 1) if (h := hours_old(r, guidance.aqi_fetch_time)) is not None else None,
+            "stale": is_stale(r, guidance.aqi_fetch_time),
+        }
+        for r in guidance.ground_aqi_readings
+    ]
+
+
+def run_daily_pipeline(
+    deps: PipelineDeps, today: date | None = None, dry_run: bool = False
+) -> PipelineRunResult:
+    location = deps.location
+    today = today or today_in_tz(location.timezone)
+    yesterday = add_days(today, -1)
+
+    # --- Step 1: today's forward-looking guidance + optional sources ---
+    guidance = _fetch_forward_guidance(deps)
+    primary_hourly = guidance.primary_hourly
+    primary_daily = guidance.primary_daily
 
     # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
     cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
@@ -226,29 +316,19 @@ def run_daily_pipeline(
         verification_context=verification_context,
         track_record_context=track_record_context,
         historical_logs=historical_logs,
-        ground_aqi_readings=[
-            {
-                **r.model_dump(),
-                # Pre-computed, not left for the LLM to derive from a raw
-                # timestamp — same "state the fact, don't ask for a
-                # calculation" rule as everywhere else in this prompt.
-                "hours_old": round(h, 1) if (h := hours_old(r, aqi_fetch_time)) is not None else None,
-                "stale": is_stale(r, aqi_fetch_time),
-            }
-            for r in ground_aqi_readings
-        ],
-        ground_aqi_summary=asdict(ground_aqi_summary) if ground_aqi_summary is not None else None,
+        ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
+        ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
             "primary_extended_daily": primary_daily,
-            "secondary_today_hourly": secondary_hourly,
-            "secondary_extended_daily": secondary_daily,
-            "regional_pressure": regional_pressure,
-            "air_quality": air_quality,
-            "airport_metar": airport_metar,
+            "secondary_today_hourly": guidance.secondary_hourly,
+            "secondary_extended_daily": guidance.secondary_daily,
+            "regional_pressure": guidance.regional_pressure,
+            "air_quality": guidance.air_quality,
+            "airport_metar": guidance.airport_metar,
         },
         local_bulletin_source_name=location.local_bulletin_source_name,
-        local_bulletin_text=bulletin_text,
+        local_bulletin_text=guidance.bulletin_text,
     )
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
@@ -268,7 +348,7 @@ def run_daily_pipeline(
         synoptic_pattern=tp.synoptic_pattern or "",
         uv_index_max=tp.uv_index_max,
         air_quality_aqi=tp.air_quality_aqi,
-        ground_aqi=ground_aqi_readings,
+        ground_aqi=guidance.ground_aqi_readings,
         model_predictions=ModelPredictionsByLead(
             day0=day0_predictions, day3=day3_predictions, day7=day7_predictions
         ),
@@ -328,3 +408,123 @@ def run_daily_pipeline(
         published=published,
         emailed=emailed,
     )
+
+
+def run_refresh_pipeline(
+    deps: PipelineDeps, today: date | None = None, dry_run: bool = False
+) -> RefreshRunResult:
+    """The optional evening refresh — see this module's docstring and
+    docs-internal/ROADMAP.md for the full rationale. Requires today's entry
+    to already exist (written by a prior run_daily_pipeline() call);
+    raises RefreshWithoutMorningRunError otherwise, since there is nothing
+    to refresh and fabricating one here would mean model_predictions came
+    from evening-cycle data instead of what was true at 6 AM.
+    """
+    location = deps.location
+    today = today or today_in_tz(location.timezone)
+
+    existing_entry = log_store.read_log_entry(deps.data_dir, today)
+    if existing_entry is None:
+        raise RefreshWithoutMorningRunError(
+            f"No forecast entry found for {today} to refresh — run-daily must complete "
+            "successfully first (see run_daily_pipeline)."
+        )
+
+    # --- Step 1: fresh forward-looking guidance (later model cycle) ---
+    guidance = _fetch_forward_guidance(deps)
+
+    # --- Step 2: historical notes context, same as the morning run ---
+    historical_logs = []
+    lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
+    log_lookup = log_store.make_log_lookup(deps.data_dir)
+    for d in log_store.list_log_dates(deps.data_dir):
+        if lookback_start <= d < today:
+            entry = log_lookup(d)
+            if entry is not None:
+                historical_logs.append(
+                    {
+                        "date": format_date(d),
+                        "rain_expected": entry.rain_expected,
+                        "day0_verified": entry.verification.day0.verified,
+                        "day0_note": entry.verification.day0.note,
+                        "day3_verified": entry.verification.day3.verified,
+                        "day3_note": entry.verification.day3.note,
+                        "day7_verified": entry.verification.day7.verified,
+                        "day7_note": entry.verification.day7.note,
+                    }
+                )
+
+    # --- Step 3: call the LLM in refresh mode ---
+    # No new verification happened (yesterday's actuals don't change during
+    # the day), so this is a placeholder explaining that, not a recomputed
+    # result — the LLM is told in-prompt not to fabricate new verification
+    # content, and the response's verification_notes/yesterday_verification
+    # are simply not used when merging back into the entry below.
+    verification_context = {"note": "No new verification this run — same-day refresh; see the morning issuance."}
+    track_record_context = [e.model_dump() for e in track_record_store.read_track_record(deps.data_dir).entries]
+
+    system_prompt = build_system_prompt(location, is_refresh=True)
+    user_prompt = build_user_prompt(
+        today=today,
+        yesterday=add_days(today, -1),
+        public_webpage_url=deps.public_webpage_url,
+        verification_context=verification_context,
+        track_record_context=track_record_context,
+        historical_logs=historical_logs,
+        ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
+        ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
+        today_weather_data={
+            "primary_today_hourly": guidance.primary_hourly,
+            "primary_extended_daily": guidance.primary_daily,
+            "secondary_today_hourly": guidance.secondary_hourly,
+            "secondary_extended_daily": guidance.secondary_daily,
+            "regional_pressure": guidance.regional_pressure,
+            "air_quality": guidance.air_quality,
+            "airport_metar": guidance.airport_metar,
+        },
+        local_bulletin_source_name=location.local_bulletin_source_name,
+        local_bulletin_text=guidance.bulletin_text,
+        morning_narrative=existing_entry.narrative_markdown,
+    )
+    llm_response: GeminiForecastResponse = deps.llm_provider.generate(
+        system_prompt, user_prompt, GeminiForecastResponse
+    )
+
+    # --- Step 4: merge into the EXISTING entry — everything the accuracy
+    # loop depends on (model_predictions, verification, meta.generated_at_utc,
+    # yesterday_verification_summary) is preserved untouched. Only the
+    # narrative/today_properties/ground_aqi/whatsapp_summary and a new
+    # refreshed_at timestamp are updated. ---
+    tp = llm_response.today_properties
+    updated_entry = existing_entry.model_copy(
+        update={
+            "rain_expected": tp.rain_expected,
+            "onset_window": tp.onset_window,
+            "peak_wind_kmh": tp.peak_wind_kmh,
+            "temp_high_c": tp.temp_high_c,
+            "temp_low_c": tp.temp_low_c,
+            "temp_high_low_display": tp.temp_high_low,
+            "mslp_trend_24h": tp.mslp_trend_24h or "",
+            "synoptic_pattern": tp.synoptic_pattern or "",
+            "uv_index_max": tp.uv_index_max,
+            "air_quality_aqi": tp.air_quality_aqi,
+            "ground_aqi": guidance.ground_aqi_readings,
+            "narrative_markdown": llm_response.today_narrative,
+            "whatsapp_summary": llm_response.whatsapp_summary,
+            "meta": existing_entry.meta.model_copy(update={"refreshed_at": datetime.now(timezone.utc)}),
+        }
+    )
+
+    published = False
+    if not dry_run:
+        log_store.write_log_entry(deps.data_dir, updated_entry)
+        if deps.publisher is not None:
+            deps.publisher.publish(updated_entry)
+            published = True
+        # No email_sender call here by design — the evening refresh is
+        # web-only in this first version (see ROADMAP.md's open task on
+        # whether it should also email); the standalone Apps Script mailer
+        # is unaffected either way since it runs on its own trigger and
+        # just reads whatever is currently committed.
+
+    return RefreshRunResult(today=today, log_entry=updated_entry, published=published)
