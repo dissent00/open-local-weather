@@ -264,6 +264,9 @@ to notice:
 Routine daily/evening forecast emails are correctly left poll-based (see
 above) — this fix is scoped to the alert path only, where minutes actually
 matter and the whole point is speed the detection side can't provide alone.
+**Build the `doPost()` endpoint generically from the start** (keyed by a
+`type` field, not alert-only) — see item 3, which reuses this exact
+mechanism to retire the daily/evening polling too, once it exists.
 
 **Deduplication is the whole ballgame.** An alert system that re-sends the
 same warning every hour trains people to ignore it, which is worse than
@@ -342,7 +345,7 @@ Roughly a day's work, in dependency order:
 | `llm/alert_triage.py` | ~1.5 h | New pydantic schema; provider layer already exists |
 | `.github/workflows/alerts.yml` | ~0.5 h | Minimal deps, `13 * * * *` (offset off the exact hour — see the cron-congestion note in ARCHITECTURE.md; `daily.yml`/`health_check.yml` already learned this the hard way) |
 | Site banner + `docs/alerts/` | ~1.5 h | New template + publisher hook |
-| `sendAlertEmail()` + `doPost()` in the mailer | ~2 h | New Apps Script function, Web App deployment + shared-secret auth, poll-based backstop trigger, harness cases |
+| `sendAlertEmail()` + `doPost()` in the mailer | ~2 h | New Apps Script function, Web App deployment + shared-secret auth, poll-based backstop trigger, harness cases. Key `doPost()` by `type` from the start — item 3 reuses it for daily/evening |
 | `alerts.yml` push step | ~0.5 h | POST to the Web App URL right after committing a new alert; log response, don't swallow failures |
 | `fetch/alerts/gdacs.py` | ~1.5 h | Real feed; geo-filter is the fiddly bit |
 | Scraper-health alarm | ~0.5 h | Zero-posts-parsed ⇒ notify, never "all clear" |
@@ -366,7 +369,83 @@ behaviour has been observed against real KMD posting patterns for a while.
 
 ---
 
-## 3. Real sending domain for email · **Planned**
+## 3. Push-based mailer delivery — replace Apps Script polling entirely · **Planned**
+
+### The idea
+
+Item 2's alert-delivery fix (GitHub Actions → Apps Script Web App
+`doPost()`, shared-secret-guarded) isn't actually alert-specific — it's a
+strictly better version of what the daily/evening sends already do by
+polling. Build it once, generically, and it replaces polling for all three
+payload types (morning, evening, alert), not just the new one.
+
+### What it would replace
+
+Today: `daily.yml`/`evening_refresh.yml` commit a JSON file on a schedule;
+`AppsScriptMailer.gs` runs on its *own separate* schedule (~13 minutes
+later, hand-tuned) and polls GitHub's raw-content CDN, retrying up to 3
+times over ~4.5 minutes if the commit hasn't landed yet. This works —
+tested and live-verified — but:
+- the ~13-minute offset is a hand-tuned guess, not a guarantee;
+- a day where *both* independent schedulers are unusually late is missed
+  silently, by design (documented in `AppsScriptMailer.gs`'s TIMING note);
+- every send does at least one GitHub fetch whether or not anything's
+  actually new — the file existing is the *only* signal Apps Script has;
+- the retry-with-sleep loop exists purely to paper over not knowing when
+  the commit actually landed.
+
+With push: right after `git push`, the workflow POSTs the date + run type
+(`morning`/`evening`/`alert`) to the Apps Script Web App. `doPost()` routes
+by type to the matching `send*Email()` — the exact same fetch/build/send
+code already in `AppsScriptMailer.gs`, just invoked the instant there's
+something to send instead of on a timer guessing when that might be. No
+more offset-tuning, no more blind retry loop, no more "missed if both
+schedulers are late" gap — there's only one scheduler now (GitHub Actions'
+own, already reliable), and Apps Script only acts when told.
+
+### Keep the poll-based triggers as a backstop, don't delete them
+
+Push can fail — a network blip mid-workflow, an Apps Script quota hit, a
+misconfigured deployment. Keep `createDailyTrigger()` /
+`createEveningRefreshTrigger()` firing at their current times as a safety
+net, but make `send*Email()` idempotent first: check an
+"already sent for this date+run" marker (a Script Property, e.g.
+`LAST_SENT_MORNING=2026-08-13`) before sending, so a backstop poll that
+fires after a successful push is a no-op, not a duplicate email. Item 2
+needs this exact pattern for the alert push anyway — build it once,
+generically, and both cases get it for free.
+
+### Sequencing
+
+Do this as part of item 2's `doPost()` work, not a separate deployment:
+same endpoint, same shared secret, same Web App, handler keyed by
+`type: "morning" | "evening" | "alert"` from the start. Building the alert
+push first and *not* reusing it here would mean maintaining two delivery
+mechanisms for no reason. Natural order: ship item 2's push generically →
+small follow-up wires `daily.yml`/`evening_refresh.yml` to call it too,
+demoting the existing triggers to backstop.
+
+### Honest risk
+
+This is genuinely more moving parts than "cron + poll + retry," even
+though each individual piece is simpler and more certain. If the Web App
+deployment or shared secret ever gets misconfigured, the backstop poller
+is what saves the day's email — so it has to stay real and tested (in
+`test_mailer.js`), not decay into a "we'll never actually need this"
+fallback nobody's checked in months.
+
+### Tasks
+- [ ] `LAST_SENT_<RUN>` idempotency guard in `send*Email()` (needed before
+      push+backstop can coexist without double-sending)
+- [ ] `daily.yml` push step — POST `type: "morning"` after commit
+- [ ] `evening_refresh.yml` push step — POST `type: "evening"` after commit
+- [ ] Confirm `doPost()` (built in item 2) routes all three types correctly
+- [ ] Harness cases: push delivers, push fails → backstop still sends,
+      push succeeds → backstop is a no-op
+
+---
+
+## 4. Real sending domain for email · **Planned**
 
 ### Where things stand
 
@@ -413,7 +492,7 @@ DNS propagation is the only slow part; the code is a few hours.
 
 ---
 
-## 4. Verify secondary-point predictions · **Planned**
+## 5. Verify secondary-point predictions · **Planned**
 
 Found during review: the pipeline fetches and caches **secondary-point
 actuals** (Lake Victoria) every single day — an extra API call — and
@@ -437,7 +516,7 @@ Either is fine. Silently fetching data nobody reads is not.
 
 ---
 
-## 5. Operational hardening · **Planned**
+## 6. Operational hardening · **Planned**
 
 - **Pipeline failure alerting.** Currently relies on GitHub's default
   workflow-failure email. Fine, but easy to miss in a busy inbox — and 60
@@ -458,7 +537,7 @@ Either is fine. Silently fetching data nobody reads is not.
 
 ---
 
-## 6. Multi-provider LLM support · **Planned**
+## 7. Multi-provider LLM support · **Planned**
 
 `llm/provider.LLMProvider` exists precisely for this; nothing else needs to
 change. Each new provider needs its own JSON-schema adapter mirroring
@@ -477,7 +556,7 @@ deprecation, so there's no urgency, and migration would be contained to
 
 ---
 
-## 7. WhatsApp distribution · **Deferred**
+## 8. WhatsApp distribution · **Deferred**
 
 Carried over from the original design. Meta's Cloud API loses its free
 service-message window on 2026-10-01; cost at small subscriber counts would
