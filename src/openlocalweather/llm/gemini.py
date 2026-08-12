@@ -41,6 +41,18 @@ RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 MAX_ATTEMPTS = 4
 RETRY_BASE_DELAY_S = 5  # exponential: 5s, 10s, 20s — ~35s worst case
 
+# gemini-3.x's reasoning-effort control. REST field is nested and camelCase
+# — generationConfig.thinkingConfig.thinkingLevel — confirmed empirically
+# against the live API (Google's own docs summary showed the Python-SDK
+# snake_case form, "thinking_level", which the REST endpoint actually
+# rejects). Measured against this project's real production prompt:
+# "low" -> 739 thinking tokens, "high" -> 4,235 — a real difference, and
+# at ~45K tokens/call against a 250K-token/run free-tier limit there's
+# ample headroom to default to "high" for the genuinely multi-step
+# reasoning this pipeline asks for (reconciling disagreeing models,
+# weighing recency against long-term track record).
+VALID_THINKING_LEVELS = frozenset({"minimal", "low", "medium", "high"})
+
 
 class LLMResponseError(RuntimeError):
     """The LLM call failed outright (network/HTTP error, no candidates) or
@@ -52,13 +64,18 @@ class LLMResponseError(RuntimeError):
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, thinking_level: str | None = None):
         if not api_key:
             raise ValueError("GeminiProvider requires a non-empty api_key.")
         if not model:
             raise ValueError("GeminiProvider requires a non-empty model id.")
+        if thinking_level is not None and thinking_level not in VALID_THINKING_LEVELS:
+            raise ValueError(
+                f"thinking_level must be one of {sorted(VALID_THINKING_LEVELS)} or None, got {thinking_level!r}."
+            )
         self.api_key = api_key
         self.model = model
+        self.thinking_level = thinking_level
 
     def _post_with_retry(self, url: str, payload: dict) -> requests.Response:
         """POSTs with bounded exponential backoff on transient failures.
@@ -103,6 +120,8 @@ class GeminiProvider:
                 "responseSchema": to_gemini_schema(response_schema),
             },
         }
+        if self.thinking_level is not None:
+            payload["generationConfig"]["thinkingConfig"] = {"thinkingLevel": self.thinking_level}
 
         resp = self._post_with_retry(url, payload)
 

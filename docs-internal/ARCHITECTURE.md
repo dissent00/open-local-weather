@@ -124,6 +124,21 @@ nothing downstream could detect. So:
 Numbers flow *into* the prompt as pre-computed context. They never flow back
 out of it.
 
+### Reasoning effort is turned up, deliberately
+
+`GeminiProvider` defaults to `thinkingConfig.thinkingLevel: "high"`
+(`GEMINI_THINKING_LEVEL` env var, `cli.py`) for the actual forecast
+pipeline. Measured directly against this project's real production prompt:
+"low" produced 739 thinking tokens, "high" produced 4,235 — a real
+difference, visible in the output too (the Forecaster Confidence Notes
+section reasons more specifically about which model's track record drove
+each call). At ~45K tokens/call against a measured 250K-token/run free-tier
+limit, there's no real cost to defaulting high for tasks that are
+genuinely multi-step reasoning (reconciling five disagreeing models,
+weighing recent vs. long-term skill). `check-health`'s model-deprecation
+check deliberately does NOT set this — it's a simple factual lookup, not
+reasoning, and uses Gemini's own default instead.
+
 ### Stateless rolling stats, one incremental exception
 
 Rolling 10/30-check windows are re-derived from scratch every run by walking

@@ -39,6 +39,14 @@ DEFAULT_DATA_DIR = REPO_ROOT / "data"
 DEFAULT_DOCS_DIR = REPO_ROOT / "docs"
 
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+# "high" by default for the actual forecast pipeline (run-daily,
+# refresh-forecast) — measured against the real production prompt, "high"
+# vs "low" is a real difference (4,235 vs 739 thinking tokens) and at
+# ~45K tokens/call against a 250K-token/run free-tier limit there's ample
+# headroom. check-health's model-deprecation check is a simple factual
+# lookup, not multi-step reasoning, and intentionally does NOT set this —
+# it uses Gemini's own default.
+DEFAULT_GEMINI_THINKING_LEVEL = "high"
 
 
 def _github_repo_slug() -> str:
@@ -83,6 +91,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     if not gemini_api_key:
         raise SystemExit("GEMINI_API_KEY environment variable is required.")
     gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
+    gemini_thinking_level = os.environ.get("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None
     waqi_token = os.environ.get("WAQI_TOKEN", "")
 
     # Publisher needs an absolute base URL to build sane nav links (see
@@ -119,7 +128,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     return PipelineDeps(
         location=location,
         data_dir=data_path,
-        llm_provider=GeminiProvider(api_key=gemini_api_key, model=gemini_model),
+        llm_provider=GeminiProvider(api_key=gemini_api_key, model=gemini_model, thinking_level=gemini_thinking_level),
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
         bulletin_fetcher=_build_bulletin_fetcher(location.local_bulletin_url),

@@ -184,3 +184,36 @@ def test_retries_on_network_error_then_succeeds():
         provider = GeminiProvider(api_key="key", model=MODEL)
         result = provider.generate("s", "u", GeminiForecastResponse)
     assert result.yesterday_verification == "Rain call was accurate."
+
+
+# ---------------------------------------------------------------------------
+# Thinking level (reasoning effort control)
+# ---------------------------------------------------------------------------
+
+
+def test_thinking_level_rejects_invalid_value():
+    with pytest.raises(ValueError, match="thinking_level"):
+        GeminiProvider(api_key="key", model=MODEL, thinking_level="extreme")
+
+
+def test_thinking_level_accepts_valid_values():
+    for level in ["minimal", "low", "medium", "high"]:
+        GeminiProvider(api_key="key", model=MODEL, thinking_level=level)  # must not raise
+
+
+def test_thinking_level_omitted_from_payload_by_default():
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=gemini_envelope(VALID_PAYLOAD))
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        provider.generate("s", "u", GeminiForecastResponse)
+        body = m.last_request.json()
+    assert "thinkingConfig" not in body["generationConfig"]
+
+
+def test_thinking_level_included_in_payload_when_set():
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=gemini_envelope(VALID_PAYLOAD))
+        provider = GeminiProvider(api_key="key", model=MODEL, thinking_level="high")
+        provider.generate("s", "u", GeminiForecastResponse)
+        body = m.last_request.json()
+    assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "high"}
