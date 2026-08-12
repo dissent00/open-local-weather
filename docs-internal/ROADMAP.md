@@ -217,8 +217,53 @@ hourly cron ──▶ scrape KMD /weather-warnings/  ──┐
                                                  │ not relevant → record, exit
                                                  ▼ relevant
                               write data/alerts/<id>.json, commit,
-                              surface banner on site, trigger alert email
+                              surface banner on site, push alert email
+                                                 (see "Delivery" below —
+                                                 not the mailer's own poll)
 ```
+
+### Delivery: the alert email must be pushed, not polled
+
+Caught while wiring up the second daily send (`mailer/AppsScriptMailer.gs`
+now has two: `sendDailyForecastEmail()` for the morning run,
+`sendEveningRefreshEmail()` for the evening refresh) — both work by having
+Apps Script poll GitHub on its own fixed timer. That's the right design for
+a routine forecast email, where being off by a few minutes is irrelevant
+and there's a retry loop to absorb it. **It is the wrong design for a
+severe-weather alert.** If `alerts.yml`'s hourly poll detects a new,
+relevant KMD/GDACS warning at :13 past the hour, and alert delivery is
+*also* just "Apps Script checks for a new alert file on its own separate
+timer," the email could sit unsent for up to another full timer interval on
+top of the up-to-an-hour detection delay already inherent to hourly
+polling — stacking two independent poll delays for exactly the message
+where that matters most.
+
+**Fix: push, don't poll, for the last hop only.** Once `alerts.yml`
+detects and commits a genuinely new, relevant alert, it should hand it
+straight to the mailer instead of waiting for a second independent timer
+to notice:
+- Deploy `AppsScriptMailer.gs` as an Apps Script **Web App** (Deploy → New
+  deployment → Web app), adding a `doPost(e)` handler.
+- `doPost(e)` validates a shared secret (an Apps Script Script Property,
+  matched against a new GitHub Actions secret — the alert *payload* itself
+  is public data either way, this is just to stop randoms from POSTing
+  fake alerts) and calls a new `sendAlertEmail(alertPayload)`.
+- `alerts.yml`, right after committing `data/alerts/<id>.json`, does an
+  HTTP POST to the Web App URL with the alert JSON as the body.
+- A poll-based `sendAlertEmail` check should still exist as a **backstop**
+  (e.g. folded into the existing hourly cadence) in case the push itself
+  fails — log the push's HTTP response rather than treating a failure as
+  silent success, but don't make the backstop the primary path or the
+  original problem just comes back.
+- Detection stays exactly as poll-based as it has to be — KMD/GDACS give
+  no push mechanism of their own. Only the last hop, "alert is ready → get
+  it to a human," changes from poll to push. Worst case becomes "up to an
+  hour to detect, then roughly a minute to deliver," not "up to two
+  stacked poll intervals."
+
+Routine daily/evening forecast emails are correctly left poll-based (see
+above) — this fix is scoped to the alert path only, where minutes actually
+matter and the whole point is speed the detection side can't provide alone.
 
 **Deduplication is the whole ballgame.** An alert system that re-sends the
 same warning every hour trains people to ignore it, which is worse than
@@ -262,7 +307,10 @@ Gemini free tier.
 **Real limitation to accept up front:** GitHub's scheduled workflows are
 routinely delayed 5–20 minutes under load, and the guarantee is
 best-effort, not punctual. Combined with hourly polling, this system
-delivers *"usually within the hour"*, **not** *"within minutes"*. That is
+delivers *"usually within the hour"*, **not** *"within minutes"* —
+detection is the bottleneck, not delivery (see "Delivery" above: pushing
+the email once an alert is detected removes the *second* poll delay, but
+can't remove the first one, since KMD/GDACS give no faster option). That is
 fine for heavy-rainfall advisories issued hours ahead. It is **not** a
 flash-flood warning system, and the site copy should not imply otherwise.
 
@@ -294,12 +342,14 @@ Roughly a day's work, in dependency order:
 | `llm/alert_triage.py` | ~1.5 h | New pydantic schema; provider layer already exists |
 | `.github/workflows/alerts.yml` | ~0.5 h | Minimal deps, `13 * * * *` (offset off the exact hour — see the cron-congestion note in ARCHITECTURE.md; `daily.yml`/`health_check.yml` already learned this the hard way) |
 | Site banner + `docs/alerts/` | ~1.5 h | New template + publisher hook |
-| `sendAlertEmail()` in the mailer | ~1.5 h | New Apps Script function + trigger + harness cases |
+| `sendAlertEmail()` + `doPost()` in the mailer | ~2 h | New Apps Script function, Web App deployment + shared-secret auth, poll-based backstop trigger, harness cases |
+| `alerts.yml` push step | ~0.5 h | POST to the Web App URL right after committing a new alert; log response, don't swallow failures |
 | `fetch/alerts/gdacs.py` | ~1.5 h | Real feed; geo-filter is the fiddly bit |
 | Scraper-health alarm | ~0.5 h | Zero-posts-parsed ⇒ notify, never "all clear" |
 
 A useful first slice is the first four rows plus the health alarm: that
-gets alerts onto the site, with email and GDACS following once the dedup
+gets alerts onto the site, with email (poll-based backstop only, push
+deferred) and GDACS following once the dedup
 behaviour has been observed against real KMD posting patterns for a while.
 
 ### Tasks
@@ -309,7 +359,9 @@ behaviour has been observed against real KMD posting patterns for a while.
 - [ ] `.github/workflows/alerts.yml` — `13 * * * *` (not `0 * * * *`), minimal deps
 - [ ] Scraper-health alarm (zero-posts-parsed ⇒ notify, don't assume calm)
 - [ ] Site alert banner + `docs/alerts/`
-- [ ] `sendAlertEmail()` in the Apps Script mailer, own trigger
+- [ ] `sendAlertEmail()` in the Apps Script mailer, poll-based backstop trigger
+- [ ] `doPost()` Web App endpoint + shared-secret auth, for push delivery
+- [ ] `alerts.yml` push step — POST to the Web App URL right after committing
 - [ ] `fetch/alerts/gdacs.py` — RSS + bounding-box filter
 
 ---
