@@ -33,13 +33,24 @@ global.PropertiesService = {
   getScriptProperties: () => ({ getProperty: (key) => scriptProps[key] || null }),
 };
 
-const sampleEntry = fs.readFileSync(path.join(__dirname, 'fixtures', 'sample_entry.json'), 'utf8');
+const sampleEntryRaw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'sample_entry.json'), 'utf8'));
+// sample_entry.json (a real morning-run entry) has no meta.refreshed_at —
+// exactly the "not yet refreshed" state sendEveningRefreshEmail() must
+// skip on. This is the same entry with a refreshed_at stamped in, for
+// exercising the evening happy path — built from the real fixture, not a
+// synthetic one, so it stays honest about what a refreshed entry actually
+// contains.
+const refreshedEntryRaw = { ...sampleEntryRaw, meta: { ...sampleEntryRaw.meta, refreshed_at: '2026-08-11T15:12:00Z' } };
 
 // queuedResponses, if set, lets a test script exactly how many consecutive
 // 404s to return before the real fixture "arrives" — used to exercise the
 // retry path deterministically. null (the default) means "always 200".
 let queuedResponses = null;
 let fetchCallCount = 0;
+// Which variant of the entry UrlFetchApp serves once it stops 404ing —
+// switched per-test so the same mock can exercise both the morning
+// (unrefreshed) and evening (refreshed) happy paths.
+let servedEntry = sampleEntryRaw;
 
 global.UrlFetchApp = {
   fetch: (url) => {
@@ -51,7 +62,7 @@ global.UrlFetchApp = {
       queuedResponses--;
       return { getResponseCode: () => 404, getContentText: () => '' };
     }
-    return { getResponseCode: () => 200, getContentText: () => sampleEntry };
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify(servedEntry) };
   },
 };
 
@@ -65,22 +76,32 @@ global.Utilities = {
   sleep: (ms) => sleepCalls.push(ms), // no-op — don't actually block the test
 };
 
-let registeredTriggers = [];
-let lastTriggerConfig = {};
+// Stateful trigger registry, keyed by handler function name — needed to
+// actually exercise createDailyTrigger()/createEveningRefreshTrigger()'s
+// "only touch my own handler's triggers" scoping, not just that *a*
+// trigger got created.
+let triggersByHandler = {};
+let lastTriggerConfigByHandler = {};
 global.ScriptApp = {
-  getProjectTriggers: () => [],
+  getProjectTriggers: () => Object.keys(triggersByHandler).map(fnName => ({
+    getHandlerFunction: () => fnName,
+  })),
   newTrigger: (fnName) => {
+    const cfg = { hour: undefined, minute: undefined };
     const builder = {
       timeBased: () => builder,
-      atHour: (h) => { lastTriggerConfig.hour = h; return builder; },
-      nearMinute: (m) => { lastTriggerConfig.minute = m; return builder; },
+      atHour: (h) => { cfg.hour = h; return builder; },
+      nearMinute: (m) => { cfg.minute = m; return builder; },
       everyDays: () => builder,
       inTimezone: () => builder,
-      create: () => registeredTriggers.push(fnName),
+      create: () => {
+        triggersByHandler[fnName] = true;
+        lastTriggerConfigByHandler[fnName] = cfg;
+      },
     };
     return builder;
   },
-  deleteTrigger: () => {},
+  deleteTrigger: (t) => { delete triggersByHandler[t.getHandlerFunction()]; },
 };
 
 eval(fs.readFileSync(path.join(__dirname, 'AppsScriptMailer.gs'), 'utf8'));
@@ -99,6 +120,7 @@ function reset() {
   sleepCalls = [];
   fetchCallCount = 0;
   queuedResponses = null;
+  servedEntry = sampleEntryRaw;
   global.Utilities.formatDate = () => '2026-08-11';
 }
 
@@ -149,12 +171,57 @@ assert.strictEqual(sentEmails.length, 0, 'should not send when no subscribers ar
 assert.strictEqual(fetchCallCount, 0, 'should not fetch at all when there are no subscribers');
 console.log('PASS: no subscribers configured, nothing sent, no fetch attempted');
 
-// --- createDailyTrigger registers the right function at ~6:20 ---
 scriptProps.SUBSCRIBER_EMAILS = 'alice@example.com';
+
+// --- Evening happy path: entry has meta.refreshed_at set ---
+reset();
+servedEntry = refreshedEntryRaw;
+sendEveningRefreshEmail();
+assert.strictEqual(sentEmails.length, 1, `expected 1 email, got ${sentEmails.length}`);
+assert.ok(sentEmails[0].subject.includes('[Kisumu, Kenya Weather] Evening Update — 2026-08-11'), 'evening subject line wrong');
+assert.ok(sentEmails[0].body.includes('Kisumu, Kenya — Evening Update'), 'evening body should carry the "Evening Update" run label');
+assert.ok(/evening refresh of the forecast issued earlier today/i.test(sentEmails[0].body), 'evening body should explain it is a refresh, not a fresh accuracy-tracked run');
+assert.strictEqual(sleepCalls.length, 0, 'should not sleep/retry when the entry is already refreshed on the first try');
+console.log('PASS: evening update happy path — sent', sentEmails.length, 'email(s)');
+
+// --- Evening skip path: entry exists but hasn't been refreshed yet ---
+reset();
+servedEntry = sampleEntryRaw; // real fixture — no meta.refreshed_at
+sendEveningRefreshEmail();
+assert.strictEqual(sentEmails.length, 0, 'should not send an evening update when the entry has not actually been refreshed yet');
+assert.strictEqual(sleepCalls.length, 2, `expected exactly 2 sleeps (3 attempts, entry never becomes "refreshed"), got ${sleepCalls.length}`);
+assert.strictEqual(fetchCallCount, 3, `expected exactly 3 fetch attempts, got ${fetchCallCount}`);
+console.log('PASS: evening update skipped gracefully — entry exists but is not refreshed yet');
+
+// --- Evening entry becomes refreshed partway through retries ---
+reset();
+queuedResponses = 1; // first fetch 404s
+servedEntry = refreshedEntryRaw;
+sendEveningRefreshEmail();
+assert.strictEqual(sentEmails.length, 1, 'should send once a refreshed entry appears on retry');
+assert.strictEqual(sleepCalls.length, 1, `expected exactly 1 sleep before the refreshed entry was found, got ${sleepCalls.length}`);
+console.log('PASS: evening update found on retry — sent after 1 wait');
+
+// --- createDailyTrigger registers the right function at ~6:20, and only
+// ever touches its own handler's trigger, never an unrelated one ---
+reset();
+triggersByHandler = {};
+lastTriggerConfigByHandler = {};
+createEveningRefreshTrigger(); // registered first, so we can prove createDailyTrigger() doesn't wipe it
 createDailyTrigger();
-assert.ok(registeredTriggers.includes('sendDailyForecastEmail'), 'trigger not registered correctly');
-assert.strictEqual(lastTriggerConfig.hour, 6, 'trigger hour should be 6');
-assert.strictEqual(lastTriggerConfig.minute, 20, 'trigger minute should be 20');
-console.log('PASS: daily trigger registered for sendDailyForecastEmail at ~6:20');
+assert.ok(triggersByHandler.sendDailyForecastEmail, 'morning trigger not registered correctly');
+assert.ok(triggersByHandler.sendEveningRefreshEmail, 'createDailyTrigger() should not have deleted the unrelated evening trigger');
+assert.strictEqual(lastTriggerConfigByHandler.sendDailyForecastEmail.hour, 6, 'morning trigger hour should be 6');
+assert.strictEqual(lastTriggerConfigByHandler.sendDailyForecastEmail.minute, 20, 'morning trigger minute should be 20');
+console.log('PASS: morning trigger registered for sendDailyForecastEmail at ~6:20, evening trigger left untouched');
+
+// --- createEveningRefreshTrigger registers at ~18:20, and likewise never
+// touches the unrelated morning trigger ---
+createEveningRefreshTrigger();
+assert.ok(triggersByHandler.sendDailyForecastEmail, 'createEveningRefreshTrigger() should not have deleted the unrelated morning trigger');
+assert.ok(triggersByHandler.sendEveningRefreshEmail, 'evening trigger not registered correctly');
+assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.hour, 18, 'evening trigger hour should be 18');
+assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.minute, 20, 'evening trigger minute should be 20');
+console.log('PASS: evening trigger registered for sendEveningRefreshEmail at ~18:20, morning trigger left untouched');
 
 console.log('\nALL MAILER HARNESS CHECKS PASSED');

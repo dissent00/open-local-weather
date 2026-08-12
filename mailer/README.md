@@ -30,9 +30,22 @@ Every email carries an explicit beta/experimental disclaimer and a link to
 the live site — see `buildEmailPlainText()`'s doc comment in
 [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for the full rationale.
 
+**Two independent sends, one per pipeline run**: `sendDailyForecastEmail()`
+pairs with the morning full run (~06:07 EAT), `sendEveningRefreshEmail()`
+pairs with the evening refresh run (~18:07 EAT) — see
+[ARCHITECTURE.md](../docs-internal/ARCHITECTURE.md) for why that second run
+exists. Each has its own Apps Script trigger
+(`createDailyTrigger()` / `createEveningRefreshTrigger()`), and each trigger
+function only ever deletes/re-registers *its own* handler's trigger, never
+the other one — safe to re-run either independently. The evening send
+additionally waits for `meta.refreshed_at` to actually be set on the day's
+entry (not just for the file to exist), so it can't accidentally resend the
+unrefreshed morning content under an "Evening Update" subject if the evening
+pipeline run is late or fails.
+
 See the setup instructions in the header comment of
 [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for deployment steps
-(script.google.com, Script Properties, authorizing the trigger).
+(script.google.com, Script Properties, authorizing both triggers).
 
 **Before deploying a change**, run the verification harness (mocks Apps
 Script's globals — `PropertiesService`, `UrlFetchApp`, `MailApp`, etc. —

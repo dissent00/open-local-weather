@@ -34,16 +34,21 @@
  * not a scrape of the rendered GitHub Pages HTML. Same underlying
  * forecast either way, but immune to any future page-template change.
  *
- * TIMING: the trigger fires at ~06:20 in TIMEZONE, only 20 minutes after
- * the main pipeline's own 06:00 cron. Both GitHub Actions' scheduled
+ * TIMING: two independent Apps Script triggers pair with the pipeline's
+ * two independent GitHub Actions runs (see ARCHITECTURE.md): the morning
+ * trigger fires at ~06:20 in TIMEZONE, ~13 minutes after the pipeline's
+ * own ~06:07 cron; the evening trigger fires at ~18:20, ~13 minutes after
+ * the ~18:07 evening-refresh cron. Both GitHub Actions' scheduled
  * triggers and Apps Script's own time-based triggers are documented as
  * able to fire several minutes later than requested under load — two
- * independent sources of jitter with only a 20-minute gap between them.
+ * independent sources of jitter with only a ~13-minute gap between them.
  * To de-risk that, fetchForecastEntryWithRetry() retries a few times with
- * a short delay before giving up for the day, comfortably within Apps
- * Script's 6-minute execution limit for consumer accounts. A day where
+ * a short delay before giving up for the run, comfortably within Apps
+ * Script's 6-minute execution limit for consumer accounts. A run where
  * BOTH systems are unusually late can still be missed silently (by
  * design — see fetchForecastEntry()'s doc comment) rather than erroring.
+ * The evening trigger additionally waits for `meta.refreshed_at` to be
+ * set, not just for the file to exist — see sendEveningRefreshEmail().
  *
  * ============================== SETUP ==============================
  * 1. script.google.com -> New project -> replace Code.gs's contents with
@@ -58,14 +63,18 @@
  *      TIMEZONE           "Africa/Nairobi" (match location.yaml's timezone)
  *      PUBLIC_URL         "https://<owner>.github.io/<repo>/" (linked in
  *                         the email footer; optional, leave blank to omit)
- * 3. Run createDailyTrigger() once from the editor (Run menu). Apps
- *    Script will prompt for authorization the first time — that consent
- *    screen IS the auth mechanism; there's no separate app password step.
- * 4. Done. The trigger fires daily at ~06:20 in TIMEZONE, retrying a few
- *    times (see TIMING above) if that day's file isn't committed yet. If
- *    it's still not there after retrying, sendDailyForecastEmail() logs it
- *    and skips sending for the day rather than erroring or sending stale
- *    content.
+ * 3. Run createDailyTrigger() once from the editor (Run menu) for the
+ *    morning send. If you also run the pipeline's evening refresh, also
+ *    run createEveningRefreshTrigger() once for the evening send — the
+ *    two are independent triggers, each only ever managing its own
+ *    handler, so running one never disturbs the other. Apps Script will
+ *    prompt for authorization the first time — that consent screen IS the
+ *    auth mechanism; there's no separate app password step.
+ * 4. Done. Each trigger fires daily (~06:20 / ~18:20 in TIMEZONE),
+ *    retrying a few times (see TIMING above) if that run's data isn't
+ *    ready yet. If it's still not ready after retrying, the corresponding
+ *    send*Email() function logs it and skips sending for that run rather
+ *    than erroring or sending stale content.
  * =====================================================================
  */
 
@@ -100,8 +109,48 @@ function sendDailyForecastEmail() {
   }
 
   const subject = `[${config.locationName} Weather] Daily Forecast — ${todayStr}`;
-  const body = buildEmailPlainText(config, entry, todayStr);
-  const htmlBody = buildEmailHtml(config, entry, todayStr);
+  sendEntryEmail(config, entry, todayStr, subject, null);
+  Logger.log(`Sent ${todayStr} morning forecast.`);
+}
+
+/** Second daily send, paired with the pipeline's evening refresh run
+ * (~18:07 EAT — see README/ARCHITECTURE for why that run exists). Fired
+ * from its own Apps Script trigger — see createEveningRefreshTrigger()
+ * below — independent of the morning trigger. Waits not just for the
+ * day's file to exist (it already does, from the morning run) but for
+ * `meta.refreshed_at` to actually be set, i.e. the evening pipeline has
+ * genuinely merged fresh narrative/data into it — otherwise this would
+ * just resend the morning content again under a different subject.
+ */
+function sendEveningRefreshEmail() {
+  const config = getConfig();
+  if (!config.subscriberEmails.length) {
+    Logger.log('No subscriber emails configured in Script Properties (SUBSCRIBER_EMAILS) — nothing to send (evening update).');
+    return;
+  }
+
+  const todayStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd');
+  const entry = fetchForecastEntryWithRetry(config, todayStr, isRefreshedEntry);
+  if (!entry) {
+    Logger.log(`No refreshed forecast entry found for ${todayStr} after ${RETRY_MAX_ATTEMPTS} attempts — skipping evening update (the evening refresh pipeline may not have run/committed yet, or the morning entry itself is missing).`);
+    return;
+  }
+
+  const subject = `[${config.locationName} Weather] Evening Update — ${todayStr}`;
+  sendEntryEmail(config, entry, todayStr, subject, 'Evening Update');
+  Logger.log(`Sent ${todayStr} evening update.`);
+}
+
+function isRefreshedEntry(entry) {
+  return !!(entry && entry.meta && entry.meta.refreshed_at);
+}
+
+/** Shared per-recipient send loop for both sendDailyForecastEmail() and
+ * sendEveningRefreshEmail() — identical mechanics, only the subject and
+ * runLabel differ. */
+function sendEntryEmail(config, entry, dateStr, subject, runLabel) {
+  const body = buildEmailPlainText(config, entry, dateStr, runLabel);
+  const htmlBody = buildEmailHtml(config, entry, dateStr, runLabel);
 
   let sentCount = 0;
   config.subscriberEmails.forEach(email => {
@@ -120,16 +169,20 @@ function sendDailyForecastEmail() {
     }
   });
 
-  Logger.log(`Sent ${todayStr} forecast to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
+  Logger.log(`Sent ${dateStr} (${runLabel || 'morning'}) to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
 }
 
 /** Retries fetchForecastEntry a few times with a short delay between
  * attempts — see the TIMING note in the module header for why a tight gap
- * between two independently-jittery schedulers needs this. */
-function fetchForecastEntryWithRetry(config, dateStr) {
+ * between two independently-jittery schedulers needs this. `isReady`
+ * (default: entry just needs to exist) lets a caller also require some
+ * condition on the entry's content, e.g. sendEveningRefreshEmail()
+ * requiring `meta.refreshed_at` to be set, not merely the file to exist. */
+function fetchForecastEntryWithRetry(config, dateStr, isReady) {
+  const ready = isReady || (() => true);
   for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
     const entry = fetchForecastEntry(config, dateStr);
-    if (entry) return entry;
+    if (entry && ready(entry)) return entry;
     if (attempt < RETRY_MAX_ATTEMPTS) {
       Logger.log(`Forecast entry for ${dateStr} not found yet (attempt ${attempt}/${RETRY_MAX_ATTEMPTS}) — waiting ${RETRY_DELAY_MS / 1000}s and retrying.`);
       Utilities.sleep(RETRY_DELAY_MS);
@@ -171,13 +224,14 @@ const AFD_DIVIDER = '&&';
  * not an NWS product, and a convincing-looking official header would cut
  * against the disclaimer this function exists partly to carry.
  */
-function buildEmailPlainText(config, entry, dateStr) {
+function buildEmailPlainText(config, entry, dateStr, runLabel) {
   const issuedStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd HH:mm');
   const discussion = convertMarkdownToAfdText(entry.narrative_markdown || '');
+  const locationLine = runLabel ? `${config.locationName} — ${runLabel}` : config.locationName;
 
   const lines = [];
   lines.push('Open Local Weather — Experimental Forecast Discussion');
-  lines.push(config.locationName);
+  lines.push(locationLine);
   lines.push(`Issued ${issuedStr} (${config.timezone})`);
   lines.push('');
   lines.push(AFD_DIVIDER);
@@ -192,6 +246,17 @@ function buildEmailPlainText(config, entry, dateStr) {
     'Department, meteo.go.ke).',
     AFD_WRAP_WIDTH
   ));
+  if (runLabel) {
+    lines.push('');
+    lines.push(wrapText(
+      'This is an evening refresh of the forecast issued earlier today, ' +
+      're-synthesized on the freshest available model data for the rest ' +
+      "of today and tomorrow. It does not change today's accuracy-" +
+      'tracking record — only the morning run counts toward model ' +
+      'verification.',
+      AFD_WRAP_WIDTH
+    ));
+  }
   lines.push('');
   lines.push(AFD_DIVIDER);
   lines.push('');
@@ -234,8 +299,8 @@ function buildEmailPlainText(config, entry, dateStr) {
  * doc comment for why that would risk the two versions saying different
  * things.
  */
-function buildEmailHtml(config, entry, dateStr) {
-  const plainText = buildEmailPlainText(config, entry, dateStr);
+function buildEmailHtml(config, entry, dateStr, runLabel) {
+  const plainText = buildEmailPlainText(config, entry, dateStr, runLabel);
   const escaped = escapeHtml(plainText);
   return `<pre style="font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; margin: 0;">${escaped}</pre>`;
 }
@@ -315,10 +380,32 @@ function wrapText(text, width) {
   return lines.join('\n');
 }
 
+/** Registers (or re-registers) the morning trigger only. Deliberately
+ * scoped to triggers whose handler is sendDailyForecastEmail — an earlier
+ * version of this function blanket-deleted *every* project trigger, which
+ * would silently wipe out an evening trigger (see
+ * createEveningRefreshTrigger()) registered separately. Safe to re-run any
+ * time without touching the other trigger. */
 function createDailyTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'sendDailyForecastEmail')
+    .forEach(t => ScriptApp.deleteTrigger(t));
   const config = getConfig();
   ScriptApp.newTrigger('sendDailyForecastEmail')
     .timeBased().atHour(6).nearMinute(20).everyDays(1).inTimezone(config.timezone).create();
-  Logger.log(`Daily ~6:20 AM ${config.timezone} email trigger registered.`);
+  Logger.log(`Daily ~6:20 AM ${config.timezone} morning email trigger registered.`);
+}
+
+/** Registers (or re-registers) the evening-update trigger only — pairs
+ * with the pipeline's ~18:07 EAT evening refresh run the same ~13-minute-
+ * later way the morning trigger pairs with the ~06:07 EAT morning run.
+ * Scoped to its own handler for the same reason as createDailyTrigger(). */
+function createEveningRefreshTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'sendEveningRefreshEmail')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  const config = getConfig();
+  ScriptApp.newTrigger('sendEveningRefreshEmail')
+    .timeBased().atHour(18).nearMinute(20).everyDays(1).inTimezone(config.timezone).create();
+  Logger.log(`Daily ~6:20 PM ${config.timezone} evening-update email trigger registered.`);
 }
