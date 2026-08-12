@@ -100,6 +100,46 @@ def test_render_forecast_page_archived_banner_only_when_not_latest():
     assert "archived forecast" in archived_html
 
 
+def test_render_forecast_page_always_shows_disclaimer():
+    """Every forecast page — not just the email — must carry the beta/
+    not-for-life-safety disclaimer, since the site is public and shareable
+    in a way the manually-managed subscriber list isn't."""
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "disclaimer-banner" in html
+    assert "not an official government product" in html
+    assert "life-safety decisions" in html
+
+
+def test_render_forecast_page_disclaimer_omits_official_source_when_unconfigured():
+    # LOCATION has no local_bulletin_source_name/url set (a fork that
+    # hasn't configured a local met service) — the disclaimer must degrade
+    # gracefully, not reference a source that doesn't exist.
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "consult" not in html
+
+
+def test_render_forecast_page_disclaimer_links_official_source_when_configured():
+    location = LOCATION.model_copy(
+        update={
+            "local_bulletin_source_name": "Kenya Meteorological Department (KMD)",
+            "local_bulletin_url": "https://meteo.go.ke/weather-warnings/",
+        }
+    )
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, location, nav, is_latest=True)
+
+    assert "consult" in html
+    assert "Kenya Meteorological Department (KMD)" in html
+    assert '<a href="https://meteo.go.ke/weather-warnings/">Kenya Meteorological Department (KMD)</a>' in html
+
+
 def test_render_forecast_page_omits_optional_stats_when_absent():
     entry = make_entry(date(2026, 8, 11), onset_window=None, uv_index_max=None, air_quality_aqi=None)
     nav = build_nav_links("https://example.com", "owner/repo")
@@ -128,6 +168,15 @@ def test_render_archive_index_page_empty_state():
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_archive_index_page([], LOCATION, nav)
     assert "No forecasts published yet." in html
+
+
+def test_render_archive_index_page_always_shows_disclaimer():
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_archive_index_page([date(2026, 8, 11)], LOCATION, nav)
+
+    assert "disclaimer-banner" in html
+    assert "not an official government product" in html
+    assert "life-safety decisions" in html
 
 
 # ---------------------------------------------------------------------------

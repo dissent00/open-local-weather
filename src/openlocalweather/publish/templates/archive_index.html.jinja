@@ -17,6 +17,8 @@
   </div>
 </header>
 <main class="wrap">
+  <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions.{% if location.local_bulletin_source_name %} For official warnings and advisories, consult {% if location.local_bulletin_url %}<a href="{{ location.local_bulletin_url }}">{{ location.local_bulletin_source_name }}</a>{% else %}{{ location.local_bulletin_source_name }}{% endif %}.{% endif %}</p>
+
   <h1>Forecast Archive</h1>
   <p class="meta">Every daily forecast ever published for {{ location.primary_place_name }} — the full, git-versioned record. Every prediction here was independently scored against what actually happened; see each day's "Forecaster Confidence Notes" section for how that history shaped that day's call.</p>
 

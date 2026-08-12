@@ -18,6 +18,8 @@
   </div>
 </header>
 <main class="wrap">
+  <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions.{% if location.local_bulletin_source_name %} For official warnings and advisories, consult {% if location.local_bulletin_url %}<a href="{{ location.local_bulletin_url }}">{{ location.local_bulletin_source_name }}</a>{% else %}{{ location.local_bulletin_source_name }}{% endif %}.{% endif %}</p>
+
   {% if not is_latest %}
   <p class="banner">This is an archived forecast for {{ entry.date.isoformat() }}. <a href="{{ nav.home }}">See today's forecast</a>.</p>
   {% endif %}
