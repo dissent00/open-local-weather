@@ -445,7 +445,86 @@ fallback nobody's checked in months.
 
 ---
 
-## 4. Real sending domain for email · **Planned**
+## 4. Ground AQI staleness — review and decide on a fix · **Planned**
+
+### The problem, with real morning evidence
+
+Ground AQI stations are configured 3-deep for Kisumu (Airport, Ochieng'
+Avenue, Dunga Beach — `config/location.yaml`'s `waqi_stations`), likely
+solar-powered low-cost sensors, per the working theory from earlier in this
+project ("they just started updating... guessing solar-powered"). The
+morning run consistently catches them mid-wake-up. Real evidence, both
+mornings this project has actually run:
+
+| Date | Run time (UTC) | Stations reporting *anything* | Notes |
+|---|---|---|---|
+| 2026-08-11 | ~04:43 | 1 of 3 (Airport only) | `aqi: 84` |
+| 2026-08-12 | ~04:43 | 1 of 3 (Airport only) | `aqi: null`, `pm25: 157.0` — composite AQI missing even though PM2.5 reported |
+
+A same-day afternoon test run (unrelated dry-run, ~13:00 local) got all 3
+stations back with real numbers — consistent with the solar theory:
+Ochieng' Avenue and Dunga Beach aren't just *stale* in the morning, they
+report **nothing at all** yet.
+
+**A second, distinct failure mode found in the same evidence**: the
+2026-08-12 Airport reading has `measured_at: null` — WAQI didn't return a
+parseable timestamp that call, even though `pm25` came through. Since
+`aqi.is_stale()` treats a missing age as stale (`age is None or age >
+STALE_THRESHOLD_HOURS`, `aqi.py`), that reading gets excluded from
+`GROUND AQI SUMMARY` for the same reason a genuinely 6-hour-old reading
+would — "no timestamp from WAQI this call" and "sensor hasn't reported
+since last night" currently look identical downstream, even though they're
+different problems with potentially different fixes.
+
+### Current behavior (already shipped, not broken — just worth revisiting)
+
+`summarize_ground_aqi()` excludes stale/unknown-age readings from the
+range/worst-station summary; the prompt's DATA QUALITY NOTES section
+already tells the LLM to say so explicitly and lean on CAMS model data
+alone when this happens (`llm/prompt.py`). This is honest and doesn't
+crash — the open question is whether it's the *best* product decision, not
+whether it's broken.
+
+### Three candidate paths (as raised) — none chosen yet, needs more data first
+
+1. **Delay the morning run** to give sensors more time to wake up. Real
+   constraint: this can't be tuned in isolation — item 1's cycle-alignment
+   analysis already fixed 03:00 UTC against a specific tradeoff table
+   (aligned model windows open at 02:00/08:00/14:00/20:00 UTC only). Any
+   change here has to be re-checked against that table, not picked on AQI
+   grounds alone. Also unproven: is "later" reliably enough later, or does
+   the wake-up time itself vary day to day? Don't know yet.
+2. **Ask the LLM to predict AQI from historical data.** Worth flagging
+   against this project's core invariant up front: numeric estimation
+   should be deterministic code, not an LLM guess — see `models.py` and
+   `verify/scoring.py` throughout, and the rain-skill trend work (this
+   session) as the most recent example of moving a comparison *out* of the
+   LLM's hands, not into them. The architecturally-consistent version of
+   this idea is a deterministic "typical AQI for this station at this time
+   of day," computed in code from stored history (the same shape as the
+   rolling-window machinery already built for rain skill), with the LLM
+   only narrating around a pre-computed estimate — not an ungrounded
+   forecast from the model itself.
+3. **Show last night's (most recent pre-stale) reading with a note.**
+   Closest to what's already partly true — individual per-station readings
+   already render with age + a stale flag (`forecast.html.jinja`'s Ground
+   AQI Stations section) — but the *summary* line (the one actually quoted
+   in Today's Forecast) currently drops stale readings rather than saying
+   "last known: 84 as of 22:14 last night." Cheapest of the three options,
+   and doesn't touch the run schedule or add LLM-side estimation.
+
+### Before picking one: gather more real mornings
+
+Two data points (both showing the same 1-of-3 pattern) is suggestive, not
+proof of a consistent daily pattern. Worth watching for a couple of weeks
+— does it recover by 07:00 EAT every day, or is it irregular? Does the
+`measured_at: null` case (distinct from genuine staleness) happen often
+enough to matter on its own? This item is explicitly "review, then decide"
+— see the weekly check-in cadence already agreed for this project.
+
+---
+
+## 5. Real sending domain for email · **Planned**
 
 ### Where things stand
 
@@ -492,7 +571,7 @@ DNS propagation is the only slow part; the code is a few hours.
 
 ---
 
-## 5. Verify secondary-point predictions · **Planned**
+## 6. Verify secondary-point predictions · **Planned**
 
 Found during review: the pipeline fetches and caches **secondary-point
 actuals** (Lake Victoria) every single day — an extra API call — and
@@ -516,7 +595,7 @@ Either is fine. Silently fetching data nobody reads is not.
 
 ---
 
-## 6. Operational hardening · **Planned**
+## 7. Operational hardening · **Planned**
 
 - **Pipeline failure alerting.** Currently relies on GitHub's default
   workflow-failure email. Fine, but easy to miss in a busy inbox — and 60
@@ -537,7 +616,7 @@ Either is fine. Silently fetching data nobody reads is not.
 
 ---
 
-## 7. Multi-provider LLM support · **Planned**
+## 8. Multi-provider LLM support · **Planned**
 
 `llm/provider.LLMProvider` exists precisely for this; nothing else needs to
 change. Each new provider needs its own JSON-schema adapter mirroring
@@ -556,7 +635,7 @@ deprecation, so there's no urgency, and migration would be contained to
 
 ---
 
-## 8. WhatsApp distribution · **Deferred**
+## 9. WhatsApp distribution · **Deferred**
 
 Carried over from the original design. Meta's Cloud API loses its free
 service-message window on 2026-10-01; cost at small subscriber counts would
