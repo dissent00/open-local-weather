@@ -41,6 +41,10 @@ a public repo.
 - **[docs-internal/ROADMAP.md](docs-internal/ROADMAP.md)** — what's next, with
   the measurements and constraints behind each decision.
 - **[mailer/README.md](mailer/README.md)** — email delivery setup.
+- **[ops/README.md](ops/README.md)** — optional, deployment-specific
+  scheduling reliability setup (documents multiple paths — GitHub Actions
+  alone, GitHub Actions with an externally-triggered dispatch, or a full
+  migration off GitHub Actions — same core pipeline either way).
 
 (`docs/` is the *generated* Pages site — don't hand-edit it; the pipeline
 overwrites it every run.)
