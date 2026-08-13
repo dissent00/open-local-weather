@@ -53,15 +53,19 @@
  * ============================== SETUP ==============================
  * 1. script.google.com -> New project -> replace Code.gs's contents with
  *    this file.
- * 2. Project Settings (gear icon) -> Script Properties -> add:
+ * 2. Project Settings (gear icon) -> Script Properties -> add (enter the
+ *    bare value only in the Script Properties VALUE field -- do NOT
+ *    include quote marks; the quotes below are this doc's own formatting,
+ *    not literal characters to type in. See sanitizePublicUrl()'s doc
+ *    comment for the real bug a quoted PUBLIC_URL value caused):
  *      SUBSCRIBER_EMAILS  comma-separated recipient list, e.g.
- *                         "a@example.com,b@example.com"
- *      GITHUB_REPO        "dissent00/open-local-weather" (or your fork)
- *      GITHUB_BRANCH      "main"
- *      LOCATION_NAME      "Kisumu, Kenya" (match location.yaml's
+ *                         a@example.com,b@example.com
+ *      GITHUB_REPO        dissent00/open-local-weather (or your fork)
+ *      GITHUB_BRANCH      main
+ *      LOCATION_NAME      Kisumu, Kenya (match location.yaml's
  *                         primary_place_name)
- *      TIMEZONE           "Africa/Nairobi" (match location.yaml's timezone)
- *      PUBLIC_URL         "https://<owner>.github.io/<repo>/" (linked in
+ *      TIMEZONE           Africa/Nairobi (match location.yaml's timezone)
+ *      PUBLIC_URL         https://<owner>.github.io/<repo>/ (linked in
  *                         the email footer; optional, leave blank to omit)
  * 3. Run createDailyTrigger() once from the editor (Run menu) for the
  *    morning send. If you also run the pipeline's evening refresh, also
@@ -78,6 +82,39 @@
  * =====================================================================
  */
 
+/** Sanitizes the PUBLIC_URL Script Property. Real bug this fixes: a
+ * subscriber email went out with the literal text `" "` where the site
+ * link should have been — traced to a stray quoted/garbage value in the
+ * PUBLIC_URL Script Property (the setup docs above used to show example
+ * values wrapped in quotes as pure documentation styling, which is an
+ * easy value to copy-paste literally by mistake; fixed in the docs too).
+ * Strips one matching pair of straight or curly quotes if present, trims
+ * whitespace, and — the actual safety net, since a fresh mistake could
+ * always produce different garbage — falls back to '' (the same as "not
+ * configured", which buildEmailPlainText() already omits gracefully)
+ * for anything that still doesn't look like a real http(s) URL
+ * afterward, logging why, rather than ever interpolating garbage into a
+ * real subscriber email again.
+ */
+function sanitizePublicUrl(raw) {
+  if (!raw) return '';
+  let value = raw.trim();
+  const quotePairs = [['"', '"'], ["'", "'"], ['“', '”'], ['‘', '’']];
+  for (const [open, close] of quotePairs) {
+    if (value.length >= 2 && value.charAt(0) === open && value.charAt(value.length - 1) === close) {
+      value = value.slice(1, -1).trim();
+      break;
+    }
+  }
+  if (!/^https?:\/\/\S+/.test(value)) {
+    if (value) {
+      Logger.log(`PUBLIC_URL Script Property ("${raw}") doesn't look like a valid http(s) URL after sanitizing — treating as not configured (omitted from the email) rather than sending it as-is. Fix it under Project Settings > Script Properties.`);
+    }
+    return '';
+  }
+  return value;
+}
+
 function getConfig() {
   const props = PropertiesService.getScriptProperties();
   return {
@@ -87,7 +124,7 @@ function getConfig() {
     githubBranch: props.getProperty('GITHUB_BRANCH') || 'main',
     locationName: props.getProperty('LOCATION_NAME') || 'Kisumu, Kenya',
     timezone: props.getProperty('TIMEZONE') || 'Africa/Nairobi',
-    publicUrl: props.getProperty('PUBLIC_URL') || '',
+    publicUrl: sanitizePublicUrl(props.getProperty('PUBLIC_URL')),
   };
 }
 

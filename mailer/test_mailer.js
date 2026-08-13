@@ -224,4 +224,51 @@ assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.hour, 18, 
 assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.minute, 20, 'evening trigger minute should be 20');
 console.log('PASS: evening trigger registered for sendEveningRefreshEmail at ~18:20, morning trigger left untouched');
 
+// --- sanitizePublicUrl: the real bug this was added for, plus the
+// defensive cases around it ---
+assert.strictEqual(sanitizePublicUrl(null), '', 'unset PUBLIC_URL should sanitize to empty (not configured)');
+assert.strictEqual(sanitizePublicUrl(''), '', 'empty PUBLIC_URL should sanitize to empty');
+assert.strictEqual(
+  sanitizePublicUrl('https://dissent00.github.io/open-local-weather/'),
+  'https://dissent00.github.io/open-local-weather/',
+  'a correctly-entered URL must pass through unchanged'
+);
+// The actual reported bug: a Script Property value of exactly `" "`
+// rendered as a literal '  " "' line in a real subscriber email instead
+// of either a working link or being omitted.
+assert.strictEqual(sanitizePublicUrl('" "'), '', 'a quote-space-quote garbage value must sanitize to empty, not render literally');
+assert.strictEqual(
+  sanitizePublicUrl('"https://dissent00.github.io/open-local-weather/"'),
+  'https://dissent00.github.io/open-local-weather/',
+  'a value accidentally wrapped in straight quotes should be unwrapped, not rejected'
+);
+assert.strictEqual(
+  sanitizePublicUrl('  https://dissent00.github.io/open-local-weather/  '),
+  'https://dissent00.github.io/open-local-weather/',
+  'surrounding whitespace should be trimmed'
+);
+assert.strictEqual(sanitizePublicUrl('not a url'), '', 'text that is not an http(s) URL must sanitize to empty, never sent as-is');
+console.log('PASS: sanitizePublicUrl handles the reported bug and related garbage values');
+
+// --- getConfig() actually wires sanitizePublicUrl in, end to end ---
+reset();
+scriptProps.PUBLIC_URL = '" "';
+let config = getConfig();
+assert.strictEqual(config.publicUrl, '', 'getConfig() must sanitize a garbage PUBLIC_URL, not pass it through raw');
+scriptProps.PUBLIC_URL = 'https://dissent00.github.io/open-local-weather/';
+config = getConfig();
+assert.strictEqual(config.publicUrl, 'https://dissent00.github.io/open-local-weather/', 'getConfig() must still return a valid PUBLIC_URL correctly');
+console.log('PASS: getConfig() sanitizes PUBLIC_URL end to end');
+
+// --- Full regression: the exact broken email from the bug report must
+// no longer be possible — a garbage PUBLIC_URL omits the link section
+// entirely instead of rendering '  " "' ---
+reset();
+scriptProps.PUBLIC_URL = '" "';
+sendDailyForecastEmail();
+assert.ok(!sentEmails[0].body.includes('" "'), 'plain-text body must never contain the literal broken "  \\" \\"" line again');
+assert.ok(!sentEmails[0].body.includes('Past forecasts and the full accuracy record'), 'the publicUrl-gated link lines should be omitted entirely when PUBLIC_URL is unusable, not rendered broken');
+scriptProps.PUBLIC_URL = 'https://dissent00.github.io/open-local-weather/'; // restore for any future tests
+console.log('PASS: the reported broken-link bug no longer reproduces');
+
 console.log('\nALL MAILER HARNESS CHECKS PASSED');

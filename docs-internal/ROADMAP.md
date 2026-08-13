@@ -650,6 +650,43 @@ worth doing.
 
 ---
 
+## 10. OCI free-tier deployment guide — full migration off GitHub Actions · **Deferred**
+
+`ops/README.md` already documents this as "path 3" (full migration off
+GitHub Actions — the most reliable option for scheduling, at the cost of
+needing a real server) but deliberately doesn't build it, since path 2
+(`ops/trigger_workflow.sh`, an externally-triggered `workflow_dispatch`
+from cron on infrastructure the operator already has) covers the actual
+reliability gap without that tradeoff.
+
+**Conditional on how the backup-slot fix performs.** Explicitly not
+started while daily.yml/evening_refresh.yml's new backup cron slots are
+still being observed (see item 2's sibling discussion — GitHub's own docs
+admit scheduled jobs "may be dropped" under load, confirmed twice on this
+repo already) — only worth building if that mitigation turns out to be
+insufficient and a move to path 2 or 3 actually happens.
+
+**If it does happen, worth doing properly rather than as a one-off.** A
+start-to-finish guide for Oracle Cloud Infrastructure's Always Free tier
+specifically — not a 12-month trial like AWS/GCP's free tiers, genuinely
+free forever (2 AMD VMs, or up to 4 ARM Ampere A1 cores + 24 GB RAM) — as
+a documented alternative to "fork this and rely on GitHub Actions alone"
+that stays true to the project's zero-ongoing-cost goal for forks in
+underserved locations, for an operator who'd rather run real cron than
+depend on GitHub Actions' scheduler at all (for triggering only, per path
+2, or for the full pipeline, per path 3).
+
+Scope, if built: instance provisioning (ARM Ampere vs. AMD tradeoffs),
+outbound-only firewall/security-list rules (this workload only calls out
+to Open-Meteo/WAQI/Gemini/GitHub — no inbound ports needed), secrets
+handling (env file vs. OCI Vault — Vault has its own free-tier limits
+worth checking against actual usage), cron setup, and an explicit
+decision on whether it hosts the full pipeline (path 3) or just
+`trigger_workflow.sh` (path 2) — these have different setup steps and the
+guide should be honest about which one it's demonstrating.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
