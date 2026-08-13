@@ -10,15 +10,28 @@ name: Evening Forecast Refresh
 
 on:
   schedule:
-    # ~18:07 Africa/Nairobi (EAT) = 15:07 UTC. Chosen from the measured
-    # model-availability table in ROADMAP.md: by 13:19 UTC every model's
-    # 06z cycle has landed, and the aligned window (all four models on the
-    # same cycle) holds from 14:00 UTC to just before 19:00 UTC, when the
-    # faster models start jumping to 12z. 15:07 UTC sits solidly inside
-    # that window with margin on both sides. Same off-hour reasoning as
-    # daily.yml's schedule comment — ":00" is the least reliable minute
-    # GitHub Actions scheduling offers.
+    # PRIMARY: ~18:07 Africa/Nairobi (EAT) = 15:07 UTC. Chosen from the
+    # measured model-availability table in ROADMAP.md: by 13:19 UTC every
+    # model's 06z cycle has landed, and the aligned window (all four
+    # models on the same cycle) holds from 14:00 UTC to just before 19:00
+    # UTC, when the faster models start jumping to 12z. 15:07 UTC sits
+    # solidly inside that window with margin on both sides.
+    #
+    # BACKUPS: three more slots at +15/+30/+45 min — this workflow's own
+    # first-ever scheduled occurrence (2026-08-12) fired at 16:03:30 UTC,
+    # ~56 minutes late (confirmed from GitHub's run history: createdAt ==
+    # startedAt, so the delay was entirely on GitHub's scheduler side, not
+    # queued waiting for a runner). A single off-hour cron line reduces
+    # congestion but doesn't guarantee punctuality or that the event fires
+    # at all — see daily.yml's schedule comment for a same-day case where
+    # an off-hour cron didn't fire on its first occurrence either. Each
+    # backup slot is near-free when unneeded (the `check` job below exits
+    # in seconds without calling Gemini if today's entry is already
+    # refreshed), so redundancy costs almost nothing on a normal day.
     - cron: "7 15 * * *"
+    - cron: "22 15 * * *"
+    - cron: "37 15 * * *"
+    - cron: "52 15 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -26,24 +39,62 @@ on:
         type: boolean
         default: false
 
+# Least-privilege default; the `run` job overrides to `write` for the step
+# that actually needs it.
 permissions:
-  contents: write
+  contents: read
 
 # Deliberately the SAME group as daily.yml, not a separate one — both
 # workflows write to the same data/log/<date>.json file, so if a delayed
 # morning run is still in progress when this fires, they need to be
-# serialized (queued), not run concurrently and race on that file.
+# serialized (queued), not run concurrently and race on that file. Applies
+# across BOTH jobs in this workflow together.
 concurrency:
   group: daily-forecast
   cancel-in-progress: false
 
 jobs:
-  run:
+  # Cheap, read-only pre-check so a backup schedule slot that fires after
+  # today's entry is already refreshed doesn't burn a real Gemini call for
+  # nothing. Checking `meta.refreshed_at`, not just that the day's file
+  # exists — that file exists from the morning run regardless of whether
+  # the evening refresh has happened yet, so file-existence alone (the
+  # check daily.yml uses) isn't the right gate here. NOT applied to
+  # workflow_dispatch — a manual run always runs for real.
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      already_done: ${{ steps.check.outputs.already_done }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: Check if today's entry is already refreshed
+        id: check
+        run: |
+          RESULT=$(python3 -c "
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+          p = Path(f'data/log/{today}.json')
+          if not p.exists():
+              print('false')  # nothing to refresh yet — refresh-forecast's own loud failure handles this, not our concern here
+          else:
+              entry = json.loads(p.read_text())
+              print('true' if entry.get('meta', {}).get('refreshed_at') else 'false')
+          ")
+          echo "Today's entry already refreshed: $RESULT"
+          echo "already_done=$RESULT" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
+  run:
+    needs: check
+    if: needs.check.outputs.already_done != 'true' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
