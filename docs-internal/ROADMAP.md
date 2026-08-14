@@ -816,19 +816,33 @@ questions a static script can't. The two are meant to compose: item 11's
 catalog (once built) becomes an input the guided setup consults rather
 than re-deriving from scratch every time.
 
-### What this would actually be
+### What this would actually be — smaller than it first looks
 
-A structured setup document — likely `docs-internal/FORK_SETUP_BRIEF.md`
-or similar, sibling to the existing handoff brief — written to be
-LLM-provider-agnostic ("any LLM," per the ask) rather than assuming
-Claude-specific tooling. Concretely: ask for country + city/lat-long,
-derive what item 11's tooling can derive, consult the met-office catalog
-for a bulletin URL, and if no fetcher exists yet for that country, walk
-through inspecting the real site and writing one — then GitHub secrets,
-Apps Script mailer deployment, GitHub Pages setup, the same sequence this
-project's own `mailer/README.md` / `ops/README.md` / main `README.md`
-already document for a human doing it manually, restructured as
-instructions an agent can execute rather than a person reading prose.
+Worth being precise about *why* the original brief was necessary before
+assuming its successor needs the same shape. `CLAUDE_CODE_HANDOFF_BRIEF.md`
+existed because the old Apps Script/Sheets pipeline's logic lived in code
+that wasn't self-documenting — narrating that opaque logic into something
+rebuildable *was* the brief's entire job. The current Python codebase isn't
+in that position: `ARCHITECTURE.md` already documents the invariants and
+*why* behind past decisions, `ROADMAP.md` already shows the actual method
+used for things a new fork would need to redo for its own location (the
+cron-timing/model-cycle-alignment analysis in item 1 is a worked example a
+new deployment could follow, not just a Kisumu-specific answer), and
+`config/location.example.yaml` is already the fork template. Most of
+"current state of the art" is already written down — just addressed to a
+human reader, and not sequenced as a runbook.
+
+So the real gap is smaller and more specific than a from-scratch document:
+a short, **agent-addressed** setup sequence (imperative steps: ask for
+country + city/lat-long, derive what item 11's tooling can derive, consult
+the met-office catalog, point at `ARCHITECTURE.md`'s cron-timing method for
+this location's own optimal schedule, etc.) that mostly *points into* the
+existing README/ARCHITECTURE/ROADMAP/`ops/`/`mailer/` docs in the right
+order rather than re-explaining their content. The old handoff brief's job
+is done (the migration it described already happened — it stays in
+`reference/` as history, not something to update in place); its natural
+successor is a new, much shorter file whose job is orchestration, not
+narration.
 
 ### Honest risk
 
