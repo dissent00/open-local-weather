@@ -181,8 +181,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: GFS, ICON, and UKMO successfully verified rain calls for August 13th, while ECMWF missed by forecasting dry conditions. ICON and ECMWF excelled on maximum temperature precision (within 0.1°C), though ICON exhibited a strong overnight minimum cold bias (-3.7°C) and GFS overpredicted surface winds by 21.6 km/h."
     },
     "day3": {
       "verified": false,
