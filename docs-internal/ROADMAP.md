@@ -613,6 +613,22 @@ Either is fine. Silently fetching data nobody reads is not.
   the track record is statistically meaningless. The prompt already tells
   the LLM to say so; the site should show it too, so the accuracy claim is
   never overstated.
+- **No retry logic in `fetch/open_meteo.py`.** Confirmed real, not
+  hypothetical: an evening refresh run aborted on 2026-08-14 with
+  `Read timed out (read timeout=30)` calling Open-Meteo — correctly
+  failed loudly rather than publishing partial data (no bad commit), and
+  a later backup schedule slot caught it about an hour later with no
+  data loss, but the run itself had zero cushion against a single
+  transient timeout. `GeminiProvider` already has bounded exponential
+  backoff for exactly this class of failure (`llm/gemini.py`,
+  `_post_with_retry` — added after an earlier real 503 aborted a run);
+  Open-Meteo gets called several times per run (hourly, extended daily,
+  regional pressure, air quality, archive), so the aggregate odds of
+  *some* call hitting a transient failure in a given run are higher than
+  any single Gemini call's own failure rate. Same retry pattern, applied
+  to `fetch/open_meteo.py`'s `requests.get` calls, would reduce how often
+  a single hiccup costs a whole run attempt instead of relying on a
+  backup slot to eventually catch it later.
 
 ---
 

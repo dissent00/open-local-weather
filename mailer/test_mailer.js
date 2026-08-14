@@ -30,7 +30,10 @@ let scriptProps = {
 };
 
 global.PropertiesService = {
-  getScriptProperties: () => ({ getProperty: (key) => scriptProps[key] || null }),
+  getScriptProperties: () => ({
+    getProperty: (key) => scriptProps[key] || null,
+    setProperty: (key, value) => { scriptProps[key] = value; },
+  }),
 };
 
 const sampleEntryRaw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'sample_entry.json'), 'utf8'));
@@ -76,16 +79,15 @@ global.Utilities = {
   sleep: (ms) => sleepCalls.push(ms), // no-op — don't actually block the test
 };
 
-// Stateful trigger registry, keyed by handler function name — needed to
-// actually exercise createDailyTrigger()/createEveningRefreshTrigger()'s
-// "only touch my own handler's triggers" scoping, not just that *a*
-// trigger got created.
+// Stateful trigger registry, keyed by handler function name -> ARRAY of
+// trigger objects (not a single "last config") — needed to actually
+// exercise createDailyTrigger()/createEveningRefreshTrigger() now
+// registering several slots per handler, not one, and to prove
+// re-running one only ever touches its own handler's triggers, never an
+// unrelated handler's.
 let triggersByHandler = {};
-let lastTriggerConfigByHandler = {};
 global.ScriptApp = {
-  getProjectTriggers: () => Object.keys(triggersByHandler).map(fnName => ({
-    getHandlerFunction: () => fnName,
-  })),
+  getProjectTriggers: () => Object.values(triggersByHandler).flat(),
   newTrigger: (fnName) => {
     const cfg = { hour: undefined, minute: undefined };
     const builder = {
@@ -95,13 +97,19 @@ global.ScriptApp = {
       everyDays: () => builder,
       inTimezone: () => builder,
       create: () => {
-        triggersByHandler[fnName] = true;
-        lastTriggerConfigByHandler[fnName] = cfg;
+        const trigger = { getHandlerFunction: () => fnName, hour: cfg.hour, minute: cfg.minute };
+        if (!triggersByHandler[fnName]) triggersByHandler[fnName] = [];
+        triggersByHandler[fnName].push(trigger);
       },
     };
     return builder;
   },
-  deleteTrigger: (t) => { delete triggersByHandler[t.getHandlerFunction()]; },
+  deleteTrigger: (t) => {
+    const fnName = t.getHandlerFunction();
+    if (!triggersByHandler[fnName]) return;
+    triggersByHandler[fnName] = triggersByHandler[fnName].filter(x => x !== t);
+    if (triggersByHandler[fnName].length === 0) delete triggersByHandler[fnName];
+  },
 };
 
 eval(fs.readFileSync(path.join(__dirname, 'AppsScriptMailer.gs'), 'utf8'));
@@ -114,6 +122,18 @@ const AFD_DIVIDER_FOR_TEST = '&&';
 function escapeHtmlForTest(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+// Same values as MORNING_TRIGGER_SLOTS/EVENING_TRIGGER_SLOTS in
+// AppsScriptMailer.gs — duplicated here (not read from the script) so a
+// bug that corrupts the real constant can't also corrupt what's checking
+// it. If you change the real slot list, update this to match.
+const EXPECTED_MORNING_SLOTS_FOR_TEST = [
+  { hour: 6, minute: 20 }, { hour: 6, minute: 50 }, { hour: 7, minute: 20 },
+  { hour: 7, minute: 50 }, { hour: 8, minute: 20 },
+];
+const EXPECTED_EVENING_SLOTS_FOR_TEST = [
+  { hour: 18, minute: 20 }, { hour: 18, minute: 50 }, { hour: 19, minute: 20 },
+  { hour: 19, minute: 50 }, { hour: 20, minute: 20 },
+];
 
 function reset() {
   sentEmails.length = 0;
@@ -122,6 +142,10 @@ function reset() {
   queuedResponses = null;
   servedEntry = sampleEntryRaw;
   global.Utilities.formatDate = () => '2026-08-11';
+  // Idempotency markers are script-managed state, not user config — must
+  // not leak "already sent" between otherwise-independent test cases.
+  delete scriptProps.LAST_SENT_MORNING;
+  delete scriptProps.LAST_SENT_EVENING;
 }
 
 // --- Happy path: real fixture data, no retry needed ---
@@ -202,27 +226,88 @@ assert.strictEqual(sentEmails.length, 1, 'should send once a refreshed entry app
 assert.strictEqual(sleepCalls.length, 1, `expected exactly 1 sleep before the refreshed entry was found, got ${sleepCalls.length}`);
 console.log('PASS: evening update found on retry — sent after 1 wait');
 
-// --- createDailyTrigger registers the right function at ~6:20, and only
-// ever touches its own handler's trigger, never an unrelated one ---
+// --- createDailyTrigger registers ALL 5 morning slots, and only ever
+// touches its own handler's triggers, never an unrelated handler's ---
 reset();
 triggersByHandler = {};
-lastTriggerConfigByHandler = {};
 createEveningRefreshTrigger(); // registered first, so we can prove createDailyTrigger() doesn't wipe it
 createDailyTrigger();
-assert.ok(triggersByHandler.sendDailyForecastEmail, 'morning trigger not registered correctly');
-assert.ok(triggersByHandler.sendEveningRefreshEmail, 'createDailyTrigger() should not have deleted the unrelated evening trigger');
-assert.strictEqual(lastTriggerConfigByHandler.sendDailyForecastEmail.hour, 6, 'morning trigger hour should be 6');
-assert.strictEqual(lastTriggerConfigByHandler.sendDailyForecastEmail.minute, 20, 'morning trigger minute should be 20');
-console.log('PASS: morning trigger registered for sendDailyForecastEmail at ~6:20, evening trigger left untouched');
+assert.strictEqual(
+  (triggersByHandler.sendDailyForecastEmail || []).length,
+  EXPECTED_MORNING_SLOTS_FOR_TEST.length,
+  `expected ${EXPECTED_MORNING_SLOTS_FOR_TEST.length} morning trigger slots, got ${(triggersByHandler.sendDailyForecastEmail || []).length}`
+);
+assert.deepStrictEqual(
+  triggersByHandler.sendDailyForecastEmail.map(t => ({ hour: t.hour, minute: t.minute })),
+  EXPECTED_MORNING_SLOTS_FOR_TEST,
+  'morning trigger slot times do not match MORNING_TRIGGER_SLOTS'
+);
+assert.strictEqual(
+  (triggersByHandler.sendEveningRefreshEmail || []).length,
+  EXPECTED_EVENING_SLOTS_FOR_TEST.length,
+  'createDailyTrigger() should not have deleted the unrelated evening trigger slots'
+);
+console.log(`PASS: ${EXPECTED_MORNING_SLOTS_FOR_TEST.length} morning trigger slots registered for sendDailyForecastEmail, evening slots left untouched`);
 
-// --- createEveningRefreshTrigger registers at ~18:20, and likewise never
-// touches the unrelated morning trigger ---
+// --- createEveningRefreshTrigger registers ALL 5 evening slots, and
+// likewise never touches the unrelated morning handler's slots ---
 createEveningRefreshTrigger();
-assert.ok(triggersByHandler.sendDailyForecastEmail, 'createEveningRefreshTrigger() should not have deleted the unrelated morning trigger');
-assert.ok(triggersByHandler.sendEveningRefreshEmail, 'evening trigger not registered correctly');
-assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.hour, 18, 'evening trigger hour should be 18');
-assert.strictEqual(lastTriggerConfigByHandler.sendEveningRefreshEmail.minute, 20, 'evening trigger minute should be 20');
-console.log('PASS: evening trigger registered for sendEveningRefreshEmail at ~18:20, morning trigger left untouched');
+assert.strictEqual(
+  (triggersByHandler.sendDailyForecastEmail || []).length,
+  EXPECTED_MORNING_SLOTS_FOR_TEST.length,
+  'createEveningRefreshTrigger() should not have deleted the unrelated morning trigger slots'
+);
+assert.strictEqual(
+  (triggersByHandler.sendEveningRefreshEmail || []).length,
+  EXPECTED_EVENING_SLOTS_FOR_TEST.length,
+  `expected ${EXPECTED_EVENING_SLOTS_FOR_TEST.length} evening trigger slots, got ${(triggersByHandler.sendEveningRefreshEmail || []).length}`
+);
+assert.deepStrictEqual(
+  triggersByHandler.sendEveningRefreshEmail.map(t => ({ hour: t.hour, minute: t.minute })),
+  EXPECTED_EVENING_SLOTS_FOR_TEST,
+  'evening trigger slot times do not match EVENING_TRIGGER_SLOTS'
+);
+console.log(`PASS: ${EXPECTED_EVENING_SLOTS_FOR_TEST.length} evening trigger slots registered for sendEveningRefreshEmail, morning slots left untouched`);
+
+// --- Re-running createDailyTrigger() replaces the slot set cleanly,
+// doesn't accumulate duplicates on top of the existing 5 ---
+createDailyTrigger();
+assert.strictEqual(
+  (triggersByHandler.sendDailyForecastEmail || []).length,
+  EXPECTED_MORNING_SLOTS_FOR_TEST.length,
+  're-running createDailyTrigger() should replace, not accumulate, its own slot set'
+);
+console.log('PASS: re-running createDailyTrigger() does not accumulate duplicate slots');
+
+// --- Idempotency: a second trigger slot firing the same day must NOT
+// send a duplicate email — the real reason multiple slots are safe to
+// add at all. Also must not even re-fetch, since the marker check comes
+// first. ---
+reset(); // SUBSCRIBER_EMAILS is 'alice@example.com' only at this point in the file (narrowed earlier) — 1 recipient per send, not 2
+sendDailyForecastEmail(); // first slot of the day — real send
+assert.strictEqual(sentEmails.length, 1, 'first slot of the day should send normally');
+const fetchCountAfterFirstSend = fetchCallCount;
+sendDailyForecastEmail(); // simulates a later trigger slot firing the same day
+assert.strictEqual(sentEmails.length, 1, 'a second slot the same day must not send a duplicate email');
+assert.strictEqual(fetchCallCount, fetchCountAfterFirstSend, 'a second slot the same day must not even re-fetch — the idempotency check should short-circuit before the GitHub fetch');
+console.log('PASS: morning idempotency — a same-day repeat slot is a no-op, not a duplicate send');
+
+// --- Idempotency is keyed by date, not just presence — a marker left
+// over from a PRIOR day must not suppress today's send ---
+reset();
+scriptProps.LAST_SENT_MORNING = '2026-08-10'; // yesterday's marker, today (per the mock) is 2026-08-11
+sendDailyForecastEmail();
+assert.strictEqual(sentEmails.length, 1, 'a marker from a prior day must not suppress today\'s send');
+console.log('PASS: morning idempotency marker is keyed by date — a stale marker from a prior day does not suppress today');
+
+// --- Same idempotency guarantee for the evening send ---
+reset();
+servedEntry = refreshedEntryRaw;
+sendEveningRefreshEmail();
+assert.strictEqual(sentEmails.length, 1, 'first evening slot of the day should send normally');
+sendEveningRefreshEmail();
+assert.strictEqual(sentEmails.length, 1, 'a second evening slot the same day must not send a duplicate email');
+console.log('PASS: evening idempotency — a same-day repeat slot is a no-op, not a duplicate send');
 
 // --- sanitizePublicUrl: the real bug this was added for, plus the
 // defensive cases around it ---

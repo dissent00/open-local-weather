@@ -34,14 +34,28 @@ the live site — see `buildEmailPlainText()`'s doc comment in
 pairs with the morning full run (~06:07 EAT), `sendEveningRefreshEmail()`
 pairs with the evening refresh run (~18:07 EAT) — see
 [ARCHITECTURE.md](../docs-internal/ARCHITECTURE.md) for why that second run
-exists. Each has its own Apps Script trigger
-(`createDailyTrigger()` / `createEveningRefreshTrigger()`), and each trigger
-function only ever deletes/re-registers *its own* handler's trigger, never
-the other one — safe to re-run either independently. The evening send
-additionally waits for `meta.refreshed_at` to actually be set on the day's
-entry (not just for the file to exist), so it can't accidentally resend the
-unrefreshed morning content under an "Evening Update" subject if the evening
-pipeline run is late or fails.
+exists. The evening send additionally waits for `meta.refreshed_at` to
+actually be set on the day's entry (not just for the file to exist), so it
+can't accidentally resend the unrefreshed morning content under an
+"Evening Update" subject if the evening pipeline run is late or fails.
+
+**Each send fires from several trigger slots per day, not one.** Real
+evidence forced this: GitHub Actions' own scheduling has produced both
+total no-shows and multi-hour clustered delays on this repo (see
+`docs-internal/ROADMAP.md` items 3/11 and `ops/README.md`) — a single
+mailer trigger with a few minutes of retry can't catch a pipeline that
+lands two hours late. `MORNING_TRIGGER_SLOTS`/`EVENING_TRIGGER_SLOTS` in
+`AppsScriptMailer.gs` spread each send across ~2 hours instead.
+`createDailyTrigger()`/`createEveningRefreshTrigger()` register the full
+slot set for their own handler and only ever touch *their own* handler's
+triggers, never the other one — safe to re-run either independently, and
+re-running one cleanly replaces its own slot set rather than
+accumulating duplicates. Because several slots now call the same
+`send*Email()` function on a normal day, each is guarded by a same-day
+idempotency check (`alreadySentToday()`, backed by a `LAST_SENT_MORNING` /
+`LAST_SENT_EVENING` Script Property) — only the first slot that finds
+real, ready data actually sends; every later slot that day is a fast,
+cheap no-op rather than a duplicate email to every subscriber.
 
 See the setup instructions in the header comment of
 [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for deployment steps
