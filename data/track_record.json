@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-14T04:56:52.629063Z",
+  "generated_at_utc": "2026-08-14T12:34:08.526524Z",
   "entries": [
     {
       "model": "gfs_seamless",
@@ -19,7 +19,7 @@
       "checks_in_window_10": 3,
       "last_updated": "2026-08-14",
       "last_verified_target_date": "2026-08-13",
-      "skill_profile_summary": "At Day+0, GFS shows good temperature high accuracy (-0.6°C error) and MSLP alignment, but overpredicted surface wind speeds by 18.7 km/h and carries a slight cold bias on low temperatures.",
+      "skill_profile_summary": "At Day+0, GFS shows good temperature high accuracy (-0.2°C error) and MSLP alignment, but overpredicted surface wind speeds by 15.1 km/h and carries a slight cold bias on low temperatures.",
       "notes": ""
     },
     {
@@ -82,7 +82,7 @@
       "checks_in_window_10": 3,
       "last_updated": "2026-08-14",
       "last_verified_target_date": "2026-08-13",
-      "skill_profile_summary": "At Day+0, ECMWF demonstrates top performance with a perfect daily high temperature match (0.0°C error), accurate rainfall calls, and minimal low temperature error (-0.8°C).",
+      "skill_profile_summary": "At Day+0, ECMWF demonstrates top performance with daily high temperatures (0.1°C error) and minimal low temperature error (-0.9°C), though it missed yesterday's rain event.",
       "notes": ""
     },
     {
@@ -145,7 +145,7 @@
       "checks_in_window_10": 3,
       "last_updated": "2026-08-14",
       "last_verified_target_date": "2026-08-13",
-      "skill_profile_summary": "At Day+0, ICON offers high precision on wind speeds (7.9 km/h error) and daily high temperatures (-0.8°C error), but exhibits an overnight minimum cold bias (-2.2°C).",
+      "skill_profile_summary": "At Day+0, ICON offers high precision on surface wind speeds (4.6 km/h error) and daytime high temperatures (-0.3°C error), but exhibits an overnight low-temperature cold bias (-3.2°C).",
       "notes": ""
     },
     {
@@ -208,7 +208,7 @@
       "checks_in_window_10": 3,
       "last_updated": "2026-08-14",
       "last_verified_target_date": "2026-08-13",
-      "skill_profile_summary": "At Day+0, UKMO verified accurately on precipitation and maximum temperatures (+0.3°C error), though surface wind speeds ran 10.8 km/h lower than observed.",
+      "skill_profile_summary": "At Day+0, UKMO verified accurately on precipitation across all checks with solid daytime high temperature skill (+0.6°C error), despite minor wind speed bias.",
       "notes": ""
     },
     {
