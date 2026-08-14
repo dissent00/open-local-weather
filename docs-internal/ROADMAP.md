@@ -687,6 +687,104 @@ guide should be honest about which one it's demonstrating.
 
 ---
 
+## 11. Met-office catalog + location setup script — toward "country + coordinates in, config out" · **Planned**
+
+### The goal, and why it's two very different problems wearing one trench coat
+
+The ask: catalog national/local met offices globally, keep the links current,
+and move toward a setup script where a forker gives a country and
+city/lat-long and gets a working `config/location.yaml` back — automating
+what's currently a hand-written config file per fork. Real, valuable
+direction, directly extending this project's existing "location-agnostic
+config" design principle (README's design-principles list) rather than
+introducing a new one. But `LocationConfig`'s fields split cleanly into
+"genuinely solvable generically" and "needs bespoke work per place," and
+conflating them would produce a plan that overpromises on the hard half.
+
+**Already solvable, close to free:**
+- **`timezone`** — a coordinate-to-timezone lookup is a solved problem
+  (e.g. the `timezonefinder` Python package works fully offline from
+  lat/long, no API or catalog needed).
+- **`waqi_stations`** — WAQI's own API has a geo-search endpoint,
+  `GET /feed/geo:{lat};{lng}/`, that finds nearby stations directly from
+  coordinates. No catalog needed at all for this field — confirmed via
+  WAQI's own API docs (aqicn.org/api), not assumed from memory.
+- **`primary_point`** — is just the input coordinates.
+
+**Plausible, needs real work but no fundamentally hard research problem:**
+- **`metar_station_icao`** — open datasets of airport ICAO codes +
+  coordinates exist (e.g. OurAirports' public data); "nearest airport with
+  METAR reporting" is buildable from that, not yet verified in detail.
+- **`region_points`** (the regional MSLP snapshot points — currently
+  hand-picked nearby towns for Kisumu, e.g. Busia/Homa Bay/Migori/Kisii) —
+  auto-generating "N points at roughly X km spacing around the primary
+  point" is plausible, but which points actually matter meteorologically
+  for a given region is more of a judgment call than a lookup; may always
+  need a human sanity-check even if auto-generated as a starting point.
+
+**The genuinely hard one: `local_bulletin_url` / `local_bulletin_source_name`
+and an actual working `BulletinFetcher`.** A catalog of *links* is
+achievable and valuable on its own — but the existing `KenyaKMDBulletinFetcher`
+(`fetch/bulletin/kenya_kmd.py`) is bespoke HTML-scraping + PDF-extraction
+code written specifically for KMD's site structure. There is no universal
+met-bulletin API; every national service's website is its own bespoke
+scrape target, exactly the tension the README's "Known, permanent
+limitations" section already names ("Local bulletin fetching is genuinely
+location-specific and will likely need rewriting per fork"). A links
+catalog tells a forker *where* to point `local_bulletin_url` and gives them
+`kenya_kmd.py` as a worked example to adapt — it does not, by itself,
+produce a working scraper for a new country. Don't let the setup script's
+UX promise more automation here than the underlying problem allows.
+
+### Where the catalog itself should come from — don't hand-build it
+
+**[WMO's own Contacts Directory](https://contacts.wmo.int/members/)** lists
+all 193 WMO member states' national meteorological services — this is the
+authoritative source to derive the catalog from, not something to
+hand-curate country by country. Also worth checking before committing to
+"one bespoke scraper per country" as the only path: **WMO's [World Weather
+Information Service](https://worldweather.wmo.int/)** aggregates official
+forecasts *sourced from* those same national services under one platform.
+If it exposes warnings/bulletins in something more structurally uniform
+than 193 independent government websites, that could meaningfully shrink
+the hard half of this problem — not yet verified in enough depth to know,
+flagged here specifically so that check happens before a lot of per-country
+scraper effort does.
+
+### Phased plan
+
+**Phase 1 — the catalog + a config-generator that's honest about its gaps.**
+- `config/met_offices.yaml` (or similar), keyed by country/region, sourced
+  from WMO's Contacts Directory: name, website, bulletin/warnings URL if
+  findable, a format hint (HTML page / PDF / RSS if one exists / unknown).
+- A setup script (`olw init-location` or similar) that takes country +
+  city/lat-long and generates a starter `location.yaml`: fills
+  `timezone`/`waqi_stations`/`primary_point` for real, looks up the
+  catalog for a `local_bulletin_url` suggestion (clearly marked as
+  "needs a fetcher written, defaults to `NullBulletinFetcher`" if none
+  exists yet), and leaves `region_points`/`metar_station_icao` as
+  clearly-flagged manual TODOs rather than guessing badly.
+- This alone is real progress — "here's your met office, here's your
+  timezone and AQI stations for free, here's what's still on you" is a
+  much better forking experience than a blank YAML file and a README.
+
+**Phase 2 (speculative, only if Phase 1 shows demand) — generic-enough
+bulletin fetching for the subset of met offices that turn out to share
+common site patterns** (e.g. many government sites run on the same CMS
+platforms). Would reduce, not eliminate, the "write a bespoke scraper"
+burden — some fraction of countries, not all 193.
+
+### Honest risk
+
+Phase 1's catalog will go stale — met office URLs change, sites get
+redesigned. "Keep the links up to date" (as asked) needs an actual
+mechanism, not a one-time build: candidates are a periodic health-check
+(similar in spirit to the existing weekly model-deprecation check) that
+flags catalog entries returning 404s, or simply accepting it needs manual
+maintenance and saying so rather than presenting stale data as current.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
