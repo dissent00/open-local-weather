@@ -8,6 +8,13 @@
 # deployment-specific reliability enhancement for whoever happens to have
 # a server to run it from.
 #
+# Don't have a server? You don't need one for this — see ops/README.md's
+# "path 2a" for a free hosted cron service (e.g. cron-job.org) that calls
+# the same workflow_dispatch API directly from its own dashboard, no
+# script or infrastructure of your own required at all. This script is
+# "path 2b", for people who already have somewhere to run it or want the
+# trigger logic in version control instead of a third-party UI.
+#
 # WHY THIS EXISTS: GitHub's own docs for the `schedule` event say "some
 # queued jobs may be dropped" under high load — confirmed the hard way on
 # this exact repo. daily.yml's schedule trigger produced ZERO runs across
