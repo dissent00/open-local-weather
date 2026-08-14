@@ -33,10 +33,15 @@
 # evening_refresh.yml as a backstop, not removed — if this script's cron
 # job, this server, or its stored token ever breaks, the workflows still
 # have their own (imperfect, but non-zero) chance of firing on their own.
-# Both paths are safe to overlap: the `check` job in each workflow already
-# skips real work (no wasted Gemini call) if the day's result already
-# exists, regardless of which trigger produced it — see daily.yml's
-# `check` job docs.
+# Both paths are safe to overlap: the `check` job in each workflow skips
+# real work (no wasted Gemini call) if the day's result already exists,
+# regardless of which trigger produced it — this covers workflow_dispatch
+# too (an earlier version of the workflow files exempted all
+# workflow_dispatch calls from the check unconditionally, which was fine
+# when that meant "an occasional manual click" but caused a real wasted
+# double-run once THIS script started calling workflow_dispatch routinely
+# every day; fixed via the `force` input, default false, which this
+# script deliberately never sets — see daily.yml's `check`/`run` job docs).
 #
 # ============================== SETUP ==============================
 # 1. Create a GitHub fine-grained PAT scoped to this repo only, with

@@ -38,6 +38,10 @@ on:
         description: "Run fetch/LLM for real but skip writes and publish"
         type: boolean
         default: false
+      force:
+        description: "Force a real run even if today's entry is already refreshed. Leave false for routine automated dispatch (e.g. ops/trigger_workflow.sh) -- true is for deliberately re-refreshing today's forecast by hand."
+        type: boolean
+        default: false
 
 # Least-privilege default; the `run` job overrides to `write` for the step
 # that actually needs it.
@@ -54,13 +58,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Cheap, read-only pre-check so a backup schedule slot that fires after
-  # today's entry is already refreshed doesn't burn a real Gemini call for
-  # nothing. Checking `meta.refreshed_at`, not just that the day's file
-  # exists — that file exists from the morning run regardless of whether
-  # the evening refresh has happened yet, so file-existence alone (the
-  # check daily.yml uses) isn't the right gate here. NOT applied to
-  # workflow_dispatch — a manual run always runs for real.
+  # Cheap, read-only pre-check so a redundant trigger — a backup schedule
+  # slot, OR a routine workflow_dispatch call from ops/trigger_workflow.sh
+  # (or a hosted cron service — see ops/README.md) — doesn't burn a real
+  # Gemini call re-refreshing today's entry a second time for nothing.
+  # Checking `meta.refreshed_at`, not just that the day's file exists —
+  # that file exists from the morning run regardless of whether the
+  # evening refresh has happened yet, so file-existence alone (the check
+  # daily.yml uses) isn't the right gate here. Applies to BOTH schedule
+  # and workflow_dispatch by default now: an earlier version exempted all
+  # workflow_dispatch runs unconditionally, on the assumption a manual
+  # dispatch always means "a human deliberately wants this to run for
+  # real" — true when workflow_dispatch meant an occasional manual click,
+  # false once an external cron calls it routinely every day. Use the
+  # `force` input (default false) to explicitly bypass this when you
+  # really do want to re-refresh today's forecast by hand.
   check:
     runs-on: ubuntu-latest
     outputs:
@@ -87,7 +99,7 @@ jobs:
 
   run:
     needs: check
-    if: needs.check.outputs.already_done != 'true' || github.event_name != 'schedule'
+    if: needs.check.outputs.already_done != 'true' || github.event.inputs.force == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write

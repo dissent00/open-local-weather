@@ -88,8 +88,13 @@ Setup (per workflow — repeat for both `daily.yml` and
    GitHub accepted the request to start a run, not that the run will
    succeed. GitHub's own `schedule:` crons stay in the workflow files as a
    backstop; both are safe to overlap, since each workflow's `check` job
-   already skips duplicate real work regardless of which trigger produced
-   today's result.
+   skips duplicate real work regardless of which trigger produced today's
+   result. **Don't pass a `force` input on the dispatch call** — leaving
+   it at its default (`false`) is what lets this trigger safely lose the
+   race to GitHub's own schedule (or a backup slot) without burning a
+   redundant Gemini call; `force: true` exists only for a human
+   deliberately regenerating today's forecast by hand, not for routine
+   automated triggers.
 
 **SECURITY — read before doing this.** This is the first place in this
 project a credential leaves GitHub's own security boundary. Every other
