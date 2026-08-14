@@ -785,6 +785,63 @@ maintenance and saying so rather than presenting stale data as current.
 
 ---
 
+## 12. LLM-guided setup as a parallel path to scripted automation · **Planned**
+
+### Not hypothetical — this project already proves the concept once
+
+`reference/CLAUDE_CODE_HANDOFF_BRIEF.md` is the actual document that got
+*this* project built: a detailed brief that let an AI coding agent take a
+working Google Sheets/Apps Script pipeline and rebuild it from scratch onto
+GitHub-native infrastructure — including exactly the hard, judgment-heavy,
+not-mechanically-automatable work item 11 flags as its ceiling (KMD's
+bulletin scraper, `fetch/bulletin/kenya_kmd.py`, was written by inspecting
+the actual site live — checking for RSS/`wp-json`/etc., reading the real
+page structure — not by consulting a pre-built catalog). Item 12 is
+proposing to formalize and generalize that same process for *forking to a
+new location*, not invent a new capability.
+
+### Why this is genuinely parallel to item 11, not a duplicate of it
+
+Item 11's catalog + setup script handles the mechanically-solvable fields
+fast and cheaply (`timezonefinder`, WAQI's geo API) without needing an LLM
+session at all for those — no reason to spend a Gemini/Claude call
+computing a timezone from coordinates. Where item 11 hits its honest
+ceiling — a bulletin fetcher for a country not yet in the catalog,
+deciding sensible `region_points`, adapting anything that needs actual
+judgment — is exactly where a guided LLM session earns its keep: it can
+research the target met office's site live, write a new `BulletinFetcher`
+implementation against the existing Protocol (`fetch/bulletin/__init__.py`)
+by generalizing the `kenya_kmd.py` pattern, and ask the human clarifying
+questions a static script can't. The two are meant to compose: item 11's
+catalog (once built) becomes an input the guided setup consults rather
+than re-deriving from scratch every time.
+
+### What this would actually be
+
+A structured setup document — likely `docs-internal/FORK_SETUP_BRIEF.md`
+or similar, sibling to the existing handoff brief — written to be
+LLM-provider-agnostic ("any LLM," per the ask) rather than assuming
+Claude-specific tooling. Concretely: ask for country + city/lat-long,
+derive what item 11's tooling can derive, consult the met-office catalog
+for a bulletin URL, and if no fetcher exists yet for that country, walk
+through inspecting the real site and writing one — then GitHub secrets,
+Apps Script mailer deployment, GitHub Pages setup, the same sequence this
+project's own `mailer/README.md` / `ops/README.md` / main `README.md`
+already document for a human doing it manually, restructured as
+instructions an agent can execute rather than a person reading prose.
+
+### Honest risk
+
+**Realistic scope depends entirely on what tools the LLM instance actually
+has** — a chat-only model with no code execution or browsing can narrate
+instructions for a human to run by hand; an agentic coding assistant with
+shell/git/web access (like the one that wrote this line) can do the whole
+setup directly, the same way this session has been operating on the live
+Kisumu deployment all along. The brief should be written to degrade
+gracefully across that range, not assume the most-capable case.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
