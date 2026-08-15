@@ -5,11 +5,14 @@ from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.models import LogEntryMeta, ModelPredictionsByLead, MorningIssuanceSnapshot
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.publish.pages import (
+    ArchiveItem,
     GitHubPagesPublisher,
+    build_archive_items,
     build_nav_links,
     render_archive_index_page,
     render_forecast_page,
 )
+from openlocalweather.publish.pages import _entry_as_morning_view, _issuance_label
 
 LOCATION = LocationConfig(
     region_name="Test Region",
@@ -90,23 +93,18 @@ def test_render_forecast_page_includes_key_stats_and_narrative():
 
 
 def test_render_forecast_page_no_morning_issuance_shows_single_section():
-    # No evening refresh has happened for this entry — must render exactly
-    # as before this feature existed, no issuance labels or extra sections.
+    # No evening refresh has happened for this entry — nothing to
+    # disambiguate, no issuance label at all.
     entry = make_entry(date(2026, 8, 11))
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
     assert "Morning Issuance" not in html
     assert "Evening Update" not in html
-    assert "issuance-section" not in html
 
 
-def test_render_forecast_page_shows_both_issuances_when_refreshed():
-    # Real bug this guards against: the morning narrative used to be
-    # silently gone from the site the moment a refresh landed. Both must
-    # now be visible on the same archived page.
-    entry = make_entry(
-        date(2026, 8, 11),
+def _refreshed_entry(d=date(2026, 8, 11), **overrides):
+    defaults = dict(
         rain_expected="Heavy rain now",
         narrative_markdown="## Overview\nEvening: rain has arrived.",
         morning_issuance=MorningIssuanceSnapshot(
@@ -125,18 +123,48 @@ def test_render_forecast_page_shows_both_issuances_when_refreshed():
             llm_provider="gemini", llm_model="gemini-3.6-flash", pipeline_version="0.1.0",
         ),
     )
-    nav = build_nav_links("https://example.com", "owner/repo")
-    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+    defaults.update(overrides)
+    return make_entry(d, **defaults)
 
-    assert "Morning Issuance" in html
-    assert "Evening Update" in html
-    assert "Morning: dry and warm expected" in html
+
+def test_render_forecast_page_shows_only_current_issuance_even_when_morning_exists():
+    """Real regression this guards against: an earlier version stacked
+    both issuances on one page, forcing readers to scroll past stale
+    morning content to reach the current forecast. A single call to
+    render_forecast_page(entry, ...) — the landing page's own call — must
+    show ONLY the current (evening) content, never the morning content
+    alongside it, regardless of whether entry.morning_issuance is set."""
+    entry = _refreshed_entry()
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(
+        entry, LOCATION, nav, is_latest=True, issuance_label=_issuance_label(entry, morning=False)
+    )
+
     assert "Evening: rain has arrived" in html
-    assert "Dry all day" in html
     assert "Heavy rain now" in html
-    # Ordering: morning content must appear before evening content, not
-    # interleaved or reversed.
-    assert html.index("Morning: dry and warm expected") < html.index("Evening: rain has arrived")
+    assert "Morning: dry and warm expected" not in html
+    assert "Dry all day" not in html
+    assert "Morning Issuance" not in html
+    assert "Evening Update" in html  # the label IS shown, just not the old content
+
+
+def test_render_forecast_page_morning_view_shows_only_morning_content():
+    """The complementary page — _entry_as_morning_view() — must show ONLY
+    the morning issuance's content, on its own URL, not the evening
+    content that's since overwritten the entry's top-level fields."""
+    entry = _refreshed_entry()
+    nav = build_nav_links("https://example.com", "owner/repo")
+    morning_view = _entry_as_morning_view(entry)
+    html = render_forecast_page(
+        morning_view, LOCATION, nav, is_latest=False, issuance_label=_issuance_label(entry, morning=True)
+    )
+
+    assert "Morning: dry and warm expected" in html
+    assert "Dry all day" in html
+    assert "Evening: rain has arrived" not in html
+    assert "Heavy rain now" not in html
+    assert "Morning Issuance" in html
+    assert "Evening Update" not in html
 
 
 def test_render_forecast_page_archived_banner_only_when_not_latest():
@@ -204,9 +232,16 @@ def test_render_forecast_page_omits_optional_stats_when_absent():
 
 
 def test_render_archive_index_page_lists_dates_newest_first():
+    # render_archive_index_page renders items in the order given — sorting
+    # is build_archive_items()'s job (tested separately below), so this
+    # passes already-sorted items to test the rendering, not the sort.
     nav = build_nav_links("https://example.com", "owner/repo")
-    dates = [date(2026, 8, 9), date(2026, 8, 11), date(2026, 8, 10)]
-    html = render_archive_index_page(dates, LOCATION, nav)
+    items = [
+        ArchiveItem(date=date(2026, 8, 11), slug="2026-08-11", label=None),
+        ArchiveItem(date=date(2026, 8, 10), slug="2026-08-10", label=None),
+        ArchiveItem(date=date(2026, 8, 9), slug="2026-08-09", label=None),
+    ]
+    html = render_archive_index_page(items, LOCATION, nav)
 
     idx_11 = html.index("2026-08-11")
     idx_10 = html.index("2026-08-10")
@@ -222,11 +257,46 @@ def test_render_archive_index_page_empty_state():
 
 def test_render_archive_index_page_always_shows_disclaimer():
     nav = build_nav_links("https://example.com", "owner/repo")
-    html = render_archive_index_page([date(2026, 8, 11)], LOCATION, nav)
+    html = render_archive_index_page(
+        [ArchiveItem(date=date(2026, 8, 11), slug="2026-08-11", label=None)], LOCATION, nav
+    )
 
     assert "disclaimer-banner" in html
     assert "not an official government product" in html
     assert "life-safety decisions" in html
+
+
+def test_render_archive_index_page_shows_label_and_links_slug():
+    nav = build_nav_links("https://example.com", "owner/repo")
+    items = [ArchiveItem(date=date(2026, 8, 11), slug="2026-08-11-morning", label="Morning Issuance — 06:07 UTC")]
+    html = render_archive_index_page(items, LOCATION, nav)
+
+    assert 'href="2026-08-11-morning.html"' in html
+    assert "Morning Issuance" in html
+
+
+# ---------------------------------------------------------------------------
+# build_archive_items
+# ---------------------------------------------------------------------------
+
+
+def test_build_archive_items_one_entry_per_unrefreshed_day():
+    entries = {date(2026, 8, 10): make_entry(date(2026, 8, 10)), date(2026, 8, 11): make_entry(date(2026, 8, 11))}
+    items = build_archive_items(list(entries), entries.get)
+
+    assert [i.slug for i in items] == ["2026-08-11", "2026-08-10"]
+    assert all(i.label is None for i in items)
+
+
+def test_build_archive_items_two_entries_for_a_refreshed_day():
+    refreshed = _refreshed_entry()
+    entries = {date(2026, 8, 10): make_entry(date(2026, 8, 10)), date(2026, 8, 11): refreshed}
+    items = build_archive_items(list(entries), entries.get)
+
+    assert [i.slug for i in items] == ["2026-08-11", "2026-08-11-morning", "2026-08-10"]
+    assert items[0].label is not None and "Evening Update" in items[0].label
+    assert items[1].label is not None and "Morning Issuance" in items[1].label
+    assert items[2].label is None
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +382,75 @@ def test_publisher_backfill_skips_dates_with_no_entry(tmp_path):
     )
     publisher.publish(make_entry(date(2026, 8, 11)))  # must not raise
     assert (tmp_path / "archive" / "2026-08-11.html").exists()
+
+
+def test_publisher_writes_both_pages_for_a_refreshed_day(tmp_path):
+    """The actual fix this session was about: a refreshed day must get TWO
+    separate archive pages, not one page with both stacked, and the
+    landing page must show only the current (evening) content."""
+    entry = _refreshed_entry()
+    publisher = GitHubPagesPublisher(
+        docs_dir=tmp_path,
+        location=LOCATION,
+        base_url="https://example.com",
+        github_repo="owner/repo",
+        all_dates_provider=lambda: [date(2026, 8, 11)],
+        entry_provider=lambda d: entry if d == date(2026, 8, 11) else None,
+    )
+    publisher.publish(entry)
+
+    assert (tmp_path / "archive" / "2026-08-11.html").exists()
+    assert (tmp_path / "archive" / "2026-08-11-morning.html").exists()
+
+    index_text = (tmp_path / "index.html").read_text()
+    assert "Evening: rain has arrived" in index_text
+    assert "Morning: dry and warm expected" not in index_text
+
+    current_page_text = (tmp_path / "archive" / "2026-08-11.html").read_text()
+    assert "Evening: rain has arrived" in current_page_text
+    assert "Morning: dry and warm expected" not in current_page_text
+
+    morning_page_text = (tmp_path / "archive" / "2026-08-11-morning.html").read_text()
+    assert "Morning: dry and warm expected" in morning_page_text
+    assert "Evening: rain has arrived" not in morning_page_text
+
+    archive_index_text = (tmp_path / "archive" / "index.html").read_text()
+    assert 'href="2026-08-11.html"' in archive_index_text
+    assert 'href="2026-08-11-morning.html"' in archive_index_text
+    assert "Evening Update" in archive_index_text
+    assert "Morning Issuance" in archive_index_text
+
+
+def test_publisher_backfills_missing_morning_page_for_an_other_date(tmp_path):
+    """A date that already had its current page rendered can still be
+    missing its -morning.html — e.g. an entry that gained morning_issuance
+    after the fact (a backfill script, matching what actually happened on
+    this repo). The backfill loop must fill in just the missing piece,
+    not skip the whole date because the base page already exists."""
+    today = make_entry(date(2026, 8, 11))
+    yesterday_refreshed = _refreshed_entry(d=date(2026, 8, 10))
+    entries = {date(2026, 8, 10): yesterday_refreshed, date(2026, 8, 11): today}
+
+    publisher = GitHubPagesPublisher(
+        docs_dir=tmp_path,
+        location=LOCATION,
+        base_url="https://example.com",
+        github_repo="owner/repo",
+        all_dates_provider=lambda: list(entries),
+        entry_provider=entries.get,
+    )
+    # Simulate 2026-08-10 already having its current page (from before it
+    # gained morning_issuance) but not yet its morning page.
+    archive_dir = tmp_path / "archive"
+    archive_dir.mkdir(parents=True)
+    (archive_dir / "2026-08-10.html").write_text("stale placeholder")
+
+    publisher.publish(today)
+
+    assert (archive_dir / "2026-08-10-morning.html").exists()
+    # The pre-existing current page for 08-10 was left alone (force=False
+    # in the backfill path) — only the missing morning page got written.
+    assert (archive_dir / "2026-08-10.html").read_text() == "stale placeholder"
 
 
 # ---------------------------------------------------------------------------

@@ -46,10 +46,49 @@ def _narrative_html(entry: DailyLogEntry) -> str:
     return markdown.markdown(entry.narrative_markdown, extensions=["extra"])
 
 
-def _morning_narrative_html(entry: DailyLogEntry) -> str | None:
-    if entry.morning_issuance is None:
-        return None
-    return markdown.markdown(entry.morning_issuance.narrative_markdown, extensions=["extra"])
+def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
+    """Reconstructs what `entry` looked like right before an evening
+    refresh overwrote it, as a full DailyLogEntry — not just the raw
+    MorningIssuanceSnapshot fields — so the exact same forecast_page
+    template renders it with zero morning/evening-aware branching baked
+    into the template itself. Only ever called when entry.morning_issuance
+    is not None. `morning_issuance` is cleared on the result (nothing to
+    nest — a page showing the morning issuance has no "morning within the
+    morning" concept)."""
+    m = entry.morning_issuance
+    assert m is not None
+    return entry.model_copy(
+        update={
+            "rain_expected": m.rain_expected,
+            "onset_window": m.onset_window,
+            "peak_wind_kmh": m.peak_wind_kmh,
+            "temp_high_c": m.temp_high_c,
+            "temp_low_c": m.temp_low_c,
+            "temp_high_low_display": m.temp_high_low_display,
+            "mslp_trend_24h": m.mslp_trend_24h,
+            "synoptic_pattern": m.synoptic_pattern,
+            "uv_index_max": m.uv_index_max,
+            "air_quality_aqi": m.air_quality_aqi,
+            "ground_aqi": m.ground_aqi,
+            "narrative_markdown": m.narrative_markdown,
+            "whatsapp_summary": m.whatsapp_summary,
+            "morning_issuance": None,
+            "meta": entry.meta.model_copy(update={"generated_at_utc": m.generated_at_utc, "refreshed_at": None}),
+        }
+    )
+
+
+def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
+    """Small "which issuance is this" tag shown in a page's meta line —
+    e.g. "Evening Update — 15:02 UTC". None for a page with nothing to
+    disambiguate (a day that was never refreshed has only one issuance,
+    and doesn't need a label saying so)."""
+    if morning:
+        assert entry.morning_issuance is not None
+        return f"Morning Issuance — {entry.morning_issuance.generated_at_utc.strftime('%H:%M UTC')}"
+    if entry.meta.refreshed_at is not None:
+        return f"Evening Update — {entry.meta.refreshed_at.strftime('%H:%M UTC')}"
+    return None
 
 
 @dataclass
@@ -78,7 +117,7 @@ def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
 
 
 def render_forecast_page(
-    entry: DailyLogEntry, location: LocationConfig, nav: NavLinks, is_latest: bool
+    entry: DailyLogEntry, location: LocationConfig, nav: NavLinks, is_latest: bool, issuance_label: str | None = None
 ) -> str:
     # Staleness is judged relative to when the FORECAST was generated, not
     # when this page happens to be rendered — the archive backfill (see
@@ -93,8 +132,8 @@ def render_forecast_page(
         location=location,
         nav=nav,
         is_latest=is_latest,
+        issuance_label=issuance_label,
         narrative_html=_narrative_html(entry),
-        morning_narrative_html=_morning_narrative_html(entry),
         # Rendered deterministically from the raw per-station readings, not
         # trusted to LLM narrative — same "code does the data, LLM does the
         # prose" split as everywhere else in this project. See aqi.py.
@@ -106,9 +145,40 @@ def render_forecast_page(
     )
 
 
-def render_archive_index_page(dates: list[date], location: LocationConfig, nav: NavLinks) -> str:
+@dataclass
+class ArchiveItem:
+    """One row in the archive listing — one per issuance, not one per
+    date. A day that was never refreshed gets exactly one item (slug ==
+    the bare date, no label needed since there's nothing to disambiguate);
+    a refreshed day gets two, evening listed before morning to match the
+    listing's overall most-recent-first ordering."""
+
+    date: date
+    slug: str  # archive/<slug>.html
+    label: str | None
+
+
+def build_archive_items(
+    dates: list[date], entry_provider: Callable[[date], DailyLogEntry | None]
+) -> list[ArchiveItem]:
+    items: list[ArchiveItem] = []
+    for d in sorted(dates, reverse=True):
+        entry = entry_provider(d)
+        slug = format_date(d)
+        if entry is None or entry.morning_issuance is None:
+            # No entry yet (shouldn't normally happen — all_dates_provider
+            # is derived from what's on disk) or never refreshed: exactly
+            # one issuance, no label needed to disambiguate it.
+            items.append(ArchiveItem(date=d, slug=slug, label=None))
+            continue
+        items.append(ArchiveItem(date=d, slug=slug, label=_issuance_label(entry, morning=False)))
+        items.append(ArchiveItem(date=d, slug=f"{slug}-morning", label=_issuance_label(entry, morning=True)))
+    return items
+
+
+def render_archive_index_page(items: list[ArchiveItem], location: LocationConfig, nav: NavLinks) -> str:
     template = _env().get_template("archive_index.html.jinja")
-    return template.render(dates=sorted(dates, reverse=True), location=location, nav=nav)
+    return template.render(items=items, location=location, nav=nav)
 
 
 class GitHubPagesPublisher:
@@ -135,38 +205,77 @@ class GitHubPagesPublisher:
         # publish()'s backfill step for why that's needed.
         self.entry_provider = entry_provider
 
+    def _write_archive_pages_for(self, entry: DailyLogEntry, archive_dir: Path, *, force: bool = True) -> None:
+        """Writes the archive page(s) for one entry: always the current
+        (most-recent) issuance at `<date>.html`, plus `<date>-morning.html`
+        when a refresh happened. `force=False` (used by the backfill loop
+        below) only writes a page that doesn't already exist yet, so it
+        never clobbers something a more specific call already wrote this
+        run."""
+        current_page = archive_dir / f"{format_date(entry.date)}.html"
+        if force or not current_page.exists():
+            current_page.write_text(
+                render_forecast_page(
+                    entry, self.location, self.nav, is_latest=False, issuance_label=_issuance_label(entry, morning=False)
+                )
+            )
+
+        if entry.morning_issuance is not None:
+            morning_page = archive_dir / f"{format_date(entry.date)}-morning.html"
+            if force or not morning_page.exists():
+                morning_page.write_text(
+                    render_forecast_page(
+                        _entry_as_morning_view(entry),
+                        self.location,
+                        self.nav,
+                        is_latest=False,
+                        issuance_label=_issuance_label(entry, morning=True),
+                    )
+                )
+
     def publish(self, entry: DailyLogEntry) -> None:
         self.docs_dir.mkdir(parents=True, exist_ok=True)
         archive_dir = self.docs_dir / "archive"
         archive_dir.mkdir(parents=True, exist_ok=True)
 
-        index_html = render_forecast_page(entry, self.location, self.nav, is_latest=True)
+        # Landing page: always the CURRENT (most-recent) issuance only —
+        # never stacked alongside an earlier one. Tried and reverted: it
+        # buried whichever issuance was current below the other, forcing a
+        # scroll past stale content to reach the thing most readers
+        # actually want. See MorningIssuanceSnapshot's doc comment
+        # (models.py) for the fuller history.
+        index_html = render_forecast_page(
+            entry, self.location, self.nav, is_latest=True, issuance_label=_issuance_label(entry, morning=False)
+        )
         (self.docs_dir / "index.html").write_text(index_html)
 
-        entry_html = render_forecast_page(entry, self.location, self.nav, is_latest=False)
-        (archive_dir / f"{format_date(entry.date)}.html").write_text(entry_html)
+        self._write_archive_pages_for(entry, archive_dir, force=True)
 
         all_dates = self.all_dates_provider()
 
-        # Backfill any archive page that's missing. The index is generated
-        # from data/log/ (the source of truth), but only TODAY's page is
-        # written above — so any date whose page was never rendered would
-        # otherwise be listed in the index as a dead link. That isn't
-        # hypothetical: it happens to every entry written by a run where
-        # publishing was skipped (no --public-url configured), which is
-        # exactly how this repo's own first forecast was created before
-        # Pages was wired up. Cheap: a no-op once every page exists.
+        # Backfill any archive page that's missing — the current entry
+        # (possibly including its morning issuance) is force-written above;
+        # every OTHER date's pages get backfilled only if actually absent.
+        # The index is generated from data/log/ (the source of truth), but
+        # only today's pages are force-written above — so any date whose
+        # pages were never rendered would otherwise be listed in the index
+        # as a dead link. That isn't hypothetical: it happens to every
+        # entry written by a run where publishing was skipped (no
+        # --public-url configured), which is exactly how this repo's own
+        # first forecast was created before Pages was wired up — and now
+        # also to any already-committed entry that gained a
+        # morning_issuance after the fact (e.g. a backfill script) without
+        # its own -morning.html existing yet. Cheap: a no-op once every
+        # page exists.
         if self.entry_provider is not None:
             for d in all_dates:
-                page = archive_dir / f"{format_date(d)}.html"
-                if page.exists():
+                if d == entry.date:
                     continue
                 past_entry = self.entry_provider(d)
                 if past_entry is None:
                     continue
-                page.write_text(
-                    render_forecast_page(past_entry, self.location, self.nav, is_latest=False)
-                )
+                self._write_archive_pages_for(past_entry, archive_dir, force=False)
 
-        archive_index_html = render_archive_index_page(all_dates, self.location, self.nav)
+        archive_items = build_archive_items(all_dates, self.entry_provider or (lambda d: None))
+        archive_index_html = render_archive_index_page(archive_items, self.location, self.nav)
         (archive_dir / "index.html").write_text(archive_index_html)
