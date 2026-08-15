@@ -20,15 +20,32 @@ raw-content CDN (`data/log/YYYY-MM-DD.json`) — not a scrape of the
 rendered [GitHub Pages site](https://dissent00.github.io/open-local-weather/) —
 so it's immune to any future page-template change.
 
-**Email format**: plain text, styled as a nod to NOAA's Area Forecast
-Discussion (AFD) product — dot-leader `.SECTION...` headers, `&&` segment
-dividers, prose reflowed to a fixed width — rather than a styled marketing-
-style HTML layout. `buildEmailPlainText()` builds the one true body; an
-identical `<pre>`-wrapped Courier `htmlBody` is generated from that same
-text (never independently) so the two representations can't drift apart.
-Every email carries an explicit beta/experimental disclaimer and a link to
-the live site — see `buildEmailPlainText()`'s doc comment in
-[`AppsScriptMailer.gs`](AppsScriptMailer.gs) for the full rationale.
+**Email format**: two independently-built representations of the same
+`entry`/`config` data, not one derived from the other:
+- `body` (plain text) — styled as a nod to NOAA's Area Forecast Discussion
+  (AFD) product: dot-leader `.SECTION...` headers, `&&` segment dividers,
+  prose reflowed to a fixed width. What non-HTML clients see.
+- `htmlBody` — styled to match the [GitHub Pages
+  site](https://dissent00.github.io/open-local-weather/) itself: system
+  font, the same High/Low/Rain/Onset/UV/AQI stat-grid, narrative rendered
+  as real `<h2>`/`<h3>`/`<p>`/`<ul>` HTML rather than monospace text. What
+  most subscribers actually see, since HTML-capable clients prefer
+  `htmlBody` over `body` when both are present.
+
+An earlier version made `htmlBody` a literal `<pre>`-wrapped copy of the
+AFD plain text, on the theory that guaranteed the two could never drift
+apart. Replaced on request — what's guaranteed now is CONTENT consistency
+(same narrative, same stats, same disclaimer, same links), built from the
+same inputs, not byte-identical text; see `buildEmailHtml()`'s doc comment
+in [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for the full rationale,
+including why the site's per-station Ground AQI section was deliberately
+left out (would mean re-implementing `aqi.py`'s staleness logic a second
+time in JS).
+
+Every email carries an explicit beta/experimental disclaimer — deliberately
+placed near the *bottom* of both representations, after the forecast
+content, not as the first thing a subscriber sees — and a link to the live
+site.
 
 **Two independent sends, one per pipeline run**: `sendDailyForecastEmail()`
 pairs with the morning full run (~06:07 EAT), `sendEveningRefreshEmail()`

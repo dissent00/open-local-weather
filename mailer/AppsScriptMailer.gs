@@ -306,23 +306,14 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   const discussion = convertMarkdownToAfdText(entry.narrative_markdown || '');
   const locationLine = runLabel ? `${config.locationName} — ${runLabel}` : config.locationName;
 
+  // Disclaimer deliberately lives at the BOTTOM, not right under the
+  // header — moved there on request; the evening-refresh explanation
+  // (when present) stays up top since it's context for reading what
+  // follows, not boilerplate, and belongs next to the thing it explains.
   const lines = [];
   lines.push('Open Local Weather — Experimental Forecast Discussion');
   lines.push(locationLine);
   lines.push(`Issued ${issuedStr} (${config.timezone})`);
-  lines.push('');
-  lines.push(AFD_DIVIDER);
-  lines.push('');
-  lines.push('.DISCLAIMER...');
-  lines.push(wrapText(
-    'This is an experimental, AI-assisted hobby forecast product, not an ' +
-    'official government forecast. It is provided for general interest ' +
-    'only and must NOT be relied on for life-safety decisions. For ' +
-    'official warnings and advisories, consult your national ' +
-    'meteorological service (in Kenya: the Kenya Meteorological ' +
-    'Department, meteo.go.ke).',
-    AFD_WRAP_WIDTH
-  ));
   if (runLabel) {
     lines.push('');
     lines.push(wrapText(
@@ -361,32 +352,182 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   lines.push('forecast service.');
   lines.push('');
   lines.push(AFD_DIVIDER);
+  lines.push('');
+  lines.push('.DISCLAIMER...');
+  lines.push(wrapText(
+    'This is an experimental, AI-assisted hobby forecast product, not an ' +
+    'official government forecast. It is provided for general interest ' +
+    'only and must NOT be relied on for life-safety decisions. For ' +
+    'official warnings and advisories, consult your national ' +
+    'meteorological service (in Kenya: the Kenya Meteorological ' +
+    'Department, meteo.go.ke).',
+    AFD_WRAP_WIDTH
+  ));
+  lines.push('');
+  lines.push(AFD_DIVIDER);
   lines.push('$$');
 
   return lines.join('\n');
 }
 
-/** HTML companion to buildEmailPlainText(): the exact same text, wrapped
- * in a monospace <pre> block so HTML-capable clients render it in
- * Courier/fixed-width too (a plain-text `body` alone typically renders in
- * a client's default sans-serif font, not monospace — this is what
- * actually delivers the "plaintext/courier" look for most subscribers,
- * since most mail clients prefer htmlBody when both are present). Never
- * builds the HTML from markdown independently — see buildEmailPlainText's
- * doc comment for why that would risk the two versions saying different
- * things.
+// Site-styled HTML palette, hand-matched to docs/assets/style.css's
+// LIGHT-mode (:root) values so the email visually matches the GitHub
+// Pages site. Deliberately NOT attempting the site's dark-mode media
+// query here — HTML email client support for `prefers-color-scheme` is
+// inconsistent enough that one reliable look (the site's light mode) beats
+// a half-working dark variant. Kept in sync by hand; if style.css's
+// palette changes, update these too.
+const SITE_BG = '#ffffff';
+const SITE_FG = '#1a1a1a';
+const SITE_MUTED = '#5b6470';
+const SITE_BORDER = '#e2e5e9';
+const SITE_ACCENT = '#1a6fd1';
+const SITE_CARD_BG = '#f7f9fb';
+const SITE_WARN_BG = '#fff8e6';
+const SITE_WARN_BORDER = '#f0c975';
+const SITE_WARN_FG = '#6b4f00';
+
+/** Site-styled HTML companion to buildEmailPlainText(): NOT derived from
+ * the plain-text body anymore (an earlier version wrapped the same AFD
+ * text in a monospace <pre>, on the theory the two representations could
+ * never drift apart if one was literally the other escaped). Replaced on
+ * request — subscribers wanted the HTML version to look like the actual
+ * GitHub Pages site (system font, the stat-grid summary, real headings)
+ * for HTML-capable clients, with the fixed-width AFD look kept only as
+ * the plain-text fallback for clients that can't render HTML at all. The
+ * two are now independently built from the same `entry`/`config` inputs
+ * rather than one being a literal transform of the other — consistency
+ * of CONTENT (same narrative, same stats, same disclaimer, same links) is
+ * what's guaranteed now, not byte-identical text.
+ *
+ * Deliberately does NOT replicate the site's per-station Ground AQI
+ * Stations section — that would mean re-implementing aqi.py's staleness
+ * threshold logic a second time in JS, a duplication risk for something
+ * the narrative already describes qualitatively. Revisit if that's
+ * wanted; not built speculatively.
+ *
+ * Uses an HTML <table> for the stat grid (not CSS grid/flexbox) and
+ * inline styles throughout, not a linked stylesheet or <style> block —
+ * both are the standard, portable choices for HTML email, since many
+ * clients (Outlook in particular) strip <head>/<style> or have poor
+ * modern-CSS support.
  */
 function buildEmailHtml(config, entry, dateStr, runLabel) {
-  const plainText = buildEmailPlainText(config, entry, dateStr, runLabel);
-  const escaped = escapeHtml(plainText);
-  return `<pre style="font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; margin: 0;">${escaped}</pre>`;
+  const locationLine = runLabel ? `${config.locationName} — ${runLabel}` : config.locationName;
+  const issuedStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd HH:mm');
+  const narrativeHtml = convertMarkdownToHtml(entry.narrative_markdown || '');
+  const statGridHtml = buildStatGridHtml(entry);
+
+  const refreshNoteHtml = runLabel
+    ? `<p style="font-size: 0.9em; color: ${SITE_MUTED}; margin: 0.4em 0 1em;">This is an evening refresh of the forecast issued earlier today, re-synthesized on the freshest available model data for the rest of today and tomorrow. It does not change today's accuracy-tracking record &mdash; only the morning run counts toward model verification.</p>`
+    : '';
+
+  const linksHtml = config.publicUrl
+    ? `<p style="font-size: 0.9em; margin: 1.2em 0 0.3em;"><a href="${escapeHtml(config.publicUrl)}" style="color: ${SITE_ACCENT};">View on the web</a> &middot; <a href="${escapeHtml(config.publicUrl)}archive/" style="color: ${SITE_ACCENT};">Archive</a></p>`
+    : '';
+
+  return `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${SITE_FG}; background: ${SITE_BG}; max-width: 640px; margin: 0 auto; line-height: 1.5;">
+  <h1 style="font-size: 1.4em; margin: 0 0 0.1em;">${escapeHtml(locationLine)}</h1>
+  <p style="font-size: 0.85em; color: ${SITE_MUTED}; margin: 0 0 1em;">Forecast for ${escapeHtml(dateStr)} &middot; issued ${escapeHtml(issuedStr)} (${escapeHtml(config.timezone)}) &middot; multi-model synthesis via Open Local Weather</p>
+  ${refreshNoteHtml}
+  ${statGridHtml}
+  <div>${narrativeHtml}</div>
+  ${linksHtml}
+  <p style="font-size: 0.8em; color: ${SITE_MUTED}; margin: 1.5em 0 0;">You are receiving this because you subscribed to this experimental forecast service.</p>
+  <div style="background: ${SITE_WARN_BG}; border: 1px solid ${SITE_WARN_BORDER}; color: ${SITE_WARN_FG}; border-radius: 8px; padding: 0.75em 1em; margin: 1.2em 0 0; font-size: 0.85em; line-height: 1.5;">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult your national meteorological service (in Kenya: the Kenya Meteorological Department, meteo.go.ke).</div>
+</div>`;
+}
+
+/** Builds the site's stat-grid ("High/Low", "Rain", "Onset Window", "UV
+ * Index", "Air Quality") as an HTML <table> — matches forecast.html.jinja's
+ * .stat-grid section, same fields, same conditional-on-present logic
+ * (onset_window/uv_index_max/air_quality_aqi only shown when the entry
+ * actually has them). A <table> with the legacy `cellspacing` attribute
+ * for gaps, not CSS grid/gap, since that's the reliable choice across
+ * email clients including Outlook. */
+function buildStatGridHtml(entry) {
+  const stats = [['High / Low', entry.temp_high_low_display], ['Rain', entry.rain_expected]];
+  if (entry.onset_window) stats.push(['Onset Window', entry.onset_window]);
+  if (entry.uv_index_max) stats.push(['UV Index', entry.uv_index_max]);
+  if (entry.air_quality_aqi) stats.push(['Air Quality', entry.air_quality_aqi]);
+
+  const cells = stats.map(([label, value]) => `<td style="background: ${SITE_CARD_BG}; border: 1px solid ${SITE_BORDER}; border-radius: 8px; padding: 0.7em 0.9em; vertical-align: top;"><div style="font-size: 0.72em; color: ${SITE_MUTED}; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.15em;">${escapeHtml(label)}</div><div style="font-size: 1em; font-weight: 600; color: ${SITE_FG};">${escapeHtml(String(value))}</div></td>`).join('');
+
+  return `<table role="presentation" cellpadding="0" cellspacing="8" style="border-collapse: separate; margin: 0.8em 0;"><tr>${cells}</tr></table>`;
+}
+
+/** Converts narrative_markdown into real HTML matching the GitHub Pages
+ * site's own rendering (forecast.html.jinja / style.css): "## Heading" ->
+ * <h2>, "### Subheading" -> <h3>, "**bold**" -> <strong>, blank-line-
+ * separated paragraphs -> <p>, "- "/"* " bullets -> <ul><li>. See
+ * convertMarkdownToAfdText() for the plain-text sibling of this — same
+ * source markdown, different rendering target. Inline-styled, not a
+ * linked stylesheet, for the same email-client-compatibility reason as
+ * buildEmailHtml() above.
+ */
+function convertMarkdownToHtml(md) {
+  const lines = (md || '').replace(/\r\n/g, '\n').split('\n');
+  const out = [];
+  let paragraphBuf = [];
+  let listBuf = [];
+
+  function inlineFormat(text) {
+    return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  function flushParagraph() {
+    if (paragraphBuf.length) {
+      const text = paragraphBuf.join(' ').replace(/\s+/g, ' ').trim();
+      if (text) out.push(`<p style="margin: 0.6em 0; line-height: 1.6;">${inlineFormat(text)}</p>`);
+      paragraphBuf = [];
+    }
+  }
+
+  function flushList() {
+    if (listBuf.length) {
+      const items = listBuf.map(item => `<li style="margin: 0.2em 0;">${inlineFormat(item)}</li>`).join('');
+      out.push(`<ul style="margin: 0.6em 0; padding-left: 1.4em;">${items}</ul>`);
+      listBuf = [];
+    }
+  }
+
+  lines.forEach(rawLine => {
+    const line = rawLine.trim();
+    const h2 = line.match(/^##\s+(.*)$/);
+    const h3 = line.match(/^###\s+(.*)$/);
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+    if (h2) {
+      flushParagraph();
+      flushList();
+      out.push(`<h2 style="font-size: 1.15em; margin: 1.4em 0 0.5em; padding-bottom: 0.25em; border-bottom: 1px solid ${SITE_BORDER}; color: ${SITE_FG};">${inlineFormat(h2[1])}</h2>`);
+    } else if (h3) {
+      flushParagraph();
+      flushList();
+      out.push(`<h3 style="font-size: 1em; margin: 1.1em 0 0.3em; color: ${SITE_MUTED};">${inlineFormat(h3[1])}</h3>`);
+    } else if (bullet) {
+      flushParagraph();
+      listBuf.push(bullet[1]);
+    } else if (line === '') {
+      flushParagraph();
+      flushList();
+    } else {
+      flushList();
+      paragraphBuf.push(line);
+    }
+  });
+  flushParagraph();
+  flushList();
+
+  return out.join('\n');
 }
 
 function escapeHtml(text) {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /** Converts the LLM's narrative_markdown into AFD-style plain text:
