@@ -46,6 +46,12 @@ def _narrative_html(entry: DailyLogEntry) -> str:
     return markdown.markdown(entry.narrative_markdown, extensions=["extra"])
 
 
+def _morning_narrative_html(entry: DailyLogEntry) -> str | None:
+    if entry.morning_issuance is None:
+        return None
+    return markdown.markdown(entry.morning_issuance.narrative_markdown, extensions=["extra"])
+
+
 @dataclass
 class NavLinks:
     home: str
@@ -88,6 +94,7 @@ def render_forecast_page(
         nav=nav,
         is_latest=is_latest,
         narrative_html=_narrative_html(entry),
+        morning_narrative_html=_morning_narrative_html(entry),
         # Rendered deterministically from the raw per-station readings, not
         # trusted to LLM narrative — same "code does the data, LLM does the
         # prose" split as everywhere else in this project. See aqi.py.

@@ -196,6 +196,47 @@
   "yesterday_verification_summary": "For August 12th (Day+0), all models correctly predicted dry to light drizzle conditions, verifying the rainfall forecast. ECMWF and UKMO demonstrated outstanding temperature accuracy with daily high errors of 0.0°C and +0.3°C respectively, whereas GFS over-predicted surface wind speeds by 18.7 km/h and ICON exhibited an overnight cold bias of -2.2°C.",
   "narrative_markdown": "## Overview\nSame-day update: No material weather changes have occurred since the morning issuance. Warm, mostly clear afternoon conditions will give way to increasing evening cloudiness with a slight chance of localized drizzle before clearing to a mild night.\n\n## Today's Forecast\n- **Temperatures**: High of 30°C / 86°F reached earlier today, cooling to an overnight low of 19°C / 66°F.\n- **Rainfall**: Isolated late-afternoon or evening drizzle remains possible (10% to 24% probability, localized accumulation under 0.2 mm / 0.01 in).\n- **Winds**: 15 km/h (8 kt) from the SW this evening with gusts up to 30 km/h (16 kt), shifting to 9 km/h (5 kt) from the SE overnight.\n- **UV Index**: Peak UV index reached 8.8 (Very High) earlier today.\n- **Air Quality**: US EPA AQI estimated between 67 and 80 (Moderate) based on CAMS atmospheric modeling. Ground monitoring sensors remain stale, so operational assessments rely on model guidance.\n\n## Extended Outlook\n- **Days 1 to 3 (Aug 14 – Aug 16)**: High-confidence near-term forecast continues to indicate warm, stable, and predominantly dry weather across Kisumu and the surrounding lowlands. Daytime highs will average 30°C / 86°F to 31°C / 88°F with overnight lows near 18°C / 64°F to 19°C / 66°F. Rain probability remains below 15% through Saturday.\n- **Days 4 to 7 (Aug 17 – Aug 20)**: Medium-range guidance maintains the signal for a shift toward higher moisture levels and increased shower activity starting Sunday, August 17th. Daily rainfall totals may reach 2.0 mm to 6.0 mm (0.08 to 0.24 in) under cloudier skies and slightly cooler daytime highs of 28°C / 82°F to 29°C / 84°F.\n\n## Severe Weather / Hazard Potential\nNo severe weather hazards or environmental warnings are active for the Nyanza Basin tonight or through Friday.\n\n## Lake Victoria — Conditions for Boaters\nEvening winds over open waters will blow from the SW at 15 km/h (8 kt) with gusts up to 28 km/h (15 kt), becoming calm to light from the SSW at 7 km/h (4 kt) overnight. Waves will remain light (0.3 to 0.6 m). Boaters should note that stronger lake breezes return Friday afternoon, reaching 20 km/h (11 kt) from the SW with gusts up to 45 km/h (24 kt).\n\n## Detailed Discussion\n### Synoptic Overview\nA gentle pressure gradient controls the Nyanza Basin, with mean sea level pressure averaging 1015.2 hPa near the lake shore and up to 1018.0 hPa across surrounding elevated terrain. A minor 24-hour pressure fall (-1.1 hPa) combined with solar heating has driven daytime lake-breeze convergence. Moderate Convective Available Potential Energy (CAPE) between 200 and 500 J/kg this evening supports localized cloud buildup and a brief window for light drizzle along the shoreline boundary before nocturnal stabilization sets in.\n\n### Forecaster Confidence Notes\nAs a same-day refresh, model weighting continues to lean on ECMWF and UKMO, which demonstrated superior Day+0 skill in recent verification runs (100% rain accuracy and daily high errors under 0.3°C). GFS surface winds were discounted due to a persistent high speed bias (+18.7 km/h error yesterday). Recent 10-check stats are prioritized over long-term trends, which carry null values due to short verification history. Local ground AQI stations—Kisumu Airport, Ochieng' Avenue, Kisumu Central, and Dunga Beach—reported readings over 4 hours old and flagged as stale, requiring primary reliance on CAMS model data.",
   "whatsapp_summary": "🌤️ *Nyanza Basin Refresh (Aug 13)*\nNo major changes since morning. Warm evening with a slight chance of isolated drizzle, cooling to 19°C (66°F) overnight.\n\n⛵ *Lake Victoria*: SW winds 15 km/h (8 kt), calm waters tonight. Stronger breezes returning Friday afternoon up to 45 km/h (24 kt).\n\n📅 *Outlook*: Warm & dry Fri/Sat (30-31°C). Rain chances increase Sun (Aug 17).",
+  "morning_issuance": {
+    "rain_expected": "Isolated Evening Drizzle",
+    "onset_window": "18:00 - 21:00 EAT",
+    "peak_wind_kmh": 24.1,
+    "temp_high_c": 31.0,
+    "temp_low_c": 18.5,
+    "temp_high_low_display": "31°C / 88°F high, 19°C / 66°F low",
+    "mslp_trend_24h": "Falling (-1.1 hPa/24h)",
+    "synoptic_pattern": "Weakening Regional Ridge",
+    "uv_index_max": "8.1 (Very High)",
+    "air_quality_aqi": "65-87 (Moderate)",
+    "ground_aqi": [
+      {
+        "name": "Kisumu Airport",
+        "station_id": "A418534",
+        "aqi": 36,
+        "pm25": 36.0,
+        "pm10": 15.0,
+        "measured_at": "2026-08-13T01:00:00Z"
+      },
+      {
+        "name": "Ochieng' Avenue, Kisumu Central",
+        "station_id": "A418300",
+        "aqi": 41,
+        "pm25": 41.0,
+        "pm10": 18.0,
+        "measured_at": "2026-08-13T01:00:00Z"
+      },
+      {
+        "name": "Dunga Beach",
+        "station_id": "A418504",
+        "aqi": 23,
+        "pm25": 23.0,
+        "pm10": 37.0,
+        "measured_at": "2026-08-13T01:00:00Z"
+      }
+    ],
+    "narrative_markdown": "## Overview\nWarm and sunny conditions will dominate the Nyanza Basin today, though increasing late afternoon clouds may bring a brief, isolated drizzle or light shower by evening. Daytime highs will reach 31°C / 88°F before cooling to 19°C / 66°F overnight, matching recent conditions.\n\n## Today's Forecast\n- **Temperatures**: High of 31°C / 88°F, Low of 19°C / 66°F.\n- **Rainfall**: Isolated evening drizzle or light shower possible (10-39% probability, localized accumulation under 0.5 mm / 0.02 in).\n- **Winds**: 15 km/h (8 kt) from the SW in the afternoon with gusts up to 33 km/h (18 kt), turning S/SE at night.\n- **UV Index**: Peak UV index of 8.1 (Very High) around noon. Sun protection is recommended between 10:00 and 15:00 EAT.\n- **Air Quality**: US EPA AQI between 65 and 87 (Moderate) based on CAMS model guidance. No ground station reported a valid current AQI reading today as all local sensors are stale.\n\n## Extended Outlook\n- **Days 1 to 3 (Aug 13 – Aug 15)**: Warm and dry weather continues across Kisumu and low-lying basin areas. Highs will remain near 31°C / 88°F with lows around 18°C / 64°F to 19°C / 66°F under sunny intervals and moderate afternoon lake breezes. Rain probabilities remain under 10% on Friday and Saturday.\n- **Days 4 to 7 (Aug 16 – Aug 20)**: Confidence decreases in the medium range, but models indicate a shift toward increased atmospheric moisture and thunderstorm activity starting Sunday, August 17th. Daily rainfall totals could reach 2.0 to 9.0 mm (0.08 to 0.35 in) per day, accompanied by cloudier skies and slightly cooler daytime highs near 28°C / 82°F to 30°C / 86°F.\n\n## Severe Weather / Hazard Potential\nNo severe weather hazards or warnings are in effect for the Nyanza Basin today. High UV radiation around noon remains the primary environmental caution.\n\n## Lake Victoria — Conditions for Boaters\nWinds will start from the SE at 11 km/h (6 kt) this morning before veering South-Southwesterly by early afternoon, increasing to 24 km/h (13 kt) from the SW with gusts up to 33 km/h (18 kt). Waves will remain light to moderate (0.4 to 0.8 m). Fishermen and boaters should anticipate a moderate afternoon wind surge before lake breezes subside after sunset.\n\n## Detailed Discussion\n### Synoptic Overview\nMean sea level pressure across the Nyanza Basin averages 1015.1 hPa today (ranging from 1015.2 hPa at Homa Bay to 1017.6 hPa across higher terrain in Kisii/Nandi). A gradual 24-hour pressure fall of ~1.1 hPa is occurring as high pressure over East Africa weakens. Solar heating of the land surface will draw moist lake breezes inland this afternoon. Mid-level CAPE reaches 300 to 520 J/kg during the early evening, creating weak instability that may trigger isolated drizzle or light showers along the converging lake breeze boundary between 18:00 and 21:00 EAT.\n\n### Forecaster Confidence Notes\nAt Day+0 lead time, ECMWF and UKMO have shown superior performance over recent verification runs (100% rain accuracy, high temperature errors under 0.3°C). ECMWF and UKMO were weighted highest for today's forecast call. GFS wind predictions were discounted slightly due to a +18.7 km/h over-estimation on yesterday's verification. Model rain trend fields currently show null values due to early verification tracking, so recent 10-check accuracy was prioritized over long-term trends. For Days 4–7, Day+3/Day+7 track record checks are not yet available; an ensemble blend was used to map the transition toward wetter weather next week. Ground AQI readings from Kisumu Airport (36), Ochieng' Avenue (41), and Dunga Beach (23) are over 3 hours old and flagged as stale, so CAMS model guidance was used for current air quality assessment.",
+    "whatsapp_summary": "🌤 Kisumu Weather (Aug 13): Warm and sunny today with a high of 31°C (88°F) and low of 19°C (66°F). Brief isolated evening drizzle possible (18:00-21:00 EAT). Lake Victoria winds SW 24 km/h (13 kt) in afternoon. Extended: Dry through Sat, wetter from Sun! 🚤 High UV (8.1).",
+    "generated_at_utc": "2026-08-13T04:20:08.461678Z"
+  },
   "meta": {
     "generated_at_utc": "2026-08-13T04:20:08.461678Z",
     "llm_provider": "GeminiProvider",

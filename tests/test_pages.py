@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.models import LogEntryMeta, ModelPredictionsByLead
+from openlocalweather.models import LogEntryMeta, ModelPredictionsByLead, MorningIssuanceSnapshot
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.publish.pages import (
     GitHubPagesPublisher,
@@ -87,6 +87,56 @@ def test_render_forecast_page_includes_key_stats_and_narrative():
     assert nav.archive in html
     # nav.subscribe deliberately isn't linked from any template yet — see
     # NavLinks' docstring comment.
+
+
+def test_render_forecast_page_no_morning_issuance_shows_single_section():
+    # No evening refresh has happened for this entry — must render exactly
+    # as before this feature existed, no issuance labels or extra sections.
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "Morning Issuance" not in html
+    assert "Evening Update" not in html
+    assert "issuance-section" not in html
+
+
+def test_render_forecast_page_shows_both_issuances_when_refreshed():
+    # Real bug this guards against: the morning narrative used to be
+    # silently gone from the site the moment a refresh landed. Both must
+    # now be visible on the same archived page.
+    entry = make_entry(
+        date(2026, 8, 11),
+        rain_expected="Heavy rain now",
+        narrative_markdown="## Overview\nEvening: rain has arrived.",
+        morning_issuance=MorningIssuanceSnapshot(
+            rain_expected="Dry all day",
+            temp_high_c=26.0,
+            temp_low_c=18.0,
+            temp_high_low_display="26°C / 79°F",
+            mslp_trend_24h="falling",
+            synoptic_pattern="trough",
+            narrative_markdown="## Overview\nMorning: dry and warm expected.",
+            generated_at_utc=datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc),
+        ),
+        meta=LogEntryMeta(
+            generated_at_utc=datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc),
+            refreshed_at=datetime(2026, 8, 11, 18, 20, tzinfo=timezone.utc),
+            llm_provider="gemini", llm_model="gemini-3.6-flash", pipeline_version="0.1.0",
+        ),
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "Morning Issuance" in html
+    assert "Evening Update" in html
+    assert "Morning: dry and warm expected" in html
+    assert "Evening: rain has arrived" in html
+    assert "Dry all day" in html
+    assert "Heavy rain now" in html
+    # Ordering: morning content must appear before evening content, not
+    # interleaved or reversed.
+    assert html.index("Morning: dry and warm expected") < html.index("Evening: rain has arrived")
 
 
 def test_render_forecast_page_archived_banner_only_when_not_latest():

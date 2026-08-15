@@ -474,6 +474,79 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     assert refresh_result.log_entry.model_predictions == original_predictions
 
 
+def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
+    """Real bug fixed: the morning narrative used to be silently gone the
+    moment a refresh landed — recoverable only from git history, not from
+    anything the site or data file exposed. morning_issuance must capture
+    exactly what the morning run actually published, before the refresh
+    overwrites the top-level fields with the evening's new values."""
+    morning_deps = make_deps(tmp_path)
+    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    assert morning_result.log_entry.morning_issuance is None, "a fresh morning entry has nothing to snapshot yet"
+
+    evening_llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="n/a — refresh",
+            verification_notes=[],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Now raining", temp_high_c=25.0, temp_low_c=17.0, temp_high_low="25°C / 77°F"
+            ),
+            today_narrative="## Overview\nRain has moved in this evening.",
+        )
+    )
+    refresh_result = run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+
+    snapshot = refresh_result.log_entry.morning_issuance
+    assert snapshot is not None, "morning_issuance must be populated once a refresh has happened"
+    assert snapshot.rain_expected == "Unlikely"  # FakeLLMProvider's default morning response
+    assert snapshot.temp_high_c == 27.0
+    assert "Dry and warm" in snapshot.narrative_markdown
+    assert snapshot.generated_at_utc == morning_result.log_entry.meta.generated_at_utc
+    # And the top-level fields really did move on to the evening's values —
+    # the snapshot is an addition, not a substitute for the overwrite.
+    assert refresh_result.log_entry.rain_expected == "Now raining"
+    assert "Rain has moved in" in refresh_result.log_entry.narrative_markdown
+
+
+def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
+    """Defensive case, shouldn't normally happen (evening_refresh.yml's
+    check job gates on meta.refreshed_at already being set) but must be
+    correct if it ever does: a second refresh the same day must not
+    replace the true morning snapshot with an already-refreshed version."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    first_refresh_llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Light rain", temp_high_c=24.0, temp_low_c=16.0, temp_high_low="24°C / 75°F"
+            ),
+            today_narrative="## Overview\nFirst refresh.",
+        )
+    )
+    run_refresh_pipeline(make_deps(tmp_path, llm=first_refresh_llm), today=date(2026, 8, 11), dry_run=False)
+
+    second_refresh_llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain_expected="Heavy rain", temp_high_c=22.0, temp_low_c=15.0, temp_high_low="22°C / 72°F"
+            ),
+            today_narrative="## Overview\nSecond refresh.",
+        )
+    )
+    second_result = run_refresh_pipeline(make_deps(tmp_path, llm=second_refresh_llm), today=date(2026, 8, 11), dry_run=False)
+
+    # Still the TRUE morning values (FakeLLMProvider's default), not the
+    # first refresh's "Light rain" — that would mean the real morning
+    # issuance got silently replaced by an intermediate refreshed state.
+    assert second_result.log_entry.morning_issuance.rain_expected == "Unlikely"
+    assert "Dry and warm" in second_result.log_entry.morning_issuance.narrative_markdown
+    # And the top-level fields reflect the LATEST (second) refresh.
+    assert second_result.log_entry.rain_expected == "Heavy rain"
+
+
 def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
     morning_deps = make_deps(tmp_path)
     morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)

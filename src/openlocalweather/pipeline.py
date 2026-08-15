@@ -77,6 +77,7 @@ from openlocalweather.models import (
     GroundAQIReading,
     LogEntryMeta,
     ModelPredictionsByLead,
+    MorningIssuanceSnapshot,
     TrackRecord,
 )
 from openlocalweather.store import actuals_cache as actuals_cache_store
@@ -494,7 +495,35 @@ def run_refresh_pipeline(
     # loop depends on (model_predictions, verification, meta.generated_at_utc,
     # yesterday_verification_summary) is preserved untouched. Only the
     # narrative/today_properties/ground_aqi/whatsapp_summary and a new
-    # refreshed_at timestamp are updated. ---
+    # refreshed_at timestamp are updated.
+    #
+    # Before overwriting them, snapshot the morning issuance's own version
+    # of those same fields into morning_issuance — but ONLY if one isn't
+    # already captured. A day's true morning issuance must be snapshotted
+    # exactly once; re-snapshotting on a hypothetical second same-day
+    # refresh would silently replace it with an already-refreshed version,
+    # defeating the whole point. (In practice this shouldn't happen —
+    # evening_refresh.yml's `check` job gates on meta.refreshed_at already
+    # being set — but the guard costs nothing and matches this project's
+    # existing belt-and-suspenders idempotency style, e.g.
+    # last_verified_target_date in verify/pipeline.py.) ---
+    morning_snapshot = existing_entry.morning_issuance or MorningIssuanceSnapshot(
+        rain_expected=existing_entry.rain_expected,
+        onset_window=existing_entry.onset_window,
+        peak_wind_kmh=existing_entry.peak_wind_kmh,
+        temp_high_c=existing_entry.temp_high_c,
+        temp_low_c=existing_entry.temp_low_c,
+        temp_high_low_display=existing_entry.temp_high_low_display,
+        mslp_trend_24h=existing_entry.mslp_trend_24h,
+        synoptic_pattern=existing_entry.synoptic_pattern,
+        uv_index_max=existing_entry.uv_index_max,
+        air_quality_aqi=existing_entry.air_quality_aqi,
+        ground_aqi=existing_entry.ground_aqi,
+        narrative_markdown=existing_entry.narrative_markdown,
+        whatsapp_summary=existing_entry.whatsapp_summary,
+        generated_at_utc=existing_entry.meta.generated_at_utc,
+    )
+
     tp = llm_response.today_properties
     updated_entry = existing_entry.model_copy(
         update={
@@ -511,6 +540,7 @@ def run_refresh_pipeline(
             "ground_aqi": guidance.ground_aqi_readings,
             "narrative_markdown": llm_response.today_narrative,
             "whatsapp_summary": llm_response.whatsapp_summary,
+            "morning_issuance": morning_snapshot,
             "meta": existing_entry.meta.model_copy(update={"refreshed_at": datetime.now(timezone.utc)}),
         }
     )

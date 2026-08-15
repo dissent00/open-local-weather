@@ -27,6 +27,36 @@
   <h1>{{ location.primary_place_name }}</h1>
   <p class="meta">Forecast for {{ entry.date.isoformat() }} &middot; multi-model synthesis via {{ entry.meta.llm_model }}</p>
 
+  {% if entry.morning_issuance %}
+  {# An evening refresh happened — both issuances get archived and shown,
+     not just whichever one ran last. See MorningIssuanceSnapshot's doc
+     comment (models.py) for why this exists: run_refresh_pipeline used to
+     overwrite the morning narrative in place with no record left on the
+     site or in the committed JSON beyond digging through git history. #}
+  <div class="issuance-section">
+    <h2 class="issuance-label">Morning Issuance &mdash; {{ entry.morning_issuance.generated_at_utc.strftime('%H:%M UTC') }}</h2>
+    <div class="stat-grid">
+      <div class="stat"><span class="label">High / Low</span><span class="value">{{ entry.morning_issuance.temp_high_low_display }}</span></div>
+      <div class="stat"><span class="label">Rain</span><span class="value">{{ entry.morning_issuance.rain_expected }}</span></div>
+      {% if entry.morning_issuance.onset_window %}
+      <div class="stat"><span class="label">Onset Window</span><span class="value">{{ entry.morning_issuance.onset_window }}</span></div>
+      {% endif %}
+      {% if entry.morning_issuance.uv_index_max %}
+      <div class="stat"><span class="label">UV Index</span><span class="value">{{ entry.morning_issuance.uv_index_max }}</span></div>
+      {% endif %}
+      {% if entry.morning_issuance.air_quality_aqi %}
+      <div class="stat"><span class="label">Air Quality</span><span class="value">{{ entry.morning_issuance.air_quality_aqi }}</span></div>
+      {% endif %}
+    </div>
+    {{ morning_narrative_html | safe }}
+  </div>
+
+  <hr class="issuance-divider">
+
+  <div class="issuance-section">
+    <h2 class="issuance-label">Evening Update{% if entry.meta.refreshed_at %} &mdash; {{ entry.meta.refreshed_at.strftime('%H:%M UTC') }}{% endif %}</h2>
+  {% endif %}
+
   <div class="stat-grid">
     <div class="stat"><span class="label">High / Low</span><span class="value">{{ entry.temp_high_low_display }}</span></div>
     <div class="stat"><span class="label">Rain</span><span class="value">{{ entry.rain_expected }}</span></div>
@@ -42,6 +72,10 @@
   </div>
 
   {{ narrative_html | safe }}
+
+  {% if entry.morning_issuance %}
+  </div>
+  {% endif %}
 
   {% if entry.ground_aqi %}
   <h2>Ground AQI Stations</h2>

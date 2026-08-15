@@ -154,6 +154,45 @@ class LogEntryMeta(BaseModel):
     refreshed_at: datetime | None = None
 
 
+class MorningIssuanceSnapshot(BaseModel):
+    """A frozen copy of DailyLogEntry's public-facing fields exactly as
+    they stood right before an evening refresh overwrote them in place.
+
+    Real bug this fixes: run_refresh_pipeline merges the evening's fresh
+    narrative_markdown/today_properties/ground_aqi/whatsapp_summary
+    directly into the existing entry, so the morning issuance's actual
+    published text was silently gone from both the committed JSON and the
+    rendered archive page the moment a refresh landed — recoverable only
+    by digging through git history for the pre-refresh commit, not from
+    anything the site or data file exposed. model_predictions/verification
+    were never affected (those already survive a refresh untouched — see
+    LogEntryMeta) and are deliberately NOT duplicated here; this only
+    covers the fields a refresh actually overwrites.
+
+    Captured once, by whichever refresh run is first to find
+    DailyLogEntry.morning_issuance unset — see run_refresh_pipeline. A
+    second same-day refresh (shouldn't normally happen; the GitHub Actions
+    `check` job gates on meta.refreshed_at already being set — see
+    evening_refresh.yml) must never re-snapshot an already-refreshed
+    entry as if it were the true morning issuance.
+    """
+
+    rain_expected: str
+    onset_window: str | None = None
+    peak_wind_kmh: float | None = None
+    temp_high_c: float
+    temp_low_c: float
+    temp_high_low_display: str
+    mslp_trend_24h: str
+    synoptic_pattern: str
+    uv_index_max: str | None = None
+    air_quality_aqi: str | None = None
+    ground_aqi: list[GroundAQIReading] = Field(default_factory=list)
+    narrative_markdown: str
+    whatsapp_summary: str | None = None
+    generated_at_utc: datetime
+
+
 class DailyLogEntry(BaseModel):
     """One day's full forecast record — the git-committed equivalent of one
     row in the Apps Script "Forecast Log" sheet, but with model_predictions
@@ -187,6 +226,12 @@ class DailyLogEntry(BaseModel):
     yesterday_verification_summary: str | None = None
     narrative_markdown: str
     whatsapp_summary: str | None = None
+
+    # Set only when an evening refresh has overwritten the fields above —
+    # the pre-refresh (morning) issuance, preserved so it stays readable
+    # and archived rather than silently lost. None for an entry that's
+    # never been refreshed. See MorningIssuanceSnapshot's doc comment.
+    morning_issuance: MorningIssuanceSnapshot | None = None
 
     meta: LogEntryMeta
 
