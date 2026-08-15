@@ -914,6 +914,64 @@ gracefully across that range, not assume the most-capable case.
 
 ---
 
+## 13. Ground AQI beyond WAQI — docs/examples for other sensor networks · **Planned**
+
+### Why this belongs on the roadmap even though it wouldn't help Kisumu
+
+PurpleAir isn't meaningfully represented in Kenya — confirmed while
+researching item 4, and part of why it's not a real option for *this*
+deployment even setting aside the aggregation issue. But PurpleAir has
+excellent density in the US and parts of Europe, and other citizen-science
+networks (Sensor.Community, IQAir AirVisual, government-run low-cost
+networks in various countries) dominate in other regions. A fork of this
+project deployed somewhere PurpleAir *is* dense should be able to use it —
+the current ground-AQI code is WAQI-specific by construction
+(`WaqiStation`, `waqi_stations`, `WAQI_TOKEN`, `fetch/waqi.py`), so nothing
+else plugs in today regardless of how good the coverage is locally for a
+given fork. This is a forkability gap, not a Kisumu problem — same category
+as items 11/12.
+
+### What this actually needs
+
+Generalizing the ground-AQI fetch path the same way `fetch/bulletin/` already
+generalizes local met bulletins: a `BulletinFetcher` Protocol with
+`NullBulletinFetcher` (default) and `KenyaKMDBulletinFetcher` (the one real,
+worked example) as implementations — `local_bulletin_url`/
+`local_bulletin_source_name` in config select which one applies. The
+equivalent here: a `GroundAqiFetcher`-shaped Protocol, WAQI's current
+implementation kept as-is (it works, it's what Kisumu actually uses), and a
+new `PurpleAirGroundAqiFetcher` as the second real, worked example — not a
+big abstract multi-network framework built speculatively for networks
+nobody's using yet. Per the ask, the deliverable can be as light as "docs +
+one working example," matching how `kenya_kmd.py` itself started as the
+single reference implementation for local bulletins, not a general scraper
+framework.
+
+Concretely, PurpleAir needs its own API key (`PURPLEAIR_API_KEY`, separate
+from `WAQI_TOKEN`) and its own request/response handling — different shape
+from WAQI's aggregator API, not a drop-in. Worth verifying PurpleAir's
+actual current response format directly before writing the fetcher (same
+"check, don't assume" habit that already caught the PurpleAir/WAQI
+delisting in item 4) — in particular whether it returns a computed AQI or
+only raw PM2.5, since converting PM2.5 to US AQI needs the EPA breakpoint
+formula applied in code if PurpleAir doesn't do it for you, consistent with
+this project's "all arithmetic in code, never assumed from an API" habit.
+
+Config shape also needs to generalize a level: `waqi_stations: list[WaqiStation]`
+only fits one network type. A fork wanting both WAQI stations AND a
+PurpleAir sensor needs something like a `type`-discriminated list rather
+than a WAQI-only one — real schema work, not just a new fetcher file.
+
+### Status
+
+Explicitly not started. The user's own call: "let's just leave the AQI
+stuff as it is for now" for Kisumu specifically (item 4 stays as
+documented, no code change) — this item exists so the PurpleAir-support
+idea is captured and ready, not lost, whenever it's actually worth building
+for a fork that would benefit from it.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
