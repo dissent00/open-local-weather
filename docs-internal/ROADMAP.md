@@ -485,7 +485,22 @@ alone when this happens (`llm/prompt.py`). This is honest and doesn't
 crash — the open question is whether it's the *best* product decision, not
 whether it's broken.
 
-### Three candidate paths (as raised) — none chosen yet, needs more data first
+### A second, more fundamental problem: hyperlocal volatility, not just staleness
+
+Confirmed by the operator's own ongoing observation (not just the two
+mornings captured above — "the morning run never has good ground data from
+the stations I'm polling," i.e. the 1-of-3 pattern is consistent, not
+occasional): local AQI "fluctuates wildly locally with widespread refuse
+burning." This is a different problem from staleness, and no amount of
+better timing fixes it — open trash burning produces sharp, hyperlocal
+pollution spikes that a regional CAMS model won't capture, and that even a
+"fresh" reading from the nearest configured station (Kisumu Airport,
+several km from any given point in the city) may simply not represent,
+depending on wind and exact proximity to burning sites. Candidates 1-3
+below only address *when* a station reports, not *whether a station a few
+km away is even measuring the right air*.
+
+### Four candidate paths (three as originally raised, one new) — none chosen yet, needs more data first
 
 1. **Delay the morning run** to give sensors more time to wake up. Real
    constraint: this can't be tuned in isolation — item 1's cycle-alignment
@@ -511,16 +526,43 @@ whether it's broken.
    AQI Stations section) — but the *summary* line (the one actually quoted
    in Today's Forecast) currently drops stale readings rather than saying
    "last known: 84 as of 22:14 last night." Cheapest of the three options,
-   and doesn't touch the run schedule or add LLM-side estimation.
+   and doesn't touch the run schedule or add LLM-side estimation. Doesn't
+   address the hyperlocal-volatility problem either — a stale-but-nearby
+   reading isn't necessarily a better proxy than no reading, if a burning
+   event happened between when it was taken and now.
+4. **Get a personal, always-on sensor** — the operator's own current
+   instinct, and arguably the only option here that addresses *both*
+   problems at once: sited exactly where it matters (fixes hyperlocal
+   representativeness, not just the 3 configured stations' distance from
+   any given point in the city) and mains-powered rather than solar (fixes
+   the morning-staleness pattern directly, no schedule tuning needed).
+   **Integration path matters and was checked, not assumed**: PurpleAir —
+   probably the best-known consumer option — was *removed* from WAQI's
+   aggregation in September 2024, so a PurpleAir sensor would need its own
+   bespoke fetch path (PurpleAir has its own API), not a free ride through
+   the existing `waqi_stations` config. **Sensor.Community (formerly
+   Luftdaten)**, by contrast, is still aggregated by WAQI — 35,000+
+   stations per WAQI's own network page — so a Sensor.Community-compatible
+   sensor (classic hardware: an SDS011 particulate sensor + ESP8266/ESP32,
+   widely available as a DIY kit) would show up in WAQI's own station
+   search once registered, and could be added to `config/location.yaml`'s
+   `waqi_stations` list with **zero new code** — same `fetch/waqi.py` path
+   already handling the other 3 stations. Worth choosing hardware with
+   this in mind rather than picking on brand recognition alone.
 
-### Before picking one: gather more real mornings
+### Status: no longer just "gather more data," a real decision is close
 
-Two data points (both showing the same 1-of-3 pattern) is suggestive, not
-proof of a consistent daily pattern. Worth watching for a couple of weeks
-— does it recover by 07:00 EAT every day, or is it irregular? Does the
-`measured_at: null` case (distinct from genuine staleness) happen often
-enough to matter on its own? This item is explicitly "review, then decide"
-— see the weekly check-in cadence already agreed for this project.
+The 1-of-3-stations morning pattern is now confirmed persistent by the
+operator's own ongoing observation, not just the two logged mornings above
+— that part of the "review, then decide" gate has effectively been met.
+What's still open is whether to pursue candidate 4 (buy a sensor) versus
+one of 1-3 (software-only fixes) — a real vs. hardware tradeoff, not a
+data-gathering one anymore. `measured_at: null` (the second failure mode
+found in the evidence) is a smaller, independent bug worth fixing
+regardless of which path is chosen — it's conflating "WAQI didn't return a
+timestamp" with "sensor genuinely hasn't reported in hours," which candidate
+4 wouldn't fix on its own if the new sensor's `measured_at` handling has the
+same quirk.
 
 ---
 
