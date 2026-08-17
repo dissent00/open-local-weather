@@ -185,8 +185,8 @@
       "note": "Day+0: GFS, ICON, and UKMO accurately predicted rainfall for August 13th, whereas ECMWF incorrectly called dry conditions. High temperature guidance was exceptionally accurate for ECMWF (0.0°C error) and ICON (-0.1°C error), though ICON maintained its known nocturnal cold bias (-3.7°C) and GFS substantially overpredicted surface wind speeds by 21.6 km/h."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3 (2026-08-13): ECMWF and UKMO accurately forecast the rainfall event, while GFS and ICON failed to verify. ICON provided the best high temperature alignment (-1.1°C error) and wind guidance (10.8 km/h error), whereas GFS showed a noticeable daytime cold bias (-2.5°C error) and wind overestimation (+36.3 km/h)."
     },
     "day7": {
       "verified": false,

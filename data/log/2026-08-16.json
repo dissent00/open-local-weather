@@ -181,8 +181,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 (2026-08-16): All models missed the rainfall call as conditions remained dry across Kisumu. Daytime maximum temperatures were captured accurately by UKMO (+0.1°C error) and ICON (-0.1°C error), but GFS overpredicted surface wind speeds by 38.9 km/h while UKMO proved most accurate on wind speed (9.7 km/h error)."
     },
     "day3": {
       "verified": false,

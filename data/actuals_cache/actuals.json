@@ -1,6 +1,270 @@
 {
   "generated_at_utc": "2026-08-11T12:05:47.241105Z",
   "primary": {
+    "2026-07-08": {
+      "rain": false,
+      "high_c": 29.1,
+      "low_c": 16.6,
+      "peak_wind_kmh": 36.7,
+      "mslp_trend": -1.400000000000091,
+      "onset_hour": null
+    },
+    "2026-07-09": {
+      "rain": false,
+      "high_c": 29.6,
+      "low_c": 18.6,
+      "peak_wind_kmh": 36.4,
+      "mslp_trend": -2.5,
+      "onset_hour": null
+    },
+    "2026-07-10": {
+      "rain": false,
+      "high_c": 29.4,
+      "low_c": 19.1,
+      "peak_wind_kmh": 34.2,
+      "mslp_trend": 0.0,
+      "onset_hour": null
+    },
+    "2026-07-11": {
+      "rain": true,
+      "high_c": 28.8,
+      "low_c": 19.6,
+      "peak_wind_kmh": 36.0,
+      "mslp_trend": 3.599999999999909,
+      "onset_hour": "16:00"
+    },
+    "2026-07-12": {
+      "rain": true,
+      "high_c": 28.5,
+      "low_c": 18.6,
+      "peak_wind_kmh": 34.6,
+      "mslp_trend": -1.8999999999999773,
+      "onset_hour": "22:00"
+    },
+    "2026-07-13": {
+      "rain": false,
+      "high_c": 26.6,
+      "low_c": 19.4,
+      "peak_wind_kmh": 40.0,
+      "mslp_trend": -0.900000000000091,
+      "onset_hour": null
+    },
+    "2026-07-14": {
+      "rain": false,
+      "high_c": 28.8,
+      "low_c": 18.0,
+      "peak_wind_kmh": 35.3,
+      "mslp_trend": -0.5,
+      "onset_hour": null
+    },
+    "2026-07-15": {
+      "rain": true,
+      "high_c": 28.3,
+      "low_c": 18.4,
+      "peak_wind_kmh": 42.5,
+      "mslp_trend": 3.7000000000000455,
+      "onset_hour": "22:00"
+    },
+    "2026-07-16": {
+      "rain": false,
+      "high_c": 29.6,
+      "low_c": 18.3,
+      "peak_wind_kmh": 31.0,
+      "mslp_trend": -2.8999999999999773,
+      "onset_hour": null
+    },
+    "2026-07-17": {
+      "rain": false,
+      "high_c": 29.7,
+      "low_c": 19.0,
+      "peak_wind_kmh": 33.5,
+      "mslp_trend": 0.6000000000000227,
+      "onset_hour": null
+    },
+    "2026-07-18": {
+      "rain": true,
+      "high_c": 28.6,
+      "low_c": 18.9,
+      "peak_wind_kmh": 43.2,
+      "mslp_trend": 1.1000000000000227,
+      "onset_hour": "19:00"
+    },
+    "2026-07-19": {
+      "rain": true,
+      "high_c": 29.6,
+      "low_c": 16.1,
+      "peak_wind_kmh": 37.8,
+      "mslp_trend": -1.6000000000000227,
+      "onset_hour": "22:00"
+    },
+    "2026-07-20": {
+      "rain": false,
+      "high_c": 28.9,
+      "low_c": 19.6,
+      "peak_wind_kmh": 44.6,
+      "mslp_trend": 0.5,
+      "onset_hour": null
+    },
+    "2026-07-21": {
+      "rain": false,
+      "high_c": 30.3,
+      "low_c": 18.4,
+      "peak_wind_kmh": 39.6,
+      "mslp_trend": 1.1999999999999318,
+      "onset_hour": null
+    },
+    "2026-07-22": {
+      "rain": false,
+      "high_c": 29.8,
+      "low_c": 19.0,
+      "peak_wind_kmh": 34.6,
+      "mslp_trend": -0.1999999999999318,
+      "onset_hour": null
+    },
+    "2026-07-23": {
+      "rain": true,
+      "high_c": 29.6,
+      "low_c": 18.8,
+      "peak_wind_kmh": 45.4,
+      "mslp_trend": -0.5,
+      "onset_hour": "15:00"
+    },
+    "2026-07-24": {
+      "rain": false,
+      "high_c": 29.5,
+      "low_c": 18.9,
+      "peak_wind_kmh": 36.4,
+      "mslp_trend": 0.2999999999999545,
+      "onset_hour": null
+    },
+    "2026-07-25": {
+      "rain": false,
+      "high_c": 30.3,
+      "low_c": 18.8,
+      "peak_wind_kmh": 33.1,
+      "mslp_trend": 0.40000000000009095,
+      "onset_hour": null
+    },
+    "2026-07-26": {
+      "rain": false,
+      "high_c": 29.4,
+      "low_c": 18.6,
+      "peak_wind_kmh": 34.2,
+      "mslp_trend": -1.0,
+      "onset_hour": null
+    },
+    "2026-07-27": {
+      "rain": true,
+      "high_c": 28.3,
+      "low_c": 18.6,
+      "peak_wind_kmh": 41.8,
+      "mslp_trend": 0.7000000000000455,
+      "onset_hour": "17:00"
+    },
+    "2026-07-28": {
+      "rain": true,
+      "high_c": 29.5,
+      "low_c": 17.6,
+      "peak_wind_kmh": 34.6,
+      "mslp_trend": 0.6000000000000227,
+      "onset_hour": "23:00"
+    },
+    "2026-07-29": {
+      "rain": true,
+      "high_c": 27.9,
+      "low_c": 18.6,
+      "peak_wind_kmh": 35.6,
+      "mslp_trend": 3.8999999999999773,
+      "onset_hour": "02:00"
+    },
+    "2026-07-30": {
+      "rain": false,
+      "high_c": 28.4,
+      "low_c": 16.7,
+      "peak_wind_kmh": 34.2,
+      "mslp_trend": -2.8999999999999773,
+      "onset_hour": null
+    },
+    "2026-07-31": {
+      "rain": false,
+      "high_c": 29.1,
+      "low_c": 19.3,
+      "peak_wind_kmh": 31.3,
+      "mslp_trend": -2.1000000000000227,
+      "onset_hour": null
+    },
+    "2026-08-01": {
+      "rain": true,
+      "high_c": 28.5,
+      "low_c": 19.6,
+      "peak_wind_kmh": 42.8,
+      "mslp_trend": 2.199999999999932,
+      "onset_hour": "17:00"
+    },
+    "2026-08-02": {
+      "rain": true,
+      "high_c": 28.2,
+      "low_c": 18.1,
+      "peak_wind_kmh": 35.6,
+      "mslp_trend": 0.5,
+      "onset_hour": "20:00"
+    },
+    "2026-08-03": {
+      "rain": true,
+      "high_c": 28.6,
+      "low_c": 18.1,
+      "peak_wind_kmh": 32.4,
+      "mslp_trend": -0.2999999999999545,
+      "onset_hour": "00:00"
+    },
+    "2026-08-04": {
+      "rain": true,
+      "high_c": 28.8,
+      "low_c": 17.3,
+      "peak_wind_kmh": 47.5,
+      "mslp_trend": -0.7999999999999545,
+      "onset_hour": "18:00"
+    },
+    "2026-08-05": {
+      "rain": true,
+      "high_c": 26.6,
+      "low_c": 17.2,
+      "peak_wind_kmh": 52.6,
+      "mslp_trend": 0.5,
+      "onset_hour": "14:00"
+    },
+    "2026-08-06": {
+      "rain": false,
+      "high_c": 28.6,
+      "low_c": 15.7,
+      "peak_wind_kmh": 30.6,
+      "mslp_trend": -1.099999999999909,
+      "onset_hour": null
+    },
+    "2026-08-07": {
+      "rain": true,
+      "high_c": 29.0,
+      "low_c": 18.4,
+      "peak_wind_kmh": 27.7,
+      "mslp_trend": -0.7000000000000455,
+      "onset_hour": "18:00"
+    },
+    "2026-08-08": {
+      "rain": true,
+      "high_c": 29.1,
+      "low_c": 18.4,
+      "peak_wind_kmh": 28.1,
+      "mslp_trend": 1.7000000000000455,
+      "onset_hour": "22:00"
+    },
+    "2026-08-09": {
+      "rain": true,
+      "high_c": 28.8,
+      "low_c": 17.8,
+      "peak_wind_kmh": 36.4,
+      "mslp_trend": -1.6999999999999318,
+      "onset_hour": "19:00"
+    },
     "2026-08-10": {
       "rain": true,
       "high_c": 30.1,
@@ -48,9 +312,281 @@
       "peak_wind_kmh": 39.6,
       "mslp_trend": 0.2999999999999545,
       "onset_hour": null
+    },
+    "2026-08-16": {
+      "rain": true,
+      "high_c": 29.7,
+      "low_c": 19.9,
+      "peak_wind_kmh": 51.1,
+      "mslp_trend": 0.8999999999999773,
+      "onset_hour": "14:00"
     }
   },
   "secondary": {
+    "2026-07-08": {
+      "rain": false,
+      "high_c": 17.4,
+      "low_c": 15.0,
+      "peak_wind_kmh": 44.6,
+      "mslp_trend": -1.6999999999999318,
+      "onset_hour": null
+    },
+    "2026-07-09": {
+      "rain": false,
+      "high_c": 17.5,
+      "low_c": 16.0,
+      "peak_wind_kmh": 35.6,
+      "mslp_trend": -1.8999999999999773,
+      "onset_hour": null
+    },
+    "2026-07-10": {
+      "rain": false,
+      "high_c": 18.2,
+      "low_c": 15.6,
+      "peak_wind_kmh": 27.7,
+      "mslp_trend": 0.5,
+      "onset_hour": null
+    },
+    "2026-07-11": {
+      "rain": true,
+      "high_c": 18.5,
+      "low_c": 13.9,
+      "peak_wind_kmh": 31.0,
+      "mslp_trend": 2.1000000000000227,
+      "onset_hour": "10:00"
+    },
+    "2026-07-12": {
+      "rain": true,
+      "high_c": 17.9,
+      "low_c": 13.4,
+      "peak_wind_kmh": 30.6,
+      "mslp_trend": -1.1000000000000227,
+      "onset_hour": "02:00"
+    },
+    "2026-07-13": {
+      "rain": true,
+      "high_c": 18.0,
+      "low_c": 13.6,
+      "peak_wind_kmh": 29.5,
+      "mslp_trend": -0.5,
+      "onset_hour": "03:00"
+    },
+    "2026-07-14": {
+      "rain": false,
+      "high_c": 17.7,
+      "low_c": 16.8,
+      "peak_wind_kmh": 34.9,
+      "mslp_trend": -0.6000000000000227,
+      "onset_hour": null
+    },
+    "2026-07-15": {
+      "rain": false,
+      "high_c": 17.9,
+      "low_c": 14.9,
+      "peak_wind_kmh": 25.2,
+      "mslp_trend": 2.3999999999999773,
+      "onset_hour": null
+    },
+    "2026-07-16": {
+      "rain": false,
+      "high_c": 18.0,
+      "low_c": 16.0,
+      "peak_wind_kmh": 24.8,
+      "mslp_trend": -1.5,
+      "onset_hour": null
+    },
+    "2026-07-17": {
+      "rain": true,
+      "high_c": 18.4,
+      "low_c": 16.7,
+      "peak_wind_kmh": 31.7,
+      "mslp_trend": 0.0,
+      "onset_hour": "05:00"
+    },
+    "2026-07-18": {
+      "rain": true,
+      "high_c": 18.6,
+      "low_c": 12.4,
+      "peak_wind_kmh": 52.2,
+      "mslp_trend": 0.8000000000000682,
+      "onset_hour": "07:00"
+    },
+    "2026-07-19": {
+      "rain": false,
+      "high_c": 17.4,
+      "low_c": 15.8,
+      "peak_wind_kmh": 20.5,
+      "mslp_trend": -1.3999999999999773,
+      "onset_hour": null
+    },
+    "2026-07-20": {
+      "rain": true,
+      "high_c": 17.5,
+      "low_c": 14.1,
+      "peak_wind_kmh": 34.2,
+      "mslp_trend": -0.6999999999999318,
+      "onset_hour": "10:00"
+    },
+    "2026-07-21": {
+      "rain": true,
+      "high_c": 18.8,
+      "low_c": 13.9,
+      "peak_wind_kmh": 31.3,
+      "mslp_trend": 0.10000000000002274,
+      "onset_hour": "10:00"
+    },
+    "2026-07-22": {
+      "rain": true,
+      "high_c": 18.3,
+      "low_c": 14.2,
+      "peak_wind_kmh": 36.0,
+      "mslp_trend": 1.0,
+      "onset_hour": "04:00"
+    },
+    "2026-07-23": {
+      "rain": true,
+      "high_c": 17.9,
+      "low_c": 16.4,
+      "peak_wind_kmh": 21.6,
+      "mslp_trend": -0.10000000000002274,
+      "onset_hour": "08:00"
+    },
+    "2026-07-24": {
+      "rain": true,
+      "high_c": 18.7,
+      "low_c": 16.9,
+      "peak_wind_kmh": 24.8,
+      "mslp_trend": 0.10000000000002274,
+      "onset_hour": "06:00"
+    },
+    "2026-07-25": {
+      "rain": false,
+      "high_c": 19.4,
+      "low_c": 16.4,
+      "peak_wind_kmh": 28.8,
+      "mslp_trend": -0.20000000000004547,
+      "onset_hour": null
+    },
+    "2026-07-26": {
+      "rain": true,
+      "high_c": 19.4,
+      "low_c": 16.7,
+      "peak_wind_kmh": 46.4,
+      "mslp_trend": 0.0,
+      "onset_hour": "07:00"
+    },
+    "2026-07-27": {
+      "rain": false,
+      "high_c": 18.5,
+      "low_c": 16.5,
+      "peak_wind_kmh": 35.6,
+      "mslp_trend": 0.20000000000004547,
+      "onset_hour": null
+    },
+    "2026-07-28": {
+      "rain": true,
+      "high_c": 17.9,
+      "low_c": 15.6,
+      "peak_wind_kmh": 29.9,
+      "mslp_trend": 1.1000000000000227,
+      "onset_hour": "07:00"
+    },
+    "2026-07-29": {
+      "rain": true,
+      "high_c": 18.0,
+      "low_c": 12.3,
+      "peak_wind_kmh": 37.8,
+      "mslp_trend": 2.5,
+      "onset_hour": "06:00"
+    },
+    "2026-07-30": {
+      "rain": true,
+      "high_c": 17.9,
+      "low_c": 15.1,
+      "peak_wind_kmh": 22.3,
+      "mslp_trend": -1.3000000000000682,
+      "onset_hour": "09:00"
+    },
+    "2026-07-31": {
+      "rain": true,
+      "high_c": 18.6,
+      "low_c": 15.0,
+      "peak_wind_kmh": 30.6,
+      "mslp_trend": -2.7000000000000455,
+      "onset_hour": "06:00"
+    },
+    "2026-08-01": {
+      "rain": true,
+      "high_c": 18.8,
+      "low_c": 14.6,
+      "peak_wind_kmh": 27.7,
+      "mslp_trend": 2.1000000000000227,
+      "onset_hour": "07:00"
+    },
+    "2026-08-02": {
+      "rain": true,
+      "high_c": 17.8,
+      "low_c": 13.7,
+      "peak_wind_kmh": 31.7,
+      "mslp_trend": 0.3000000000000682,
+      "onset_hour": "06:00"
+    },
+    "2026-08-03": {
+      "rain": true,
+      "high_c": 17.5,
+      "low_c": 14.2,
+      "peak_wind_kmh": 33.1,
+      "mslp_trend": 1.1000000000000227,
+      "onset_hour": "09:00"
+    },
+    "2026-08-04": {
+      "rain": true,
+      "high_c": 17.8,
+      "low_c": 12.6,
+      "peak_wind_kmh": 33.5,
+      "mslp_trend": -0.5,
+      "onset_hour": "07:00"
+    },
+    "2026-08-05": {
+      "rain": true,
+      "high_c": 17.4,
+      "low_c": 14.7,
+      "peak_wind_kmh": 38.2,
+      "mslp_trend": 0.6000000000000227,
+      "onset_hour": "05:00"
+    },
+    "2026-08-06": {
+      "rain": true,
+      "high_c": 18.1,
+      "low_c": 14.5,
+      "peak_wind_kmh": 31.7,
+      "mslp_trend": -1.1000000000000227,
+      "onset_hour": "09:00"
+    },
+    "2026-08-07": {
+      "rain": true,
+      "high_c": 18.1,
+      "low_c": 16.3,
+      "peak_wind_kmh": 27.4,
+      "mslp_trend": -0.20000000000004547,
+      "onset_hour": "06:00"
+    },
+    "2026-08-08": {
+      "rain": false,
+      "high_c": 18.4,
+      "low_c": 16.7,
+      "peak_wind_kmh": 33.8,
+      "mslp_trend": 0.39999999999997726,
+      "onset_hour": null
+    },
+    "2026-08-09": {
+      "rain": false,
+      "high_c": 18.7,
+      "low_c": 16.5,
+      "peak_wind_kmh": 34.9,
+      "mslp_trend": -0.6000000000000227,
+      "onset_hour": null
+    },
     "2026-08-10": {
       "rain": false,
       "high_c": 18.5,
@@ -97,6 +633,14 @@
       "low_c": 16.1,
       "peak_wind_kmh": 42.5,
       "mslp_trend": 0.09999999999990905,
+      "onset_hour": null
+    },
+    "2026-08-16": {
+      "rain": false,
+      "high_c": 18.4,
+      "low_c": 17.1,
+      "peak_wind_kmh": 25.6,
+      "mslp_trend": 1.1999999999999318,
       "onset_hour": null
     }
   }

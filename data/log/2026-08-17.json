@@ -1,0 +1,207 @@
+{
+  "date": "2026-08-17",
+  "rain_expected": "Isolated Evening Showers",
+  "onset_window": "17:00 - 21:00 EAT",
+  "peak_wind_kmh": 20.1,
+  "temp_high_c": 30.0,
+  "temp_low_c": 19.0,
+  "temp_high_low_display": "30°C / 86°F high, 19°C / 66°F low",
+  "mslp_trend_24h": "Diurnal trough dropping to ~1009 hPa at 16:00 EAT before rising to ~1015 hPa overnight",
+  "synoptic_pattern": "Weak equatorial trough with afternoon lake-land breeze convergence driving evening convection.",
+  "uv_index_max": "8.6 (Very High)",
+  "air_quality_aqi": "28 - 158 US AQI (Moderate to Unhealthy locally)",
+  "ground_aqi": [
+    {
+      "name": "Kisumu Airport",
+      "station_id": "A418534",
+      "aqi": 28,
+      "pm25": 28.0,
+      "pm10": 15.0,
+      "measured_at": "2026-08-17T01:00:00Z"
+    },
+    {
+      "name": "Ochieng' Avenue, Kisumu Central",
+      "station_id": "A418300",
+      "aqi": null,
+      "pm25": 51.0,
+      "pm10": 18.0,
+      "measured_at": "2026-08-16T17:00:00Z"
+    },
+    {
+      "name": "Dunga Beach",
+      "station_id": "A418504",
+      "aqi": 158,
+      "pm25": 158.0,
+      "pm10": 37.0,
+      "measured_at": "2026-08-17T01:00:00Z"
+    }
+  ],
+  "model_predictions": {
+    "day0": [
+      {
+        "model": "gfs_seamless",
+        "rain": true,
+        "onset": "15:00",
+        "wind_kmh": 18.4,
+        "high_c": 30.5,
+        "low_c": 19.4,
+        "mslp_trend": 0.40000000000009095
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": false,
+        "onset": null,
+        "wind_kmh": null,
+        "high_c": 29.9,
+        "low_c": 19.4,
+        "mslp_trend": -0.2999999999999545
+      },
+      {
+        "model": "icon_seamless",
+        "rain": false,
+        "onset": null,
+        "wind_kmh": 28.8,
+        "high_c": 30.1,
+        "low_c": 20.9,
+        "mslp_trend": -0.6000000000000227
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": false,
+        "onset": null,
+        "wind_kmh": 23.4,
+        "high_c": 29.5,
+        "low_c": 17.4,
+        "mslp_trend": 0.10000000000002274
+      },
+      {
+        "model": "best_match",
+        "rain": true,
+        "onset": "19:00",
+        "wind_kmh": 28.8,
+        "high_c": 30.2,
+        "low_c": 19.1,
+        "mslp_trend": -0.2999999999999545
+      }
+    ],
+    "day3": [
+      {
+        "model": "gfs_seamless",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 21.2,
+        "high_c": 30.7,
+        "low_c": 18.3,
+        "mslp_trend": 0.09999999999990905
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 36.4,
+        "high_c": 30.3,
+        "low_c": 19.6,
+        "mslp_trend": 0.0
+      },
+      {
+        "model": "icon_seamless",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 31.7,
+        "high_c": 29.0,
+        "low_c": 21.3,
+        "mslp_trend": 0.0
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": false,
+        "onset": null,
+        "wind_kmh": 19.4,
+        "high_c": 29.5,
+        "low_c": 16.6,
+        "mslp_trend": 0.0
+      },
+      {
+        "model": "best_match",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 45.0,
+        "high_c": 29.1,
+        "low_c": 19.1,
+        "mslp_trend": -0.10000000000002274
+      }
+    ],
+    "day7": [
+      {
+        "model": "gfs_seamless",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 10.1,
+        "high_c": 32.7,
+        "low_c": 18.7,
+        "mslp_trend": 0.09999999999990905
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 37.4,
+        "high_c": 27.6,
+        "low_c": 20.4,
+        "mslp_trend": -0.1999999999999318
+      },
+      {
+        "model": "icon_seamless",
+        "rain": null,
+        "onset": null,
+        "wind_kmh": null,
+        "high_c": null,
+        "low_c": null,
+        "mslp_trend": null
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": null,
+        "onset": null,
+        "wind_kmh": null,
+        "high_c": null,
+        "low_c": null,
+        "mslp_trend": null
+      },
+      {
+        "model": "best_match",
+        "rain": true,
+        "onset": null,
+        "wind_kmh": 41.4,
+        "high_c": 30.0,
+        "low_c": 20.2,
+        "mslp_trend": -0.10000000000002274
+      }
+    ]
+  },
+  "verification": {
+    "day0": {
+      "verified": false,
+      "note": null
+    },
+    "day3": {
+      "verified": false,
+      "note": null
+    },
+    "day7": {
+      "verified": false,
+      "note": null
+    }
+  },
+  "yesterday_verification_summary": "On August 16th at Day+0, all models missed the precipitation call as Kisumu remained dry despite predictions for isolated evening showers. Maximum daytime temperatures were accurately forecast by UKMO (+0.1°C error) and ICON (-0.1°C error), while GFS severely overpredicted surface wind speeds by 38.9 km/h.",
+  "narrative_markdown": "## Overview\nWarm and partly sunny conditions will prevail across Kisumu today, with daytime highs reaching 30°C / 86°F before isolated showers develop during the late afternoon and evening. Temperatures will drop to a mild overnight low of 19°C / 66°F.\n\n## Today's Forecast\nDaytime maximum temperatures will reach 30°C / 86°F under morning sunny intervals, falling to an overnight minimum of 19°C / 66°F. Light to moderate winds will blow at 18 km/h (10 kt) from the SW during the afternoon lake breeze shift, weakening to 6 km/h (3 kt) from the NE overnight. Isolated evening showers are expected between 17:00 and 21:00 EAT, with expected rainfall accumulations around 1.4 mm (0.06 in). Peak UV intensity will reach 8.6 (Very High) around mid-day. Ground air quality across the city ranges from a US AQI of 28 to 158 (Good to Unhealthy), with Dunga Beach currently recording the worst air quality due to elevated PM2.5 levels.\n\n## Extended Outlook\nOver the near-term extended window (Tuesday through Thursday), daytime high temperatures will hold between 29°C / 84°F and 30°C / 86°F with overnight lows near 18°C / 64°F to 19°C / 66°F. Scattered afternoon showers remain possible each day, producing daily totals between 1.0 mm (0.04 in) and 4.0 mm (0.16 in). High confidence is placed in ECMWF and UKMO guidance for days 1 to 3, given their 100% verification accuracy at Day+3 lead times. For days 4 through 7 (Friday through next Monday), forecast confidence decreases as model spread widens; daytime temperatures will cool slightly toward 28°C / 82°F with a potential increase in convective activity bringing basin totals between 5.0 mm (0.20 in) and 13.0 mm (0.51 in) by Sunday.\n\n## Severe Weather / Hazard Potential\nNo severe widespread weather threats are expected today. Localized convective showers in the evening may produce brief lightning activity and sudden wind gusts up to 29 km/h (16 kt). Unprotected skin exposure should be minimized between 11:00 and 15:00 EAT due to a Very High UV Index of 8.6.\n\n## Lake Victoria — Conditions for Boaters\nFor boaters on Lake Victoria, morning winds will blow from the ENE at 20 km/h (11 kt) with gusts reaching 30 km/h (16 kt), generating light choppy water. By mid-afternoon, winds will transition to a WSW lake breeze at 13 km/h (7 kt). Morning showers over open waters will shift toward the eastern shoreline by evening. Lake surface temperatures remain stable near 24°C / 75°F.\n\n## Detailed Discussion\n### Synoptic Overview\nThe Nyanza Basin remains under the influence of a weak equatorial low-pressure trough, with mean sea-level pressure across regional monitoring points ranging from 1013.7 hPa to 1016.1 hPa. A diurnal surface pressure trough will depress local MSLP to near 1009 hPa during peak afternoon heating before recovering to 1015 hPa overnight. Moderate CAPE values between 500 J/kg and 770 J/kg combined with onshore lake breeze convergence will initiate scattered convective cell development along the gulf shore. Over the next 24 to 72 hours, regional MSLP will hold steady between 1013.4 hPa and 1014.5 hPa, maintaining typical diurnal convective cycles.\n\n### Air Quality Assessment\nGround station readings reflect localized particulate variations across Kisumu: Kisumu Airport records a Good US AQI of 28 (PM2.5: 28.0 µg/m³), while Dunga Beach indicates Unhealthy air quality with a US AQI of 158 (PM2.5: 158.0 µg/m³). The ground sensor at Ochieng' Avenue, Kisumu Central is currently stale (11 hours old, recording 51.0 µg/m³ PM2.5). CAMS model predictions indicate broad background US AQI values of 94 to 95 (Moderate), capturing urban background aerosol levels but missing hyper-local shoreline spikes.\n\n### Forecaster Confidence Notes\nModel selection and blending today reflect recent verification performance and lead-time skill profiles. ECMWF receives the highest weight for precipitation probability and thermal structure based on its perfect Day+3 rain verification track record (100%) and minimal Day+0 temperature bias (-0.5°C). UKMO is relied upon for surface pressure trends and precipitation occurrence, though its temperature forecasts are adjusted downward to counteract its known warm bias. ICON is utilized for surface wind guidance due to its superior Day+0 wind speed accuracy (7.9 km/h error), while GFS wind predictions are discounted owing to consistent overestimation (+22 km/h error). Rolling precipitation trend fields for all models are currently null due to limited historical verification checks, which is stated explicitly to avoid over-interpreting short-term drift.",
+  "whatsapp_summary": "🌤️ Kisumu Weather Today (Aug 17): Warm & sunny morning with highs near 30°C / 86°F. Isolated showers likely late afternoon/evening (17:00-21:00 EAT), ~1.4 mm (0.06 in) rain. Winds SW at 18 km/h (10 kt). Low 19°C / 66°F. ⛵ Lake Victoria: Morning easterly winds 20 km/h (11 kt), gusts 30 km/h (16 kt); lake breeze shift by afternoon. 😷 AQI: Moderate to Unhealthy locally (Dunga Beach 158 AQI).",
+  "morning_issuance": null,
+  "meta": {
+    "generated_at_utc": "2026-08-17T03:58:38.197947Z",
+    "llm_provider": "GeminiProvider",
+    "llm_model": "gemini-3.6-flash",
+    "pipeline_version": "0.1.0",
+    "refreshed_at": null
+  }
+}
