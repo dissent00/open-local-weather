@@ -972,6 +972,109 @@ for a fork that would benefit from it.
 
 ---
 
+## 14. Multiple audience "voices" from one LLM call · **Planned**
+
+### Not a new pattern — this codebase already proves it works
+
+`GeminiForecastResponse` already returns two differently-styled outputs
+from a single call: `today_narrative` (the full formal multi-section
+discussion) and `whatsapp_summary` (short, emoji-forward, casual) —
+same underlying facts, two different renderings, zero extra API calls.
+This item is asking for the same trick generalized: N audience-specific
+narratives (sailors: wind-focused; surfers: water/air temp + wind + wave-
+focused, casual tone; etc.) instead of one fixed extra format, still one
+call. Worth citing this precedent plainly — the risk here is prompt/schema
+complexity and output quality at N>2 voices, not "can one call produce
+multiple styles at all," which is already a solved, shipped fact in this
+repo.
+
+### Design: config-driven, not hardcoded to Kisumu's audiences
+
+Sailors and surfers are Kisumu/Lake-Victoria-specific. A landlocked fork
+might want "farmers" or "hikers" instead, or none at all. Consistent with
+every other location-specific feature in this project (`secondary_point`,
+`waqi_stations`, `local_bulletin_*`), the voice set belongs in
+`config/location.yaml`, not in code:
+
+```yaml
+audience_voices:
+  - key: sailors
+    label: "For Sailors"
+    focus_hint: "Emphasize wind speed, direction, and gust risk over the lake; keep a professional, safety-conscious tone."
+  - key: surfers
+    label: "For Surfers"
+    focus_hint: "Emphasize water and air temperature, wind, and wave conditions; casual, friendly tone."
+```
+
+Empty/absent by default — a fork that doesn't configure any gets exactly
+today's single-narrative behavior, unchanged.
+
+### What actually needs to change
+
+- `models.LocationConfig` gains `audience_voices: list[AudienceVoice]`
+  (empty default).
+- `llm/schema.GeminiForecastResponse` gains
+  `audience_narratives: list[AudienceNarrative]` (`audience_key: str`,
+  `narrative_markdown: str`), alongside the existing `today_narrative`
+  (kept as-is — the general/default voice every existing consumer,
+  mailer included, already reads and needs no changes for).
+- `llm/prompt.build_system_prompt` lists the configured voices and their
+  focus hints, and states explicitly: **same underlying facts and numbers
+  across every voice, only emphasis and tone differ** — this needs to be
+  an unambiguous instruction, not implied, given this project's zero-
+  tolerance history around numbers drifting between representations (see
+  the AFD/site-styled email work, where keeping two renderings
+  content-consistent was an explicit, named design goal, not an
+  afterthought).
+- `models.DailyLogEntry` gains `audience_narratives: dict[str, str]` (or
+  equivalent) to store the result.
+- Site: each configured voice gets its own labeled section (simplest:
+  appended below the main narrative, à la the existing Ground AQI Stations
+  section) or its own page — the morning/evening separate-URL pattern
+  just shipped is a reasonable model to reuse if per-voice pages end up
+  wanted, not decided here.
+- Mailer: **not touched in a first version.** Making email voice-aware
+  means per-subscriber preference, which doesn't exist in the current
+  comma-separated `SUBSCRIBER_EMAILS` config at all — real feature, but a
+  separate scope decision. First version is site-only, additive, and
+  doesn't touch anything the mailer or existing narrative consumers rely
+  on.
+
+### Honest cost estimate — from real measured numbers, not a guess
+
+The thinking-level experiment earlier this project measured the real
+production call at "high" thinking: 4,235 thinking tokens, 2,352 output
+tokens, 45,063 total — of which the single narrative is the dominant
+share of output (the rest — verification notes, skill summaries,
+`today_properties`, `whatsapp_summary` — are comparatively short
+structured fields). Two more audience narratives at roughly similar
+density would plausibly add somewhere in the 800-1,600 output-token range
+(shorter than the general narrative if focused, as intended — a wind-only
+sailor narrative shouldn't need the full Detailed Discussion/Synoptic
+Overview treatment). Trivial against the 250K-token/run budget either
+way. **Not yet verified**: gemini-3.6-flash's actual max-output-tokens
+ceiling — worth confirming before committing to a large voice count,
+though nothing here suggests it'd be a real constraint at 2-3 voices.
+
+### Honest risks
+
+- **Distinctiveness at scale is unproven.** Two voices (narrative +
+  WhatsApp summary) already works. Whether a single call reliably produces
+  N *meaningfully* differentiated voices — not just the same content with
+  synonyms swapped — needs a real empirical check against actual output,
+  the same way the thinking-level change was validated with a live call
+  before being trusted, not assumed to just work at arbitrary N.
+- **Consistency drift is the real failure mode to test for**, not
+  omission — a sailor voice quietly stating a different wind speed than
+  the surfer voice would be far worse than a voice that's merely bland,
+  since it would look like two independent forecasts disagreeing rather
+  than one forecast framed two ways. The prompt's "same facts, different
+  emphasis" instruction (above) exists specifically to prevent this, and
+  should be a named thing to check for when this actually gets validated,
+  not just hoped for.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
