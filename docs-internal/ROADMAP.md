@@ -674,17 +674,41 @@ Either is fine. Silently fetching data nobody reads is not.
 
 ---
 
-## 8. Multi-provider LLM support · **Planned**
+## 8. Multi-provider LLM support · **Done**
 
-`llm/provider.LLMProvider` exists precisely for this; nothing else needs to
-change. Each new provider needs its own JSON-schema adapter mirroring
-`llm/schema.to_gemini_schema()` (which inlines `$ref`/`anyOf`, since Gemini's
-schema dialect supports neither).
+Shipped: `LLM_PROVIDER` selects between `gemini` (default, unchanged),
+`anthropic` (`llm/anthropic.py`) and `openai` (`llm/openai_compat.py`,
+covering OpenAI, OpenRouter, Groq, Cerebras, Together, vLLM, LM Studio and
+Ollama in one class). Brought forward from "someday" because
+bring-your-own-key turned out to be a prerequisite for two other things:
+the forkability quickstart (item 15) and the planned mobile app, which is
+premised on the user supplying a key for the LLM of their choice.
 
-Candidates: Groq, Cerebras, OpenRouter. Value is resilience — a provider
-outage or a model deprecation currently stops the forecast. The weekly
-health check gives early warning of deprecation; a fallback provider would
-give actual continuity.
+Each provider owns its own schema adapter as designed. Anthropic and the
+OpenAI family share `to_strict_json_schema()` (standard JSON Schema);
+Gemini keeps `to_gemini_schema()` because its dialect genuinely differs —
+uppercase type names and a `nullable` flag versus lowercase types with
+null as a type union.
+
+Anthropic's structured output uses **forced tool use** rather than a
+`response_format` field, which turns out to be the sturdiest of the three:
+the `tool_use` block carries an already-parsed object, so there's no
+JSON-in-a-string step and no markdown-fence stripping to get wrong.
+
+**Not yet done — the resilience half of the original motivation.** This
+adds *choice* of provider, not *failover* between them: a provider outage
+still stops that run. Automatic fallback (try the configured provider,
+then a secondary) is now a small change since the Protocol has three real
+implementations behind it, but it isn't built, and it needs a deliberate
+decision about whether a fallback forecast should be marked as such in the
+committed entry.
+
+**Live-verification status, honestly:** Gemini is proven daily in
+production and was re-verified through the refactored provider-selection
+path. Anthropic and OpenAI-compatible are unit-tested against mocked HTTP
+(53 tests) but have not yet made a real API call — no key was available in
+the environment where they were written. First real use should be a
+`--dry-run` against the live endpoint, not a scheduled run.
 
 Also worth revisiting: Google's newer **Interactions API**. Researched
 2026-08-11 — `generateContent` remains fully supported with no announced

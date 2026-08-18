@@ -33,6 +33,13 @@ and also the reference example for forking to a new location.
 All of this runs daily on GitHub Actions' free scheduled-workflow minutes, on
 a public repo.
 
+## Set it up for your own town
+
+**→ [QUICKSTART.md](QUICKSTART.md)** — fork to working daily emails in
+about an hour, with no local setup and no server. Free on Google Gemini's
+free tier; Anthropic Claude, OpenAI, OpenRouter, Groq and local models via
+Ollama are all supported alternatives.
+
 ## Documentation
 
 - **[docs-internal/ARCHITECTURE.md](docs-internal/ARCHITECTURE.md)** — how the
@@ -40,6 +47,7 @@ a public repo.
   extension points for forking.
 - **[docs-internal/ROADMAP.md](docs-internal/ROADMAP.md)** — what's next, with
   the measurements and constraints behind each decision.
+- **[QUICKSTART.md](QUICKSTART.md)** — step-by-step setup for a new location.
 - **[mailer/README.md](mailer/README.md)** — email delivery setup.
 - **[ops/README.md](ops/README.md)** — optional, deployment-specific
   scheduling reliability setup (documents multiple paths — GitHub Actions
