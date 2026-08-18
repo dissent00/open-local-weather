@@ -181,8 +181,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: GFS correctly predicted rain with a minor 1-hour onset offset and 0.9°C high temp error, though overestimating wind by 22.3 km/h. ECMWF, ICON, and UKMO failed to verify the rain event, though ECMWF and ICON had strong temperature accuracy within 0.5°C."
     },
     "day3": {
       "verified": false,

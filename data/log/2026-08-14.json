@@ -185,8 +185,8 @@
       "note": "Day+0: All models correctly verified the precipitation call, and sea-level pressure predictions were exceptionally accurate (within 0.7 hPa). However, daytime maximum temperatures ran 1.1°C to 2.5°C warmer than observed, while GFS and UKMO overpredicted surface wind speeds by over 20 km/h."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: ECMWF and GFS accurately verified precipitation for August 14th, with ECMWF delivering top accuracy across high temperature (-0.5°C error) and pressure. UKMO and ICON failed the rain call, with UKMO showing a notable warm bias (+1.3°C high, +2.5°C low)."
     },
     "day7": {
       "verified": false,
