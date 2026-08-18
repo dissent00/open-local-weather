@@ -53,12 +53,50 @@ problem this project already fought at length (see ROADMAP items 3 and the
 `ops/` docs — GitHub drops scheduled runs under load; we added four backup
 cron slots and an external trigger to cope).
 
-- **iOS** `BGAppRefreshTask`: the OS chooses when, learned from usage
-  patterns. No time guarantee whatsoever. An app left unopened may stop
-  getting background time entirely.
-- **Android** `WorkManager`: better — but 15-minute minimum periodicity,
-  subject to Doze, and aggressively killed by several manufacturers'
-  battery optimizations (Samsung, Xiaomi, Huawei are the usual culprits).
+### The platforms are not symmetric — Android can do this, iOS cannot
+
+**Android — viable.**
+- `WorkManager`: 15-minute minimum periodicity, subject to Doze, and
+  aggressively killed by several manufacturers' battery optimizations
+  (Samsung, Xiaomi, Huawei are the usual culprits). Unreliable for a
+  specific time, but its **10-minute execution budget comfortably fits a
+  ~1-minute forecast run**.
+- `AlarmManager.setExactAndAllowWhileIdle()`: fires at a specific
+  wall-clock time even in Doze — the mechanism alarm clocks use. Needs the
+  `SCHEDULE_EXACT_ALARM` permission (a one-time user grant in settings on
+  Android 12+), and onboarding should include the standard "exclude this
+  app from battery optimization" step. **This is the path to a real 6am
+  local generation on Android.**
+
+**iOS — not viable for local generation.** Verified against current
+documentation rather than assumed:
+
+| Mechanism | Execution budget | Catch |
+|---|---|---|
+| `BGAppRefreshTask` | **~30 seconds**, shared across all pending tasks | Far too short for a ~1-minute run — it would be killed mid-LLM-call |
+| `BGProcessingTask` | Several minutes | Only runs when idle/charging, and **terminated immediately if the user picks up the device** — i.e. exactly when a 6am forecast would be generating |
+
+Neither gives a timing guarantee in any case; the OS schedules them from
+learned usage patterns, and an app left unopened can stop receiving
+background time altogether.
+
+### What every other weather app actually does
+
+Worth stating because it settles the question: **no iOS weather app
+performs scheduled on-device forecast computation.** Apple Weather, Yahoo
+Weather and the rest all deliver morning forecasts by computing them on a
+**server** and pushing via APNs. The device does no work at all.
+
+This is not a workaround they settled for — it is the only mechanism iOS
+offers. Any "ready before you wake up" requirement on iOS implies a server
+somewhere, full stop.
+
+The useful consequence for this project: **that server already exists.**
+Connected mode is a GitHub Actions deployment doing exactly this, and it's
+built and running today. Connected mode is therefore not a hedge or a
+consolation prize — it is *the* iOS answer for guaranteed morning
+delivery, and the [QUICKSTART](../QUICKSTART.md) already documents how a
+user stands one up in about an hour.
 
 Consequences, accepted deliberately:
 
@@ -183,9 +221,36 @@ implementations, including the quirks worth carrying over: Anthropic's
 forced-tool-use structured output and 529 `overloaded_error` retries;
 OpenAI's strict `json_schema` mode with a `json_object` fallback.
 
-**Cost transparency is a product requirement, not a nicety.** The user is
-paying per run with their own key. The app should show estimated token use
-and let them choose model and run frequency accordingly.
+## Spend control is a hard requirement
+
+The user is paying per run with their own key, so an app that can quietly
+burn money is unacceptable. This is a correctness requirement, not a
+settings-screen nicety.
+
+- **The user sets the refresh budget** — e.g. 1, 2, or 4 automatic runs a
+  day — and that number is a **hard cap enforced in code**, not a target.
+  A counter of runs-so-far-today gates every automatic generation.
+  Overrunning it should be as impossible as double-counting an all-time
+  verification check (see the `last_verified_target_date` guard in
+  `verify/pipeline.py` — same principle, same reason).
+- **Retries count against the budget.** The pipeline's providers already
+  retry transient failures with backoff; on a metered key each attempt is
+  real money, so the cap must be on *API calls*, not on *successful
+  forecasts*.
+- **Manual refresh is always available but never silent.** The button
+  states the cost ("this uses 1 API call, ~X tokens") and requires an
+  explicit tap to confirm. Manual runs are the user's own decision, so
+  they may exceed the automatic budget — but they can never happen by
+  accident.
+- **Running usage is visible**: calls and estimated tokens today and this
+  month, per provider.
+- **Model choice is a cost *and* latency lever.** The ~1-minute figure
+  comes from Gemini at `thinking_level: high` with this project's large
+  prompt. A faster or cheaper model materially changes both. The settings
+  screen should present that trade honestly rather than hiding it — and
+  note that a genuinely fast configuration is the only thing that could
+  ever fit inside iOS's 30-second window, though that should not be
+  *relied* on.
 
 ## Screens (v1)
 
