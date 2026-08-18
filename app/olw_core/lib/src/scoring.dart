@@ -1,0 +1,103 @@
+import 'models.dart';
+
+/// Scores one model's stored prediction against one day's actual.
+///
+/// Returns `null` when there is nothing to score. Three distinct reasons,
+/// all of which must stay distinct:
+///  - the prediction is missing
+///  - the actual is missing
+///  - the prediction's `rain` is `null`, meaning the model had no data at
+///    this lead time. Scoring that would invent skill out of a gap.
+VerificationScore? scorePrediction(
+  ModelPrediction? predicted,
+  DailyActual? actual,
+  int leadTimeDays,
+) {
+  if (predicted == null || actual == null) return null;
+  if (predicted.rain == null) return null;
+
+  final rainCorrect = predicted.rain == actual.rain;
+
+  double? onsetErrorHrs;
+  // Onset error is Day+0 only: Day+3/+7 predictions carry no onset timing to
+  // begin with, so a non-null value at those lead times would be fabricated.
+  if (leadTimeDays == 0 &&
+      actual.rain &&
+      predicted.onset != null &&
+      actual.onsetHour != null) {
+    onsetErrorHrs = _hourDiff(predicted.onset!, actual.onsetHour!);
+  }
+
+  // Convention: actual − predicted. Positive means the actual came in above
+  // what the model called.
+  double? diff(double? pred, double? act) =>
+      (pred == null || act == null) ? null : act - pred;
+
+  return VerificationScore(
+    rainCorrect: rainCorrect,
+    onsetErrorHrs: onsetErrorHrs,
+    windErrorKmh: diff(predicted.windKmh, actual.peakWindKmh),
+    highErrorC: diff(predicted.highC, actual.highC),
+    lowErrorC: diff(predicted.lowC, actual.lowC),
+    mslpErrorHpa: diff(predicted.mslpTrend, actual.mslpTrend),
+  );
+}
+
+double _hourDiff(String predictedHhmm, String actualHhmm) {
+  int toMinutes(String hhmm) {
+    final i = hhmm.indexOf(':');
+    if (i < 0) return int.parse(hhmm) * 60;
+    return int.parse(hhmm.substring(0, i)) * 60 +
+        int.parse(hhmm.substring(i + 1));
+  }
+
+  return (toMinutes(actualHhmm) - toMinutes(predictedHhmm)) / 60;
+}
+
+/// Arithmetic mean ignoring nulls; `null` when nothing is present.
+double? mean(List<double?> values) {
+  final present = values.whereType<double>().toList();
+  if (present.isEmpty) return null;
+  return present.reduce((a, b) => a + b) / present.length;
+}
+
+/// Outcome of comparing recent skill against the longer-term baseline.
+class RainPctTrend {
+  /// "improving" | "declining" | "stable", or `null` when there is not yet
+  /// enough history in one of the windows to say anything honest.
+  final String? label;
+  final double? delta;
+
+  const RainPctTrend(this.label, this.delta);
+}
+
+/// Deterministic recent-vs-longer-term skill comparison, computed in code so
+/// the LLM is handed a conclusion rather than asked to eyeball three numbers
+/// and subtract them itself.
+///
+/// Returns nulls when either window is too thin — "insufficient data" is
+/// itself information, and fabricating a trend from three checks would be
+/// worse than saying nothing.
+RainPctTrend computeRainPctTrend({
+  required double? rolling10RainPct,
+  required double? rolling30RainPct,
+  required int checksInWindow10,
+  required int checksInWindow30,
+  required int minChecksShort,
+  required int minChecksLong,
+  required double thresholdPct,
+}) {
+  if (rolling10RainPct == null ||
+      rolling30RainPct == null ||
+      checksInWindow10 < minChecksShort ||
+      checksInWindow30 < minChecksLong) {
+    return const RainPctTrend(null, null);
+  }
+
+  final delta = rolling10RainPct - rolling30RainPct;
+  // Boundaries are inclusive: exactly at the threshold counts as a trend.
+  final label = delta >= thresholdPct
+      ? 'improving'
+      : (delta <= -thresholdPct ? 'declining' : 'stable');
+  return RainPctTrend(label, delta);
+}

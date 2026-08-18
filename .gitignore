@@ -9,3 +9,10 @@ dist/
 .DS_Store
 .env
 *.local.yaml
+
+# Dart / Flutter
+.dart_tool/
+# pubspec.lock is deliberately NOT committed: olw_core is a library package,
+# and Dart's guidance is to commit the lock only for applications. The
+# eventual Flutter app package should commit its own.
+app/**/pubspec.lock

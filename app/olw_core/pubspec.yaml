@@ -1,0 +1,17 @@
+name: olw_core
+description: >
+  Deterministic forecast core for Open Local Weather — extraction, scoring,
+  verification and AQI staleness. A port of the Python implementation,
+  held to the same behaviour by the shared vectors in spec/vectors/.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# Deliberately NO Flutter dependency. This package is the credibility-critical
+# math, and keeping it pure Dart means it can be tested with `dart test` alone
+# (no Flutter toolchain, no emulator, fast in CI) and reused unchanged by
+# anything that needs it later — the app, a CLI, a server.
+dev_dependencies:
+  test: ^1.25.0

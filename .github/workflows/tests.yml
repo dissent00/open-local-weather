@@ -20,3 +20,28 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+  # The Dart core is held to the Python implementation's exact behaviour by
+  # the shared vectors in spec/. Running it here means a divergence between
+  # the two implementations fails CI rather than being discovered later in
+  # wrong accuracy numbers — see spec/README.md for why that matters.
+  dart-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install dependencies
+        working-directory: app/olw_core
+        run: dart pub get
+
+      - name: Analyze
+        working-directory: app/olw_core
+        run: dart analyze --fatal-infos
+
+      - name: Verify against shared vectors
+        working-directory: app/olw_core
+        run: dart test
