@@ -108,11 +108,19 @@ jobs:
 
       - name: Run daily pipeline
         env:
+          # --- LLM provider selection (see QUICKSTART.md) ---
+          # Leave all of these unset to use Gemini, the default.
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_JSON_MODE: ${{ vars.LLM_JSON_MODE }}
+          LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # --- Gemini (the default provider) ---
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
           WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
-          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          SUBSCRIBER_EMAILS: ${{ secrets.SUBSCRIBER_EMAILS }}
         run: |
           DRY_RUN_FLAG=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then

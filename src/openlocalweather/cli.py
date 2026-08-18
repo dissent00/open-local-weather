@@ -22,7 +22,11 @@ from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
+from openlocalweather.llm.anthropic import DEFAULT_BASE_URL as DEFAULT_ANTHROPIC_BASE_URL
+from openlocalweather.llm.anthropic import DEFAULT_MAX_TOKENS as DEFAULT_ANTHROPIC_MAX_TOKENS
+from openlocalweather.llm.anthropic import AnthropicProvider
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
+from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.pipeline import (
     PipelineDeps,
     RefreshWithoutMorningRunError,
@@ -47,6 +51,15 @@ DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 # lookup, not multi-step reasoning, and intentionally does NOT set this —
 # it uses Gemini's own default.
 DEFAULT_GEMINI_THINKING_LEVEL = "high"
+
+# Which LLMProvider implementation to build. "gemini" keeps this project's
+# original free-tier path and is the default so existing deployments (and
+# every doc written before multi-provider support) keep working with no
+# environment changes at all. "openai" selects OpenAICompatProvider, which
+# covers OpenAI, OpenRouter, Groq, Together, vLLM and Ollama — see that
+# module's docstring.
+DEFAULT_LLM_PROVIDER = "gemini"
+VALID_LLM_PROVIDERS = ("gemini", "anthropic", "openai")
 
 
 def _github_repo_slug() -> str:
@@ -83,16 +96,88 @@ def _build_bulletin_fetcher(local_bulletin_url: str) -> BulletinFetcher:
     return KenyaKMDBulletinFetcher(local_bulletin_url)
 
 
+def _env(name: str, default: str = "") -> str:
+    """os.environ.get(), but treats an EMPTY value as absent.
+
+    Load-bearing under GitHub Actions: `FOO: ${{ vars.FOO }}` sets FOO to
+    the empty string when that repository variable isn't defined, rather
+    than leaving it unset. A plain os.environ.get(name, default) therefore
+    returns "" instead of the default — which would have set GEMINI_MODEL
+    to "" (a hard crash: GeminiProvider rejects an empty model id) and
+    silently downgraded GEMINI_THINKING_LEVEL from the deliberately-chosen
+    "high" to None on every scheduled run.
+    """
+    return os.environ.get(name, "").strip() or default
+
+
+def _build_llm_provider(*, thinking_level: str | None = None):
+    """Builds the configured LLMProvider from the environment.
+
+    Secrets and endpoints come from env vars, never CLI args, for the same
+    reason as everything else here — they'd otherwise land in shell history
+    and process listings. `thinking_level` is Gemini-specific and simply
+    ignored by other providers; check-health passes None because a factual
+    model-lookup doesn't need extended reasoning.
+    """
+    provider_name = _env("LLM_PROVIDER", DEFAULT_LLM_PROVIDER).lower()
+
+    if provider_name == "gemini":
+        api_key = _env("GEMINI_API_KEY")
+        if not api_key:
+            raise SystemExit("GEMINI_API_KEY environment variable is required (LLM_PROVIDER=gemini).")
+        return GeminiProvider(
+            api_key=api_key,
+            model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+            thinking_level=thinking_level,
+        )
+
+    if provider_name == "anthropic":
+        api_key = _env("LLM_API_KEY")
+        model = _env("LLM_MODEL")
+        if not api_key or not model:
+            raise SystemExit(
+                "LLM_PROVIDER=anthropic requires LLM_API_KEY and LLM_MODEL to be set. "
+                "See QUICKSTART.md for recommended model ids."
+            )
+        return AnthropicProvider(
+            api_key=api_key,
+            model=model,
+            # Only needed for a proxy/gateway; defaults to api.anthropic.com.
+            base_url=_env("LLM_BASE_URL", DEFAULT_ANTHROPIC_BASE_URL),
+            max_tokens=int(_env("LLM_MAX_TOKENS", str(DEFAULT_ANTHROPIC_MAX_TOKENS))),
+        )
+
+    if provider_name == "openai":
+        base_url = _env("LLM_BASE_URL")
+        model = _env("LLM_MODEL")
+        if not base_url or not model:
+            raise SystemExit(
+                "LLM_PROVIDER=openai requires LLM_BASE_URL and LLM_MODEL to be set "
+                "(plus LLM_API_KEY for any hosted endpoint). "
+                "See QUICKSTART.md for per-service values."
+            )
+        return OpenAICompatProvider(
+            # Empty is legitimate here: local runtimes like Ollama don't
+            # need a key. Hosted endpoints will fail loudly on the first
+            # call, which is clearer than guessing at intent up front.
+            api_key=_env("LLM_API_KEY"),
+            model=model,
+            base_url=base_url,
+            json_mode=_env("LLM_JSON_MODE", "json_schema"),
+        )
+
+    raise SystemExit(
+        f"Unknown LLM_PROVIDER {provider_name!r} — expected one of {', '.join(VALID_LLM_PROVIDERS)}."
+    )
+
+
 def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_webpage_url: str) -> PipelineDeps:
     location = load_location_config(config_path)
     data_path = Path(data_dir)
 
-    gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not gemini_api_key:
-        raise SystemExit("GEMINI_API_KEY environment variable is required.")
-    gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
-    gemini_thinking_level = os.environ.get("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None
-    waqi_token = os.environ.get("WAQI_TOKEN", "")
+    gemini_thinking_level = _env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None
+    llm_provider = _build_llm_provider(thinking_level=gemini_thinking_level)
+    waqi_token = _env("WAQI_TOKEN")
 
     # Publisher needs an absolute base URL to build sane nav links (see
     # publish/pages.py's module docstring) — skip it gracefully rather than
@@ -128,7 +213,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     return PipelineDeps(
         location=location,
         data_dir=data_path,
-        llm_provider=GeminiProvider(api_key=gemini_api_key, model=gemini_model, thinking_level=gemini_thinking_level),
+        llm_provider=llm_provider,
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
         bulletin_fetcher=_build_bulletin_fetcher(location.local_bulletin_url),
@@ -202,23 +287,22 @@ def _days_since_last_commit() -> int:
 
 
 def _run_check_health(args: argparse.Namespace) -> int:
-    gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not gemini_api_key:
-        raise SystemExit("GEMINI_API_KEY environment variable is required for check-health.")
-    gemini_model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
-    llm = GeminiProvider(api_key=gemini_api_key, model=gemini_model)
+    # No thinking_level: the deprecation check is a factual lookup, not the
+    # multi-step reasoning the forecast pipeline asks for.
+    llm = _build_llm_provider(thinking_level=None)
+    model_name = llm.model
 
     ok = True
 
-    print(f"Checking whether '{gemini_model}' is listed on Gemini's deprecations page...")
+    print(f"Checking whether '{model_name}' is listed as deprecated...")
     try:
-        result = check_model_deprecation(llm, gemini_model)
+        result = check_model_deprecation(llm, model_name)
     except LLMResponseError as e:
         print(f"  Could not complete the model-deprecation check: {e}", file=sys.stderr)
         ok = False
     else:
         if result.deprecated_or_scheduled:
-            print(f"  WARNING: '{gemini_model}' may be deprecated or scheduled for shutdown.")
+            print(f"  WARNING: '{model_name}' may be deprecated or scheduled for shutdown.")
             print(f"  {result.notes}")
             ok = False
         else:

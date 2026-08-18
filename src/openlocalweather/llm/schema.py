@@ -123,3 +123,84 @@ def _with_description(result: dict[str, Any], node: dict[str, Any]) -> dict[str,
     if node.get("description"):
         result["description"] = node["description"]
     return result
+
+
+# ---------------------------------------------------------------------------
+# pydantic -> OpenAI-compatible JSON-schema adapter
+# ---------------------------------------------------------------------------
+
+
+def to_strict_json_schema(model: type[BaseModel]) -> dict:
+    """Converts a pydantic model's JSON schema into the dialect OpenAI's
+    Structured Outputs (`response_format.json_schema`) expects — the same
+    format used by every OpenAI-compatible endpoint (OpenRouter, Groq,
+    Together, vLLM, Ollama).
+
+    This is a SEPARATE adapter from to_gemini_schema, not a generalization
+    of it, because the two dialects disagree in ways that can't be papered
+    over: Gemini wants uppercase type names and a `nullable` flag, while
+    OpenAI wants standard lowercase JSON Schema with null expressed as a
+    type union. Per llm/provider.py's contract, each provider owns its own
+    adapter.
+
+    OpenAI's *strict* mode adds three rules beyond plain JSON Schema, all
+    handled here:
+      1. every object must set additionalProperties: false
+      2. every object's `required` must list ALL its properties — optional
+         fields are expressed as nullable instead of omitted from required
+      3. `default` is not allowed, so it's stripped
+
+    $defs/$ref are inlined. OpenAI itself does support them, but several
+    compatible endpoints don't, and inlining costs nothing at this schema's
+    size.
+    """
+    json_schema = model.model_json_schema()
+    defs = json_schema.get("$defs", {})
+    return _convert_openai_node(json_schema, defs)
+
+
+def _convert_openai_node(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:
+    if "$ref" in node:
+        ref_name = node["$ref"].rsplit("/", 1)[-1]
+        return _convert_openai_node(defs[ref_name], defs)
+
+    if "anyOf" in node:
+        branches = node["anyOf"]
+        non_null = [b for b in branches if b.get("type") != "null"]
+        nullable = len(non_null) != len(branches)
+        if len(non_null) == 1:
+            converted = _convert_openai_node(non_null[0], defs)
+            if nullable:
+                converted["type"] = [converted.get("type", "string"), "null"]
+            return _with_description(converted, node)
+        # A genuinely multi-type union; strict mode can't express it
+        # usefully, so fall back to a nullable string the same way the
+        # Gemini adapter falls back to STRING.
+        return {"type": ["string", "null"] if nullable else "string"}
+
+    json_type = node.get("type")
+
+    if json_type == "object":
+        properties = {
+            key: _convert_openai_node(value, defs) for key, value in node.get("properties", {}).items()
+        }
+        return _with_description(
+            {
+                "type": "object",
+                "properties": properties,
+                # Rule 2: ALL properties required, not just node["required"].
+                "required": list(properties.keys()),
+                "additionalProperties": False,
+            },
+            node,
+        )
+
+    if json_type == "array":
+        return _with_description(
+            {"type": "array", "items": _convert_openai_node(node.get("items", {}), defs)}, node
+        )
+
+    if json_type in _JSON_TYPE_TO_GEMINI:  # same set of scalar types, lowercase here
+        return _with_description({"type": json_type}, node)
+
+    return {"type": "string"}
