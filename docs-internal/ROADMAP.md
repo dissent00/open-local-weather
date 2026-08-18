@@ -769,7 +769,26 @@ guide should be honest about which one it's demonstrating.
 
 ---
 
-## 11. Met-office catalog + location setup script — toward "country + coordinates in, config out" · **Planned**
+## 11. Met-office catalog + location setup script — toward "country + coordinates in, config out" · **Planned — priority raised**
+
+**This became app-critical.** The app's whole philosophy is "use your
+location, generate your own forecast," which means a user in an arbitrary
+place must be able to pick up their *local* sources without editing YAML or
+knowing what a met service is. Two discovery problems, both of which the
+app needs solved and neither of which is solved today:
+
+- **National/local met services** — the catalog described below. Needed so
+  the app can offer "add your local forecast source" rather than leaving
+  the field blank forever.
+- **Ground AQI stations** — happily much easier, and already possible:
+  WAQI's own API has a geo-search endpoint (`GET /feed/geo:{lat};{lng}/`,
+  confirmed in item 4's research) that finds nearby stations from
+  coordinates with no catalog at all. The app should use it to offer
+  nearby stations at setup instead of asking a user to hand-verify station
+  ids at waqi.info, which is a genuinely unreasonable thing to ask.
+
+Not being built yet, but it moves ahead of the other Planned items once
+the app's settings screen exists — that screen is where both land.
 
 ### The goal, and why it's two very different problems wearing one trench coat
 
@@ -1080,6 +1099,31 @@ way. **Not yet verified**: gemini-3.6-flash's actual max-output-tokens
 ceiling — worth confirming before committing to a large voice count,
 though nothing here suggests it'd be a real constraint at 2-3 voices.
 
+### Canned presets, not just a free-text box
+
+Asking a user to describe the voice they want is a blank-page problem, and
+most people will never fill it in. Ship a set of ready-made audiences they
+can pick with one tap, with free-text as the escape hatch rather than the
+default:
+
+- **Sailors** — wind speed/direction/gusts, lake or coastal state, safety-
+  conscious tone.
+- **Surfers** — wave, wind, water and air temperature; casual.
+- **General outdoors** — comfort, rain timing, UV, "is this a good day to
+  be outside".
+- **Camping** — overnight lows, rain overnight, wind for tents, a
+  go/no-go leaning.
+- **Farm/garden** — rain totals, frost risk, soil-relevant framing.
+- **Commuters** — rain onset/end around morning and evening peaks.
+
+These map cleanly onto the `focus_hint` field already in the config sketch
+above, so presets are *data*, not new code paths — which also means a fork
+can add its own without touching the pipeline. The camping one is worth
+noting as slightly different in kind: it implies a **recommendation**
+("good window Thursday night"), not just a description, which is a
+stronger claim than the rest and should be held to the same
+no-overclaiming standard as everything else here.
+
 ### Honest risks
 
 - **Distinctiveness at scale is unproven.** Two voices (narrative +
@@ -1219,6 +1263,11 @@ users maximum**, with no headroom for retries — and the 20/min ceiling
 means a morning burst across timezones would start failing before the
 daily cap is even reached.
 
+**Decision for now: bring-your-own-key.** The app assumes the user
+supplies a key; a trial is a later problem to solve deliberately rather
+than a v1 blocker. The rest of this section is the analysis to pick up
+from when it becomes one.
+
 **The version that actually works: a bounded free trial.** Not "nobody
 needs a key" but "nobody needs a key *to try it*." A small proxy issues N
 free forecasts per install (say 10-20), enough to see real value, after
@@ -1234,6 +1283,15 @@ parties need reading properly before building anything, not after.
 ---
 
 ## 18. Weekly review — drift and blind spots · **Planned**
+
+**Required in BOTH the open-source pipeline and the app**, not one or the
+other. "Accuracy demonstrably improving over time" is the single strongest
+differentiator this project has against every other weather product, and a
+review that only existed server-side would leave the app unable to make the
+claim its own accuracy screen is built around. The deterministic half
+belongs in `app/olw_core` alongside the rest of the shared math, so both
+implementations compute identical findings from identical data — the same
+reasoning that produced `spec/`. Only the narration differs by surface.
 
 ### What exists today, and what it isn't
 
@@ -1312,6 +1370,68 @@ UI should not let those look identical.
 Connected mode has no gaps, because the server runs whether or not anyone
 opens the app — another concrete reason it earns its place rather than
 being a hedge.
+
+---
+
+## 19. Spoken forecast — audio output · **Planned**
+
+### The insight that makes this cheap and good
+
+The obvious approach — run text-to-speech over the forecast we already
+write — produces something bad, and it's worth saying why before anyone
+builds it. The current narrative is written *to be read*: AFD-style
+`.SECTION...` headers, `"23 km/h (12 kt) from the SE"`, temperatures given
+twice in two units, markdown structure. Read aloud, that is close to
+unlistenable.
+
+So the right move is not "TTS the forecast." It is **generate a spoken-form
+script as another audience voice** (item 14's mechanism, same single LLM
+call, no extra request), then speak *that*. A `spoken` voice would drop
+section markers, give each number once in one unit, use sentence rhythm
+instead of bullet density, and run maybe 45-60 seconds. Item 14 already
+provides the machinery; audio is one more `focus_hint`.
+
+That also means the marginal LLM cost of audio is **zero** — the script
+comes back in the call already being made.
+
+### Two ways to actually produce sound
+
+| | On-device TTS | Hosted TTS API |
+|---|---|---|
+| Cost | Free | ~$15/1M chars → ~$0.015/forecast, ~$11/yr at 2/day |
+| Network | None — works offline | Required |
+| Latency | Instant | A round trip |
+| Quality | Serviceable, clearly synthetic | Natural, and improving fast |
+| Effort | `flutter_tts`, small | HTTP + audio file caching |
+
+**Start with on-device.** It is free, offline, instant, and needs no key —
+which matters because it works even when the user hasn't configured an LLM
+provider yet, and it keeps working on a cached forecast with no signal.
+Hosted TTS is a quality upgrade to offer later as an opt-in, priced
+visibly like every other API cost in the app (item 16's spend controls).
+
+If hosted TTS is added: generate once per forecast, cache the audio file
+alongside the entry, never regenerate on replay. Audio is the one output
+here that is expensive to recompute and trivial to store.
+
+### Why this matters more than "nice to have"
+
+This project exists for places underserved by professional meteorology.
+A spoken forecast is a genuine accessibility feature for low-literacy
+users and for visually impaired users — and it is usable hands-free while
+driving, farming, or on the water, which is exactly when a weather
+forecast is most actionable. It reaches people a text app structurally
+cannot.
+
+### Open questions
+
+- Does the spoken script belong in the committed JSON entry (so the
+  open-source pipeline could serve audio from the website too), or is it
+  app-only? Committing it costs a few hundred bytes a day and keeps both
+  surfaces consistent — probably worth it.
+- Language. On-device TTS covers many languages, but the forecast text is
+  currently English-only. Multilingual output is a much larger question
+  that this item should not quietly smuggle in.
 
 ---
 
