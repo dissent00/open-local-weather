@@ -53,6 +53,7 @@ from typing import Protocol
 
 from openlocalweather import __version__
 from openlocalweather.aqi import GroundAQISummary, hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, today_in_tz
 from openlocalweather.defaults import (
@@ -296,6 +297,12 @@ def run_daily_pipeline(
 
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
     day0_predictions = extract_day0_predictions_from_hourly(primary_hourly, MODELS)
+
+    # Deterministic day-over-day comparison for the Overview — in code, not
+    # the LLM. A live run asked to compare 29.6°C against 29.5°C described it
+    # as "about 1°C cooler": a ten-fold overstatement of the one sentence
+    # most readers actually act on. See comparison.py.
+    day_over_day = compute_day_over_day(actuals_primary.get(yesterday), day0_predictions)
     day3_predictions = extract_day_n_predictions_from_daily(primary_daily, 3, MODELS)
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
@@ -319,6 +326,11 @@ def run_daily_pipeline(
         historical_logs=historical_logs,
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
+        # What actually HAPPENED yesterday, so the Overview can open with a
+        # real day-over-day comparison. Distinct from verification_context,
+        # which is how yesterday's predictions SCORED. Free: this is the same
+        # cache the verification pass already read.
+        yesterday_actual=asdict(day_over_day) if day_over_day is not None else None,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
             "primary_extended_daily": primary_daily,
@@ -462,6 +474,19 @@ def run_refresh_pipeline(
     # content, and the response's verification_notes/yesterday_verification
     # are simply not used when merging back into the entry below.
     verification_context = {"note": "No new verification this run — same-day refresh; see the morning issuance."}
+    # The evening run does no verification, so it never needed the actuals
+    # cache before. It reads it now purely for the Overview's day-over-day
+    # comparison — a local file read, no extra API call.
+    _refresh_actuals = actuals_cache_store.as_date_dict(
+        actuals_cache_store.read_actuals_cache(deps.data_dir).primary
+    )
+    _refresh_yesterday = add_days(today, -1)
+    # The evening refresh deliberately keeps the morning's model_predictions,
+    # so it compares against those — the numbers actually published today.
+    _refresh_comparison = compute_day_over_day(
+        _refresh_actuals.get(_refresh_yesterday), existing_entry.model_predictions.day0
+    )
+    refresh_yesterday_actual = asdict(_refresh_comparison) if _refresh_comparison is not None else None
     track_record_context = [e.model_dump() for e in track_record_store.read_track_record(deps.data_dir).entries]
 
     system_prompt = build_system_prompt(location, is_refresh=True)
@@ -474,6 +499,7 @@ def run_refresh_pipeline(
         historical_logs=historical_logs,
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
+        yesterday_actual=refresh_yesterday_actual,
         today_weather_data={
             "primary_today_hourly": guidance.primary_hourly,
             "primary_extended_daily": guidance.primary_daily,

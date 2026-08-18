@@ -53,6 +53,7 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt
 from openlocalweather.llm.schema import (
@@ -615,6 +616,67 @@ def export_system_prompt() -> None:
     )
 
 
+
+def export_day_over_day() -> None:
+    """The Overview's opening sentence. Vector-tested because a live run got
+    it wrong when the LLM was left to subtract: it called a 0.1°C difference
+    "about 1°C cooler"."""
+    def preds(highs, lows=None, winds=None, rains=None):
+        n = len(highs)
+        lows = lows or [18.0] * n
+        winds = winds or [20.0] * n
+        rains = rains or [True] * n
+        return [
+            ModelPrediction(model=f"m{i}", rain=rains[i], high_c=highs[i], low_c=lows[i], wind_kmh=winds[i])
+            for i in range(n)
+        ]
+
+    def actual(**kw):
+        base = dict(rain=True, high_c=29.6, low_c=18.8, peak_wind_kmh=40.7, mslp_trend=-0.5, onset_hour="16:00")
+        base.update(kw)
+        return DailyActual(**base)
+
+    scenarios = [
+        # The exact case that broke live: a 0.1 degree difference must NOT
+        # read as a change.
+        ("0.1C difference reads as about the same", actual(), preds([29.5, 29.4, 29.6], winds=[37.0, 35.0, 38.0])),
+        ("2C warmer is slight", actual(high_c=27.0), preds([29.0, 29.0, 29.0])),
+        ("5C cooler is noticeable", actual(high_c=34.0), preds([29.0, 29.0, 29.0])),
+        ("10C cooler is much", actual(high_c=39.0), preds([29.0, 29.0, 29.0])),
+        ("exactly at a band boundary rounds into the higher band", actual(high_c=27.5), preds([29.0, 29.0, 29.0])),
+        ("wind change below threshold is not remarked on", actual(peak_wind_kmh=25.0), preds([29.0], winds=[30.0])),
+        ("big wind increase is called out", actual(peak_wind_kmh=15.0), preds([29.0], winds=[40.0])),
+        ("dry after a wet day", actual(rain=True), preds([29.0], rains=[False])),
+        ("wet after a dry day", actual(rain=False), preds([29.0], rains=[True])),
+        ("no observed record yields nothing at all", None, preds([29.0])),
+        ("model with no data doesn't poison the consensus", actual(), 
+         [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),
+          ModelPrediction(model="b", rain=None, high_c=None, low_c=None, wind_kmh=None)]),
+    ]
+
+    cases = []
+    for name, y, ps in scenarios:
+        result = compute_day_over_day(y, ps)
+        cases.append({
+            "name": name,
+            "input": {
+                "yesterday_actual": dump(y),
+                "today_day0_predictions": [dump(p) for p in ps],
+            },
+            "expected": dump(result),
+        })
+    write(
+        "day_over_day.json",
+        "compute_day_over_day",
+        "Deterministic day-over-day comparison for the Overview. Compares "
+        "today's MODEL CONSENSUS against yesterday's OBSERVED conditions and "
+        "returns felt-change BANDS rather than raw deltas, because the "
+        "consensus differs slightly from the LLM's final blended call and a "
+        "band is stable across that gap where a number is not.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -625,6 +687,7 @@ def main() -> None:
     export_bucketing()
     export_llm_schemas()
     export_system_prompt()
+    export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

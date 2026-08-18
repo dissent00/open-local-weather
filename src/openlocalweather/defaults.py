@@ -83,3 +83,22 @@ TREND_MIN_CHECKS_LONG = 10
 # close to that noise floor, deliberately not more sensitive than the
 # sample size can actually support.
 TREND_THRESHOLD_PCT = 15.0
+
+# --- Day-over-day comparison (see comparison.py) ---
+#
+# Bands for how a temperature change actually FEELS, rather than raw
+# degrees. Ordered (upper_bound_exclusive, label); anything at or above the
+# last bound gets that last label. Calibrated to human perception rather
+# than instrument precision: roughly a degree is inside day-to-day noise
+# and shouldn't be announced as a change at all, which is exactly the
+# mistake a live run made when the LLM was left to do this subtraction
+# itself (it called a 0.1°C difference "about 1°C cooler").
+TEMP_CHANGE_BANDS_C = [
+    (1.5, "about the same"),
+    (3.0, "slightly"),
+    (6.0, "noticeably"),
+    (99.0, "much"),
+]
+
+# Gust change below this is not worth remarking on.
+WIND_CHANGE_THRESHOLD_KMH = 8.0

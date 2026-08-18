@@ -17,6 +17,7 @@ export 'src/aqi.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
 export 'src/models.dart';
+export 'src/comparison.dart';
 export 'src/config.dart';
 export 'src/llm/anthropic.dart';
 export 'src/llm/gemini.dart';

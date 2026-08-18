@@ -279,6 +279,21 @@ void main() {
     });
   });
 
+  group('day over day', () {
+    test('compute_day_over_day', () {
+      for (final c in casesOf('day_over_day.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final y = i['yesterday_actual'] == null
+            ? null
+            : DailyActual.fromJson(i['yesterday_actual'] as Map<String, Object?>);
+        final preds = (i['today_day0_predictions'] as List)
+            .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
+            .toList();
+        expectMatches(computeDayOverDay(y, preds)?.toJson(), c['expected'], c['name'] as String);
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -297,6 +312,7 @@ void main() {
       'llm_schema_gemini.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
+      'day_over_day.json',
     };
     final onDisk = vectorsDir
         .listSync()

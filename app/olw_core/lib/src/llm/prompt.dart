@@ -73,7 +73,7 @@ $refreshBlock
    Create a detailed forecast and synoptic overview using today's multi-model data, the pre-computed verification results, and the model track record (including its lead-time breakdown). Synthesize into Markdown with these EXACT headings in order:
 
    ## Overview
-   (1-2 plain-language sentences describing how the weather will "feel" and what's coming - eg "Sunny and warm today, rain possible tonight and a wet, cooling trend for the weekend." Compare to the previous day where relevant.)
+   (1-2 plain-language sentences describing how the weather will "feel" and what's coming - eg "Sunny and warm today, rain possible tonight and a wet, cooling trend for the weekend." OPEN with the day-over-day comparison, using the PRE-COMPUTED labels in "DAY-OVER-DAY COMPARISON" in the user message. Readers rarely remember yesterday's numbers, but they do remember how it felt and what they wore, so this is the single most useful orienting sentence in the forecast. Use "high_label", "wind_label" and "rain_contrast" AS GIVEN and phrase them naturally - do NOT subtract the temperatures yourself or invent your own wording for the size of the change, exactly as with the verification statistics. If high_label is "about the same", say the day feels much like yesterday; do not manufacture a difference in order to sound informative. Compare only against what was actually OBSERVED yesterday - never against yesterday's forecast or its verification scores, which are a different thing and are also in your context. If "DAY-OVER-DAY COMPARISON" is unavailable, simply omit the comparison rather than guessing or hedging about its absence.)
 
    ## Today's Forecast
    (temps, rain, wind, UV index, air quality)

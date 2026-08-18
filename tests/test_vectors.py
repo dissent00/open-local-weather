@@ -34,6 +34,7 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt
 from openlocalweather.llm.schema import (
@@ -215,6 +216,17 @@ def test_vectors_system_prompt():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_day_over_day():
+    """The Overview's opening sentence — the one a live run got wrong."""
+    for case in load("day_over_day.json")["cases"]:
+        i = case["input"]
+        y = DailyActual.model_validate(i["yesterday_actual"]) if i["yesterday_actual"] else None
+        preds = [ModelPrediction.model_validate(p) for p in i["today_day0_predictions"]]
+        assert as_json(compute_day_over_day(y, preds)) == case["expected"], (
+            f"vector case failed: {case['name']}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Meta
 # ---------------------------------------------------------------------------
@@ -238,6 +250,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_gemini.json",
         "llm_schema_strict.json",
         "llm_system_prompt.json",
+        "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

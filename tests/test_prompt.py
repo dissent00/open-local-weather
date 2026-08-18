@@ -108,6 +108,7 @@ def test_user_prompt_includes_dates_and_url():
         historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
+        yesterday_actual=None,
         today_weather_data={},
         local_bulletin_source_name="Kenya Meteorological Department (KMD)",
         local_bulletin_text="No bulletin available.",
@@ -133,6 +134,7 @@ def test_user_prompt_serializes_ground_aqi_readings_and_summary_when_present():
             {"name": "Kisumu Airport", "station_id": "A418534", "aqi": 42, "pm25": 18.0, "pm10": 30.0},
             {"name": "Dunga Beach", "station_id": "A418504", "aqi": 90, "pm25": 40.0, "pm10": 12.0},
         ],
+        yesterday_actual=None,
         ground_aqi_summary={
             "aqi_min": 42, "aqi_max": 90, "highest_station_name": "Dunga Beach",
             "stations_with_aqi": 2, "stations_total": 2,
@@ -156,6 +158,7 @@ def test_user_prompt_includes_weather_data_sections():
         historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
+        yesterday_actual=None,
         today_weather_data={"primary_today_hourly": {"hourly": {"time": ["2026-08-11T00:00"]}}},
         local_bulletin_source_name="KMD",
         local_bulletin_text="text",
@@ -200,7 +203,7 @@ def test_user_prompt_omits_morning_narrative_block_by_default():
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
         verification_context={}, track_record_context=[], historical_logs=[],
-        ground_aqi_readings=[], ground_aqi_summary=None, today_weather_data={},
+        ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
     )
     assert "MORNING NARRATIVE" not in prompt
@@ -210,10 +213,74 @@ def test_user_prompt_includes_morning_narrative_when_given():
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
         verification_context={}, track_record_context=[], historical_logs=[],
-        ground_aqi_readings=[], ground_aqi_summary=None, today_weather_data={},
+        ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
         morning_narrative="## Overview\nSunny and warm today.",
     )
     assert "MORNING NARRATIVE" in prompt
     assert "Sunny and warm today." in prompt
     assert "not a repeat" in prompt
+
+
+# ---------------------------------------------------------------------------
+# Day-over-day comparison (YESTERDAY'S ACTUAL CONDITIONS)
+# ---------------------------------------------------------------------------
+
+
+def test_system_prompt_asks_for_a_concrete_comparison_against_observed_conditions():
+    """The Overview used to be told to "compare to the previous day" while the
+    user message never supplied yesterday's conditions — so the model was
+    asked for a comparison it had no data for, inviting vagueness or
+    invention. Guards the instruction now that the data exists."""
+    prompt = build_system_prompt(KISUMU)
+    assert "DAY-OVER-DAY COMPARISON" in prompt
+    # The labels are computed in code; the LLM must not redo the subtraction.
+    assert "do NOT subtract the temperatures yourself" in prompt
+    # And must not invent a change when there genuinely isn't one.
+    assert "do not manufacture a difference" in prompt
+    # Must be anchored to observations, not to how the models scored.
+    assert "never against yesterday's forecast or its verification scores" in prompt
+    # And must degrade honestly when there's no record.
+    assert "omit the comparison rather than guessing" in prompt
+
+
+def test_user_prompt_includes_yesterdays_observed_conditions():
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.com/",
+        verification_context={},
+        track_record_context=[],
+        historical_logs=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual={"rain": True, "high_c": 29.4, "low_c": 18.0},
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+    )
+    assert "DAY-OVER-DAY COMPARISON" in prompt
+    assert "29.4" in prompt
+    # Framed as observed, so it can't be confused with the verification block.
+    assert "yesterday's OBSERVED conditions" in prompt
+
+
+def test_user_prompt_says_so_when_yesterday_is_unavailable():
+    """A gap in the record must read as a gap, not silently look like a day
+    with no notable weather."""
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.com/",
+        verification_context={},
+        track_record_context=[],
+        historical_logs=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+    )
+    assert "Unavailable — no observed record for yesterday" in prompt
+    assert "omit the day-over-day comparison" in prompt

@@ -87,7 +87,7 @@ DATA QUALITY NOTES:
    Create a detailed forecast and synoptic overview using today's multi-model data, the pre-computed verification results, and the model track record (including its lead-time breakdown). Synthesize into Markdown with these EXACT headings in order:
 
    ## Overview
-   (1-2 plain-language sentences describing how the weather will "feel" and what's coming - eg "Sunny and warm today, rain possible tonight and a wet, cooling trend for the weekend." Compare to the previous day where relevant.)
+   (1-2 plain-language sentences describing how the weather will "feel" and what's coming - eg "Sunny and warm today, rain possible tonight and a wet, cooling trend for the weekend." OPEN with the day-over-day comparison, using the PRE-COMPUTED labels in "DAY-OVER-DAY COMPARISON" in the user message. Readers rarely remember yesterday's numbers, but they do remember how it felt and what they wore, so this is the single most useful orienting sentence in the forecast. Use "high_label", "wind_label" and "rain_contrast" AS GIVEN and phrase them naturally - do NOT subtract the temperatures yourself or invent your own wording for the size of the change, exactly as with the verification statistics. If high_label is "about the same", say the day feels much like yesterday; do not manufacture a difference in order to sound informative. Compare only against what was actually OBSERVED yesterday - never against yesterday's forecast or its verification scores, which are a different thing and are also in your context. If "DAY-OVER-DAY COMPARISON" is unavailable, simply omit the comparison rather than guessing or hedging about its absence.)
 
    ## Today's Forecast
    (temps, rain, wind, UV index, air quality)
@@ -131,6 +131,7 @@ def build_user_prompt(
     historical_logs: Any,
     ground_aqi_readings: Any,
     ground_aqi_summary: Any,
+    yesterday_actual: Any,
     today_weather_data: dict[str, Any],
     local_bulletin_source_name: str,
     local_bulletin_text: str,
@@ -141,6 +142,21 @@ def build_user_prompt(
     pydantic models with .model_dump()) — this module doesn't care where
     they came from, only that they serialize; pipeline.py is what actually
     wires verify/fetch/store output into these parameters.
+
+    `yesterday_actual` is what was actually OBSERVED yesterday (a
+    DailyActual, or None if there's no record) — distinct from the
+    verification context, which is how yesterday's *predictions* scored.
+    It exists so the Overview can open with a real day-over-day comparison;
+    before it was passed, the system prompt asked for that comparison
+    without ever supplying the data, which invited vagueness or invention.
+
+    Deliberately NOT accompanied by a pre-computed delta, despite this
+    project's usual "arithmetic in code" rule: the comparison is against
+    the LLM's own blended call for today, which doesn't exist until it
+    responds. A delta computed here against model consensus could
+    contradict the numbers the narrative itself goes on to state. Both
+    numbers appear in the published text, so any reader can check the
+    subtraction.
 
     `morning_narrative`, when given, is an evening REFRESH run's only
     refresh-specific input: the narrative already published around 6 AM,
@@ -179,6 +195,9 @@ GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Dis
 
 GROUND AQI SUMMARY (pre-computed by code — do NOT recompute; state as given if present):
 {_json(ground_aqi_summary) if ground_aqi_summary is not None else "Not applicable — no station reported a numeric AQI today."}
+
+DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — do NOT recompute; use high_label / wind_label / rain_contrast as given):
+{_json(yesterday_actual) if yesterday_actual is not None else "Unavailable — no observed record for yesterday; omit the day-over-day comparison."}
 
 TODAY'S MULTI-MODEL GUIDANCE:
 {_json(weather_payload)}
