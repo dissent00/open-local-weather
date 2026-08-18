@@ -41,13 +41,20 @@ from typing import Any
 
 from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.dates import add_days, prediction_row_date_for_target
-from openlocalweather.defaults import RAIN_THRESHOLD_MM
+from openlocalweather.defaults import (
+    HISTORICAL_LOOKBACK_DAYS,
+    RAIN_THRESHOLD_MM,
+    ROLLING_WINDOW_LONG,
+    ROLLING_WINDOW_SHORT,
+)
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.config import LocationConfig, Point, SecondaryPoint
+from openlocalweather.llm.prompt import build_system_prompt
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     to_gemini_schema,
@@ -532,6 +539,82 @@ def export_llm_schemas() -> None:
     )
 
 
+
+def export_system_prompt() -> None:
+    """The system prompt is the instruction set that shapes every forecast.
+    Drift between implementations would not be a formatting nit — the app and
+    the pipeline would produce genuinely different forecasts from identical
+    data, which is the sort of divergence nobody would notice until the
+    accuracy records disagreed."""
+    plain = LocationConfig(
+        region_name="Example Region",
+        primary_place_name="Example Town, Country",
+        timezone="UTC",
+        primary_point=Point(lat=1.0, lon=2.0),
+        secondary_point=SecondaryPoint(enabled=False),
+    )
+    with_secondary = LocationConfig(
+        region_name="Nyanza Basin",
+        primary_place_name="Kisumu, Kenya",
+        timezone="Africa/Nairobi",
+        primary_point=Point(lat=-0.1, lon=34.75),
+        secondary_point=SecondaryPoint(
+            enabled=True,
+            name="Lake Victoria",
+            section_label="Conditions for Boaters",
+            lat=-0.3,
+            lon=34.2,
+        ),
+    )
+
+    scenarios = [
+        ("no secondary point, normal run", plain, False, {}),
+        ("secondary point enabled, normal run", with_secondary, False, {}),
+        ("secondary point enabled, REFRESH run", with_secondary, True, {}),
+        (
+            "non-default window sizes interpolate",
+            plain,
+            False,
+            {"historical_lookback_days": 14, "rolling_window_short": 5, "rolling_window_long": 20},
+        ),
+    ]
+
+    cases = []
+    for name, loc, is_refresh, overrides in scenarios:
+        kwargs = {
+            "historical_lookback_days": HISTORICAL_LOOKBACK_DAYS,
+            "rolling_window_short": ROLLING_WINDOW_SHORT,
+            "rolling_window_long": ROLLING_WINDOW_LONG,
+        }
+        kwargs.update(overrides)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "location": {
+                        "region_name": loc.region_name,
+                        "primary_place_name": loc.primary_place_name,
+                        "secondary_point": {
+                            "enabled": loc.secondary_point.enabled,
+                            "name": loc.secondary_point.name,
+                            "section_label": loc.secondary_point.section_label,
+                        },
+                    },
+                    "is_refresh": is_refresh,
+                    **kwargs,
+                },
+                "expected": build_system_prompt(loc, is_refresh=is_refresh, **kwargs),
+            }
+        )
+    write(
+        "llm_system_prompt.json",
+        "build_system_prompt",
+        "The full system prompt, verbatim. Covers the secondary-point branch "
+        "(present/absent), refresh mode, and window-size interpolation.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -541,6 +624,7 @@ def main() -> None:
     export_aqi()
     export_bucketing()
     export_llm_schemas()
+    export_system_prompt()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

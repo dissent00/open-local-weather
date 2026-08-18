@@ -247,6 +247,38 @@ void main() {
     });
   });
 
+  group('system prompt', () {
+    // Compared VERBATIM. This string is the instruction set behind every
+    // forecast; a drift here means the app and the pipeline reason
+    // differently from identical data.
+    test('matches Python character for character across all branches', () {
+      for (final c in casesOf('llm_system_prompt.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final loc = i['location'] as Map<String, Object?>;
+        final sec = loc['secondary_point'] as Map<String, Object?>;
+        final got = buildSystemPrompt(
+          LocationConfig(
+            regionName: loc['region_name'] as String,
+            primaryPlaceName: loc['primary_place_name'] as String,
+            timezone: 'UTC',
+            lat: 0,
+            lon: 0,
+            secondaryPoint: SecondaryPoint(
+              enabled: sec['enabled'] as bool,
+              name: sec['name'] as String,
+              sectionLabel: sec['section_label'] as String,
+            ),
+          ),
+          historicalLookbackDaysArg: i['historical_lookback_days'] as int,
+          rollingWindowShortArg: i['rolling_window_short'] as int,
+          rollingWindowLongArg: i['rolling_window_long'] as int,
+          isRefresh: i['is_refresh'] as bool,
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -264,6 +296,7 @@ void main() {
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_strict.json',
+      'llm_system_prompt.json',
     };
     final onDisk = vectorsDir
         .listSync()

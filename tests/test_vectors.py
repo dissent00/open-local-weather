@@ -34,6 +34,8 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.config import LocationConfig, Point, SecondaryPoint
+from openlocalweather.llm.prompt import build_system_prompt
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     to_gemini_schema,
@@ -187,6 +189,32 @@ def test_vectors_llm_schemas():
         assert to_strict_json_schema(GeminiForecastResponse) == case["expected"]
 
 
+def test_vectors_system_prompt():
+    """The instruction set behind every forecast — pinned verbatim so a port
+    cannot quietly reason from different instructions."""
+    for case in load("llm_system_prompt.json")["cases"]:
+        i = case["input"]
+        loc = i["location"]
+        sec = loc["secondary_point"]
+        location = LocationConfig(
+            region_name=loc["region_name"],
+            primary_place_name=loc["primary_place_name"],
+            timezone="UTC",
+            primary_point=Point(lat=0.0, lon=0.0),
+            secondary_point=SecondaryPoint(
+                enabled=sec["enabled"], name=sec["name"], section_label=sec["section_label"]
+            ),
+        )
+        got = build_system_prompt(
+            location,
+            historical_lookback_days=i["historical_lookback_days"],
+            rolling_window_short=i["rolling_window_short"],
+            rolling_window_long=i["rolling_window_long"],
+            is_refresh=i["is_refresh"],
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 # ---------------------------------------------------------------------------
 # Meta
 # ---------------------------------------------------------------------------
@@ -209,6 +237,7 @@ def test_every_vector_file_is_exercised():
         "bucket_hourly_by_date.json",
         "llm_schema_gemini.json",
         "llm_schema_strict.json",
+        "llm_system_prompt.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (
