@@ -1179,6 +1179,142 @@ Two things flagged as genuinely hard, not glossed:
 
 ---
 
+## 17. OpenRouter, and the "no key required" question · **Planned**
+
+Two separable ideas; the second is much harder than it looks.
+
+### 17a. OpenRouter as a provider — already works today
+
+Nothing to build. `LLM_PROVIDER=openai` with
+`LLM_BASE_URL=https://openrouter.ai/api/v1` already routes through
+OpenRouter, since it speaks the OpenAI chat-completions API. That single
+endpoint reaches most current models, including `:free` variants, and
+QUICKSTART.md already documents it.
+
+Worth doing: name specific `:free` model ids in QUICKSTART as a
+recommended zero-cost starting point, and verify the strict `json_schema`
+path works on them (some free models are served by backends that only
+support `json_object` — the fallback exists, but which models need it is
+unverified).
+
+### 17b. Centralizing the key so users don't need one — the hard part
+
+Appealing, and the onboarding problem is real: asking for an API key
+before someone has seen a single forecast is a brutal first run. But two
+constraints bite hard, and both are worth stating before any design work.
+
+**You cannot ship an API key in a mobile app.** An APK is trivially
+decompiled; a key embedded in the binary is a key published to the world,
+and it would be drained within days. "Centralize" therefore necessarily
+means *running a proxy server* that holds the key and rate-limits per
+install. That gives up this project's zero-infrastructure property and
+makes the operator liable for other people's usage and abuse.
+
+**The free ceiling is lower than it sounds.** OpenRouter's documented
+limits (checked 2026-08): **20 requests/minute**, and **50 requests/day**
+on an unfunded account or **1,000/day** after a one-time $10 credit
+purchase. Those are per-account, so a centralized key means all users
+share one pool. At two forecasts a day per user that is roughly **500
+users maximum**, with no headroom for retries — and the 20/min ceiling
+means a morning burst across timezones would start failing before the
+daily cap is even reached.
+
+**The version that actually works: a bounded free trial.** Not "nobody
+needs a key" but "nobody needs a key *to try it*." A small proxy issues N
+free forecasts per install (say 10-20), enough to see real value, after
+which the app asks for a key. That bounds the operator's exposure to a
+known number, keeps the free ceiling meaningful, and solves the genuine
+onboarding problem rather than the theoretical one. It still needs a
+server — so it belongs alongside the other server-shaped ideas (item 16's
+connected mode), not as a way to avoid them.
+
+Open question if pursued: OpenRouter's terms on proxying a key to third
+parties need reading properly before building anything, not after.
+
+---
+
+## 18. Weekly review — drift and blind spots · **Planned**
+
+### What exists today, and what it isn't
+
+There *is* a weekly branch in `pipeline.py` (`WEEKLY_BATCH_WEEKDAY`, Monday),
+but it is purely **data hygiene**: re-fetch 40 days of actuals and replace
+the cache wholesale, so any drift in the daily upserts self-heals. It
+performs no analysis at all.
+
+So the daily loop currently sees exactly two horizons: yesterday's
+individual scores, and rolling 10/30-check aggregates. Nothing ever looks
+across the record and asks *what are we systematically getting wrong?*
+
+### What a review could see that the daily run structurally cannot
+
+1. **Drift over time.** `rain_pct_trend` (shipped) compares recent against
+   longer-term, but only for rain and only as a two-window snapshot. A
+   review could look at the whole series and distinguish a genuine decline
+   from noise.
+2. **Blind spots.** The daily run scores individual days; it never asks
+   what *kind* of day gets missed. "Four of the last five afternoon
+   convective events were under-called" is a pattern only visible across
+   the record, and is exactly the sort of thing a forecaster would notice.
+3. **Never-verified variables.** `peak_wind_kmh` for the secondary point is
+   fetched, stored and published every day — and scored never (see item 5).
+   A review should surface "this number has never been checked" rather than
+   letting it sit indefinitely.
+4. **Meta-verification.** The LLM writes qualitative confidence notes and
+   skill summaries. Nothing checks whether those claims were *right*.
+   Comparing "what the forecaster said it was confident about" against
+   "what actually verified" is the most novel thing on this list and fits
+   the project's ethos precisely.
+5. **Coverage honesty.** How many of the last 30 days actually got
+   verified? Already partly tracked (`checks_in_window_10`), and it matters
+   much more in-app — see below.
+
+### Design constraints, learned the hard way elsewhere in this project
+
+- **All arithmetic in code.** The review computes its statistics
+  deterministically; the LLM only narrates them. Same rule as everywhere
+  else, and the same reason.
+- **Regenerate, never accumulate.** Reviews must be recomputed from the
+  raw record each week, never built on top of previous reviews. Otherwise
+  an unverified week-1 claim ("GFS runs warm") gets read by week 2, echoed,
+  and hardens into received wisdom that no longer traces to any
+  measurement. This is the same principle that makes the rolling stats
+  stateless and self-correcting, applied to narrative.
+- **Feeding findings forward is the actual payoff.** A review that only
+  produces a page nobody reads is decoration. The value is injecting its
+  *deterministic findings* into subsequent daily prompts, so the system
+  reasons from longitudinal patterns rather than only from yesterday.
+- Cost is one extra LLM call a week. Negligible.
+
+### Verification in the app-as-pipeline model
+
+The user's question, and it has a sharp answer worth recording.
+
+The logic ports unchanged — that's what `app/olw_core` and the shared
+vectors are for. What does *not* port is the assumption of unattended
+daily execution:
+
+- **Actuals are recoverable.** Open-Meteo's archive API serves any past
+  date, so an app that missed a week can backfill the observations when
+  next opened.
+- **Predictions are not.** If the app never ran on a given day, no
+  prediction was ever stored for it, and Day+0 for that date can never be
+  scored — nor the Day+3/Day+7 chains that pass through it. Gaps are
+  **permanent holes** in the accuracy record.
+
+That asymmetry is the real cost of standalone mode, and it must be
+surfaced honestly rather than hidden: the accuracy screen should show
+coverage ("22 of the last 30 days verified"), not just percentages
+computed over whatever happens to exist. A 90% accuracy figure drawn from
+six scattered days is not the same claim as one drawn from thirty, and the
+UI should not let those look identical.
+
+Connected mode has no gaps, because the server runs whether or not anyone
+opens the app — another concrete reason it earns its place rather than
+being a hedge.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
