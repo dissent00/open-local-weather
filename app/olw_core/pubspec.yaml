@@ -9,6 +9,9 @@ publish_to: none
 environment:
   sdk: ^3.6.0
 
+dependencies:
+  http: ^1.2.0
+
 # Deliberately NO Flutter dependency. This package is the credibility-critical
 # math, and keeping it pure Dart means it can be tested with `dart test` alone
 # (no Flutter toolchain, no emulator, fast in CI) and reused unchanged by

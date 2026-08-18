@@ -46,7 +46,7 @@ from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
 )
-from openlocalweather.fetch.open_meteo import get_onset_hour
+from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
 from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
 
@@ -413,6 +413,76 @@ def export_aqi() -> None:
     )
 
 
+
+def export_bucketing() -> None:
+    """bucket_hourly_by_date defines what "actually happened" on a given day,
+    which every verification score is measured against. It belongs in the
+    vectors for exactly the same reason score_prediction does — it was
+    missed in the first pass and added when the Dart port reached it."""
+    multi_day = {
+        "hourly": {
+            "time": [
+                "2026-08-11T00:00", "2026-08-11T12:00", "2026-08-11T23:00",
+                "2026-08-12T00:00", "2026-08-12T13:00",
+            ],
+            "temperature_2m": [18.0, 27.5, 19.0, 17.0, 29.0],
+            "precipitation": [0.0, 1.2, 0.0, 0.0, 0.1],
+            "windgusts_10m": [11.0, 30.0, 14.0, 9.0, 21.0],
+            "pressure_msl": [1013.0, 1011.5, 1012.0, 1014.0, 1013.0],
+        }
+    }
+    # windgusts present but partially null: the ARRAY's presence is what
+    # counts, so windspeed must NOT be substituted in for the null hours.
+    gusts_with_nulls = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00"],
+            "temperature_2m": [18.0, 19.0],
+            "precipitation": [0.0, 0.0],
+            "windgusts_10m": [None, 25.0],
+            "windspeed_10m": [99.0, 99.0],
+            "pressure_msl": [1013.0, 1013.5],
+        }
+    }
+    # windgusts absent entirely: only then does windspeed_10m apply.
+    speed_fallback = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00"],
+            "temperature_2m": [18.0, 19.0],
+            "precipitation": [0.0, 0.0],
+            "windspeed_10m": [12.0, 16.0],
+            "pressure_msl": [1013.0, 1013.5],
+        }
+    }
+    scenarios = [
+        ("multi-day split, onset and aggregates per day", multi_day),
+        ("gust array present with nulls — no windspeed substitution", gusts_with_nulls),
+        ("gust array absent — falls back to windspeed", speed_fallback),
+        ("empty payload yields no days", {}),
+    ]
+    cases = []
+    for name, payload in scenarios:
+        result = bucket_hourly_by_date(payload, RAIN_THRESHOLD_MM)
+        cases.append(
+            {
+                "name": name,
+                "input": {"hourly_json": payload, "threshold": RAIN_THRESHOLD_MM},
+                # Keyed by ISO date so the shape is language-neutral.
+                "expected": {d.isoformat(): dump(v) for d, v in sorted(result.items())},
+            }
+        )
+    write(
+        "bucket_hourly_by_date.json",
+        "bucket_hourly_by_date",
+        "Splits a flat multi-day hourly archive response into one DailyActual "
+        "per calendar date — the definition of 'what actually happened' that "
+        "every verification score is measured against. Wind uses the "
+        "windgusts_10m ARRAY if it is present at all (even where individual "
+        "hours are null); windspeed_10m applies only when the gust array is "
+        "absent entirely.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -420,6 +490,7 @@ def main() -> None:
     export_scoring()
     export_extract()
     export_aqi()
+    export_bucketing()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

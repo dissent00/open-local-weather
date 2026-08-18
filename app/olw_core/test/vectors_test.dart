@@ -216,6 +216,22 @@ void main() {
     });
   });
 
+  group('bucketing', () {
+    test('bucket_hourly_by_date', () {
+      for (final c in casesOf('bucket_hourly_by_date.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final result = bucketHourlyByDate(
+          i['hourly_json'] as Map<String, Object?>,
+          threshold: (i['threshold'] as num).toDouble(),
+        );
+        final got = <String, Object?>{
+          for (final e in result.entries) formatDate(e.key): e.value.toJson(),
+        };
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -230,6 +246,7 @@ void main() {
       'extract_onset_hour.json',
       'aqi_staleness.json',
       'aqi_summary.json',
+      'bucket_hourly_by_date.json',
     };
     final onDisk = vectorsDir
         .listSync()

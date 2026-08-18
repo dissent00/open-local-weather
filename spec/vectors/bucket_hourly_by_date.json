@@ -1,0 +1,162 @@
+{
+  "vector_format_version": 1,
+  "function": "bucket_hourly_by_date",
+  "description": "Splits a flat multi-day hourly archive response into one DailyActual per calendar date \u2014 the definition of 'what actually happened' that every verification score is measured against. Wind uses the windgusts_10m ARRAY if it is present at all (even where individual hours are null); windspeed_10m applies only when the gust array is absent entirely.",
+  "cases": [
+    {
+      "name": "multi-day split, onset and aggregates per day",
+      "input": {
+        "hourly_json": {
+          "hourly": {
+            "time": [
+              "2026-08-11T00:00",
+              "2026-08-11T12:00",
+              "2026-08-11T23:00",
+              "2026-08-12T00:00",
+              "2026-08-12T13:00"
+            ],
+            "temperature_2m": [
+              18.0,
+              27.5,
+              19.0,
+              17.0,
+              29.0
+            ],
+            "precipitation": [
+              0.0,
+              1.2,
+              0.0,
+              0.0,
+              0.1
+            ],
+            "windgusts_10m": [
+              11.0,
+              30.0,
+              14.0,
+              9.0,
+              21.0
+            ],
+            "pressure_msl": [
+              1013.0,
+              1011.5,
+              1012.0,
+              1014.0,
+              1013.0
+            ]
+          }
+        },
+        "threshold": 0.5
+      },
+      "expected": {
+        "2026-08-11": {
+          "rain": true,
+          "high_c": 27.5,
+          "low_c": 18.0,
+          "peak_wind_kmh": 30.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "12:00"
+        },
+        "2026-08-12": {
+          "rain": false,
+          "high_c": 29.0,
+          "low_c": 17.0,
+          "peak_wind_kmh": 21.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null
+        }
+      }
+    },
+    {
+      "name": "gust array present with nulls \u2014 no windspeed substitution",
+      "input": {
+        "hourly_json": {
+          "hourly": {
+            "time": [
+              "2026-08-11T00:00",
+              "2026-08-11T01:00"
+            ],
+            "temperature_2m": [
+              18.0,
+              19.0
+            ],
+            "precipitation": [
+              0.0,
+              0.0
+            ],
+            "windgusts_10m": [
+              null,
+              25.0
+            ],
+            "windspeed_10m": [
+              99.0,
+              99.0
+            ],
+            "pressure_msl": [
+              1013.0,
+              1013.5
+            ]
+          }
+        },
+        "threshold": 0.5
+      },
+      "expected": {
+        "2026-08-11": {
+          "rain": false,
+          "high_c": 19.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 25.0,
+          "mslp_trend": 0.5,
+          "onset_hour": null
+        }
+      }
+    },
+    {
+      "name": "gust array absent \u2014 falls back to windspeed",
+      "input": {
+        "hourly_json": {
+          "hourly": {
+            "time": [
+              "2026-08-11T00:00",
+              "2026-08-11T01:00"
+            ],
+            "temperature_2m": [
+              18.0,
+              19.0
+            ],
+            "precipitation": [
+              0.0,
+              0.0
+            ],
+            "windspeed_10m": [
+              12.0,
+              16.0
+            ],
+            "pressure_msl": [
+              1013.0,
+              1013.5
+            ]
+          }
+        },
+        "threshold": 0.5
+      },
+      "expected": {
+        "2026-08-11": {
+          "rain": false,
+          "high_c": 19.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 16.0,
+          "mslp_trend": 0.5,
+          "onset_hour": null
+        }
+      }
+    },
+    {
+      "name": "empty payload yields no days",
+      "input": {
+        "hourly_json": {},
+        "threshold": 0.5
+      },
+      "expected": {}
+    }
+  ]
+}

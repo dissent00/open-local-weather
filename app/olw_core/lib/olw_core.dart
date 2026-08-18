@@ -17,4 +17,5 @@ export 'src/aqi.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
 export 'src/models.dart';
+export 'src/open_meteo.dart';
 export 'src/scoring.dart';

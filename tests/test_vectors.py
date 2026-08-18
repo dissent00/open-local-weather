@@ -32,7 +32,7 @@ from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
 )
-from openlocalweather.fetch.open_meteo import get_onset_hour
+from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
 from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
 
@@ -166,6 +166,14 @@ def test_vectors_aqi_summary():
         check(case, summarize_ground_aqi(readings, datetime.fromisoformat(i["now"])))
 
 
+def test_vectors_bucket_hourly_by_date():
+    for case in load("bucket_hourly_by_date.json")["cases"]:
+        i = case["input"]
+        result = bucket_hourly_by_date(i["hourly_json"], i["threshold"])
+        got = {d.isoformat(): as_json(v) for d, v in result.items()}
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 # ---------------------------------------------------------------------------
 # Meta
 # ---------------------------------------------------------------------------
@@ -185,6 +193,7 @@ def test_every_vector_file_is_exercised():
         "extract_onset_hour.json",
         "aqi_staleness.json",
         "aqi_summary.json",
+        "bucket_hourly_by_date.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (
