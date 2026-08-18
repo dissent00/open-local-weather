@@ -1,0 +1,121 @@
+{
+  "vector_format_version": 1,
+  "function": "to_gemini_schema",
+  "description": "Gemini's responseSchema dialect: uppercase type names, a `nullable` flag, and no $ref/$defs (inlined).",
+  "cases": [
+    {
+      "name": "gemini responseSchema dialect",
+      "input": {
+        "model": "GeminiForecastResponse"
+      },
+      "expected": {
+        "type": "OBJECT",
+        "properties": {
+          "yesterday_verification": {
+            "type": "STRING"
+          },
+          "verification_notes": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "lead_time_days": {
+                  "type": "INTEGER"
+                },
+                "note": {
+                  "type": "STRING"
+                }
+              },
+              "required": [
+                "lead_time_days",
+                "note"
+              ]
+            }
+          },
+          "skill_profile_summaries": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "model": {
+                  "type": "STRING"
+                },
+                "lead_time_days": {
+                  "type": "INTEGER"
+                },
+                "summary": {
+                  "type": "STRING"
+                }
+              },
+              "required": [
+                "model",
+                "lead_time_days",
+                "summary"
+              ]
+            }
+          },
+          "today_properties": {
+            "type": "OBJECT",
+            "properties": {
+              "rain_expected": {
+                "type": "STRING"
+              },
+              "onset_window": {
+                "type": "STRING",
+                "nullable": true
+              },
+              "peak_wind_kmh": {
+                "type": "NUMBER",
+                "nullable": true
+              },
+              "temp_high_c": {
+                "type": "NUMBER"
+              },
+              "temp_low_c": {
+                "type": "NUMBER"
+              },
+              "temp_high_low": {
+                "type": "STRING"
+              },
+              "mslp_trend_24h": {
+                "type": "STRING",
+                "nullable": true
+              },
+              "synoptic_pattern": {
+                "type": "STRING",
+                "nullable": true
+              },
+              "uv_index_max": {
+                "type": "STRING",
+                "nullable": true
+              },
+              "air_quality_aqi": {
+                "type": "STRING",
+                "nullable": true
+              }
+            },
+            "required": [
+              "rain_expected",
+              "temp_high_c",
+              "temp_low_c",
+              "temp_high_low"
+            ],
+            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected,\ntemp_high_c, temp_low_c, and temp_high_low are required; the original\nschema's `required` list is preserved exactly."
+          },
+          "today_narrative": {
+            "type": "STRING"
+          },
+          "whatsapp_summary": {
+            "type": "STRING",
+            "nullable": true
+          }
+        },
+        "required": [
+          "yesterday_verification",
+          "today_properties",
+          "today_narrative"
+        ]
+      }
+    }
+  ]
+}

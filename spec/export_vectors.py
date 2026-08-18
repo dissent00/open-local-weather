@@ -48,6 +48,11 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.llm.schema import (
+    GeminiForecastResponse,
+    to_gemini_schema,
+    to_strict_json_schema,
+)
 from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
 
 VECTOR_FORMAT_VERSION = 1
@@ -483,6 +488,50 @@ def export_bucketing() -> None:
     )
 
 
+
+def export_llm_schemas() -> None:
+    """Exports the exact provider-dialect schemas generated from the forecast
+    response model.
+
+    Python DERIVES these from the pydantic class; a port has no pydantic, so
+    it will DECLARE them by hand. This vector is what makes that safe: the
+    two must be byte-identical, so both implementations send the same
+    structured-output contract to the same APIs. If the pydantic model
+    changes, regenerating moves this file and the port's test fails until it
+    is updated to match — which is the intended direction of travel.
+    """
+    cases = [
+        {
+            "name": "gemini responseSchema dialect",
+            "input": {"model": "GeminiForecastResponse"},
+            "expected": to_gemini_schema(GeminiForecastResponse),
+        }
+    ]
+    write(
+        "llm_schema_gemini.json",
+        "to_gemini_schema",
+        "Gemini's responseSchema dialect: uppercase type names, a `nullable` "
+        "flag, and no $ref/$defs (inlined).",
+        cases,
+    )
+
+    strict_cases = [
+        {
+            "name": "strict JSON Schema dialect (OpenAI + Anthropic tools)",
+            "input": {"model": "GeminiForecastResponse"},
+            "expected": to_strict_json_schema(GeminiForecastResponse),
+        }
+    ]
+    write(
+        "llm_schema_strict.json",
+        "to_strict_json_schema",
+        "Standard JSON Schema as OpenAI strict mode and Anthropic tool "
+        "input_schema require: lowercase types, null as a type union, "
+        "additionalProperties false, and EVERY property listed in required.",
+        strict_cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -491,6 +540,7 @@ def main() -> None:
     export_extract()
     export_aqi()
     export_bucketing()
+    export_llm_schemas()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

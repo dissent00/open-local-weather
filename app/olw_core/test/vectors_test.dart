@@ -232,6 +232,21 @@ void main() {
     });
   });
 
+  group('llm schema dialects', () {
+    // Compared STRICTLY (both directions, exact), unlike the other vector
+    // checks: these maps are sent verbatim to real provider APIs, so an
+    // extra or missing key is a wire-level difference, not a cosmetic one.
+    test('gemini responseSchema dialect matches Python exactly', () {
+      final expected = casesOf('llm_schema_gemini.json').single['expected'];
+      expect(geminiForecastSchema(), equals(expected));
+    });
+
+    test('strict JSON Schema dialect matches Python exactly', () {
+      final expected = casesOf('llm_schema_strict.json').single['expected'];
+      expect(strictForecastSchema(), equals(expected));
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -247,6 +262,8 @@ void main() {
       'aqi_staleness.json',
       'aqi_summary.json',
       'bucket_hourly_by_date.json',
+      'llm_schema_gemini.json',
+      'llm_schema_strict.json',
     };
     final onDisk = vectorsDir
         .listSync()

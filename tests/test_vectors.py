@@ -34,6 +34,11 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.llm.schema import (
+    GeminiForecastResponse,
+    to_gemini_schema,
+    to_strict_json_schema,
+)
 from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
 
 VECTORS_DIR = Path(__file__).resolve().parents[1] / "spec" / "vectors"
@@ -174,6 +179,14 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_llm_schemas():
+    """Guards the structured-output contract sent to real provider APIs."""
+    for case in load("llm_schema_gemini.json")["cases"]:
+        assert to_gemini_schema(GeminiForecastResponse) == case["expected"]
+    for case in load("llm_schema_strict.json")["cases"]:
+        assert to_strict_json_schema(GeminiForecastResponse) == case["expected"]
+
+
 # ---------------------------------------------------------------------------
 # Meta
 # ---------------------------------------------------------------------------
@@ -194,6 +207,8 @@ def test_every_vector_file_is_exercised():
         "aqi_staleness.json",
         "aqi_summary.json",
         "bucket_hourly_by_date.json",
+        "llm_schema_gemini.json",
+        "llm_schema_strict.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

@@ -1,0 +1,148 @@
+{
+  "vector_format_version": 1,
+  "function": "to_strict_json_schema",
+  "description": "Standard JSON Schema as OpenAI strict mode and Anthropic tool input_schema require: lowercase types, null as a type union, additionalProperties false, and EVERY property listed in required.",
+  "cases": [
+    {
+      "name": "strict JSON Schema dialect (OpenAI + Anthropic tools)",
+      "input": {
+        "model": "GeminiForecastResponse"
+      },
+      "expected": {
+        "type": "object",
+        "properties": {
+          "yesterday_verification": {
+            "type": "string"
+          },
+          "verification_notes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lead_time_days": {
+                  "type": "integer"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "lead_time_days",
+                "note"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "skill_profile_summaries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string"
+                },
+                "lead_time_days": {
+                  "type": "integer"
+                },
+                "summary": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "model",
+                "lead_time_days",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "today_properties": {
+            "type": "object",
+            "properties": {
+              "rain_expected": {
+                "type": "string"
+              },
+              "onset_window": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "peak_wind_kmh": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "temp_high_c": {
+                "type": "number"
+              },
+              "temp_low_c": {
+                "type": "number"
+              },
+              "temp_high_low": {
+                "type": "string"
+              },
+              "mslp_trend_24h": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "synoptic_pattern": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "uv_index_max": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "air_quality_aqi": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "rain_expected",
+              "onset_window",
+              "peak_wind_kmh",
+              "temp_high_c",
+              "temp_low_c",
+              "temp_high_low",
+              "mslp_trend_24h",
+              "synoptic_pattern",
+              "uv_index_max",
+              "air_quality_aqi"
+            ],
+            "additionalProperties": false,
+            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected,\ntemp_high_c, temp_low_c, and temp_high_low are required; the original\nschema's `required` list is preserved exactly."
+          },
+          "today_narrative": {
+            "type": "string"
+          },
+          "whatsapp_summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "yesterday_verification",
+          "verification_notes",
+          "skill_profile_summaries",
+          "today_properties",
+          "today_narrative",
+          "whatsapp_summary"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
