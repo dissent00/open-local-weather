@@ -136,18 +136,24 @@ user stands one up in about an hour.
 
 Consequences, accepted deliberately:
 
-1. Standalone mode promises **"fresh when you open it,"** not "waiting for
-   you at 6am." The UI must not imply otherwise.
-2. Background refresh is opportunistic. When it does fire, it generates
-   and notifies; when it doesn't, opening the app is the fallback.
-3. **Connected mode is the answer for guaranteed morning delivery** — and
-   the honest reason to keep it, rather than a hedge.
+1. **On Android**, standalone mode can honestly offer scheduled local
+   generation — but only after the user grants exact-alarm permission and
+   (on aggressive OEMs) excludes the app from battery optimization. Until
+   both are done, it degrades to opportunistic.
+2. **On iOS**, standalone mode promises *"fresh when you open it"* plus a
+   staleness prompt, never "waiting for you at 6am." The UI must not imply
+   otherwise.
+3. Background refresh, where it exists at all, is opportunistic: when it
+   fires it generates and notifies; when it doesn't, the staleness prompt
+   and opening the app are the fallbacks.
 
-There is a third option not taken: a push-triggered run (server sends FCM,
-app wakes and generates). It works, but it requires running a server, which
-gives up the project's zero-infrastructure property for everyone. Revisit
-only if standalone background refresh proves worse in practice than
-expected.
+One option not taken: a push-triggered run (a server sends FCM/APNs, the
+app wakes and generates). It works, and it is what would let iOS have true
+6am standalone delivery — but it requires running a server for *every*
+user, which gives up the project's zero-infrastructure property wholesale.
+Connected mode achieves the same result for the users who actually want it,
+without imposing infrastructure on everyone else. Revisit only if
+opportunistic refresh proves worse in practice than expected.
 
 ---
 
