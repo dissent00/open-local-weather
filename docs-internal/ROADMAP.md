@@ -1172,7 +1172,10 @@ Two things flagged as genuinely hard, not glossed:
    that look fine*. Mitigation is to export the existing 68 hand-computed
    fixtures as language-neutral JSON test vectors that both
    implementations must pass — and to do it **before** the port, as
-   phase 1.
+   phase 1. **Phase 1 is done**: [`spec/`](../spec/README.md) holds 54
+   cases across 10 files, with `tests/test_vectors.py` keeping them from
+   rotting (verified by deliberately breaking the sign convention and
+   confirming it goes red).
 
 ---
 

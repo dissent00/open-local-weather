@@ -1,0 +1,55 @@
+{
+  "vector_format_version": 1,
+  "function": "prediction_row_date_for_target",
+  "description": "The date of the log entry that MADE a prediction targeting target_date at the given lead time. A prediction made on D targets D+k, so the row is dated (target_date - k).",
+  "cases": [
+    {
+      "name": "target=2026-08-11 lead=0",
+      "input": {
+        "target_date": "2026-08-11",
+        "lead_time_days": 0
+      },
+      "expected": "2026-08-11"
+    },
+    {
+      "name": "target=2026-08-11 lead=3",
+      "input": {
+        "target_date": "2026-08-11",
+        "lead_time_days": 3
+      },
+      "expected": "2026-08-08"
+    },
+    {
+      "name": "target=2026-08-11 lead=7",
+      "input": {
+        "target_date": "2026-08-11",
+        "lead_time_days": 7
+      },
+      "expected": "2026-08-04"
+    },
+    {
+      "name": "target=2026-03-01 lead=1",
+      "input": {
+        "target_date": "2026-03-01",
+        "lead_time_days": 1
+      },
+      "expected": "2026-02-28"
+    },
+    {
+      "name": "target=2026-01-01 lead=7",
+      "input": {
+        "target_date": "2026-01-01",
+        "lead_time_days": 7
+      },
+      "expected": "2025-12-25"
+    },
+    {
+      "name": "target=2026-03-02 lead=3",
+      "input": {
+        "target_date": "2026-03-02",
+        "lead_time_days": 3
+      },
+      "expected": "2026-02-27"
+    }
+  ]
+}

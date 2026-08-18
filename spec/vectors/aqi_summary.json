@@ -1,0 +1,145 @@
+{
+  "vector_format_version": 1,
+  "function": "summarize_ground_aqi",
+  "description": "Deterministic range and worst-station summary across ground stations. Stale and unknown-freshness readings are excluded from the range but still counted in stations_stale/stations_total.",
+  "cases": [
+    {
+      "name": "two fresh stations",
+      "input": {
+        "readings": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Beach",
+            "station_id": "beach",
+            "aqi": 171,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "aqi_min": 42,
+        "aqi_max": 171,
+        "highest_station_name": "Beach",
+        "stations_with_aqi": 2,
+        "stations_stale": 0,
+        "stations_total": 2
+      }
+    },
+    {
+      "name": "stale station excluded from range but counted",
+      "input": {
+        "readings": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Beach",
+            "station_id": "beach",
+            "aqi": 171,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T22:48:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "aqi_min": 42,
+        "aqi_max": 42,
+        "highest_station_name": "Airport",
+        "stations_with_aqi": 1,
+        "stations_stale": 1,
+        "stations_total": 2
+      }
+    },
+    {
+      "name": "all stale yields null summary",
+      "input": {
+        "readings": [
+          {
+            "name": "Beach",
+            "station_id": "beach",
+            "aqi": 171,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T22:48:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": null
+    },
+    {
+      "name": "no numeric aqi yields null summary",
+      "input": {
+        "readings": [
+          {
+            "name": "NoComposite",
+            "station_id": "nocomposite",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty list yields null summary",
+      "input": {
+        "readings": [],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown-freshness station excluded",
+      "input": {
+        "readings": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Unknown",
+            "station_id": "unknown",
+            "aqi": 99,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": null
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "aqi_min": 42,
+        "aqi_max": 42,
+        "highest_station_name": "Airport",
+        "stations_with_aqi": 1,
+        "stations_stale": 1,
+        "stations_total": 2
+      }
+    }
+  ]
+}

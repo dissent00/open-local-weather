@@ -1,0 +1,45 @@
+{
+  "vector_format_version": 1,
+  "function": "mean",
+  "description": "Arithmetic mean ignoring nulls; null when nothing is present.",
+  "cases": [
+    {
+      "name": "filters nulls",
+      "input": {
+        "values": [
+          1.0,
+          null,
+          3.0
+        ]
+      },
+      "expected": 2.0
+    },
+    {
+      "name": "all null is null",
+      "input": {
+        "values": [
+          null,
+          null
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "empty is null",
+      "input": {
+        "values": []
+      },
+      "expected": null
+    },
+    {
+      "name": "negatives",
+      "input": {
+        "values": [
+          -2.0,
+          1.0
+        ]
+      },
+      "expected": -0.5
+    }
+  ]
+}

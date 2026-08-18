@@ -1,0 +1,50 @@
+{
+  "vector_format_version": 1,
+  "function": "get_onset_hour",
+  "description": "First HH:MM whose precipitation crossed the threshold.",
+  "cases": [
+    {
+      "name": "first crossing hour",
+      "input": {
+        "times": [
+          "2026-08-11T12:00",
+          "2026-08-11T13:00"
+        ],
+        "precip": [
+          0.1,
+          0.9
+        ],
+        "threshold": 0.5
+      },
+      "expected": "13:00"
+    },
+    {
+      "name": "never crosses",
+      "input": {
+        "times": [
+          "2026-08-11T12:00"
+        ],
+        "precip": [
+          0.1
+        ],
+        "threshold": 0.5
+      },
+      "expected": null
+    },
+    {
+      "name": "nulls treated as zero",
+      "input": {
+        "times": [
+          "2026-08-11T12:00",
+          "2026-08-11T13:00"
+        ],
+        "precip": [
+          null,
+          2.0
+        ],
+        "threshold": 0.5
+      },
+      "expected": "13:00"
+    }
+  ]
+}

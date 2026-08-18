@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""Exports the correctness-critical pipeline logic as language-neutral JSON
+test vectors, so a port in another language can be proven to agree with
+this implementation rather than merely believed to.
+
+WHY THIS EXISTS: the planned Flutter app (docs-internal/APP_ARCHITECTURE.md)
+reimplements ~431 lines of deterministic forecast math in Dart —
+extraction, scoring, verification, AQI staleness. Those numbers are the
+whole basis of this project's claim to trustworthiness. A subtle
+divergence between the two implementations would not crash; it would
+silently produce WRONG ACCURACY STATISTICS that then get fed to the LLM as
+its "track record". That is the worst failure mode available here, because
+it looks fine.
+
+WHERE THE AUTHORITY COMES FROM — read this before trusting the output.
+This script does NOT independently verify that the Python implementation
+is correct; it captures what Python currently does. The expected values
+are trustworthy because the same behaviour is separately pinned by the
+hand-computed unit tests (tests/test_scoring.py, test_extract.py,
+test_aqi.py, test_dates.py — 56 tests whose expectations were worked out
+by hand, not generated). The cases below deliberately mirror those tests'
+edge cases so that hand-verified expectations carry through.
+
+So the guarantees are layered, and neither alone is enough:
+  - the unit tests assert Python is RIGHT
+  - these vectors assert any other implementation MATCHES Python
+  - tests/test_vectors.py asserts Python still matches its own exported
+    vectors, so they can't silently rot as the code changes
+
+Regenerate with:  python spec/export_vectors.py
+Committing the result is intentional — the vectors are the contract.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.defaults import RAIN_THRESHOLD_MM
+from openlocalweather.extract import (
+    extract_day0_predictions_from_hourly,
+    extract_day_n_predictions_from_daily,
+)
+from openlocalweather.fetch.open_meteo import get_onset_hour
+from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
+
+VECTOR_FORMAT_VERSION = 1
+OUT_DIR = Path(__file__).resolve().parent / "vectors"
+
+
+def dump(value: Any) -> Any:
+    """Serializes a result into plain JSON types. Pydantic models go through
+    model_dump(mode="json") so datetimes/dates become ISO strings rather
+    than Python objects — a port must see exactly what lands in the file."""
+    if value is None:
+        return None
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    if hasattr(value, "__dataclass_fields__"):
+        return asdict(value)
+    if isinstance(value, (date, datetime)):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [dump(v) for v in value]
+    return value
+
+
+def write(filename: str, function: str, description: str, cases: list[dict]) -> None:
+    payload = {
+        "vector_format_version": VECTOR_FORMAT_VERSION,
+        "function": function,
+        "description": description,
+        "cases": cases,
+    }
+    path = OUT_DIR / filename
+    path.write_text(json.dumps(payload, indent=2, sort_keys=False) + "\n")
+    print(f"  {path.relative_to(Path(__file__).resolve().parents[1])}: {len(cases)} cases")
+
+
+# ---------------------------------------------------------------------------
+# dates
+# ---------------------------------------------------------------------------
+
+
+def export_dates() -> None:
+    cases = []
+    for target, lead in [
+        ("2026-08-11", 0),
+        ("2026-08-11", 3),
+        ("2026-08-11", 7),
+        # Month and year boundaries — the classic place off-by-one date math
+        # goes wrong, and cheap to pin.
+        ("2026-03-01", 1),
+        ("2026-01-01", 7),
+        ("2026-03-02", 3),  # crosses a non-leap February
+    ]:
+        d = date.fromisoformat(target)
+        cases.append(
+            {
+                "name": f"target={target} lead={lead}",
+                "input": {"target_date": target, "lead_time_days": lead},
+                "expected": prediction_row_date_for_target(d, lead).isoformat(),
+            }
+        )
+    write(
+        "dates.json",
+        "prediction_row_date_for_target",
+        "The date of the log entry that MADE a prediction targeting target_date "
+        "at the given lead time. A prediction made on D targets D+k, so the row "
+        "is dated (target_date - k).",
+        cases,
+    )
+
+    add_cases = []
+    for start, n in [("2026-08-11", 1), ("2026-08-11", -1), ("2026-12-31", 1), ("2026-03-01", -1)]:
+        add_cases.append(
+            {
+                "name": f"{start} + {n}d",
+                "input": {"date": start, "days": n},
+                "expected": add_days(date.fromisoformat(start), n).isoformat(),
+            }
+        )
+    write("dates_add_days.json", "add_days", "Calendar day arithmetic.", add_cases)
+
+
+# ---------------------------------------------------------------------------
+# scoring
+# ---------------------------------------------------------------------------
+
+
+def pred(**kw) -> ModelPrediction:
+    base = dict(model="gfs_seamless", rain=True, onset="14:00", wind_kmh=20.0, high_c=26.0, low_c=18.0, mslp_trend=-1.0)
+    base.update(kw)
+    return ModelPrediction(**base)
+
+
+def act(**kw) -> DailyActual:
+    base = dict(rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0, onset_hour="14:00")
+    base.update(kw)
+    return DailyActual(**base)
+
+
+def export_scoring() -> None:
+    scenarios: list[tuple[str, ModelPrediction | None, DailyActual | None, int]] = [
+        ("nothing to score when prediction missing", None, act(), 0),
+        ("nothing to score when actual missing", pred(), None, 0),
+        # rain=None means the model had no data at this lead time. Scoring it
+        # would invent skill out of a gap — the single most important case here.
+        ("unknown rain (no model data) is not scoreable", pred(rain=None), act(rain=True), 0),
+        ("rain correct when both true", pred(rain=True), act(rain=True), 0),
+        ("rain correct when both false", pred(rain=False), act(rain=False), 0),
+        ("rain incorrect when mismatched", pred(rain=True), act(rain=False), 0),
+        # Error sign convention is actual - predicted. A port getting this
+        # backwards would invert every bias reading in the track record.
+        (
+            "error signs are actual minus predicted",
+            pred(wind_kmh=20.0, high_c=26.0, low_c=18.0, mslp_trend=-1.0),
+            act(peak_wind_kmh=25.0, high_c=24.0, low_c=19.0, mslp_trend=0.5),
+            0,
+        ),
+        ("onset error at lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 0),
+        ("onset error is never computed beyond lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 3),
+        ("no onset error when actual stayed dry", pred(onset="14:00"), act(rain=False, onset_hour=None), 0),
+        ("no onset error when prediction had no onset", pred(onset=None), act(onset_hour="16:30"), 0),
+        (
+            "missing fields propagate as null, not zero",
+            pred(wind_kmh=None, high_c=None, low_c=None, mslp_trend=None),
+            act(peak_wind_kmh=None, high_c=None, low_c=None, mslp_trend=None),
+            0,
+        ),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"predicted": dump(p), "actual": dump(a), "lead_time_days": lead},
+            "expected": dump(score_prediction(p, a, lead)),
+        }
+        for name, p, a, lead in scenarios
+    ]
+    write(
+        "scoring_score_prediction.json",
+        "score_prediction",
+        "Scores one model's stored prediction against one day's actual. Returns "
+        "null when there is nothing to score. Error fields are (actual - predicted).",
+        cases,
+    )
+
+    mean_cases = [
+        {"name": "filters nulls", "input": {"values": [1.0, None, 3.0]}, "expected": mean([1.0, None, 3.0])},
+        {"name": "all null is null", "input": {"values": [None, None]}, "expected": mean([None, None])},
+        {"name": "empty is null", "input": {"values": []}, "expected": mean([])},
+        {"name": "negatives", "input": {"values": [-2.0, 1.0]}, "expected": mean([-2.0, 1.0])},
+    ]
+    write("scoring_mean.json", "mean", "Arithmetic mean ignoring nulls; null when nothing is present.", mean_cases)
+
+    trend_args = dict(min_checks_short=5, min_checks_long=10, threshold_pct=15.0)
+    trend_scenarios = [
+        ("insufficient short window", 80.0, 60.0, 4, 20),
+        ("insufficient long window", 80.0, 60.0, 10, 9),
+        ("null short pct", None, 60.0, 10, 20),
+        ("null long pct", 80.0, None, 10, 20),
+        ("improving", 90.0, 60.0, 10, 20),
+        ("declining", 40.0, 70.0, 10, 20),
+        ("stable within threshold", 65.0, 60.0, 10, 20),
+        ("exactly at threshold counts as improving", 75.0, 60.0, 10, 20),
+        ("exactly at negative threshold counts as declining", 45.0, 60.0, 10, 20),
+    ]
+    trend_cases = []
+    for name, short, long_, n_short, n_long in trend_scenarios:
+        label, delta = compute_rain_pct_trend(short, long_, n_short, n_long, **trend_args)
+        trend_cases.append(
+            {
+                "name": name,
+                "input": {
+                    "rolling_10_rain_pct": short,
+                    "rolling_30_rain_pct": long_,
+                    "checks_in_window_10": n_short,
+                    "checks_in_window_30": n_long,
+                    **trend_args,
+                },
+                "expected": {"label": label, "delta": delta},
+            }
+        )
+    write(
+        "scoring_rain_pct_trend.json",
+        "compute_rain_pct_trend",
+        "Deterministic recent-vs-longer-term skill comparison handed to the LLM "
+        "pre-computed. Returns nulls when either window has too few checks to be "
+        "meaningful. Threshold boundaries are inclusive.",
+        trend_cases,
+    )
+
+
+# ---------------------------------------------------------------------------
+# extraction
+# ---------------------------------------------------------------------------
+
+
+def export_extract() -> None:
+    models = ["gfs_seamless", "ecmwf_ifs025"]
+
+    hourly_normal = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00", "2026-08-11T14:00"],
+            "precipitation_gfs_seamless": [0.0, 0.2, 1.4],
+            "windgusts_10m_gfs_seamless": [10.0, 22.0, 18.0],
+            "temperature_2m_gfs_seamless": [21.0, 26.5, 24.0],
+            "pressure_msl_gfs_seamless": [1013.0, 1012.4, 1011.8],
+            # Second model present but entirely null — "no data", which must
+            # NOT be recorded as a confident dry forecast.
+            "precipitation_ecmwf_ifs025": [None, None, None],
+            "windgusts_10m_ecmwf_ifs025": [None, None, None],
+            "temperature_2m_ecmwf_ifs025": [None, None, None],
+            "pressure_msl_ecmwf_ifs025": [None, None, None],
+        }
+    }
+    hourly_dry = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00"],
+            "precipitation_gfs_seamless": [0.0, 0.1],
+            "windgusts_10m_gfs_seamless": [5.0, 6.0],
+            "temperature_2m_gfs_seamless": [20.0, 22.0],
+            "pressure_msl_gfs_seamless": [1010.0, 1010.0],
+        }
+    }
+
+    cases = [
+        {
+            "name": "rain with onset; null series yields unknown rain",
+            "input": {"hourly_multi_model": hourly_normal, "models": models, "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly(hourly_normal, models, RAIN_THRESHOLD_MM)),
+        },
+        {
+            "name": "present series never crossing threshold IS a real dry call",
+            "input": {"hourly_multi_model": hourly_dry, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly(hourly_dry, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
+        },
+        {
+            "name": "empty payload yields no predictions",
+            "input": {"hourly_multi_model": {}, "models": models, "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly({}, models, RAIN_THRESHOLD_MM)),
+        },
+    ]
+    write(
+        "extract_day0.json",
+        "extract_day0_predictions_from_hourly",
+        "Day+0 per-model extraction from hourly data. An absent or all-null "
+        "precipitation series means unknown (null) rain, never false.",
+        cases,
+    )
+
+    daily = {
+        "daily": {
+            "time": ["2026-08-11", "2026-08-12", "2026-08-13"],
+            "precipitation_sum_gfs_seamless": [0.0, 3.2, 0.1],
+            "windgusts_10m_max_gfs_seamless": [25.0, 31.0, 20.0],
+            "temperature_2m_max_gfs_seamless": [28.0, 26.0, 29.0],
+            "temperature_2m_min_gfs_seamless": [17.0, 18.0, 17.5],
+            "pressure_msl_mean_gfs_seamless": [1014.0, 1012.5, 1013.0],
+            # Shorter arrays: this model's horizon doesn't reach index 2,
+            # exactly like UKMO at Day+7 in production.
+            "precipitation_sum_ecmwf_ifs025": [0.0, 1.0],
+            "windgusts_10m_max_ecmwf_ifs025": [20.0, 22.0],
+            "temperature_2m_max_ecmwf_ifs025": [27.0, 26.0],
+            "temperature_2m_min_ecmwf_ifs025": [16.0, 17.0],
+            "pressure_msl_mean_ecmwf_ifs025": [1013.0, 1012.0],
+        }
+    }
+    day_n_cases = []
+    for idx, label in [(0, "day 0 has no previous day for mslp trend"), (1, "mid-range day"), (2, "beyond one model's horizon")]:
+        day_n_cases.append(
+            {
+                "name": f"index {idx} — {label}",
+                "input": {"daily_multi_model": daily, "day_index": idx, "models": models, "threshold": RAIN_THRESHOLD_MM},
+                "expected": dump(extract_day_n_predictions_from_daily(daily, idx, models, RAIN_THRESHOLD_MM)),
+            }
+        )
+    write(
+        "extract_day_n.json",
+        "extract_day_n_predictions_from_daily",
+        "Day+N per-model extraction from daily aggregates. No onset at this "
+        "resolution by design. An index past a model's array means unknown "
+        "(null) rain — its forecast horizon does not reach that far.",
+        day_n_cases,
+    )
+
+    onset_cases = [
+        {
+            "name": "first crossing hour",
+            "input": {"times": ["2026-08-11T12:00", "2026-08-11T13:00"], "precip": [0.1, 0.9], "threshold": RAIN_THRESHOLD_MM},
+            "expected": get_onset_hour(["2026-08-11T12:00", "2026-08-11T13:00"], [0.1, 0.9], RAIN_THRESHOLD_MM),
+        },
+        {
+            "name": "never crosses",
+            "input": {"times": ["2026-08-11T12:00"], "precip": [0.1], "threshold": RAIN_THRESHOLD_MM},
+            "expected": get_onset_hour(["2026-08-11T12:00"], [0.1], RAIN_THRESHOLD_MM),
+        },
+        {
+            "name": "nulls treated as zero",
+            "input": {"times": ["2026-08-11T12:00", "2026-08-11T13:00"], "precip": [None, 2.0], "threshold": RAIN_THRESHOLD_MM},
+            "expected": get_onset_hour(["2026-08-11T12:00", "2026-08-11T13:00"], [None, 2.0], RAIN_THRESHOLD_MM),
+        },
+    ]
+    write("extract_onset_hour.json", "get_onset_hour", "First HH:MM whose precipitation crossed the threshold.", onset_cases)
+
+
+# ---------------------------------------------------------------------------
+# ground AQI staleness
+# ---------------------------------------------------------------------------
+
+
+def export_aqi() -> None:
+    now = datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc)
+
+    def reading(name: str, aqi, hours_ago: float | None) -> GroundAQIReading:
+        measured = None if hours_ago is None else datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc).fromtimestamp(
+            now.timestamp() - hours_ago * 3600, tz=timezone.utc
+        )
+        return GroundAQIReading(name=name, station_id=name.lower(), aqi=aqi, pm25=None, pm10=None, measured_at=measured)
+
+    fresh = reading("Airport", 42, 0.5)
+    stale = reading("Beach", 171, 7.2)
+    no_ts = reading("Unknown", 99, None)
+    no_aqi = reading("NoComposite", None, 0.5)
+
+    staleness_cases = []
+    for r, label in [(fresh, "fresh"), (stale, "stale"), (no_ts, "no timestamp"), (no_aqi, "fresh but no composite aqi")]:
+        staleness_cases.append(
+            {
+                "name": label,
+                "input": {"reading": dump(r), "now": now.isoformat(), "stale_threshold_hours": STALE_THRESHOLD_HOURS},
+                "expected": {"hours_old": hours_old(r, now), "is_stale": is_stale(r, now)},
+            }
+        )
+    write(
+        "aqi_staleness.json",
+        "hours_old / is_stale",
+        "Reading freshness. A missing timestamp is UNKNOWN freshness and is "
+        "treated as stale — never assumed fresh.",
+        staleness_cases,
+    )
+
+    summary_scenarios = [
+        ("two fresh stations", [fresh, stale.model_copy(update={"measured_at": fresh.measured_at})]),
+        ("stale station excluded from range but counted", [fresh, stale]),
+        ("all stale yields null summary", [stale]),
+        ("no numeric aqi yields null summary", [no_aqi]),
+        ("empty list yields null summary", []),
+        ("unknown-freshness station excluded", [fresh, no_ts]),
+    ]
+    summary_cases = []
+    for name, readings in summary_scenarios:
+        summary_cases.append(
+            {
+                "name": name,
+                "input": {"readings": [dump(r) for r in readings], "now": now.isoformat()},
+                "expected": dump(summarize_ground_aqi(readings, now)),
+            }
+        )
+    write(
+        "aqi_summary.json",
+        "summarize_ground_aqi",
+        "Deterministic range and worst-station summary across ground stations. "
+        "Stale and unknown-freshness readings are excluded from the range but "
+        "still counted in stations_stale/stations_total.",
+        summary_cases,
+    )
+
+
+def main() -> None:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    print("Exporting cross-language test vectors:")
+    export_dates()
+    export_scoring()
+    export_extract()
+    export_aqi()
+    print("\nDone. Commit the result — the vectors are the contract.")
+
+
+if __name__ == "__main__":
+    main()

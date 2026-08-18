@@ -1,0 +1,83 @@
+{
+  "vector_format_version": 1,
+  "function": "hours_old / is_stale",
+  "description": "Reading freshness. A missing timestamp is UNKNOWN freshness and is treated as stale \u2014 never assumed fresh.",
+  "cases": [
+    {
+      "name": "fresh",
+      "input": {
+        "reading": {
+          "name": "Airport",
+          "station_id": "airport",
+          "aqi": 42,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": 0.5,
+        "is_stale": false
+      }
+    },
+    {
+      "name": "stale",
+      "input": {
+        "reading": {
+          "name": "Beach",
+          "station_id": "beach",
+          "aqi": 171,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T22:48:00Z"
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": 7.2,
+        "is_stale": true
+      }
+    },
+    {
+      "name": "no timestamp",
+      "input": {
+        "reading": {
+          "name": "Unknown",
+          "station_id": "unknown",
+          "aqi": 99,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": null
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": null,
+        "is_stale": true
+      }
+    },
+    {
+      "name": "fresh but no composite aqi",
+      "input": {
+        "reading": {
+          "name": "NoComposite",
+          "station_id": "nocomposite",
+          "aqi": null,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": 0.5,
+        "is_stale": false
+      }
+    }
+  ]
+}

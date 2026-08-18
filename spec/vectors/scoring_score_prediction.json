@@ -1,0 +1,343 @@
+{
+  "vector_format_version": 1,
+  "function": "score_prediction",
+  "description": "Scores one model's stored prediction against one day's actual. Returns null when there is nothing to score. Error fields are (actual - predicted).",
+  "cases": [
+    {
+      "name": "nothing to score when prediction missing",
+      "input": {
+        "predicted": null,
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "nothing to score when actual missing",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": null,
+        "lead_time_days": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "unknown rain (no model data) is not scoreable",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": null,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "rain correct when both true",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "rain correct when both false",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": false,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "rain incorrect when mismatched",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": false,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "error signs are actual minus predicted",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 24.0,
+          "low_c": 19.0,
+          "peak_wind_kmh": 25.0,
+          "mslp_trend": 0.5,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 5.0,
+        "high_error_c": -2.0,
+        "low_error_c": 1.0,
+        "mslp_error_hpa": 1.5
+      }
+    },
+    {
+      "name": "onset error at lead 0",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "16:30"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": 2.5,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "onset error is never computed beyond lead 0",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "16:30"
+        },
+        "lead_time_days": 3
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "no onset error when actual stayed dry",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": false,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "no onset error when prediction had no onset",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "16:30"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "missing fields propagate as null, not zero",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "mslp_trend": null
+        },
+        "actual": {
+          "rain": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "mslp_trend": null,
+          "onset_hour": "14:00"
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": null,
+        "high_error_c": null,
+        "low_error_c": null,
+        "mslp_error_hpa": null
+      }
+    }
+  ]
+}

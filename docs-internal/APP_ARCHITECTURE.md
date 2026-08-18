@@ -201,14 +201,21 @@ already contains hand-computed fixtures for exactly these modules:
 | `test_dates.py` | 5 |
 | **total** | **68** |
 
-Plan: export these as JSON `{input, expected_output}` vectors into a
-`spec/vectors/` directory. Both implementations run them. Python's suite
-gains a test asserting it satisfies its own exported vectors (so the
-vectors can't rot), and the Dart port must pass the identical file. The
-two then cannot drift without a test going red in one of them.
+**Done** — see [`spec/`](../spec/README.md). 54 cases across 10 files,
+covering `score_prediction`, `compute_rain_pct_trend`, `mean`, both
+extraction functions, `get_onset_hour`, `prediction_row_date_for_target`,
+`add_days`, `hours_old`/`is_stale` and `summarize_ground_aqi`.
 
-This is worth doing **before** the port, not after — it's the cheapest
-point at which it's still easy.
+`tests/test_vectors.py` asserts Python still satisfies its own exported
+vectors, so the contract cannot silently rot as the code changes. That
+guard is verified rather than assumed: inverting the error-sign convention
+in `score_prediction` makes it fail, restoring it makes it pass.
+
+The vectors deliberately pin the invariants that are easy to get wrong in
+a port and damaging when wrong — unknown-is-not-false, `actual - predicted`
+error signs, a real dry call versus an absent series, onset only at lead
+time 0, and stale AQI excluded from the range but still counted. See
+[`spec/README.md`](../spec/README.md) for why each one matters.
 
 ---
 
@@ -341,8 +348,9 @@ than a v1 blocker.
 
 ## Phasing
 
-1. **Export shared test vectors** (Python side, no Dart yet). De-risks
-   everything after it, and is cheapest to do before the port exists.
+1. ~~**Export shared test vectors**~~ — **done**, see [`spec/`](../spec/README.md).
+   De-risked everything after it, and was cheapest to do before the port
+   existed.
 2. **Dart core**: models, dates, extract, scoring, verification — passing
    the shared vectors. No UI.
 3. **Fetch + LLM providers** in Dart; one forecast generated end-to-end

@@ -1,0 +1,142 @@
+{
+  "vector_format_version": 1,
+  "function": "extract_day0_predictions_from_hourly",
+  "description": "Day+0 per-model extraction from hourly data. An absent or all-null precipitation series means unknown (null) rain, never false.",
+  "cases": [
+    {
+      "name": "rain with onset; null series yields unknown rain",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-11T12:00",
+              "2026-08-11T13:00",
+              "2026-08-11T14:00"
+            ],
+            "precipitation_gfs_seamless": [
+              0.0,
+              0.2,
+              1.4
+            ],
+            "windgusts_10m_gfs_seamless": [
+              10.0,
+              22.0,
+              18.0
+            ],
+            "temperature_2m_gfs_seamless": [
+              21.0,
+              26.5,
+              24.0
+            ],
+            "pressure_msl_gfs_seamless": [
+              1013.0,
+              1012.4,
+              1011.8
+            ],
+            "precipitation_ecmwf_ifs025": [
+              null,
+              null,
+              null
+            ],
+            "windgusts_10m_ecmwf_ifs025": [
+              null,
+              null,
+              null
+            ],
+            "temperature_2m_ecmwf_ifs025": [
+              null,
+              null,
+              null
+            ],
+            "pressure_msl_ecmwf_ifs025": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025"
+        ],
+        "threshold": 0.5
+      },
+      "expected": [
+        {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "wind_kmh": 22.0,
+          "high_c": 26.5,
+          "low_c": 21.0,
+          "mslp_trend": -1.2000000000000455
+        },
+        {
+          "model": "ecmwf_ifs025",
+          "rain": null,
+          "onset": null,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "mslp_trend": null
+        }
+      ]
+    },
+    {
+      "name": "present series never crossing threshold IS a real dry call",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-11T12:00",
+              "2026-08-11T13:00"
+            ],
+            "precipitation_gfs_seamless": [
+              0.0,
+              0.1
+            ],
+            "windgusts_10m_gfs_seamless": [
+              5.0,
+              6.0
+            ],
+            "temperature_2m_gfs_seamless": [
+              20.0,
+              22.0
+            ],
+            "pressure_msl_gfs_seamless": [
+              1010.0,
+              1010.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless"
+        ],
+        "threshold": 0.5
+      },
+      "expected": [
+        {
+          "model": "gfs_seamless",
+          "rain": false,
+          "onset": null,
+          "wind_kmh": 6.0,
+          "high_c": 22.0,
+          "low_c": 20.0,
+          "mslp_trend": 0.0
+        }
+      ]
+    },
+    {
+      "name": "empty payload yields no predictions",
+      "input": {
+        "hourly_multi_model": {},
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025"
+        ],
+        "threshold": 0.5
+      },
+      "expected": []
+    }
+  ]
+}

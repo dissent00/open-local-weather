@@ -1,0 +1,151 @@
+{
+  "vector_format_version": 1,
+  "function": "compute_rain_pct_trend",
+  "description": "Deterministic recent-vs-longer-term skill comparison handed to the LLM pre-computed. Returns nulls when either window has too few checks to be meaningful. Threshold boundaries are inclusive.",
+  "cases": [
+    {
+      "name": "insufficient short window",
+      "input": {
+        "rolling_10_rain_pct": 80.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 4,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": null,
+        "delta": null
+      }
+    },
+    {
+      "name": "insufficient long window",
+      "input": {
+        "rolling_10_rain_pct": 80.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 9,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": null,
+        "delta": null
+      }
+    },
+    {
+      "name": "null short pct",
+      "input": {
+        "rolling_10_rain_pct": null,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": null,
+        "delta": null
+      }
+    },
+    {
+      "name": "null long pct",
+      "input": {
+        "rolling_10_rain_pct": 80.0,
+        "rolling_30_rain_pct": null,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": null,
+        "delta": null
+      }
+    },
+    {
+      "name": "improving",
+      "input": {
+        "rolling_10_rain_pct": 90.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": "improving",
+        "delta": 30.0
+      }
+    },
+    {
+      "name": "declining",
+      "input": {
+        "rolling_10_rain_pct": 40.0,
+        "rolling_30_rain_pct": 70.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": "declining",
+        "delta": -30.0
+      }
+    },
+    {
+      "name": "stable within threshold",
+      "input": {
+        "rolling_10_rain_pct": 65.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": "stable",
+        "delta": 5.0
+      }
+    },
+    {
+      "name": "exactly at threshold counts as improving",
+      "input": {
+        "rolling_10_rain_pct": 75.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": "improving",
+        "delta": 15.0
+      }
+    },
+    {
+      "name": "exactly at negative threshold counts as declining",
+      "input": {
+        "rolling_10_rain_pct": 45.0,
+        "rolling_30_rain_pct": 60.0,
+        "checks_in_window_10": 10,
+        "checks_in_window_30": 20,
+        "min_checks_short": 5,
+        "min_checks_long": 10,
+        "threshold_pct": 15.0
+      },
+      "expected": {
+        "label": "declining",
+        "delta": -15.0
+      }
+    }
+  ]
+}
