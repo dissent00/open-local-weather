@@ -22,26 +22,62 @@ Mombasa sets their own coordinates and gets a real forecast with no GitHub
 account and no setup. The app has to be able to run the whole pipeline
 itself.
 
-## Two modes, one app
+## Two sources, several delivery strategies
 
-Driven by a hard constraint (see [Scheduling](#scheduling-is-the-real-constraint)),
-not by indecision:
+**Where a forecast comes from** is one axis:
 
 **Standalone (default).** Everything on-device: fetch → verify → LLM →
 store → render. Any location. No account, no server, no GitHub. The user
-supplies an LLM key. Forecast generates when the app opens, plus
-best-effort background refresh.
+supplies an LLM key.
 
 **Connected (opt-in).** Point the app at a GitHub deployment — this repo,
 the user's own fork, or a friend's. The pipeline runs on schedule in
-Actions as it does today; the app reads the committed JSON, and can
-trigger an on-demand run. Gets reliable morning delivery, email, and a
-shared auditable history.
+Actions as it does today; the app reads the committed JSON and can trigger
+an on-demand run. Gets guaranteed morning delivery, email, and a shared
+auditable history.
 
 These are not separate products. Same screens, same rendering, same local
-store — the difference is where a forecast comes from, and a user can
-switch. Standalone users who later want 6am reliability have an upgrade
-path rather than a migration.
+store — only the origin of an entry differs, and a user can switch.
+
+**How and when it refreshes** is a separate axis, and deliberately a *user
+choice* rather than something the app decides for them. Not all options are
+available on all platforms, because the OS constraints below are real:
+
+| Strategy | Android | iOS | Notes |
+|---|---|---|---|
+| Tap to generate | ✅ | ✅ | Always available; the guaranteed floor |
+| Scheduled local generation | ✅ | ❌ | Exact alarm + WorkManager; the 6am ideal |
+| Night-before generation | ✅ | ⚠️ | Trades model freshness for readiness |
+| Staleness prompt | ✅ | ✅ | Notification says "tap to refresh" — see below |
+| Connected (server generates) | ✅ | ✅ | The only true guarantee on iOS |
+
+The app should be explicit in the UI about which strategy is active and
+what it actually promises. Silently implying "it'll be ready at 6am" on a
+platform that cannot deliver that is the failure mode to avoid.
+
+### The staleness prompt — why it works on iOS
+
+**Scheduling a local notification requires no background execution.** The
+OS delivers it whether or not the app ever receives CPU time. This is the
+key asymmetry: iOS can't reliably *generate* on a schedule, but it can
+absolutely *prompt* on one.
+
+So: whenever a forecast is generated, the app schedules a local
+notification for the moment that forecast goes stale — "your forecast is
+from yesterday morning, tap to refresh." Generating again cancels and
+reschedules it. If an opportunistic background refresh happens to succeed
+in the meantime, the notification is rescheduled rather than fired.
+
+Worst case on iOS therefore becomes: a reliable prompt at the time the
+user cares about, and a forecast a few tens of seconds after they tap —
+rather than silence.
+
+A refinement worth considering later: tie staleness to **model-cycle
+availability** rather than a wall clock. ROADMAP item 1 measured that
+aligned windows (all four models on the same cycle) open at 02:00, 08:00,
+14:00 and 20:00 UTC. "A genuinely fresher cycle is now available" is a
+more meaningful trigger than "24 hours elapsed," and the data to compute
+it is already in the entry's metadata.
 
 ---
 
@@ -291,19 +327,39 @@ needn't generate all of them.
   plan, but the Dart port is platform-neutral so this is a release
   question, not an architecture one.
 
+## Scope decision for v1
+
+**Android gets the full feature set. iOS ships tap-to-generate plus the
+staleness prompt.** Deliberate, and it follows the platform capabilities
+rather than fighting them: Android can genuinely do scheduled local
+generation, iOS genuinely cannot, and pretending otherwise would ship an
+iOS app that quietly fails to do the thing it implies.
+
+Everything else — night-before generation, in-app setup of connected
+mode — is real and wanted, but is a later phase (ROADMAP item 16) rather
+than a v1 blocker.
+
 ## Phasing
 
 1. **Export shared test vectors** (Python side, no Dart yet). De-risks
-   everything after it.
+   everything after it, and is cheapest to do before the port exists.
 2. **Dart core**: models, dates, extract, scoring, verification — passing
    the shared vectors. No UI.
 3. **Fetch + LLM providers** in Dart; one forecast generated end-to-end
    in a test harness.
-4. **Minimal UI**: Today + Settings, standalone only.
+4. **Minimal UI**: Today + Settings, standalone, tap-to-generate only.
+   This alone is a usable app on both platforms.
 5. **Storage + history + accuracy charts.**
-6. **Background refresh + notifications** (Android).
-7. **Connected mode.**
-8. **iOS.**
+6. **Spend controls** — budget cap, usage display, confirm-on-manual.
+   Before any automatic generation exists, so a scheduled run can never
+   predate the cap that governs it.
+7. **Scheduled local generation + notifications (Android).**
+8. **Staleness prompt (both platforms).**
+9. **iOS release.**
+10. **Later:** connected mode, night-before generation, in-app deployment
+    setup.
 
-Steps 1–3 are where the correctness risk lives and deserve the care. 4–6
-are conventional app work.
+Steps 1–3 are where the correctness risk lives and deserve the care; 4–8
+are conventional app work. Note that step 6 deliberately precedes step 7:
+spend control is a precondition for automatic runs, not a follow-up to
+them.

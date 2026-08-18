@@ -1142,6 +1142,21 @@ Summary of the decisions taken there:
   request per run; 14 KB stored per day, ~5 MB/year. Size is a non-issue,
   which is what made standalone viable.
 
+**v1 scope:** Android gets the full feature set (scheduled local
+generation, notifications, spend controls); iOS ships tap-to-generate plus
+a staleness prompt. That split follows the platform capabilities rather
+than fighting them — see below.
+
+**Refresh strategy is a user choice, not a fixed design.** Tap-to-generate,
+scheduled local generation, night-before generation, staleness prompt, and
+connected mode are all real options with different platform support and
+different tradeoffs; the app offers what the platform can actually honor
+and says plainly what each one promises. Later phases add night-before
+generation and **in-app setup of connected mode** — the GitHub API can
+create a repo from a template and set secrets, so "want guaranteed 6am
+delivery? I'll set up your free deployment" could be an in-app flow rather
+than a doc to go read, turning the iOS gap into an upgrade path.
+
 Two things flagged as genuinely hard, not glossed:
 
 1. **Scheduling.** Mobile background execution is *less* reliable than
