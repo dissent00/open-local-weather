@@ -1099,6 +1099,68 @@ though nothing here suggests it'd be a real constraint at 2-3 voices.
 
 ---
 
+## 15. Fork-ready setup documentation · **Done**
+
+Shipped [QUICKSTART.md](../QUICKSTART.md): fork to working daily emails in
+about an hour, no local setup and no server.
+
+The gap it closed was larger than "the README could be friendlier" —
+three required steps were documented **nowhere**: enabling GitHub Pages
+(without which the site silently never exists and every email link is
+dead), adding repository secrets, and getting an LLM API key at all. Plus
+two silent traps: GitHub disables Actions on forks by default, and — the
+one that corrupts rather than fails — **a fork inherits the upstream
+location's `data/log/` history**, so the accuracy loop scores the previous
+location's stored predictions against the new town's weather and feeds the
+LLM meaningless statistics as its track record. That is now a prominent
+step with exact commands, not a footnote.
+
+Also removed `GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD`/`SUBSCRIBER_EMAILS` from
+`daily.yml`, which had been telling every newcomer they needed a Gmail app
+password — the exact dead end this project already documented as
+unworkable, and never actually set on the live deployment.
+
+---
+
+## 16. Mobile app (Flutter, Android first) · **Planned**
+
+Full design: **[APP_ARCHITECTURE.md](APP_ARCHITECTURE.md)**.
+
+Summary of the decisions taken there:
+
+- **App runs the whole pipeline on-device** rather than reading this
+  repo's published forecast. A read-only client only serves people who
+  want *Kisumu's* data; the point of an app is that anyone sets their own
+  coordinates with no GitHub account. Prerequisite was item 8
+  (multi-provider LLM), now done.
+- **Two modes, one app**: standalone (default, no account) and connected
+  (paired with a GitHub deployment for guaranteed scheduled delivery).
+- **Flutter**, chosen over React Native mainly for `fl_chart` — the
+  accuracy history is the differentiating screen — plus a single toolchain
+  and typing that maps cleanly onto the existing pydantic models.
+- **Measured budgets**: ~21 KB of weather fetches and ~200 KB of LLM
+  request per run; 14 KB stored per day, ~5 MB/year. Size is a non-issue,
+  which is what made standalone viable.
+
+Two things flagged as genuinely hard, not glossed:
+
+1. **Scheduling.** Mobile background execution is *less* reliable than
+   GitHub Actions' scheduler, which this project already fought at length.
+   iOS gives no timing guarantee at all; Android's WorkManager is subject
+   to Doze and manufacturer battery-killers. Standalone mode therefore
+   promises "fresh when you open it," not "waiting at 6am" — and connected
+   mode exists precisely to offer the latter honestly.
+2. **Porting the credibility-critical core.** ~2,400 lines port to Dart,
+   of which 431 (`extract`, `scoring`, `verify/pipeline`, `aqi`) compute
+   the accuracy statistics this project's trustworthiness rests on. A
+   silent divergence there wouldn't crash, it would produce *wrong numbers
+   that look fine*. Mitigation is to export the existing 68 hand-computed
+   fixtures as language-neutral JSON test vectors that both
+   implementations must pass — and to do it **before** the port, as
+   phase 1.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages

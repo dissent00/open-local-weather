@@ -47,6 +47,8 @@ Ollama are all supported alternatives.
   extension points for forking.
 - **[docs-internal/ROADMAP.md](docs-internal/ROADMAP.md)** — what's next, with
   the measurements and constraints behind each decision.
+- **[docs-internal/APP_ARCHITECTURE.md](docs-internal/APP_ARCHITECTURE.md)** —
+  design for the planned Flutter mobile app (not built yet).
 - **[QUICKSTART.md](QUICKSTART.md)** — step-by-step setup for a new location.
 - **[mailer/README.md](mailer/README.md)** — email delivery setup.
 - **[ops/README.md](ops/README.md)** — optional, deployment-specific
