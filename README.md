@@ -149,4 +149,16 @@ Gemini model deprecation and repo-inactivity risk — see
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU Affero General Public License v3.0 or later — see [LICENSE](LICENSE).
+
+AGPL rather than a permissive licence on purpose: this project exists so
+that places underserved by professional meteorology can run their own
+forecasting. If you improve it and run it as a public service, those
+improvements should come back to everyone who might benefit — including
+people running it somewhere you'll never visit. Running a modified version
+over a network counts as distribution under the AGPL, which a plain GPL
+would not cover.
+
+Forking it for your own town and keeping it to yourself is entirely fine;
+the copyleft only bites if you distribute or publicly host a *modified*
+version.
