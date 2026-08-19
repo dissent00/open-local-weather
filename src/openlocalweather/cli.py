@@ -18,6 +18,7 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
+from openlocalweather.dates import today_in_tz
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
@@ -35,6 +36,8 @@ from openlocalweather.pipeline import (
 )
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
+from openlocalweather.review import build_weekly_review
+from openlocalweather.store.actuals_cache import as_date_dict, read_actuals_cache
 from openlocalweather.store.log_store import list_log_dates, make_log_lookup
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -192,6 +195,12 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
             github_repo=_github_repo_slug(),
             all_dates_provider=lambda: list_log_dates(data_path),
             entry_provider=make_log_lookup(data_path),
+            review_provider=lambda: build_weekly_review(
+                log_lookup=make_log_lookup(data_path),
+                actuals=as_date_dict(read_actuals_cache(data_path).primary),
+                all_log_dates=list_log_dates(data_path),
+                today=today_in_tz(location.timezone),
+            ),
         )
 
     # Gmail SMTP direct-send — see publish/email_gmail.py's module

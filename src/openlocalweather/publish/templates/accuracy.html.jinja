@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ location.primary_place_name }} Weather — Accuracy</title>
+<link rel="stylesheet" href="{{ nav.css }}">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{{ nav.home }}">{{ location.primary_place_name }} Weather</a>
+    <nav>
+      <a href="{{ nav.home }}">Today</a>
+      <a href="{{ nav.archive }}">Archive</a>
+      <a href="{{ nav.accuracy }}">Accuracy</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions.{% if location.local_bulletin_source_name %} For official warnings and advisories, consult {% if location.local_bulletin_url %}<a href="{{ location.local_bulletin_url }}">{{ location.local_bulletin_source_name }}</a>{% else %}{{ location.local_bulletin_source_name }}{% endif %}.{% endif %}</p>
+
+  <h1>Accuracy</h1>
+  <p class="meta">How well each forecast model has actually performed <em>here</em>, scored against observed conditions. Every figure on this page is recomputed from the raw committed record on each run &mdash; nothing is carried forward, so anything here can be re-derived from <a href="{{ nav.github }}">the repository</a>.</p>
+
+  <h2>How much data is behind this</h2>
+  <p class="sufficiency">{{ review.data_sufficiency }}</p>
+
+  <h2>What the record supports</h2>
+  {% if review.findings %}
+  <ul class="findings">
+    {% for f in review.findings %}
+    <li>
+      <span class="claim">{{ f.claim }}</span>
+      <span class="evidence">{{ f.evidence }}</span>
+      <span class="confidence confidence-{{ f.confidence }}">{{ f.confidence }}{% if f.checks %} &middot; {{ f.checks }} checks{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="findings-empty">No conclusions yet. Comparing models against each other needs enough verified checks for the difference to mean something &mdash; a short record can easily show one model well "ahead" purely by chance. Rather than publish a ranking the data doesn't support, this page says nothing until it does. The table below shows the raw counts in the meantime.</p>
+  {% endif %}
+
+  <h2>Rain calls by model and lead time</h2>
+  <p class="meta">Percentages below are shown for transparency, not as a ranking &mdash; read them alongside the check counts. A difference of less than about 15 points at these sample sizes is not evidence of a real difference.</p>
+  {% for group in skill_groups %}
+  <h3>Day+{{ group.lead_time_days }}</h3>
+  <table class="skill-table">
+    <thead>
+      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>Mean high err</th><th>Mean low err</th><th>Confidence</th></tr>
+    </thead>
+    <tbody>
+      {% for c in group.cells %}
+      <tr>
+        <td>{{ c.model }}</td>
+        <td>{% if c.checks %}{{ c.correct }}/{{ c.checks }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.rain_pct is not none %}{{ "%.0f"|format(c.rain_pct) }}%{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.mean_high_error_c is not none %}{{ c.mean_high_error_c|signed }}&deg;C{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.mean_low_error_c is not none %}{{ c.mean_low_error_c|signed }}&deg;C{% else %}&mdash;{% endif %}</td>
+        <td><span class="confidence confidence-{{ c.confidence }}">{{ c.confidence }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+
+  <h2>Reading this page</h2>
+  <p class="meta">Errors are stated as <em>observed minus forecast</em>, so a positive mean high error means the model ran cooler than the day turned out. Confidence reflects sample size alone: <strong>insufficient</strong> below 5 checks, <strong>provisional</strong> below 10, <strong>usable</strong> below 30, <strong>established</strong> at 30 and above. Not every model reaches every lead time &mdash; some models' forecast horizons end short of 7 days &mdash; so a blank row at Day+7 means no prediction was available to score, never a missed call.</p>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p><a href="{{ nav.github }}">View source on GitHub</a>.</p>
+  </div>
+</footer>
+</body>
+</html>

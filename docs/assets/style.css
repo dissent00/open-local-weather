@@ -234,3 +234,112 @@ form.subscribe-form button {
   font-size: 1rem;
   cursor: pointer;
 }
+
+/* --- Accuracy page ------------------------------------------------------
+   The confidence label is the load-bearing element here: it is what stops a
+   percentage on this page being read as a settled verdict. It is styled to
+   sit visibly ALONGSIDE every figure rather than as a footnote, and the
+   weakest levels are deliberately the most visually muted so a thin record
+   never looks authoritative. */
+
+p.sufficiency {
+  background: var(--card-bg);
+  border-left: 3px solid var(--accent);
+  padding: 0.9rem 1.1rem;
+  border-radius: 0 6px 6px 0;
+  color: var(--fg);
+}
+
+ul.findings {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+ul.findings li {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--card-bg);
+}
+
+ul.findings .claim {
+  display: block;
+  font-weight: 600;
+}
+
+ul.findings .evidence {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-top: 0.25rem;
+}
+
+p.findings-empty {
+  background: var(--card-bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0.9rem 1.1rem;
+  color: var(--muted);
+}
+
+.confidence {
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.confidence-insufficient,
+.confidence-provisional {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-fg);
+}
+
+.confidence-established {
+  background: var(--card-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+table.skill-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 1.5rem;
+  font-size: 0.94rem;
+}
+
+table.skill-table th,
+table.skill-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+table.skill-table th {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+table.skill-table .confidence {
+  margin-top: 0;
+}
+
+/* Narrow screens: let the table scroll rather than squash the columns. */
+@media (max-width: 640px) {
+  table.skill-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

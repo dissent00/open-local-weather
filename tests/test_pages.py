@@ -552,3 +552,107 @@ def test_render_forecast_page_shows_aqi_unavailable_for_missing_composite():
     # A single station with no composite AQI has nothing to summarize a
     # range from — the summary line must not appear.
     assert "highest at" not in html
+
+
+# ---------------------------------------------------------------------------
+# Accuracy page
+# ---------------------------------------------------------------------------
+
+
+def _review(findings=(), cells=(), sufficiency="8 check(s) per model — directional only."):
+    from openlocalweather.review import WeeklyReview
+
+    return WeeklyReview(
+        period_start=date(2026, 8, 11),
+        period_end=date(2026, 8, 18),
+        days_with_predictions=9,
+        days_verified=8,
+        cells=list(cells),
+        findings=list(findings),
+        data_sufficiency=sufficiency,
+    )
+
+
+def _cell(model, checks, correct, high_err=None, conf="provisional", lead=0):
+    from openlocalweather.review import SkillCell
+
+    return SkillCell(
+        model=model, lead_time_days=lead, checks=checks, correct=correct,
+        rain_pct=(100 * correct / checks) if checks else None, confidence=conf,
+        mean_high_error_c=high_err, mean_low_error_c=None,
+        mean_wind_error_kmh=None, mean_onset_error_hrs=None,
+        earliest=None, latest=None,
+    )
+
+
+def test_accuracy_page_publishes_no_ranking_when_the_record_supports_none():
+    """The published page has to hold the same line the prompt does. A
+    percentage column with no ranking is fine; a page that *reads* as a
+    league table is not."""
+    from openlocalweather.publish.pages import render_accuracy_page
+
+    html = render_accuracy_page(
+        _review(cells=[_cell("best_match", 8, 7), _cell("ecmwf_ifs025", 8, 4)]),
+        LOCATION,
+        build_nav_links("https://example.com/", "owner/repo"),
+    )
+    assert "No conclusions yet" in html
+    assert "purely by chance" in html
+    # The raw figures are still shown — withholding a ranking is not the
+    # same as hiding the data it would have been drawn from.
+    assert "7/8" in html and "4/8" in html
+    # ...but never without the caveat attached.
+    assert "not as a ranking" in html
+    assert "provisional" in html
+
+
+def test_accuracy_page_states_findings_with_their_evidence():
+    from openlocalweather.publish.pages import render_accuracy_page
+    from openlocalweather.review import Finding
+
+    html = render_accuracy_page(
+        _review(
+            findings=[Finding(
+                kind="ranking",
+                claim="At Day+0, best_match is the strongest rain caller here.",
+                evidence="best_match 27/30 (90%) vs ecmwf_ifs025 9/30 (30%).",
+                confidence="established",
+                checks=30,
+            )],
+            cells=[_cell("best_match", 30, 27, conf="established")],
+        ),
+        LOCATION,
+        build_nav_links("https://example.com/", "owner/repo"),
+    )
+    assert "strongest rain caller" in html
+    # The evidence and confidence travel with the claim on the page too.
+    assert "27/30" in html
+    assert "established" in html
+    assert "30 checks" in html
+
+
+def test_accuracy_page_never_renders_negative_zero():
+    """A "-0.0°C" on the page that argues its numbers are careful reads as
+    a defect, whatever the float actually holds."""
+    from openlocalweather.publish.pages import render_accuracy_page
+
+    html = render_accuracy_page(
+        _review(cells=[_cell("ecmwf_ifs025", 8, 4, high_err=-0.04)]),
+        LOCATION,
+        build_nav_links("https://example.com/", "owner/repo"),
+    )
+    assert "-0.0" not in html
+    assert "+0.0" in html
+
+
+def test_accuracy_page_explains_a_blank_row_is_not_a_missed_call():
+    """Models whose horizon stops short of Day+7 leave empty cells. Without
+    saying so, a blank reads as a failure rather than an absent forecast."""
+    from openlocalweather.publish.pages import render_accuracy_page
+
+    html = render_accuracy_page(
+        _review(cells=[_cell("ukmo_seamless", 0, 0, lead=7)]),
+        LOCATION,
+        build_nav_links("https://example.com/", "owner/repo"),
+    )
+    assert "never a missed call" in html

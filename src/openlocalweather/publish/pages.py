@@ -29,6 +29,7 @@ from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import format_date
 from openlocalweather.models import DailyLogEntry
+from openlocalweather.review import WeeklyReview
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -103,6 +104,7 @@ class NavLinks:
     subscribe: str
     css: str
     github: str
+    accuracy: str
 
 
 def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
@@ -113,7 +115,44 @@ def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
         subscribe=base + "subscribe.html",
         css=base + "assets/style.css",
         github=f"https://github.com/{github_repo}",
+        accuracy=base + "accuracy.html",
     )
+
+
+@dataclass(frozen=True)
+class SkillGroup:
+    """One lead time's rows, so the template doesn't filter cells itself."""
+
+    lead_time_days: int
+    cells: list
+
+
+def _signed(value: float) -> str:
+    """Formats a signed error, without ever printing "-0.0".
+
+    Rounding a small negative toward zero leaves the sign bit intact, so
+    plain formatting renders -0.04 as "-0.0" — which on a page whose entire
+    argument is that its numbers are careful reads as a typo.
+    """
+    rounded = round(value, 1) + 0.0
+    return f"{rounded:+.1f}"
+
+
+def render_accuracy_page(review: WeeklyReview, location: LocationConfig, nav: NavLinks) -> str:
+    """The public face of the accuracy claim.
+
+    Deliberately renders the deterministic review directly, with no LLM
+    narration anywhere on the page. Everything here is either a count or a
+    sentence composed in code from counts, so the page cannot overstate the
+    record even by accident — which is the whole point of publishing it.
+    """
+    groups = []
+    for k in sorted({c.lead_time_days for c in review.cells}):
+        groups.append(SkillGroup(lead_time_days=k, cells=[c for c in review.cells if c.lead_time_days == k]))
+    env = _env()
+    env.filters["signed"] = _signed
+    template = env.get_template("accuracy.html.jinja")
+    return template.render(review=review, skill_groups=groups, location=location, nav=nav)
 
 
 def render_forecast_page(
@@ -192,6 +231,7 @@ class GitHubPagesPublisher:
         github_repo: str,
         all_dates_provider: Callable[[], list[date]],
         entry_provider: Callable[[date], DailyLogEntry | None] | None = None,
+        review_provider: Callable[[], WeeklyReview | None] | None = None,
     ):
         self.docs_dir = Path(docs_dir)
         self.location = location
@@ -204,6 +244,10 @@ class GitHubPagesPublisher:
         # Same injection pattern, for backfilling archive pages — see
         # publish()'s backfill step for why that's needed.
         self.entry_provider = entry_provider
+        # Same again, for the accuracy page. Optional so a caller that
+        # doesn't supply one simply doesn't get the page, rather than
+        # publishing an empty or misleading one.
+        self.review_provider = review_provider
 
     def _write_archive_pages_for(self, entry: DailyLogEntry, archive_dir: Path, *, force: bool = True) -> None:
         """Writes the archive page(s) for one entry: always the current
@@ -279,3 +323,10 @@ class GitHubPagesPublisher:
         archive_items = build_archive_items(all_dates, self.entry_provider or (lambda d: None))
         archive_index_html = render_archive_index_page(archive_items, self.location, self.nav)
         (archive_dir / "index.html").write_text(archive_index_html)
+
+        if self.review_provider is not None:
+            review = self.review_provider()
+            if review is not None:
+                (self.docs_dir / "accuracy.html").write_text(
+                    render_accuracy_page(review, self.location, self.nav)
+                )
