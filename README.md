@@ -50,6 +50,8 @@ Ollama are all supported alternatives.
 - **[docs-internal/APP_ARCHITECTURE.md](docs-internal/APP_ARCHITECTURE.md)** —
   design for the planned Flutter mobile app (not built yet).
 - **[QUICKSTART.md](QUICKSTART.md)** — step-by-step setup for a new location.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — conventions, and the contribution
+  terms (this project is dual-licensed, so please read before opening a PR).
 - **[mailer/README.md](mailer/README.md)** — email delivery setup.
 - **[ops/README.md](ops/README.md)** — optional, deployment-specific
   scheduling reliability setup (documents multiple paths — GitHub Actions
