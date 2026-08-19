@@ -1620,9 +1620,18 @@ record will show it — putting the met service through the same accuracy
 loop as everything else is precisely what makes that question answerable
 rather than arguable.
 
+### Generalising to ~200 other met services
+
+Written up as a procedure in
+[MET_SERVICE_INTEGRATION.md](MET_SERVICE_INTEGRATION.md), separating what
+transfers (the controlled-vocabulary insight, picking products by lead time,
+anchoring on the bulletin's own validity date, storing the extract rather
+than the document, sparse fields as absent) from what is only ever Kenya
+(the scraping shape, the table layout, the area key, the exact rain cutoff).
+
 ### What has not shipped
 
-**The 5-day bulletin, which would give Day+3.** KMD publishes a five-day
+~~**The 5-day bulletin, which would give Day+3.**~~ **Shipped.** KMD publishes a five-day
 forecast designed to work alongside the daily one, structured as a
 per-county x per-day grid (max/min plus morning/afternoon/night for each
 of five dates) — confirmed extractable, 82 tables, ~20,000 characters. A
