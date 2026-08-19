@@ -71,6 +71,7 @@ from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
 from openlocalweather.models import (
@@ -199,6 +200,26 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         aqi_fetch_time=aqi_fetch_time,
         bulletin_text=bulletin_text,
     )
+
+
+def _review_prompt_payload(review: WeeklyReview) -> dict[str, Any]:
+    """The parts of a review the LLM should reason from — and no more.
+
+    Deliberately omits the per-cell skill table. The prompt already carries
+    rolling stats in MODEL TRACK RECORD; handing over a second table of raw
+    per-model percentages would invite precisely the by-eye comparison the
+    findings gate exists to prevent. The findings ARE the cross-model
+    conclusions, already gated on sample size, and their absence is
+    meaningful information rather than an omission.
+    """
+    return {
+        "period_start": format_date(review.period_start),
+        "period_end": format_date(review.period_end),
+        "days_with_predictions": review.days_with_predictions,
+        "days_verified": review.days_verified,
+        "data_sufficiency": review.data_sufficiency,
+        "findings": [asdict(f) for f in review.findings],
+    }
 
 
 def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
@@ -337,6 +358,19 @@ def run_daily_pipeline(
         for r in verification_result.lead_time_results
     ]
     track_record_context = [e.model_dump() for e in verification_result.updated_track_record.entries]
+    # Long-run review findings, recomputed from the raw record every run
+    # rather than stored — same reasoning as every other statistic here: a
+    # figure that can only be re-derived is a figure that can be checked,
+    # and one that's carried forward is one that can silently go stale.
+    # Pure computation over data already in memory, so it costs no API call.
+    review_context = _review_prompt_payload(
+        build_weekly_review(
+            log_lookup=log_lookup,
+            actuals=actuals_primary,
+            all_log_dates=log_store.list_log_dates(deps.data_dir),
+            today=today,
+        )
+    )
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
@@ -351,6 +385,7 @@ def run_daily_pipeline(
         # which is how yesterday's predictions SCORED. Free: this is the same
         # cache the verification pass already read.
         yesterday_actual=asdict(day_over_day) if day_over_day is not None else None,
+        review_context=review_context,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
             "primary_extended_daily": primary_daily,
@@ -509,6 +544,18 @@ def run_refresh_pipeline(
     refresh_yesterday_actual = asdict(_refresh_comparison) if _refresh_comparison is not None else None
     track_record_context = [e.model_dump() for e in track_record_store.read_track_record(deps.data_dir).entries]
 
+    # The refresh does no verification, but the long-run findings still
+    # describe which models have earned trust here — relevant to the
+    # narrative even when nothing new has been scored today.
+    refresh_review_context = _review_prompt_payload(
+        build_weekly_review(
+            log_lookup=log_store.make_log_lookup(deps.data_dir),
+            actuals=_refresh_actuals,
+            all_log_dates=log_store.list_log_dates(deps.data_dir),
+            today=today,
+        )
+    )
+
     system_prompt = build_system_prompt(location, is_refresh=True)
     user_prompt = build_user_prompt(
         today=today,
@@ -520,6 +567,7 @@ def run_refresh_pipeline(
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         yesterday_actual=refresh_yesterday_actual,
+        review_context=refresh_review_context,
         today_weather_data={
             "primary_today_hourly": guidance.primary_hourly,
             "primary_extended_daily": guidance.primary_daily,

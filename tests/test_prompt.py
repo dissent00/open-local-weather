@@ -284,3 +284,69 @@ def test_user_prompt_says_so_when_yesterday_is_unavailable():
     )
     assert "Unavailable — no observed record for yesterday" in prompt
     assert "omit the day-over-day comparison" in prompt
+
+
+def _user_prompt_with_review(review_context):
+    return build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.com/",
+        verification_context={},
+        track_record_context=[],
+        historical_logs=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+        review_context=review_context,
+    )
+
+
+def test_system_prompt_forbids_deriving_a_ranking_the_gate_withheld():
+    """The load-bearing instruction.
+
+    MODEL TRACK RECORD hands the LLM raw per-model percentages. So an empty
+    findings list is not self-enforcing: the model could read those numbers
+    and announce a winner itself, which is exactly the small-sample claim the
+    code-side gate declined to make. The prompt has to close that off in
+    words, because nothing else can.
+    """
+    prompt = build_system_prompt(KISUMU)
+    assert "LONG-RUN REVIEW FINDINGS" in prompt
+    assert "IF NO RANKING FINDING IS PRESENT FOR A LEAD TIME" in prompt
+    assert "do NOT construct your own ranking" in prompt
+    assert "deliberately withheld" in prompt
+    # Absence of a bias finding must be treated the same way.
+    assert "do not assert one from the error numbers yourself" in prompt
+    # And a stated confidence is a ceiling, not a starting point.
+    assert "do not upgrade it" in prompt
+
+
+def test_system_prompt_makes_admitting_thin_data_the_expected_outcome():
+    """Left unsaid, "insufficient data" reads to a model as a failure to be
+    written around. It has to be named as the correct answer."""
+    prompt = build_system_prompt(KISUMU)
+    assert "not a failure" in prompt
+    assert "never claiming more than the record holds" in prompt
+
+
+def test_user_prompt_carries_the_review_and_repeats_the_no_derivation_rule():
+    prompt = _user_prompt_with_review(
+        {
+            "data_sufficiency": "Day+0: 8 check(s) per model — directional only.",
+            "findings": [],
+        }
+    )
+    assert "LONG-RUN REVIEW" in prompt
+    assert "8 check(s) per model" in prompt
+    # Restated at the point of use, not only in the system prompt.
+    assert "if a ranking is absent the record does not support one" in prompt
+
+
+def test_user_prompt_says_so_when_no_review_was_computed():
+    """Same principle as the day-over-day gap: absent must read as absent."""
+    prompt = _user_prompt_with_review(None)
+    assert "LONG-RUN REVIEW" in prompt
+    assert "Unavailable — no review computed this run." in prompt
