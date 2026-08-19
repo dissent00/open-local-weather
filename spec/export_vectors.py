@@ -283,7 +283,40 @@ def export_extract() -> None:
         }
     }
 
+    # The shape that hid a real bug for months: a key that is present and
+    # correctly named but ALL-NULL, with the real data under a later
+    # candidate. A presence-only lookup ("is it a non-empty list?") latches
+    # onto the empty array and never tries the working key — no error, just a
+    # model silently unscored on that variable.
+    #
+    # The all-null key here is the model-suffixed one and the data is under
+    # the bare key, because that ordering is the one an implementation tries
+    # first. A vector whose all-null key is only ever reached SECOND cannot
+    # fail, whichever way the lookup is written.
+    hourly_gust_alias = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00"],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0],
+            "wind_gusts_10m_ecmwf_ifs025": [None, None],
+            "wind_gusts_10m": [11.2, 18.4],
+            "temperature_2m_ecmwf_ifs025": [None, None],
+            "temperature_2m": [19.0, 21.0],
+            "pressure_msl_ecmwf_ifs025": [1013.0, 1011.0],
+        }
+    }
+
     cases = [
+        {
+            "name": "an all-null series is skipped, not latched onto",
+            "input": {
+                "hourly_multi_model": hourly_gust_alias,
+                "models": ["ecmwf_ifs025"],
+                "threshold": RAIN_THRESHOLD_MM,
+            },
+            "expected": dump(
+                extract_day0_predictions_from_hourly(hourly_gust_alias, ["ecmwf_ifs025"], RAIN_THRESHOLD_MM)
+            ),
+        },
         {
             "name": "rain with onset; null series yields unknown rain",
             "input": {"hourly_multi_model": hourly_normal, "models": models, "threshold": RAIN_THRESHOLD_MM},

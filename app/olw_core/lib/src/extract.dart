@@ -29,16 +29,40 @@ List<double?> _numList(Object? v) {
   return v.map((e) => e == null ? null : (e as num).toDouble()).toList();
 }
 
+/// First candidate key holding at least one non-null value.
+///
+/// The "at least one non-null" part is load-bearing, not defensive. Open-Meteo
+/// returns a correctly-NAMED array full of nulls when a model does not publish
+/// a variable under a given alias, and a non-empty list of nulls passes an
+/// `isNotEmpty` check — so a plain presence test latches onto the empty series
+/// and never tries the working key. In Python that cost the live deployment
+/// every Day+0 ECMWF wind score for months, with no error raised anywhere.
+/// Mirrors `pick_series` in the Python implementation.
+List<double?> _pickSeries(Map<String, Object?> h, List<String> candidateKeys) {
+  for (final key in candidateKeys) {
+    final value = h[key];
+    if (value is List && value.any((e) => e != null)) return _numList(value);
+  }
+  return const [];
+}
+
 /// Reads a per-model series, falling back to the un-suffixed key.
 ///
 /// Open-Meteo names multi-model fields `{variable}_{model}`, but a
 /// single-model response uses the bare `{variable}`. Both shapes appear in
 /// practice, so both are handled — same as the Python implementation.
-List<double?> _series(Map<String, Object?> h, String variable, String model) {
-  final withModel = h['${variable}_$model'];
-  if (withModel is List && withModel.isNotEmpty) return _numList(withModel);
-  return _numList(h[variable]);
-}
+List<double?> _series(Map<String, Object?> h, String variable, String model) =>
+    _pickSeries(h, ['${variable}_$model', variable]);
+
+/// Wind gusts, newest spelling first.
+///
+/// Open-Meteo accepts the legacy `windgusts_10m` alias for most models, but
+/// under it `ecmwf_ifs025` returns an all-null series while every other model
+/// returns real data. The current `wind_gusts_10m` spelling returns real ECMWF
+/// data and identical values elsewhere (verified 2026-08-19 against the live
+/// API). Both are tried so a stored response in either shape still reads.
+List<double?> _windSeries(Map<String, Object?> h, String model, String legacy, String current) =>
+    _pickSeries(h, ['${current}_$model', '${legacy}_$model', current, legacy]);
 
 /// Pulls each model's Day+0 prediction from hourly data. Onset comes from the
 /// actual hour-by-hour series, which only exists at hourly resolution.
@@ -58,7 +82,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
 
   return models.map((model) {
     final precip = _series(hourly, 'precipitation', model);
-    final wind = _series(hourly, 'windgusts_10m', model);
+    final wind = _windSeries(hourly, model, 'windgusts_10m', 'wind_gusts_10m');
     final temp = _series(hourly, 'temperature_2m', model);
     final press = _series(hourly, 'pressure_msl', model);
 
@@ -106,7 +130,8 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
 
   return models.map((model) {
     final precipArr = _series(daily, 'precipitation_sum', model);
-    final windArr = _series(daily, 'windgusts_10m_max', model);
+    final windArr =
+        _windSeries(daily, model, 'windgusts_10m_max', 'wind_gusts_10m_max');
     final highArr = _series(daily, 'temperature_2m_max', model);
     final lowArr = _series(daily, 'temperature_2m_min', model);
     final pressArr = _series(daily, 'pressure_msl_mean', model);

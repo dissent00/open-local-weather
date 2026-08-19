@@ -4,6 +4,58 @@
   "description": "Day+0 per-model extraction from hourly data. An absent or all-null precipitation series means unknown (null) rain, never false.",
   "cases": [
     {
+      "name": "an all-null series is skipped, not latched onto",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-11T12:00",
+              "2026-08-11T13:00"
+            ],
+            "precipitation_ecmwf_ifs025": [
+              0.0,
+              0.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              null,
+              null
+            ],
+            "wind_gusts_10m": [
+              11.2,
+              18.4
+            ],
+            "temperature_2m_ecmwf_ifs025": [
+              null,
+              null
+            ],
+            "temperature_2m": [
+              19.0,
+              21.0
+            ],
+            "pressure_msl_ecmwf_ifs025": [
+              1013.0,
+              1011.0
+            ]
+          }
+        },
+        "models": [
+          "ecmwf_ifs025"
+        ],
+        "threshold": 0.5
+      },
+      "expected": [
+        {
+          "model": "ecmwf_ifs025",
+          "rain": false,
+          "onset": null,
+          "wind_kmh": 18.4,
+          "high_c": 21.0,
+          "low_c": 19.0,
+          "mslp_trend": -2.0
+        }
+      ]
+    },
+    {
       "name": "rain with onset; null series yields unknown rain",
       "input": {
         "hourly_multi_model": {
