@@ -161,6 +161,8 @@ class ForwardGuidance:
     # than inserting a blank model into the record.
     met_service_prediction: ModelPrediction | None = None
     met_service_valid_for: date | None = None
+    met_service_prediction_day3: ModelPrediction | None = None
+    met_service_day3_valid_for: date | None = None
 
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
@@ -200,12 +202,16 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     # contributes narrative text, exactly as before.
     met_prediction = None
     met_valid_for = None
+    met_day3 = None
+    met_day3_valid_for = None
     fetch_forecast = getattr(deps.bulletin_fetcher, "fetch_forecast", None)
     if callable(fetch_forecast):
         met_forecast = fetch_forecast()
         bulletin_text = met_forecast.text
         met_prediction = met_forecast.prediction
         met_valid_for = met_forecast.valid_for
+        met_day3 = getattr(met_forecast, "prediction_day3", None)
+        met_day3_valid_for = getattr(met_forecast, "five_day_valid_for", None)
     else:
         bulletin_text = deps.bulletin_fetcher.fetch()
 
@@ -223,6 +229,8 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         bulletin_text=bulletin_text,
         met_service_prediction=met_prediction,
         met_service_valid_for=met_valid_for,
+        met_service_prediction_day3=met_day3,
+        met_service_day3_valid_for=met_day3_valid_for,
     )
 
 
@@ -382,6 +390,13 @@ def run_daily_pipeline(
         day0_predictions = [*day0_predictions, met_prediction]
 
     day3_predictions = extract_day_n_predictions_from_daily(primary_daily, 3, MODELS)
+    # Same guard as Day+0, for the same reason: the five-day bulletin is
+    # accepted only if it actually covers today+3. A stale issue whose range
+    # has rolled past that date must contribute nothing rather than be
+    # scored against a day it never forecast.
+    met_day3 = getattr(guidance, "met_service_prediction_day3", None)
+    if met_day3 is not None and getattr(guidance, "met_service_day3_valid_for", None) == add_days(today, 3):
+        day3_predictions = [*day3_predictions, met_day3]
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
     # --- Step 6: call the LLM ---
@@ -409,11 +424,21 @@ def run_daily_pipeline(
             models=scored_models(location.local_bulletin_model_id),
         )
     )
+    # The same extracted values that get scored, handed to the LLM so its
+    # narrative and the accuracy record describe one set of numbers rather
+    # than two. This is also where the met service becomes visible as a peer
+    # of the numerical models rather than only as prose.
+    model_predictions_context = {
+        "day0": [p.model_dump() for p in day0_predictions],
+        "day3": [p.model_dump() for p in day3_predictions],
+        "day7": [p.model_dump() for p in day7_predictions],
+    }
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
         public_webpage_url=deps.public_webpage_url,
         verification_context=verification_context,
+        model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,
         historical_logs=historical_logs,
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),

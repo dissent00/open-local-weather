@@ -64,9 +64,12 @@ You are provided with:
 4. TODAY'S MULTI-MODEL GUIDANCE (hourly for today, daily summary out to 7 days) for {location.primary_place_name}{secondary_guidance_note}.
 5. REGIONAL PRESSURE SNAPSHOT (multi-point MSLP across {location.region_name}).
 6. LONG-RUN REVIEW FINDINGS (cross-model conclusions drawn in code from the entire stored record, each with its own evidence and confidence).
+7. EXTRACTED PER-MODEL PREDICTIONS - each model's Day+0/Day+3/Day+7 call, already pulled out of the raw guidance in code. These are the exact values that will be scored against tomorrow's observations, and they include the local met service alongside the numerical models where one is configured.
 {secondary_data_note}
 
 WEIGHTING EVIDENCE: When recent (last {rolling_window_short}-check) verification results conflict with a model's longer-term ({rolling_window_long}-check/all-time) track record, weight the recent evidence more heavily in your reasoning - the long-term stats exist to catch slow, systematic bias, not to override what's actually happening lately. State explicitly in the Forecaster Confidence Notes when you're doing this. Each (model, lead time) entry in MODEL TRACK RECORD carries a pre-computed "rain_pct_trend" ("improving" / "declining" / "stable" / null) and "rain_pct_trend_delta" - already the recent-vs-longer-term comparison described above, done in code. Use this field as given rather than re-deriving whether recent and long-term agree by comparing the raw percentages yourself; a null trend means there isn't yet enough history in one of the windows to call it either way, and you should say so rather than guessing. When a model's trend is "declining" for a lead time you're relying on, name that explicitly and explain how it affects your confidence - this is exactly the kind of divergence the track record exists to catch.
+
+LOCAL MET SERVICE AS A MODEL: where a national met service is configured, its own forecast appears in EXTRACTED PER-MODEL PREDICTIONS as another model, with its own track record and its own entry in the review findings. Treat it as a peer of the numerical models, not as a more authoritative source and not as a lesser one - what it has earned is whatever its verification record says it has earned, exactly as for GFS or ECMWF. It has genuine local knowledge a global model cannot have, and it is also a forecast that can be wrong; both are settled by the record rather than by deference. Note that it supplies only rain and temperature - no wind, no pressure, no onset - so a null there means "not forecast", never "no rain" or "calm". When it disagrees with the numerical consensus, say so explicitly and explain which way you lean and why, citing its track record at the lead time in question.
 
 LONG-RUN REVIEW FINDINGS: The user message carries a REVIEW section: conclusions computed in code across the whole stored record, each carrying the evidence and confidence that produced it, plus a "data_sufficiency" statement of how much the record currently supports. These are the ONLY cross-model, long-run comparative claims you may make. Each one is gated on sample size in code - a ranking is emitted only when both models have enough verified checks AND their gap exceeds the sampling-noise floor.
 
@@ -144,6 +147,7 @@ def build_user_prompt(
     local_bulletin_text: str,
     morning_narrative: str | None = None,
     review_context: Any = None,
+    model_predictions_context: Any = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -209,6 +213,9 @@ DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditio
 
 TODAY'S MULTI-MODEL GUIDANCE:
 {_json(weather_payload)}
+
+EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays below; a null field means that model does not forecast it, never zero or "no"):
+{_json(model_predictions_context) if model_predictions_context is not None else "Unavailable this run."}
 
 LONG-RUN REVIEW (computed in code over the whole stored record — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):
 {_json(review_context) if review_context is not None else "Unavailable — no review computed this run."}

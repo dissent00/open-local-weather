@@ -98,10 +98,15 @@ def _build_bulletin_fetcher(location) -> BulletinFetcher:
     # fetch/bulletin/kenya_kmd_daily. Selected on the URL here rather than
     # auto-detected, matching how the weekly fetcher is wired.
     if "daily-forecast" in local_bulletin_url:
+        from openlocalweather.dates import add_days
+
         return KenyaKMDDailyFetcher(
             local_bulletin_url,
             area_name=location.local_bulletin_area_name,
             model_id=location.local_bulletin_model_id,
+            # The Day+3 slot this run will try to fill. Passed in so the
+            # fetcher does no clock or timezone reasoning of its own.
+            day3_target=add_days(today_in_tz(location.timezone), 3),
         )
     # This repo currently ships exactly one reference bulletin
     # implementation (Kenya Meteorological Department). A fork with a

@@ -350,3 +350,37 @@ def test_user_prompt_says_so_when_no_review_was_computed():
     prompt = _user_prompt_with_review(None)
     assert "LONG-RUN REVIEW" in prompt
     assert "Unavailable — no review computed this run." in prompt
+
+
+def test_system_prompt_frames_the_met_service_as_a_peer_not_an_authority():
+    """The failure mode is deference. A national met service reads as
+    authoritative, and an LLM told about it without instruction will tend to
+    defer to it — or, just as wrong, dismiss it as unscientific next to a
+    numerical model. Both substitute a prior for the record."""
+    prompt = build_system_prompt(KISUMU)
+    assert "LOCAL MET SERVICE AS A MODEL" in prompt
+    assert "not as a more authoritative source and not as a lesser one" in prompt
+    assert "settled by the record rather than by deference" in prompt
+    # And the sparse-field trap, which is the same one ModelPrediction.rain
+    # exists to avoid.
+    assert 'a null there means "not forecast", never "no rain" or "calm"' in prompt
+
+
+def test_user_prompt_carries_the_extracted_predictions_that_get_scored():
+    """The narrative and the accuracy record should describe one set of
+    numbers, not two."""
+    prompt = build_user_prompt(
+        today=date(2026, 8, 19), yesterday=date(2026, 8, 18),
+        public_webpage_url="https://example.com/",
+        verification_context={}, track_record_context=[], historical_logs=[],
+        ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None,
+        today_weather_data={}, local_bulletin_source_name="", local_bulletin_text="",
+        model_predictions_context={
+            "day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0, "wind_kmh": None}],
+            "day3": [], "day7": [],
+        },
+    )
+    assert "EXTRACTED PER-MODEL PREDICTIONS" in prompt
+    assert "kenya_met" in prompt
+    assert "these exact values get scored" in prompt
+    assert 'never zero or "no"' in prompt

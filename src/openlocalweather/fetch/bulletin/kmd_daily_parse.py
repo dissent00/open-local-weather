@@ -84,6 +84,27 @@ class CountyOutlook:
         return self.rain_probability_pct > RAIN_PROBABILITY_CUTOFF_PCT
 
 
+def decode_rain_terms(phrases: list[str]) -> tuple[int | None, int | None]:
+    """(probability_pct, area_pct) from any phrases that mention rain.
+
+    Shared with the 5-day parser so both bulletins decode KMD's vocabulary
+    through one implementation — two copies would drift, and the whole
+    argument for parsing this deterministically is that the encoding is
+    fixed and documented.
+
+    Only rain-mentioning phrases contribute, so a confidence term sitting in
+    an unrelated clause ("Sunny intervals") can't be misread as qualifying a
+    rain call.
+    """
+    rain_phrases = [p for p in phrases if mentions_rain(p)]
+    if not rain_phrases:
+        return None, None
+    joined = " ".join(rain_phrases)
+    # An unqualified rain statement is a positive forecast, not an uncertain
+    # one; KMD reserves its hedging vocabulary for when it means it.
+    return (_first_term(joined, _PROBABILITY_TERMS) or 83), _first_term(joined, _AREA_TERMS)
+
+
 def _first_term(text: str, terms: list[tuple[str, int]]) -> int | None:
     lowered = text.lower()
     best: int | None = None
@@ -138,16 +159,7 @@ def parse_county_outlook(tables: list[list[list]], county: str) -> CountyOutlook
     # Only phrases that actually mention rain contribute a probability —
     # otherwise "Sunny intervals" alongside a rainy period would pull the
     # confidence term off an unrelated clause.
-    rain_phrases = [p for p in periods if mentions_rain(p)]
-    probability = None
-    area = None
-    if rain_phrases:
-        joined = " ".join(rain_phrases)
-        # An unqualified rain statement ("light rains over few places") is a
-        # positive forecast, not an uncertain one; KMD reserves its hedging
-        # vocabulary for when it means it.
-        probability = _first_term(joined, _PROBABILITY_TERMS) or 83
-        area = _first_term(joined, _AREA_TERMS)
+    probability, area = decode_rain_terms(periods)
 
     return CountyOutlook(
         county=county,
