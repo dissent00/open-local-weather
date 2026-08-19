@@ -281,6 +281,37 @@ void main() {
     });
   });
 
+  group('user prompt', () {
+    // Byte-for-byte, same as the system prompt — but the cold-start case is
+    // the one that matters most. Every "Unavailable — ..." string is what
+    // stops a missing input reading as a measurement, and an implementation
+    // that emitted an empty list or "null" there would look fine in a diff
+    // while inviting the model to treat a gap as data.
+    test('matches Python character for character', () {
+      for (final c in casesOf('llm_user_prompt.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = buildUserPrompt(
+          today: DateTime.parse(i['today'] as String),
+          yesterday: DateTime.parse(i['yesterday'] as String),
+          publicWebpageUrl: i['public_webpage_url'] as String,
+          verificationContext: i['verification_context'],
+          trackRecordContext: i['track_record_context'],
+          historicalLogs: i['historical_logs'],
+          groundAqiReadings: i['ground_aqi_readings'],
+          groundAqiSummary: i['ground_aqi_summary'],
+          yesterdayActual: i['yesterday_actual'],
+          todayWeatherData: (i['today_weather_data'] as Map).cast<String, Object?>(),
+          localBulletinSourceName: i['local_bulletin_source_name'] as String,
+          localBulletinText: i['local_bulletin_text'] as String,
+          morningNarrative: i['morning_narrative'] as String?,
+          reviewContext: i['review_context'],
+          modelPredictionsContext: i['model_predictions_context'],
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   group('day over day', () {
     test('compute_day_over_day', () {
       for (final c in casesOf('day_over_day.json')) {
@@ -314,6 +345,7 @@ void main() {
       'llm_schema_gemini.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
+      'llm_user_prompt.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'dart:convert';
+
 import '../config.dart';
+import '../dates.dart';
 
 /// System-prompt construction.
 ///
@@ -113,5 +116,98 @@ $secondaryHeadingBlock
 5. WHATSAPP SUMMARY (optional, roadmap item): concise mobile summary under 600 characters, emojis welcome.
 
 Return ONLY valid JSON adhering strictly to the requested schema.
+''';
+}
+
+/// JSON as the user prompt embeds it.
+///
+/// Two-space indent and `default=str` in Python; `JsonEncoder.withIndent('  ')`
+/// with a toEncodable that stringifies anything non-standard is the same
+/// thing. Held to the Python output by `spec/vectors/llm_user_prompt.json` —
+/// the prompt is a byte-for-byte contract, so indentation is behaviour here,
+/// not style.
+String promptJson(Object? value) =>
+    JsonEncoder.withIndent('  ', (o) => o.toString()).convert(value);
+
+/// Per-run user message.
+///
+/// The `*Context` parameters take plain JSON-encodable structures. This
+/// function does not care where they came from, only that they encode —
+/// matching the Python implementation, where the pipeline is what wires
+/// verify/fetch/store output into these parameters.
+///
+/// `yesterdayActual` is what was OBSERVED yesterday, distinct from
+/// `verificationContext`, which is how yesterday's *predictions* scored.
+///
+/// `morningNarrative`, when given, marks this as an evening refresh: the
+/// narrative already published that morning, so the model writes an update
+/// rather than an unrelated repeat.
+String buildUserPrompt({
+  required DateTime today,
+  required DateTime yesterday,
+  required String publicWebpageUrl,
+  required Object? verificationContext,
+  required Object? trackRecordContext,
+  required Object? historicalLogs,
+  required Object? groundAqiReadings,
+  required Object? groundAqiSummary,
+  required Object? yesterdayActual,
+  required Map<String, Object?> todayWeatherData,
+  required String localBulletinSourceName,
+  required String localBulletinText,
+  String? morningNarrative,
+  Object? reviewContext,
+  Object? modelPredictionsContext,
+  int historicalLookbackDaysArg = historicalLookbackDays,
+}) {
+  final morningNarrativeBlock = (morningNarrative == null || morningNarrative.isEmpty)
+      ? ''
+      : '\n\nMORNING NARRATIVE (already published ~6 AM — this refresh should read as an update to it, not a repeat):\n$morningNarrative';
+
+  // Rebuilt key-by-key rather than passed through, so an extra key in the
+  // caller's map can never silently enlarge the prompt.
+  final weatherPayload = {
+    'primary_today_hourly': todayWeatherData['primary_today_hourly'],
+    'primary_extended_daily': todayWeatherData['primary_extended_daily'],
+    'secondary_today_hourly': todayWeatherData['secondary_today_hourly'],
+    'secondary_extended_daily': todayWeatherData['secondary_extended_daily'],
+    'regional_pressure': todayWeatherData['regional_pressure'],
+    'air_quality': todayWeatherData['air_quality'],
+    'airport_metar': todayWeatherData['airport_metar'],
+  };
+
+  return '''
+
+Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Public Webpage: $publicWebpageUrl
+
+PRE-COMPUTED VERIFICATION RESULTS (already scored by code - write ABOUT these, don't recompute):
+${promptJson(verificationContext)}
+
+MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
+${promptJson(trackRecordContext)}
+
+HISTORICAL NOTES (last $historicalLookbackDaysArg days):
+${promptJson(historicalLogs)}
+
+GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
+${groundAqiReadings == null || (groundAqiReadings is List && groundAqiReadings.isEmpty) ? 'Unavailable — no ground station reported data today.' : promptJson(groundAqiReadings)}
+
+GROUND AQI SUMMARY (pre-computed by code — do NOT recompute; state as given if present):
+${groundAqiSummary == null ? 'Not applicable — no station reported a numeric AQI today.' : promptJson(groundAqiSummary)}
+
+DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — do NOT recompute; use high_label / wind_label / rain_contrast as given):
+${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; omit the day-over-day comparison.' : promptJson(yesterdayActual)}
+
+TODAY'S MULTI-MODEL GUIDANCE:
+${promptJson(weatherPayload)}
+
+EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays below; a null field means that model does not forecast it, never zero or "no"):
+${modelPredictionsContext == null ? 'Unavailable this run.' : promptJson(modelPredictionsContext)}
+
+LONG-RUN REVIEW (computed in code over the whole stored record — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):
+${reviewContext == null ? 'Unavailable — no review computed this run.' : promptJson(reviewContext)}
+
+LOCAL BULLETIN ($localBulletinSourceName):
+$localBulletinText$morningNarrativeBlock
 ''';
 }

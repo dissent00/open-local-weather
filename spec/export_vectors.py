@@ -55,7 +55,7 @@ from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_h
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
 from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.llm.prompt import build_system_prompt
+from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     to_gemini_schema,
@@ -574,6 +574,78 @@ def export_llm_schemas() -> None:
 
 
 
+def export_user_prompt() -> None:
+    """The per-run message. Locked verbatim for the same reason as the system
+    prompt, plus one specific to this half: every "Unavailable — ..." string
+    is load-bearing. A missing input must READ as missing, and an
+    implementation that quietly emitted an empty list or "null" instead would
+    invite the model to treat a gap as a measurement."""
+    weather = {
+        "primary_today_hourly": {"hourly": {"time": ["2026-08-19T00:00"], "precipitation_gfs_seamless": [0.4]}},
+        "primary_extended_daily": {"daily": {"time": ["2026-08-19"], "precipitation_sum_gfs_seamless": [2.1]}},
+        "secondary_today_hourly": None,
+        "secondary_extended_daily": None,
+        "regional_pressure": {"points": [{"name": "Kisumu", "mslp": 1012.4}]},
+        "air_quality": {"hourly": {"pm2_5": [18.0]}},
+        "airport_metar": "HKKI 190600Z 09008KT CAVOK 22/17 Q1013",
+        # Present in the caller's map, deliberately absent from the prompt:
+        # the payload is rebuilt key-by-key so a stray key cannot enlarge it.
+        "unexpected_extra_key": "must not appear",
+    }
+    full = {
+        "today": date(2026, 8, 19),
+        "yesterday": date(2026, 8, 18),
+        "public_webpage_url": "https://example.com/",
+        "verification_context": [{"lead_time_days": 0, "per_model_scores": {"gfs_seamless": {"rain_correct": True}}}],
+        "track_record_context": [{"model": "gfs_seamless", "lead_time_days": 0, "rain_pct": 62.5}],
+        "historical_logs": [{"date": "2026-08-18", "rain_expected": "Yes"}],
+        "ground_aqi_readings": [{"name": "Dunga Beach", "aqi": 42}],
+        "ground_aqi_summary": {"lowest": 40, "highest": 55, "worst_station": "Dunga Beach"},
+        "yesterday_actual": {"high_label": "about the same", "rain_contrast": "drier"},
+        "today_weather_data": weather,
+        "local_bulletin_source_name": "Kenya Meteorological Department (KMD)",
+        "local_bulletin_text": "Sunny intervals, light rains expected over few places.",
+        "review_context": {"data_sufficiency": "Day+0: 8 check(s) per model.", "findings": []},
+        "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
+    }
+    refresh = dict(full, morning_narrative="Warm and dry through the morning.")
+    empty = {
+        "today": date(2026, 8, 19),
+        "yesterday": date(2026, 8, 18),
+        "public_webpage_url": "https://example.com/",
+        "verification_context": [],
+        "track_record_context": [],
+        "historical_logs": [],
+        "ground_aqi_readings": [],
+        "ground_aqi_summary": None,
+        "yesterday_actual": None,
+        "today_weather_data": {},
+        "local_bulletin_source_name": "",
+        "local_bulletin_text": "",
+    }
+
+    def case(name, kwargs):
+        return {
+            "name": name,
+            "input": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in kwargs.items()},
+            "expected": build_user_prompt(**kwargs),
+        }
+
+    write(
+        "llm_user_prompt.json",
+        "build_user_prompt",
+        "The full per-run user message, verbatim. Covers a fully-populated "
+        "run, an evening refresh, and a cold start where every optional input "
+        "is absent — the last matters most, because each 'Unavailable' string "
+        "is what stops a gap being read as a measurement.",
+        [
+            case("fully populated", full),
+            case("evening refresh carries the morning narrative", refresh),
+            case("cold start — every optional input absent", empty),
+        ],
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -720,6 +792,7 @@ def main() -> None:
     export_bucketing()
     export_llm_schemas()
     export_system_prompt()
+    export_user_prompt()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 

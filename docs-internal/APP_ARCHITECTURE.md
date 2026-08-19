@@ -181,10 +181,50 @@ crosses over:
 | `publish/pages.py` | 199 | app renders natively; no HTML |
 | `publish/email_gmail.py` | 78 | email stays a server/Apps Script concern |
 | `health_check.py` | 75 | server-side operational check |
-| `fetch/bulletin/*` | 97 | genuinely location-specific scraping; skip in v1 |
+| `fetch/bulletin/*` + met-service parsers | ~600 | location-specific scraping and PDF table extraction; see below |
 
 **~2,400 lines to port. 431 of them are the credibility-critical core**
 (`extract` + `scoring` + `verify/pipeline` + `aqi`).
+
+### Two later additions, and where they land
+
+**`review.py` (weekly review) — ports.** Pure computation over stored
+records, no I/O, and roadmap item 18 requires it in both surfaces:
+"accuracy demonstrably improving over time" is this project's strongest
+differentiator, and an app that couldn't compute its own findings would be
+unable to make the claim its accuracy screen is built around. It also has to
+produce *identical* findings to the server's from identical data, which is
+exactly what the shared vectors exist to guarantee.
+
+**Met-service parsing (`kmd_daily_parse`, `kmd_5day_parse`, the fetchers) —
+does NOT port.** Three reasons, in increasing order of importance:
+
+1. It is PDF table extraction. The Python side leans on pdfplumber; there is
+   no comparable on-device Dart equivalent, and doing it in-app would mean
+   shipping a PDF layout engine to parse a document the server already has.
+2. It is ~600 lines per met service, times ~200 services.
+3. **The decisive one: update latency.** When KMD changes its site layout,
+   a server-side parser is a git push. An in-app parser is an app-store
+   release, and every user's met-service data is silently absent until they
+   update — for the users least likely to update promptly, indefinitely.
+   Fragile scrapers belong where they can be fixed in minutes.
+
+So the met service reaches the app as **data, not code**. Two paths, and the
+second is nearly free given what already exists:
+
+- **Connected mode:** the server sends the already-parsed `ModelPrediction`
+  along with everything else. No app-side work at all.
+- **Standalone mode:** the pipeline already publishes to GitHub Pages, so it
+  can publish a small machine-readable JSON of the day's met-service
+  prediction alongside the HTML. A standalone app fetches a few hundred bytes
+  instead of scraping a PDF, and a fork gets the same for free by running the
+  pipeline it already runs.
+
+If neither is available, the app simply has no met-service model — and that
+degrades honestly with no extra code, because a model with zero verified
+checks is already named and excluded from the confidence figure rather than
+quietly dragging it to zero. That behaviour was built for exactly this shape
+of gap.
 
 ### De-risking the critical 431 lines
 
