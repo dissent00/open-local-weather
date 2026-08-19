@@ -172,3 +172,46 @@ def test_actuals_cache_as_date_dict():
     bucket = {"2026-08-01": DailyActual(rain=True)}
     result = actuals_cache.as_date_dict(bucket)
     assert result == {date(2026, 8, 1): DailyActual(rain=True)}
+
+
+def test_local_bulletin_round_trips_and_is_optional(tmp_path):
+    """Entries written before this field existed must still load — the log is
+    an append-only historical record, so a schema addition that broke old
+    files would break the accuracy history the project's claims rest on."""
+    from datetime import datetime, timezone
+
+    from openlocalweather.models import LocalBulletinRecord
+
+    entry = make_log_entry(date(2026, 8, 19))
+    assert entry.local_bulletin is None, "absent by default"
+
+    entry.local_bulletin = LocalBulletinRecord(
+        source_name="Kenya Meteorological Department (KMD)",
+        text="Occasional rains are expected over the Lake Victoria Basin.",
+        fetched_at_utc=datetime(2026, 8, 19, 3, 7, tzinfo=timezone.utc),
+    )
+    log_store.write_log_entry(tmp_path, entry)
+    loaded = log_store.read_log_entry(tmp_path, date(2026, 8, 19))
+
+    assert loaded.local_bulletin is not None
+    assert loaded.local_bulletin.text == entry.local_bulletin.text
+    assert loaded.local_bulletin.source_name == "Kenya Meteorological Department (KMD)"
+
+
+def test_an_unavailable_bulletin_is_stored_not_dropped(tmp_path):
+    """The "no text could be extracted" case is itself the record of what
+    happened that day. Filtering it at write time would leave a silent hole
+    indistinguishable from a day the fetcher never ran."""
+    from datetime import datetime, timezone
+
+    from openlocalweather.models import LocalBulletinRecord
+
+    entry = make_log_entry(date(2026, 8, 19))
+    entry.local_bulletin = LocalBulletinRecord(
+        source_name="Kenya Meteorological Department (KMD)",
+        text="Kenya Meteorological Department (KMD): PDF fetched but no text could be extracted.",
+        fetched_at_utc=datetime(2026, 8, 19, 3, 7, tzinfo=timezone.utc),
+    )
+    log_store.write_log_entry(tmp_path, entry)
+    loaded = log_store.read_log_entry(tmp_path, date(2026, 8, 19))
+    assert "no text could be extracted" in loaded.local_bulletin.text

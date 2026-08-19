@@ -193,6 +193,34 @@ class MorningIssuanceSnapshot(BaseModel):
     generated_at_utc: datetime
 
 
+class LocalBulletinRecord(BaseModel):
+    """The local met service's own bulletin, stored verbatim as fetched.
+
+    Kept for two reasons. First, auditability: this text materially shapes
+    the day's synthesis, and a record that omits one of its inputs can't
+    honestly claim to be reconstructible.
+
+    Second, and the reason it can't wait: a met service's forecast is a
+    PREDICTION, and predictions are not recoverable after the fact. Actuals
+    can always be re-fetched from the archive, but nobody publishes what
+    Kenya Met said last Tuesday once the week rolls over — their weekly PDF
+    is replaced, not archived per-day. Every run that discards this text
+    destroys the only chance to ever score that forecast. Storing it now
+    means a scoring pass added later can be backfilled across the whole
+    record instead of starting from zero on the day it ships.
+
+    `text` is stored exactly as the fetcher returned it, including the
+    explanatory "unavailable" strings — deliberately NOT normalised or
+    filtered here, because whether a given bulletin is usable is a judgment
+    for the extraction step, and a heuristic applied at write time would
+    silently discard the evidence needed to revisit it.
+    """
+
+    source_name: str
+    text: str
+    fetched_at_utc: datetime
+
+
 class DailyLogEntry(BaseModel):
     """One day's full forecast record — the git-committed equivalent of one
     row in the Apps Script "Forecast Log" sheet, but with model_predictions
@@ -222,6 +250,11 @@ class DailyLogEntry(BaseModel):
 
     model_predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
     verification: VerificationByLead = Field(default_factory=VerificationByLead)
+
+    # The local met service's own words for this day, verbatim. None for
+    # entries written before this was stored, and for locations with no
+    # bulletin source configured.
+    local_bulletin: LocalBulletinRecord | None = None
 
     yesterday_verification_summary: str | None = None
     narrative_markdown: str

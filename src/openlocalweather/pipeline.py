@@ -75,6 +75,7 @@ from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
 from openlocalweather.models import (
+    LocalBulletinRecord,
     DailyLogEntry,
     GroundAQIReading,
     LogEntryMeta,
@@ -420,6 +421,17 @@ def run_daily_pipeline(
         model_predictions=ModelPredictionsByLead(
             day0=day0_predictions, day3=day3_predictions, day7=day7_predictions
         ),
+        # Stored verbatim, and stored even when it says "unavailable" — see
+        # LocalBulletinRecord. A met service's forecast cannot be re-fetched
+        # for a past day once its weekly bulletin is replaced, so a run that
+        # doesn't write this down destroys the only copy there will ever be.
+        local_bulletin=LocalBulletinRecord(
+            source_name=location.local_bulletin_source_name,
+            text=guidance.bulletin_text,
+            fetched_at_utc=datetime.now(timezone.utc),
+        )
+        if location.local_bulletin_source_name
+        else None,
         yesterday_verification_summary=llm_response.yesterday_verification,
         narrative_markdown=llm_response.today_narrative,
         whatsapp_summary=llm_response.whatsapp_summary,
