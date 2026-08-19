@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 // Dev helper: prints the built system prompt for diffing against the vector.
 import 'dart:convert';
 import 'dart:io';

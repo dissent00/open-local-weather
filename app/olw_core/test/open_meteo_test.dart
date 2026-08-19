@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Fetch-layer tests using a mocked HTTP client — no network, deterministic,
 /// the Dart counterpart to the Python suite's requests-mock tests.
 ///

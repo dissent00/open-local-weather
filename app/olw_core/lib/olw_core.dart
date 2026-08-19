@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Deterministic forecast core for Open Local Weather.
 ///
 /// This is a port of the Python package's correctness-critical logic:

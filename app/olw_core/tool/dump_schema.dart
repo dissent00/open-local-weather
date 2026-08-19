@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 // Dev helper: prints the declared schemas so they can be diffed against the
 // Python-generated vectors. Not part of the library or its tests.
 import 'dart:convert';

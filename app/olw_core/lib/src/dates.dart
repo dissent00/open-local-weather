@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Date arithmetic, isolated for the same reason as the Python `dates.py`:
 /// off-by-one lead-time math is exactly the kind of thing that is trivial to
 /// get subtly wrong and expensive to notice.

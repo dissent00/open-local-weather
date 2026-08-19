@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// The structured-output contract: what the LLM must return, and the two
 /// provider dialects that contract is expressed in.
 ///

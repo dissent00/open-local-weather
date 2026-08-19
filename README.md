@@ -147,18 +147,32 @@ A weekly health check (`.github/workflows/health_check.yml`) watches for
 Gemini model deprecation and repo-inactivity risk — see
 [`health_check.py`](src/openlocalweather/health_check.py).
 
-## License
+## Licensing
 
-GNU Affero General Public License v3.0 or later — see [LICENSE](LICENSE).
+This repository is **not uniformly licensed**, deliberately:
 
-AGPL rather than a permissive licence on purpose: this project exists so
-that places underserved by professional meteorology can run their own
-forecasting. If you improve it and run it as a public service, those
-improvements should come back to everyone who might benefit — including
-people running it somewhere you'll never visit. Running a modified version
-over a network counts as distribution under the AGPL, which a plain GPL
-would not cover.
+| Part | Licence |
+|---|---|
+| The Python pipeline (`src/`), docs, config, workflows | **AGPLv3-or-later** |
+| The Dart forecast core (`app/olw_core/`) | **Apache-2.0** |
 
-Forking it for your own town and keeping it to yourself is entirely fine;
-the copyleft only bites if you distribute or publicly host a *modified*
-version.
+**Why AGPL for the pipeline.** This project exists so that places underserved
+by professional meteorology can run their own forecasting. If you improve it
+and run it as a public service, those improvements should reach everyone who
+might benefit — including people somewhere you'll never visit. Running a
+modified version over a network counts as distribution under the AGPL, which a
+plain GPL would not cover. Forking it for your own town and keeping it to
+yourself is entirely fine; the copyleft only bites on distributing or publicly
+hosting a *modified* version.
+
+**Why Apache-2.0 for `app/olw_core/`.** That package is a Dart port of the same
+math already published here in Python, so restricting it would protect nothing
+that isn't open already, while making honest reuse harder. A permissive licence
+also lets the core stay genuinely shared between this project and the
+maintainer's separate mobile app rather than forking into divergent copies.
+See [`app/olw_core/README.md`](app/olw_core/README.md).
+
+Full texts: [LICENSE](LICENSE) (AGPLv3) and
+[app/olw_core/LICENSE](app/olw_core/LICENSE) (Apache-2.0). Individual Dart
+files carry an `SPDX-License-Identifier` header so the boundary is
+unambiguous per file.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Data classes mirroring the Python `models.py` shapes.
 ///
 /// `fromJson`/`toJson` deliberately use the same field names as the committed

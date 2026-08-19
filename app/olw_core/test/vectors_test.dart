@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Holds this Dart port to the exact behaviour of the Python implementation,
 /// using the shared vectors in `spec/vectors/`.
 ///

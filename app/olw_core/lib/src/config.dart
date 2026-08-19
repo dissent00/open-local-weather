@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Minimal location configuration — the fields the forecast logic actually
 /// reads. Mirrors the Python `config.py` shape but only as far as the port
 /// currently needs; the app's settings screen will grow this.

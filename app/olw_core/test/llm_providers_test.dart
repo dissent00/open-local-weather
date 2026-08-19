@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 /// Provider tests against a mocked HTTP client — the Dart counterparts of
 /// tests/test_gemini_provider.py, test_anthropic_provider.py and
 /// test_openai_provider.py.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 dissent00
 import 'models.dart';
 import 'scoring.dart' show mean;
 
