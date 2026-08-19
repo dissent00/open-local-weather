@@ -102,3 +102,33 @@ TEMP_CHANGE_BANDS_C = [
 
 # Gust change below this is not worth remarking on.
 WIND_CHANGE_THRESHOLD_KMH = 8.0
+
+# --- Weekly review (see review.py) ---
+#
+# How many verified checks a claim needs before it may be stated, and how
+# strongly. Deliberately conservative: the README already warns that
+# accuracy is meaningless below ~10 checks, and a review that spoke
+# confidently off five days would be exactly the "unverified claim hardens
+# into received wisdom" failure the review exists to prevent.
+# Ordered (upper_bound_exclusive, label).
+REVIEW_CONFIDENCE_BANDS = [
+    (5, "insufficient"),
+    (10, "provisional"),
+    (30, "usable"),
+    (10**9, "established"),
+]
+
+# A comparative claim ("model X beats model Y here") needs BOTH models at
+# this many checks, and a gap wider than the sampling noise below.
+REVIEW_MIN_CHECKS_FOR_COMPARISON = 10
+
+# Minimum percentage-point gap between two models before the difference is
+# worth asserting. Same reasoning as TREND_THRESHOLD_PCT: at n=10 a binary
+# hit rate carries ~15 points of binomial noise on its own, so anything
+# narrower is indistinguishable from chance.
+REVIEW_COMPARISON_MIN_GAP_PCT = 15.0
+
+# Mean signed error large enough to call a systematic bias rather than
+# scatter. Roughly the point where a forecast user would notice.
+REVIEW_TEMP_BIAS_THRESHOLD_C = 1.0
+REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0

@@ -141,6 +141,36 @@ def rescore_rolling_window(
 
 
 
+def collect_scores(
+    model: str,
+    lead_time_days: int,
+    yesterday: date,
+    earliest_target_date: date,
+    log_lookup: LogLookup,
+    actuals: dict[date, DailyActual],
+) -> list[tuple[date, VerificationScore]]:
+    """Every scoreable check for one (model, lead time), newest first.
+
+    The shared walk behind both rescore_all_time (which only needs counts)
+    and the weekly review (which needs the individual scores, to compute
+    bias and to see how skill moved over time rather than just its
+    average).
+    """
+    scored: list[tuple[date, VerificationScore]] = []
+    cursor = yesterday
+    while cursor >= earliest_target_date:
+        entry = log_lookup(prediction_row_date_for_target(cursor, lead_time_days))
+        actual = actuals.get(cursor)
+        if entry is not None and actual is not None:
+            score = score_prediction(
+                predictions_by_model(entry, lead_time_days).get(model), actual, lead_time_days
+            )
+            if score is not None:
+                scored.append((cursor, score))
+        cursor = add_days(cursor, -1)
+    return scored
+
+
 @dataclass
 class AllTimeResult:
     checks: int
@@ -180,26 +210,12 @@ def rescore_all_time(
     against a short actuals window would silently shrink all-time rather
     than fail.
     """
-    checks = 0
-    correct = 0
-    earliest_scored: date | None = None
-    latest_scored: date | None = None
-
-    cursor = yesterday
-    while cursor >= earliest_target_date:
-        row_date = prediction_row_date_for_target(cursor, lead_time_days)
-        entry = log_lookup(row_date)
-        actual = actuals.get(cursor)
-        if entry is not None and actual is not None:
-            score = score_prediction(predictions_by_model(entry, lead_time_days).get(model), actual, lead_time_days)
-            if score is not None:
-                checks += 1
-                if score.rain_correct:
-                    correct += 1
-                if latest_scored is None:
-                    latest_scored = cursor
-                earliest_scored = cursor
-        cursor = add_days(cursor, -1)
+    scored = collect_scores(model, lead_time_days, yesterday, earliest_target_date, log_lookup, actuals)
+    checks = len(scored)
+    correct = sum(1 for _, s in scored if s.rain_correct)
+    # collect_scores walks backward, so the first entry is the most recent.
+    latest_scored = scored[0][0] if scored else None
+    earliest_scored = scored[-1][0] if scored else None
 
     return AllTimeResult(
         checks=checks,
