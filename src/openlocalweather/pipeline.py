@@ -61,6 +61,7 @@ from openlocalweather.defaults import (
     HISTORICAL_LOOKBACK_DAYS,
     MODELS,
     WEEKLY_BATCH_WEEKDAY,
+    scored_models,
 )
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
@@ -154,6 +155,12 @@ class ForwardGuidance:
     ground_aqi_summary: GroundAQISummary | None
     aqi_fetch_time: datetime
     bulletin_text: str
+    # Structured half of the same bulletin fetch, when the source supports
+    # it (see fetch/bulletin/kenya_kmd_daily). None for a met service whose
+    # bulletin can't be decoded, which must leave scoring untouched rather
+    # than inserting a blank model into the record.
+    met_service_prediction: ModelPrediction | None = None
+    met_service_valid_for: date | None = None
 
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
@@ -186,7 +193,21 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     aqi_fetch_time = datetime.now(timezone.utc)
     ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
     ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
-    bulletin_text = deps.bulletin_fetcher.fetch()
+    # A fetcher that can also yield a structured prediction exposes
+    # fetch_forecast(); the plain BulletinFetcher protocol does not. Duck-typed
+    # rather than added to the Protocol so existing fork implementations keep
+    # working untouched — a met service whose bulletin can't be decoded simply
+    # contributes narrative text, exactly as before.
+    met_prediction = None
+    met_valid_for = None
+    fetch_forecast = getattr(deps.bulletin_fetcher, "fetch_forecast", None)
+    if callable(fetch_forecast):
+        met_forecast = fetch_forecast()
+        bulletin_text = met_forecast.text
+        met_prediction = met_forecast.prediction
+        met_valid_for = met_forecast.valid_for
+    else:
+        bulletin_text = deps.bulletin_fetcher.fetch()
 
     return ForwardGuidance(
         primary_hourly=primary_hourly,
@@ -200,6 +221,8 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         ground_aqi_summary=ground_aqi_summary,
         aqi_fetch_time=aqi_fetch_time,
         bulletin_text=bulletin_text,
+        met_service_prediction=met_prediction,
+        met_service_valid_for=met_valid_for,
     )
 
 
@@ -315,6 +338,7 @@ def run_daily_pipeline(
         actuals_primary=actuals_primary,
         today=today,
         yesterday=yesterday,
+        models=scored_models(location.local_bulletin_model_id),
     )
 
     # --- Step 4: historical notes context for the LLM ---
@@ -345,6 +369,18 @@ def run_daily_pipeline(
     # as "about 1°C cooler": a ten-fold overstatement of the one sentence
     # most readers actually act on. See comparison.py.
     day_over_day = compute_day_over_day(actuals_primary.get(yesterday), day0_predictions)
+    # The local met service's own forecast, scored as another model. Its
+    # prediction comes from the same bulletin fetch that already happened for
+    # the narrative, so this costs no additional request — and it is decoded
+    # in code, so it costs no LLM call either. Only accepted when the
+    # bulletin says it is valid for TODAY: KMD issues at ~3pm for the
+    # following day, so a run finding yesterday's bulletin still current
+    # would otherwise score it against the wrong day's weather.
+    met_prediction = getattr(guidance, "met_service_prediction", None)
+    met_valid_for = getattr(guidance, "met_service_valid_for", None)
+    if met_prediction is not None and met_valid_for == today:
+        day0_predictions = [*day0_predictions, met_prediction]
+
     day3_predictions = extract_day_n_predictions_from_daily(primary_daily, 3, MODELS)
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
@@ -370,6 +406,7 @@ def run_daily_pipeline(
             actuals=actuals_primary,
             all_log_dates=log_store.list_log_dates(deps.data_dir),
             today=today,
+            models=scored_models(location.local_bulletin_model_id),
         )
     )
     user_prompt = build_user_prompt(

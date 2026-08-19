@@ -18,9 +18,11 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
+from openlocalweather.defaults import scored_models
 from openlocalweather.dates import today_in_tz
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
+from openlocalweather.fetch.bulletin.kenya_kmd_daily import KenyaKMDDailyFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
 from openlocalweather.llm.anthropic import DEFAULT_BASE_URL as DEFAULT_ANTHROPIC_BASE_URL
@@ -88,9 +90,19 @@ def _github_repo_slug() -> str:
     return ""
 
 
-def _build_bulletin_fetcher(local_bulletin_url: str) -> BulletinFetcher:
+def _build_bulletin_fetcher(location) -> BulletinFetcher:
+    local_bulletin_url = location.local_bulletin_url
     if not local_bulletin_url:
         return NullBulletinFetcher()
+    # KMD's daily forecast additionally yields a scoreable prediction — see
+    # fetch/bulletin/kenya_kmd_daily. Selected on the URL here rather than
+    # auto-detected, matching how the weekly fetcher is wired.
+    if "daily-forecast" in local_bulletin_url:
+        return KenyaKMDDailyFetcher(
+            local_bulletin_url,
+            area_name=location.local_bulletin_area_name,
+            model_id=location.local_bulletin_model_id,
+        )
     # This repo currently ships exactly one reference bulletin
     # implementation (Kenya Meteorological Department). A fork with a
     # different local met service should replace this wiring with its own
@@ -200,6 +212,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
                 actuals=as_date_dict(read_actuals_cache(data_path).primary),
                 all_log_dates=list_log_dates(data_path),
                 today=today_in_tz(location.timezone),
+                models=scored_models(location.local_bulletin_model_id),
             ),
         )
 
@@ -225,7 +238,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         llm_provider=llm_provider,
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
-        bulletin_fetcher=_build_bulletin_fetcher(location.local_bulletin_url),
+        bulletin_fetcher=_build_bulletin_fetcher(location),
         publisher=publisher,
         email_sender=email_sender,
     )

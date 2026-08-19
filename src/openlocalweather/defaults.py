@@ -20,6 +20,26 @@ MODELS: list[str] = [
     "best_match",
 ]
 
+# NOTE: MODELS is the list of OPEN-METEO models — it is what gets sent in
+# the `models=` API parameter, so nothing may be added here that Open-Meteo
+# cannot serve. The set of models that carry a TRACK RECORD is a superset:
+# a local met service is scored alongside these but is fetched from its own
+# bulletin, not from Open-Meteo. Use scored_models() wherever the question
+# is "who has a skill record", and MODELS only where the question is "what
+# do we ask Open-Meteo for".
+
+
+def scored_models(local_bulletin_model_id: str = "") -> list[str]:
+    """Every model with a tracked skill record, met service included.
+
+    Kept a function rather than a second constant because whether a local
+    met service participates is per-location config, not a global fact —
+    and a fork with no parseable bulletin must produce exactly the previous
+    list, so its track record and accuracy page are unchanged.
+    """
+    return [*MODELS, local_bulletin_model_id] if local_bulletin_model_id else list(MODELS)
+
+
 # Which lead times get independently tracked and scored. Day+0 is verified
 # against hourly data (has onset timing); Day+3/Day+7 are verified against
 # daily aggregates only (no onset timing available at that range, by design,

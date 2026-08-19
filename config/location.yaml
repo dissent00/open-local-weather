@@ -48,5 +48,14 @@ location:
     - name: "Dunga Beach"
       station_id: "A418504"
 
-  local_bulletin_url: "https://meteo.go.ke/our-products/7-days-forecast/"
+  # KMD's DAILY forecast, not the weekly one. Issued ~3pm for 9pm-to-9pm the
+  # following day, so it is a genuine Day+0 prediction that can be scored
+  # against the numerical models on equal terms. The weekly bulletin's entry
+  # for a given day can be up to six days stale, and its PDF is periodically
+  # published as scanned images with no extractable text.
+  local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   local_bulletin_source_name: "Kenya Meteorological Department (KMD)"
+  # The county KMD indexes this location under, and the name its skill is
+  # tracked under on the accuracy page.
+  local_bulletin_area_name: "Kisumu"
+  local_bulletin_model_id: "kenya_met"

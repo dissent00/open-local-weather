@@ -57,6 +57,17 @@ class LocationConfig(BaseModel):
     local_bulletin_url: str = ""
     local_bulletin_source_name: str = ""
 
+    # The met service's own name for the administrative area this location
+    # sits in — the key its bulletin is indexed by ("Kisumu" county for
+    # Kisumu city). Empty disables met-service scoring while leaving the
+    # bulletin text itself untouched, so a fork whose met service publishes
+    # unparseable bulletins still gets the narrative context.
+    local_bulletin_area_name: str = ""
+    # Model id the met service is scored under, alongside gfs_seamless and
+    # the rest. Kept configurable so a fork's accuracy page names its own
+    # service rather than Kenya's.
+    local_bulletin_model_id: str = "local_met_service"
+
 
 def load_location_config(path: str | Path) -> LocationConfig:
     """Load and validate a location.yaml file.
