@@ -1435,6 +1435,92 @@ cannot.
 
 ---
 
+## 20. Historical backfill for cold start — measured, with a real catch · **Planned**
+
+### The problem it solves
+
+Accuracy statistics need roughly 10 verified checks per model per lead time
+before they mean anything, and a weekly review needs several weeks. For this
+deployment that was a one-off phase. For the **app it is the permanent
+default**: every new user in every new location starts at zero, so at any
+moment most users are inside the useless window — and the accuracy screen is
+supposed to be the product's differentiator.
+
+### What was confirmed
+
+**Open-Meteo archives past FORECASTS, not just past observations**
+(`historical-forecast-api.open-meteo.com`), using the same
+`{variable}_{model}` field naming the existing extractor already parses.
+Verified live: an hourly multi-model request for a past date returns 24 hours
+across all five models, in exactly the shape
+`extract_day0_predictions_from_hourly` expects.
+
+So a brand-new location *can* arrive with a verified track record on day one
+instead of after months.
+
+**Not available:** lead-time-specific archived forecasts. `previous_dayN`
+variables were rejected by the API, so backfill covers **Day+0 only** —
+Day+3/Day+7 still have to accumulate in real time. Worth another look; the
+feature may exist under different naming or for hourly variables only.
+
+### The catch, measured against this deployment's own record
+
+Backfilling the 8 days we have real recorded predictions for, and scoring both
+against the same actuals:
+
+| | Live (what the pipeline actually ran) | Backfilled |
+|---|---|---|
+| gfs_seamless | 5/8 (62%) | 6/8 (75%) |
+| ecmwf_ifs025 | 4/8 (50%) | 6/8 (75%) |
+| icon_seamless | 5/8 (62%) | 6/8 (75%) |
+| ukmo_seamless | 6/8 (75%) | 6/8 (75%) |
+| best_match | 7/8 (88%) | 7/8 (88%) |
+| **all models** | **27/40 (68%)** | **31/40 (78%)** |
+
+**Backfilled skill reads ~10 percentage points optimistic.** Temperatures
+match almost exactly (mean difference -0.12C) but rain calls diverge 16% of
+the time and onset timing agrees only 4/14 — the signature of a *fresher model
+run*. The morning pipeline runs at 03:07 UTC on the previous day's 18z cycle;
+the archive stores the most recent run for that date, which is later and
+genuinely better informed. That gap cannot be closed without abandoning the
+morning delivery slot, since the ~8h model-availability floor is hard (item 1).
+
+Caveat on the number itself: n=40 checks. The *direction* is solid — four of
+five models improved, none got worse — but the exact magnitude needs more days
+before being quoted as fact.
+
+### Why this cannot simply be mixed in
+
+A user who backfills at 78% and then accumulates live data at 68% would watch
+their track record decay for purely methodological reasons. Worse, the
+`rain_pct_trend` detector (item shipped earlier) would read that as a genuine
+"declining" trend, and the system prompt explicitly instructs the LLM to name a
+declining trend and lower its confidence. The result would be a **manufactured
+false signal**, which is precisely the failure this project's honesty rules
+exist to prevent.
+
+### Design, if built
+
+Backfilled checks are kept in a **separate bucket**, never merged into
+`all_time_*` or the rolling windows:
+
+- surfaced as a clearly-labelled *baseline*, with the methodology difference
+  stated ("uses fresher model runs than this deployment can, and reads
+  optimistic by roughly ten points")
+- never fed to `compute_rain_pct_trend`, so the backfill/live boundary cannot
+  masquerade as a trend
+- live data takes precedence as it accumulates; the baseline is context, not
+  a substitute
+- the same treatment serves a new open-source fork, which has an identical
+  cold start
+
+Open question worth settling before building: is a systematically optimistic
+baseline more useful than an honest "not enough data yet"? It is genuinely
+arguable either way, and this project's usual answer is to prefer the honest
+gap.
+
+---
+
 ## Completed
 
 - Multi-model fetch + synthesis pipeline, git-as-database, GitHub Pages
