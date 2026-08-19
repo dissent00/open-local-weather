@@ -59,9 +59,18 @@ def make_log_lookup(data_dir: str | Path):
     verify/scoring.py and verify/pipeline.py expect — keeps those functions
     decoupled from the filesystem so they're testable with an in-memory dict
     instead.
+
+    Memoized: all-time re-derivation walks the whole record once per
+    (model, lead time) pair — 15 passes at this project's defaults — so an
+    unmemoized lookup would re-read and re-parse every log file 15 times.
+    The cache lives only as long as the returned callable, i.e. one run, so
+    it cannot serve stale data across runs.
     """
+    cache: dict[date, DailyLogEntry | None] = {}
 
     def _lookup(d: date) -> DailyLogEntry | None:
-        return read_log_entry(data_dir, d)
+        if d not in cache:
+            cache[d] = read_log_entry(data_dir, d)
+        return cache[d]
 
     return _lookup

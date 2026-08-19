@@ -6,8 +6,11 @@ For each tracked lead time k:
     (see `newly_verified`) — this module has no file I/O of its own.
   - Recompute rolling 10/30-check stats per model at that lead time,
     statelessly (see verify.scoring.rescore_rolling_window).
-  - Increment all-time checks/correct — the one piece of state that is
-    genuinely carried forward, not re-derived (see models.TrackRecordEntry).
+  - Re-derive all-time checks/correct by walking the WHOLE stored record.
+    Formerly an incremental counter — the one number here that could not be
+    recomputed from the record. Open-Meteo revises recent observations, so
+    incrementing baked provisional verdicts in permanently; deriving
+    self-heals exactly as the rolling windows do.
 
 Ports runDeterministicVerificationAndScoring() from
 KisumuForecastPipeline_v2.gs. Note names differ slightly for Python
@@ -17,6 +20,7 @@ readability but the logic and field semantics are a direct port.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import sys
 from datetime import date, datetime, timezone
 
 from openlocalweather.dates import prediction_row_date_for_target
@@ -34,6 +38,7 @@ from openlocalweather.verify.scoring import (
     LogLookup,
     compute_rain_pct_trend,
     predictions_by_model,
+    rescore_all_time,
     rescore_rolling_window,
     score_prediction,
 )
@@ -69,10 +74,17 @@ def run_deterministic_verification_and_scoring(
     lead_times_days: list[int] = LEAD_TIMES_DAYS,
     window_short: int = ROLLING_WINDOW_SHORT,
     window_long: int = ROLLING_WINDOW_LONG,
+    earliest_log_date: date | None = None,
 ) -> VerificationRunResult:
     entries_by_key: dict[tuple[str, int], TrackRecordEntry] = {
         (e.model, e.lead_time_days): e.model_copy(deep=True) for e in prior_track_record.entries
     }
+
+    # How far back the all-time walk reaches. Defaults to the oldest actual
+    # we hold when the caller doesn't say, which is correct but only as
+    # complete as the actuals cache — pipeline.py ties that retention to the
+    # log history precisely so this covers everything.
+    all_time_start = earliest_log_date or (min(actuals_primary) if actuals_primary else yesterday)
 
     yesterday_actual = actuals_primary.get(yesterday)
     lead_time_results: list[LeadTimeResult] = []
@@ -110,24 +122,40 @@ def run_deterministic_verification_and_scoring(
             if track_entry is None:
                 track_entry = TrackRecordEntry(model=model, lead_time_days=k)
 
-            # All-time counters are the ONE piece of state that is carried
-            # forward rather than re-derived, so a double-count is permanent
-            # — it never washes out the way the rolling windows do. Guard
-            # against counting the same target date twice, which happens
-            # whenever the pipeline runs more than once against the same
-            # yesterday (manual workflow_dispatch, a retry, or a second
-            # scheduled run later the same day).
+            # All-time is RE-DERIVED from the whole record, not carried
+            # forward. Open-Meteo revises recent observations (confirmed
+            # live: a day served as "rain, 29.6C" at 06:07 came back as "no
+            # rain, 30.5C" hours later), and an incremental counter bakes
+            # the provisional verdict in permanently. Re-derivation
+            # self-heals exactly as the rolling windows already do, and
+            # makes double-counting structurally impossible rather than
+            # something a guard has to catch.
             new_check = per_model_scores.get(model)
-            already_counted = track_entry.last_verified_target_date == yesterday
-            count_this_run = new_check is not None and not already_counted
+            all_time = rescore_all_time(
+                model, k, yesterday, all_time_start, log_lookup, actuals_primary
+            )
+            new_all_time_checks = all_time.checks
+            new_all_time_correct = all_time.correct
+            all_time_pct = all_time.pct
 
-            new_all_time_checks = track_entry.all_time_checks + (1 if count_this_run else 0)
-            new_all_time_correct = track_entry.all_time_correct + (
-                1 if (count_this_run and new_check.rain_correct) else 0
-            )
-            all_time_pct = (
-                100 * new_all_time_correct / new_all_time_checks if new_all_time_checks > 0 else None
-            )
+            # Safety rail. A derivation covering FEWER checks than last time
+            # means actuals are missing for dates we hold predictions for —
+            # a data problem to surface, never a smaller number to quietly
+            # publish. Keep the previous figures and say so loudly.
+            if new_all_time_checks < track_entry.all_time_checks:
+                print(
+                    f"WARNING: all-time re-derivation for {model} lead+{k} found "
+                    f"{new_all_time_checks} checks but {track_entry.all_time_checks} were "
+                    "recorded previously — actuals are probably missing for dates that "
+                    "have predictions. Keeping the previous figures; investigate the "
+                    "actuals cache rather than trusting the smaller number.",
+                    file=sys.stderr,
+                )
+                new_all_time_checks = track_entry.all_time_checks
+                new_all_time_correct = track_entry.all_time_correct
+                all_time_pct = track_entry.all_time_rain_pct
+            else:
+                track_entry.all_time_earliest_target_date = all_time.earliest_target_date
 
             track_entry.rolling_10_rain_pct = short.rain_pct
             track_entry.rolling_30_rain_pct = long.rain_pct
@@ -151,7 +179,10 @@ def run_deterministic_verification_and_scoring(
             track_entry.avg_mslp_trend_error_hpa_10 = short.mslp_err
             track_entry.checks_in_window_10 = short.checks_found
             track_entry.last_updated = today
-            if count_this_run:
+            # No longer load-bearing for correctness (re-derivation cannot
+            # double-count), but still a useful record of when this pair
+            # last produced a fresh check.
+            if new_check is not None:
                 track_entry.last_verified_target_date = yesterday
             # skill_profile_summary / notes are intentionally left untouched
             # here — they're LLM-written qualitative text, filled in on a

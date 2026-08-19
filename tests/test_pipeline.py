@@ -172,32 +172,131 @@ def test_no_verification_when_no_row_at_target_date():
     assert result.newly_verified == []
 
 
-def test_all_time_checks_increment_by_at_most_one_per_run():
+def test_all_time_is_derived_from_the_whole_record_not_carried_forward():
+    """All-time used to be an incremental counter — the one number here that
+    could not be recomputed from the record. Open-Meteo revises recent
+    observations, so an incremental count bakes provisional verdicts in
+    permanently. It is now re-derived by walking every stored prediction."""
+    today = date(2026, 8, 11)
+    yesterday = date(2026, 8, 10)
+    # Three consecutive scoreable days: two correct calls, one miss.
+    logs, actuals = {}, {}
+    for offset, (predicted_rain, actual_rain) in enumerate(
+        [(True, True), (True, False), (False, False)]
+    ):
+        d = yesterday - timedelta(days=offset)
+        logs[d] = log_entry(d, day0=[prediction(model="gfs_seamless", rain=predicted_rain)])
+        actuals[d] = actual(rain=actual_rain)
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=[0],
+        earliest_log_date=min(logs),
+    )
+
+    entry = result.updated_track_record.get("gfs_seamless", 0)
+    assert entry.all_time_checks == 3
+    assert entry.all_time_correct == 2
+    assert entry.all_time_rain_pct == pytest.approx(100 * 2 / 3)
+    # Coverage is recorded so a thin history can't masquerade as a long one.
+    assert entry.all_time_earliest_target_date == min(logs)
+
+
+def test_all_time_is_idempotent_across_repeated_runs():
+    """Stronger than the old "doesn't double-count" guarantee: running the
+    same day any number of times produces the identical figure, because
+    nothing is accumulated. The last_verified_target_date guard existed
+    solely to paper over the incremental version of this."""
     today = date(2026, 8, 11)
     yesterday = date(2026, 8, 10)
     logs = {yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", rain=True)])}
     actuals = {yesterday: actual(rain=True)}
+
+    counts = []
+    track = empty_track_record()
+    for _ in range(3):
+        result = run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=track,
+            actuals_primary=actuals,
+            today=today,
+            yesterday=yesterday,
+            models=MODELS,
+            lead_times_days=[0],
+            earliest_log_date=yesterday,
+        )
+        track = result.updated_track_record
+        counts.append(track.get("gfs_seamless", 0).all_time_checks)
+
+    assert counts == [1, 1, 1]
+
+
+def test_all_time_self_heals_when_an_observation_is_revised():
+    """The bug this whole change exists for. A day scored "correct" against
+    provisional data must flip to incorrect once the observation is revised
+    — an incremental counter would have kept the stale verdict forever."""
+    today = date(2026, 8, 11)
+    yesterday = date(2026, 8, 10)
+    logs = {yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", rain=True)])}
+
+    def run(actuals, prior):
+        return run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=prior,
+            actuals_primary=actuals,
+            today=today,
+            yesterday=yesterday,
+            models=MODELS,
+            lead_times_days=[0],
+            earliest_log_date=yesterday,
+        ).updated_track_record
+
+    # Provisional: it rained, so the "rain" call scores correct.
+    provisional = run({yesterday: actual(rain=True)}, empty_track_record())
+    assert provisional.get("gfs_seamless", 0).all_time_correct == 1
+
+    # Revised: it did not rain after all. Same check count, now zero correct.
+    revised = run({yesterday: actual(rain=False)}, provisional)
+    assert revised.get("gfs_seamless", 0).all_time_checks == 1
+    assert revised.get("gfs_seamless", 0).all_time_correct == 0
+    assert revised.get("gfs_seamless", 0).all_time_rain_pct == 0.0
+
+
+def test_all_time_never_silently_shrinks_when_actuals_are_missing(capsys):
+    """A derivation covering fewer checks than before means actuals are
+    missing for dates we hold predictions for — a data problem to surface,
+    not a smaller headline number to quietly publish."""
+    today = date(2026, 8, 11)
+    yesterday = date(2026, 8, 10)
+    logs = {yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", rain=True)])}
 
     prior = empty_track_record()
     for e in prior.entries:
         if e.model == "gfs_seamless" and e.lead_time_days == 0:
             e.all_time_checks = 41
             e.all_time_correct = 30
+            e.all_time_rain_pct = 100 * 30 / 41
 
     result = run_deterministic_verification_and_scoring(
         log_lookup=lambda d: logs.get(d),
         prior_track_record=prior,
-        actuals_primary=actuals,
+        actuals_primary={yesterday: actual(rain=True)},  # only ONE day of actuals
         today=today,
         yesterday=yesterday,
         models=MODELS,
-        lead_times_days=LEAD_TIMES,
+        lead_times_days=[0],
+        earliest_log_date=yesterday,
     )
 
     entry = result.updated_track_record.get("gfs_seamless", 0)
-    assert entry.all_time_checks == 42  # +1, not recomputed from scratch
-    assert entry.all_time_correct == 31
-    assert entry.all_time_rain_pct == pytest.approx(100 * 31 / 42)
+    assert entry.all_time_checks == 41, "must not shrink to the derivable count"
+    assert entry.all_time_correct == 30
+    assert "WARNING" in capsys.readouterr().err
 
 
 def test_all_time_checks_unchanged_when_nothing_new_scored():

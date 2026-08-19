@@ -140,6 +140,76 @@ def rescore_rolling_window(
     )
 
 
+
+@dataclass
+class AllTimeResult:
+    checks: int
+    correct: int
+    pct: float | None
+    earliest_target_date: date | None
+    latest_target_date: date | None
+
+
+def rescore_all_time(
+    model: str,
+    lead_time_days: int,
+    yesterday: date,
+    earliest_target_date: date,
+    log_lookup: LogLookup,
+    actuals: dict[date, DailyActual],
+) -> AllTimeResult:
+    """Re-derives all-time checks/correct for one (model, lead time) by
+    walking the ENTIRE stored record, rather than carrying a running total.
+
+    Why this replaced an incremental counter. Open-Meteo revises recent
+    observations: a day fetched at 06:07 as "rain, 29.6C high" was served
+    hours later as "no rain, 30.5C high" — confirmed live, not theorised.
+    An incremental counter bakes the provisional verdict in permanently,
+    making all-time the one number in this project that cannot be
+    recomputed from the record and therefore has to be trusted rather than
+    verified. That cuts directly against the git-as-auditable-database
+    premise.
+
+    Re-derivation also makes an entire bug class impossible rather than
+    guarded against: `last_verified_target_date` existed solely to stop the
+    old counter double-counting when a day ran twice.
+
+    The caller MUST pass an `earliest_target_date` covering the whole
+    record and ensure `actuals` spans it — see pipeline.py, where actuals
+    retention is tied to the log history for exactly this reason. Deriving
+    against a short actuals window would silently shrink all-time rather
+    than fail.
+    """
+    checks = 0
+    correct = 0
+    earliest_scored: date | None = None
+    latest_scored: date | None = None
+
+    cursor = yesterday
+    while cursor >= earliest_target_date:
+        row_date = prediction_row_date_for_target(cursor, lead_time_days)
+        entry = log_lookup(row_date)
+        actual = actuals.get(cursor)
+        if entry is not None and actual is not None:
+            score = score_prediction(predictions_by_model(entry, lead_time_days).get(model), actual, lead_time_days)
+            if score is not None:
+                checks += 1
+                if score.rain_correct:
+                    correct += 1
+                if latest_scored is None:
+                    latest_scored = cursor
+                earliest_scored = cursor
+        cursor = add_days(cursor, -1)
+
+    return AllTimeResult(
+        checks=checks,
+        correct=correct,
+        pct=(100 * correct / checks) if checks else None,
+        earliest_target_date=earliest_scored,
+        latest_target_date=latest_scored,
+    )
+
+
 def compute_rain_pct_trend(
     rolling_10_rain_pct: float | None,
     rolling_30_rain_pct: float | None,

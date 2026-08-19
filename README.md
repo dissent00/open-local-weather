@@ -85,11 +85,15 @@ overwrites it every run.)
   for a documented template. Local met-bulletin scraping is inherently
   location-specific (the shipped example is written for Kenya's KMD) and is
   designed to be a modular, swappable, skip-gracefully-if-unconfigured piece.
-- **Stateless, self-correcting rolling stats.** Rather than maintaining
-  fragile running totals, each run re-derives rolling-window scores from
-  scratch off stored raw predictions and freshly fetched actuals. Only
-  all-time check/correct counts are incremental — everything else
-  self-heals.
+- **Stateless, self-correcting statistics — all of them.** Rather than
+  maintaining fragile running totals, each run re-derives every accuracy
+  figure from scratch off the stored raw predictions and freshly fetched
+  actuals. That includes the all-time counts, which were the last
+  incremental holdout until it was confirmed that the weather archive
+  revises recent observations — meaning an incremental counter would
+  permanently keep a verdict its own source data had since retracted. Every
+  published number is recomputable from the committed record, which is what
+  makes the auditability claim real rather than rhetorical.
 
 ## Known, permanent limitations
 

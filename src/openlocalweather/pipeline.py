@@ -230,7 +230,15 @@ def run_daily_pipeline(
     # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
     cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
     if today.weekday() == WEEKLY_BATCH_WEEKDAY:
-        batch_start = add_days(today, -ACTUALS_BATCH_LOOKBACK_DAYS)
+        # Full span, not a fixed 40 days: Open-Meteo revises recent
+        # observations, so a bounded re-fetch would leave older revisions
+        # permanently unapplied to the all-time figures now derived from
+        # them. Still one archive call regardless of range.
+        _batch_log_dates = log_store.list_log_dates(deps.data_dir)
+        batch_start = min(
+            add_days(today, -ACTUALS_BATCH_LOOKBACK_DAYS),
+            min(_batch_log_dates) if _batch_log_dates else add_days(today, -ACTUALS_BATCH_LOOKBACK_DAYS),
+        )
         primary_archive = open_meteo.fetch_archive_range(
             location.primary_point.lat, location.primary_point.lon, batch_start, yesterday, location.timezone
         )
@@ -259,7 +267,18 @@ def run_daily_pipeline(
             for d, actual in open_meteo.bucket_hourly_by_date(secondary_archive).items():
                 actuals_cache_store.upsert_day(cache.secondary, d, actual)
 
-    prune_cutoff = add_days(today, -(ACTUALS_BATCH_LOOKBACK_DAYS + 5))
+    # Retention follows the LOG history, not a fixed window. All-time is now
+    # re-derived by walking every stored prediction, so an actuals cache that
+    # falls behind the log would silently shrink the headline number rather
+    # than fail. Keeps at least the old 45-day window, and more once the log
+    # is older than that. Cost is ~400 bytes/day (~146 KB/year).
+    log_dates_for_retention = log_store.list_log_dates(deps.data_dir)
+    fixed_window_cutoff = add_days(today, -(ACTUALS_BATCH_LOOKBACK_DAYS + 5))
+    prune_cutoff = (
+        min(fixed_window_cutoff, min(log_dates_for_retention))
+        if log_dates_for_retention
+        else fixed_window_cutoff
+    )
     actuals_cache_store.prune_older_than(cache.primary, prune_cutoff)
     actuals_cache_store.prune_older_than(cache.secondary, prune_cutoff)
     actuals_primary = actuals_cache_store.as_date_dict(cache.primary)
@@ -270,6 +289,7 @@ def run_daily_pipeline(
     verification_result = run_deterministic_verification_and_scoring(
         log_lookup=log_lookup,
         prior_track_record=prior_track_record,
+        earliest_log_date=min(log_dates_for_retention) if log_dates_for_retention else None,
         actuals_primary=actuals_primary,
         today=today,
         yesterday=yesterday,

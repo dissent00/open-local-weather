@@ -244,14 +244,24 @@ class DailyLogEntry(BaseModel):
 class TrackRecordEntry(BaseModel):
     """One (model, lead_time) pair's accuracy record.
 
-    Fully recomputed and rewritten every run EXCEPT all_time_checks /
-    all_time_correct, which are incremented by at most 1 per run (for
-    yesterday's newly-scored check, if any) — the one piece of state that is
-    genuinely carried forward rather than re-derived. See
-    verify/pipeline.py for where that increment happens, and don't
-    "simplify" it into a full re-derivation without also solving how to
-    recover pre-retention-window history.
-    """
+    Fully recomputed and rewritten every run — including all_time_checks /
+    all_time_correct, which are re-derived by walking the entire stored
+    record rather than carried forward.
+
+    They were incremental until it was shown that Open-Meteo revises recent
+    observations (a day served as "rain, 29.6C" at 06:07 came back as "no
+    rain, 30.5C" hours later), which meant an incremental counter kept the
+    provisional verdict permanently. The original objection to deriving —
+    recovering history beyond the retention window — turned out not to
+    apply: LOG_RETENTION_DAYS is documented but deliberately unimplemented,
+    so nothing is ever pruned from data/log/, and pipeline.py now ties the
+    actuals cache's retention to the log history so the walk always has
+    observations to score against.
+
+    Nothing in this record is carried forward any more. Every field is
+    derivable from the committed logs plus fetched actuals, which is what
+    makes the git-as-auditable-database claim actually true.
+    """"""
 
     model: str
     lead_time_days: LeadTime
@@ -268,6 +278,11 @@ class TrackRecordEntry(BaseModel):
     all_time_checks: int = 0
     all_time_correct: int = 0
     all_time_rain_pct: float | None = None
+    # How far back the all-time re-derivation actually reached. Recorded so
+    # coverage is auditable from the committed record rather than assumed:
+    # "80% correct" over six scattered days is not the claim it looks like
+    # next to the same figure over three hundred.
+    all_time_earliest_target_date: date | None = None
     avg_onset_error_hrs_10: float | None = None  # Day+0 only
     avg_wind_error_kmh_10: float | None = None
     avg_temp_high_error_c_10: float | None = None
