@@ -261,7 +261,7 @@ class TrackRecordEntry(BaseModel):
     Nothing in this record is carried forward any more. Every field is
     derivable from the committed logs plus fetched actuals, which is what
     makes the git-as-auditable-database claim actually true.
-    """"""
+    """
 
     model: str
     lead_time_days: LeadTime
