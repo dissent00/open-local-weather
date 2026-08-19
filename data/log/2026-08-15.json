@@ -185,8 +185,8 @@
       "note": "Day+0: All models correctly verified the dry precipitation call for August 15th, with daytime high temperatures accurately predicted within 0.1°C to 0.6°C. GFS and UKMO substantially overpredicted surface wind speeds (by 27.4 km/h and 16.6 km/h respectively), whereas ICON delivered high-precision wind speed guidance (5.8 km/h error)."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: All four models correctly verified rainfall for August 15th, with GFS delivering top high temperature accuracy (-0.3°C error) and ECMWF matching low temperatures within +0.5°C."
     },
     "day7": {
       "verified": false,

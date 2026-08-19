@@ -181,8 +181,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: ICON and UKMO accurately verified yesterday's precipitation call, though both exhibited early onset timing (-6h and -7h respectively). GFS and ECMWF missed the rain event, with GFS significantly overestimating surface winds by 26.7 km/h."
     },
     "day3": {
       "verified": false,
