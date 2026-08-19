@@ -36,7 +36,7 @@ from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_h
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
 from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.llm.prompt import build_system_prompt
+from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     to_gemini_schema,
@@ -182,6 +182,23 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_user_prompt():
+    """The per-run message, pinned verbatim.
+
+    The cold-start case carries the weight: every "Unavailable — ..." string
+    is what stops a missing input reading as a measurement, and it is also
+    exactly the shape of a new user's very first forecast.
+    """
+    for case in load("llm_user_prompt.json")["cases"]:
+        i = dict(case["input"])
+        got = build_user_prompt(
+            today=date.fromisoformat(i.pop("today")),
+            yesterday=date.fromisoformat(i.pop("yesterday")),
+            **i,
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_llm_schemas():
     """Guards the structured-output contract sent to real provider APIs."""
     for case in load("llm_schema_gemini.json")["cases"]:
@@ -250,6 +267,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_gemini.json",
         "llm_schema_strict.json",
         "llm_system_prompt.json",
+        "llm_user_prompt.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
