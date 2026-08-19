@@ -29,6 +29,11 @@ and also the reference example for forking to a new location.
    database — free, versioned, fully auditable), regenerate a static site on
    GitHub Pages, and email subscribers (see [Status](#status) for the current
    delivery mechanism).
+5. **Review** — recompute, across the entire stored record, which models have
+   actually earned trust *here* and where the forecast is systematically
+   wrong. Every finding is gated on sample size, so a thin record produces
+   no claim rather than a confident guess, and the results are published as
+   an accuracy page and fed back into the next day's reasoning.
 
 All of this runs daily on GitHub Actions' free scheduled-workflow minutes, on
 a public repo.
@@ -82,6 +87,13 @@ overwrites it every run.)
 - **Recency-weighted evidence.** Recent (5-10 day) verification outweighs
   30-day/all-time stats when they conflict — long-term stats exist to catch
   slow systematic bias, not override current conditions.
+- **No claim the sample can't carry.** Cross-model conclusions are gated in
+  code on check counts and on the gap exceeding sampling noise, and the
+  prompt forbids the LLM from re-deriving a comparison that was withheld —
+  it can see the raw percentages, so the gate alone would not hold. An
+  eight-day record can easily show one model 35 points "ahead" by chance;
+  publishing that would poison every later run that read it back. Saying
+  "not enough data yet" is treated as the correct answer, not a failure.
 - **Location-agnostic config.** Forking this for a new place means editing
   `config/location.yaml` and nothing else — see `config/location.example.yaml`
   for a documented template. Local met-bulletin scraping is inherently
@@ -127,7 +139,8 @@ optional evening refresh at ~18:07 EAT that re-synthesizes the narrative on
 a fresher model cycle without touching the accuracy loop (see
 [ARCHITECTURE.md](docs-internal/ARCHITECTURE.md) for why that distinction
 matters). Every forecast is committed to `data/log/` — the full, auditable
-history of every prediction and its later verification.
+history of every prediction and its later verification, summarised on the
+site's [accuracy page](https://dissent00.github.io/open-local-weather/accuracy.html).
 
 Email delivery goes out via [`mailer/AppsScriptMailer.gs`](mailer/), a
 standalone Google Apps Script companion — **not** the Python pipeline's

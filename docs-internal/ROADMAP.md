@@ -1282,7 +1282,7 @@ parties need reading properly before building anything, not after.
 
 ---
 
-## 18. Weekly review — drift and blind spots · **Planned**
+## 18. Weekly review — drift and blind spots · **Partly shipped**
 
 **Required in BOTH the open-source pipeline and the app**, not one or the
 other. "Accuracy demonstrably improving over time" is the single strongest
@@ -1293,16 +1293,52 @@ belongs in `app/olw_core` alongside the rest of the shared math, so both
 implementations compute identical findings from identical data — the same
 reasoning that produced `spec/`. Only the narration differs by surface.
 
-### What exists today, and what it isn't
+### What shipped
+
+`review.py` computes findings across the whole stored record — comparative
+rankings, systematic temperature/wind bias, and never-verified lead times —
+each carrying the evidence and confidence that produced it. Findings are
+gated: a ranking needs both models at 10+ checks AND a gap above the
+~15-point binomial noise floor at n=10, so weak evidence produces no
+finding rather than a hedged one.
+
+Wired into three places: the daily and refresh prompts (with an explicit
+instruction not to re-derive a withheld ranking from the raw track-record
+percentages, which the model can otherwise see and compare by eye), and a
+public `accuracy.html` rendered with no LLM involvement at all.
+
+Verified against the live 8-day record, where `best_match` sat 38 points
+clear of ECMWF and the review correctly published nothing. Also surfaced a
+real case the design had only anticipated in theory: at Day+7 ICON and UKMO
+had 0 checks against the other models' 1, because their forecast horizons
+end short of 7 days — so coverage within a lead time is reported by the
+*weakest* model, never the best-covered one.
+
+### What has not shipped
+
+Items 2 and 4 below — pattern-level blind spots ("afternoon convective
+events are under-called") and meta-verification of the LLM's own confidence
+claims — both need substantially more history than exists yet, and neither
+should be attempted on a record this thin. Item 3 (never-verified
+variables) is only partly covered: an unscored *lead time* is reported, an
+unscored *variable* like the secondary point's `peak_wind_kmh` is not.
+There is also no narrated weekly issuance and no weekly workflow; the
+deterministic findings refresh on every daily run instead, which costs no
+LLM call and keeps the page current rather than up to six days stale.
+
+The Dart port in `app/olw_core` carries the prompt instruction but not yet
+`review.py` itself.
+
+### What it replaced
 
 There *is* a weekly branch in `pipeline.py` (`WEEKLY_BATCH_WEEKDAY`, Monday),
 but it is purely **data hygiene**: re-fetch 40 days of actuals and replace
 the cache wholesale, so any drift in the daily upserts self-heals. It
 performs no analysis at all.
 
-So the daily loop currently sees exactly two horizons: yesterday's
-individual scores, and rolling 10/30-check aggregates. Nothing ever looks
-across the record and asks *what are we systematically getting wrong?*
+Before this item, the daily loop saw exactly two horizons: yesterday's
+individual scores, and rolling 10/30-check aggregates. Nothing ever looked
+across the record and asked *what are we systematically getting wrong?*
 
 ### What a review could see that the daily run structurally cannot
 
