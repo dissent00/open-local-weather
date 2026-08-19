@@ -18,6 +18,7 @@ library;
 export 'src/aqi.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
+export 'src/forecast.dart';
 export 'src/models.dart';
 export 'src/comparison.dart';
 export 'src/config.dart';

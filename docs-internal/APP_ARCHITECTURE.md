@@ -399,8 +399,12 @@ than a v1 blocker.
    existed.
 2. **Dart core**: models, dates, extract, scoring, verification — passing
    the shared vectors. No UI.
-3. **Fetch + LLM providers** in Dart; one forecast generated end-to-end
-   in a test harness.
+3. ~~**Fetch + LLM providers** in Dart; one forecast generated end-to-end
+   in a test harness.~~ — **done**. `generateForecast()` in
+   [`forecast.dart`](../app/olw_core/lib/src/forecast.dart), covered by
+   `test/forecast_test.dart` with every HTTP call mocked, so it runs in CI
+   at no cost and cannot flake on a network. The user prompt is now held
+   byte-for-byte against Python by `spec/vectors/llm_user_prompt.json`.
 4. **Minimal UI**: Today + Settings, standalone, tap-to-generate only.
    This alone is a usable app on both platforms.
 5. **Storage + history + accuracy charts.**

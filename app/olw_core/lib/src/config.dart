@@ -46,3 +46,21 @@ class LocationConfig {
 const int historicalLookbackDays = 30;
 const int rollingWindowShort = 10;
 const int rollingWindowLong = 30;
+
+/// The Open-Meteo models queried for every multi-model fetch.
+///
+/// This is the `models=` API parameter, so nothing may be added here that
+/// Open-Meteo cannot serve. The set of models with a TRACK RECORD is a
+/// superset — a local met service is scored alongside these but arrives from
+/// its own source, not from Open-Meteo. Mirrors `MODELS` in the Python
+/// implementation, which draws the same distinction via `scored_models()`.
+const List<String> defaultModels = [
+  'gfs_seamless',
+  'ecmwf_ifs025',
+  'icon_seamless',
+  'ukmo_seamless',
+  'best_match',
+];
+
+/// Lead times tracked and scored independently.
+const List<int> leadTimesDays = [0, 3, 7];
