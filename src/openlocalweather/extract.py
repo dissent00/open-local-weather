@@ -10,7 +10,7 @@ for why that round-trip was dropped rather than preserved.
 from __future__ import annotations
 
 from openlocalweather.defaults import RAIN_THRESHOLD_MM
-from openlocalweather.fetch.open_meteo import get_onset_hour
+from openlocalweather.fetch.open_meteo import get_onset_hour, pick_series
 from openlocalweather.models import ModelPrediction
 
 
@@ -27,10 +27,14 @@ def extract_day0_predictions_from_hourly(
 
     predictions = []
     for model in models:
-        precip = h.get(f"precipitation_{model}") or h.get("precipitation") or []
-        wind = h.get(f"windgusts_10m_{model}") or h.get("windgusts_10m") or []
-        temp = h.get(f"temperature_2m_{model}") or h.get("temperature_2m") or []
-        press = h.get(f"pressure_msl_{model}") or h.get("pressure_msl") or []
+        precip = pick_series(h, f"precipitation_{model}", "precipitation")
+        # Both gust spellings, newest first — see pick_series on why the
+        # all-null case must be skipped rather than merely fallen back from.
+        wind = pick_series(
+            h, f"wind_gusts_10m_{model}", f"windgusts_10m_{model}", "wind_gusts_10m", "windgusts_10m"
+        )
+        temp = pick_series(h, f"temperature_2m_{model}", "temperature_2m")
+        press = pick_series(h, f"pressure_msl_{model}", "pressure_msl")
 
         # An entirely absent/all-null precip series means no data for this
         # model, which is not the same as a confident dry forecast — see

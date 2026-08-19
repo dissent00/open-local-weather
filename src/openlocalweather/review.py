@@ -66,6 +66,11 @@ class SkillCell:
     mean_low_error_c: float | None
     mean_wind_error_kmh: float | None
     mean_onset_error_hrs: float | None
+    # Pressure-trend error. Scored per-day and carried in the rolling track
+    # record since the beginning, but not aggregated here until now — so the
+    # one variable with a genuine physical lead on convection was the one
+    # variable the long-run view couldn't see.
+    mean_mslp_error_hpa: float | None
     earliest: date | None
     latest: date | None
 
@@ -130,6 +135,7 @@ def build_weekly_review(
                     mean_low_error_c=mean([s.low_error_c for _, s in scored]),
                     mean_wind_error_kmh=mean([s.wind_error_kmh for _, s in scored]),
                     mean_onset_error_hrs=mean([s.onset_error_hrs for _, s in scored]),
+                    mean_mslp_error_hpa=mean([s.mslp_error_hpa for _, s in scored]),
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
                 )

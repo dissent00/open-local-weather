@@ -41,13 +41,13 @@
   <p class="findings-empty">No conclusions yet. Comparing models against each other needs enough verified checks for the difference to mean something &mdash; a short record can easily show one model well "ahead" purely by chance. Rather than publish a ranking the data doesn't support, this page says nothing until it does. The table below shows the raw counts in the meantime.</p>
   {% endif %}
 
-  <h2>Rain calls by model and lead time</h2>
+  <h2>Model skill by lead time</h2>
   <p class="meta">Percentages below are shown for transparency, not as a ranking &mdash; read them alongside the check counts. A difference of less than about 15 points at these sample sizes is not evidence of a real difference.</p>
   {% for group in skill_groups %}
   <h3>Day+{{ group.lead_time_days }}</h3>
   <table class="skill-table">
     <thead>
-      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>Mean high err</th><th>Mean low err</th><th>Confidence</th></tr>
+      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>High</th><th>Low</th><th>Peak wind</th><th>Pressure trend</th><th>Rain onset</th><th>Confidence</th></tr>
     </thead>
     <tbody>
       {% for c in group.cells %}
@@ -57,6 +57,9 @@
         <td>{% if c.rain_pct is not none %}{{ "%.0f"|format(c.rain_pct) }}%{% else %}&mdash;{% endif %}</td>
         <td>{% if c.mean_high_error_c is not none %}{{ c.mean_high_error_c|signed }}&deg;C{% else %}&mdash;{% endif %}</td>
         <td>{% if c.mean_low_error_c is not none %}{{ c.mean_low_error_c|signed }}&deg;C{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.mean_wind_error_kmh is not none %}{{ c.mean_wind_error_kmh|signed }} km/h{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.mean_mslp_error_hpa is not none %}{{ c.mean_mslp_error_hpa|signed }} hPa{% else %}&mdash;{% endif %}</td>
+        <td>{% if c.mean_onset_error_hrs is not none %}{{ c.mean_onset_error_hrs|signed }} h{% else %}&mdash;{% endif %}</td>
         <td><span class="confidence confidence-{{ c.confidence }}">{{ c.confidence }}</span></td>
       </tr>
       {% endfor %}
@@ -65,7 +68,7 @@
   {% endfor %}
 
   <h2>Reading this page</h2>
-  <p class="meta">Errors are stated as <em>observed minus forecast</em>, so a positive mean high error means the model ran cooler than the day turned out. Confidence reflects sample size alone: <strong>insufficient</strong> below 5 checks, <strong>provisional</strong> below 10, <strong>usable</strong> below 30, <strong>established</strong> at 30 and above. Not every model reaches every lead time &mdash; some models' forecast horizons end short of 7 days &mdash; so a blank row at Day+7 means no prediction was available to score, never a missed call.</p>
+  <p class="meta">Every error column is a mean stated as <em>observed minus forecast</em>, so a positive value means the model came in under what actually happened &mdash; a positive high error means it ran cooler than the day turned out, and a positive peak-wind error means it under-called the wind. Rain onset is scored only at Day+0, and only on days where rain was both forecast and observed; the extended outlook is never given onset timing, so a dash there is by design rather than a gap. Pressure trend is the 24-hour MSLP change, which carries a genuine physical lead on convection. Confidence reflects sample size alone: <strong>insufficient</strong> below 5 checks, <strong>provisional</strong> below 10, <strong>usable</strong> below 30, <strong>established</strong> at 30 and above. Not every model reaches every lead time &mdash; some models' forecast horizons end short of 7 days &mdash; so a blank row at Day+7 means no prediction was available to score, never a missed call.</p>
 </main>
 <footer class="site-footer">
   <div class="wrap">

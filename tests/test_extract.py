@@ -155,3 +155,44 @@ def test_day0_real_dry_series_still_yields_rain_false():
     }
     p = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])[0]
     assert p.rain is False
+
+
+def test_all_null_series_falls_through_to_the_alternate_key():
+    """The silent-failure shape that cost this deployment every Day+0 ECMWF
+    wind score.
+
+    Open-Meteo returns a correctly-NAMED array full of nulls when a model
+    doesn't publish a variable under a given alias. A list of Nones is
+    truthy, so the previous `a or b` lookup latched onto the empty series and
+    never tried the working key — no exception, no warning, just one model
+    with no wind in the record for months.
+    """
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-19T00:00", "2026-08-19T01:00"],
+            # Legacy alias present but empty, exactly as the live API returns
+            # it for ecmwf_ifs025.
+            "windgusts_10m_ecmwf_ifs025": [None, None],
+            "wind_gusts_10m_ecmwf_ifs025": [11.2, 18.4],
+            "temperature_2m_ecmwf_ifs025": [19.0, 21.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0],
+            "pressure_msl_ecmwf_ifs025": [1013.0, 1011.0],
+        }
+    }
+    (pred,) = extract_day0_predictions_from_hourly(hourly, ["ecmwf_ifs025"])
+    assert pred.wind_kmh == 18.4, "must skip the all-null alias, not fall silent"
+
+
+def test_a_genuinely_absent_variable_still_reads_as_absent():
+    """The complement: skipping all-null series must not invent a value when
+    the model really doesn't publish one."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-19T00:00"],
+            "windgusts_10m_ukmo_seamless": [None],
+            "temperature_2m_ukmo_seamless": [19.0],
+            "precipitation_ukmo_seamless": [0.0],
+        }
+    }
+    (pred,) = extract_day0_predictions_from_hourly(hourly, ["ukmo_seamless"])
+    assert pred.wind_kmh is None

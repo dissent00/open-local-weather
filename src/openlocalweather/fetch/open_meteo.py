@@ -37,7 +37,16 @@ REQUEST_TIMEOUT_S = 30
 
 HOURLY_FORECAST_VARS = (
     "temperature_2m,precipitation_probability,precipitation,cloud_cover,"
-    "windspeed_10m,windgusts_10m,winddirection_10m,cape,pressure_msl,uv_index"
+    # NOTE the underscore in "wind_gusts_10m". Open-Meteo accepts the legacy
+    # "windgusts_10m" alias for most models, but under that alias
+    # ecmwf_ifs025 returns an all-null series while every other model returns
+    # real data — so it fails silently and only for one model. That cost this
+    # deployment every Day+0 ECMWF wind score from the beginning; the gap was
+    # invisible until the review aggregated wind per model and ECMWF alone had
+    # no value. Verified 2026-08-19 against the live API: the current
+    # "wind_gusts_10m" name returns real ECMWF data, and identical values to
+    # the alias for all other models. Don't "tidy" this back to the alias.
+    "wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,pressure_msl,uv_index"
 )
 DAILY_FORECAST_VARS = (
     "temperature_2m_max,temperature_2m_min,precipitation_sum,"
@@ -165,6 +174,23 @@ def get_onset_hour(
     return None
 
 
+def pick_series(hourly: dict, *candidate_keys: str) -> list:
+    """First candidate key holding at least one non-null value.
+
+    Not just `hourly.get(a) or hourly.get(b)`. Open-Meteo returns a
+    correctly-named array full of nulls when a model doesn't supply a
+    variable under that alias, and a list of Nones is truthy — so a plain
+    `or` chain latches onto the empty series and never tries the fallback.
+    That is exactly how ECMWF's Day+0 wind went unscored for the whole life
+    of this deployment without one error being raised anywhere.
+    """
+    for key in candidate_keys:
+        series = hourly.get(key)
+        if series and any(v is not None for v in series):
+            return series
+    return []
+
+
 def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_MM) -> dict[date, DailyActual]:
     """Splits a flat multi-day hourly archive response into one DailyActual
     per calendar date. This is what makes the batch-fetch-and-rescore
@@ -182,7 +208,7 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     times = h.get("time") or []
     temp_arr = h.get("temperature_2m") or []
     precip_arr = h.get("precipitation") or []
-    wind_arr = h.get("windgusts_10m") or h.get("windspeed_10m") or []
+    wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m", "wind_speed_10m", "windspeed_10m")
     pressure_arr = h.get("pressure_msl") or []
 
     by_date: dict[str, dict[str, list]] = {}
