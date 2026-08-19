@@ -1567,3 +1567,72 @@ gap.
 - Review fixes: all-time double-count guard, archive backfill, LLM retry
 - Multi-station ground AQI with deterministic range/worst-station + staleness detection
 - Second daily forecast run (evening refresh, web-only, morning predictions preserved)
+
+---
+
+## 21. Scoring the local met service as a model · **Partly shipped**
+
+The national met service is the one forecast source with local knowledge no
+global model has, and until now this pipeline consumed its bulletin as
+narrative context without ever asking whether it was right. It is now
+scored alongside GFS/ECMWF/ICON/UKMO, at zero marginal cost.
+
+### Why it needs no LLM call
+
+KMD's prose looks like free text but is a **controlled vocabulary the
+bulletin itself defines**, in a glossary on its last page: Light/Moderate/
+Heavy are mm bands, Few/Several/Most places are area bands, Possible/
+Chance of/Likely/Expected are probability bands. Decoding a documented
+encoding is not the same problem as interpreting natural language, which
+is what makes a deterministic parser defensible rather than brittle. The
+per-county table also carries numeric max/min temperatures, so temperature
+never has to be inferred from words at all.
+
+The structured prediction comes out of the same bulletin fetch the
+narrative already required, so met-service verification adds no HTTP
+request and no LLM call.
+
+### Why the DAILY bulletin, not the weekly one
+
+The repo originally fetched KMD's weekly 7-day forecast. The daily
+bulletin is better on three independent counts, all verified against live
+documents:
+
+1. **Lead time.** The daily is issued ~3pm for 9pm-to-9pm the next day, so
+   it is a genuine Day+0 prediction comparable to the models. A weekly
+   bulletin's entry for a Thursday is a four-day-old forecast; scoring it
+   against models' fresh same-morning runs would understate the met service
+   for reasons that have nothing to do with skill.
+2. **Extractability.** The weekly PDF is periodically published as scanned
+   images — 18-24 Aug 2026 had 0 extractable characters against ~8,600 in
+   each of the five preceding weeks.
+3. **Numbers.** Only the daily carries the per-county temperature table.
+
+### Deliberate non-decisions
+
+The parser does **not** multiply KMD's probability term by its area term to
+get a point-probability. "Rain expected over few places" is high confidence
+of rain somewhere in under a third of a county, which is not the chance of
+rain at one airport, and no honest arithmetic turns one into the other. The
+rain cutoff sits at KMD's own "more probable than not" boundary and the
+area term is recorded separately. If that rule is wrong, the verification
+record will show it — putting the met service through the same accuracy
+loop as everything else is precisely what makes that question answerable
+rather than arguable.
+
+### What has not shipped
+
+**The 5-day bulletin, which would give Day+3.** KMD publishes a five-day
+forecast designed to work alongside the daily one, structured as a
+per-county x per-day grid (max/min plus morning/afternoon/night for each
+of five dates) — confirmed extractable, 82 tables, ~20,000 characters. A
+forecast issued on day D covering D+2..D+6 supplies exactly the Day+3
+prediction this project already tracks. Only the daily (Day+0) is wired up
+so far; Day+7 has no met-service equivalent, since the weekly bulletin is
+the unreliable one.
+
+Also unshipped: no fork other than Kenya has a parser. The catalog in item
+11 is where that generalises — and the controlled-vocabulary insight may
+well transfer, since WMO-influenced met services tend to publish similar
+glossaries.
+
