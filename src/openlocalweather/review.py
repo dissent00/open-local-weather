@@ -264,15 +264,25 @@ def _describe_sufficiency(
         at_lead = [c for c in cells if c.lead_time_days == k]
         if not at_lead:
             continue
-        # The WEAKEST model sets the confidence, not the best-covered one.
-        # Models do not all reach every lead time — UKMO's horizon ends around
-        # 7.2 days and ICON's around 7.5 — so at Day+7 some models genuinely
-        # have fewer checks than others, and this shows up on real data from
-        # the very first week. Reporting the maximum as "per model" would
-        # overstate coverage for exactly the models that have least of it.
-        checks = min((c.checks for c in at_lead), default=0)
+        # The weakest SCORED model sets the confidence, not the best-covered
+        # one. Models do not all reach every lead time — UKMO's horizon ends
+        # around 7.2 days and ICON's around 7.5 — so at Day+7 some genuinely
+        # have fewer checks, visible on real data from the first week.
+        # Reporting the maximum as "per model" would overstate coverage for
+        # exactly the models that have least of it.
+        #
+        # Models with NO checks are excluded from setting that number, and
+        # named separately instead. A model that has never been scored is a
+        # different thing from one that has been scored less, and letting it
+        # set the headline erases the record of every other model: when the
+        # local met service was added, one newcomer at zero turned an honest
+        # "8 checks per model" into "0 check(s) per model — not enough to say
+        # anything", with eight days of scored forecasts sitting right there.
+        scored = [c.checks for c in at_lead if c.checks > 0]
+        checks = min(scored, default=0)
         richest = max((c.checks for c in at_lead), default=0)
-        behind = sorted(c.model for c in at_lead if c.checks < richest)
+        behind = sorted(c.model for c in at_lead if 0 < c.checks < richest)
+        unscored = sorted(c.model for c in at_lead if c.checks == 0)
         conf = confidence_for(checks)
         if conf == "insufficient":
             need = REVIEW_CONFIDENCE_BANDS[0][0] - checks
@@ -298,5 +308,11 @@ def _describe_sufficiency(
                 f"{'has' if len(behind) == 1 else 'have'} fewer than the "
                 f"{richest} check(s) the other models have, so any comparison "
                 "at this lead time is not like-for-like.)"
+            )
+        if unscored:
+            parts.append(
+                f"({', '.join(unscored)} {'has' if len(unscored) == 1 else 'have'} "
+                f"no verified checks at Day+{k} yet and {'is' if len(unscored) == 1 else 'are'} "
+                "not included in the figure above.)"
             )
     return " ".join(parts)

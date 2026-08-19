@@ -18,23 +18,23 @@
   </div>
 </header>
 <main class="wrap">
-  <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult <a href="https://meteo.go.ke/our-products/7-days-forecast/">Kenya Meteorological Department (KMD)</a>.</p>
+  <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult <a href="https://meteo.go.ke/our-products/daily-forecast/">Kenya Meteorological Department (KMD)</a>.</p>
 
   <h1>Accuracy</h1>
   <p class="meta">How well each forecast model has actually performed <em>here</em>, scored against observed conditions. Every figure on this page is recomputed from the raw committed record on each run &mdash; nothing is carried forward, so anything here can be re-derived from <a href="https://github.com/dissent00/open-local-weather">the repository</a>.</p>
 
   <h2>How much data is behind this</h2>
-  <p class="sufficiency">Reviewed 9 day(s) of stored forecasts (2026-08-11 to 2026-08-18), of which 8 have observations to score against. Day+0: 8 check(s) per model — directional only, not yet enough to rank models against each other. Day+3: 5 check(s) per model — directional only, not yet enough to rank models against each other. Day+7: 0 check(s) per model — not enough to say anything; roughly 5 more day(s) before even a provisional read. (Coverage at Day+7 is uneven: icon_seamless, ukmo_seamless have fewer than the 1 check(s) the other models have, so any comparison at this lead time is not like-for-like.)</p>
+  <p class="sufficiency">Reviewed 9 day(s) of stored forecasts (2026-08-11 to 2026-08-18), of which 8 have observations to score against. Day+0: 8 check(s) per model — directional only, not yet enough to rank models against each other. (kenya_met has no verified checks at Day+0 yet and is not included in the figure above.) Day+3: 5 check(s) per model — directional only, not yet enough to rank models against each other. (kenya_met has no verified checks at Day+3 yet and is not included in the figure above.) Day+7: 1 check(s) per model — not enough to say anything; roughly 4 more day(s) before even a provisional read. (icon_seamless, kenya_met, ukmo_seamless have no verified checks at Day+7 yet and are not included in the figure above.)</p>
 
   <h2>What the record supports</h2>
   <p class="findings-empty">No conclusions yet. Comparing models against each other needs enough verified checks for the difference to mean something &mdash; a short record can easily show one model well "ahead" purely by chance. Rather than publish a ranking the data doesn't support, this page says nothing until it does. The table below shows the raw counts in the meantime.</p>
 
-  <h2>Rain calls by model and lead time</h2>
+  <h2>Model skill by lead time</h2>
   <p class="meta">Percentages below are shown for transparency, not as a ranking &mdash; read them alongside the check counts. A difference of less than about 15 points at these sample sizes is not evidence of a real difference.</p>
   <h3>Day+0</h3>
   <table class="skill-table">
     <thead>
-      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>Mean high err</th><th>Mean low err</th><th>Confidence</th></tr>
+      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>High</th><th>Low</th><th>Peak wind</th><th>Pressure trend</th><th>Rain onset</th><th>Confidence</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -43,6 +43,9 @@
         <td>62%</td>
         <td>-0.2&deg;C</td>
         <td>-0.5&deg;C</td>
+        <td>+22.7 km/h</td>
+        <td>+0.0 hPa</td>
+        <td>+1.0 h</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -51,6 +54,9 @@
         <td>50%</td>
         <td>+0.0&deg;C</td>
         <td>-0.7&deg;C</td>
+        <td>&mdash;</td>
+        <td>+0.3 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -59,6 +65,9 @@
         <td>62%</td>
         <td>+0.1&deg;C</td>
         <td>-2.3&deg;C</td>
+        <td>+9.6 km/h</td>
+        <td>+0.3 hPa</td>
+        <td>-6.0 h</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -67,6 +76,9 @@
         <td>75%</td>
         <td>+0.6&deg;C</td>
         <td>+1.7&deg;C</td>
+        <td>+15.3 km/h</td>
+        <td>-0.2 hPa</td>
+        <td>-7.0 h</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -75,14 +87,28 @@
         <td>88%</td>
         <td>-0.1&deg;C</td>
         <td>+0.1&deg;C</td>
+        <td>+9.6 km/h</td>
+        <td>+0.0 hPa</td>
+        <td>-1.5 h</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
+      </tr>
+      <tr>
+        <td>kenya_met</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
     </tbody>
   </table>
   <h3>Day+3</h3>
   <table class="skill-table">
     <thead>
-      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>Mean high err</th><th>Mean low err</th><th>Confidence</th></tr>
+      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>High</th><th>Low</th><th>Peak wind</th><th>Pressure trend</th><th>Rain onset</th><th>Confidence</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -91,6 +117,9 @@
         <td>80%</td>
         <td>-1.4&deg;C</td>
         <td>+0.0&deg;C</td>
+        <td>+19.6 km/h</td>
+        <td>-0.1 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -99,6 +128,9 @@
         <td>100%</td>
         <td>-0.6&deg;C</td>
         <td>-1.0&deg;C</td>
+        <td>+14.3 km/h</td>
+        <td>+0.1 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -107,6 +139,9 @@
         <td>60%</td>
         <td>+0.2&deg;C</td>
         <td>-1.6&deg;C</td>
+        <td>+12.6 km/h</td>
+        <td>-0.2 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -115,6 +150,9 @@
         <td>80%</td>
         <td>+1.3&deg;C</td>
         <td>+2.3&deg;C</td>
+        <td>+20.2 km/h</td>
+        <td>-0.3 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
       <tr>
@@ -123,14 +161,28 @@
         <td>100%</td>
         <td>-0.9&deg;C</td>
         <td>-0.7&deg;C</td>
+        <td>+3.4 km/h</td>
+        <td>+0.0 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-provisional">provisional</span></td>
+      </tr>
+      <tr>
+        <td>kenya_met</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
     </tbody>
   </table>
   <h3>Day+7</h3>
   <table class="skill-table">
     <thead>
-      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>Mean high err</th><th>Mean low err</th><th>Confidence</th></tr>
+      <tr><th>Model</th><th>Rain calls</th><th>Hit rate</th><th>High</th><th>Low</th><th>Peak wind</th><th>Pressure trend</th><th>Rain onset</th><th>Confidence</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -139,6 +191,9 @@
         <td>100%</td>
         <td>-1.1&deg;C</td>
         <td>-0.7&deg;C</td>
+        <td>+18.4 km/h</td>
+        <td>-0.6 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
       <tr>
@@ -147,6 +202,9 @@
         <td>100%</td>
         <td>+5.0&deg;C</td>
         <td>-1.0&deg;C</td>
+        <td>+2.6 km/h</td>
+        <td>-0.8 hPa</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
       <tr>
@@ -155,10 +213,16 @@
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
       <tr>
         <td>ukmo_seamless</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
@@ -171,13 +235,27 @@
         <td>100%</td>
         <td>+0.0&deg;C</td>
         <td>-0.8&deg;C</td>
+        <td>-1.8 km/h</td>
+        <td>-0.8 hPa</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-insufficient">insufficient</span></td>
+      </tr>
+      <tr>
+        <td>kenya_met</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
     </tbody>
   </table>
 
   <h2>Reading this page</h2>
-  <p class="meta">Errors are stated as <em>observed minus forecast</em>, so a positive mean high error means the model ran cooler than the day turned out. Confidence reflects sample size alone: <strong>insufficient</strong> below 5 checks, <strong>provisional</strong> below 10, <strong>usable</strong> below 30, <strong>established</strong> at 30 and above. Not every model reaches every lead time &mdash; some models' forecast horizons end short of 7 days &mdash; so a blank row at Day+7 means no prediction was available to score, never a missed call.</p>
+  <p class="meta">Every error column is a mean stated as <em>observed minus forecast</em>, so a positive value means the model came in under what actually happened &mdash; a positive high error means it ran cooler than the day turned out, and a positive peak-wind error means it under-called the wind. Rain onset is scored only at Day+0, and only on days where rain was both forecast and observed; the extended outlook is never given onset timing, so a dash there is by design rather than a gap. Pressure trend is the 24-hour MSLP change, which carries a genuine physical lead on convection. Confidence reflects sample size alone: <strong>insufficient</strong> below 5 checks, <strong>provisional</strong> below 10, <strong>usable</strong> below 30, <strong>established</strong> at 30 and above. Not every model reaches every lead time &mdash; some models' forecast horizons end short of 7 days &mdash; so a blank row at Day+7 means no prediction was available to score, never a missed call.</p>
 </main>
 <footer class="site-footer">
   <div class="wrap">

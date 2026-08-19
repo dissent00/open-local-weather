@@ -214,3 +214,25 @@ def test_uneven_model_coverage_is_reported_not_averaged_away():
     assert "Coverage at Day+0 is uneven" in r.data_sufficiency
     assert "poor_model has fewer" in r.data_sufficiency
     assert "not like-for-like" in r.data_sufficiency
+
+
+def test_a_newly_added_model_does_not_erase_the_existing_record():
+    """Regression. When the local met service was first scored it had zero
+    checks, and because the weakest model set the headline, Day+0 reported
+    "0 check(s) per model — not enough to say anything" while eight days of
+    scored forecasts for five other models sat right there.
+
+    Never scored and scored-less are different claims, and only the second
+    should move the confidence figure."""
+    logs, actuals = build_history(days=8, good_hits=6, poor_hits=5)
+    r = build_weekly_review(
+        log_lookup=lambda d: logs.get(d), actuals=actuals,
+        all_log_dates=sorted(logs), today=TODAY,
+        models=[*MODELS, "brand_new_model"], lead_times_days=[0],
+    )
+    assert "8 check(s) per model" in r.data_sufficiency
+    assert "0 check(s) per model" not in r.data_sufficiency
+    # The newcomer is named rather than quietly folded in.
+    assert "brand_new_model" in r.data_sufficiency
+    assert "no verified checks at Day+0 yet" in r.data_sufficiency
+    assert "not included in the figure above" in r.data_sufficiency
