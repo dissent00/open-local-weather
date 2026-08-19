@@ -630,10 +630,22 @@ def run_refresh_pipeline(
         )
     )
 
+    # The morning's stored predictions, deliberately not re-extracted: a
+    # refresh keeps the numbers actually published today, and those are what
+    # tomorrow's verification will score. Re-deriving them from the fresher
+    # cycle would leave the narrative describing values the record doesn't
+    # contain.
+    refresh_predictions_context = {
+        "day0": [p.model_dump() for p in existing_entry.model_predictions.day0],
+        "day3": [p.model_dump() for p in existing_entry.model_predictions.day3],
+        "day7": [p.model_dump() for p in existing_entry.model_predictions.day7],
+    }
+
     system_prompt = build_system_prompt(location, is_refresh=True)
     user_prompt = build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
+        model_predictions_context=refresh_predictions_context,
         public_webpage_url=deps.public_webpage_url,
         verification_context=verification_context,
         track_record_context=track_record_context,
