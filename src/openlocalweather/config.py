@@ -45,6 +45,28 @@ class WaqiStation(BaseModel):
     station_id: str
 
 
+class AcknowledgedGap(BaseModel):
+    """A coverage gap that is known, understood, and not a fault.
+
+    `variable` omitted means every variable at that (model, lead time).
+    `reason` is required on purpose: an acknowledgement without a stated
+    reason is indistinguishable from a silenced alarm, and in a year nobody
+    will remember which it was.
+    """
+
+    model: str
+    lead_time_days: int
+    reason: str
+    variable: str | None = None
+
+    def covers(self, model: str, lead_time_days: int, variable: str) -> bool:
+        return (
+            self.model == model
+            and self.lead_time_days == lead_time_days
+            and (self.variable is None or self.variable == variable)
+        )
+
+
 class LocationConfig(BaseModel):
     region_name: str
     primary_place_name: str
@@ -62,6 +84,13 @@ class LocationConfig(BaseModel):
     # Kisumu city). Empty disables met-service scoring while leaving the
     # bulletin text itself untouched, so a fork whose met service publishes
     # unparseable bulletins still gets the narrative context.
+    # Coverage gaps that have been investigated and accepted — see
+    # coverage.py. Without this, a permanent and documented limitation (ICON
+    # and UKMO forecast horizons ending short of 7 days) reports every week
+    # alongside genuine finds, and ten expected lines around one real one is
+    # how a check stops being read.
+    acknowledged_coverage_gaps: list[AcknowledgedGap] = Field(default_factory=list)
+
     local_bulletin_area_name: str = ""
     # Model id the met service is scored under, alongside gfs_seamless and
     # the rest. Kept configurable so a fork's accuracy page names its own

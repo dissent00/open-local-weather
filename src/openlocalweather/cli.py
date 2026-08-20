@@ -18,7 +18,8 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
-from openlocalweather.defaults import scored_models
+from openlocalweather.coverage import actionable, detect_coverage
+from openlocalweather.defaults import LEAD_TIMES_DAYS, scored_models
 from openlocalweather.dates import today_in_tz
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
@@ -335,6 +336,32 @@ def _run_check_health(args: argparse.Namespace) -> int:
         else:
             print(f"  OK — {result.notes}")
 
+    # Data coverage. Runs offline off the committed record, so it costs
+    # nothing and works even when the LLM check above failed.
+    location = load_location_config(args.config)
+    data_path = Path(args.data_dir)
+    print("Checking data coverage across the stored record...")
+    findings = detect_coverage(
+        make_log_lookup(data_path),
+        today_in_tz(location.timezone),
+        scored_models(location.local_bulletin_model_id),
+        LEAD_TIMES_DAYS,
+    )
+    needs_attention = actionable(findings, location.acknowledged_coverage_gaps)
+    if needs_attention:
+        # Not a failure: the forecast is fine, values are recorded as unknown
+        # rather than wrong. But a variable nobody notices has stopped
+        # arriving is one nobody fixes — which is how ECMWF went without
+        # Day+0 wind for the life of this deployment.
+        print(f"  {len(needs_attention)} item(s) worth checking:")
+        for f in needs_attention:
+            print(f"    - {f.message}")
+    else:
+        print("  OK — every model is supplying what its peers supply.")
+    inert = len(findings) - len(needs_attention)
+    if inert:
+        print(f"  ({inert} known or universal gap(s) not reported — see acknowledged_coverage_gaps.)")
+
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")
     if check_repo_staleness(days):
@@ -387,10 +414,12 @@ def main(argv: list[str] | None = None) -> int:
     check_config = sub.add_parser("check-config", help="Load and validate a location.yaml, then exit.")
     check_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
 
-    sub.add_parser(
+    health = sub.add_parser(
         "check-health",
-        help="Weekly health checks: Gemini model deprecation status + repo staleness.",
+        help="Weekly health checks: model deprecation, repo staleness, data coverage.",
     )
+    health.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    health.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
 
     args = parser.parse_args(argv)
 

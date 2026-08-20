@@ -57,5 +57,32 @@ location:
   local_bulletin_source_name: "Kenya Meteorological Department (KMD)"
   # The county KMD indexes this location under, and the name its skill is
   # tracked under on the accuracy page.
+  # Investigated coverage gaps that are genuine properties of the data, not
+  # faults — see docs-internal and `olw check-health`. Recorded so the weekly
+  # check reports only things that have changed.
+  acknowledged_coverage_gaps:
+    - model: "icon_seamless"
+      lead_time_days: 7
+      reason: "ICON's forecast horizon ends around 7.5 days, so Day+7 is beyond it. Documented in README's known limitations."
+    - model: "ukmo_seamless"
+      lead_time_days: 7
+      reason: "UKMO's forecast horizon ends around 7.2 days, so Day+7 is beyond it. Documented in README's known limitations."
+    - model: "kenya_met"
+      lead_time_days: 0
+      variable: "wind_kmh"
+      reason: "KMD's county table publishes rain and temperature only; no wind figure exists to extract."
+    - model: "kenya_met"
+      lead_time_days: 0
+      variable: "mslp_trend"
+      reason: "KMD publishes no pressure figure per county."
+    - model: "kenya_met"
+      lead_time_days: 3
+      variable: "wind_kmh"
+      reason: "As Day+0 — the five-day grid carries weather and temperature only."
+    - model: "kenya_met"
+      lead_time_days: 3
+      variable: "mslp_trend"
+      reason: "As Day+0 — no pressure figure published."
+
   local_bulletin_area_name: "Kisumu"
   local_bulletin_model_id: "kenya_met"

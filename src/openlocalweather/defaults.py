@@ -152,3 +152,18 @@ REVIEW_COMPARISON_MIN_GAP_PCT = 15.0
 # scatter. Roughly the point where a forecast user would notice.
 REVIEW_TEMP_BIAS_THRESHOLD_C = 1.0
 REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0
+
+
+# --- Data-coverage watch (see coverage.py) ---
+#
+# How far back to look when deciding whether a variable has gone missing.
+# Long enough to distinguish a genuine upstream change from a model that
+# simply doesn't publish something.
+COVERAGE_WINDOW_DAYS = 30
+
+# Consecutive runs a previously-present variable must be missing before it
+# is reported. More than one, because a single failed fetch is noise; low
+# enough that a real rename surfaces in days rather than months — the
+# ECMWF Day+0 wind gap went unnoticed for the life of the deployment
+# precisely because absence was handled correctly and silently everywhere.
+COVERAGE_ABSENT_RUNS = 3
