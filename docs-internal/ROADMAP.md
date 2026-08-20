@@ -2073,3 +2073,78 @@ The project's entire argument is that forecast quality claims should be
 measured rather than asserted. Choosing the model that writes those forecasts
 by impression, while publishing an accuracy page about everything else, would
 be the one unmeasured link in the chain.
+
+---
+
+## 28. A watcher for provider terms, pricing and limit changes · **Planned**
+
+Prompted by a concrete problem: this project bakes claims about other
+companies' products into its own interface, and those claims rot.
+
+Within a single day, "roughly 20 free calls a day" went into the app's
+onboarding as a dated fact and then had to be removed, because Google no
+longer publishes free-tier figures at all and says limits depend on your
+account tier. That was caught by chance while researching something else. The
+next such change will not be.
+
+### What actually depends on provider terms
+
+More than it first appears:
+
+- **Onboarding copy** — how to get a key, whether a free tier exists, what a
+  key costs. Wrong instructions here are where a paying user gives up.
+- **The default spend cap.** "10 a day is sensible headroom" is a judgement
+  made against today's limits. If a provider halves its free allowance, that
+  default silently becomes a way to exhaust someone's quota; if it raises
+  them, the default becomes needlessly restrictive.
+- **Which provider is recommended.** Google is recommended *because* it has
+  a free tier. That recommendation is a claim with an expiry date.
+- **The default model.** Deprecations already have a checker; pricing and
+  rate-limit changes do not.
+- **Whether a provider works at all.** Anthropic cannot be called from a
+  browser today. If that changed, an accurate warning would become a false
+  one.
+
+### The precedent to build on
+
+`health_check.py` already does a version of this: `check_model_deprecation`
+fetches Gemini's deprecations page and asks an LLM whether a named model is
+listed, with instructions to be conservative and report nothing rather than
+guess when the page is ambiguous. That shape — fetch, ask, prefer a false
+negative — is the right starting point.
+
+### The hard part is materiality, not fetching
+
+Diffing these pages naively is useless: they change constantly for reasons
+that do not matter, and an alert that fires weekly on cosmetic edits gets
+muted within a month. That failure is worse than no watcher, because it
+produces the *appearance* of monitoring.
+
+So the question asked has to be specific and answerable:
+
+- Does a free tier still exist for this provider?
+- Have the documented rate limits changed, in either direction?
+- Has the key-creation flow changed enough that our written steps are now
+  wrong?
+- Is our recommended model still current, and still priced as assumed?
+
+Store the last answer, alert only on a *changed answer* — never on changed
+page text. That is the same distinction the coverage check draws between a
+variable that was present and is now absent, and one that was never there.
+
+### Getting the warning to users
+
+Detection is half of it. The app cannot be updated instantly, so a provider
+changing terms today would leave stale guidance on phones until a store
+release — which is precisely the case item 24's published data feed exists
+for. A notice carried in that feed and shown in-app would close the gap
+without a release, and is a far better use of a remote channel than remote
+configuration, because it changes what the user is TOLD rather than what the
+app DOES.
+
+### Deliberate non-goal
+
+This does not attempt to read or interpret legal terms of service for
+compliance purposes. It watches the operational facts this app states to its
+users and depends on for its own defaults. Anything beyond that is a
+question for a lawyer, not a cron job.
