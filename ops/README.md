@@ -148,3 +148,25 @@ change.
 Paths 2a, 2b, and 3 are all optional, deployment-specific choices layered
 on top of the same core pipeline — picking one doesn't change what forkers
 inherit by default (path 1).
+
+## Credential handling (planned improvement)
+
+Production credentials currently live as plaintext exports in the operator's
+shell profile. That means anything which reads that file — any tool, script,
+or assistant — sees them, and one such accident has already happened.
+
+Planned: move them into the macOS Keychain (`security add-generic-password`)
+and have the shell read them out on demand, so no plaintext copy sits on
+disk. Deferred until after a pending OS upgrade, since the keys are being
+reissued anyway.
+
+Two notes for whoever does it:
+
+- The GitHub PAT matters more than the API keys. An API key costs quota or
+  money; a PAT with write scope can rewrite workflows and edit the committed
+  forecast record, which is the one thing this project's credibility rests
+  on. Keep it minimal-scope, on the trigger host only, and never in a shell
+  profile.
+- Rotating a key means updating it in **both** places — the operator's shell
+  and the GitHub Actions secret. They are one value stored twice, and a
+  half-rotation looks like a working local run with a failing scheduled one.

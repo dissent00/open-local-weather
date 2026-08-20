@@ -1878,6 +1878,35 @@ extractor knows a series came back empty:
 - `health_check.py` is the natural home; it already watches model
   deprecation and repo staleness, and already has somewhere to report.
 
+### The same gap exists in operations, and one instance is live now
+
+The daily workflow fires from two sources: four backup `cron` slots, and a
+`workflow_dispatch` call from `ops/trigger_workflow.sh` on an external
+server, authenticated with a GitHub PAT. The dispatch path exists precisely
+because GitHub's scheduler proved unreliable enough to miss issuances.
+
+**When that PAT expires, nothing will say so.** GitHub fine-grained PATs
+expire — a year at most, often sooner — so this is a matter of when. The
+failure mode:
+
+1. `workflow_dispatch` silently stops firing.
+2. The cron slots keep firing, unreliably, exactly as before the dispatch
+   trigger was added.
+3. Commits therefore keep appearing, so `check_repo_staleness` — which only
+   trips after **50 days** with no commit at all — never fires.
+4. The system quietly reverts to the unreliable mode that caused the
+   original problem, and the first symptom is a late or missing forecast.
+
+Tolerance without vigilance, in the operational layer rather than the data
+layer. The system survives the failure and never mentions it.
+
+Cheap to detect, and the data already exists in git: **which trigger
+produced each run**. `github.event_name` distinguishes `schedule` from
+`workflow_dispatch`, so recording it in the log entry's `meta` makes "the
+external trigger hasn't fired in N days" a query rather than an
+investigation. Worth doing at the same time as the per-variable coverage
+check, since it is the same idea pointed at the pipeline itself.
+
 ### Why it matters more for the app than the server
 
 On the server an upstream change is a git push. In an app it is an
