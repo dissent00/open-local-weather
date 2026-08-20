@@ -1645,3 +1645,94 @@ Also unshipped: no fork other than Kenya has a parser. The catalog in item
 well transfer, since WMO-influenced met services tend to publish similar
 glossaries.
 
+
+---
+
+## 22. The Synoptic Overview has no synoptic data · **Planned**
+
+Reported from a live forecast: the Detailed Discussion had "lost the big
+picture — fronts/highs/lows at the much larger scale", the kind of sentence
+a reader expects from an AFD ("a low pressure system is approaching from the
+west, currently over X, and will...").
+
+**This is a data problem, not a prompt problem**, and the numbers are stark.
+`region_points` for the live Kisumu deployment spans:
+
+```
+lat -1.06..0.06  (1.12 deg)     lon 34.29..34.78  (0.49 deg)
+roughly 125 km x 55 km
+```
+
+Synoptic features — highs, lows, the ITCZ, tropical systems — have
+wavelengths of **1,000–4,000 km**. A 125 km box fits entirely *inside* a
+single system's pressure gradient. There is no big picture in that data to
+find, so the model has been describing a mesoscale gradient under a heading
+that promises a synoptic one. Asking it to do better would be asking it to
+invent.
+
+### The fix is one API call
+
+Measured 2026-08-19: a nine-point ring at ±12° (~2,600 km) around Kisumu,
+`pressure_msl_mean`, 3 days, `best_match`:
+
+**HTTP 200 in 1.16 s, 3,133 bytes, one request.**
+
+| Point | MSLP day 0/1/2 |
+|---|---|
+| centre | 1015.9 / 1015.2 / 1014.4 |
+| N | 1010.9 / 1011.4 / 1013.4 |
+| **NE** | **1006.2 / 1006.3 / 1005.9** |
+| E | 1016.0 / 1015.7 / 1015.4 |
+| SE | 1018.6 / 1018.4 / 1018.0 |
+| **S** | **1020.4 / 1020.0 / 1019.5** |
+| SW | 1016.9 / 1016.2 / 1015.5 |
+| **W** | **1014.6 / 1013.0 / 1012.7** |
+| NW | 1013.1 / 1012.1 / 1013.1 |
+
+A 14 hPa gradient across the domain, a genuine low to the NE, a high to the
+S, and pressure falling steadily to the W — real synoptic structure, and
+exactly the material the missing sentence is made of.
+
+### Design notes
+
+- Keep it a **separate** `synoptic_points` config block, not an enlargement
+  of `region_points`. The existing near-field points feed the local
+  gradient/convection reasoning and should stay tight; conflating the two
+  scales would degrade both.
+- Derive the descriptive terms **in code**, per the project's standing rule:
+  which quadrant holds the lowest/highest MSLP, the gradient magnitude, and
+  the 24/48/72 h tendency per point. Hand the LLM labels, not nine raw
+  arrays to subtract in its head — this is precisely the mistake the
+  day-over-day comparison already had to be rescued from (see item 15).
+- The ring is location-agnostic: offsets in degrees around the primary
+  point, so a fork gets it with no extra configuration.
+- Honesty limit stands. Point pressure at 12° spacing supports "lower
+  pressure lies to the northeast and is deepening"; it does not support a
+  named storm centre with a track. README's "no true storm-center or track
+  forecasting" limitation should be **narrowed**, not deleted.
+
+---
+
+## 23. Day-over-day comparison is over-applied · **Planned**
+
+Reported from a live forecast: *"with rain expected again today, as it
+rained yesterday too."* Circular, and it appeared more than once in the
+issuance.
+
+The instruction to open with the comparison (item 15) is doing its job too
+enthusiastically. Two separate faults:
+
+1. **Repetition across sections.** The comparison belongs in the Overview
+   and should not resurface in Today's Forecast. The prompt never says
+   "once".
+2. **Belabouring a non-difference.** When `rain_contrast` says conditions
+   match yesterday, the honest rendering is a brief clause or nothing at
+   all — not a sentence constructed to sound informative about sameness.
+   The prompt already contains exactly this instruction for temperature
+   ("if high_label is 'about the same', say the day feels much like
+   yesterday; do not manufacture a difference"), and the same discipline
+   simply was never extended to rain.
+
+Both are prompt fixes, not data fixes. Worth doing alongside the "voices"
+work (item 14), since a terser voice makes the repetition more glaring and
+a chattier one may want the comparison stated differently.
