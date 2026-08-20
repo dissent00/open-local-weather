@@ -174,6 +174,9 @@ String buildUserPrompt({
     'regional_pressure': todayWeatherData['regional_pressure'],
     'air_quality': todayWeatherData['air_quality'],
     'airport_metar': todayWeatherData['airport_metar'],
+    // See the Python implementation: this key was added late and omitted
+    // here, so the prompt referred to data that never arrived.
+    'synoptic_scale_pressure': todayWeatherData['synoptic_scale_pressure'],
   };
 
   return '''

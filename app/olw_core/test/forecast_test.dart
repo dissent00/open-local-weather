@@ -95,6 +95,23 @@ void main() {
       client: MockClient((request) async {
         requestedUrls.add(request.url.toString());
         final path = request.url.path;
+        // The synoptic ring is a multi-coordinate request: an ARRAY.
+        if (request.url.queryParameters['daily'] == 'pressure_msl_mean') {
+          return http.Response(
+            jsonEncode([
+              for (var i = 0; i < 9; i++)
+                {
+                  'latitude': -0.1 + i,
+                  'longitude': 34.8 + i,
+                  'daily': {
+                    'time': ['2026-08-19', '2026-08-20', '2026-08-21'],
+                    'pressure_msl_mean': [1016.0 - i, 1015.0 - i, 1014.0 - i],
+                  },
+                }
+            ]),
+            200,
+          );
+        }
         if (path.contains('air-quality')) {
           if (failAirQuality) return http.Response('upstream exploded', 500);
           return http.Response(jsonEncode({'hourly': {'pm2_5': [18.0]}}), 200);
@@ -202,6 +219,24 @@ void main() {
       ),
       throwsA(isA<OpenMeteoFetchError>()),
     );
+  });
+
+  test('the synoptic ring reaches the prompt as derived labels', () async {
+    // Not raw arrays: the prompt tells the model to use the labels and
+    // statements AS GIVEN, precisely so it does not work out which quadrant
+    // is lowest by eye — the arithmetic-by-eye mistake the day-over-day
+    // comparison already had to be rescued from.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+    expect(llm.seenUserPrompt, contains('synoptic_scale_pressure'));
+    expect(llm.seenUserPrompt, contains('gradient_strength'));
+    expect(llm.seenUserPrompt, contains('locates a direction, not a centre or a front'));
   });
 
   test('an evening refresh is issued as a refresh', () async {

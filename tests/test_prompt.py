@@ -384,3 +384,45 @@ def test_user_prompt_carries_the_extracted_predictions_that_get_scored():
     assert "kenya_met" in prompt
     assert "these exact values get scored" in prompt
     assert 'never zero or "no"' in prompt
+
+
+def test_user_prompt_forwards_every_weather_key_the_pipeline_sends():
+    """A real bug this would have caught.
+
+    build_user_prompt rebuilds the weather payload key-by-key so a stray key
+    cannot silently ENLARGE the prompt. The cost is that a newly added key
+    must be listed in two places — and when `synoptic_scale_pressure` was
+    added, the pipeline passed it and this rebuild dropped it. The system
+    prompt then instructed the model to use a key that never arrived, so the
+    whole synoptic feature was inert while every test still passed.
+
+    Rather than pin a hard-coded list here (which would have been written
+    from the same mistaken assumption), this asserts against the keys
+    pipeline.py actually populates.
+    """
+    import inspect
+
+    from openlocalweather import pipeline
+
+    source = inspect.getsource(pipeline)
+    # Scoped to the today_weather_data literals specifically. A looser scan
+    # over the whole module also matches response-schema fields such as
+    # `synoptic_pattern`, which are not weather-payload keys at all.
+    sent: set[str] = set()
+    for block in re.findall(r"today_weather_data=\{(.*?)\n        \},", source, re.S):
+        sent |= set(re.findall(r'"(\w+)":', block))
+    assert sent, "fixture assumption: pipeline builds today_weather_data inline"
+    assert "synoptic_scale_pressure" in sent, "fixture assumption: pipeline sends it"
+
+    prompt = build_user_prompt(
+        today=date(2026, 8, 19), yesterday=date(2026, 8, 18),
+        public_webpage_url="https://example.com/",
+        verification_context={}, track_record_context=[], historical_logs=[],
+        ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None,
+        today_weather_data={k: f"SENTINEL_{k}" for k in sent},
+        local_bulletin_source_name="", local_bulletin_text="",
+    )
+    missing = sorted(k for k in sent if f"SENTINEL_{k}" not in prompt)
+    assert not missing, (
+        f"pipeline sends these weather keys but build_user_prompt drops them: {missing}"
+    )

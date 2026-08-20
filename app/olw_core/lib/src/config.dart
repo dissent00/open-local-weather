@@ -88,3 +88,18 @@ const double reviewWindBiasThresholdKmh = 8.0;
 /// Lead times, under a name that does not collide with the parameter it is
 /// the default for.
 const List<int> leadTimesDays_ = leadTimesDays;
+
+
+/// --- Synoptic-scale pressure (see synoptic.dart) ---
+///
+/// Ordered (upperBoundExclusive, label). Mirrors SYNOPTIC_GRADIENT_BANDS_HPA
+/// in the Python implementation.
+const List<(double, String)> synopticGradientBandsHpa = [
+  (4.0, 'weak'),
+  (10.0, 'moderate'),
+  (18.0, 'strong'),
+  (999.0, 'very strong'),
+];
+
+/// 72-hour change below this is not worth calling a tendency.
+const double synopticTendencyThresholdHpa = 1.5;

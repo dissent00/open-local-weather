@@ -56,6 +56,43 @@ class Point {
   const Point(this.lat, this.lon);
 }
 
+
+/// The synoptic ring: a coarse pressure field around the primary point.
+///
+/// DELIBERATELY separate from the near-field region points. Those span
+/// roughly 125 x 55 km and feed local convection reasoning; synoptic
+/// features have wavelengths of 1,000-4,000 km, so a 125 km box fits
+/// entirely inside one system's gradient. Conflating the two scales would
+/// degrade both.
+///
+/// 12 degrees is about 1,300 km, so the ring spans ~2,600 km — enough to see
+/// a centre and its movement without pretending to resolve a front.
+const double synopticRingOffsetDeg = 12.0;
+const List<(double, double, String)> synopticRing = [
+  (0.0, 0.0, 'centre'),
+  (1.0, 0.0, 'N'), (1.0, 1.0, 'NE'), (0.0, 1.0, 'E'), (-1.0, 1.0, 'SE'),
+  (-1.0, 0.0, 'S'), (-1.0, -1.0, 'SW'), (0.0, -1.0, 'W'), (1.0, -1.0, 'NW'),
+];
+
+/// (lat, lon, label) for the ring. Latitudes clamp so a high-latitude fork
+/// cannot request an impossible coordinate; longitudes wrap. Location-agnostic
+/// by construction.
+List<(double, double, String)> synopticRingPoints(
+  double lat,
+  double lon, {
+  double offsetDeg = synopticRingOffsetDeg,
+}) {
+  double round4(double v) => (v * 10000).round() / 10000;
+  return [
+    for (final (dlat, dlon, label) in synopticRing)
+      (
+        round4((lat + dlat * offsetDeg).clamp(-90.0, 90.0)),
+        round4((lon + dlon * offsetDeg + 180.0) % 360.0 - 180.0),
+        label,
+      )
+  ];
+}
+
 class OpenMeteoClient {
   final http.Client _client;
 
@@ -81,6 +118,26 @@ class OpenMeteoClient {
       throw OpenMeteoFetchError('$url returned HTTP ${resp.statusCode}: $body');
     }
     return jsonDecode(resp.body) as Map<String, Object?>;
+  }
+
+  /// Like [_get], but without asserting the response is an object.
+  ///
+  /// Open-Meteo returns a JSON **array** when the request carries multiple
+  /// comma-separated coordinates — one block per point. Casting that to a Map
+  /// throws, so every multi-point endpoint must decode through here.
+  Future<Object?> _getRaw(String url, Map<String, String> params) async {
+    final uri = Uri.parse(url).replace(queryParameters: params);
+    http.Response resp;
+    try {
+      resp = await _client.get(uri).timeout(requestTimeout);
+    } catch (e) {
+      throw OpenMeteoFetchError('Request to $url failed: $e');
+    }
+    if (resp.statusCode != 200) {
+      final body = resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body;
+      throw OpenMeteoFetchError('$url returned HTTP ${resp.statusCode}: $body');
+    }
+    return jsonDecode(resp.body);
   }
 
   /// Today's hourly multi-model guidance. `forecast_days=1` because onset
@@ -127,9 +184,13 @@ class OpenMeteoClient {
     required List<Point> regionPoints,
     required String timezone,
     int days = 7,
-  }) {
+  }) async {
     final points = [primaryPoint, ...regionPoints];
-    return _get(forecastUrl, {
+    // Multi-coordinate, so the response is an ARRAY of per-point blocks. It
+    // is normalised to {"blocks": [...]} rather than cast to a Map, which
+    // would throw against the real API — this went unnoticed because the
+    // test mocked a single-object response.
+    final raw = await _getRaw(forecastUrl, {
       'latitude': points.map((p) => '${p.lat}').join(','),
       'longitude': points.map((p) => '${p.lon}').join(','),
       'daily': regionalDailyVars,
@@ -137,6 +198,8 @@ class OpenMeteoClient {
       'timezone': timezone,
       'models': 'best_match',
     });
+    if (raw is Map<String, Object?>) return raw;
+    return {'blocks': raw};
   }
 
   Future<Map<String, Object?>> fetchAirQuality({
@@ -190,6 +253,43 @@ class OpenMeteoClient {
         endDate: day,
         timezone: timezone,
       );
+
+
+  /// Coarse MSLP field for the Synoptic Overview.
+  ///
+  /// One request for all nine points (Open-Meteo accepts comma-separated
+  /// coordinates), `best_match` only — a large-scale pattern sketch, never
+  /// scored. Measured 2026-08-19: HTTP 200 in 1.16 s for 3,133 bytes.
+  Future<Map<String, Object?>> fetchSynopticPressure({
+    required double lat,
+    required double lon,
+    required String timezone,
+    int days = 3,
+  }) async {
+    final points = synopticRingPoints(lat, lon);
+    final raw = await _getRaw(forecastUrl, {
+      'latitude': points.map((p) => p.$1.toString()).join(','),
+      'longitude': points.map((p) => p.$2.toString()).join(','),
+      'daily': 'pressure_msl_mean',
+      'forecast_days': '$days',
+      'timezone': timezone,
+      'models': 'best_match',
+    });
+    // Multi-coordinate requests return a LIST of blocks, one per point.
+    final blocks = raw is List ? raw : [raw];
+    return {
+      'points': [
+        for (var i = 0; i < points.length && i < blocks.length; i++)
+          {
+            'label': points[i].$3,
+            'lat': (blocks[i] as Map)['latitude'],
+            'lon': (blocks[i] as Map)['longitude'],
+            'mslp_hpa':
+                ((blocks[i] as Map)['daily'] as Map?)?['pressure_msl_mean'] ?? const <Object?>[],
+          }
+      ]
+    };
+  }
 }
 
 /// Splits a flat multi-day hourly archive response into one [DailyActual]
@@ -259,4 +359,5 @@ class _DayBucket {
   final List<double?> wind = [];
   final List<double?> pressure = [];
   final List<String> times = [];
+
 }

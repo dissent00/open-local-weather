@@ -142,6 +142,68 @@ void main() {
       expect(got.containsKey('hourly'), isTrue);
     });
   });
+
+  group('multi-coordinate responses', () {
+    // Open-Meteo returns a JSON ARRAY when a request carries several
+    // comma-separated coordinates. Casting that to a Map throws, so an
+    // endpoint that does so compiles, passes a single-object mock, and then
+    // fails against the real API. Both multi-point endpoints are exercised
+    // against the real array shape here.
+    List<Map<String, Object?>> ringBlocks() => [
+          for (var i = 0; i < 9; i++)
+            {
+              'latitude': -0.1 + i,
+              'longitude': 34.8 + i,
+              'daily': {
+                'time': ['2026-08-21', '2026-08-22', '2026-08-23'],
+                'pressure_msl_mean': [1016.0 - i, 1015.0 - i, 1014.0 - i],
+              },
+            }
+        ];
+
+    test('synoptic pressure decodes an array of point blocks', () async {
+      final client = OpenMeteoClient(
+        client: MockClient((req) async => http.Response(jsonEncode(ringBlocks()), 200)),
+      );
+      final result = await client.fetchSynopticPressure(
+        lat: -0.0917, lon: 34.7680, timezone: 'Africa/Nairobi',
+      );
+      final points = result['points'] as List;
+      expect(points, hasLength(9));
+      // Labels are attached positionally, in ring order.
+      expect((points.first as Map)['label'], 'centre');
+      expect((points[1] as Map)['label'], 'N');
+      expect((points.last as Map)['label'], 'NW');
+      expect((points.first as Map)['mslp_hpa'], [1016.0, 1015.0, 1014.0]);
+    });
+
+    test('regional pressure survives an array response', () async {
+      // This one previously cast the response to a Map and would have thrown
+      // against the live API; the mock only ever returned an object.
+      final client = OpenMeteoClient(
+        client: MockClient((req) async => http.Response(jsonEncode(ringBlocks()), 200)),
+      );
+      final result = await client.fetchRegionalPressure(
+        primaryPoint: const Point(-0.09, 34.77),
+        regionPoints: const [Point(0.06, 34.29)],
+        timezone: 'Africa/Nairobi',
+      );
+      expect(result['blocks'], isA<List>());
+      expect(result['blocks'] as List, hasLength(9));
+    });
+
+    test('the ring clamps latitude and wraps longitude', () {
+      // A high-latitude fork must not request an impossible coordinate.
+      final arctic = synopticRingPoints(82.0, 179.0);
+      for (final (lat, lon, _) in arctic) {
+        expect(lat, inInclusiveRange(-90.0, 90.0));
+        expect(lon, inInclusiveRange(-180.0, 180.0));
+      }
+      // 179 + 12 wraps past the antimeridian rather than becoming 191.
+      final east = arctic.firstWhere((p) => p.$3 == 'E');
+      expect(east.$2, lessThan(0), reason: 'longitude wrapped, not overflowed');
+    });
+  });
 }
 
 class _Boom implements Exception {

@@ -8,6 +8,7 @@ import 'llm/provider.dart';
 import 'llm/schema.dart';
 import 'models.dart';
 import 'open_meteo.dart';
+import 'synoptic.dart';
 
 /// End-to-end forecast generation: fetch, extract, prompt, synthesise.
 ///
@@ -81,6 +82,14 @@ Future<ForecastRun> generateForecast({
       .fetchAirQuality(lat: location.lat, lon: location.lon, timezone: location.timezone)
       .then<Map<String, Object?>?>((v) => v)
       .catchError((_) => null);
+  // Also optional, and for the same reason. Without it the Synoptic Overview
+  // has no large-scale picture to describe — the prompt is told to say so
+  // rather than substituting the local gradient, which is what made that
+  // section hollow before the ring existed.
+  final synopticFuture = client
+      .fetchSynopticPressure(lat: location.lat, lon: location.lon, timezone: location.timezone)
+      .then<Map<String, Object?>?>((v) => v)
+      .catchError((_) => null);
 
   // Future.wait rather than sequential awaits, so that when one required
   // fetch fails the other's rejection is still OBSERVED. Awaiting them one
@@ -91,6 +100,7 @@ Future<ForecastRun> generateForecast({
   final hourly = required[0];
   final daily = required[1];
   final airQuality = await airQualityFuture;
+  final synoptic = summarizeSynoptic(await synopticFuture);
 
   final day0 = extractDay0PredictionsFromHourly(hourly, models);
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
@@ -115,6 +125,10 @@ Future<ForecastRun> generateForecast({
       'regional_pressure': null,
       'air_quality': airQuality,
       'airport_metar': null,
+      // Derived in code, never handed over raw — the prompt is instructed to
+      // use these labels and statements as given rather than working out
+      // which quadrant is lowest by eye.
+      'synoptic_scale_pressure': synoptic?.toJson(),
     },
     localBulletinSourceName: localBulletinSourceName,
     localBulletinText: localBulletinText,

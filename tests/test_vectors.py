@@ -182,6 +182,28 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_synoptic():
+    """The bounded vocabulary is the contract — a direction, never a centre,
+    a track, or a front. Statements are compared verbatim because they are
+    published prose, not internal labels."""
+    from openlocalweather.synoptic import summarize_synoptic
+
+    for case in load("synoptic.json")["cases"]:
+        got = summarize_synoptic(case["input"]["payload"])
+        want = case["expected"]
+        name = case["name"]
+        if want is None:
+            assert got is None, f"{name}: an absent picture must read as absent"
+            continue
+        assert got is not None, name
+        assert got.lowest_label == want["lowest_label"], name
+        assert got.highest_label == want["highest_label"], name
+        assert got.gradient_hpa == want["gradient_hpa"], name
+        assert got.gradient_strength == want["gradient_strength"], name
+        assert got.tendencies == want["tendencies"], name
+        assert got.statements == want["statements"], name
+
+
 def test_vectors_weekly_review():
     """Both surfaces must publish the same claims from the same record.
 
@@ -322,6 +344,7 @@ def test_every_vector_file_is_exercised():
         "llm_system_prompt.json",
         "llm_user_prompt.json",
         "weekly_review.json",
+        "synoptic.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}

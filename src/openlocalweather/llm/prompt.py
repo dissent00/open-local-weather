@@ -188,6 +188,13 @@ def build_user_prompt(
         "regional_pressure": today_weather_data.get("regional_pressure"),
         "air_quality": today_weather_data.get("air_quality"),
         "airport_metar": today_weather_data.get("airport_metar"),
+        # Added late, and briefly forgotten here — the pipeline passed it and
+        # this rebuild dropped it, so the Synoptic Overview instructions
+        # referred to a key that never arrived. The key-by-key rebuild guards
+        # against a stray key ENLARGING the prompt; the cost is that a new key
+        # must be added in two places, and test_prompt.py now fails if any key
+        # the pipeline sends goes missing here.
+        "synoptic_scale_pressure": today_weather_data.get("synoptic_scale_pressure"),
     }
 
     return f"""

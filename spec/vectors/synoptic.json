@@ -1,0 +1,322 @@
+{
+  "vector_format_version": 1,
+  "function": "summarize_synoptic",
+  "description": "Large-scale pressure reduced to labels and ready-made statements. The bounded vocabulary is the contract: a direction, never a centre, a track, or a front.",
+  "cases": [
+    {
+      "name": "live ring \u2014 low to the NE, high to the S, pressure falling west",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1016.1,
+                1015.2,
+                1014.4
+              ]
+            },
+            {
+              "label": "N",
+              "mslp_hpa": [
+                1010.9,
+                1011.4,
+                1013.4
+              ]
+            },
+            {
+              "label": "NE",
+              "mslp_hpa": [
+                1006.5,
+                1006.3,
+                1005.9
+              ]
+            },
+            {
+              "label": "E",
+              "mslp_hpa": [
+                1016.0,
+                1015.7,
+                1015.4
+              ]
+            },
+            {
+              "label": "SE",
+              "mslp_hpa": [
+                1018.6,
+                1018.4,
+                1018.0
+              ]
+            },
+            {
+              "label": "S",
+              "mslp_hpa": [
+                1020.7,
+                1020.0,
+                1019.5
+              ]
+            },
+            {
+              "label": "SW",
+              "mslp_hpa": [
+                1016.9,
+                1016.2,
+                1015.5
+              ]
+            },
+            {
+              "label": "W",
+              "mslp_hpa": [
+                1014.6,
+                1013.0,
+                1012.7
+              ]
+            },
+            {
+              "label": "NW",
+              "mslp_hpa": [
+                1013.1,
+                1012.1,
+                1013.1
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "centre_mslp_hpa": 1016.1,
+        "lowest_label": "NE",
+        "lowest_mslp_hpa": 1006.5,
+        "highest_label": "S",
+        "highest_mslp_hpa": 1020.7,
+        "gradient_hpa": 14.2,
+        "gradient_strength": "strong",
+        "tendencies": {
+          "centre": "deepening",
+          "N": "filling",
+          "NE": "steady",
+          "E": "steady",
+          "SE": "steady",
+          "S": "steady",
+          "SW": "steady",
+          "W": "deepening",
+          "NW": "steady"
+        },
+        "statements": [
+          "Across roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1021 hPa) \u2014 a 14 hPa spread, a strong large-scale gradient.",
+          "Pressure is also falling toward the west \u2014 a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here.",
+          "Pressure overhead is falling.",
+          "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+        ]
+      }
+    },
+    {
+      "name": "flat field \u2014 weak gradient, nothing deepening",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1013.0,
+                1013.1,
+                1013.0
+              ]
+            },
+            {
+              "label": "N",
+              "mslp_hpa": [
+                1013.2,
+                1013.1,
+                1013.0
+              ]
+            },
+            {
+              "label": "E",
+              "mslp_hpa": [
+                1013.4,
+                1013.3,
+                1013.2
+              ]
+            },
+            {
+              "label": "S",
+              "mslp_hpa": [
+                1013.1,
+                1013.0,
+                1013.1
+              ]
+            },
+            {
+              "label": "W",
+              "mslp_hpa": [
+                1012.9,
+                1013.0,
+                1013.1
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "centre_mslp_hpa": 1013.0,
+        "lowest_label": "W",
+        "lowest_mslp_hpa": 1012.9,
+        "highest_label": "E",
+        "highest_mslp_hpa": 1013.4,
+        "gradient_hpa": 0.5,
+        "gradient_strength": "weak",
+        "tendencies": {
+          "centre": "steady",
+          "N": "steady",
+          "E": "steady",
+          "S": "steady",
+          "W": "steady"
+        },
+        "statements": [
+          "Across roughly 2,600 km, pressure is lowest toward the west (1013 hPa) and highest toward the east (1013 hPa) \u2014 a 0 hPa spread, a weak large-scale gradient.",
+          "Pressure overhead is near-steady.",
+          "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+        ]
+      }
+    },
+    {
+      "name": "a feature building to the west before it is the lowest quadrant",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1014.0,
+                1013.5,
+                1013.0
+              ]
+            },
+            {
+              "label": "NE",
+              "mslp_hpa": [
+                1008.0,
+                1008.1,
+                1008.0
+              ]
+            },
+            {
+              "label": "W",
+              "mslp_hpa": [
+                1015.0,
+                1012.5,
+                1010.0
+              ]
+            },
+            {
+              "label": "S",
+              "mslp_hpa": [
+                1018.0,
+                1018.1,
+                1018.0
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "centre_mslp_hpa": 1014.0,
+        "lowest_label": "NE",
+        "lowest_mslp_hpa": 1008.0,
+        "highest_label": "S",
+        "highest_mslp_hpa": 1018.0,
+        "gradient_hpa": 10.0,
+        "gradient_strength": "strong",
+        "tendencies": {
+          "centre": "steady",
+          "NE": "steady",
+          "W": "deepening",
+          "S": "steady"
+        },
+        "statements": [
+          "Across roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1018 hPa) \u2014 a 10 hPa spread, a strong large-scale gradient.",
+          "Pressure is also falling toward the west \u2014 a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here.",
+          "Pressure overhead is near-steady.",
+          "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+        ]
+      }
+    },
+    {
+      "name": "too few usable readings yields nothing rather than a flat field",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1013.0
+              ]
+            },
+            {
+              "label": "N",
+              "mslp_hpa": [
+                null,
+                null
+              ]
+            }
+          ]
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "single-sample points still describe a gradient, with no tendencies",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1013.0
+              ]
+            },
+            {
+              "label": "N",
+              "mslp_hpa": [
+                1009.0
+              ]
+            },
+            {
+              "label": "S",
+              "mslp_hpa": [
+                1017.0
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "centre_mslp_hpa": 1013.0,
+        "lowest_label": "N",
+        "lowest_mslp_hpa": 1009.0,
+        "highest_label": "S",
+        "highest_mslp_hpa": 1017.0,
+        "gradient_hpa": 8.0,
+        "gradient_strength": "moderate",
+        "tendencies": {
+          "centre": "steady",
+          "N": "steady",
+          "S": "steady"
+        },
+        "statements": [
+          "Across roughly 2,600 km, pressure is lowest toward the north (1009 hPa) and highest toward the south (1017 hPa) \u2014 a 8 hPa spread, a moderate large-scale gradient.",
+          "Pressure overhead is near-steady.",
+          "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+        ]
+      }
+    },
+    {
+      "name": "absent payload",
+      "input": {
+        "payload": null
+      },
+      "expected": null
+    }
+  ]
+}

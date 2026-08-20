@@ -766,6 +766,78 @@ def export_weekly_review() -> None:
     )
 
 
+def export_synoptic() -> None:
+    """The large-scale pressure description, derived in code.
+
+    Ported so the app's Synoptic Overview reads like the site's rather than
+    reverting to a bare local trend. The bounded vocabulary is the part that
+    must not drift: point sampling at 12-degree spacing supports "lower
+    pressure lies toward the northeast", never a named centre or a track, and
+    an implementation that quietly widened that claim would overstate what
+    the data can carry.
+    """
+    from openlocalweather.synoptic import summarize_synoptic
+
+    def ring(**by_label):
+        return {"points": [{"label": k, "mslp_hpa": v} for k, v in by_label.items()]}
+
+    live = ring(
+        centre=[1016.1, 1015.2, 1014.4], N=[1010.9, 1011.4, 1013.4],
+        NE=[1006.5, 1006.3, 1005.9], E=[1016.0, 1015.7, 1015.4],
+        SE=[1018.6, 1018.4, 1018.0], S=[1020.7, 1020.0, 1019.5],
+        SW=[1016.9, 1016.2, 1015.5], W=[1014.6, 1013.0, 1012.7],
+        NW=[1013.1, 1012.1, 1013.1],
+    )
+    flat = ring(
+        centre=[1013.0, 1013.1, 1013.0], N=[1013.2, 1013.1, 1013.0],
+        E=[1013.4, 1013.3, 1013.2], S=[1013.1, 1013.0, 1013.1],
+        W=[1012.9, 1013.0, 1013.1],
+    )
+    # A system building to the west that is NOT yet the lowest point — the
+    # signal a lowest-quadrant-only summary would miss entirely.
+    approaching = ring(
+        centre=[1014.0, 1013.5, 1013.0], NE=[1008.0, 1008.1, 1008.0],
+        W=[1015.0, 1012.5, 1010.0], S=[1018.0, 1018.1, 1018.0],
+    )
+    gaps = ring(centre=[1013.0], N=[None, None])
+    missing_tail = ring(centre=[1013.0], N=[1009.0], S=[1017.0])
+
+    cases = []
+    for name, payload in [
+        ("live ring — low to the NE, high to the S, pressure falling west", live),
+        ("flat field — weak gradient, nothing deepening", flat),
+        ("a feature building to the west before it is the lowest quadrant", approaching),
+        ("too few usable readings yields nothing rather than a flat field", gaps),
+        ("single-sample points still describe a gradient, with no tendencies", missing_tail),
+        ("absent payload", None),
+    ]:
+        result = summarize_synoptic(payload)
+        cases.append({
+            "name": name,
+            "input": {"payload": payload},
+            "expected": None if result is None else {
+                "centre_mslp_hpa": result.centre_mslp_hpa,
+                "lowest_label": result.lowest_label,
+                "lowest_mslp_hpa": result.lowest_mslp_hpa,
+                "highest_label": result.highest_label,
+                "highest_mslp_hpa": result.highest_mslp_hpa,
+                "gradient_hpa": result.gradient_hpa,
+                "gradient_strength": result.gradient_strength,
+                "tendencies": result.tendencies,
+                "statements": result.statements,
+            },
+        })
+
+    write(
+        "synoptic.json",
+        "summarize_synoptic",
+        "Large-scale pressure reduced to labels and ready-made statements. The "
+        "bounded vocabulary is the contract: a direction, never a centre, a "
+        "track, or a front.",
+        cases,
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -914,6 +986,7 @@ def main() -> None:
     export_system_prompt()
     export_user_prompt()
     export_weekly_review()
+    export_synoptic()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 

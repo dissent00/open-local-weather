@@ -281,6 +281,38 @@ void main() {
     });
   });
 
+  group('synoptic', () {
+    // The bounded vocabulary is the contract. An implementation that widened
+    // "lower pressure lies toward the northeast" into a named centre or a
+    // track would overstate what 12-degree point sampling can carry, and the
+    // statements are compared verbatim to stop that drifting.
+    test('matches Python, statements included', () {
+      for (final c in casesOf('synoptic.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final payload = i['payload'] as Map<String, Object?>?;
+        final got = summarizeSynoptic(payload);
+        final want = c['expected'] as Map<String, Object?>?;
+        final reason = 'case "${c['name']}"';
+
+        if (want == null) {
+          expect(got, isNull, reason: '$reason — an absent picture must read '
+              'as absent, never as a flat field');
+          continue;
+        }
+        expect(got, isNotNull, reason: reason);
+        expect(got!.lowestLabel, equals(want['lowest_label']), reason: reason);
+        expect(got.highestLabel, equals(want['highest_label']), reason: reason);
+        expect(got.gradientHpa, equals(want['gradient_hpa']), reason: reason);
+        expect(got.gradientStrength, equals(want['gradient_strength']), reason: reason);
+        expect(got.centreMslpHpa, equals(want['centre_mslp_hpa']), reason: reason);
+        expect(got.tendencies, equals((want['tendencies'] as Map).cast<String, String>()),
+            reason: reason);
+        expect(got.statements, equals((want['statements'] as List).cast<String>()),
+            reason: '$reason — statements are published prose and compared verbatim');
+      }
+    });
+  });
+
   group('weekly review', () {
     // The gates are the sensitive part. An implementation that ranked models
     // one check earlier than the other would publish a claim the other
@@ -422,6 +454,7 @@ void main() {
       'llm_system_prompt.json',
       'llm_user_prompt.json',
       'weekly_review.json',
+      'synoptic.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir
