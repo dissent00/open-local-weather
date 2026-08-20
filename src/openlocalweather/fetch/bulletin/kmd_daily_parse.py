@@ -119,6 +119,17 @@ def mentions_rain(text: str) -> bool:
     return any(w in lowered for w in _RAIN_WORDS)
 
 
+def _is_number(cell: str) -> bool:
+    """Whole-cell numeric test. Deliberately not "contains a number": a
+    forecast period may mention one, and mistaking prose for a temperature
+    would be the same class of error this replaced."""
+    try:
+        float(cell.strip())
+        return True
+    except ValueError:
+        return False
+
+
 def _number(cell: str | None) -> float | None:
     if not cell:
         return None
@@ -152,9 +163,25 @@ def parse_county_outlook(tables: list[list[list]], county: str) -> CountyOutlook
     if row is None:
         return None
 
-    high = _number(row[1] if len(row) > 1 else None)
-    low = _number(row[2] if len(row) > 2 else None)
-    periods = [str(c).replace("\n", " ").strip() for c in row[3:] if c]
+    # Read by KIND, not by position. The number of columns varies between
+    # issues — the same Kisumu row came back as
+    #   ['Kisumu', '30', '19', <tonight>, <morning>, <afternoon>]        (19 Aug)
+    #   ['Kisumu', '30', None, None, '19', <tonight>, <morning>, ...]    (20 Aug)
+    # because merged cells extract differently from one PDF to the next. Fixed
+    # indices silently mistook the minimum temperature for the Tonight
+    # forecast, losing the low and shifting every period by one, with no error
+    # raised. Numbers are temperatures and prose is a forecast period; that
+    # distinction survives a column shift.
+    cells = [
+        str(c).replace("\n", " ").strip()
+        for c in row[1:]
+        if c is not None and str(c).strip()
+    ]
+    numbers = [c for c in cells if _is_number(c)]
+    periods = [c for c in cells if not _is_number(c)]
+    # Header order is "Maximum" then "Minimum" throughout.
+    high = float(numbers[0]) if numbers else None
+    low = float(numbers[1]) if len(numbers) > 1 else None
 
     # Only phrases that actually mention rain contribute a probability —
     # otherwise "Sunny intervals" alongside a rainy period would pull the

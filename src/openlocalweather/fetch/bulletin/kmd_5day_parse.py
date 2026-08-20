@@ -121,12 +121,22 @@ def _flatten_county_rows(tables: list[list[list]]) -> tuple[list[list], dict[int
     return rows, dates
 
 
+_KNOWN_LABELS = frozenset({*_PERIOD_LABELS, "maximum", "minimum"})
+
+
 def _row_label(row: list) -> str:
-    """The label lives in column 1 or 2 depending on the row — an artefact of
-    the PDF's merged cells, not a distinction that means anything."""
-    for cell in row[1:3]:
+    """The row's label, found wherever the extraction happened to put it.
+
+    Merged cells extract to a varying number of empty columns between
+    issues — the daily bulletin's county row moved its minimum temperature
+    from index 2 to index 4 between consecutive days — so this scans for a
+    KNOWN label rather than trusting a fixed offset. An unrecognised value
+    returns "", and the row contributes nothing, which is the safe direction:
+    a mislabelled row would attach temperatures to the wrong field.
+    """
+    for cell in row[1:4]:
         label = _normalise(str(cell or ""))
-        if label:
+        if label in _KNOWN_LABELS:
             return label
     return ""
 

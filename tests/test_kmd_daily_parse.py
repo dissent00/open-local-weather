@@ -113,3 +113,57 @@ def test_the_cutoff_actually_discriminates_across_the_whole_bulletin():
     hedged = [o for o in outlooks if o and o.rain_probability_pct == 40]
     assert hedged, "fixture should contain sub-50% 'chance of' counties"
     assert all(not o.rain for o in hedged)
+
+
+# The same Kisumu row, as KMD's PDF actually extracted on two consecutive
+# days. Column count differs because merged cells extract differently from
+# one issue to the next.
+ROW_19_AUG = [[[
+    "Kisumu", "30", "19",
+    "Partly cloudy, chance of light showers\nand thunderstorms few places.",
+    "Sunny intervals, light rains expected\nover few places.",
+    "Sunny intervals.",
+]]]
+ROW_20_AUG = [[[
+    "Kisumu", "30", None, None, "19",
+    "Partly cloudy, light showers and\nthunderstorms few places.",
+    "Sunny intervals",
+    "Sunny intervals, light showers and\nthunderstorms over few places.",
+]]]
+
+
+def test_column_layout_varies_between_issues_and_both_must_parse():
+    """A live regression, caught on the first production run.
+
+    Fixed indices (row[1]=max, row[2]=min, row[3:]=periods) worked on the
+    19 Aug bulletin and silently broke on the 20 Aug one: the minimum
+    temperature landed in the Tonight slot, the low was lost, and every
+    period shifted by one. No error was raised — the stored extract read
+    "Min NoneC / Tonight: 19".
+    """
+    for label, tables in (("19 Aug", ROW_19_AUG), ("20 Aug", ROW_20_AUG)):
+        outlook = parse_county_outlook(tables, "Kisumu")
+        assert outlook.high_c == 30.0, label
+        assert outlook.low_c == 19.0, label
+        assert len(outlook.periods) == 3, label
+        # No period is a bare number — that was the tell.
+        assert not any(p.strip().isdigit() for p in outlook.periods), label
+
+
+def test_temperatures_are_identified_by_kind_not_position():
+    """Numbers are temperatures, prose is a forecast period. That holds
+    whatever the column count, which fixed offsets do not."""
+    shifted = [[["Kisumu", None, "28", None, None, None, "17", "Light showers."]]]
+    outlook = parse_county_outlook(shifted, "Kisumu")
+    assert outlook.high_c == 28.0
+    assert outlook.low_c == 17.0
+    assert outlook.periods == ["Light showers."]
+
+
+def test_prose_mentioning_a_number_is_not_mistaken_for_a_temperature():
+    """The complement. A whole-cell numeric test, not "contains a digit"."""
+    tables = [[["Kisumu", "30", "19", "Winds gusting to 25 km/h, light showers."]]]
+    outlook = parse_county_outlook(tables, "Kisumu")
+    assert outlook.high_c == 30.0 and outlook.low_c == 19.0
+    assert outlook.periods == ["Winds gusting to 25 km/h, light showers."]
+    assert outlook.rain is True
