@@ -1836,3 +1836,55 @@ nothing in auditability. Remote config should therefore be the narrow second
 line — reserved for what tolerance genuinely cannot absorb, such as an
 endpoint moving or a model being retired outright — rather than the first
 reach.
+
+---
+
+## 25. Detect absent data, don't just survive it · **Planned**
+
+The missing third leg of the resilience argument in item 24, and the one
+that would have mattered most.
+
+### What actually happened
+
+`ecmwf_ifs025` returned no Day+0 wind for the entire life of this
+deployment. Every layer behaved *correctly*: Open-Meteo served a
+correctly-named all-null array, the extractor recorded `wind_kmh=None`,
+`score_prediction` declined to score a None, and the rolling stats
+excluded it. Absence propagated cleanly as absence — exactly as designed,
+which is why nothing raised.
+
+It surfaced only when the weekly review aggregated wind error per model and
+one model had a dash where four had numbers. That took months, and took
+building an unrelated feature.
+
+### The gap
+
+Tolerance (item 24) keeps the system *running* through upstream change.
+Nothing currently makes it *visible*. Those are different properties, and
+the second is what turns a months-long silent gap into a one-day one.
+
+A coverage check is cheap because the information is already there — the
+extractor knows a series came back empty:
+
+- Per (model, variable, lead time), did today's fetch yield a value?
+- Flag a variable that was present historically and is now absent for N
+  consecutive runs. That is the signature of an upstream rename or a
+  retired model, and is distinct from a variable a model has *never*
+  published (ECMWF gusts under the legacy alias, UV for ICON/UKMO), which
+  is a permanent property and should be recorded once, not alerted on
+  daily.
+- `health_check.py` is the natural home; it already watches model
+  deprecation and repo staleness, and already has somewhere to report.
+
+### Why it matters more for the app than the server
+
+On the server an upstream change is a git push. In an app it is an
+app-store release — so knowing *quickly* is worth more, and the app can
+also degrade honestly in the meantime by naming the gap on its accuracy
+screen rather than showing a silently narrower model set.
+
+This also reframes item 24's residual risk. The question is not only "can
+we push a fix without an app release", but "how long before anyone knows a
+fix is needed". Detection shortens the second, and is far cheaper and safer
+than remote configuration, because it changes no behaviour at all — it only
+reports.
