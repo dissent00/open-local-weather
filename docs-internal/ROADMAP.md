@@ -1930,3 +1930,128 @@ we push a fix without an app release", but "how long before anyone knows a
 fix is needed". Detection shortens the second, and is far cheaper and safer
 than remote configuration, because it changes no behaviour at all — it only
 reports.
+
+---
+
+## 26. Hard cap on LLM calls — required in BOTH surfaces · **Planned**
+
+**There is currently no cap anywhere.** Nothing counts API calls, in the
+pipeline or the app. The only limiter is `daily.yml`'s `already_done` skip
+check, which exists to stop duplicate runs and is deliberately bypassed by
+`force: true`.
+
+Measured exposure as it stands:
+
+| Path | Calls per day |
+|---|---|
+| Nominal (morning + evening refresh) | 2 |
+| With retries (`MAX_ATTEMPTS = 4` per run) | up to 8 |
+| `force: true` in a loop, or a misconfigured cron | **unbounded** |
+
+The last row is the one that matters. A mistake in a crontab on a machine
+nobody is watching can run up a bill against someone's key with nothing to
+stop it, and the first signal would be the bill.
+
+### Why this is a correctness requirement, not a setting
+
+The app spends the **user's own money** through a key they supplied. An
+application that can silently do that without limit is not a product with a
+missing feature; it is one that should not ship. The same applies to a fork
+running the pipeline on their own key.
+
+### What "ironclad" has to mean
+
+1. **Count API CALLS, not forecasts.** Retries are real money — a single
+   forecast can cost four calls. A cap on successful runs is not a cap.
+2. **Record the intent to call BEFORE making it, not the result after.**
+   This is the crux. Incrementing after a call returns means a crash,
+   timeout, or kill between send and record loses the count, and the cap
+   silently permits an overrun — exactly when things are already going
+   wrong. Write first, call second.
+3. **Fail closed.** If the ledger cannot be read or written, refuse to call.
+   A spend guard that degrades to "allow" under failure is not a guard.
+4. **Rolling 24 hours, not calendar day.** A midnight reset permits a full
+   budget either side of it, so a "4 a day" cap allows 8 in a few hours.
+5. **Durable across restarts.** In the pipeline, the ledger is committed
+   like everything else. In the app, it belongs in the local database, not
+   in memory.
+6. **Manual runs are the user's decision**, so they may exceed the automatic
+   budget — but never silently, and never by accident. The confirm dialog
+   already built in Ensemble is that half.
+
+### The interesting wrinkle
+
+This project's standing principle is **recompute, never accumulate** — every
+statistic is re-derived from the raw record precisely so a wrong number
+cannot persist. A spend ledger cannot work that way. A call that failed
+leaves no forecast behind, so the number of calls made is genuinely not
+derivable from the stored record.
+
+So this is a deliberate exception, and it needs the same care the all-time
+counters got before they were made re-derivable: the ledger is authoritative,
+it is append-only, and it must be written before the thing it accounts for.
+Worth stating explicitly in the code, or someone will later "simplify" it
+into a recomputed value and quietly remove the guarantee.
+
+### Scope
+
+Both surfaces, sharing the decision logic in `olw_core` so the app and the
+pipeline cannot disagree about whether a call is permitted — with each
+supplying its own storage. The pipeline additionally needs the cap to apply
+to `force: true`, since that is the path with no ceiling today.
+
+---
+
+## 27. A harness for judging model changes · **Planned**
+
+Prompted by a concrete question: `gemini-3.7-flash` now exists, and the
+pipeline is tuned on `gemini-3.6-flash`. Is the newer one better *for this*?
+There is currently no way to answer that except by reading a few forecasts
+and forming an impression.
+
+That matters beyond one version bump. Model choice is simultaneously a
+quality, latency and cost lever — the ~1-minute generation time comes largely
+from `thinking_level: high` on a Flash model — and every one of those trades
+is currently made on vibes.
+
+### The good news: the data is already being recorded
+
+`LogEntryMeta` already stores `llm_provider` and `llm_model` on every
+committed forecast. So the record already knows which model wrote which
+forecast, and every one of those forecasts already gets scored against
+observations by the existing verification loop.
+
+The harness is therefore mostly **analysis, not plumbing**: partition the
+existing accuracy record by `meta.llm_model` the same way it is already
+partitioned by weather model and lead time.
+
+### Design
+
+- **A/B by alternating days rather than running both.** Running two models
+  per forecast doubles the cost and doubles the quota pressure. Alternating
+  costs nothing extra and, given the verification loop needs weeks to say
+  anything anyway, is no slower in practice.
+- **Reuse the existing gates.** `review.py` already refuses to rank on thin
+  evidence and requires a gap above the sampling-noise floor. Comparing two
+  LLM models is the same statistical problem as comparing GFS against ECMWF,
+  and deserves the same refusal to over-claim. Do not build a second, laxer
+  comparison path.
+- **Separate what the LLM controls from what it does not.** Rain and
+  temperature calls come from the deterministic extraction, identical
+  whichever model narrates. What the model actually affects is the *blended*
+  `today_properties` call and the narrative. Scoring the wrong half would
+  produce a confident non-answer.
+- **Record latency and token counts alongside**, since "slightly better and
+  three times slower" is a real outcome and a legitimate reason to decline an
+  upgrade.
+- **A frozen-input replay mode** for prompt work specifically: feed a stored
+  day's exact inputs to two models and diff the outputs. Cheap, immediate,
+  and the right tool for "did this prompt edit help", as distinct from "is
+  this model better", which only time can answer.
+
+### Why not just eyeball it
+
+The project's entire argument is that forecast quality claims should be
+measured rather than asserted. Choosing the model that writes those forecasts
+by impression, while publishing an accuracy page about everything else, would
+be the one unmeasured link in the chain.
