@@ -311,6 +311,47 @@ time 0, and stale AQI excluded from the range but still counted. See
 
 ---
 
+## A standing design constraint: stay retrofittable
+
+The app is designed standalone. It may later need to pull data-schema or
+endpoint updates from a trusted server — because upstream formats change
+faster than app-store releases, and this project has already been bitten
+twice in one week (Open-Meteo's `windgusts_10m` alias returning all-nulls
+for one model; KMD's county row shifting columns between consecutive daily
+issues).
+
+**Every design decision should leave that door open.** Mostly this is
+cheap, and mostly it is just ordinary hygiene:
+
+- **Names that could change upstream belong in one place**, as data, not as
+  string literals scattered through call sites. A variable name that exists
+  once as a named constant is trivially overridable later; the same name
+  hardcoded in four modules is a refactor.
+- **Resolve configuration through a single accessor**, even while the only
+  source is built-in defaults. That accessor is where a remote overlay would
+  later merge, and having it from the start costs nothing.
+- **Built-in defaults must always be sufficient.** A remote overlay is an
+  *override*, never a requirement — an install that never reaches the
+  network still forecasts.
+
+### The one part that is NOT retrofittable
+
+**A stored forecast must record which configuration produced it, from the
+very first record.**
+
+This cannot be added later in any useful way. The moment behaviour can
+change remotely, a forecast generated under one configuration and one
+generated under another are different measurements — and the accuracy
+record silently spans both. Retrofitting the field leaves every earlier
+record unattributable, which is the same asymmetry that forced storing the
+met bulletin the day it was noticed: observations can be re-fetched,
+but *what the system did at the time* cannot.
+
+So: reserve the field now, populate it with the built-in default's version,
+and treat it as part of the record's schema rather than as configuration
+plumbing. Everything else on this page can be retrofitted; this one has a
+deadline, and the deadline is the first stored forecast.
+
 ## Data model
 
 **The committed JSON schema is the contract**, unchanged. `DailyLogEntry`
