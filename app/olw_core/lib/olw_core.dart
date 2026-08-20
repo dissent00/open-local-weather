@@ -16,6 +16,7 @@
 library;
 
 export 'src/aqi.dart';
+export 'src/coverage.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
 export 'src/forecast.dart';

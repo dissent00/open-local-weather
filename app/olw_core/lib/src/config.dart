@@ -103,3 +103,12 @@ const List<(double, String)> synopticGradientBandsHpa = [
 
 /// 72-hour change below this is not worth calling a tendency.
 const double synopticTendencyThresholdHpa = 1.5;
+
+
+/// --- Data-coverage watch (see coverage.dart) ---
+const int coverageWindowDays = 30;
+
+/// Consecutive runs a previously-present variable must be missing before it
+/// is reported. More than one, because a single failed fetch is noise; low
+/// enough that a real rename surfaces in days rather than months.
+const int coverageAbsentRuns = 3;

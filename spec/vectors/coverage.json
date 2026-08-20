@@ -1,0 +1,1320 @@
+{
+  "vector_format_version": 1,
+  "function": "detect_coverage",
+  "description": "Data-coverage findings. The three-way split is the contract: a regression means something changed, a peer_gap means one model alone lacks what its peers supply (the shape that hid a real bug for months), and never_published means nothing supplies it and there is nothing to chase.",
+  "cases": [
+    {
+      "name": "one model alone lacks what its peers supply \u2014 a peer_gap",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": [
+        {
+          "kind": "peer_gap",
+          "model": "alpha",
+          "lead_time_days": 0,
+          "variable": "wind_kmh",
+          "absent_runs": 10,
+          "checked_runs": 10,
+          "last_seen": null,
+          "peers_with_value": [
+            "beta"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nothing supplies it \u2014 a property, not a fault",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": [
+        {
+          "kind": "never_published",
+          "model": "alpha",
+          "lead_time_days": 0,
+          "variable": "wind_kmh",
+          "absent_runs": 10,
+          "checked_runs": 10,
+          "last_seen": null,
+          "peers_with_value": []
+        },
+        {
+          "kind": "never_published",
+          "model": "beta",
+          "lead_time_days": 0,
+          "variable": "wind_kmh",
+          "absent_runs": 10,
+          "checked_runs": 10,
+          "last_seen": null,
+          "peers_with_value": []
+        }
+      ]
+    },
+    {
+      "name": "present then absent \u2014 a regression",
+      "input": {
+        "predictions": {
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": [
+        {
+          "kind": "regression",
+          "model": "alpha",
+          "lead_time_days": 0,
+          "variable": "wind_kmh",
+          "absent_runs": 4,
+          "checked_runs": 12,
+          "last_seen": "2026-08-16",
+          "peers_with_value": []
+        }
+      ]
+    },
+    {
+      "name": "a single missed run is noise",
+      "input": {
+        "predictions": {
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 22.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "a healthy record yields nothing",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 24.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": 25.0,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": -1.0
+              }
+            ]
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": []
+    }
+  ]
+}

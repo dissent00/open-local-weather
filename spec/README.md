@@ -73,16 +73,25 @@ absent values are `null`, never omitted keys.
 
 | File | Function | Cases |
 |---|---|---|
+| `aqi_staleness.json` | `hours_old / is_stale` | 4 |
+| `aqi_summary.json` | `summarize_ground_aqi` | 6 |
+| `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 4 |
+| `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `dates_add_days.json` | `add_days` | 4 |
-| `scoring_score_prediction.json` | `score_prediction` | 12 |
-| `scoring_mean.json` | `mean` | 4 |
-| `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
-| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 3 |
+| `day_over_day.json` | `compute_day_over_day` | 11 |
+| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 4 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
-| `aqi_staleness.json` | `hours_old` / `is_stale` | 4 |
-| `aqi_summary.json` | `summarize_ground_aqi` | 6 |
+| `llm_schema_gemini.json` | `to_gemini_schema` | 1 |
+| `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
+| `llm_system_prompt.json` | `build_system_prompt` | 4 |
+| `llm_user_prompt.json` | `build_user_prompt` | 3 |
+| `scoring_mean.json` | `mean` | 4 |
+| `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
+| `scoring_score_prediction.json` | `score_prediction` | 12 |
+| `synoptic.json` | `summarize_synoptic` | 6 |
+| `weekly_review.json` | `build_weekly_review` | 5 |
 
 ### The cases that matter most
 
@@ -108,6 +117,68 @@ not usable:
 - **Stale AQI readings are excluded from the range but still counted.**
   A missing timestamp means *unknown* freshness and is treated as stale —
   never assumed fresh.
+
+## Changing behaviour on either side
+
+This project has two implementations of the same logic: the Python pipeline
+(`src/openlocalweather/`) and the Dart core (`app/olw_core/`). They must
+produce identical output from identical input, because the app's accuracy
+screen and the site's accuracy page make the same claims to the same user.
+An implementation that disagreed with the other would destroy the
+credibility both exist to build — and the user would have no way to tell
+which was right.
+
+**Python is the source of truth. Always change it first.**
+
+### The order that works
+
+1. **Change Python.** Behaviour, thresholds, wording — all of it starts here.
+2. **Add or extend a vector case** in `spec/export_vectors.py` covering the
+   new behaviour, especially its edges.
+3. **Regenerate**: `python spec/export_vectors.py`. Read the diff. An
+   unintended diff is a bug report.
+4. **Run the Python suite.** It will fail if a vector file exists with no
+   test reading it — that guard is deliberate and has caught this three
+   times.
+5. **Port to Dart**, then run `dart test`. The vector fails until the port
+   matches byte-for-byte.
+6. **Both suites green** before committing. Commit the regenerated vectors
+   with the change; they *are* the contract.
+
+### Verify the test can actually fail
+
+A test that cannot fail is worse than no test, because it reads as coverage.
+After adding one, break the implementation deliberately and confirm the
+suite goes red. This is not paranoia — an earlier vector here placed an
+all-null key *second* in a lookup order where no implementation would ever
+reach it, so it passed with the bug reintroduced.
+
+### What the vectors do NOT catch
+
+Every one of these has bitten this project. They are the reason a port needs
+review and not just a green suite:
+
+| Hazard | What happened |
+|---|---|
+| **A new input never reaching the prompt** | `synoptic_scale_pressure` was added to the pipeline and omitted from `build_user_prompt`'s key-by-key payload rebuild. The system prompt referenced a key that never arrived, so the whole feature was inert — with every test passing. |
+| **Number formatting differing by language** | Python's `%.0f` rounds half to even; Dart's `toStringAsFixed(0)` rounds half away from zero. A live value of `1006.5` would have published "1006 hPa" on the site and "1007 hPa" in the app. |
+| **Response shapes a mock never produces** | Open-Meteo returns a JSON *array* for multi-coordinate requests. The Dart client cast it to a Map and would have thrown against the real API; the mock only ever returned an object. |
+| **Silent all-null series** | A correctly-named key holding only nulls is truthy. Both implementations latched onto it instead of falling through, and one model went unscored on a variable for months. |
+
+The pattern is the same each time: **code that compiles, passes its tests,
+and fails on real data.** When porting, check the shapes the live API
+actually returns and the formatting the language actually applies — not
+only that the logic reads the same.
+
+### When a change has no Dart counterpart yet
+
+Some Python has no port and should not have one — HTML publishing, email,
+the CLI, and met-service PDF parsing (see
+`docs-internal/MET_SERVICE_INTEGRATION.md` and
+`docs-internal/APP_ARCHITECTURE.md` for why the last one stays server-side).
+Changing those needs no vector. If you are unsure whether something ports,
+the test is simple: *would the app compute this itself, or receive it as
+data?*
 
 ## Using these from another language
 

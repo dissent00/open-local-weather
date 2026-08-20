@@ -20,6 +20,7 @@ The layering is deliberate:
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -180,6 +181,46 @@ def test_vectors_bucket_hourly_by_date():
         result = bucket_hourly_by_date(i["hourly_json"], i["threshold"])
         got = {d.isoformat(): as_json(v) for d, v in result.items()}
         assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_coverage():
+    """The three-way split is the contract. Treating a peer_gap as
+    never_published would reproduce the months-long silence this module
+    exists to end."""
+    from openlocalweather.coverage import detect_coverage
+    from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+
+    for case in load("coverage.json")["cases"]:
+        i = case["input"]
+        logs = {}
+        for iso, by_lead in i["predictions"].items():
+            d = date.fromisoformat(iso)
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(
+                    day0=[ModelPrediction(**p) for p in by_lead.get("0", [])]
+                ),
+                meta=LogEntryMeta(
+                    generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                    llm_provider="t", llm_model="t", pipeline_version="0",
+                ),
+            )
+        got = detect_coverage(
+            log_lookup=lambda d: logs.get(d),
+            today=date.fromisoformat(i["today"]),
+            models=i["models"],
+            lead_times_days=i["lead_times_days"],
+        )
+        want = case["expected"]
+        name = case["name"]
+        assert len(got) == len(want), f"{name}: finding count"
+        for g, w in zip(got, want):
+            assert g.kind == w["kind"], name
+            assert g.model == w["model"], name
+            assert g.variable == w["variable"], name
+            assert g.peers_with_value == w["peers_with_value"], name
 
 
 def test_vectors_synoptic():
@@ -345,6 +386,7 @@ def test_every_vector_file_is_exercised():
         "llm_user_prompt.json",
         "weekly_review.json",
         "synoptic.json",
+        "coverage.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
@@ -360,3 +402,16 @@ def test_vector_files_declare_a_known_format_version():
         assert data.get("vector_format_version") == 1, f"{path.name} has an unexpected format version"
         assert data.get("function"), f"{path.name} is missing its function name"
         assert data.get("cases"), f"{path.name} has no cases"
+
+
+def test_readme_coverage_table_lists_every_vector():
+    """Documentation that silently goes stale is worse than none — it reads
+    as authoritative. The coverage table predated seven vector files before
+    this guard existed."""
+    readme = (VECTORS_DIR.parent / "README.md").read_text()
+    documented = set(re.findall(r"^\| `([\w.]+\.json)` \|", readme, re.M))
+    on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
+    assert documented == on_disk, (
+        f"undocumented vectors: {sorted(on_disk - documented)}; "
+        f"documented but missing: {sorted(documented - on_disk)}"
+    )

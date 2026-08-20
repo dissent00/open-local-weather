@@ -281,6 +281,54 @@ void main() {
     });
   });
 
+  group('coverage', () {
+    // The three-way split is the contract. An implementation that treated a
+    // peer_gap as never_published would reproduce the exact months-long
+    // silence this module exists to end — the ECMWF wind gap had no
+    // before-and-after transition, only peers that reported what it didn't.
+    test('classifies findings identically to Python', () {
+      for (final c in casesOf('coverage.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final predictions = (i['predictions'] as Map).cast<String, Object?>();
+
+        List<ModelPrediction>? predictionsFor(DateTime rowDate, int lead) {
+          final byLead = predictions[formatDate(rowDate)] as Map<String, Object?>?;
+          final raw = byLead?['$lead'] as List?;
+          if (raw == null) return null;
+          return raw
+              .map((e) => ModelPrediction.fromJson((e as Map).cast<String, Object?>()))
+              .toList();
+        }
+
+        final got = detectCoverage(
+          predictionsFor: predictionsFor,
+          today: DateTime.parse(i['today'] as String),
+          models: (i['models'] as List).cast<String>(),
+          leadTimesDays: (i['lead_times_days'] as List).cast<int>(),
+        );
+        final want = (c['expected'] as List).cast<Map<String, Object?>>();
+        final reason = 'case "${c['name']}"';
+
+        expect(got.length, equals(want.length),
+            reason: '$reason — finding COUNT must match; an extra finding is '
+                'noise that trains people to ignore the real ones, and a '
+                'missing one is the silence this exists to end');
+        for (var n = 0; n < want.length; n++) {
+          expect(got[n].kind, equals(want[n]['kind']), reason: reason);
+          expect(got[n].model, equals(want[n]['model']), reason: reason);
+          expect(got[n].variable, equals(want[n]['variable']), reason: reason);
+          expect(got[n].absentRuns, equals(want[n]['absent_runs']), reason: reason);
+          expect(got[n].checkedRuns, equals(want[n]['checked_runs']), reason: reason);
+          expect(got[n].peersWithValue,
+              equals((want[n]['peers_with_value'] as List).cast<String>()), reason: reason);
+          final wantSeen = want[n]['last_seen'];
+          expect(got[n].lastSeen == null ? null : formatDate(got[n].lastSeen!),
+              equals(wantSeen), reason: reason);
+        }
+      }
+    });
+  });
+
   group('synoptic', () {
     // The bounded vocabulary is the contract. An implementation that widened
     // "lower pressure lies toward the northeast" into a named centre or a
@@ -455,6 +503,7 @@ void main() {
       'llm_user_prompt.json',
       'weekly_review.json',
       'synoptic.json',
+      'coverage.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir

@@ -838,6 +838,98 @@ def export_synoptic() -> None:
     )
 
 
+def export_coverage() -> None:
+    """Noticing when a source quietly stops supplying something.
+
+    Ported because a standalone app has the same blind spot and less
+    recourse: on the server an upstream change is a git push, in an app it
+    is a store release, so knowing quickly matters more. The three-way
+    classification is the sensitive part — an implementation that treated a
+    peer_gap as never_published would reproduce the exact months-long
+    silence this module was written to end.
+    """
+    from datetime import timedelta
+
+    from openlocalweather.coverage import detect_coverage
+    from openlocalweather.models import (
+        DailyLogEntry,
+        LogEntryMeta,
+        ModelPredictionsByLead,
+    )
+
+    today = date(2026, 8, 21)
+    models = ["alpha", "beta"]
+
+    def build(days: int, alpha_wind, beta_wind):
+        logs = {}
+        for i in range(days):
+            d = today - timedelta(days=i + 1)
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=True, high_c=26.0, low_c=18.0,
+                                    mslp_trend=-1.0,
+                                    wind_kmh=alpha_wind(i) if callable(alpha_wind) else alpha_wind),
+                    ModelPrediction(model="beta", rain=True, high_c=26.0, low_c=18.0,
+                                    mslp_trend=-1.0,
+                                    wind_kmh=beta_wind(i) if callable(beta_wind) else beta_wind),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+        return logs
+
+    def case(name, days, alpha_wind, beta_wind):
+        logs = build(days, alpha_wind, beta_wind)
+        findings = detect_coverage(
+            log_lookup=lambda d: logs.get(d), today=today,
+            models=models, lead_times_days=[0],
+        )
+        return {
+            "name": name,
+            "input": {
+                "predictions": {
+                    _iso(d): {"0": [p.model_dump() for p in e.model_predictions.day0]}
+                    for d, e in sorted(logs.items())
+                },
+                "today": _iso(today),
+                "models": models,
+                "lead_times_days": [0],
+            },
+            "expected": [
+                {
+                    "kind": f.kind, "model": f.model, "lead_time_days": f.lead_time_days,
+                    "variable": f.variable, "absent_runs": f.absent_runs,
+                    "checked_runs": f.checked_runs,
+                    "last_seen": _iso(f.last_seen) if f.last_seen else None,
+                    "peers_with_value": f.peers_with_value,
+                }
+                for f in findings
+            ],
+        }
+
+    write(
+        "coverage.json",
+        "detect_coverage",
+        "Data-coverage findings. The three-way split is the contract: a "
+        "regression means something changed, a peer_gap means one model alone "
+        "lacks what its peers supply (the shape that hid a real bug for "
+        "months), and never_published means nothing supplies it and there is "
+        "nothing to chase.",
+        [
+            case("one model alone lacks what its peers supply — a peer_gap", 10, None, 25.0),
+            case("nothing supplies it — a property, not a fault", 10, None, None),
+            case("present then absent — a regression", 12,
+                 lambda i: None if i < 4 else 22.0, 25.0),
+            case("a single missed run is noise", 12,
+                 lambda i: None if i < 1 else 22.0, 25.0),
+            case("a healthy record yields nothing", 10, 24.0, 25.0),
+        ],
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -987,6 +1079,7 @@ def main() -> None:
     export_user_prompt()
     export_weekly_review()
     export_synoptic()
+    export_coverage()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 
