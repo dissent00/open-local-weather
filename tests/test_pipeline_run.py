@@ -675,3 +675,70 @@ def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
     result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=True)
 
     assert result.log_entry.ground_aqi[0].aqi == 90  # the fresh evening reading, not the morning's 30
+
+
+# ---------------------------------------------------------------------------
+# The hard spend cap, exercised through a real pipeline run
+# ---------------------------------------------------------------------------
+
+
+def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch):
+    """The guard has to stop the call, not merely count it.
+
+    A cap that records an attempt and then lets the request through would
+    look correct in the ledger and cost exactly as much money.
+    """
+    from dataclasses import replace
+
+    from openlocalweather.spend import SpendCapExceeded, record_attempt
+
+    called = []
+
+    class RefusingProvider(FakeLLMProvider):
+        model = "fake-model"
+
+        def generate(self, *a, **kw):
+            called.append(1)
+            return super().generate(*a, **kw)
+
+    deps = make_deps(tmp_path, llm=RefusingProvider())
+    # LocationConfig is a pydantic model, so model_copy rather than replace.
+    deps = replace(
+        deps, location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 1})
+    )
+
+    # Burn the single allowed call.
+    record_attempt(
+        tmp_path, provider="x", model="y", purpose="test",
+        max_calls=1,
+    )
+
+    with pytest.raises(SpendCapExceeded):
+        run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert called == [], "the provider must never be reached once the cap is hit"
+
+
+def test_a_normal_run_records_exactly_one_call(tmp_path):
+    """Counting has to be accurate in the ordinary case too — an
+    over-counting cap would refuse legitimate forecasts."""
+    from openlocalweather.spend import read_ledger
+
+    deps = make_deps(tmp_path)
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    ledger = read_ledger(tmp_path)
+    assert len(ledger) == 1
+    assert ledger[0].purpose == "forecast"
+    assert ledger[0].model
+
+
+def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
+    """--dry-run skips writes, commit and email, but it DOES call the model
+    (that is the point of it), so it costs real money and must be counted.
+    Exempting it would leave a loophole that spends without accounting."""
+    from openlocalweather.spend import read_ledger
+
+    deps = make_deps(tmp_path)
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    assert len(read_ledger(tmp_path)) == 1

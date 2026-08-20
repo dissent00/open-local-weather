@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
 from pydantic import BaseModel, Field
 
 
@@ -90,6 +91,15 @@ class LocationConfig(BaseModel):
     # alongside genuine finds, and ten expected lines around one real one is
     # how a check stops being read.
     acknowledged_coverage_gaps: list[AcknowledgedGap] = Field(default_factory=list)
+
+    # Hard ceiling on LLM calls in any rolling 24 hours, enforced in code
+    # before each call (see spend.py). NOT a rate limit and not a target: the
+    # run fails loudly rather than waiting, because a cap that skips quietly
+    # would be discovered only by noticing missing forecasts days later.
+    #
+    # Counts CALLS, not forecasts — one forecast can cost several attempts
+    # when a provider is flaky.
+    max_llm_calls_per_24h: int = DEFAULT_MAX_LLM_CALLS_PER_24H
 
     local_bulletin_area_name: str = ""
     # Model id the met service is scored under, alongside gfs_seamless and

@@ -73,6 +73,7 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.review import WeeklyReview, build_weekly_review
+from openlocalweather.spend import record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
@@ -479,6 +480,19 @@ def run_daily_pipeline(
         local_bulletin_source_name=location.local_bulletin_source_name,
         local_bulletin_text=guidance.bulletin_text,
     )
+    # Reserve the call BEFORE making it. A crash between sending and
+    # recording would otherwise lose the count and silently permit an
+    # overrun — precisely when things are already going wrong. Raises
+    # SpendCapExceeded, which is deliberately NOT caught here: the run
+    # must fail loudly rather than quietly produce no forecast.
+    used = record_attempt(
+        deps.data_dir,
+        provider=type(deps.llm_provider).__name__,
+        model=getattr(deps.llm_provider, "model", "unknown"),
+        purpose="forecast",
+        max_calls=location.max_llm_calls_per_24h,
+    )
+    print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
@@ -687,6 +701,19 @@ def run_refresh_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         morning_narrative=existing_entry.narrative_markdown,
     )
+    # Reserve the call BEFORE making it. A crash between sending and
+    # recording would otherwise lose the count and silently permit an
+    # overrun — precisely when things are already going wrong. Raises
+    # SpendCapExceeded, which is deliberately NOT caught here: the run
+    # must fail loudly rather than quietly produce no forecast.
+    used = record_attempt(
+        deps.data_dir,
+        provider=type(deps.llm_provider).__name__,
+        model=getattr(deps.llm_provider, "model", "unknown"),
+        purpose="refresh",
+        max_calls=location.max_llm_calls_per_24h,
+    )
+    print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )

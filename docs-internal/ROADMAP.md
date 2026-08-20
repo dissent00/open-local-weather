@@ -1933,9 +1933,17 @@ reports.
 
 ---
 
-## 26. Hard cap on LLM calls — required in BOTH surfaces · **Planned**
+## 26. Hard cap on LLM calls — required in BOTH surfaces · **Shipped (pipeline); app pending**
 
-**There is currently no cap anywhere.** Nothing counts API calls, in the
+**Shipped in the pipeline** (`spend.py`, enforced at both LLM call sites,
+configured by `max_llm_calls_per_24h` in `config/location.yaml`, default 10).
+**Not yet in the app** — Ensemble needs the same guard over its local
+database, set during onboarding and editable in Settings.
+
+The design notes below stand as written; what follows describes the problem
+as it was, and the resolution of the "wrinkle" is recorded at the end.
+
+**There was no cap anywhere.** Nothing counted API calls, in the
 pipeline or the app. The only limiter is `daily.yml`'s `already_done` skip
 check, which exists to stop duplicate runs and is deliberately bypassed by
 `force: true`.
@@ -1979,19 +1987,29 @@ running the pipeline on their own key.
    budget — but never silently, and never by accident. The confirm dialog
    already built in Ensemble is that half.
 
-### The interesting wrinkle
+### The wrinkle that turned out not to be one
 
-This project's standing principle is **recompute, never accumulate** — every
-statistic is re-derived from the raw record precisely so a wrong number
-cannot persist. A spend ledger cannot work that way. A call that failed
-leaves no forecast behind, so the number of calls made is genuinely not
-derivable from the stored record.
+This was first written up as a deliberate exception to **recompute, never
+accumulate**. On inspection it is not an exception at all, and the
+distinction is worth keeping straight because it decides how the ledger is
+allowed to evolve.
 
-So this is a deliberate exception, and it needs the same care the all-time
-counters got before they were made re-derivable: the ledger is authoritative,
-it is append-only, and it must be written before the thing it accounts for.
-Worth stating explicitly in the code, or someone will later "simplify" it
-into a recomputed value and quietly remove the guarantee.
+That principle forbids storing *derived* numbers — accuracy percentages,
+all-time counts — because a wrong one persists invisibly. It has never
+forbidden storing raw records: the whole of `data/log/` is append-only and
+never recomputed.
+
+A spend ledger is raw data of exactly that kind. Each entry records one call
+attempt; the 24-hour total is **recomputed from those entries on every
+check** and never stored. The derived figure stays derived, as everywhere
+else. A test asserts no total is persisted, so a later "optimisation" that
+caches one fails rather than silently drifting from the entries it claims to
+summarise.
+
+The genuine constraint is different, and is the same asymmetry that forced
+storing the met bulletin: weather actuals can be re-fetched, but **a call
+attempt cannot**. Miss the moment and it is gone — hence recording before
+the call rather than after.
 
 ### Scope
 

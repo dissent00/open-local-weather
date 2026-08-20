@@ -53,6 +53,15 @@ location:
   # against the numerical models on equal terms. The weekly bulletin's entry
   # for a given day can be up to six days stale, and its PDF is periodically
   # published as scanned images with no extractable text.
+  # Hard ceiling on LLM calls per rolling 24 hours. Enforced in code before
+  # each call, counting attempts rather than forecasts — one forecast can
+  # cost several calls if a provider is flaky. The run FAILS if this is hit,
+  # loudly, rather than skipping quietly.
+  #
+  # Two runs a day nominally, up to eight if every attempt retries to the
+  # limit, so 10 leaves headroom while making a runaway loop impossible.
+  max_llm_calls_per_24h: 10
+
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   local_bulletin_source_name: "Kenya Meteorological Department (KMD)"
   # The county KMD indexes this location under, and the name its skill is
