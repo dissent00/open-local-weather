@@ -318,4 +318,49 @@ void main() {
       expect(retryAfter({'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT'}), isNull);
     });
   });
+
+  group('TodayProperties serialisation', () {
+    test('round-trips through the pipeline wire keys', () {
+      // Snake_case keys, not Dart names: these are the committed JSON shape,
+      // so a client inventing its own would produce records the server could
+      // not import.
+      const original = TodayProperties(
+        rainExpected: 'Yes — showers likely',
+        onsetWindow: '13:00-16:00',
+        peakWindKmh: 28.4,
+        tempHighC: 27.5,
+        tempLowC: 18.0,
+        tempHighLow: '27.5°C / 81.5°F high',
+        mslpTrend24h: 'Falling slowly',
+        synopticPattern: 'Weak easterly flow',
+        uvIndexMax: '9 (Very High)',
+        airQualityAqi: '42 (Good)',
+      );
+      final json = original.toJson();
+      expect(json['rain_expected'], original.rainExpected);
+      expect(json['temp_high_c'], 27.5);
+      expect(json['peak_wind_kmh'], 28.4);
+
+      final back = TodayProperties.fromJson(json);
+      expect(back.rainExpected, original.rainExpected);
+      expect(back.onsetWindow, original.onsetWindow);
+      expect(back.tempLowC, original.tempLowC);
+      expect(back.airQualityAqi, original.airQualityAqi);
+    });
+
+    test('nullable fields survive being absent', () {
+      // A model that omits optional fields must not produce a record that
+      // fails to read back.
+      const sparse = TodayProperties(
+        rainExpected: 'No',
+        tempHighC: 26.0,
+        tempLowC: 18.0,
+        tempHighLow: '26/18',
+      );
+      final back = TodayProperties.fromJson(sparse.toJson());
+      expect(back.onsetWindow, isNull);
+      expect(back.peakWindKmh, isNull);
+      expect(back.synopticPattern, isNull);
+    });
+  });
 }

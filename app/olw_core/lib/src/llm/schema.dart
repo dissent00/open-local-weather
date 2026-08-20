@@ -250,6 +250,26 @@ class TodayProperties {
         uvIndexMax: j['uv_index_max'] as String?,
         airQualityAqi: j['air_quality_aqi'] as String?,
       );
+
+  /// The counterpart to [fromJson], using the SAME wire keys.
+  ///
+  /// Round-tripping matters because a client storing a forecast locally must
+  /// be able to read back exactly what a provider returned — and because the
+  /// keys here are the pipeline's committed JSON shape, so a client that
+  /// invented its own names would produce records the server could not
+  /// import. Mirrors `model_dump()` on the Python side.
+  Map<String, Object?> toJson() => {
+        'rain_expected': rainExpected,
+        'onset_window': onsetWindow,
+        'peak_wind_kmh': peakWindKmh,
+        'temp_high_c': tempHighC,
+        'temp_low_c': tempLowC,
+        'temp_high_low': tempHighLow,
+        'mslp_trend_24h': mslpTrend24h,
+        'synoptic_pattern': synopticPattern,
+        'uv_index_max': uvIndexMax,
+        'air_quality_aqi': airQualityAqi,
+      };
 }
 
 /// What a provider must return. Validated on parse — a malformed response
