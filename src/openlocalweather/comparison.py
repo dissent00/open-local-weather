@@ -109,14 +109,23 @@ def compute_day_over_day(
         sum(today_rain_votes) > len(today_rain_votes) / 2 if today_rain_votes else None
     )
     if today_rain_votes and yesterday_actual.rain is not None:
+        # These strings reach the reader almost verbatim: the prompt tells the
+        # model to use rain_contrast AS GIVEN, precisely so it can't invent a
+        # difference the numbers don't support. That makes the wording here a
+        # user-facing decision, not an internal label — and the first version
+        # showed what happens when it's written as a data description instead
+        # of a sentence. "rain expected again today, as it rained yesterday
+        # too" is circular: it states the same fact twice and says nothing a
+        # reader can act on. The unchanged cases are the ones that need the
+        # most restraint, because there is genuinely no news in them.
         if yesterday_actual.rain and not today_rain:
-            rain_contrast = "drier than yesterday — yesterday saw rain, today is not expected to"
+            rain_contrast = "drier than yesterday, which saw rain"
         elif not yesterday_actual.rain and today_rain:
-            rain_contrast = "wetter than yesterday — yesterday was dry, rain is expected today"
+            rain_contrast = "wetter than yesterday, which stayed dry"
         elif yesterday_actual.rain and today_rain:
-            rain_contrast = "rain expected again today, as it rained yesterday too"
+            rain_contrast = "another wet day, like yesterday"
         else:
-            rain_contrast = "dry again today, as it was dry yesterday"
+            rain_contrast = "dry again, like yesterday"
 
     return DayOverDayComparison(
         yesterday_high_c=yesterday_actual.high_c,

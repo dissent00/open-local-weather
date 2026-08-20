@@ -129,16 +129,18 @@ DayOverDayComparison? computeDayOverDay(
   String? rainContrast;
   if (votes.isNotEmpty) {
     final y = yesterdayActual.rain;
+    // Reaches the reader almost verbatim — the prompt says to use this AS
+    // GIVEN — so the wording is a user-facing decision, not an internal
+    // label. See the Python implementation for what the first version got
+    // wrong. Keep the two in step; the shared vectors enforce it.
     if (y && !todayRain!) {
-      rainContrast =
-          'drier than yesterday — yesterday saw rain, today is not expected to';
+      rainContrast = 'drier than yesterday, which saw rain';
     } else if (!y && todayRain!) {
-      rainContrast =
-          'wetter than yesterday — yesterday was dry, rain is expected today';
+      rainContrast = 'wetter than yesterday, which stayed dry';
     } else if (y && todayRain!) {
-      rainContrast = 'rain expected again today, as it rained yesterday too';
+      rainContrast = 'another wet day, like yesterday';
     } else {
-      rainContrast = 'dry again today, as it was dry yesterday';
+      rainContrast = 'dry again, like yesterday';
     }
   }
 

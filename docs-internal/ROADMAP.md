@@ -1713,7 +1713,7 @@ exactly the material the missing sentence is made of.
 
 ---
 
-## 23. Day-over-day comparison is over-applied · **Planned**
+## 23. Day-over-day comparison is over-applied · **Shipped**
 
 Reported from a live forecast: *"with rain expected again today, as it
 rained yesterday too."* Circular, and it appeared more than once in the
@@ -1733,6 +1733,35 @@ enthusiastically. Two separate faults:
    yesterday; do not manufacture a difference"), and the same discipline
    simply was never extended to rain.
 
-Both are prompt fixes, not data fixes. Worth doing alongside the "voices"
-work (item 14), since a terser voice makes the repetition more glaring and
-a chattier one may want the comparison stated differently.
+### Root cause, which was neither of the above
+
+Traced to the actual run: `rain_contrast` came back as the literal string
+`"rain expected again today, as it rained yesterday too"` — **written in
+`comparison.py`, not by the LLM.** The prompt instructs the model to use
+that field AS GIVEN, precisely so it cannot invent a difference the numbers
+don't support, so it did exactly the right thing with a badly-worded label.
+
+The lesson generalises beyond this field: any pre-computed label the prompt
+says to use verbatim is a **user-facing sentence fragment**, not an internal
+enum, and has to be written as prose. The first version read like a
+description of the data ("rain expected again today, as it rained yesterday
+too" states one fact twice), which is exactly what a label written for a
+developer looks like when a reader encounters it.
+
+Fixed in both implementations, held in step by the shared vectors:
+
+| Case | Before | After |
+|---|---|---|
+| wet → dry | drier than yesterday — yesterday saw rain, today is not expected to | drier than yesterday, which saw rain |
+| dry → wet | wetter than yesterday — yesterday was dry, rain is expected today | wetter than yesterday, which stayed dry |
+| wet → wet | rain expected again today, as it rained yesterday too | another wet day, like yesterday |
+| dry → dry | dry again today, as it was dry yesterday | dry again, like yesterday |
+
+The prompt now also requires one flowing sentence rather than three labels
+bolted together, collapses them when two or three say nothing has changed,
+forbids repeating "yesterday" more than once, and states the comparison in
+the Overview only.
+
+Worth revisiting alongside the "voices" work (item 14), since a terser voice
+will want this shorter still and a chattier one may want it differently — but
+the circularity itself is fixed.
