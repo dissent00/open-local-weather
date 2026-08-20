@@ -181,8 +181,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: ECMWF and ICON correctly predicted rainfall for August 19th, with ECMWF catching onset within 1 hour and ICON exhibiting a 15-hour onset delay. GFS and UKMO missed the precipitation call, while GFS and UKMO overpredicted surface winds by 4-14 km/h."
     },
     "day3": {
       "verified": false,
