@@ -1885,9 +1885,20 @@ The daily workflow fires from two sources: four backup `cron` slots, and a
 server, authenticated with a GitHub PAT. The dispatch path exists precisely
 because GitHub's scheduler proved unreliable enough to miss issuances.
 
-**When that PAT expires, nothing will say so.** GitHub fine-grained PATs
-expire — a year at most, often sooner — so this is a matter of when. The
-failure mode:
+**GitHub does email the token owner before a PAT expires**, so the most
+likely single cause is covered — confirmed in practice, one such notice
+arrived while this was being written. That notification is worth keeping in
+view, but it is narrower than the problem:
+
+- It reaches the **token owner**, who on a fork may not be whoever operates
+  the trigger host.
+- It covers **expiry only**. A revoked token, a deleted token file, a
+  decommissioned server, a broken cron entry, or a host that simply stopped
+  resolving DNS all produce the same silence with no email at all.
+- It arrives **before** expiry, so acting on it is a human step that can be
+  missed; nothing afterwards confirms the trigger resumed.
+
+In every one of those cases the failure mode below still applies:
 
 1. `workflow_dispatch` silently stops firing.
 2. The cron slots keep firing, unreliably, exactly as before the dispatch

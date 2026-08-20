@@ -203,3 +203,80 @@ def actionable(
         if f.kind in ("regression", "peer_gap")
         and not any(a.covers(f.model, f.lead_time_days, f.variable) for a in acknowledged)
     ]
+
+
+# --- Operational coverage: is the reliable trigger still firing? ----------
+
+
+@dataclass(frozen=True)
+class TriggerFinding:
+    """Reported when the dispatch trigger appears to have stopped."""
+
+    last_dispatch: date | None
+    runs_checked: int
+    days_since_dispatch: int | None
+
+    @property
+    def message(self) -> str:
+        if self.last_dispatch is None:
+            return (
+                f"No run in the last {self.runs_checked} was triggered by "
+                "workflow_dispatch — every one came from the cron schedule. If an "
+                "external trigger is configured, it is not reaching GitHub: check "
+                "the token, the token file, and the cron entry on the trigger host. "
+                "The scheduled slots are still firing, which is why nothing else "
+                "has complained."
+            )
+        return (
+            f"The external trigger last fired {self.days_since_dispatch} day(s) ago "
+            f"({self.last_dispatch}); every run since came from the cron schedule. "
+            "The forecasts are still being produced, but by the unreliable path the "
+            "dispatch trigger exists to replace."
+        )
+
+
+def detect_trigger_regression(
+    log_lookup: LogLookup,
+    today: date,
+    window_days: int = COVERAGE_WINDOW_DAYS,
+    absent_runs_threshold: int = COVERAGE_ABSENT_RUNS,
+) -> TriggerFinding | None:
+    """Notices that `workflow_dispatch` has stopped while cron carries on.
+
+    Deliberately reports nothing when NO run records a trigger at all: that
+    is a deployment which never set TRIGGER_SOURCE (a local runner, a fork on
+    another CI, or entries predating the field), not a regression. Inferring
+    a fault from the absence of evidence is the mistake this whole module
+    exists to avoid.
+    """
+    runs: list[tuple[date, str | None]] = []
+    cursor = add_days(today, -1)
+    earliest = add_days(today, -window_days)
+    while cursor >= earliest:
+        entry = log_lookup(cursor)
+        if entry is not None:
+            runs.append((cursor, entry.meta.trigger_source))
+        cursor = add_days(cursor, -1)
+
+    if not runs:
+        return None
+    # Any trigger recorded at all? If the field is universally unset, this
+    # deployment simply doesn't report one.
+    if not any(source for _, source in runs):
+        return None
+
+    dispatches = [d for d, source in runs if source == "workflow_dispatch"]
+    consecutive_without = 0
+    for _, source in runs:
+        if source == "workflow_dispatch":
+            break
+        consecutive_without += 1
+    if consecutive_without < absent_runs_threshold:
+        return None
+
+    last = dispatches[0] if dispatches else None
+    return TriggerFinding(
+        last_dispatch=last,
+        runs_checked=len(runs),
+        days_since_dispatch=(today - last).days if last else None,
+    )

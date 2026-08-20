@@ -174,3 +174,75 @@ def test_an_acknowledgement_without_a_variable_covers_the_whole_lead_time():
     findings = detect_coverage(lookup, TODAY, MODELS, [0])
     acked = [AcknowledgedGap(model="ecmwf_ifs025", lead_time_days=0, reason="horizon")]
     assert actionable(findings, acked) == []
+
+
+# ---------------------------------------------------------------------------
+# Operational coverage: has the reliable trigger stopped?
+# ---------------------------------------------------------------------------
+
+
+def _trigger_history(sources: list[str | None]):
+    """`sources` newest-first, one per day back from 2026-08-20."""
+    import datetime as _dt
+
+    logs = {}
+    for i, source in enumerate(sources):
+        d = date(2026, 8, 20) - _dt.timedelta(days=i)
+        e = _entry(d, [ModelPrediction(model="gfs_seamless", rain=True)])
+        e.meta.trigger_source = source
+        logs[d] = e
+    return lambda d: logs.get(d)
+
+
+def test_notices_when_dispatch_stops_but_cron_carries_on():
+    """The failure the whole thing exists for. Forecasts keep appearing, so
+    every other check stays quiet, while the system has silently reverted to
+    the unreliable path the dispatch trigger was added to replace."""
+    from openlocalweather.coverage import detect_trigger_regression
+
+    lookup = _trigger_history(
+        ["schedule", "schedule", "schedule", "schedule", "workflow_dispatch", "workflow_dispatch"]
+    )
+    finding = detect_trigger_regression(lookup, TODAY)
+    assert finding is not None
+    assert finding.last_dispatch == date(2026, 8, 16)
+    assert "still being produced" in finding.message
+    assert "unreliable path" in finding.message
+
+
+def test_healthy_dispatch_is_silent():
+    from openlocalweather.coverage import detect_trigger_regression
+
+    lookup = _trigger_history(["workflow_dispatch"] * 6)
+    assert detect_trigger_regression(lookup, TODAY) is None
+
+
+def test_one_or_two_cron_days_are_not_a_regression():
+    """A dispatch can miss occasionally without the path being broken."""
+    from openlocalweather.coverage import detect_trigger_regression
+
+    lookup = _trigger_history(["schedule", "schedule", "workflow_dispatch", "workflow_dispatch"])
+    assert detect_trigger_regression(lookup, TODAY) is None
+
+
+def test_a_deployment_that_never_reports_a_trigger_is_not_a_fault():
+    """A local runner, a fork on different CI, or entries predating the field.
+    Inferring a fault from absent evidence is the exact mistake this module
+    exists to avoid."""
+    from openlocalweather.coverage import detect_trigger_regression
+
+    assert detect_trigger_regression(_trigger_history([None] * 8), TODAY) is None
+
+
+def test_reports_when_no_dispatch_has_ever_been_seen_but_some_run_reports_one():
+    """Distinct from the case above: triggers ARE being recorded, and none of
+    them is a dispatch."""
+    from openlocalweather.coverage import detect_trigger_regression
+
+    lookup = _trigger_history(["schedule"] * 5 + ["schedule"])
+    # No run reports a dispatch, but the field is populated — so the field is
+    # working and the dispatch genuinely is not firing.
+    finding = detect_trigger_regression(lookup, TODAY)
+    assert finding is not None
+    assert finding.last_dispatch is None
+    assert "not reaching GitHub" in finding.message

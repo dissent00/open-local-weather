@@ -107,6 +107,8 @@ class PipelineDeps:
     public_webpage_url: str
     waqi_token: str = ""
     bulletin_fetcher: BulletinFetcher = field(default_factory=NullBulletinFetcher)
+    # github.event_name when running under Actions; empty locally.
+    trigger_source: str = ""
     publisher: Publisher | None = None
     email_sender: EmailSender | None = None
     pipeline_version: str = __version__
@@ -518,6 +520,7 @@ def run_daily_pipeline(
             llm_provider=type(deps.llm_provider).__name__,
             llm_model=getattr(deps.llm_provider, "model", "unknown"),
             pipeline_version=deps.pipeline_version,
+            trigger_source=deps.trigger_source or None,
         ),
     )
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
-from openlocalweather.coverage import actionable, detect_coverage
+from openlocalweather.coverage import actionable, detect_coverage, detect_trigger_regression
 from openlocalweather.defaults import LEAD_TIMES_DAYS, scored_models
 from openlocalweather.dates import today_in_tz
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
@@ -245,6 +245,8 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
         bulletin_fetcher=_build_bulletin_fetcher(location),
+        # GitHub sets this; empty for a local run, which is itself accurate.
+        trigger_source=_env("TRIGGER_SOURCE"),
         publisher=publisher,
         email_sender=email_sender,
     )
@@ -340,6 +342,21 @@ def _run_check_health(args: argparse.Namespace) -> int:
     # nothing and works even when the LLM check above failed.
     location = load_location_config(args.config)
     data_path = Path(args.data_dir)
+    # Operational coverage: the reliable trigger can die while the unreliable
+    # fallback keeps producing forecasts, which is invisible to every other
+    # check here precisely because output continues.
+    print("Checking whether the external trigger is still firing...")
+    trigger = detect_trigger_regression(make_log_lookup(data_path), today_in_tz(location.timezone))
+    if trigger is not None:
+        # Fails the check, unlike the data-coverage findings below. A missing
+        # variable degrades one model; a dead trigger degrades delivery of the
+        # whole forecast back to the unreliable path, which is what this
+        # deployment already proved is not good enough.
+        print(f"  WARNING: {trigger.message}")
+        ok = False
+    else:
+        print("  OK — or no external trigger is configured for this deployment.")
+
     print("Checking data coverage across the stored record...")
     findings = detect_coverage(
         make_log_lookup(data_path),

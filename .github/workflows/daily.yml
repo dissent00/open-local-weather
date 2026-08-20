@@ -118,6 +118,10 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           # --- Gemini (the default provider) ---
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Which trigger produced this run. Recorded into the log entry so a
+          # dead workflow_dispatch path is visible in the committed record
+          # rather than hidden behind the cron slots still firing.
+          TRIGGER_SOURCE: ${{ github.event_name }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
           WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}

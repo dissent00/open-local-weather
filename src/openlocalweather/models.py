@@ -152,6 +152,22 @@ class LogEntryMeta(BaseModel):
     # top of it. model_predictions/verification are never touched by a
     # refresh, only this field and the narrative/today_properties fields.
     refreshed_at: datetime | None = None
+    # WHICH trigger produced this run — GitHub's `github.event_name`
+    # ("schedule", "workflow_dispatch"), or empty when run outside Actions.
+    #
+    # Recorded because the failure it detects is otherwise invisible. This
+    # deployment fires from unreliable cron slots AND a dispatch call from an
+    # external host, the latter existing precisely because the former missed
+    # issuances. If the dispatch path dies — expired or revoked token, lost
+    # token file, decommissioned host — the cron slots keep firing, commits
+    # keep appearing, and the repo-staleness check (50 days with NO commit)
+    # never trips. The system silently reverts to the exact unreliable mode
+    # the dispatch trigger was added to fix.
+    #
+    # Storing it makes "the external trigger hasn't fired in N days" a query
+    # against the committed record instead of an investigation. Optional, so
+    # entries written before it existed still load.
+    trigger_source: str | None = None
 
 
 class MorningIssuanceSnapshot(BaseModel):
