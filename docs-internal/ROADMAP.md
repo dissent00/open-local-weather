@@ -1765,3 +1765,74 @@ the Overview only.
 Worth revisiting alongside the "voices" work (item 14), since a terser voice
 will want this shorter still and a chattier one may want it differently — but
 the circularity itself is fixed.
+
+---
+
+## 24. Published data feed for apps — and the limits of remote config · **Planned**
+
+Two questions, and they deserve different answers.
+
+### The feed: yes, and it is nearly free
+
+The pipeline already commits `docs/` and GitHub Pages already serves it. A
+machine-readable `docs/api/latest.json` alongside the HTML costs one more
+file write and no infrastructure. An app fetches a few hundred bytes from a
+CDN; there is no backend, no account, no per-user anything.
+
+Scope it to what genuinely cannot be computed on-device:
+
+- **Local met-service predictions.** The motivating case — PDF *table*
+  extraction has no Dart equivalent, and a scraper must be fixable with a
+  git push rather than an app-store release. See APP_ARCHITECTURE.md.
+- Later, plausibly: a shared observation cache, so twenty users in one town
+  don't each re-fetch the same archive.
+
+Everything else the app already computes itself, and should keep computing
+itself — a feed that supplied *forecasts* rather than *inputs* would quietly
+turn the app into a thin client and give up the standalone property.
+
+### Remote configuration: useful, and the trap is auditability
+
+The instinct is sound and comes from a real event. Open-Meteo's
+`windgusts_10m` alias silently returns all-nulls for `ecmwf_ifs025`; the
+current name is `wind_gusts_10m`. A deployed app pinned to the old spelling
+loses one model's wind with no error — and waits for an app-store release.
+
+But a config that can change behaviour remotely collides with this
+project's central claim: *every published number is recomputable from the
+committed record*. If the same app version can produce different forecasts
+on different days because a remote file changed, a stored forecast is no
+longer reproducible — and the accuracy record silently spans two different
+systems.
+
+Constraints that keep it honest, all of which should hold before any remote
+config ships:
+
+1. **Data only, never logic.** Variable names, endpoints, model ids,
+   thresholds. Never anything evaluated. (Also what app-store policy
+   permits: downloading declarative data is fine, executable code is not.)
+2. **Version-stamped into every stored forecast.** A record must say which
+   config produced it, or the audit trail is broken. This is the
+   non-negotiable one.
+3. **Defaults must be built in and sufficient.** An install that can never
+   reach the feed produces forecasts, not errors.
+4. **Signed or integrity-checked.** A trusted feed reaching every install is
+   a supply-chain surface, and saying so out loud is cheaper than
+   discovering it.
+
+### The stronger first line of defence is not config at all
+
+Both breakages this project actually suffered were fixed by making the
+parser **tolerant**, not by making it configurable:
+
+- Open-Meteo's gust rename: `pick_series()` tries both spellings and skips
+  an all-null series. An app shipping both names was never exposed.
+- KMD's county row shifting columns between consecutive daily issues: read
+  by *kind* (numbers are temperatures, prose is a period) rather than by
+  position.
+
+Tolerant parsing needs no network, no trust, no version stamp, and costs
+nothing in auditability. Remote config should therefore be the narrow second
+line — reserved for what tolerance genuinely cannot absorb, such as an
+endpoint moving or a model being retired outright — rather than the first
+reach.
