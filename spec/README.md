@@ -90,6 +90,7 @@ absent values are `null`, never omitted keys.
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 12 |
+| `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 6 |
 | `weekly_review.json` | `build_weekly_review` | 5 |
 

@@ -112,3 +112,19 @@ const int coverageWindowDays = 30;
 /// is reported. More than one, because a single failed fetch is noise; low
 /// enough that a real rename surfaces in days rather than months.
 const int coverageAbsentRuns = 3;
+
+
+/// --- Hard spend cap (see spend.dart) ---
+///
+/// Rolling, not a calendar day: a midnight reset would permit a full budget
+/// on either side of it, so a cap of 10 would allow 20 within a few hours.
+const Duration spendWindow = Duration(hours: 24);
+
+/// History retained beyond the window. Costs nothing and makes an unexpected
+/// bill investigable.
+const Duration spendKeepHistory = Duration(days: 7);
+
+/// Mirrors DEFAULT_MAX_LLM_CALLS_PER_24H in the Python implementation.
+///
+/// Deliberately not unlimited: a cap only protects people who have one.
+const int defaultMaxLlmCallsPer24h = 10;

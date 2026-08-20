@@ -281,6 +281,67 @@ void main() {
     });
   });
 
+  group('spend cap', () {
+    // Both surfaces must answer "is one more call allowed" identically. If
+    // the app counted the window differently from the pipeline, one would
+    // permit spending the other refuses — and a cap that can be exceeded on
+    // any surface is not a cap.
+    test('counts and prunes identically to Python', () {
+      for (final c in casesOf('spend.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final now = DateTime.parse(i['now'] as String);
+        final records = (i['records'] as List)
+            .map((e) => SpendRecord.fromJson((e as Map).cast<String, Object?>()))
+            .toList();
+        final want = c['expected'] as Map<String, Object?>;
+        final reason = 'case "${c['name']}"';
+
+        expect(callsInWindow(records, now), equals(want['calls_in_window']),
+            reason: reason);
+
+        final kept = prune(records, now).map((r) => r.at.toIso8601String()).toList();
+        final wantKept = (want['kept_after_prune'] as List)
+            .map((e) => DateTime.parse((e as Map)['at'] as String).toIso8601String())
+            .toList();
+        expect(kept, equals(wantKept), reason: reason);
+      }
+    });
+
+    test('the cap refuses at the limit and says when capacity returns', () {
+      final now = DateTime.utc(2026, 8, 21, 12);
+      final records = [
+        for (var i = 0; i < 3; i++)
+          SpendRecord(
+            at: now.subtract(Duration(hours: 3 - i)),
+            provider: 'p',
+            model: 'm',
+            purpose: 'forecast',
+          )
+      ];
+      final decision = evaluateCap(records, now, maxCalls: 3);
+      expect(decision.allowed, isFalse);
+      expect(decision.used, 3);
+      expect(decision.remaining, 0);
+      // The oldest is 3 hours old, so a slot frees 21 hours from now.
+      expect(decision.capacityReturnsAt,
+          equals(now.subtract(const Duration(hours: 3)).add(const Duration(hours: 24))));
+    });
+
+    test('a call exactly one window old has aged out', () {
+      // Off-by-one here permits real extra spending while looking correct.
+      final now = DateTime.utc(2026, 8, 21, 12);
+      final records = [
+        SpendRecord(
+            at: now.subtract(const Duration(hours: 24)),
+            provider: 'p',
+            model: 'm',
+            purpose: 'forecast')
+      ];
+      expect(callsInWindow(records, now), 0);
+      expect(evaluateCap(records, now, maxCalls: 1).allowed, isTrue);
+    });
+  });
+
   group('coverage', () {
     // The three-way split is the contract. An implementation that treated a
     // peer_gap as never_published would reproduce the exact months-long
@@ -504,6 +565,7 @@ void main() {
       'weekly_review.json',
       'synoptic.json',
       'coverage.json',
+      'spend.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir

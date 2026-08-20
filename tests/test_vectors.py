@@ -183,6 +183,25 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_spend():
+    """Both surfaces must answer "is one more call allowed" identically. The
+    boundary is the sensitive part: an inclusive cutoff, or a calendar day
+    instead of a rolling window, permits real extra spending while looking
+    correct in review."""
+    from openlocalweather.spend import SpendRecord, calls_in_window, prune
+
+    for case in load("spend.json")["cases"]:
+        i = case["input"]
+        now = datetime.fromisoformat(i["now"])
+        records = [SpendRecord.from_json(r) for r in i["records"]]
+        want = case["expected"]
+        name = case["name"]
+
+        assert calls_in_window(records, now) == want["calls_in_window"], name
+        kept = [r.at.isoformat() for r in prune(records, now)]
+        assert kept == [r["at"] for r in want["kept_after_prune"]], name
+
+
 def test_vectors_coverage():
     """The three-way split is the contract. Treating a peer_gap as
     never_published would reproduce the months-long silence this module
@@ -387,6 +406,7 @@ def test_every_vector_file_is_exercised():
         "weekly_review.json",
         "synoptic.json",
         "coverage.json",
+        "spend.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}

@@ -930,6 +930,74 @@ def export_coverage() -> None:
     )
 
 
+def export_spend() -> None:
+    """The spend cap's decision logic.
+
+    Both surfaces must agree on whether a call is permitted. If the app
+    counted a window differently from the pipeline, one of them would allow
+    spending the other refuses — and the whole point of a hard cap is that it
+    cannot be exceeded, on any surface.
+
+    The window boundary is the sensitive part: an implementation using >=
+    instead of > on the cutoff, or a calendar day instead of a rolling one,
+    permits real extra spending while looking correct.
+    """
+    from datetime import timedelta
+
+    from openlocalweather.spend import SpendRecord, calls_in_window, prune
+
+    now = datetime(2026, 8, 21, 12, 0, tzinfo=timezone.utc)
+
+    def rec(delta: timedelta) -> SpendRecord:
+        return SpendRecord(at=now - delta, provider="p", model="m", purpose="forecast")
+
+    scenarios = [
+        ("empty ledger", []),
+        ("all inside the window", [rec(timedelta(hours=1)), rec(timedelta(hours=23))]),
+        (
+            "exactly on the boundary is OUTSIDE — the cutoff is exclusive",
+            [rec(timedelta(hours=24))],
+        ),
+        (
+            "one second inside the boundary counts",
+            [rec(timedelta(hours=23, minutes=59, seconds=59))],
+        ),
+        (
+            "old calls do not count but are still retained for a week",
+            [rec(timedelta(days=3)), rec(timedelta(hours=2))],
+        ),
+        (
+            "far-old calls are pruned entirely",
+            [rec(timedelta(days=30)), rec(timedelta(days=2))],
+        ),
+    ]
+
+    cases = []
+    for name, records in scenarios:
+        cases.append({
+            "name": name,
+            "input": {
+                "now": now.isoformat(),
+                "records": [r.to_json() for r in records],
+                "window_hours": 24,
+                "keep_days": 7,
+            },
+            "expected": {
+                "calls_in_window": calls_in_window(records, now),
+                "kept_after_prune": [r.to_json() for r in prune(records, now)],
+            },
+        })
+
+    write(
+        "spend.json",
+        "calls_in_window / prune",
+        "Rolling-window counting for the hard spend cap. The boundary is the "
+        "sensitive part: an inclusive cutoff or a calendar day instead of a "
+        "rolling window permits real extra spending while looking correct.",
+        cases,
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -1080,6 +1148,7 @@ def main() -> None:
     export_weekly_review()
     export_synoptic()
     export_coverage()
+    export_spend()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 
