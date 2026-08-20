@@ -167,3 +167,19 @@ COVERAGE_WINDOW_DAYS = 30
 # ECMWF Day+0 wind gap went unnoticed for the life of the deployment
 # precisely because absence was handled correctly and silently everywhere.
 COVERAGE_ABSENT_RUNS = 3
+
+
+# --- Synoptic-scale pressure (see synoptic.py) ---
+#
+# How a large-scale MSLP spread reads. Ordered (upper_bound_exclusive,
+# label). Across ~2,600 km, a few hPa is an unremarkable field while 15+ is
+# a strongly forced pattern.
+SYNOPTIC_GRADIENT_BANDS_HPA = [
+    (4.0, "weak"),
+    (10.0, "moderate"),
+    (18.0, "strong"),
+    (999.0, "very strong"),
+]
+
+# 72-hour change below this is not worth calling a tendency.
+SYNOPTIC_TENDENCY_THRESHOLD_HPA = 1.5

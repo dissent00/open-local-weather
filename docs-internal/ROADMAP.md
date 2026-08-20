@@ -1648,7 +1648,7 @@ glossaries.
 
 ---
 
-## 22. The Synoptic Overview has no synoptic data · **Planned**
+## 22. The Synoptic Overview has no synoptic data · **Shipped**
 
 Reported from a live forecast: the Detailed Discussion had "lost the big
 picture — fronts/highs/lows at the much larger scale", the kind of sentence
@@ -1839,7 +1839,7 @@ reach.
 
 ---
 
-## 25. Detect absent data, don't just survive it · **Planned**
+## 25. Detect absent data, don't just survive it · **Shipped**
 
 The missing third leg of the resilience argument in item 24, and the one
 that would have mattered most.

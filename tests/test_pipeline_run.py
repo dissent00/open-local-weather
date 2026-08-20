@@ -5,6 +5,8 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.defaults import MODELS
 from openlocalweather.fetch import metar as metar_fetch
+import requests
+
 from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import NullBulletinFetcher
@@ -91,6 +93,7 @@ def patch_fetches(monkeypatch):
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: hourly_fixture())
     monkeypatch.setattr(open_meteo, "fetch_forecast_daily_extended", lambda *a, **k: daily_fixture())
     monkeypatch.setattr(open_meteo, "fetch_regional_pressure", lambda *a, **k: {"daily": {}})
+    monkeypatch.setattr(open_meteo, "fetch_synoptic_pressure", lambda *a, **k: {"points": []})
     monkeypatch.setattr(open_meteo, "fetch_air_quality", lambda *a, **k: {"hourly": {}})
     monkeypatch.setattr(
         open_meteo, "fetch_archive_single_day", lambda lat, lon, day, tz: archive_fixture(day)
@@ -100,6 +103,20 @@ def patch_fetches(monkeypatch):
     )
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
     monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: [])
+
+    # Backstop: anything NOT patched above must fail loudly rather than reach
+    # the internet. Adding fetch_synoptic_pressure to the pipeline silently
+    # sent this suite to the live API — two tests went from ~1s to 30s each,
+    # and the pipeline's own try/except swallowed any sign of it. A test that
+    # quietly depends on a network is a test that fails on a plane, in CI
+    # behind a proxy, or when the upstream is down, and blames the wrong code.
+    def _no_network(*args, **kwargs):
+        raise AssertionError(
+            f"unmocked HTTP call in a test: {args[:1]} — patch it in patch_fetches"
+        )
+
+    monkeypatch.setattr(requests, "get", _no_network)
+    monkeypatch.setattr(requests, "post", _no_network)
 
 
 def make_deps(tmp_path, llm=None) -> PipelineDeps:

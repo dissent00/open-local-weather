@@ -104,6 +104,71 @@ def fetch_forecast_daily_extended(
     return _get(FORECAST_URL, params)
 
 
+# Offsets, in degrees, for the synoptic-scale pressure ring. Deliberately
+# NOT the near-field `region_points` from location.yaml: those span roughly
+# 125 x 55 km around Kisumu and feed local gradient/convection reasoning,
+# while synoptic features — highs, lows, the ITCZ, tropical systems — have
+# wavelengths of 1,000-4,000 km. A 125 km box fits entirely inside one
+# system's gradient, which is why the Synoptic Overview had no synoptic data
+# to describe. Conflating the two scales would degrade both.
+#
+# 12 degrees is about 1,300 km, so the ring spans ~2,600 km — enough to see
+# a centre and its movement without pretending to resolve a front.
+SYNOPTIC_RING_OFFSET_DEG = 12.0
+SYNOPTIC_RING: list[tuple[float, float, str]] = [
+    (0.0, 0.0, "centre"),
+    (1.0, 0.0, "N"), (1.0, 1.0, "NE"), (0.0, 1.0, "E"), (-1.0, 1.0, "SE"),
+    (-1.0, 0.0, "S"), (-1.0, -1.0, "SW"), (0.0, -1.0, "W"), (1.0, -1.0, "NW"),
+]
+
+
+def synoptic_ring_points(lat: float, lon: float, offset_deg: float = SYNOPTIC_RING_OFFSET_DEG):
+    """(lat, lon, label) for the ring around a primary point.
+
+    Latitudes are clamped to the valid range so a high-latitude fork doesn't
+    request an impossible coordinate; longitudes wrap. Location-agnostic by
+    construction — a fork gets this with no extra configuration.
+    """
+    points = []
+    for dlat, dlon, label in SYNOPTIC_RING:
+        ring_lat = max(-90.0, min(90.0, lat + dlat * offset_deg))
+        ring_lon = (lon + dlon * offset_deg + 180.0) % 360.0 - 180.0
+        points.append((round(ring_lat, 4), round(ring_lon, 4), label))
+    return points
+
+
+def fetch_synoptic_pressure(lat: float, lon: float, timezone: str, days: int = 3) -> dict:
+    """Coarse MSLP field for the Synoptic Overview.
+
+    One request for all nine points (Open-Meteo accepts comma-separated
+    coordinates), `best_match` only — this is a large-scale pattern sketch,
+    not per-model verification data, and is never scored. Measured
+    2026-08-19: HTTP 200 in 1.16 s for 3,133 bytes.
+    """
+    points = synoptic_ring_points(lat, lon)
+    params = {
+        "latitude": ",".join(str(p[0]) for p in points),
+        "longitude": ",".join(str(p[1]) for p in points),
+        "daily": "pressure_msl_mean",
+        "forecast_days": days,
+        "timezone": timezone,
+        "models": "best_match",
+    }
+    raw = _get(FORECAST_URL, params)
+    blocks = raw if isinstance(raw, list) else [raw]
+    return {
+        "points": [
+            {
+                "label": label,
+                "lat": block.get("latitude"),
+                "lon": block.get("longitude"),
+                "mslp_hpa": (block.get("daily") or {}).get("pressure_msl_mean") or [],
+            }
+            for (_, _, label), block in zip(points, blocks)
+        ]
+    }
+
+
 def fetch_regional_pressure(
     primary_point: tuple[float, float],
     region_points: list[tuple[float, float]],

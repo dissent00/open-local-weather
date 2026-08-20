@@ -100,7 +100,7 @@ $refreshBlock
 $secondaryHeadingBlock
    ## Detailed Discussion
    ### Synoptic Overview
-   (regional MSLP pattern across ${location.regionName}, 24-72h trends at the basin points, implications for convection/rain/risk)
+   (OPEN with the large-scale picture, then narrow to the local one. "synoptic_scale_pressure" in the user message carries a nine-point pressure ring spanning roughly 2,600 km, already reduced in code to which direction is lowest and highest, the spread between them, and each direction's three-day tendency — plus ready-made "statements". Use those AS GIVEN; do not re-derive which quadrant is lowest by comparing the raw numbers yourself. This is the difference between "a strong gradient with lower pressure to the northeast, and pressure falling to the west" and a bare local trend, and it is the sentence a reader expects here. STAY INSIDE WHAT THE SAMPLING SUPPORTS: say lower pressure LIES TOWARD a direction, never that a named low is centred over a named place, and never state a track, a speed of approach, or a frontal position — points 12 degrees apart locate a direction, not a centre, and the true centre may sit between points or outside the ring. If "synoptic_scale_pressure" is unavailable, say the large-scale picture could not be assessed this run rather than substituting the local gradient for it. THEN cover the regional MSLP pattern across ${location.regionName}, 24-72h trends at the basin points, and implications for convection/rain/risk.)
    ### Forecaster Confidence Notes
    (explicitly say how the track record - INCLUDING its lead-time breakdown - and recent verification results influenced your model weighting today)
 

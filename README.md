@@ -116,8 +116,12 @@ overwrites it every run.)
 
 - No CAPE at daily resolution (an Open-Meteo limitation) — Day+3/Day+7 hazard
   assessment relies on gust maxima and rain totals alone.
-- No true storm-center or track forecasting — only regional
-  pressure-gradient description from point data. This system does not
+- No true storm-center or track forecasting. A synoptic-scale pressure ring
+  (~2,600 km across) now supports statements like "lower pressure lies to
+  the northeast and is deepening, with pressure also falling to the west" —
+  but points 12° apart locate a *direction*, not a centre, and the true
+  centre may sit between them or outside the ring. So no named system, no
+  track, no speed of approach, and no frontal position. This system does not
   overclaim precision the underlying data doesn't support.
 - Local bulletin fetching is genuinely location-specific and will likely need
   rewriting per fork.

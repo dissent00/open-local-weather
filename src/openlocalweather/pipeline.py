@@ -73,6 +73,7 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.review import WeeklyReview, build_weekly_review
+from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
 from openlocalweather.models import (
@@ -155,6 +156,7 @@ class ForwardGuidance:
     ground_aqi_summary: GroundAQISummary | None
     aqi_fetch_time: datetime
     bulletin_text: str
+    synoptic: object | None = None
     # Structured half of the same bulletin fetch, when the source supports
     # it (see fetch/bulletin/kenya_kmd_daily). None for a met service whose
     # bulletin can't be decoded, which must leave scoring untouched rather
@@ -193,6 +195,18 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
 
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
     aqi_fetch_time = datetime.now(timezone.utc)
+    # Synoptic-scale pressure ring. One request, ~3 KB — see synoptic.py for
+    # why the near-field region_points cannot answer this. Optional: losing it
+    # costs a paragraph of context, not the forecast.
+    try:
+        synoptic = summarize_synoptic(
+            open_meteo.fetch_synoptic_pressure(
+                location.primary_point.lat, location.primary_point.lon, location.timezone
+            )
+        )
+    except Exception:
+        synoptic = None
+
     ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
     ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
     # A fetcher that can also yield a structured prediction exposes
@@ -227,6 +241,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         ground_aqi_summary=ground_aqi_summary,
         aqi_fetch_time=aqi_fetch_time,
         bulletin_text=bulletin_text,
+        synoptic=synoptic,
         met_service_prediction=met_prediction,
         met_service_valid_for=met_valid_for,
         met_service_prediction_day3=met_day3,
@@ -455,6 +470,7 @@ def run_daily_pipeline(
             "secondary_today_hourly": guidance.secondary_hourly,
             "secondary_extended_daily": guidance.secondary_daily,
             "regional_pressure": guidance.regional_pressure,
+            "synoptic_scale_pressure": asdict(guidance.synoptic) if guidance.synoptic is not None else None,
             "air_quality": guidance.air_quality,
             "airport_metar": guidance.airport_metar,
         },
@@ -660,6 +676,7 @@ def run_refresh_pipeline(
             "secondary_today_hourly": guidance.secondary_hourly,
             "secondary_extended_daily": guidance.secondary_daily,
             "regional_pressure": guidance.regional_pressure,
+            "synoptic_scale_pressure": asdict(guidance.synoptic) if guidance.synoptic is not None else None,
             "air_quality": guidance.air_quality,
             "airport_metar": guidance.airport_metar,
         },
