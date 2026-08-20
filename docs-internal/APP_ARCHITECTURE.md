@@ -199,9 +199,15 @@ exactly what the shared vectors exist to guarantee.
 **Met-service parsing (`kmd_daily_parse`, `kmd_5day_parse`, the fetchers) —
 does NOT port.** Three reasons, in increasing order of importance:
 
-1. It is PDF table extraction. The Python side leans on pdfplumber; there is
-   no comparable on-device Dart equivalent, and doing it in-app would mean
-   shipping a PDF layout engine to parse a document the server already has.
+1. It is PDF **table** extraction, which is a narrower claim than it first
+   appears. Dart can extract PDF *text* — `pdf_text_extract` (iOS PDFKit /
+   Android PdfBox), `extract_text`, `syncfusion_flutter_pdf` in pure Dart.
+   What has no Dart equivalent is pdfplumber's `extract_tables()`: table
+   reconstruction with layout. Syncfusion's "tables" feature creates them;
+   its extraction side is text and text-search only. Our parsers depend
+   entirely on table structure — the county x date grid, including blocks
+   that straddle page breaks — so raw text extraction would not be enough
+   without hand-building a table reconstructor on top of text bounds.
 2. It is ~600 lines per met service, times ~200 services.
 3. **The decisive one: update latency.** When KMD changes its site layout,
    a server-side parser is a git push. An in-app parser is an app-store
@@ -225,6 +231,46 @@ degrades honestly with no extra code, because a model with zero verified
 checks is already named and excluded from the confidence figure rather than
 quietly dragging it to zero. That behaviour was built for exactly this shape
 of gap.
+
+### So does this make the app non-standalone?
+
+Not for the product; only for this one input, and the distinction matters.
+
+The core — multi-model synthesis across the five Open-Meteo models,
+verification, rolling skill, the review — runs entirely on-device with no
+server of any kind. The met service is a **sixth model**: an enhancement,
+not a dependency. A standalone app with no met-service data is a complete
+and honest forecasting system that happens to track five models instead of
+six, and it already says so on its own accuracy screen.
+
+What "hybrid" actually costs here is smaller than it sounds, because the
+artifact is a few hundred bytes of static JSON per location per day, and
+the thing producing it is a GitHub Action publishing to GitHub Pages —
+free, already running, and nothing anyone has to operate. The app makes an
+ordinary CDN request; there is no backend to keep alive, no account, and no
+per-user infrastructure.
+
+**The real constraint is coverage, not architecture.** A user somewhere
+nobody runs the pipeline gets no met service. That is what points at the
+shape the ~200-service goal wants: not 200 parsers shipped in an app
+binary, and not 200 servers, but **one published dataset** — a repository
+of met-service parsers running on a schedule and emitting static JSON per
+location, which contributors extend one service at a time and every app
+installation reads for free. The catalog item on the roadmap is therefore
+better understood as a *data* project than a code-in-the-app project.
+
+Two consequences to carry into that design:
+
+- The **validity guard travels with the data.** Today it lives in the
+  pipeline: a met prediction is accepted only if it actually covers the
+  target date. An app consuming published JSON must apply the same check
+  locally, or a stale feed silently becomes a confident forecast about the
+  wrong day.
+- **A broken parser must read as absent, not as wrong.** If a met office
+  changes its site and the published feed goes stale, the app needs to drop
+  the model rather than keep scoring a frozen value — the same distinction
+  between "no data" and "a confident call" that runs through the rest of
+  this system.
 
 ### De-risking the critical 431 lines
 
