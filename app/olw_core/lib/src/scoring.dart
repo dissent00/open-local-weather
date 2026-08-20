@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'dates.dart';
 import 'models.dart';
 
 /// Scores one model's stored prediction against one day's actual.
@@ -102,4 +103,39 @@ RainPctTrend computeRainPctTrend({
       ? 'improving'
       : (delta <= -thresholdPct ? 'declining' : 'stable');
   return RainPctTrend(label, delta);
+}
+
+/// Every scoreable check for one (model, lead time), newest first.
+///
+/// Storage-agnostic by design: takes a lookup rather than a log-entry type,
+/// because on a phone the history is a database table, not JSON files on
+/// disk. Mirrors `collect_scores` in the Python implementation.
+List<MapEntry<DateTime, VerificationScore>> collectScores({
+  required String model,
+  required int leadTimeDays,
+  required DateTime yesterday,
+  required DateTime earliestTargetDate,
+  required List<ModelPrediction>? Function(DateTime rowDate, int leadTimeDays) predictionsFor,
+  required DailyActual? Function(DateTime targetDate) actualFor,
+}) {
+  final scored = <MapEntry<DateTime, VerificationScore>>[];
+  var cursor = yesterday;
+  while (!cursor.isBefore(earliestTargetDate)) {
+    final rowDate = predictionRowDateForTarget(cursor, leadTimeDays);
+    final predictions = predictionsFor(rowDate, leadTimeDays);
+    final actual = actualFor(cursor);
+    if (predictions != null && actual != null) {
+      ModelPrediction? prediction;
+      for (final p in predictions) {
+        if (p.model == model) {
+          prediction = p;
+          break;
+        }
+      }
+      final score = scorePrediction(prediction, actual, leadTimeDays);
+      if (score != null) scored.add(MapEntry(cursor, score));
+    }
+    cursor = addDays(cursor, -1);
+  }
+  return scored;
 }

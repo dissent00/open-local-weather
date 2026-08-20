@@ -41,6 +41,10 @@ from typing import Any
 
 from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.dates import add_days, prediction_row_date_for_target
+
+
+def _iso(d):
+    return d.isoformat()
 from openlocalweather.defaults import (
     HISTORICAL_LOOKBACK_DAYS,
     RAIN_THRESHOLD_MM,
@@ -646,6 +650,122 @@ def export_user_prompt() -> None:
     )
 
 
+def export_weekly_review() -> None:
+    """The review's findings must be IDENTICAL on both surfaces.
+
+    Roadmap item 18: "accuracy demonstrably improving over time" is this
+    project's strongest differentiator, and an app whose accuracy screen
+    disagreed with the server's would destroy exactly the credibility the
+    feature exists to build. The gating thresholds are the sensitive part —
+    an implementation that ranked models one check earlier than the other
+    would publish a claim the other withholds.
+    """
+    from datetime import timedelta
+
+    from openlocalweather.models import (
+        DailyLogEntry,
+        LogEntryMeta,
+        ModelPredictionsByLead,
+    )
+    from openlocalweather.review import build_weekly_review
+
+    models = ["alpha", "beta"]
+    today = date(2026, 8, 21)
+
+    def build(days: int, alpha_hits: int, beta_hits: int, alpha_high_bias: float = 0.0):
+        logs, actuals = {}, {}
+        for i in range(days):
+            d = today - timedelta(days=i + 1)
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=(i < alpha_hits),
+                                    high_c=26.0 - alpha_high_bias, low_c=18.0),
+                    ModelPrediction(model="beta", rain=(i < beta_hits), high_c=26.0, low_c=18.0),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+        return logs, actuals
+
+    def case(name: str, days: int, a: int, b: int, bias: float = 0.0):
+        logs, actuals = build(days, a, b, bias)
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models,
+            lead_times_days=[0],
+        )
+        return {
+            "name": name,
+            "input": {
+                # Flat, storage-agnostic: the app keeps history in a database,
+                # not JSON files, so the vector describes predictions per
+                # (row date, lead time) rather than a log-entry shape.
+                "predictions": {
+                    _iso(d): {
+                        "0": [p.model_dump() for p in e.model_predictions.day0]
+                    }
+                    for d, e in sorted(logs.items())
+                },
+                "actuals": {_iso(d): a.model_dump() for d, a in sorted(actuals.items())},
+                "today": _iso(today),
+                "models": models,
+                "lead_times_days": [0],
+            },
+            "expected": {
+                "period_start": _iso(review.period_start),
+                "period_end": _iso(review.period_end),
+                "days_with_predictions": review.days_with_predictions,
+                "days_verified": review.days_verified,
+                "data_sufficiency": review.data_sufficiency,
+                "cells": [
+                    {
+                        "model": c.model, "lead_time_days": c.lead_time_days,
+                        "checks": c.checks, "correct": c.correct,
+                        "rain_pct": c.rain_pct, "confidence": c.confidence,
+                        "mean_high_error_c": c.mean_high_error_c,
+                        "mean_low_error_c": c.mean_low_error_c,
+                        "mean_wind_error_kmh": c.mean_wind_error_kmh,
+                        "mean_onset_error_hrs": c.mean_onset_error_hrs,
+                        "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
+                        "earliest": _iso(c.earliest) if c.earliest else None,
+                        "latest": _iso(c.latest) if c.latest else None,
+                    }
+                    for c in review.cells
+                ],
+                "findings": [
+                    {"kind": f.kind, "claim": f.claim, "evidence": f.evidence,
+                     "confidence": f.confidence, "checks": f.checks}
+                    for f in review.findings
+                ],
+            },
+        }
+
+    write(
+        "weekly_review.json",
+        "build_weekly_review",
+        "Weekly-review findings and skill cells. The gates are the sensitive "
+        "part: a thin record must produce NO ranking on either surface, and a "
+        "sufficient one must produce the same ranking, or the app and the "
+        "pipeline would publish different claims from identical data.",
+        [
+            case("8 checks — a large apparent gap must still yield no ranking", 8, 8, 2),
+            case("30 checks — a real gap is ranked", 30, 27, 9),
+            case("30 checks — a narrow gap is explicitly declined", 30, 20, 18),
+            case("30 checks — a systematic temperature bias is named", 30, 15, 15, 2.0),
+            case("4 checks — insufficient for anything", 4, 4, 1),
+        ],
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -793,6 +913,7 @@ def main() -> None:
     export_llm_schemas()
     export_system_prompt()
     export_user_prompt()
+    export_weekly_review()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 

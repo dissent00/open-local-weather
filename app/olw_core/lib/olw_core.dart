@@ -29,4 +29,5 @@ export 'src/llm/prompt.dart';
 export 'src/llm/provider.dart';
 export 'src/llm/schema.dart';
 export 'src/open_meteo.dart';
+export 'src/review.dart';
 export 'src/scoring.dart';

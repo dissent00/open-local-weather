@@ -1326,8 +1326,10 @@ There is also no narrated weekly issuance and no weekly workflow; the
 deterministic findings refresh on every daily run instead, which costs no
 LLM call and keeps the page current rather than up to six days stale.
 
-The Dart port in `app/olw_core` carries the prompt instruction but not yet
-`review.py` itself.
+The Dart port shipped: `app/olw_core/lib/src/review.dart`, held to identical
+output by `spec/vectors/weekly_review.json`. Storage-agnostic by design — it
+takes a predictions lookup rather than a log-entry type, because on a phone
+the history is a database table, not JSON files on disk.
 
 ### What it replaced
 

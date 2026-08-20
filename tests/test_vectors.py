@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -182,6 +182,59 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_weekly_review():
+    """Both surfaces must publish the same claims from the same record.
+
+    The gates are the sensitive part: an implementation that ranked models one
+    check earlier than the other would state a conclusion the other withholds,
+    and a user comparing the app against the site would have no way to tell
+    which was right.
+    """
+    from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+    from openlocalweather.review import build_weekly_review
+
+    for case in load("weekly_review.json")["cases"]:
+        i = case["input"]
+        logs = {}
+        for iso, by_lead in i["predictions"].items():
+            d = date.fromisoformat(iso)
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(
+                    day0=[ModelPrediction(**p) for p in by_lead.get("0", [])]
+                ),
+                meta=LogEntryMeta(
+                    generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                    llm_provider="t", llm_model="t", pipeline_version="0",
+                ),
+            )
+        actuals = {
+            date.fromisoformat(iso): DailyActual(**a) for iso, a in i["actuals"].items()
+        }
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=date.fromisoformat(i["today"]),
+            models=i["models"],
+            lead_times_days=i["lead_times_days"],
+        )
+        expected = case["expected"]
+        name = case["name"]
+        assert review.data_sufficiency == expected["data_sufficiency"], name
+        assert len(review.findings) == len(expected["findings"]), (
+            f"{name}: finding COUNT must match — an extra or missing finding is "
+            "a different published claim"
+        )
+        for got, want in zip(review.findings, expected["findings"]):
+            assert got.kind == want["kind"], name
+            assert got.claim == want["claim"], name
+            assert got.evidence == want["evidence"], name
+            assert got.confidence == want["confidence"], name
+
+
 def test_vectors_user_prompt():
     """The per-run message, pinned verbatim.
 
@@ -268,6 +321,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_strict.json",
         "llm_system_prompt.json",
         "llm_user_prompt.json",
+        "weekly_review.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}

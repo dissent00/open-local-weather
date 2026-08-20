@@ -1,0 +1,3383 @@
+{
+  "vector_format_version": 1,
+  "function": "build_weekly_review",
+  "description": "Weekly-review findings and skill cells. The gates are the sensitive part: a thin record must produce NO ranking on either surface, and a sufficient one must produce the same ranking, or the app and the pipeline would publish different claims from identical data.",
+  "cases": [
+    {
+      "name": "8 checks \u2014 a large apparent gap must still yield no ranking",
+      "input": {
+        "predictions": {
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-13",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 8,
+        "days_verified": 8,
+        "data_sufficiency": "Reviewed 8 day(s) of stored forecasts (2026-08-13 to 2026-08-20), of which 8 have observations to score against. Day+0: 8 check(s) per model \u2014 directional only, not yet enough to rank models against each other.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 8,
+            "correct": 8,
+            "rain_pct": 100.0,
+            "confidence": "provisional",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-13",
+            "latest": "2026-08-20"
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 8,
+            "correct": 2,
+            "rain_pct": 25.0,
+            "confidence": "provisional",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-13",
+            "latest": "2026-08-20"
+          }
+        ],
+        "findings": []
+      }
+    },
+    {
+      "name": "30 checks \u2014 a real gap is ranked",
+      "input": {
+        "predictions": {
+          "2026-07-22": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-23": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-24": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-25": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-26": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-27": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-28": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-29": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-30": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-31": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-01": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-02": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-03": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-04": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-05": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-06": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-07": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-08": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-07-22": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-23": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-24": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-25": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-26": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-27": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-28": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-29": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-30": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-31": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-01": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-04": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-05": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-06": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-07": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-08": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-09": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-10": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-07-22",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 30,
+        "days_verified": 30,
+        "data_sufficiency": "Reviewed 30 day(s) of stored forecasts (2026-07-22 to 2026-08-20), of which 30 have observations to score against. Day+0: 30 check(s) per model \u2014 a settled picture.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 27,
+            "rain_pct": 90.0,
+            "confidence": "established",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 9,
+            "rain_pct": 30.0,
+            "confidence": "established",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, alpha is the strongest rain caller here and beta the weakest.",
+            "evidence": "alpha 27/30 (90%) vs beta 9/30 (30%); a 60-point gap, above the 15-point noise floor.",
+            "confidence": "established",
+            "checks": 30
+          }
+        ]
+      }
+    },
+    {
+      "name": "30 checks \u2014 a narrow gap is explicitly declined",
+      "input": {
+        "predictions": {
+          "2026-07-22": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-23": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-24": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-25": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-26": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-27": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-28": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-29": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-30": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-31": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-01": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-02": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-03": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-04": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-05": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-06": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-07": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-08": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-07-22": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-23": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-24": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-25": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-26": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-27": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-28": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-29": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-30": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-31": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-01": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-04": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-05": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-06": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-07": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-08": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-09": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-10": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-07-22",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 30,
+        "days_verified": 30,
+        "data_sufficiency": "Reviewed 30 day(s) of stored forecasts (2026-07-22 to 2026-08-20), of which 30 have observations to score against. Day+0: 30 check(s) per model \u2014 a settled picture.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 20,
+            "rain_pct": 66.66666666666667,
+            "confidence": "established",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 18,
+            "rain_pct": 60.0,
+            "confidence": "established",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 7 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "established",
+            "checks": 30
+          }
+        ]
+      }
+    },
+    {
+      "name": "30 checks \u2014 a systematic temperature bias is named",
+      "input": {
+        "predictions": {
+          "2026-07-22": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-23": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-24": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-25": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-26": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-27": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-28": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-29": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-30": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-07-31": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-01": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-02": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-03": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-04": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-05": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-06": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-07": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-08": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 24.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-07-22": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-23": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-24": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-25": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-26": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-27": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-28": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-29": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-30": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-07-31": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-01": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-04": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-05": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-06": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-07": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-08": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-09": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-10": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-07-22",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 30,
+        "days_verified": 30,
+        "data_sufficiency": "Reviewed 30 day(s) of stored forecasts (2026-07-22 to 2026-08-20), of which 30 have observations to score against. Day+0: 30 check(s) per model \u2014 a settled picture.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 15,
+            "rain_pct": 50.0,
+            "confidence": "established",
+            "mean_high_error_c": 2.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 30,
+            "correct": 15,
+            "rain_pct": 50.0,
+            "confidence": "established",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-07-22",
+            "latest": "2026-08-20"
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 0 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "established",
+            "checks": 30
+          },
+          {
+            "kind": "bias",
+            "claim": "At Day+0, alpha systematically under-forecasts daytime highs here.",
+            "evidence": "Mean error +2.0\u00b0C across 30 checks.",
+            "confidence": "established",
+            "checks": 30
+          }
+        ]
+      }
+    },
+    {
+      "name": "4 checks \u2014 insufficient for anything",
+      "input": {
+        "predictions": {
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-17",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 4,
+        "days_verified": 4,
+        "data_sufficiency": "Reviewed 4 day(s) of stored forecasts (2026-08-17 to 2026-08-20), of which 4 have observations to score against. Day+0: 4 check(s) per model \u2014 not enough to say anything; roughly 1 more day(s) before even a provisional read.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 4,
+            "correct": 4,
+            "rain_pct": 100.0,
+            "confidence": "insufficient",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-17",
+            "latest": "2026-08-20"
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 4,
+            "correct": 1,
+            "rain_pct": 25.0,
+            "confidence": "insufficient",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-17",
+            "latest": "2026-08-20"
+          }
+        ],
+        "findings": []
+      }
+    }
+  ]
+}

@@ -281,6 +281,81 @@ void main() {
     });
   });
 
+  group('weekly review', () {
+    // The gates are the sensitive part. An implementation that ranked models
+    // one check earlier than the other would publish a claim the other
+    // withholds — worse than either behaviour alone, because a user comparing
+    // the app against the site would have no way to tell which was right.
+    test('produces identical findings to Python', () {
+      for (final c in casesOf('weekly_review.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final predictions = (i['predictions'] as Map).cast<String, Object?>();
+        final actuals = (i['actuals'] as Map).cast<String, Object?>();
+
+        List<ModelPrediction>? predictionsFor(DateTime rowDate, int lead) {
+          final byLead = predictions[formatDate(rowDate)] as Map<String, Object?>?;
+          final raw = byLead?['$lead'] as List?;
+          if (raw == null) return null;
+          return raw
+              .map((e) => ModelPrediction.fromJson((e as Map).cast<String, Object?>()))
+              .toList();
+        }
+
+        DailyActual? actualFor(DateTime target) {
+          final raw = actuals[formatDate(target)] as Map?;
+          if (raw == null) return null;
+          return DailyActual.fromJson(raw.cast<String, Object?>());
+        }
+
+        final review = buildWeeklyReview(
+          predictionsFor: predictionsFor,
+          actualFor: actualFor,
+          allLogDates: predictions.keys.map(DateTime.parse).toList(),
+          today: DateTime.parse(i['today'] as String),
+          models: (i['models'] as List).cast<String>(),
+          leadTimesDays: (i['lead_times_days'] as List).cast<int>(),
+        );
+
+        final expected = c['expected'] as Map<String, Object?>;
+        final reason = 'case "${c['name']}"';
+
+        expect(review.dataSufficiency, equals(expected['data_sufficiency']), reason: reason);
+        expect(review.daysWithPredictions, equals(expected['days_with_predictions']), reason: reason);
+        expect(review.daysVerified, equals(expected['days_verified']), reason: reason);
+        expect(formatDate(review.periodStart), equals(expected['period_start']), reason: reason);
+        expect(formatDate(review.periodEnd), equals(expected['period_end']), reason: reason);
+
+        final expectedFindings = (expected['findings'] as List).cast<Map<String, Object?>>();
+        expect(review.findings.length, equals(expectedFindings.length),
+            reason: '$reason — finding COUNT must match; an extra or missing '
+                'finding is a different published claim');
+        for (var n = 0; n < expectedFindings.length; n++) {
+          final got = review.findings[n];
+          final want = expectedFindings[n];
+          expect(got.kind, equals(want['kind']), reason: reason);
+          expect(got.claim, equals(want['claim']), reason: reason);
+          expect(got.evidence, equals(want['evidence']), reason: reason);
+          expect(got.confidence, equals(want['confidence']), reason: reason);
+          expect(got.checks, equals(want['checks']), reason: reason);
+        }
+
+        final expectedCells = (expected['cells'] as List).cast<Map<String, Object?>>();
+        expect(review.cells.length, equals(expectedCells.length), reason: reason);
+        for (var n = 0; n < expectedCells.length; n++) {
+          final got = review.cells[n];
+          final want = expectedCells[n];
+          expect(got.model, equals(want['model']), reason: reason);
+          expect(got.checks, equals(want['checks']), reason: reason);
+          expect(got.correct, equals(want['correct']), reason: reason);
+          expect(got.confidence, equals(want['confidence']), reason: reason);
+          expect(got.rainPct, equals(want['rain_pct']), reason: reason);
+          expect(got.meanHighErrorC, equals(want['mean_high_error_c']), reason: reason);
+          expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
+        }
+      }
+    });
+  });
+
   group('user prompt', () {
     // Byte-for-byte, same as the system prompt — but the cold-start case is
     // the one that matters most. Every "Unavailable — ..." string is what
@@ -346,6 +421,7 @@ void main() {
       'llm_schema_strict.json',
       'llm_system_prompt.json',
       'llm_user_prompt.json',
+      'weekly_review.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir

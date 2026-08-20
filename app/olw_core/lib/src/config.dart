@@ -64,3 +64,27 @@ const List<String> defaultModels = [
 
 /// Lead times tracked and scored independently.
 const List<int> leadTimesDays = [0, 3, 7];
+
+
+/// --- Weekly review (see review.dart) ---
+///
+/// How many verified checks a claim needs before it may be stated, and how
+/// strongly. Ordered (upperBoundExclusive, label). Mirrors
+/// REVIEW_CONFIDENCE_BANDS in the Python implementation; the shared vectors
+/// enforce that they stay identical, because a surface that ranked models one
+/// check earlier than the other would publish a claim the other withholds.
+const List<(int, String)> reviewConfidenceBands = [
+  (5, 'insufficient'),
+  (10, 'provisional'),
+  (30, 'usable'),
+  (1000000000, 'established'),
+];
+
+const int reviewMinChecksForComparison = 10;
+const double reviewComparisonMinGapPct = 15.0;
+const double reviewTempBiasThresholdC = 1.0;
+const double reviewWindBiasThresholdKmh = 8.0;
+
+/// Lead times, under a name that does not collide with the parameter it is
+/// the default for.
+const List<int> leadTimesDays_ = leadTimesDays;
