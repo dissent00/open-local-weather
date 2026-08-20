@@ -167,3 +167,66 @@ def test_bucket_hourly_by_date_handles_missing_values_in_arrays():
     assert entry.peak_wind_kmh is None
     assert entry.rain is True  # the 0.6 at hour 2 crosses threshold
     assert entry.mslp_trend is None  # fewer than 2 non-null pressure readings
+
+
+# ---------------------------------------------------------------------------
+# Transient-failure retries
+# ---------------------------------------------------------------------------
+
+
+def test_a_transient_failure_is_retried_rather_than_aborting_the_run(requests_mock):
+    """The asymmetry this fixes: the LLM providers retry and those calls cost
+    money, while this one is free and its failure is more expensive — the LLM
+    is never reached, so the run yields no forecast at all.
+
+    Observed live: a run succeeded and an identical one 30 seconds later could
+    not reach the API, with the service healthy either side.
+    """
+    requests_mock.get(
+        open_meteo.FORECAST_URL,
+        [
+            {"status_code": 503, "text": "upstream hiccup"},
+            {"json": {"hourly": {"time": ["2026-08-21T00:00"]}}, "status_code": 200},
+        ],
+    )
+    result = open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+    assert result["hourly"]["time"] == ["2026-08-21T00:00"]
+
+
+def test_a_bad_request_is_not_retried(requests_mock, monkeypatch):
+    """A 4xx means the REQUEST is wrong — a misspelled variable, an impossible
+    coordinate. Retrying repeats the mistake more slowly and hides it behind a
+    longer wait."""
+    slept = []
+    monkeypatch.setattr(open_meteo.time, "sleep", lambda s: slept.append(s))
+    requests_mock.get(
+        open_meteo.FORECAST_URL,
+        status_code=400,
+        text="Data corrupted at path ''. Cannot initialize ForecastVariable",
+    )
+    with pytest.raises(open_meteo.OpenMeteoFetchError, match="400"):
+        open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+    assert slept == [], "a malformed request must fail immediately"
+
+
+def test_rate_limiting_IS_retried(requests_mock):
+    """429 is the one 4xx worth waiting out — the request is fine, the pace
+    isn't."""
+    requests_mock.get(
+        open_meteo.FORECAST_URL,
+        [
+            {"status_code": 429, "text": "slow down"},
+            {"json": {"hourly": {"time": ["2026-08-21T00:00"]}}, "status_code": 200},
+        ],
+    )
+    result = open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+    assert result["hourly"]["time"] == ["2026-08-21T00:00"]
+
+
+def test_persistent_failure_still_raises_after_exhausting_attempts(requests_mock):
+    """Retrying must not turn a real outage into a silent hang or a bogus
+    empty result — the caller has to learn the data is unavailable."""
+    requests_mock.get(open_meteo.FORECAST_URL, status_code=503, text="down")
+    with pytest.raises(open_meteo.OpenMeteoFetchError):
+        open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+    assert requests_mock.call_count == open_meteo.MAX_ATTEMPTS

@@ -204,6 +204,84 @@ void main() {
       expect(east.$2, lessThan(0), reason: 'longitude wrapped, not overflowed');
     });
   });
+
+  group('transient-failure retries', () {
+    // The asymmetry this fixes: the LLM providers retry and those calls cost
+    // money, while this one is free and its failure is more expensive — the
+    // LLM is never reached, so nothing is produced at all.
+
+    test('a transient failure is retried rather than aborting the run', () async {
+      var calls = 0;
+      final client = OpenMeteoClient(
+        retryBaseDelay: Duration.zero,
+        client: MockClient((_) async {
+          calls++;
+          if (calls == 1) return http.Response('upstream hiccup', 503);
+          return http.Response(
+              jsonEncode({'hourly': {'time': ['2026-08-21T00:00']}}), 200);
+        }),
+      );
+      final result = await client.fetchForecastHourlyToday(
+          lat: -0.09, lon: 34.77, models: const ['gfs_seamless'], timezone: 'UTC');
+      expect(calls, 2);
+      expect((result['hourly'] as Map)['time'], ['2026-08-21T00:00']);
+    });
+
+    test('a bad request is NOT retried', () async {
+      // A 4xx means the request is wrong. Retrying repeats the mistake more
+      // slowly and hides it behind a longer wait.
+      var calls = 0;
+      final client = OpenMeteoClient(
+        retryBaseDelay: Duration.zero,
+        client: MockClient((_) async {
+          calls++;
+          return http.Response('Cannot initialize ForecastVariable', 400);
+        }),
+      );
+      await expectLater(
+        client.fetchForecastHourlyToday(
+            lat: -0.09, lon: 34.77, models: const ['gfs_seamless'], timezone: 'UTC'),
+        throwsA(isA<OpenMeteoFetchError>()),
+      );
+      expect(calls, 1, reason: 'a malformed request must fail immediately');
+    });
+
+    test('rate limiting IS retried', () async {
+      // 429 is the one 4xx worth waiting out: the request is fine, the pace
+      // is not.
+      var calls = 0;
+      final client = OpenMeteoClient(
+        retryBaseDelay: Duration.zero,
+        client: MockClient((_) async {
+          calls++;
+          if (calls == 1) return http.Response('slow down', 429);
+          return http.Response(jsonEncode({'hourly': {}}), 200);
+        }),
+      );
+      await client.fetchForecastHourlyToday(
+          lat: -0.09, lon: 34.77, models: const ['gfs_seamless'], timezone: 'UTC');
+      expect(calls, 2);
+    });
+
+    test('a persistent outage still raises after exhausting attempts', () async {
+      // Retrying must not turn a real outage into a silent hang or a bogus
+      // empty result — the caller has to learn the data is unavailable.
+      var calls = 0;
+      final client = OpenMeteoClient(
+        retryBaseDelay: Duration.zero,
+        client: MockClient((_) async {
+          calls++;
+          return http.Response('down', 503);
+        }),
+      );
+      await expectLater(
+        client.fetchForecastHourlyToday(
+            lat: -0.09, lon: 34.77, models: const ['gfs_seamless'], timezone: 'UTC'),
+        throwsA(isA<OpenMeteoFetchError>()),
+      );
+      expect(calls, fetchMaxAttempts);
+    });
+  });
 }
 
 class _Boom implements Exception {

@@ -42,6 +42,12 @@ const String archiveHourlyVars =
     'temperature_2m,precipitation,windspeed_10m,windgusts_10m,cloud_cover,pressure_msl';
 const String airQualityHourlyVars = 'pm10,pm2_5,european_aqi,us_aqi';
 
+/// Retry budget for weather fetches. Small: the data is free and the failure
+/// mode is a missing forecast, so a few quick attempts are worth far more than
+/// they cost. Mirrors MAX_ATTEMPTS in the Python implementation.
+const int fetchMaxAttempts = 3;
+const Duration fetchRetryBaseDelay = Duration(milliseconds: 1500);
+
 class OpenMeteoFetchError implements Exception {
   final String message;
   OpenMeteoFetchError(this.message);
@@ -95,29 +101,69 @@ List<(double, double, String)> synopticRingPoints(
 
 class OpenMeteoClient {
   final http.Client _client;
+  final Duration _retryBaseDelay;
 
   /// [client] is injectable so tests can run against canned responses with no
   /// network — the Dart equivalent of the Python suite's requests-mock use.
-  OpenMeteoClient({http.Client? client}) : _client = client ?? http.Client();
+  OpenMeteoClient({http.Client? client, Duration? retryBaseDelay})
+      : _client = client ?? http.Client(),
+        _retryBaseDelay = retryBaseDelay ?? fetchRetryBaseDelay;
+
+  /// Injectable so tests do not actually wait. Real backoff is correct
+  /// behaviour in production and pure cost in a suite — and a slow suite gets
+  /// run less, which is how regressions reach production.
 
   void close() => _client.close();
 
   Future<Map<String, Object?>> _get(
     String url,
     Map<String, String> params,
-  ) async {
+  ) async =>
+      (await _fetch(url, params)) as Map<String, Object?>;
+
+  /// One request, retried on transient failure.
+  ///
+  /// Transient failures here used to abort the whole run on the first blip,
+  /// which was backwards: the LLM providers retry (see llm/provider.dart) and
+  /// those calls cost money, while this one is FREE and its failure is more
+  /// expensive — the LLM is never reached, so nothing is produced at all.
+  ///
+  /// Observed in practice: a run succeeded, and an identical one 30 seconds
+  /// later could not reach the API, with the service healthy either side.
+  Future<Object?> _fetch(String url, Map<String, String> params) async {
     final uri = Uri.parse(url).replace(queryParameters: params);
-    http.Response resp;
-    try {
-      resp = await _client.get(uri).timeout(requestTimeout);
-    } catch (e) {
-      throw OpenMeteoFetchError('Request to $url failed: $e');
+    Object? lastError;
+
+    for (var attempt = 1; attempt <= fetchMaxAttempts; attempt++) {
+      http.Response? resp;
+      try {
+        resp = await _client.get(uri).timeout(requestTimeout);
+      } catch (e) {
+        lastError = OpenMeteoFetchError('Request to $url failed: $e');
+      }
+
+      if (resp != null) {
+        if (resp.statusCode == 200) return jsonDecode(resp.body);
+        final body =
+            resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body;
+        // A 4xx other than 429 means the REQUEST is wrong — a misspelled
+        // variable, an impossible coordinate. Retrying repeats the mistake
+        // more slowly and hides it behind a longer wait.
+        if (resp.statusCode >= 400 &&
+            resp.statusCode < 500 &&
+            resp.statusCode != 429) {
+          throw OpenMeteoFetchError(
+              '$url returned HTTP ${resp.statusCode}: $body');
+        }
+        lastError =
+            OpenMeteoFetchError('$url returned HTTP ${resp.statusCode}: $body');
+      }
+
+      if (attempt < fetchMaxAttempts) {
+        await Future<void>.delayed(_retryBaseDelay * attempt);
+      }
     }
-    if (resp.statusCode != 200) {
-      final body = resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body;
-      throw OpenMeteoFetchError('$url returned HTTP ${resp.statusCode}: $body');
-    }
-    return jsonDecode(resp.body) as Map<String, Object?>;
+    throw lastError!;
   }
 
   /// Like [_get], but without asserting the response is an object.
@@ -125,20 +171,8 @@ class OpenMeteoClient {
   /// Open-Meteo returns a JSON **array** when the request carries multiple
   /// comma-separated coordinates — one block per point. Casting that to a Map
   /// throws, so every multi-point endpoint must decode through here.
-  Future<Object?> _getRaw(String url, Map<String, String> params) async {
-    final uri = Uri.parse(url).replace(queryParameters: params);
-    http.Response resp;
-    try {
-      resp = await _client.get(uri).timeout(requestTimeout);
-    } catch (e) {
-      throw OpenMeteoFetchError('Request to $url failed: $e');
-    }
-    if (resp.statusCode != 200) {
-      final body = resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body;
-      throw OpenMeteoFetchError('$url returned HTTP ${resp.statusCode}: $body');
-    }
-    return jsonDecode(resp.body);
-  }
+  Future<Object?> _getRaw(String url, Map<String, String> params) =>
+      _fetch(url, params);
 
   /// Today's hourly multi-model guidance. `forecast_days=1` because onset
   /// timing is only meaningful for today.

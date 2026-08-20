@@ -23,6 +23,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import time
+
 import requests
 
 from openlocalweather.dates import format_date, parse_date
@@ -64,14 +66,44 @@ class OpenMeteoFetchError(RuntimeError):
     """A core Open-Meteo fetch failed (network error or non-200 response)."""
 
 
+# Transient failures here used to abort the whole run on the first blip.
+#
+# That was backwards: the LLM providers retry (see llm/gemini.py, which
+# justifies it as "cheap"), and those calls cost money. This one is FREE, and
+# a failure is more expensive — the LLM is never reached, so the run produces
+# no forecast at all. On the server that means a missed issuance for the day,
+# which is the reliability problem the multiple cron slots exist to fight; in
+# the app it means a user tapped generate and got nothing.
+#
+# Observed in practice: a run succeeded, and an identical one 30 seconds later
+# failed to reach the API, with the service demonstrably healthy either side.
+MAX_ATTEMPTS = 3
+RETRY_BASE_DELAY_S = 1.5
+
+
 def _get(url: str, params: dict[str, Any]) -> dict:
-    try:
-        resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
-    except requests.RequestException as e:
-        raise OpenMeteoFetchError(f"Request to {url} failed: {e}") from e
-    if resp.status_code != 200:
-        raise OpenMeteoFetchError(f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}")
-    return resp.json()
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
+        except requests.RequestException as e:
+            last_error = OpenMeteoFetchError(f"Request to {url} failed: {e}")
+        else:
+            if resp.status_code == 200:
+                return resp.json()
+            # 4xx other than 429 means the REQUEST is wrong — a bad variable
+            # name, an impossible coordinate. Retrying just repeats the
+            # mistake more slowly, and hides it behind a longer wait.
+            if 400 <= resp.status_code < 500 and resp.status_code != 429:
+                raise OpenMeteoFetchError(
+                    f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
+                )
+            last_error = OpenMeteoFetchError(
+                f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
+            )
+        if attempt < MAX_ATTEMPTS:
+            time.sleep(RETRY_BASE_DELAY_S * attempt)
+    raise last_error  # type: ignore[misc]
 
 
 def fetch_forecast_hourly_today(lat: float, lon: float, models: list[str], timezone: str) -> dict:
