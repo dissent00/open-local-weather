@@ -2,38 +2,38 @@
   "date": "2026-08-21",
   "rain_expected": "Dry / No Rain",
   "onset_window": null,
-  "peak_wind_kmh": 27.0,
+  "peak_wind_kmh": 29.2,
   "temp_high_c": 29.0,
   "temp_low_c": 18.0,
-  "temp_high_low_display": "29°C / 84°F (High) | 18°C / 64°F (Low)",
-  "mslp_trend_24h": "-2.0 hPa (Falling)",
-  "synoptic_pattern": "Strong cross-basin gradient with lower pressure to the northeast",
+  "temp_high_low_display": "29°C / 18°C (84°F / 64°F)",
+  "mslp_trend_24h": "-2.0 hPa",
+  "synoptic_pattern": "Strong large-scale gradient with deepening pressure toward the northeast",
   "uv_index_max": "9 (Very High)",
-  "air_quality_aqi": "Moderate",
+  "air_quality_aqi": "78–87 (Moderate)",
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
       "station_id": "A418534",
-      "aqi": null,
-      "pm25": 74.0,
+      "aqi": 69,
+      "pm25": 69.0,
       "pm10": 15.0,
-      "measured_at": "2026-08-20T22:00:00Z"
+      "measured_at": "2026-08-21T12:00:00Z"
     },
     {
       "name": "Ochieng' Avenue, Kisumu Central",
       "station_id": "A418300",
-      "aqi": null,
-      "pm25": 41.0,
+      "aqi": 34,
+      "pm25": 34.0,
       "pm10": 18.0,
-      "measured_at": "2026-08-20T11:00:00Z"
+      "measured_at": "2026-08-21T12:00:00Z"
     },
     {
       "name": "Dunga Beach",
       "station_id": "A418504",
-      "aqi": null,
-      "pm25": 56.0,
+      "aqi": 74,
+      "pm25": 74.0,
       "pm10": 37.0,
-      "measured_at": "2026-08-20T22:00:00Z"
+      "measured_at": "2026-08-21T12:00:00Z"
     }
   ],
   "model_predictions": {
@@ -217,15 +217,55 @@
     "fetched_at_utc": "2026-08-21T03:03:37.462909Z"
   },
   "yesterday_verification_summary": "For August 20 at Day+0, ECMWF, ICON, Kenya Met, and Best Match accurately verified the rain call with exact onset timing, while GFS and UKMO missed the precipitation event; daytime high temperatures were captured within 0.7°C by ECMWF and ICON. At Day+3 (August 17), GFS, ECMWF, and ICON correctly forecast rainfall, though GFS and ECMWF exhibited daytime cold biases. At Day+7 (August 13), GFS and ECMWF both verified the precipitation event, though surface winds were overestimated by GFS.",
-  "narrative_markdown": "## Overview\nToday will feel slightly warmer and calmer across Kisumu, offering drier conditions following yesterday's rain. Expect sunny intervals throughout the morning and afternoon with maximum daytime temperatures reaching 29°C / 84°F.\n\n## Today's Forecast\n- Daytime Temperatures: Highs around 29°C / 84°F, with overnight minimums near 18°C / 64°F.\n- Rainfall: Dry conditions expected across numerical guidance (0.0 mm / 0.0 in), though Kenya Met notes a slight local possibility of isolated light showers.\n- Wind: Light morning breezes turning southwesterly in the afternoon at 16 km/h (9 kt) to 27 km/h (15 kt).\n- UV Index: Reaching a peak of 9 (Very High) around midday.\n- Air Quality: Modeled US AQI is Moderate (81–87, PM2.5 primary). All ground stations (Kisumu Airport, Ochieng' Avenue, and Dunga Beach) have stale readings (>5 hours old), and no station reported a valid numeric AQI today.\n\n## Extended Outlook\nOver the next 3 days (Saturday, Aug 22 to Monday, Aug 24), daytime highs will warm slightly into the 30°C–32°C / 86°F–90°F range. Precipitation odds increase notably on Sunday (Aug 23) and Monday (Aug 24), as ECMWF (100% Day+3 track record) and ICON indicate shower development accumulating 1.0–4.5 mm (0.04–0.18 in). Looking out to Days 4–7 (Aug 25–28), GFS indicates a peak shower signal around Aug 25 (up to 23.5 mm / 0.93 in locally) before conditions dry out significantly for Aug 27–28 with warm, sunny conditions returning. Extended guidance relies on Day+3 and Day+7 verification skill where ECMWF maintains solid reliability.\n\n## Severe Weather / Hazard Potential\nNo severe weather hazards expected today. High solar radiation (UV Index 9) requires standard sun protection during peak hours (11:00 to 15:00 EAT). Increasing atmospheric instability (CAPE) toward Sunday and Monday may support localized thunder and lightning over nearby highland slopes.\n\n## Lake Victoria — Conditions for Boaters\nSurface winds over open waters will blow from the south-southwest at 18–24 km/h (10–13 kt) during the afternoon, with gusts up to 29 km/h (16 kt). Waters will be mostly calm in the morning, becoming moderately choppy in the afternoon. Isolated morning showers over the western basin (0.1–0.7 mm) will clear by midday.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1020 hPa) — a 14 hPa spread, a strong large-scale gradient. The lower pressure to the northeast is deepening over the next three days, while pressure overhead remains near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a general direction rather than a specific storm center or frontal boundary. Across the Nyanza Basin, regional MSLP ranges between 1015.6 hPa and 1017.3 hPa today, falling by ~2.0 hPa over 24 hours. This pressure profile supports afternoon lake-to-land breezes pushing in from the southwest.\n\nGround AQI Stations reporting: Sensors at Kisumu Airport (A418534, PM2.5: 74.0 µg/m³), Ochieng' Avenue, Kisumu Central (A418300, PM2.5: 41.0 µg/m³), and Dunga Beach (A418504, PM2.5: 56.0 µg/m³) recorded measurements 5 to 16 hours old and are classified as stale. Because no station reported a valid numeric AQI today, the air quality assessment relies on CAMS model guidance (US AQI 81–87, Moderate).\n\n### Forecaster Confidence Notes\nForecast weighting for Day+0 relies heavily on Best Match (90% rolling 10-check rain accuracy) and ECMWF (60% rain accuracy, top daytime high accuracy of +0.1°C error). While Kenya Met forecasts light showers and thunderstorms today, all numerical models unanimously predict 0.0 mm. Given Best Match's strong Day+0 rain calling record and GFS's tendency to over-forecast winds (+20.1 km/h bias), we favor the dry numerical consensus.\n\nRegarding long-run review findings over 10 verified days (2026-08-11 to 2026-08-20): At Day+0, Best Match is the strongest rain caller while GFS is the weakest. GFS, ECMWF, ICON, and UKMO all systematically under-forecast peak wind at Day+0, while ICON over-forecasts overnight lows (-2.3°C bias) and UKMO under-forecasts overnight lows (+1.5°C bias). At Day+3, ECMWF holds a 100% rain verification rate across 7 checks, though data sufficiency notes indicate this sample is directional and not yet sufficient for formal ranking. At Day+7, only 3 checks exist, which is insufficient to rank models or establish long-term skill profiles.",
-  "whatsapp_summary": "🌤 Kisumu Weather Summary (Fri, Aug 21)\n• Overview: Slightly warmer & calmer today following yesterday's rain. Sunny intervals expected.\n• Temps: 29°C / 84°F (High) | 18°C / 64°F (Low)\n• Rain: Dry conditions expected across numerical models (Kenya Met notes minor shower risk).\n• Wind: 16-27 km/h from SW.\n• Boaters: Choppy afternoon waves on Lake Victoria (gusts to 29 km/h).\n• UV: 9 (Very High)\n• AQI: Moderate (81-87)",
-  "morning_issuance": null,
+  "narrative_markdown": "## Overview\nNothing material has changed in the weather pattern since the morning issuance, with conditions feeling slightly warmer and calmer, and drier than yesterday, which saw rain. Expect pleasant afternoon conditions giving way to a clear to partly cloudy evening, with focus turning to increasing rain probabilities heading into the weekend.\n\n## Today's Forecast\n- Daytime Temperatures: Highs reaching 29°C / 84°F, with overnight lows dropping to 18°C / 64°F.\n- Rainfall: Unanimously dry across numerical models (0.0 mm / 0.0 in), though Kenya Met notes a slight localized potential for light evening showers in a few places.\n- Wind: Afternoon southwesterly winds blowing at 16 km/h (9 kt) to 29 km/h (16 kt).\n- UV Index: Reaching a peak of 9 (Very High) during midday hours.\n- Air Quality: Modeled US AQI is Moderate (78–87, PM2.5 primary). Ground sensors at Kisumu Airport, Ochieng' Avenue, and Dunga Beach are all reporting readings over 3 hours old (stale), so current assessment relies on model data.\n\n## Extended Outlook\nLooking ahead to Saturday (Aug 22) through Monday (Aug 24), daytime highs will hold steady between 29°C–31°C / 84°F–88°F. Shower and thunderstorm activity is projected to ramp up on Sunday (Aug 23) and Monday (Aug 24), as ECMWF (100% Day+3 rain accuracy) and ICON show precipitation accumulation between 1.0–7.0 mm (0.04–0.28 in). For Days 4–7 (Aug 25–28), precipitation tapers off rapidly after Tuesday, returning the basin to warm, dry conditions with highs reaching 32°C–33°C / 90°F–91°F by Thursday and Friday. Note that extended guidance relies on Day+3 and Day+7 skill records where ECMWF demonstrates strong reliability at Day+3, while Day+7 remains provisional due to limited verification history.\n\n## Severe Weather / Hazard Potential\nNo severe weather hazards are anticipated for the remainder of today. High UV radiation (peak index 9) warrants standard sun protection during peak daytime exposure. Increasing convective instability (CAPE) toward Sunday will elevate the risk for localized thunder and lightning over nearby highland slopes.\n\n## Lake Victoria — Conditions for Boaters\nSurface winds over open waters will blow from the SW at 16 km/h (9 kt) to 22 km/h (12 kt) with peak gusts to 29 km/h (16 kt), turning southerly overnight. Lake waters will remain light to moderately choppy. Precipitation risks over the lake remain minimal through tonight, with organized convection suppressed until late Saturday night.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1007 hPa) and highest toward the south (1021 hPa) — a 14 hPa spread, a strong large-scale gradient. The lower pressure to the northeast is deepening over the next three days, while pressure overhead is near-steady. Locally across Nyanza Basin, regional MSLP values range from 1015.3 hPa to 1017.4 hPa, showing a slight 24-hour falling trend of ~2.0 hPa. This pattern continues to drive moderate southwesterly afternoon lake breezes across the shore.\n\nIndividual ground air quality sensors currently report as follows: Kisumu Airport (A418534, AQI 69, PM2.5: 69.0 µg/m³), Ochieng' Avenue, Kisumu Central (A418300, AQI 34, PM2.5: 34.0 µg/m³), and Dunga Beach (A418504, AQI 74, PM2.5: 74.0 µg/m³). Because all three ground stations carry stale readings (>3 hours old), air quality evaluation relies on CAMS atmospheric modeling (US AQI 78–87, Moderate).\n\n### Forecaster Confidence Notes\nFor today's Day+0 call, weighting heavily favors Best Match (90% rolling 10-check rain accuracy) and ECMWF (+0.1°C high temperature error). Although Kenya Met indicates isolated light showers, all numerical models unanimously project 0.0 mm, aligning with Best Match's superior rain calling track record.\n\nRegarding long-run review findings over 10 verified checks (2026-08-11 to 2026-08-20): At Day+0, Best Match is the strongest rain caller while GFS is the weakest. GFS, ECMWF, ICON, UKMO, and Best Match all systematically under-forecast peak surface wind at Day+0, while ICON over-forecasts overnight lows (-2.3°C error) and UKMO under-forecasts overnight lows (+1.5°C error). At Day+3, ECMWF holds a 100% rain accuracy rate across 7 checks, though data sufficiency notes indicate this sample size is directional and not yet sufficient to formally rank models. At Day+7, only 3 verified checks exist, which is insufficient to rank models or establish long-term skill profiles.",
+  "whatsapp_summary": "🌤️ Kisumu Afternoon Refresh (Aug 21)\n\nConditions remain pleasant, feeling slightly warmer and calmer than yesterday.\n• Today: Sunny intervals, high near 29°C (84°F), dry conditions.\n• Wind: SW 16-29 km/h (9-16 kt).\n• Tonight: Partly cloudy, low near 18°C (64°F).\n• Weekend: Rain chances increase Sunday & Monday with light-to-moderate showers.\n\nBoaters: Lake Victoria winds SW 16-22 km/h, moderately choppy.",
+  "morning_issuance": {
+    "rain_expected": "Dry / No Rain",
+    "onset_window": null,
+    "peak_wind_kmh": 27.0,
+    "temp_high_c": 29.0,
+    "temp_low_c": 18.0,
+    "temp_high_low_display": "29°C / 84°F (High) | 18°C / 64°F (Low)",
+    "mslp_trend_24h": "-2.0 hPa (Falling)",
+    "synoptic_pattern": "Strong cross-basin gradient with lower pressure to the northeast",
+    "uv_index_max": "9 (Very High)",
+    "air_quality_aqi": "Moderate",
+    "ground_aqi": [
+      {
+        "name": "Kisumu Airport",
+        "station_id": "A418534",
+        "aqi": null,
+        "pm25": 74.0,
+        "pm10": 15.0,
+        "measured_at": "2026-08-20T22:00:00Z"
+      },
+      {
+        "name": "Ochieng' Avenue, Kisumu Central",
+        "station_id": "A418300",
+        "aqi": null,
+        "pm25": 41.0,
+        "pm10": 18.0,
+        "measured_at": "2026-08-20T11:00:00Z"
+      },
+      {
+        "name": "Dunga Beach",
+        "station_id": "A418504",
+        "aqi": null,
+        "pm25": 56.0,
+        "pm10": 37.0,
+        "measured_at": "2026-08-20T22:00:00Z"
+      }
+    ],
+    "narrative_markdown": "## Overview\nToday will feel slightly warmer and calmer across Kisumu, offering drier conditions following yesterday's rain. Expect sunny intervals throughout the morning and afternoon with maximum daytime temperatures reaching 29°C / 84°F.\n\n## Today's Forecast\n- Daytime Temperatures: Highs around 29°C / 84°F, with overnight minimums near 18°C / 64°F.\n- Rainfall: Dry conditions expected across numerical guidance (0.0 mm / 0.0 in), though Kenya Met notes a slight local possibility of isolated light showers.\n- Wind: Light morning breezes turning southwesterly in the afternoon at 16 km/h (9 kt) to 27 km/h (15 kt).\n- UV Index: Reaching a peak of 9 (Very High) around midday.\n- Air Quality: Modeled US AQI is Moderate (81–87, PM2.5 primary). All ground stations (Kisumu Airport, Ochieng' Avenue, and Dunga Beach) have stale readings (>5 hours old), and no station reported a valid numeric AQI today.\n\n## Extended Outlook\nOver the next 3 days (Saturday, Aug 22 to Monday, Aug 24), daytime highs will warm slightly into the 30°C–32°C / 86°F–90°F range. Precipitation odds increase notably on Sunday (Aug 23) and Monday (Aug 24), as ECMWF (100% Day+3 track record) and ICON indicate shower development accumulating 1.0–4.5 mm (0.04–0.18 in). Looking out to Days 4–7 (Aug 25–28), GFS indicates a peak shower signal around Aug 25 (up to 23.5 mm / 0.93 in locally) before conditions dry out significantly for Aug 27–28 with warm, sunny conditions returning. Extended guidance relies on Day+3 and Day+7 verification skill where ECMWF maintains solid reliability.\n\n## Severe Weather / Hazard Potential\nNo severe weather hazards expected today. High solar radiation (UV Index 9) requires standard sun protection during peak hours (11:00 to 15:00 EAT). Increasing atmospheric instability (CAPE) toward Sunday and Monday may support localized thunder and lightning over nearby highland slopes.\n\n## Lake Victoria — Conditions for Boaters\nSurface winds over open waters will blow from the south-southwest at 18–24 km/h (10–13 kt) during the afternoon, with gusts up to 29 km/h (16 kt). Waters will be mostly calm in the morning, becoming moderately choppy in the afternoon. Isolated morning showers over the western basin (0.1–0.7 mm) will clear by midday.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1020 hPa) — a 14 hPa spread, a strong large-scale gradient. The lower pressure to the northeast is deepening over the next three days, while pressure overhead remains near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a general direction rather than a specific storm center or frontal boundary. Across the Nyanza Basin, regional MSLP ranges between 1015.6 hPa and 1017.3 hPa today, falling by ~2.0 hPa over 24 hours. This pressure profile supports afternoon lake-to-land breezes pushing in from the southwest.\n\nGround AQI Stations reporting: Sensors at Kisumu Airport (A418534, PM2.5: 74.0 µg/m³), Ochieng' Avenue, Kisumu Central (A418300, PM2.5: 41.0 µg/m³), and Dunga Beach (A418504, PM2.5: 56.0 µg/m³) recorded measurements 5 to 16 hours old and are classified as stale. Because no station reported a valid numeric AQI today, the air quality assessment relies on CAMS model guidance (US AQI 81–87, Moderate).\n\n### Forecaster Confidence Notes\nForecast weighting for Day+0 relies heavily on Best Match (90% rolling 10-check rain accuracy) and ECMWF (60% rain accuracy, top daytime high accuracy of +0.1°C error). While Kenya Met forecasts light showers and thunderstorms today, all numerical models unanimously predict 0.0 mm. Given Best Match's strong Day+0 rain calling record and GFS's tendency to over-forecast winds (+20.1 km/h bias), we favor the dry numerical consensus.\n\nRegarding long-run review findings over 10 verified days (2026-08-11 to 2026-08-20): At Day+0, Best Match is the strongest rain caller while GFS is the weakest. GFS, ECMWF, ICON, and UKMO all systematically under-forecast peak wind at Day+0, while ICON over-forecasts overnight lows (-2.3°C bias) and UKMO under-forecasts overnight lows (+1.5°C bias). At Day+3, ECMWF holds a 100% rain verification rate across 7 checks, though data sufficiency notes indicate this sample is directional and not yet sufficient for formal ranking. At Day+7, only 3 checks exist, which is insufficient to rank models or establish long-term skill profiles.",
+    "whatsapp_summary": "🌤 Kisumu Weather Summary (Fri, Aug 21)\n• Overview: Slightly warmer & calmer today following yesterday's rain. Sunny intervals expected.\n• Temps: 29°C / 84°F (High) | 18°C / 64°F (Low)\n• Rain: Dry conditions expected across numerical models (Kenya Met notes minor shower risk).\n• Wind: 16-27 km/h from SW.\n• Boaters: Choppy afternoon waves on Lake Victoria (gusts to 29 km/h).\n• UV: 9 (Very High)\n• AQI: Moderate (81-87)",
+    "generated_at_utc": "2026-08-21T03:03:37.462920Z"
+  },
   "meta": {
     "generated_at_utc": "2026-08-21T03:03:37.462920Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "refreshed_at": null,
+    "refreshed_at": "2026-08-21T15:02:44.997150Z",
     "trigger_source": "workflow_dispatch"
   }
 }
