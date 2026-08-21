@@ -92,6 +92,7 @@ absent values are `null`, never omitted keys.
 | `scoring_score_prediction.json` | `score_prediction` | 12 |
 | `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 6 |
+| `verification.json` | `run_deterministic_verification_and_scoring` | 4 |
 | `weekly_review.json` | `build_weekly_review` | 5 |
 
 ### The cases that matter most

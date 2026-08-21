@@ -128,3 +128,14 @@ const Duration spendKeepHistory = Duration(days: 7);
 ///
 /// Deliberately not unlimited: a cap only protects people who have one.
 const int defaultMaxLlmCallsPer24h = 10;
+
+
+/// --- Rain-skill trend (see scoring.dart) ---
+///
+/// Mirrors TREND_* in the Python implementation. Below these sample sizes a
+/// comparison reflects small-sample noise rather than real skill drift, and
+/// the threshold sits near the binomial noise floor at n=10 — deliberately
+/// not more sensitive than the sample size can support.
+const int trendMinChecksShort = 5;
+const int trendMinChecksLong = 10;
+const double trendThresholdPct = 15.0;

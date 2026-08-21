@@ -484,8 +484,13 @@ than a v1 blocker.
 1. ~~**Export shared test vectors**~~ — **done**, see [`spec/`](../spec/README.md).
    De-risked everything after it, and was cheapest to do before the port
    existed.
-2. **Dart core**: models, dates, extract, scoring, verification — passing
-   the shared vectors. No UI.
+2. ~~**Dart core**: models, dates, extract, scoring, verification — passing
+   the shared vectors. No UI.~~ — **done**. Verification was the last piece
+   and landed later than the rest: `verify.dart` ports the rolling windows,
+   the re-derived all-time counts and the full pass, held to identical output
+   by `spec/vectors/verification.json`. Until it existed the app could
+   generate forecasts but never score them, which meant its central claim was
+   the one thing it could not show.
 3. ~~**Fetch + LLM providers** in Dart; one forecast generated end-to-end
    in a test harness.~~ — **done**. `generateForecast()` in
    [`forecast.dart`](../app/olw_core/lib/src/forecast.dart), covered by

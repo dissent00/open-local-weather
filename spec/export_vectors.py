@@ -998,6 +998,150 @@ def export_spend() -> None:
     )
 
 
+def export_verification() -> None:
+    """The full verification pass — the credibility of the whole project.
+
+    This is what turns "accurate" from a claim into a measurement, so the two
+    implementations agreeing is not a nicety: an app whose accuracy screen
+    disagreed with the site's would discredit both, and a user comparing them
+    could not tell which was right.
+
+    The cases target the properties that are easy to get subtly wrong and
+    damaging when wrong: that a model with no data is not scored at all, that
+    all-time is RE-DERIVED rather than carried forward, and that a shrinking
+    re-derivation keeps the previous figures rather than quietly publishing a
+    smaller number.
+    """
+    from datetime import timedelta
+
+    from openlocalweather.models import (
+        DailyLogEntry,
+        LogEntryMeta,
+        ModelPredictionsByLead,
+        TrackRecord,
+        TrackRecordEntry,
+    )
+    from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
+
+    today = date(2026, 8, 21)
+    yesterday = today - timedelta(days=1)
+    models = ["alpha", "beta"]
+
+    def build(days: int, alpha_correct: int, beta_correct: int, alpha_missing=False):
+        """`alpha_correct` of the most recent days are called right by alpha."""
+        logs, actuals = {}, {}
+        for i in range(days):
+            target = yesterday - timedelta(days=i)
+            actuals[target] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            preds = [
+                ModelPrediction(
+                    model="alpha",
+                    # None rain means NO DATA — must not be scored at all,
+                    # never counted as a wrong dry call.
+                    rain=None if alpha_missing else (i < alpha_correct),
+                    high_c=26.0, low_c=18.0, mslp_trend=-1.0, wind_kmh=20.0,
+                ),
+                ModelPrediction(
+                    model="beta", rain=(i < beta_correct),
+                    high_c=24.0, low_c=18.0, mslp_trend=-1.0, wind_kmh=20.0,
+                ),
+            ]
+            logs[target] = DailyLogEntry(
+                date=target, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=preds),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+        return logs, actuals
+
+    def case(name, days, a, b, prior=None, alpha_missing=False):
+        logs, actuals = build(days, a, b, alpha_missing=alpha_missing)
+        result = run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=TrackRecord(
+                generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                entries=prior or [],
+            ),
+            actuals_primary=actuals,
+            today=today,
+            yesterday=yesterday,
+            models=models,
+            lead_times_days=[0],
+            earliest_log_date=min(logs) if logs else yesterday,
+        )
+        return {
+            "name": name,
+            "input": {
+                "predictions": {
+                    _iso(d): {"0": [p.model_dump() for p in e.model_predictions.day0]}
+                    for d, e in sorted(logs.items())
+                },
+                "actuals": {_iso(d): a.model_dump() for d, a in sorted(actuals.items())},
+                "today": _iso(today),
+                "yesterday": _iso(yesterday),
+                "earliest_record_date": _iso(min(logs)) if logs else _iso(yesterday),
+                "models": models,
+                "lead_times_days": [0],
+                "prior_track_record": [
+                    {"model": e.model, "lead_time_days": e.lead_time_days,
+                     "all_time_checks": e.all_time_checks,
+                     "all_time_correct": e.all_time_correct,
+                     "all_time_rain_pct": e.all_time_rain_pct}
+                    for e in (prior or [])
+                ],
+            },
+            "expected": {
+                "lead_time_results": [
+                    {"lead_time_days": r.lead_time_days,
+                     "target_date_verified": _iso(r.target_date_verified) if r.target_date_verified else None,
+                     "scored_models": sorted(r.per_model_scores)}
+                    for r in result.lead_time_results
+                ],
+                "newly_verified": [[_iso(d), k] for d, k in result.newly_verified],
+                "track_record": [
+                    {"model": e.model, "lead_time_days": e.lead_time_days,
+                     "rolling_10_rain_pct": e.rolling_10_rain_pct,
+                     "rolling_30_rain_pct": e.rolling_30_rain_pct,
+                     "rain_pct_trend": e.rain_pct_trend,
+                     "all_time_checks": e.all_time_checks,
+                     "all_time_correct": e.all_time_correct,
+                     "all_time_rain_pct": e.all_time_rain_pct,
+                     "checks_in_window_10": e.checks_in_window_10,
+                     "avg_temp_high_error_c_10": e.avg_temp_high_error_c_10,
+                     "avg_onset_error_hrs_10": e.avg_onset_error_hrs_10}
+                    for e in result.updated_track_record.entries
+                ],
+            },
+        }
+
+    shrink_prior = [
+        TrackRecordEntry(model="alpha", lead_time_days=0, all_time_checks=99,
+                         all_time_correct=90, all_time_rain_pct=90.9),
+        TrackRecordEntry(model="beta", lead_time_days=0),
+    ]
+
+    write(
+        "verification.json",
+        "run_deterministic_verification_and_scoring",
+        "The full verification pass: yesterday's per-model scores, rolling "
+        "windows, and re-derived all-time counts. Covers the cold start, a "
+        "model with no data at all, and the safety rail that refuses to "
+        "publish a shrinking all-time figure.",
+        [
+            case("cold start — one day of record", 1, 1, 0),
+            case("twelve days, differing skill", 12, 9, 4),
+            case("a model with NO data is not scored, not scored wrong", 12, 0, 6,
+                 alpha_missing=True),
+            case("a shrinking all-time keeps the previous figures", 5, 3, 2,
+                 prior=shrink_prior),
+        ],
+    )
+
+
 def export_system_prompt() -> None:
     """The system prompt is the instruction set that shapes every forecast.
     Drift between implementations would not be a formatting nit — the app and
@@ -1149,6 +1293,7 @@ def main() -> None:
     export_synoptic()
     export_coverage()
     export_spend()
+    export_verification()
     export_day_over_day()
     print("\nDone. Commit the result — the vectors are the contract.")
 

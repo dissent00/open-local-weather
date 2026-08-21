@@ -183,6 +183,80 @@ def test_vectors_bucket_hourly_by_date():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_verification():
+    """The full verification pass, pinned. This is what turns "accurate" from
+    a claim into a measurement, so the two implementations agreeing is not a
+    nicety — an app whose accuracy screen disagreed with the site's would
+    discredit both."""
+    from openlocalweather.models import (
+        DailyLogEntry,
+        LogEntryMeta,
+        ModelPredictionsByLead,
+        TrackRecord,
+        TrackRecordEntry,
+    )
+    from openlocalweather.verify.pipeline import (
+        run_deterministic_verification_and_scoring,
+    )
+
+    for case in load("verification.json")["cases"]:
+        i = case["input"]
+        logs = {}
+        for iso, by_lead in i["predictions"].items():
+            d = date.fromisoformat(iso)
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(
+                    day0=[ModelPrediction(**p) for p in by_lead.get("0", [])]
+                ),
+                meta=LogEntryMeta(
+                    generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                    llm_provider="t", llm_model="t", pipeline_version="0",
+                ),
+            )
+        actuals = {
+            date.fromisoformat(iso): DailyActual(**a) for iso, a in i["actuals"].items()
+        }
+        prior = [
+            TrackRecordEntry(
+                model=e["model"], lead_time_days=e["lead_time_days"],
+                all_time_checks=e["all_time_checks"],
+                all_time_correct=e["all_time_correct"],
+                all_time_rain_pct=e["all_time_rain_pct"],
+            )
+            for e in i["prior_track_record"]
+        ]
+        result = run_deterministic_verification_and_scoring(
+            log_lookup=lambda d: logs.get(d),
+            prior_track_record=TrackRecord(
+                generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                entries=prior,
+            ),
+            actuals_primary=actuals,
+            today=date.fromisoformat(i["today"]),
+            yesterday=date.fromisoformat(i["yesterday"]),
+            models=i["models"],
+            lead_times_days=i["lead_times_days"],
+            earliest_log_date=date.fromisoformat(i["earliest_record_date"]),
+        )
+        want = case["expected"]
+        name = case["name"]
+
+        for got, w in zip(result.lead_time_results, want["lead_time_results"]):
+            assert got.lead_time_days == w["lead_time_days"], name
+            # Absent, not wrong: a model with no data must not appear here.
+            assert sorted(got.per_model_scores) == w["scored_models"], name
+
+        for got, w in zip(result.updated_track_record.entries, want["track_record"]):
+            assert got.model == w["model"], name
+            assert got.rolling_10_rain_pct == w["rolling_10_rain_pct"], name
+            assert got.all_time_checks == w["all_time_checks"], name
+            assert got.all_time_correct == w["all_time_correct"], name
+            assert got.checks_in_window_10 == w["checks_in_window_10"], name
+
+
 def test_vectors_spend():
     """Both surfaces must answer "is one more call allowed" identically. The
     boundary is the sensitive part: an inclusive cutoff, or a calendar day
@@ -407,6 +481,7 @@ def test_every_vector_file_is_exercised():
         "synoptic.json",
         "coverage.json",
         "spend.json",
+        "verification.json",
         "day_over_day.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}

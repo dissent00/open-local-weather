@@ -34,3 +34,4 @@ export 'src/review.dart';
 export 'src/scoring.dart';
 export 'src/spend.dart';
 export 'src/synoptic.dart';
+export 'src/verify.dart';

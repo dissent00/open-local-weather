@@ -281,6 +281,152 @@ void main() {
     });
   });
 
+  group('verification', () {
+    // The credibility of the whole project. An app whose accuracy screen
+    // disagreed with the site's would discredit both, and a user comparing
+    // them could not tell which was right.
+    test('produces identical scores and track record to Python', () {
+      for (final c in casesOf('verification.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final predictions = (i['predictions'] as Map).cast<String, Object?>();
+        final actuals = (i['actuals'] as Map).cast<String, Object?>();
+
+        List<ModelPrediction>? predictionsFor(DateTime rowDate, int lead) {
+          final byLead = predictions[formatDate(rowDate)] as Map<String, Object?>?;
+          final raw = byLead?['$lead'] as List?;
+          if (raw == null) return null;
+          return raw
+              .map((e) => ModelPrediction.fromJson((e as Map).cast<String, Object?>()))
+              .toList();
+        }
+
+        DailyActual? actualFor(DateTime target) {
+          final raw = actuals[formatDate(target)] as Map?;
+          if (raw == null) return null;
+          return DailyActual.fromJson(raw.cast<String, Object?>());
+        }
+
+        final prior = [
+          for (final e in (i['prior_track_record'] as List).cast<Map<String, Object?>>())
+            TrackRecordEntry(
+              model: e['model'] as String,
+              leadTimeDays: e['lead_time_days'] as int,
+              allTimeChecks: e['all_time_checks'] as int,
+              allTimeCorrect: e['all_time_correct'] as int,
+              allTimeRainPct: (e['all_time_rain_pct'] as num?)?.toDouble(),
+            )
+        ];
+
+        final result = runVerification(
+          predictionsFor: predictionsFor,
+          actualFor: actualFor,
+          priorTrackRecord: prior,
+          today: DateTime.parse(i['today'] as String),
+          yesterday: DateTime.parse(i['yesterday'] as String),
+          earliestRecordDate: DateTime.parse(i['earliest_record_date'] as String),
+          models: (i['models'] as List).cast<String>(),
+          leadTimesDays: (i['lead_times_days'] as List).cast<int>(),
+        );
+
+        final want = c['expected'] as Map<String, Object?>;
+        final reason = 'case "${c['name']}"';
+
+        final wantLeads = (want['lead_time_results'] as List).cast<Map<String, Object?>>();
+        expect(result.leadTimeResults.length, wantLeads.length, reason: reason);
+        for (var n = 0; n < wantLeads.length; n++) {
+          final got = result.leadTimeResults[n];
+          expect(got.leadTimeDays, wantLeads[n]['lead_time_days'], reason: reason);
+          expect(
+            got.targetDateVerified == null ? null : formatDate(got.targetDateVerified!),
+            equals(wantLeads[n]['target_date_verified']),
+            reason: reason,
+          );
+          // A model with no data must be ABSENT from the scores, not present
+          // with a wrong answer — the distinction that stops absence
+          // accruing fake accuracy.
+          expect((got.perModelScores.keys.toList()..sort()),
+              equals((wantLeads[n]['scored_models'] as List).cast<String>()),
+              reason: reason);
+        }
+
+        expect(
+          result.newlyVerified
+              .map((e) => [formatDate(e.key), e.value])
+              .toList(),
+          equals((want['newly_verified'] as List)
+              .map((e) => [(e as List)[0], e[1]])
+              .toList()),
+          reason: reason,
+        );
+
+        final wantTrack = (want['track_record'] as List).cast<Map<String, Object?>>();
+        expect(result.trackRecord.length, wantTrack.length, reason: reason);
+        for (var n = 0; n < wantTrack.length; n++) {
+          final got = result.trackRecord[n];
+          final w = wantTrack[n];
+          expect(got.model, w['model'], reason: reason);
+          expect(got.leadTimeDays, w['lead_time_days'], reason: reason);
+          expect(got.rolling10RainPct, w['rolling_10_rain_pct'], reason: reason);
+          expect(got.rolling30RainPct, w['rolling_30_rain_pct'], reason: reason);
+          expect(got.rainPctTrend, w['rain_pct_trend'], reason: reason);
+          expect(got.allTimeChecks, w['all_time_checks'], reason: reason);
+          expect(got.allTimeCorrect, w['all_time_correct'], reason: reason);
+          expect(got.allTimeRainPct, w['all_time_rain_pct'], reason: reason);
+          expect(got.checksInWindow10, w['checks_in_window_10'], reason: reason);
+          expect(got.avgTempHighErrorC10, w['avg_temp_high_error_c_10'], reason: reason);
+          expect(got.avgOnsetErrorHrs10, w['avg_onset_error_hrs_10'], reason: reason);
+        }
+      }
+    });
+
+    test('a shrinking all-time derivation warns rather than publishing it', () {
+      // Fewer checks than last time means observations are missing for dates
+      // we hold predictions for. Quietly publishing the smaller number would
+      // erase real history and look like the models got worse.
+      final cases = casesOf('verification.json');
+      final shrink = cases.firstWhere(
+          (c) => (c['name'] as String).contains('shrinking'));
+      final i = shrink['input'] as Map<String, Object?>;
+      final predictions = (i['predictions'] as Map).cast<String, Object?>();
+      final actuals = (i['actuals'] as Map).cast<String, Object?>();
+
+      final result = runVerification(
+        predictionsFor: (d, lead) {
+          final byLead = predictions[formatDate(d)] as Map<String, Object?>?;
+          final raw = byLead?['$lead'] as List?;
+          if (raw == null) return null;
+          return raw
+              .map((e) => ModelPrediction.fromJson((e as Map).cast<String, Object?>()))
+              .toList();
+        },
+        actualFor: (d) {
+          final raw = actuals[formatDate(d)] as Map?;
+          return raw == null ? null : DailyActual.fromJson(raw.cast<String, Object?>());
+        },
+        priorTrackRecord: [
+          TrackRecordEntry(
+              model: 'alpha',
+              leadTimeDays: 0,
+              allTimeChecks: 99,
+              allTimeCorrect: 90,
+              allTimeRainPct: 90.9),
+          TrackRecordEntry(model: 'beta', leadTimeDays: 0),
+        ],
+        today: DateTime.parse(i['today'] as String),
+        yesterday: DateTime.parse(i['yesterday'] as String),
+        earliestRecordDate: DateTime.parse(i['earliest_record_date'] as String),
+        models: const ['alpha', 'beta'],
+        leadTimesDays: const [0],
+      );
+
+      expect(result.warnings, hasLength(1));
+      expect(result.warnings.single, contains('alpha'));
+      expect(result.warnings.single, contains('99'));
+      // Returned rather than printed, so each surface decides how to show it.
+      expect(result.trackRecord.first.allTimeChecks, 99);
+    });
+  });
+
   group('spend cap', () {
     // Both surfaces must answer "is one more call allowed" identically. If
     // the app counted the window differently from the pipeline, one would
@@ -566,6 +712,7 @@ void main() {
       'synoptic.json',
       'coverage.json',
       'spend.json',
+      'verification.json',
       'day_over_day.json',
     };
     final onDisk = vectorsDir
