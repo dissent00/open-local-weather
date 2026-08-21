@@ -2148,3 +2148,75 @@ This does not attempt to read or interpret legal terms of service for
 compliance purposes. It watches the operational facts this app states to its
 users and depends on for its own defaults. Anything beyond that is a
 question for a lawyer, not a cron job.
+
+---
+
+## 29. Pollen and allergen forecasts · **Planned**
+
+Requested by an actual user, which puts it above several items above it.
+
+### Feasible, free, and already half-fetched
+
+Open-Meteo's air-quality API — the same endpoint this pipeline already calls
+for PM2.5 and AQI — carries pollen: `alder_pollen`, `birch_pollen`,
+`grass_pollen`, `mugwort_pollen`, `olive_pollen`, `ragweed_pollen`. No key, no
+extra request if folded into the existing air-quality call.
+
+### The catch, verified rather than assumed
+
+**It is Europe-only.** Measured 2026-08-21:
+
+| Location | Result |
+|---|---|
+| Frankfurt (50.11, 8.68) | 24/24 non-null — real values |
+| **Kisumu (-0.09, 34.77)** | **0/24 non-null on every species** |
+
+The data comes from the CAMS *European* air-quality model. So this feature
+works for a large share of forks and **not for the reference deployment**,
+which is an unusual shape for this project and worth stating plainly rather
+than discovering after building it.
+
+### The trap this walks straight into
+
+A naive implementation would show Kisumu "grass pollen: 0" — which reads as
+*no pollen today* when it means *nobody measured*. For someone choosing
+whether to take an antihistamine before going out, that is not a cosmetic
+difference.
+
+This is the same unknown-versus-false distinction that runs through the whole
+project: a model with no Day+7 data has `rain: null`, not `rain: false`,
+because recording absence as a confident negative accrues fake accuracy. Here
+the stakes are more direct, because a person acts on it.
+
+So the requirements are:
+
+- **All-null means absent, and absent means the section does not appear.**
+  Not a zero, not a dash, not "low" — nothing, with a one-line explanation if
+  the user goes looking. `pick_series` already refuses to latch onto an
+  all-null array; the display layer needs the same discipline.
+- **Never state a pollen level the data does not support**, in the narrative
+  or in the stat grid. The prompt will need explicit instruction, because a
+  model handed six zeros will happily write "pollen levels are low today".
+
+### Beyond Europe
+
+Worth investigating separately rather than blocking on:
+
+- **Ground networks.** Several countries run pollen-count stations whose data
+  is published; this is the same shape as the WAQI ground-AQI integration
+  already built, including its staleness handling.
+- **National met services.** Some publish pollen alongside the forecasts the
+  met-service parser already reads — so for a fork whose service does, this
+  may arrive through machinery that already exists.
+- **Seasonality as honesty.** Where no measurement exists, saying "not
+  measured here" is correct and finished. Inferring pollen from season and
+  vegetation would be inventing data, which is the one thing this project
+  will not do.
+
+### Where it surfaces
+
+Both surfaces, once available: a stat-grid entry and a sentence in the
+narrative when levels are notable, on the site and in the app. It also fits
+the "audience voices" work (item 14) unusually well — an allergy-focused
+voice is a genuine use case, not a novelty, and is exactly the kind of
+personalisation a single LLM call can produce for free.
