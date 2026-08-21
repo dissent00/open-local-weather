@@ -88,10 +88,23 @@ Future<http.Response> postWithRetry({
   /// Injectable so tests don't actually sleep through the backoff. Real
   /// callers leave the default; a test passes Duration.zero.
   Duration baseDelay = retryBaseDelay,
+
+  /// Called immediately before EACH request, retries included.
+  ///
+  /// This exists so a spend cap can count the thing that actually costs
+  /// money. Wrapping generate() instead undercounts by up to maxAttempts,
+  /// because one generate() can send that many requests — and the undercount
+  /// is worst exactly when it matters, since retries fire on 429 and 5xx,
+  /// i.e. when a provider is already rate-limiting or struggling.
+  ///
+  /// Throwing from it aborts the retry loop, which is the right answer to
+  /// "the budget is gone": the error propagates to the caller unchanged.
+  Future<void> Function()? beforeAttempt,
 }) async {
   Object? lastError;
   for (var attempt = 1; attempt <= maxAttempts; attempt++) {
     Duration delay = baseDelay * (1 << (attempt - 1));
+    if (beforeAttempt != null) await beforeAttempt();
     try {
       final resp = await client
           .post(uri, headers: headers, body: jsonEncode(payload))

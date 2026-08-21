@@ -155,6 +155,41 @@ def prune(
     return [r for r in records if r.at > cutoff]
 
 
+def assert_capacity(
+    data_dir: str | Path,
+    *,
+    max_calls: int = DEFAULT_MAX_LLM_CALLS_PER_24H,
+    now: datetime | None = None,
+) -> None:
+    """Raises if the cap is already reached, WITHOUT recording anything.
+
+    Belt and braces, and deliberately not redundant. Enforcement proper lives
+    in the per-request hook the providers call, but a provider is an injected
+    dependency: a custom or stubbed one that ignores the hook would sail past
+    the cap entirely, and a guard that can be bypassed by supplying the wrong
+    object is not a guard. This check runs on the pipeline's own path, where
+    nothing can opt out of it.
+
+    It cannot replace the hook — it has no idea how many requests a single
+    generate() will end up sending — so the two do different jobs: this one
+    refuses to START an over-budget run, the hook refuses to CONTINUE one.
+    """
+    now = now or datetime.now(timezone.utc)
+    records = read_ledger(data_dir)
+    used = calls_in_window(records, now)
+    if used >= max_calls:
+        oldest_in_window = min(
+            (r.at for r in records if r.at > now - WINDOW), default=now
+        )
+        raise SpendCapExceeded(
+            f"LLM call refused before starting: {used} of {max_calls} allowed "
+            f"calls already made in the last 24 hours. The oldest ages out at "
+            f"{(oldest_in_window + WINDOW).isoformat()}. Raise "
+            f"max_llm_calls_per_24h in config/location.yaml if it is set too "
+            f"low for this deployment."
+        )
+
+
 def record_attempt(
     data_dir: str | Path,
     *,

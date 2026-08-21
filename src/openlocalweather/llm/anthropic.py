@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Callable
 from typing import Any, TypeVar
 
 import requests
@@ -72,6 +73,7 @@ class AnthropicProvider:
         base_url: str = DEFAULT_BASE_URL,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         temperature: float | None = None,
+        before_attempt: Callable[[], None] | None = None,
     ):
         if not api_key:
             raise ValueError("AnthropicProvider requires a non-empty api_key.")
@@ -82,6 +84,15 @@ class AnthropicProvider:
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.max_tokens = max_tokens
         self.temperature = temperature
+        # Called immediately before EACH HTTP request, including every retry.
+        #
+        # The spend cap lives here rather than around generate() because one
+        # generate() can send up to MAX_ATTEMPTS requests. Counting once per
+        # forecast let a flaky provider issue four billable requests against a
+        # single recorded call — under a cap whose own documentation says it
+        # counts calls, not forecasts. Raising from this hook aborts the retry
+        # loop, which is the correct response to "you are out of budget".
+        self.before_attempt = before_attempt
 
     @property
     def endpoint(self) -> str:
@@ -96,6 +107,8 @@ class AnthropicProvider:
 
         last_exc: Exception | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
+            if self.before_attempt is not None:
+                self.before_attempt()
             try:
                 resp = requests.post(
                     self.endpoint, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S

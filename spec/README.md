@@ -166,11 +166,43 @@ review and not just a green suite:
 | **Number formatting differing by language** | Python's `%.0f` rounds half to even; Dart's `toStringAsFixed(0)` rounds half away from zero. A live value of `1006.5` would have published "1006 hPa" on the site and "1007 hPa" in the app. |
 | **Response shapes a mock never produces** | Open-Meteo returns a JSON *array* for multi-coordinate requests. The Dart client cast it to a Map and would have thrown against the real API; the mock only ever returned an object. |
 | **Silent all-null series** | A correctly-named key holding only nulls is truthy. Both implementations latched onto it instead of falling through, and one model went unscored on a variable for months. |
+| **Side effects around a call, not its output** | The spend cap recorded one entry per forecast while the providers retry up to `maxAttempts` times inside a single `generate()`. A cap of 10 permitted up to 40 billable requests. Vectors compare returned values; nothing about a return value reveals how many times a hook fired. |
+| **A test that pins the wrong seam** | `test_it_counts_calls_not_forecasts` called the ledger primitive three times directly and asserted the fourth was refused. That proves the counter counts — never that the pipeline records once per request, which is where the bug was. Its docstring stated the right intent, which is what made it convincing. |
 
 The pattern is the same each time: **code that compiles, passes its tests,
 and fails on real data.** When porting, check the shapes the live API
 actually returns and the formatting the language actually applies — not
 only that the logic reads the same.
+
+### Spend cap invariants — both languages, every time
+
+The cap governs the operator's own money and is the one guarantee this project
+makes about spending. It is also the hardest thing here to test by comparing
+outputs, because every invariant is about *when* something happens rather than
+*what is returned* — so none of it can be a vector.
+
+Instead the invariants are named, and each has a test on both sides. **A change
+to spend accounting, retry behaviour, or provider construction must leave every
+row green in both columns.** If a row gains a test in one language only, that is
+the bug from the table above repeating itself.
+
+| # | Invariant | Python | Dart |
+|---|---|---|---|
+| S1 | One ledger entry per **HTTP request**, not per forecast | `test_every_retry_is_counted_not_just_the_forecast` | `every retry fires the hook, not just the generate() call` |
+| S2 | Running out of budget aborts a retry loop **mid-flight** | `test_the_cap_stops_a_retry_loop_mid_flight` | `throwing from the hook aborts the retry loop mid-flight` |
+| S3 | The entry is written **before** the request leaves | `test_the_attempt_is_recorded_before_the_request_leaves` | `the hook runs BEFORE the request, so a crash cannot lose it` |
+| S4 | A provider that never reports a request is **reported loudly** | `test_a_provider_that_ignores_the_hook_is_reported_loudly` | app-side: `ForecastRunner` owns construction, so no provider can be substituted |
+| S5 | A failure **after** the request still counts | covered by S3 | `a failed model call still counts, because it was made` (app) |
+| S6 | A failure **before** the request costs nothing | `record_attempt` is unreachable until the prompt is built | `weather-data failure costs the user nothing from their daily limit` (app) |
+
+Files: `tests/test_spend_seam.py`, `app/olw_core/test/spend_seam_test.dart`, and
+`test/forecast_runner_test.dart` in the Ensemble repo.
+
+**Test doubles must honour the hook.** A stub provider that skips
+`before_attempt` silently exempts every test using it from the cap — which is
+precisely how S1 went unnoticed, since the pipeline suite's `FakeLLMProvider`
+never called it and so could not see the seam it was meant to cover. When you
+add a fake provider, make it call the hook exactly as a real one does.
 
 ### When a change has no Dart counterpart yet
 

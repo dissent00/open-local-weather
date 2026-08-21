@@ -46,6 +46,7 @@ subscribers.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -73,7 +74,7 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.review import WeeklyReview, build_weekly_review
-from openlocalweather.spend import record_attempt
+from openlocalweather.spend import assert_capacity, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
@@ -168,6 +169,67 @@ class ForwardGuidance:
     met_service_valid_for: date | None = None
     met_service_prediction_day3: ModelPrediction | None = None
     met_service_day3_valid_for: date | None = None
+
+
+
+def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
+    """Make the cap count HTTP requests, which is what actually costs money.
+
+    Recording once before generate() undercounted by up to a factor of
+    MAX_ATTEMPTS: the providers retry transient failures inside a single
+    generate(), so one recorded call could be four billable requests. That is
+    the opposite of what spend.py promises — "calls, not forecasts" — and it
+    went wrong in exactly the conditions the cap exists for, since retries fire
+    on 429 and 5xx: when a provider is already rate-limiting or struggling.
+
+    The cap is the operator's number, not ours. Honouring it means counting the
+    thing they are billed for, so the hook fires once per request, and raising
+    from it aborts the retry loop mid-flight rather than after the damage.
+    """
+    # Fail closed before anything starts. The hook below is the real
+    # enforcement, but the provider is an injected dependency: one that ignores
+    # the hook would sail straight past the cap, and a guard that a substituted
+    # object can switch off is not a guard. This runs on the pipeline's own
+    # path, where nothing can opt out.
+    assert_capacity(deps.data_dir, max_calls=location.max_llm_calls_per_24h)
+
+    recorded: list[int] = []
+
+    def _record() -> None:
+        used = record_attempt(
+            deps.data_dir,
+            provider=type(deps.llm_provider).__name__,
+            model=getattr(deps.llm_provider, "model", "unknown"),
+            purpose=purpose,
+            max_calls=location.max_llm_calls_per_24h,
+        )
+        recorded.append(used)
+        print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
+
+    # Set rather than passed to the constructor: the provider is built in
+    # cli.py, which has no reason to know where the ledger lives.
+    deps.llm_provider.before_attempt = _record
+
+    def _verify_recorded() -> None:
+        """Complain if the provider went and called a model without saying so.
+
+        The hook is only as good as the provider's willingness to call it, and
+        the provider is injected. Tolerance requires vigilance: a run that
+        spends without appearing in the ledger is the exact failure the cap
+        exists to prevent, so it gets said out loud rather than discovered on
+        a bill. Not fatal — the forecast itself is fine, and throwing it away
+        would punish the user for someone else's provider.
+        """
+        if not recorded:
+            print(
+                f"WARNING: {type(deps.llm_provider).__name__} completed a "
+                f"{purpose} without reporting any request to the spend cap. "
+                f"Its usage is NOT counted and the cap cannot bound it. A "
+                f"provider must call before_attempt() before every request.",
+                file=sys.stderr,
+            )
+
+    return _verify_recorded
 
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
@@ -480,22 +542,14 @@ def run_daily_pipeline(
         local_bulletin_source_name=location.local_bulletin_source_name,
         local_bulletin_text=guidance.bulletin_text,
     )
-    # Reserve the call BEFORE making it. A crash between sending and
-    # recording would otherwise lose the count and silently permit an
-    # overrun — precisely when things are already going wrong. Raises
-    # SpendCapExceeded, which is deliberately NOT caught here: the run
-    # must fail loudly rather than quietly produce no forecast.
-    used = record_attempt(
-        deps.data_dir,
-        provider=type(deps.llm_provider).__name__,
-        model=getattr(deps.llm_provider, "model", "unknown"),
-        purpose="forecast",
-        max_calls=location.max_llm_calls_per_24h,
-    )
-    print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
+    # Route EVERY request the provider makes through the cap — retries
+    # included. Raises SpendCapExceeded, deliberately NOT caught here: the
+    # run must fail loudly rather than quietly produce no forecast.
+    _verify_spend = _attach_spend_cap(deps, location, purpose="forecast")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
+    _verify_spend()
 
     # --- Step 7: build today's log entry ---
     tp = llm_response.today_properties
@@ -701,22 +755,14 @@ def run_refresh_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         morning_narrative=existing_entry.narrative_markdown,
     )
-    # Reserve the call BEFORE making it. A crash between sending and
-    # recording would otherwise lose the count and silently permit an
-    # overrun — precisely when things are already going wrong. Raises
-    # SpendCapExceeded, which is deliberately NOT caught here: the run
-    # must fail loudly rather than quietly produce no forecast.
-    used = record_attempt(
-        deps.data_dir,
-        provider=type(deps.llm_provider).__name__,
-        model=getattr(deps.llm_provider, "model", "unknown"),
-        purpose="refresh",
-        max_calls=location.max_llm_calls_per_24h,
-    )
-    print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
+    # Route EVERY request the provider makes through the cap — retries
+    # included. Raises SpendCapExceeded, deliberately NOT caught here: the
+    # run must fail loudly rather than quietly produce no forecast.
+    _verify_spend = _attach_spend_cap(deps, location, purpose="refresh")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
+    _verify_spend()
 
     # --- Step 4: merge into the EXISTING entry — everything the accuracy
     # loop depends on (model_predictions, verification, meta.generated_at_utc,

@@ -38,6 +38,10 @@ class AnthropicProvider implements LlmProvider {
   /// Base backoff between retries; tests pass Duration.zero.
   final Duration retryDelay;
 
+  /// Called before every request this provider sends, retries included.
+  /// Used by the app to count spend against the user's own cap.
+  final Future<void> Function()? beforeAttempt;
+
   AnthropicProvider({
     required this.apiKey,
     required this.model,
@@ -45,6 +49,7 @@ class AnthropicProvider implements LlmProvider {
     this.maxTokens = defaultMaxTokens,
     http.Client? client,
     this.retryDelay = retryBaseDelay,
+    this.beforeAttempt,
   }) : _client = client ?? http.Client() {
     if (apiKey.isEmpty) throw ArgumentError('AnthropicProvider requires an api_key.');
     if (model.isEmpty) throw ArgumentError('AnthropicProvider requires a model id.');
@@ -90,6 +95,7 @@ class AnthropicProvider implements LlmProvider {
       payload: payload,
       label: 'Anthropic',
       baseDelay: retryDelay,
+      beforeAttempt: beforeAttempt,
     );
 
     final body = decodeJsonBody(resp, 'Anthropic');

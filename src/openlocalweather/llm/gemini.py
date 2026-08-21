@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
 import time
 from typing import TypeVar
 
@@ -64,7 +65,13 @@ class LLMResponseError(RuntimeError):
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str, model: str, thinking_level: str | None = None):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        thinking_level: str | None = None,
+        before_attempt: Callable[[], None] | None = None,
+    ):
         if not api_key:
             raise ValueError("GeminiProvider requires a non-empty api_key.")
         if not model:
@@ -76,6 +83,15 @@ class GeminiProvider:
         self.api_key = api_key
         self.model = model
         self.thinking_level = thinking_level
+        # Called immediately before EACH HTTP request, including every retry.
+        #
+        # The spend cap lives here rather than around generate() because one
+        # generate() can send up to MAX_ATTEMPTS requests. Counting once per
+        # forecast let a flaky provider issue four billable requests against a
+        # single recorded call — under a cap whose own documentation says it
+        # counts calls, not forecasts. Raising from this hook aborts the retry
+        # loop, which is the correct response to "you are out of budget".
+        self.before_attempt = before_attempt
 
     def _post_with_retry(self, url: str, payload: dict) -> requests.Response:
         """POSTs with bounded exponential backoff on transient failures.
@@ -87,6 +103,8 @@ class GeminiProvider:
         """
         last_exc: Exception | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
+            if self.before_attempt is not None:
+                self.before_attempt()
             try:
                 resp = requests.post(
                     url, params={"key": self.api_key}, json=payload, timeout=REQUEST_TIMEOUT_S

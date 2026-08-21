@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from collections.abc import Callable
 from typing import TypeVar
 
 import requests
@@ -71,6 +72,7 @@ class OpenAICompatProvider:
         base_url: str,
         json_mode: str = "json_schema",
         temperature: float | None = None,
+        before_attempt: Callable[[], None] | None = None,
     ):
         # api_key is intentionally NOT required to be non-empty: local
         # runtimes (Ollama, LM Studio) accept any value or none at all,
@@ -91,6 +93,15 @@ class OpenAICompatProvider:
         self.base_url = base_url.rstrip("/")
         self.json_mode = json_mode
         self.temperature = temperature
+        # Called immediately before EACH HTTP request, including every retry.
+        #
+        # The spend cap lives here rather than around generate() because one
+        # generate() can send up to MAX_ATTEMPTS requests. Counting once per
+        # forecast let a flaky provider issue four billable requests against a
+        # single recorded call — under a cap whose own documentation says it
+        # counts calls, not forecasts. Raising from this hook aborts the retry
+        # loop, which is the correct response to "you are out of budget".
+        self.before_attempt = before_attempt
 
     @property
     def endpoint(self) -> str:
@@ -108,6 +119,8 @@ class OpenAICompatProvider:
 
         last_exc: Exception | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
+            if self.before_attempt is not None:
+                self.before_attempt()
             try:
                 resp = requests.post(
                     self.endpoint, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S

@@ -83,7 +83,15 @@ class FakeLLMProvider:
             whatsapp_summary=None,
         )
 
+    # Real providers call this before EVERY request, retries included, and
+    # that is how the spend cap counts. A stub that skips it silently exempts
+    # every pipeline test from the cap — which is how the undercounting bug
+    # survived: the tests could not see the seam they were meant to cover.
+    before_attempt = None
+
     def generate(self, system_prompt, user_prompt, response_schema):
+        if self.before_attempt is not None:
+            self.before_attempt()
         self.calls.append((system_prompt, user_prompt))
         return self.response
 
