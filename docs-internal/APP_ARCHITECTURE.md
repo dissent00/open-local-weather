@@ -104,6 +104,32 @@ cron slots and an external trigger to cope).
   app from battery optimization" step. **This is the path to a real 6am
   local generation on Android.**
 
+  **Measured, not assumed — and it dictates the design.** On Android 17
+  (API 37, `targetSdk` 37), scheduling an exact alarm *without* that
+  permission does not throw and does not register anything: `dumpsys alarm`
+  shows no alarm for the package at all. The call returns cleanly, so an app
+  that simply calls the API will report success and produce no forecast, for
+  ever, with nothing in any log. The permission must therefore be **checked
+  and requested before scheduling**, and treated as the difference between
+  the feature working and not existing — never as a detail the platform will
+  complain about.
+
+  With the grant, the registration is visible and exact:
+
+  ```
+  RTC_WAKEUP: Alarm{... io.github.dissent00.ensemble}
+    origWhen=2026-08-22 04:17:00.000 window=0 exactAllowReason=permission
+  ```
+
+  `window=0` is what distinguishes a real exact alarm from a window the OS
+  may drift within, and `exactAllowReason=permission` names the grant as the
+  reason. `adb shell dumpsys alarm` is the only place this truth is visible —
+  nothing inside the app can tell the two cases apart.
+
+  Use `SCHEDULE_EXACT_ALARM` rather than `USE_EXACT_ALARM`: the latter is
+  granted automatically, but Play restricts it to alarm-clock and calendar
+  apps, so a weather app claiming it risks rejection.
+
 **iOS — not viable for local generation.** Verified against current
 documentation rather than assumed:
 
