@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'daypart.dart';
 import 'dates.dart';
 import 'config.dart';
 import 'extract.dart';
@@ -73,10 +74,18 @@ Future<ForecastRun> generateForecast({
   List<Map<String, Object?>>? earlierToday,
 
   /// Where this run sits in the day — see `daypart` in the Python pipeline.
+  ///
+  /// Left null on the normal path: this function derives it, mirroring what
+  /// the Python pipeline does. Pass one only to pin the moment in a test.
   Object? issuance,
 
   /// Hourly guidance trimmed to the hours still ahead. Narrative only.
+  /// Derived here when null, as above.
   Object? forwardHourly,
+
+  /// The local wall-clock moment this run is issued at. Injectable so a test
+  /// can pin it; defaults to now in the location's timezone.
+  DateTime? nowLocal,
 }) async {
   final hourlyFuture = client.fetchForecastHourlyToday(
     lat: location.lat, lon: location.lon, models: models, timezone: location.timezone,
@@ -110,6 +119,58 @@ Future<ForecastRun> generateForecast({
   final airQuality = await airQualityFuture;
   final synoptic = summarizeSynoptic(await synopticFuture);
 
+  // Where this run sits in the day, and the hours still ahead of it.
+  //
+  // The clock, the sun, and the forward window fail SEPARATELY — see the
+  // Python pipeline, where putting all three behind one try meant a failed
+  // astronomical lookup also discarded the local time and the forward window,
+  // and the prompt reported "time of day unavailable" for a run that knew
+  // perfectly well what time it was.
+  final now = nowLocal ?? DateTime.now();
+  var resolvedIssuance = issuance;
+  if (resolvedIssuance == null) {
+    try {
+      final sun = await client.fetchSunTimes(
+          lat: location.lat, lon: location.lon, timezone: location.timezone);
+      final reconciled = reconcileNow(
+        now,
+        sun['_serverDate'] as String?,
+        (sun['utc_offset_seconds'] as num?)?.toInt(),
+      );
+      final daily = (sun['daily'] as Map?)?.cast<String, Object?>() ?? {};
+      final rises = daily['sunrise'] as List?;
+      final sets = daily['sunset'] as List?;
+      resolvedIssuance = (rises == null || sets == null || rises.isEmpty || sets.isEmpty)
+          // Polar night returns no sunrise or sunset at all. Not an error, and
+          // not something to fail a forecast over.
+          ? daypartWithoutSun(reconciled.now)
+          : summarizeDaypart(
+              reconciled.now,
+              DateTime.parse(rises[0] as String),
+              DateTime.parse(sets[0] as String),
+              rises.length > 1 ? DateTime.parse(rises[1] as String) : null,
+            );
+    } catch (_) {
+      // Losing the sun is no reason to discard the clock.
+      resolvedIssuance = daypartWithoutSun(now);
+    }
+  }
+
+  var resolvedForward = forwardHourly;
+  if (resolvedForward == null) {
+    try {
+      resolvedForward = forwardHours(
+        await client.fetchForecastHourlyForward(
+            lat: location.lat, lon: location.lon, models: models,
+            timezone: location.timezone),
+        now,
+      );
+    } catch (_) {
+      // The full calendar day is still supplied; this only costs near-term
+      // hour-by-hour detail.
+    }
+  }
+
   final day0 = extractDay0PredictionsFromHourly(hourly, models);
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
@@ -142,8 +203,8 @@ Future<ForecastRun> generateForecast({
     localBulletinSourceName: localBulletinSourceName,
     localBulletinText: localBulletinText,
     earlierToday: earlierToday,
-    issuance: issuance,
-    forwardHourly: forwardHourly,
+    issuance: resolvedIssuance,
+    forwardHourly: resolvedForward,
     reviewContext: reviewContext,
     // The same extracted values that get scored, so the narrative and the
     // accuracy record describe one set of numbers rather than two.

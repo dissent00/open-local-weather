@@ -95,6 +95,24 @@ void main() {
       client: MockClient((request) async {
         requestedUrls.add(request.url.toString());
         final path = request.url.path;
+        // Sunrise/sunset: Kisumu's real figures for the fixture date. Sunset
+        // at 18:47 is the number that started the time-awareness work — the
+        // "evening" run fires 32 minutes BEFORE it.
+        if (request.url.queryParameters['daily'] ==
+            'sunrise,sunset,daylight_duration') {
+          return http.Response(
+            jsonEncode({
+              'utc_offset_seconds': 10800,
+              'daily': {
+                'time': ['2026-08-19', '2026-08-20'],
+                'sunrise': ['2026-08-19T06:40', '2026-08-20T06:40'],
+                'sunset': ['2026-08-19T18:47', '2026-08-20T18:46'],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
         // The synoptic ring is a multi-coordinate request: an ARRAY.
         if (request.url.queryParameters['daily'] == 'pressure_msl_mean') {
           return http.Response(
@@ -259,5 +277,28 @@ void main() {
     expect(llm.seenUserPrompt, contains('Issued 06:07'));
     expect(llm.seenUserPrompt, contains('Issued 13:02'));
     expect(llm.seenUserPrompt, contains('Warm and dry through the morning.'));
+  });
+
+  test('the run derives its own issuance, and says so in the prompt', () async {
+    // Guards against the trap this suite already fell into once: the new
+    // fetches are best-effort, so an unmocked endpoint degrades silently and
+    // every assertion below would be checking the DEGRADED path while looking
+    // like it checks the real one.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+
+    expect(llm.seenUserPrompt, contains('ISSUED:'));
+    expect(llm.seenUserPrompt, isNot(contains('Time of day unavailable')),
+        reason: 'the sun fetch must actually be mocked, not silently failing');
+    expect(llm.seenUserPrompt, contains('Sunset is in 32 minutes'));
+    expect(llm.seenUserPrompt, contains('WHAT MATTERS NOW: tonight'));
+    expect(llm.seenUserPrompt, contains('HOURS AHEAD'));
   });
 }

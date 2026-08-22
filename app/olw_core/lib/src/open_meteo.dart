@@ -191,6 +191,60 @@ class OpenMeteoClient {
         'models': models.join(','),
       });
 
+  /// Sunrise and sunset, in the location's own local time.
+  ///
+  /// No `models` parameter: an astronomical event is not model-dependent, and
+  /// asking four models for it would return four identical series under four
+  /// different keys.
+  ///
+  /// Two days by default because the sunrise a reader cares about after dark
+  /// is tomorrow's, not the one seventeen hours behind them.
+  ///
+  /// Open-Meteo has no twilight variable — verified, it rejects
+  /// `civil_twilight_begin` outright — so twilight has to be computed from
+  /// solar position (ROADMAP item 30).
+  Future<Map<String, Object?>> fetchSunTimes({
+    required double lat,
+    required double lon,
+    required String timezone,
+    int days = 2,
+  }) =>
+      _get(forecastUrl, {
+        'latitude': '\$lat',
+        'longitude': '\$lon',
+        'daily': 'sunrise,sunset,daylight_duration',
+        'forecast_days': '\$days',
+        'timezone': timezone,
+      });
+
+  /// Hourly multi-model guidance covering today AND tomorrow.
+  ///
+  /// A SEPARATE call rather than widening [fetchForecastHourlyToday], and
+  /// deliberately so. `extractDay0PredictionsFromHourly` consumes whatever
+  /// series it is handed with no date slicing, so widening the scored fetch
+  /// to two days would silently score 48 hours as "today" — corrupting the
+  /// accuracy record, which is the one number here that must not drift.
+  /// Keeping them separate means no change to the narrative path can reach
+  /// the scored one.
+  ///
+  /// Exists because a run issued in the evening was being asked to talk about
+  /// tonight while holding only 00:00-23:00 of today: at 18:15 that is six
+  /// hours of forecast and no overnight data at all.
+  Future<Map<String, Object?>> fetchForecastHourlyForward({
+    required double lat,
+    required double lon,
+    required List<String> models,
+    required String timezone,
+  }) =>
+      _get(forecastUrl, {
+        'latitude': '\$lat',
+        'longitude': '\$lon',
+        'hourly': hourlyForecastVars,
+        'forecast_days': '2',
+        'timezone': timezone,
+        'models': models.join(','),
+      });
+
   /// Daily multi-model summary. Default 8 days, NOT 7 — index 0 is today, so
   /// index 7 is what genuinely represents seven full days out.
   Future<Map<String, Object?>> fetchForecastDailyExtended({
