@@ -28,8 +28,9 @@ failure shapes:
   much against a delay that shape, since it hits all of them roughly
   equally.
 
-Net effect: the backup-slot redundancy (still in `daily.yml` /
-`evening_refresh.yml`, left in place as a backstop) meaningfully reduces
+Net effect: backup-slot redundancy (still in `daily.yml`; removed from
+`evening_refresh.yml`, which is now triggered only from the operator's own
+crontab) meaningfully reduces
 the odds of a *total* miss, but does nothing for punctuality when GitHub's
 own scheduler queue backs up — and a forecast that lands two hours late is
 still a missed subscriber email that day, since the mailer's own retry

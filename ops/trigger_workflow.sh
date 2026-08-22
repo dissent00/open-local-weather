@@ -29,10 +29,15 @@
 # scheduling failure domain at all — this doesn't fix GitHub's scheduler,
 # it routes around it.
 #
-# GitHub's own `schedule:` triggers are deliberately left in daily.yml /
-# evening_refresh.yml as a backstop, not removed — if this script's cron
-# job, this server, or its stored token ever breaks, the workflows still
-# have their own (imperfect, but non-zero) chance of firing on their own.
+# daily.yml still keeps GitHub's own `schedule:` slots as a backstop — if
+# this script's cron job, this server, or its stored token breaks, the
+# morning run still has an imperfect but non-zero chance of firing on its
+# own.
+#
+# evening_refresh.yml no longer does: its schedule was removed once this
+# script became its only trigger. That is a deliberate trade, and the cost
+# is worth stating plainly — if the crontab stops, nothing else produces an
+# evening refresh, and nothing notices until health_check.yml runs weekly.
 # Both paths are safe to overlap: the `check` job in each workflow skips
 # real work (no wasted Gemini call) if the day's result already exists,
 # regardless of which trigger produced it — this covers workflow_dispatch
