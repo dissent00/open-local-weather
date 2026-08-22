@@ -330,3 +330,37 @@ def forward_hours(
             for key, series in h.items()
         },
     }
+
+
+def daypart_without_sun(now: datetime) -> DayPart:
+    """The issuance moment when sunrise and sunset could not be fetched.
+
+    The clock is not the sun. `now_in_tz` reads the system clock and cannot
+    fail, while sunrise and sunset come over the network and can — so losing
+    the second is no reason to discard the first. An earlier version put both
+    in one try block and reported "time of day unavailable" for a run that
+    knew perfectly well it was 18:15.
+
+    Phase is "unknown" rather than guessed. Inferring dusk from a clock
+    reading is precisely what this module exists to avoid: 18:15 is nearly
+    dark in Kisumu and mid-afternoon in Tromsø in June, and a forecast that
+    says "this evening" while the sun is high is wrong in the way readers
+    notice first.
+
+    The horizon stays deliberately vague for the same reason. "The hours
+    ahead" is true at any latitude; "tonight" would not be.
+    """
+    return DayPart(
+        local_time=_hhmm(now),
+        phase="unknown",
+        minutes_since_sunrise=None,
+        minutes_to_sunset=None,
+        sunrise="",
+        sunset="",
+        daylight_hours_left=0,
+        statement=(
+            f"It is {_hhmm(now)}. Sunrise and sunset could not be retrieved "
+            f"for this location today, so treat the part of day as unknown."
+        ),
+        horizon=("the hours ahead", TOMORROW),
+    )

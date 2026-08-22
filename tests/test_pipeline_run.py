@@ -807,3 +807,71 @@ def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
     deps = make_deps(tmp_path)
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
     assert len(read_ledger(tmp_path)) == 1
+
+
+def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatch):
+    """The clock is not the sun.
+
+    now_in_tz reads the system clock and cannot fail over the network;
+    sunrise and sunset can. An earlier version put both in one try block, so a
+    failed astronomical lookup made the prompt say "time of day unavailable"
+    for a run that knew perfectly well it was 18:15. Knowing the time is most
+    of the value here — knowing where the sun is only refines it.
+    """
+    monkeypatch.setattr(
+        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "ISSUED:" in user_prompt
+    assert "It is " in user_prompt, "the local time survives a failed sun lookup"
+    assert "part of day as unknown" in user_prompt, (
+        "and the phase is declared unknown rather than guessed from the clock"
+    )
+
+
+def test_a_failed_sun_lookup_does_not_also_lose_the_hours_ahead(tmp_path, monkeypatch):
+    """They are separate fetches and fail separately. Sharing one try block
+    meant an astronomical lookup could silently cost the forward window —
+    which is the more useful of the two."""
+    monkeypatch.setattr(
+        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "HOURS AHEAD" in user_prompt
+    assert "Unavailable this run." not in user_prompt.split("HOURS AHEAD")[1][:60]
+
+
+def test_a_failed_forward_window_does_not_lose_the_sun_or_the_time(tmp_path, monkeypatch):
+    """The mirror of the above. Neither failure should take the other down."""
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")),
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "sunset 18:47" in user_prompt, "the sun times are unaffected"
+    assert "TODAY'S MULTI-MODEL GUIDANCE" in user_prompt, "the calendar day still stands"
+
+
+def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
+    """A forecast without sun times is worse. A forecast that does not happen
+    because an astronomical lookup failed is much worse."""
+    for name in ("fetch_sun_times", "fetch_forecast_hourly_forward"):
+        monkeypatch.setattr(
+            open_meteo, name, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+        )
+    llm = FakeLLMProvider()
+    result = run_daily_pipeline(
+        make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
+    )
+    assert result.log_entry is not None
+    assert len(llm.calls) == 1

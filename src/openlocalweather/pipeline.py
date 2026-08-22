@@ -55,7 +55,12 @@ from typing import Protocol
 from openlocalweather import __version__
 from openlocalweather.aqi import GroundAQISummary, hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.comparison import compute_day_over_day
-from openlocalweather.daypart import DayPart, forward_hours, summarize_daypart
+from openlocalweather.daypart import (
+    DayPart,
+    daypart_without_sun,
+    forward_hours,
+    summarize_daypart,
+)
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
 from openlocalweather.defaults import (
@@ -361,10 +366,25 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     # forecast, whereas a run aborted because an astronomical lookup failed
     # would turn a nice-to-have into a single point of failure. The prompt
     # states plainly when they are missing rather than guessing.
-    issuance, forward_hourly = None, None
+    # The clock, the sun, and the hours ahead are three separate things, and
+    # they fail separately.
+    #
+    # now_in_tz reads the system clock and cannot fail over the network;
+    # sunrise/sunset and the forward window both can. An earlier version put
+    # all three in one try, so a failed astronomical lookup also skipped the
+    # forward window AND threw away the local time — leaving the prompt to say
+    # "time of day unavailable" for a run that knew perfectly well it was
+    # 18:15. Knowing the time is most of the value; knowing where the sun is
+    # only refines it.
+    now_local = now_in_tz(location.timezone)
     try:
-        now_local = now_in_tz(location.timezone)
-        issuance = _sun_context(location, now_local)
+        issuance = _sun_context(location, now_local) or daypart_without_sun(now_local)
+    except Exception as e:  # noqa: BLE001 - never fatal; the time still stands
+        print(f"Sun times unavailable ({e}); using the clock alone.", file=sys.stderr)
+        issuance = daypart_without_sun(now_local)
+
+    forward_hourly = None
+    try:
         forward_hourly = forward_hours(
             open_meteo.fetch_forecast_hourly_forward(
                 location.primary_point.lat,
@@ -374,8 +394,8 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
             ),
             now_local,
         )
-    except Exception as e:  # noqa: BLE001 - see above; never fatal
-        print(f"Time-of-day context unavailable ({e}); continuing without it.", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 - the calendar day is still supplied
+        print(f"Forward hourly window unavailable ({e}); continuing without it.", file=sys.stderr)
 
     return ForwardGuidance(
         issuance=issuance,
