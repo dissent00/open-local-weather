@@ -161,9 +161,14 @@ def test_a_provider_that_ignores_the_hook_is_reported_loudly(tmp_path, capsys):
     safeguard against silent overspending would itself have raised NameError
     the first time it mattered.
     """
-    from dataclasses import replace as dc_replace
+    # Imported WITHOUT a package prefix. "from tests.test_pipeline_run import"
+    # works under `python -m pytest`, which puts the working directory on
+    # sys.path, and fails under plain `pytest`, which does not — so it passed
+    # locally and broke CI for ten consecutive pushes without either being
+    # obviously wrong. There is no tests/__init__.py, so pytest puts this
+    # directory on sys.path itself and the bare name resolves under both.
+    from test_pipeline_run import LOCATION, FakeLLMProvider, make_deps
 
-    from tests.test_pipeline_run import LOCATION, FakeLLMProvider, make_deps
     from openlocalweather.pipeline import _attach_spend_cap
 
     class SilentProvider(FakeLLMProvider):
