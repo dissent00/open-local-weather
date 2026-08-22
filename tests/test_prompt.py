@@ -193,6 +193,32 @@ def test_a_later_issuance_is_allowed_to_say_nothing_has_changed():
     assert "Do not manufacture change" in prompt
 
 
+def test_todays_forecast_covers_the_hours_ahead_not_the_calendar_day():
+    """The gap the first live run exposed. The Overview became time-aware and
+    this section did not, because its entire instruction was five words:
+    "(temps, rain, wind, UV index, air quality)" — a whole-day checklist.
+
+    Issued at 16:45 it produced "peak UV index will reach 9.0 around noon",
+    which is wrong twice: noon had gone, and nothing could be done about it.
+    """
+    prompt = build_system_prompt(KISUMU)
+    assert "next 12-18 hours" in prompt
+    assert "HOURS AHEAD" in prompt
+    assert "PAST TENSE" in prompt
+
+
+def test_the_time_aware_section_must_not_change_what_gets_scored():
+    """today_properties stays a whole-day call.
+
+    Those values are scored against the day's observations and compared
+    against every other day in the record. Narrowing temp_high_c to "the next
+    12 hours" would leave the record internally inconsistent — and silently,
+    since every individual entry would still look reasonable."""
+    prompt = build_system_prompt(KISUMU)
+    assert "today_properties stays your blended call for the WHOLE calendar day" in prompt
+    assert "temp_high_c is the day's high whether or not it has already happened" in prompt
+
+
 def test_every_run_is_told_to_lead_with_what_matters_now():
     """Present on EVERY run, not just later ones: a first run at 06:00 and a
     first run at 16:00 are both possible once an operator picks their own
