@@ -2288,3 +2288,42 @@ it rather than keep its own rules. Two components deciding independently what
 
 Small, but the kind of detail that separates a forecast someone trusts from
 one that reads as generated.
+
+---
+
+## 32. Storage keeps two issuances a day, the prompt now allows any number · **Planned**
+
+Making every run time-aware (items 30/31's sibling work) generalised the
+*prompt* to any number of issuances a day. Storage did not follow, and the gap
+is invisible until someone schedules a third run.
+
+**What happens today**, pinned by `test_a_third_run_loses_the_middle_narrative`:
+
+- `DailyLogEntry.narrative_markdown` holds the **latest** issuance.
+- `morning_issuance` holds the **first**, written only if not already set.
+- Everything between is overwritten and gone from the committed record.
+
+With two runs a day nothing is lost, which is why this has never mattered. At
+three or more, the middle issuances vanish — and they are exactly the ones a
+reader would want when asking "what did it say at lunchtime?".
+
+It also degrades the update itself. `_earlier_issuances` can only return what
+is stored, so a third run is shown the second one's narrative and has no idea
+the first ever existed. The instruction to say what has changed *since the
+last issuance* still works; the ability to see the day's arc does not.
+
+**What it should be:** a list of issuances on the entry, each with its time,
+narrative, properties and the model cycle it used — with `morning_issuance`
+becoming the first element rather than a special case. That shape also makes
+the published archive page able to show a day as it actually unfolded, which
+is a better artefact than a single final narrative.
+
+**Care needed on migration.** Every committed entry in `data/log/` predates
+this, so the reader must accept both shapes indefinitely — the archive is the
+project's record and rewriting history to fit a new schema would destroy the
+thing being preserved. The `morning_issuance` field already carries a comment
+explaining that it was added after entries existed; the same discipline
+applies.
+
+**Not urgent.** Two runs a day is the current deployment and the common case
+for forkers. This becomes real the moment someone wants four.

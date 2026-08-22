@@ -896,3 +896,55 @@ def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, 
     result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
     assert result.log_entry.sunrise is None
     assert result.log_entry.sunset is None
+
+
+def test_a_third_run_loses_the_middle_narrative(tmp_path):
+    """Storage keeps the FIRST issuance and the LATEST, not the ones between.
+
+    morning_issuance is written only if not already set, so run 3 preserves
+    run 1 and overwrites run 2. With two runs a day nothing is lost; with
+    three or more, the middle ones are gone from the committed record.
+
+    Pinned as a KNOWN LIMIT rather than as desired behaviour — the prompt now
+    generalises to any number of runs, and the storage does not yet. See
+    ROADMAP item 32.
+    """
+    deps1 = make_deps(tmp_path, llm=FakeLLMProvider())
+    run_daily_pipeline(deps1, today=date(2026, 8, 11), dry_run=False)
+
+    second = FakeLLMProvider()
+    second.response = second.response.model_copy(
+        update={"today_narrative": "## Overview\nSECOND issuance."}
+    )
+    run_refresh_pipeline(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
+
+    third = FakeLLMProvider()
+    third.response = third.response.model_copy(
+        update={"today_narrative": "## Overview\nTHIRD issuance."}
+    )
+    run_refresh_pipeline(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert "THIRD" in entry.narrative_markdown, "the latest survives"
+    assert entry.morning_issuance is not None
+    assert "Dry and warm" in entry.morning_issuance.narrative_markdown, "the first survives"
+    assert "SECOND" not in entry.morning_issuance.narrative_markdown
+    assert "SECOND" not in entry.narrative_markdown, "the middle one is gone"
+
+
+def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):
+    """The accuracy record measures MODELS, not issuances.
+
+    A later run has a fresher model cycle and less lead time, so scoring it
+    would flatter every model. The day's predictions belong to the first run
+    and must survive any number of re-issues untouched — otherwise adding a
+    midday run would silently improve the published accuracy figures.
+    """
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    before = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
+
+    for _ in range(3):
+        run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    after = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
+    assert after == before, "three re-issues must leave the scored numbers identical"
