@@ -2365,3 +2365,202 @@ Worth applying the same rule anywhere a re-issue overwrites fetched data.
 Sun times already work this way as of the fix in the same commit as this note,
 and for the same reason: fresher is not better when the fresher value is
 "unknown".
+
+---
+
+## 34. One forecast command that knows whether it is the day's first · **High priority, needs a coordinated server change**
+
+Today there are two commands, and the operator picks between them by time of
+day: `run-daily` in the morning, `refresh-forecast` in the evening. That is
+the wrong axis. The real distinction has nothing to do with the clock:
+
+- The **first run of a day** owns verification and the day's
+  `model_predictions` — the numbers tomorrow scores.
+- **Every later run** is an update: narrative only, predictions preserved
+  byte-for-byte.
+
+Since every run now knows what time it is (items 30/31 and the daypart work),
+"which command is this?" is the last place the morning/evening split survives.
+
+### Why it cannot simply be "always run-daily"
+
+Verified, not assumed — see
+`test_run_daily_a_SECOND_time_overwrites_the_days_predictions`:
+
+- **Normally nothing happens.** `daily.yml`'s `check` job sees today's entry
+  and sets `already_done=true`. The evening run is silently skipped, with no
+  error, because skipping a duplicate trigger is correct behaviour.
+- **With `force: true`, something worse happens.** The pipeline itself does not
+  guard this. It re-extracts `model_predictions` from evening-cycle data —
+  predictions made with ~12 hours less lead time — and stores them as the
+  day's call. Tomorrow they are scored as though issued at 06:00. Every model's
+  Day+0 accuracy improves and **nothing in the record shows why**.
+
+`refresh-forecast` currently raises `RefreshWithoutMorningRunError` when
+there is no entry to refresh, which is the safety net and must survive any
+redesign.
+
+### The shape
+
+A single verb — `olw forecast` — that reads the day's entry and dispatches:
+
+| State | Action |
+|---|---|
+| No entry for today | Full run: verification, predictions, track record, publish, email |
+| Entry exists | Re-issue: narrative only, predictions and verification untouched |
+
+`run_daily_pipeline` and `run_refresh_pipeline` stay as they are underneath.
+This is a dispatcher, not a rewrite — the two paths have genuinely different
+responsibilities and merging their bodies would lose the invariant that makes
+the accuracy record trustworthy.
+
+### What must not break
+
+- **Predictions are written once per day.** The existing test asserting three
+  re-issues leave them byte-identical is the guard; it must keep passing.
+- **`--force` must not become a way to overwrite predictions.** If a forced
+  re-run of a completed day is wanted, it should force the *narrative*, never
+  the scored numbers. Consider removing `force`'s ability to reach the
+  prediction path at all.
+- **A first run that fails must not leave a half-entry** that makes the next
+  run look like a re-issue. Check what happens today if the LLM call fails
+  after the entry is written.
+- **Both workflows collapse into one.** `daily.yml` and `evening_refresh.yml`
+  become a single `forecast.yml` with the same `check` job semantics, and the
+  schedule/backstop split described in `evening_refresh.yml`'s header is
+  preserved — GitHub crons remain the backstop to the operator's crontab, and
+  the two are in different failure domains on purpose (see item 3/11 and
+  `ops/trigger_workflow.sh`).
+
+### The server-side change this requires
+
+**This is why it is not a drive-by.** The operator's crontab currently calls
+two distinct workflows by name via `ops/trigger_workflow.sh`. Collapsing them
+means:
+
+1. The new `forecast.yml` must exist and be proven before the old ones are
+   removed, or a cron entry points at a workflow that no longer exists — which
+   fails silently from the crontab's point of view.
+2. `ops/trigger_workflow.sh` and its documented usage change.
+3. The crontab lines change on a machine this repo cannot see or test.
+
+Sequence it so nothing is ever broken between steps: add `forecast.yml`
+alongside the existing two, switch the crontab to it, confirm a real run from
+each slot, and only then delete the old workflows. Do NOT delete first.
+
+### The app has the same hazard
+
+`ForecastRunner.run` in Ensemble always calls `savePredictions`, which does a
+straight overwrite by date. A second generate on the same day replaces the
+day's predictions with fresher-cycle ones. It has not bitten because nobody
+has generated twice in a day, and it should be fixed in the same change — the
+app also needs to pass `earlierToday` so a later generate reads as an update.
+
+---
+
+## 35. Surface convective disagreement — the models argue about thunder and we do not say so · **Planned**
+
+On 2026-08-22 the evening forecast said *"No severe weather hazards are
+expected for the remainder of tonight"* and *"mostly dry"*. It was thundering
+in Kisumu at the time, with little rain.
+
+The forecast was defensible on precipitation and wrong on the thing the reader
+actually experienced. And the data to say so was already in the payload:
+
+| Hour | GFS CAPE | ICON CAPE | ECMWF CAPE |
+|---|---|---|---|
+| 17:00 | 210 | **1170** | 960 |
+| 19:00 | 70 | **780** | 960 |
+| 22:00 | 40 | **790** | 720 |
+
+GFS saw essentially no instability. ICON and ECMWF saw 700–1200 J/kg — solidly
+convective — all evening. Precipitation totals were near zero in every model,
+so on *rain* they agreed; on *instability* they disagreed sharply, and the
+narrative resolved that silently toward the quiet answer.
+
+That is the opposite of what this project is for. "Where they agree and where
+they disagree" is the entire premise, and this was a textbook disagreement.
+
+**`cape` is already fetched** — it is in `HOURLY_FORECAST_VARS` and reaches the
+prompt. What is missing is any instruction about it: `grep -i cape` on
+`llm/prompt.py` returns **zero** matches. Nothing tells the model that CAPE
+matters, what values mean, or that a split between models on it is worth
+stating outright.
+
+Notes for doing this properly:
+
+- **Thunder without rain is a real and common outcome**, and precipitation
+  totals alone cannot predict it. High CAPE with modest precipitable water
+  gives exactly the "dark and thundering, no rain yet" the operator observed.
+- Give the model **thresholds rather than adjectives** — roughly: under 300
+  J/kg convection is unlikely, 300–1000 marginal to moderate, above 1000
+  supportive of thunderstorms — and require it to cite the spread across
+  models the way the synoptic ring already requires.
+- **Lake Victoria is not an ordinary location for this.** The basin is among
+  the most thunderstorm-prone places on Earth, and its convection is driven by
+  lake-breeze convergence at scales global models at 9–25 km resolve poorly.
+  A systematic under-forecast of storms here is expected, which is an argument
+  for leaning on the models that *do* show instability rather than averaging
+  them away.
+- This should feed the **hazard section specifically**, which is where a reader
+  looks before going out on the water.
+
+Worth checking afterwards whether CAPE deserves its own scored variable in the
+accuracy record. Probably not directly — there is no CAPE observation to verify
+against — but "did thunder occur" may be answerable from METAR present-weather
+codes, which are already fetched.
+
+---
+
+## 36. User weather feedback — ground truth from the person standing outside · **Planned**
+
+Proposed by the operator on 2026-08-22, after observing thunder that the
+forecast had not called.
+
+Every accuracy figure in this project is scored against Open-Meteo's archive:
+temperature, rain occurrence, wind, pressure. That is genuine verification and
+it is why the published record can be trusted. But it measures what a
+**reanalysis grid cell** recorded, not what a person experienced, and the two
+diverge exactly where this project's readers live — convection is local, and a
+storm over the lake and a dry street two kilometres away are the same grid box.
+
+A reader who can say *"it thundered here at 19:30 and never rained"* is
+supplying information no archive holds.
+
+### What it could be
+
+Deliberately minimal, because elaborate feedback goes unused:
+
+- On the forecast page and in the app, one line: *was this right?* with a small
+  number of concrete options — rained / stayed dry / thundered / windier than
+  said — plus optional free text.
+- Timestamped and located, since both matter and neither can be inferred.
+
+### The hazards, which decide the whole design
+
+- **It must never contaminate the automated record.** The published accuracy
+  figures are deterministic, reproducible from the stored log, and their value
+  rests entirely on that. Human reports are subjective, sparse and
+  self-selecting — people report when a forecast was *wrong*. Blending them
+  into per-model skill scores would destroy the one number this project can
+  defend. Store and present them **separately**, always.
+- **Sparse data invites over-reading.** Three reports is an anecdote. The same
+  sufficiency discipline the weekly review already applies — say so when there
+  is not enough to conclude anything — has to apply here from the start.
+- **It is a personal-data surface**, which nothing in this project currently
+  is. Location plus timestamp plus free text is enough to identify a routine.
+  Anonymous, coarse location, no accounts, and say plainly what is stored.
+- **It needs somewhere to go.** The pipeline is git-as-database with no server
+  and no inbound path; the whole architecture assumes one-way publication.
+  Accepting input is the first thing that breaks that property, and the
+  mechanism chosen (a form service, a repo issue, an app-only local store)
+  should be weighed against how much of the zero-infrastructure guarantee it
+  costs.
+
+### Where it would pay off
+
+The most valuable use is not scoring — it is **finding the systematic misses**.
+If thunder is reported on evenings the forecast called quiet, that is a
+detectable pattern pointing at item 35, and it is the kind of blind spot no
+amount of archive verification would surface, because the archive agrees with
+the forecast that it barely rained.
