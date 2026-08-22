@@ -55,6 +55,14 @@
  * follows it; a pipeline that never ran is simply never sent; and a
  * fourth run a day needs no configuration here at all.
  *
+ * In the small hours it also looks at YESTERDAY (YESTERDAY_GRACE_HOURS).
+ * A forecast issued at 23:50 and not yet polled when midnight passes
+ * would otherwise be lost for ever, since from 00:00 the mailer asks for
+ * the new day's file and never looks back. That window used to be
+ * impossible — the old evening slots ran 18:20 to 20:20 — but the point
+ * of this design is that a run can be scheduled whenever the operator
+ * likes.
+ *
  * THE MAILER DOES NOT DECIDE WHEN FORECASTS HAPPEN. The pipeline's own
  * schedule does (ops/README.md). Nothing here needs to be kept in sync
  * with it.
@@ -135,16 +143,68 @@ function getConfig() {
   };
 }
 
-const RETRY_MAX_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 90 * 1000; // 90s between attempts — 3 attempts is ~3 min of sleep, well under the 6-min consumer execution cap
+// NO in-check retry, deliberately, and it is a quota question rather than a
+// tidiness one.
+//
+// The old design had five fixed send slots a day, so a slot that found no
+// file was wasted until the next one — hence three attempts with 90s sleeps
+// between them. Polling every 30 minutes makes the NEXT CHECK the retry, at
+// no execution cost.
+//
+// Keeping the sleeping retry alongside a frequent poll would have been
+// actively harmful: every check before the day's first forecast finds no file
+// and would sleep ~3 minutes. From midnight to a 06:07 run that is roughly
+// twelve checks, ~36 minutes of the consumer account's 90-minute DAILY
+// runtime quota, spent waiting for a file that is not due yet.
 
 // Script Property keys marking "already sent today" per run type — see
 // the send-idempotency marker. Distinct from LOCATION_NAME etc.
 // (user-configured); these two are written by the script itself.
-// The issuance last emailed, as its timestamp. Replaces the old
-// LAST_SENT_MORNING / LAST_SENT_EVENING pair: those counted sends per named
-// slot, which cannot express "the third run today". A timestamp can.
-const LAST_SENT_ISSUANCE_KEY = 'LAST_SENT_ISSUANCE';
+// What has been emailed, as { "YYYY-MM-DD": "<issuance timestamp>" }.
+//
+// Replaces the old LAST_SENT_MORNING / LAST_SENT_EVENING pair, which counted
+// sends per named slot and cannot express "the third run today".
+//
+// Keyed by DATE rather than holding a single value, because the mailer has to
+// be able to look at yesterday. A forecast issued at 23:50 and not yet polled
+// when midnight passes would otherwise be lost for ever: from 00:00 the
+// mailer asks for the new day's file and never looks back. That window used
+// to be impossible — the old evening slots ran 18:20 to 20:20 — but the whole
+// point of this change is that an operator can schedule a run whenever they
+// like, including late evening.
+const SENT_ISSUANCES_KEY = 'SENT_ISSUANCES';
+
+// How long after midnight the previous day is still worth sending. Three
+// hours covers a late-evening issuance that straddled the boundary without
+// resurrecting genuinely old content — on a fresh install, or after the
+// property is cleared, yesterday's forecast should not arrive as news.
+const YESTERDAY_GRACE_HOURS = 3;
+
+/** The sent-issuance map, pruned to the last few days so a Script Property
+ * does not grow without limit. */
+function readSentIssuances() {
+  const raw = PropertiesService.getScriptProperties().getProperty(SENT_ISSUANCES_KEY);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) || {};
+  } catch (e) {
+    // A corrupted marker must not stop mail going out; the worst case of
+    // starting over is one duplicate, and the worst case of throwing here is
+    // silence.
+    Logger.log(`Could not parse ${SENT_ISSUANCES_KEY} (${e}) — treating as empty.`);
+    return {};
+  }
+}
+
+function recordSentIssuance(dateStr, issuance) {
+  const map = readSentIssuances();
+  map[dateStr] = issuance;
+  const keep = Object.keys(map).sort().slice(-4);
+  const pruned = {};
+  keep.forEach(k => { pruned[k] = map[k]; });
+  PropertiesService.getScriptProperties()
+    .setProperty(SENT_ISSUANCES_KEY, JSON.stringify(pruned));
+}
 
 /** True if `markerKey` was already marked sent for `todayStr` — i.e. an
  * earlier trigger slot today already found real data and sent it. Backed
@@ -182,35 +242,49 @@ function sendForecastEmail() {
     return;
   }
 
-  const todayStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd');
-  const entry = fetchForecastEntryWithRetry(config, todayStr);
-  if (!entry) {
-    Logger.log(`No forecast entry for ${todayStr} yet — skipping this check (the pipeline may not have run or committed; a later check will pick it up). This is expected, not an error.`);
-    return;
+  const now = new Date();
+  const todayStr = Utilities.formatDate(now, config.timezone, 'yyyy-MM-dd');
+  const localHour = Number(Utilities.formatDate(now, config.timezone, 'H'));
+
+  // Today first. Yesterday only in the small hours, and only then, so a run
+  // issued at 23:50 that no check reached before midnight still goes out.
+  const candidates = [todayStr];
+  if (localHour < YESTERDAY_GRACE_HOURS) {
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    candidates.push(Utilities.formatDate(yesterday, config.timezone, 'yyyy-MM-dd'));
   }
+
+  const sent = readSentIssuances();
+  for (const dateStr of candidates) {
+    if (trySendFor(config, dateStr, sent)) return;
+  }
+  Logger.log(`Nothing new to send (checked ${candidates.join(', ')}). Expected on most checks.`);
+}
+
+/** Sends the given day's issuance if it is one we have not sent. Returns
+ * true if an email went out. */
+function trySendFor(config, dateStr, sent) {
+  const entry = fetchForecastEntry(config, dateStr);
+  if (!entry) return false;
 
   const issuance = issuanceIdOf(entry);
   if (!issuance) {
-    Logger.log(`Entry for ${todayStr} carries no issuance timestamp — cannot tell whether it is new, so not sending. This should not happen; check the pipeline's meta block.`);
-    return;
+    Logger.log(`Entry for ${dateStr} carries no issuance timestamp — cannot tell whether it is new, so not sending. Check the pipeline's meta block.`);
+    return false;
   }
-
-  const props = PropertiesService.getScriptProperties();
-  if (props.getProperty(LAST_SENT_ISSUANCE_KEY) === issuance) {
-    Logger.log(`Issuance ${issuance} already sent — nothing new. (Expected on most checks.)`);
-    return;
-  }
+  if (sent[dateStr] === issuance) return false;
 
   // A re-issue is announced as an update so a reader knows it supersedes what
   // they already have, rather than looking like a duplicate of it.
   const isUpdate = isRefreshedEntry(entry);
   const clock = issuanceClock(entry, config.timezone);
   const label = isUpdate ? 'Update' : 'Forecast';
-  const subject = `[${config.locationName} Weather] ${label} — ${todayStr}${clock ? ' ' + clock : ''}`;
+  const subject = `[${config.locationName} Weather] ${label} — ${dateStr}${clock ? ' ' + clock : ''}`;
 
-  sendEntryEmail(config, entry, todayStr, subject, isUpdate ? `Update — ${clock}` : null);
-  props.setProperty(LAST_SENT_ISSUANCE_KEY, issuance);
-  Logger.log(`Sent ${todayStr} ${label.toLowerCase()} (issuance ${issuance}).`);
+  sendEntryEmail(config, entry, dateStr, subject, isUpdate ? `Update — ${clock}` : null);
+  recordSentIssuance(dateStr, issuance);
+  Logger.log(`Sent ${dateStr} ${label.toLowerCase()} (issuance ${issuance}).`);
+  return true;
 }
 
 /** The identity of an issuance: the moment the entry was last written.
@@ -261,25 +335,6 @@ function sendEntryEmail(config, entry, dateStr, subject, runLabel) {
   });
 
   Logger.log(`Sent ${dateStr} (${runLabel || 'morning'}) to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
-}
-
-/** Retries fetchForecastEntry a few times with a short delay between
- * attempts — see the TIMING note in the module header for why a tight gap
- * between two independently-jittery schedulers needs this. `isReady`
- * (default: entry just needs to exist) lets a caller also require some
- * condition on the entry's content, e.g. a caller that wants only a
- * requiring `meta.refreshed_at` to be set, not merely the file to exist. */
-function fetchForecastEntryWithRetry(config, dateStr, isReady) {
-  const ready = isReady || (() => true);
-  for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
-    const entry = fetchForecastEntry(config, dateStr);
-    if (entry && ready(entry)) return entry;
-    if (attempt < RETRY_MAX_ATTEMPTS) {
-      Logger.log(`Forecast entry for ${dateStr} not found yet (attempt ${attempt}/${RETRY_MAX_ATTEMPTS}) — waiting ${RETRY_DELAY_MS / 1000}s and retrying.`);
-      Utilities.sleep(RETRY_DELAY_MS);
-    }
-  }
-  return null;
 }
 
 /** Fetches data/log/{dateStr}.json from GitHub's raw-content CDN. Returns
@@ -632,6 +687,7 @@ function wrapText(text, width) {
 // early return. Well inside Apps Script's consumer quota. Raise it if you
 // want emails to land closer to the moment a forecast is published; lower it
 // if you are near a quota ceiling.
+// Apps Script accepts only 1, 5, 10, 15 or 30 here; createTriggers() checks.
 const CHECK_EVERY_MINUTES = 30;
 
 /** Registers (or re-registers) the single polling trigger.
@@ -649,6 +705,16 @@ function createTriggers() {
   ScriptApp.getProjectTriggers()
     .filter(t => t.getHandlerFunction() === 'sendForecastEmail')
     .forEach(t => ScriptApp.deleteTrigger(t));
+  // Apps Script's everyMinutes() accepts only 1, 5, 10, 15 or 30. Any other
+  // value throws at trigger-creation time — which would be a poor thing to
+  // discover from the one setting this file tells people to change, so it is
+  // checked here with a message that says what to do.
+  const ALLOWED = [1, 5, 10, 15, 30];
+  if (ALLOWED.indexOf(CHECK_EVERY_MINUTES) === -1) {
+    throw new Error(
+      `CHECK_EVERY_MINUTES is ${CHECK_EVERY_MINUTES}, which Apps Script will ` +
+      `not accept. Use one of: ${ALLOWED.join(', ')}.`);
+  }
   ScriptApp.newTrigger('sendForecastEmail')
     .timeBased().everyMinutes(CHECK_EVERY_MINUTES).create();
   Logger.log(`Forecast mailer will check every ${CHECK_EVERY_MINUTES} minutes and send whenever a new issuance appears.`);

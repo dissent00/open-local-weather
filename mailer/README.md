@@ -66,6 +66,20 @@ Keying on *"have I sent this issuance?"* covers both at once. A pipeline that
 lands two hours late is picked up by whichever check follows it; one that never
 ran is simply never sent; and a fourth run a day needs no configuration here.
 
+**Late-evening runs and midnight.** In the first `YESTERDAY_GRACE_HOURS`
+(default 3) of a new day the mailer also checks *yesterday's* entry. A forecast
+issued at 23:50 that no check reached before midnight would otherwise be lost
+for good — from 00:00 the mailer asks for the new day's file and never looks
+back. The old fixed slots ran 18:20–20:20 so this could not happen; it can now
+that a run may be scheduled at any hour.
+
+**There is no in-check retry, and that is deliberate.** With a 30-minute poll
+the *next check* is the retry, at no execution cost. Keeping the old sleeping
+retry would have been actively harmful: every check before the day's first
+forecast finds no file and would sleep ~3 minutes, which from midnight to a
+06:07 run is roughly 36 minutes of a consumer account's 90-minute **daily**
+runtime quota, spent waiting for a file that is not due yet.
+
 **The mailer does not decide when forecasts happen.** The pipeline's own
 schedule does. There is nothing in `AppsScriptMailer.gs` to keep in sync with
 it — `CHECK_EVERY_MINUTES` only controls how soon after publication an email
