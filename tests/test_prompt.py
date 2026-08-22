@@ -239,6 +239,48 @@ def test_a_later_issuance_may_be_brief_but_may_not_drop_content():
     assert "every heading below appears on every issuance" in prompt
 
 
+def test_instability_is_treated_as_a_disagreement_axis():
+    """The miss that prompted this, 2026-08-22.
+
+    The evening forecast said "no severe weather hazards" and "mostly dry"
+    while it was thundering in Kisumu. Both statements were defensible on
+    precipitation — every model had near zero. But CAPE at 19:00 was 70 J/kg
+    in GFS and 780 in ICON, 960 in ECMWF: a sharp disagreement about
+    instability, resolved silently toward the quiet answer.
+
+    cape was already fetched and already in the prompt payload. Nothing told
+    the model it mattered.
+    """
+    prompt = build_system_prompt(KISUMU)
+    assert "INSTABILITY AND THUNDER" in prompt
+    assert "1000 J/kg" in prompt, "thresholds, not adjectives"
+    assert "THUNDER WITHOUT RAIN IS A REAL AND COMMON OUTCOME" in prompt
+    assert "must never be used as such" in prompt, (
+        "near-zero rainfall is not evidence against thunder — that inference "
+        "is exactly what produced the miss"
+    )
+
+
+def test_instability_guidance_stays_location_agnostic():
+    """An earlier draft named Lake Victoria, which an existing test caught.
+
+    This prompt is shared by every fork. Naming the operator's own lake in
+    guidance about convection would read as nonsense in Nairobi or Reykjavik,
+    and the failure would be silent — the text is still grammatical.
+    """
+    prompt = build_system_prompt(NO_SECONDARY)
+    assert "INSTABILITY AND THUNDER" in prompt
+    assert "Lake Victoria" not in prompt
+
+
+def test_the_forecast_does_not_state_the_unactionable():
+    """"The UV index has dropped to zero following sunset" — true,
+    unsurprising, and useless. The reader can see it is dark."""
+    prompt = build_system_prompt(KISUMU)
+    assert "DO NOT STATE THE OBVIOUS OR THE UNACTIONABLE" in prompt
+    assert "OMIT it rather than reporting its null state" in prompt
+
+
 def test_every_run_is_told_to_lead_with_what_matters_now():
     """Present on EVERY run, not just later ones: a first run at 06:00 and a
     first run at 16:00 are both possible once an operator picks their own
