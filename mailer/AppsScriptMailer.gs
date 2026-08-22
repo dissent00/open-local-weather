@@ -34,25 +34,30 @@
  * not a scrape of the rendered GitHub Pages HTML. Same underlying
  * forecast either way, but immune to any future page-template change.
  *
- * TIMING: each of the morning/evening sends fires from SEVERAL Apps
- * Script trigger slots per day (MORNING_TRIGGER_SLOTS / EVENING_TRIGGER_
- * SLOTS below), not one — this replaced a single-trigger-plus-short-retry
- * design after real evidence that GitHub Actions' own scheduling can be
- * off by a lot more than a few minutes: confirmed via this repo's actual
- * run history, `daily.yml`'s schedule trigger produced zero runs at all
- * on two separate occasions, and on another day all its backup cron slots
- * fired 1h49m-2h13m late as a cluster (see docs-internal/ROADMAP.md items
- * 3 and 11, ops/README.md). A single Apps Script trigger with a ~3-minute
- * retry window (the old design) cannot catch a pipeline that lands two
- * hours late — several trigger slots spread across ~2 hours can. Because
- * multiple slots now call the same send*Email() function on a normal day
- * (not just on a delayed one), each send is guarded by a same-day
- * idempotency check (alreadySentToday(), backed by a Script Property
- * marker) so only the FIRST slot that finds real data actually sends —
- * every later slot that day is a fast, cheap no-op, not a duplicate
- * email. The evening trigger additionally waits for `meta.refreshed_at`
- * to be set, not just for the file to exist — see
- * sendEveningRefreshEmail().
+ * TIMING: there is ONE send function and ONE trigger. It checks every
+ * CHECK_EVERY_MINUTES and sends whenever it finds an issuance it has not
+ * sent yet, identified by the entry's own timestamp (meta.refreshed_at
+ * once re-issued, meta.generated_at_utc otherwise).
+ *
+ * This replaced a morning/evening pair with fixed slot lists. Two things
+ * made that design obsolete. The pipeline can now be scheduled to run any
+ * number of times a day and each run knows what time it is, so "the
+ * evening one" stopped being something the mailer should know about. And
+ * the several slots per send were never issuances — they were RETRIES,
+ * added after real evidence that GitHub Actions' scheduling can be badly
+ * late: this repo's run history shows daily.yml producing zero scheduled
+ * runs on two separate occasions, and on another day every backup cron
+ * slot firing 1h49m-2h13m late as a cluster (ROADMAP items 3 and 11,
+ * ops/README.md).
+ *
+ * Keying on "have I sent this issuance?" covers both cases at once. A
+ * pipeline that lands two hours late is picked up by whichever check
+ * follows it; a pipeline that never ran is simply never sent; and a
+ * fourth run a day needs no configuration here at all.
+ *
+ * THE MAILER DOES NOT DECIDE WHEN FORECASTS HAPPEN. The pipeline's own
+ * schedule does (ops/README.md). Nothing here needs to be kept in sync
+ * with it.
  *
  * ============================== SETUP ==============================
  * 1. script.google.com -> New project -> replace Code.gs's contents with
@@ -71,20 +76,16 @@
  *      TIMEZONE           Africa/Nairobi (match location.yaml's timezone)
  *      PUBLIC_URL         https://<owner>.github.io/<repo>/ (linked in
  *                         the email footer; optional, leave blank to omit)
- * 3. Run createDailyTrigger() once from the editor (Run menu) for the
- *    morning send slots. If you also run the pipeline's evening refresh,
- *    also run createEveningRefreshTrigger() once for the evening send
- *    slots — the two are independent, each only ever managing its own
- *    handler's triggers, so running one never disturbs the other. Apps
- *    Script will prompt for authorization the first time — that consent
- *    screen IS the auth mechanism; there's no separate app password step.
- * 4. Done. Each handler now fires from several trigger slots spread
- *    across ~2 hours (see MORNING_TRIGGER_SLOTS / EVENING_TRIGGER_SLOTS)
- *    instead of once — the first slot each day that finds real,
- *    ready data sends the email and marks the day done; every other slot
- *    that day is a fast no-op. If NONE of the slots find ready data by
- *    the last one, that day's email is skipped rather than erroring or
- *    sending stale content.
+ * 3. Run createTriggers() once from the editor (Run menu). Apps Script
+ *    will prompt for authorization the first time — that consent screen
+ *    IS the auth mechanism; there is no separate app password step.
+ * 4. Done. Emails now follow the pipeline wherever it is scheduled.
+ *
+ * UPGRADING from the morning/evening version: after step 3, run
+ * removeLegacyTriggers() once. Apps Script does not delete a trigger when
+ * its handler disappears — it keeps firing, failing, and emailing you
+ * about it. Also delete the now-unused LAST_SENT_MORNING and
+ * LAST_SENT_EVENING Script Properties if you like; they are ignored.
  * =====================================================================
  */
 
@@ -138,10 +139,12 @@ const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 90 * 1000; // 90s between attempts — 3 attempts is ~3 min of sleep, well under the 6-min consumer execution cap
 
 // Script Property keys marking "already sent today" per run type — see
-// alreadySentToday()/markSentToday(). Distinct from LOCATION_NAME etc.
+// the send-idempotency marker. Distinct from LOCATION_NAME etc.
 // (user-configured); these two are written by the script itself.
-const LAST_SENT_MORNING_KEY = 'LAST_SENT_MORNING';
-const LAST_SENT_EVENING_KEY = 'LAST_SENT_EVENING';
+// The issuance last emailed, as its timestamp. Replaces the old
+// LAST_SENT_MORNING / LAST_SENT_EVENING pair: those counted sends per named
+// slot, which cannot express "the third run today". A timestamp can.
+const LAST_SENT_ISSUANCE_KEY = 'LAST_SENT_ISSUANCE';
 
 /** True if `markerKey` was already marked sent for `todayStr` — i.e. an
  * earlier trigger slot today already found real data and sent it. Backed
@@ -151,15 +154,28 @@ const LAST_SENT_EVENING_KEY = 'LAST_SENT_EVENING';
  * boolean, means the marker naturally "resets" itself the next calendar
  * day without any separate cleanup step — same pattern as the Python
  * pipeline's own last_verified_target_date guard (verify/pipeline.py). */
-function alreadySentToday(markerKey, todayStr) {
-  return PropertiesService.getScriptProperties().getProperty(markerKey) === todayStr;
-}
-
-function markSentToday(markerKey, todayStr) {
-  PropertiesService.getScriptProperties().setProperty(markerKey, todayStr);
-}
-
-function sendDailyForecastEmail() {
+/** The only send function.
+ *
+ * There is deliberately no morning/evening split any more. The pipeline can
+ * now be scheduled to run any number of times a day, and each run knows what
+ * time it is, so "the evening one" stopped being a thing the mailer should
+ * know about.
+ *
+ * Instead this asks a simpler question every time it fires: IS THERE AN
+ * ISSUANCE HERE I HAVE NOT SENT? The day's entry carries the moment it was
+ * last written — meta.refreshed_at once it has been re-issued, otherwise
+ * meta.generated_at_utc — and that value is the identity of the issuance.
+ * Sending is "this differs from the last one I sent", which works identically
+ * for two runs a day or five, and needs no configuration to match.
+ *
+ * That also collapses the old trigger design. The several slots per send
+ * existed because GitHub Actions' scheduling can be hours late (see the
+ * module header), so they were RETRIES, not issuances. Once sending keys on
+ * novelty rather than on the clock, a single regular poll covers both: a late
+ * pipeline is picked up by whichever check follows it, and a pipeline that
+ * never ran is simply never sent.
+ */
+function sendForecastEmail() {
   const config = getConfig();
   if (!config.subscriberEmails.length) {
     Logger.log('No subscriber emails configured in Script Properties (SUBSCRIBER_EMAILS) — nothing to send.');
@@ -167,64 +183,62 @@ function sendDailyForecastEmail() {
   }
 
   const todayStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd');
-  if (alreadySentToday(LAST_SENT_MORNING_KEY, todayStr)) {
-    Logger.log(`Morning forecast for ${todayStr} was already sent by an earlier trigger slot today — skipping (this is expected on a normal day with multiple trigger slots, not an error).`);
-    return;
-  }
-
   const entry = fetchForecastEntryWithRetry(config, todayStr);
   if (!entry) {
-    Logger.log(`No forecast entry found for ${todayStr} after ${RETRY_MAX_ATTEMPTS} attempts — skipping this slot (the pipeline may not have run/committed yet, or is running later than usual today; a later trigger slot today will retry).`);
+    Logger.log(`No forecast entry for ${todayStr} yet — skipping this check (the pipeline may not have run or committed; a later check will pick it up). This is expected, not an error.`);
     return;
   }
 
-  const subject = `[${config.locationName} Weather] Daily Forecast — ${todayStr}`;
-  sendEntryEmail(config, entry, todayStr, subject, null);
-  markSentToday(LAST_SENT_MORNING_KEY, todayStr);
-  Logger.log(`Sent ${todayStr} morning forecast.`);
+  const issuance = issuanceIdOf(entry);
+  if (!issuance) {
+    Logger.log(`Entry for ${todayStr} carries no issuance timestamp — cannot tell whether it is new, so not sending. This should not happen; check the pipeline's meta block.`);
+    return;
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty(LAST_SENT_ISSUANCE_KEY) === issuance) {
+    Logger.log(`Issuance ${issuance} already sent — nothing new. (Expected on most checks.)`);
+    return;
+  }
+
+  // A re-issue is announced as an update so a reader knows it supersedes what
+  // they already have, rather than looking like a duplicate of it.
+  const isUpdate = isRefreshedEntry(entry);
+  const clock = issuanceClock(entry, config.timezone);
+  const label = isUpdate ? 'Update' : 'Forecast';
+  const subject = `[${config.locationName} Weather] ${label} — ${todayStr}${clock ? ' ' + clock : ''}`;
+
+  sendEntryEmail(config, entry, todayStr, subject, isUpdate ? `Update — ${clock}` : null);
+  props.setProperty(LAST_SENT_ISSUANCE_KEY, issuance);
+  Logger.log(`Sent ${todayStr} ${label.toLowerCase()} (issuance ${issuance}).`);
 }
 
-/** Second daily send, paired with the pipeline's evening refresh run
- * (~18:07 EAT — see README/ARCHITECTURE for why that run exists). Fired
- * from its own Apps Script trigger — see createEveningRefreshTrigger()
- * below — independent of the morning trigger. Waits not just for the
- * day's file to exist (it already does, from the morning run) but for
- * `meta.refreshed_at` to actually be set, i.e. the evening pipeline has
- * genuinely merged fresh narrative/data into it — otherwise this would
- * just resend the morning content again under a different subject.
- */
-function sendEveningRefreshEmail() {
-  const config = getConfig();
-  if (!config.subscriberEmails.length) {
-    Logger.log('No subscriber emails configured in Script Properties (SUBSCRIBER_EMAILS) — nothing to send (evening update).');
-    return;
-  }
+/** The identity of an issuance: the moment the entry was last written.
+ *
+ * refreshed_at once re-issued, generated_at_utc otherwise. Comparing this
+ * rather than counting sends is what makes the mailer indifferent to how many
+ * times a day the pipeline runs — and what stops a second copy of the same
+ * issuance going out if a check runs twice. */
+function issuanceIdOf(entry) {
+  if (!entry || !entry.meta) return null;
+  return entry.meta.refreshed_at || entry.meta.generated_at_utc || null;
+}
 
-  const todayStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd');
-  if (alreadySentToday(LAST_SENT_EVENING_KEY, todayStr)) {
-    Logger.log(`Evening update for ${todayStr} was already sent by an earlier trigger slot today — skipping (this is expected on a normal day with multiple trigger slots, not an error).`);
-    return;
-  }
-
-  const entry = fetchForecastEntryWithRetry(config, todayStr, isRefreshedEntry);
-  if (!entry) {
-    Logger.log(`No refreshed forecast entry found for ${todayStr} after ${RETRY_MAX_ATTEMPTS} attempts — skipping this slot (the evening refresh pipeline may not have run/committed yet, or the morning entry itself is missing; a later trigger slot today will retry).`);
-    return;
-  }
-
-  const subject = `[${config.locationName} Weather] Evening Update — ${todayStr}`;
-  sendEntryEmail(config, entry, todayStr, subject, 'Evening Update');
-  markSentToday(LAST_SENT_EVENING_KEY, todayStr);
-  Logger.log(`Sent ${todayStr} evening update.`);
+/** The issuance time as a local HH:MM, for the subject line. Returns '' if it
+ * cannot be parsed — a missing time is not a reason to withhold an email. */
+function issuanceClock(entry, timezone) {
+  const raw = issuanceIdOf(entry);
+  if (!raw) return '';
+  const parsed = new Date(raw);
+  if (isNaN(parsed.getTime())) return '';
+  return Utilities.formatDate(parsed, timezone, 'HH:mm');
 }
 
 function isRefreshedEntry(entry) {
   return !!(entry && entry.meta && entry.meta.refreshed_at);
 }
 
-/** Shared per-recipient send loop for both sendDailyForecastEmail() and
- * sendEveningRefreshEmail() — identical mechanics, only the subject and
- * runLabel differ. */
+/** Per-recipient send loop. */
 function sendEntryEmail(config, entry, dateStr, subject, runLabel) {
   const body = buildEmailPlainText(config, entry, dateStr, runLabel);
   const htmlBody = buildEmailHtml(config, entry, dateStr, runLabel);
@@ -253,7 +267,7 @@ function sendEntryEmail(config, entry, dateStr, subject, runLabel) {
  * attempts — see the TIMING note in the module header for why a tight gap
  * between two independently-jittery schedulers needs this. `isReady`
  * (default: entry just needs to exist) lets a caller also require some
- * condition on the entry's content, e.g. sendEveningRefreshEmail()
+ * condition on the entry's content, e.g. a caller that wants only a
  * requiring `meta.refreshed_at` to be set, not merely the file to exist. */
 function fetchForecastEntryWithRetry(config, dateStr, isReady) {
   const ready = isReady || (() => true);
@@ -598,69 +612,59 @@ function wrapText(text, width) {
   return lines.join('\n');
 }
 
-// Trigger slots, spread across ~2 hours past the pipeline's own target
-// time, so the mailer has a real chance of catching a pipeline run that
-// lands very late — real observed GitHub Actions scheduling delays have
-// ranged from a total no-show to a ~2h13m cluster delay (see the TIMING
-// note in the module header for the evidence). The pipeline's morning
-// target is ~06:07 EAT; evening is ~18:07 EAT. Each slot's own attempt
-// still gets fetchForecastEntryWithRetry()'s few short retries on top of
-// this spread — this is coarse, multi-hour coverage, not a replacement
-// for that fine-grained one. alreadySentToday() is what makes adding
-// slots safe: only the first slot each day that finds real data sends;
-// every other slot that day is a fast no-op, not a duplicate email.
-const MORNING_TRIGGER_SLOTS = [
-  { hour: 6, minute: 20 },
-  { hour: 6, minute: 50 },
-  { hour: 7, minute: 20 },
-  { hour: 7, minute: 50 },
-  { hour: 8, minute: 20 },
-];
-const EVENING_TRIGGER_SLOTS = [
-  { hour: 18, minute: 20 },
-  { hour: 18, minute: 50 },
-  { hour: 19, minute: 20 },
-  { hour: 19, minute: 50 },
-  { hour: 20, minute: 20 },
-];
+// ---------------------------------------------------------------------
+// WHEN TO CHECK  —  the one setting to change
+// ---------------------------------------------------------------------
+//
+// This is NOT the forecast schedule. The pipeline decides when forecasts are
+// produced (its own cron — see ops/README.md); the mailer only notices that
+// one has appeared and sends it. So there is nothing here to keep in sync
+// with the pipeline: schedule the pipeline for two runs a day or five, and
+// the emails follow on their own.
+//
+// The poll exists because GitHub Actions' scheduling can be badly late. This
+// project's own run history shows daily.yml producing ZERO scheduled runs on
+// two separate occasions, and on another day every backup cron slot firing
+// 1h49m-2h13m late as a cluster (ROADMAP items 3 and 11). Fixed send times
+// cannot survive that; checking regularly can.
+//
+// Every 30 minutes is 48 checks a day, nearly all of them a fetch and an
+// early return. Well inside Apps Script's consumer quota. Raise it if you
+// want emails to land closer to the moment a forecast is published; lower it
+// if you are near a quota ceiling.
+const CHECK_EVERY_MINUTES = 30;
 
-function formatSlotList(slots) {
-  return slots.map(s => `${s.hour}:${String(s.minute).padStart(2, '0')}`).join(', ');
+/** Registers (or re-registers) the single polling trigger.
+ *
+ * Safe to re-run: it deletes only its own handler's triggers first, so
+ * changing CHECK_EVERY_MINUTES and running this again replaces the schedule
+ * rather than accumulating duplicates.
+ *
+ * If you are upgrading from the old two-trigger setup, run
+ * removeLegacyTriggers() once afterwards — the old handlers no longer exist
+ * in this file, and a trigger pointing at a missing function fails on every
+ * firing and mails you about it.
+ */
+function createTriggers() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'sendForecastEmail')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('sendForecastEmail')
+    .timeBased().everyMinutes(CHECK_EVERY_MINUTES).create();
+  Logger.log(`Forecast mailer will check every ${CHECK_EVERY_MINUTES} minutes and send whenever a new issuance appears.`);
 }
 
-/** Registers (or re-registers) ALL morning trigger slots. Deliberately
- * scoped to triggers whose handler is sendDailyForecastEmail — an earlier
- * version of this function blanket-deleted *every* project trigger, which
- * would silently wipe out an evening trigger (see
- * createEveningRefreshTrigger()) registered separately. Safe to re-run any
- * time without touching the other trigger's slots — deletes and rebuilds
- * only its own handler's triggers, so re-running after changing
- * MORNING_TRIGGER_SLOTS cleanly replaces the old slot set rather than
- * accumulating duplicates. */
-function createDailyTrigger() {
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'sendDailyForecastEmail')
-    .forEach(t => ScriptApp.deleteTrigger(t));
-  const config = getConfig();
-  MORNING_TRIGGER_SLOTS.forEach(({ hour, minute }) => {
-    ScriptApp.newTrigger('sendDailyForecastEmail')
-      .timeBased().atHour(hour).nearMinute(minute).everyDays(1).inTimezone(config.timezone).create();
-  });
-  Logger.log(`${MORNING_TRIGGER_SLOTS.length} morning email trigger slot(s) registered (${formatSlotList(MORNING_TRIGGER_SLOTS)} ${config.timezone}).`);
-}
-
-/** Registers (or re-registers) ALL evening-update trigger slots — pairs
- * with the pipeline's ~18:07 EAT evening refresh run the same way the
- * morning slots pair with the ~06:07 EAT morning run. Scoped to its own
- * handler for the same reason as createDailyTrigger(). */
-function createEveningRefreshTrigger() {
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'sendEveningRefreshEmail')
-    .forEach(t => ScriptApp.deleteTrigger(t));
-  const config = getConfig();
-  EVENING_TRIGGER_SLOTS.forEach(({ hour, minute }) => {
-    ScriptApp.newTrigger('sendEveningRefreshEmail')
-      .timeBased().atHour(hour).nearMinute(minute).everyDays(1).inTimezone(config.timezone).create();
-  });
-  Logger.log(`${EVENING_TRIGGER_SLOTS.length} evening-update email trigger slot(s) registered (${formatSlotList(EVENING_TRIGGER_SLOTS)} ${config.timezone}).`);
+/** Deletes triggers left over from the old morning/evening design.
+ *
+ * Those handlers are gone from this file, and Apps Script does not remove a
+ * trigger when its function disappears — it keeps firing, failing, and
+ * emailing the owner about it. Run once after upgrading; harmless thereafter.
+ */
+function removeLegacyTriggers() {
+  const legacy = ['sendDailyForecastEmail', 'sendEveningRefreshEmail'];
+  const found = ScriptApp.getProjectTriggers().filter(t => legacy.indexOf(t.getHandlerFunction()) !== -1);
+  found.forEach(t => ScriptApp.deleteTrigger(t));
+  Logger.log(found.length
+    ? `Removed ${found.length} trigger(s) from the old morning/evening setup.`
+    : 'No legacy triggers found — nothing to remove.');
 }
