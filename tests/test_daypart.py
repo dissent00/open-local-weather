@@ -11,7 +11,13 @@ returns something plausible for every input is easy; one that refuses to say
 
 from datetime import datetime
 
-from openlocalweather.daypart import classify_phase, summarize_daypart
+from openlocalweather.daypart import (
+    TODAY,
+    TOMORROW,
+    TONIGHT,
+    classify_phase,
+    summarize_daypart,
+)
 
 # Kisumu, 2026-08-22 — the real figures from Open-Meteo on the day this was
 # written, including the sunset that started the whole investigation.
@@ -31,18 +37,24 @@ def test_the_1815_run_is_dusk_not_evening_and_not_afternoon():
     d = summarize_daypart(at(18, 15), SUNRISE, SUNSET, NEXT_SUNRISE)
     assert d.phase == "dusk"
     assert d.minutes_to_sunset == 32
-    assert "18:47" in d.statement
-    assert "32 minutes" in d.statement
+    assert d.statement == "It is 18:15. Sunset is in 32 minutes."
 
 
 def test_the_horizon_moves_off_today_once_most_of_it_has_happened():
     """By dusk, describing the day that has already happened helps nobody
     decide anything. What is left is tonight and tomorrow."""
-    assert summarize_daypart(at(9), SUNRISE, SUNSET).horizon[0] == "today"
+    assert summarize_daypart(at(9), SUNRISE, SUNSET).horizon[0] == TODAY
     assert summarize_daypart(at(18, 15), SUNRISE, SUNSET).horizon == (
-        "tonight",
-        "tomorrow",
+        TONIGHT,
+        TOMORROW,
     )
+
+
+def test_tonight_is_defined_rather_than_left_to_interpretation():
+    """Otherwise one run reads it as "this evening" and the next as "the small
+    hours", and a reader comparing two issuances sees a contradiction that is
+    really just two definitions."""
+    assert "dusk" in TONIGHT and "overnight" in TONIGHT and "dawn" in TONIGHT
 
 
 def test_phases_follow_the_SUN_not_the_clock():
@@ -70,8 +82,8 @@ def test_dawn_knows_which_side_of_sunrise_it_is_on():
     before = summarize_daypart(at(6, 20), SUNRISE, SUNSET)
     after = summarize_daypart(at(6, 50), SUNRISE, SUNSET)
     assert before.phase == after.phase == "dawn"
-    assert "first light" in before.statement
-    assert "just after sunrise" in after.statement
+    assert before.statement == "It is 06:20. Sunrise is in 20 minutes."
+    assert after.statement == "It is 06:50. The sun rose at 06:40."
 
 
 def test_after_dark_it_names_TOMORROW_s_sunrise():
@@ -108,8 +120,7 @@ def test_the_midnight_sun_is_not_reported_as_dusk():
     set_ = datetime(2026, 6, 22, 0, 0)
     d = summarize_daypart(datetime(2026, 6, 21, 23, 0), rise, set_)
     assert d.phase.startswith("polar_")
-    assert "does not set" in d.statement
-    assert "sunset" not in d.statement.lower().replace("does not set", "")
+    assert d.statement == "It is 23:00. The sun does not set at this time of year."
 
 
 def test_polar_night_says_the_sun_does_not_rise():

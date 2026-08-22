@@ -143,6 +143,16 @@ def classify_phase(now: datetime, sunrise: datetime, sunset: datetime) -> str:
     return "night"
 
 
+# Periods named once, so "tonight" cannot be read as "this evening" by one
+# run and "the small hours" by the next. Everything from dusk to dawn is one
+# period as far as a reader planning their night is concerned.
+TONIGHT = "tonight (dusk, evening and overnight through to dawn)"
+TODAY = "today"
+REST_OF_TODAY = "the rest of today"
+TOMORROW = "tomorrow"
+UNTIL_DAWN = "the remaining hours until dawn"
+
+
 def _horizon_for(phase: str) -> tuple[str, ...]:
     """What matters most to someone reading at this hour.
 
@@ -151,17 +161,17 @@ def _horizon_for(phase: str) -> tuple[str, ...]:
     describing it helps anyone decide anything.
     """
     return {
-        "polar_morning": ("today", "tonight"),
-        "polar_midday": ("the rest of today", "tonight"),
-        "polar_afternoon": ("the rest of today", "tonight", "tomorrow"),
-        "polar_night": ("today", "tonight"),
-        "night": ("the hours until dawn", "today"),
-        "dawn": ("today", "tonight"),
-        "morning": ("today", "tonight"),
-        "midday": ("the rest of today", "tonight"),
-        "afternoon": ("the rest of today", "tonight", "tomorrow"),
-        "dusk": ("tonight", "tomorrow"),
-        "evening": ("tonight", "tomorrow"),
+        "polar_morning": (TODAY, TONIGHT),
+        "polar_midday": (REST_OF_TODAY, TONIGHT),
+        "polar_afternoon": (REST_OF_TODAY, TONIGHT, TOMORROW),
+        "polar_night": (TODAY, TONIGHT),
+        "night": (UNTIL_DAWN, TODAY),
+        "dawn": (TODAY, TONIGHT),
+        "morning": (TODAY, TONIGHT),
+        "midday": (REST_OF_TODAY, TONIGHT),
+        "afternoon": (REST_OF_TODAY, TONIGHT, TOMORROW),
+        "dusk": (TONIGHT, TOMORROW),
+        "evening": (TONIGHT, TOMORROW),
     }[phase]
 
 
@@ -172,11 +182,13 @@ def _statement(
     sunset: datetime,
     next_sunrise: datetime | None,
 ) -> str:
-    """One sentence placing the reader in the day.
+    """One plain sentence placing the reader in the day.
 
-    Phrased the way someone would say it out loud, because it is written into
-    a prompt whose output is read by people who were outside ten minutes ago
-    and already know what the sky is doing.
+    Deliberately flat. An earlier draft read "it is 18:15 and the light is
+    going — sunset is at 18:47, 32 minutes from now", which is more writing
+    than the fact deserves and sets a register the forecast then has to either
+    match or clash with. The model is being told a fact so it can decide what
+    to emphasise; the prose belongs in the forecast, not in its scaffolding.
     """
     t = _hhmm(now)
     if phase.startswith("polar_"):
@@ -184,44 +196,27 @@ def _statement(
         # than quoting a time that would mislead.
         if phase == "polar_night":
             return f"It is {t}. The sun does not rise at this time of year."
-        part = {
-            "polar_morning": "morning",
-            "polar_midday": "the middle of the day",
-            "polar_afternoon": "afternoon",
-        }[phase]
-        return f"It is {t}, {part}. The sun does not set at this time of year."
+        return f"It is {t}. The sun does not set at this time of year."
     if phase == "dawn":
         # Dawn straddles sunrise, so the sentence has to know which side of it
-        # we are on. "The sun rises at 06:40" ten minutes after it did is the
-        # kind of error a reader spots by looking out of a window.
+        # we are on. "Sunrise is in 20 minutes" ten minutes after it happened
+        # is the kind of error a reader spots by looking out of a window.
         if now < sunrise:
-            return f"It is {t}, first light — the sun rises at {_hhmm(sunrise)}."
-        return f"It is {t}, just after sunrise ({_hhmm(sunrise)})."
+            return f"It is {t}. Sunrise is in {_describe_span(_mins(sunrise - now))}."
+        return f"It is {t}. The sun rose at {_hhmm(sunrise)}."
     if phase == "morning":
-        mins = _mins(now - sunrise)
-        return (
-            f"It is {t}, {_describe_span(mins)} after sunrise, with the "
-            f"whole day still ahead."
-        )
+        return f"It is {t}. Sunrise was at {_hhmm(sunrise)}, sunset is at {_hhmm(sunset)}."
     if phase == "midday":
-        return f"It is {t}, the middle of the day; the sun sets at {_hhmm(sunset)}."
-    if phase == "afternoon":
-        mins = _mins(sunset - now)
-        return f"It is {t}, afternoon, with {_describe_span(mins)} until sunset."
-    if phase == "dusk":
-        mins = _mins(sunset - now)
-        return (
-            f"It is {t} and the light is going — sunset is at {_hhmm(sunset)}, "
-            f"{_describe_span(mins)} from now."
-        )
+        return f"It is {t}. Sunset is at {_hhmm(sunset)}."
+    if phase in ("afternoon", "dusk"):
+        return f"It is {t}. Sunset is in {_describe_span(_mins(sunset - now))}."
     if phase == "evening":
-        mins = _mins(now - sunset)
-        return f"It is {t}, {_describe_span(mins)} after sunset; it is dark."
+        return f"It is {t}. The sun set at {_hhmm(sunset)}."
     # Night spans midnight, so after sunset the sunrise worth naming is
-    # tomorrow's. Pointing at this morning's — seventeen hours gone — would be
-    # both useless and obviously wrong.
+    # tomorrow's. Pointing at this morning's would be both useless and
+    # obviously wrong.
     rise = next_sunrise if (next_sunrise is not None and now > sunset) else sunrise
-    return f"It is {t} and dark; the sun rises at {_hhmm(rise)}."
+    return f"It is {t}. Sunrise is at {_hhmm(rise)}."
 
 
 def _describe_span(minutes: int) -> str:
