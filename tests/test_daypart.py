@@ -16,6 +16,7 @@ from openlocalweather.daypart import (
     TOMORROW,
     TONIGHT,
     classify_phase,
+    forward_hours,
     summarize_daypart,
 )
 
@@ -144,3 +145,70 @@ def test_every_phase_has_a_horizon_and_a_statement():
             seen.add(d.phase)
             assert d.statement and d.horizon
     assert {"night", "dawn", "morning", "midday", "afternoon", "dusk", "evening"} <= seen
+
+
+# --- trimming the forward window -------------------------------------------
+
+
+def _hourly(start_hour: int, count: int) -> dict:
+    """Two days of multi-model hourly data, in Open-Meteo's shape."""
+    times, temps = [], []
+    for i in range(count):
+        hour = start_hour + i
+        day = 22 + hour // 24
+        times.append(f"2026-08-{day:02d}T{hour % 24:02d}:00")
+        temps.append(float(hour))
+    return {
+        "latitude": -0.09,
+        "hourly": {
+            "time": times,
+            "temperature_2m_gfs_seamless": temps,
+            "temperature_2m_ecmwf_ifs025": list(reversed(temps)),
+        },
+    }
+
+
+def test_the_evening_run_finally_gets_tonight_and_tomorrow():
+    """The reason this module exists. At 18:15 the old fetch gave six hours of
+    forecast and no overnight data, while the prompt asked for tonight and
+    tomorrow."""
+    trimmed = forward_hours(_hourly(0, 48), at(18, 15))["hourly"]["time"]
+    assert trimmed[0] == "2026-08-22T18:00"
+    assert len(trimmed) == 30
+    assert any(t.startswith("2026-08-23") for t in trimmed), "tomorrow is covered"
+
+
+def test_already_happened_hours_are_dropped():
+    """Given a full day, the model described the full day — including the
+    afternoon its readers had just lived through."""
+    trimmed = forward_hours(_hourly(0, 48), at(18, 15))["hourly"]["time"]
+    assert not any(t < "2026-08-22T18:00" for t in trimmed)
+
+
+def test_the_hour_you_are_standing_in_is_kept():
+    """At 18:15 someone still cares what 18:00-19:00 holds. Rounding forward
+    would silently drop it."""
+    assert forward_hours(_hourly(0, 48), at(18, 15))["hourly"]["time"][0] == (
+        "2026-08-22T18:00"
+    )
+
+
+def test_every_model_series_is_trimmed_in_step():
+    """Trimming time but not the values, or one model but not another, would
+    silently misalign every reading with its hour — the kind of fault that
+    produces a confident forecast about the wrong moment."""
+    out = forward_hours(_hourly(0, 48), at(18, 15))["hourly"]
+    lengths = {k: len(v) for k, v in out.items()}
+    assert len(set(lengths.values())) == 1, lengths
+
+
+def test_data_that_does_not_cover_now_returns_empty_rather_than_stale():
+    """A cache or a timezone mismatch could hand back the wrong day dressed as
+    the right one. Empty is detectable; wrong is not."""
+    out = forward_hours(_hourly(0, 48), datetime(2030, 1, 1, 12, 0))
+    assert out["hourly"]["time"] == []
+
+
+def test_it_survives_empty_and_missing_input():
+    assert forward_hours({}, at(12)) == {}
+    assert forward_hours({"hourly": {}}, at(12)) == {"hourly": {}}

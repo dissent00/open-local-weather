@@ -120,6 +120,59 @@ def fetch_forecast_hourly_today(lat: float, lon: float, models: list[str], timez
     return _get(FORECAST_URL, params)
 
 
+def fetch_sun_times(lat: float, lon: float, timezone: str, days: int = 2) -> dict:
+    """Sunrise and sunset, in the location's own local time.
+
+    Not model-dependent, so no `models` parameter — asking four models for the
+    same astronomical event would return four identical series under four
+    different keys.
+
+    Two days by default because the sunrise a reader cares about after dark is
+    tomorrow's, not the one seventeen hours behind them.
+
+    Open-Meteo has no twilight variable: the daily endpoint offers sunrise,
+    sunset, daylight_duration and sunshine_duration, and rejects
+    civil_twilight_begin outright. Twilight would have to be computed from
+    solar position.
+    """
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "daily": "sunrise,sunset,daylight_duration",
+        "forecast_days": days,
+        "timezone": timezone,
+    }
+    return _get(FORECAST_URL, params)
+
+
+def fetch_forecast_hourly_forward(
+    lat: float, lon: float, models: list[str], timezone: str
+) -> dict:
+    """Hourly multi-model guidance covering today AND tomorrow.
+
+    A SEPARATE call rather than widening fetch_forecast_hourly_today, and
+    deliberately so. `extract_day0_predictions_from_hourly` consumes whatever
+    series it is handed with no date slicing, so widening that fetch to two
+    days would silently score 48 hours as "today" — quietly corrupting the
+    accuracy record, which is the one number in this project that must not
+    drift. Keeping the scored fetch untouched means no change here can reach
+    it.
+
+    This exists because a run issued in the evening was being asked to talk
+    about tonight while holding only 00:00-23:00 of today: at 18:15 that is
+    six hours of forecast and no overnight data at all.
+    """
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": HOURLY_FORECAST_VARS,
+        "forecast_days": 2,
+        "timezone": timezone,
+        "models": ",".join(models),
+    }
+    return _get(FORECAST_URL, params)
+
+
 def fetch_forecast_daily_extended(
     lat: float, lon: float, models: list[str], timezone: str, days: int = 8
 ) -> dict:

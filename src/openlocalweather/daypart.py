@@ -270,3 +270,63 @@ def summarize_daypart(
         statement=_statement(phase, now, sunrise, sunset, next_sunrise),
         horizon=_horizon_for(phase),
     )
+
+
+# How far ahead a forecast issued now should look.
+#
+# Thirty hours so that a run at any time of day reaches through tonight and
+# well into tomorrow. A 06:00 run gets to midday tomorrow; an 18:15 run gets
+# to midnight tomorrow. Shorter, and a late-evening run would have nothing to
+# say about the day people are asking about.
+FORWARD_HOURS = 30
+
+
+def forward_hours(
+    hourly_multi_model: dict, now: datetime, hours_ahead: int = FORWARD_HOURS
+) -> dict:
+    """Trims multi-model hourly data to the hours still ahead.
+
+    NARRATIVE ONLY. Nothing scored ever passes through here — per-model
+    predictions come from `extract_day0_predictions_from_hourly` on the
+    untrimmed day-0 fetch, and must, because scoring a partial day against a
+    full day's observation would quietly reward a model for the hours it was
+    not asked about.
+
+    The reason this exists: an evening run received all 24 hours of today with
+    the eighteen already-happened ones formatted identically to the six still
+    to come. Given a full day, the model described the full day — including
+    the afternoon its readers had just lived through.
+
+    The current hour is kept rather than dropped. Someone reading at 18:15
+    still cares what 18:00-19:00 holds, and dropping it would silently lose
+    the hour they are standing in.
+    """
+    if not hourly_multi_model or not hourly_multi_model.get("hourly"):
+        return hourly_multi_model
+    h = hourly_multi_model["hourly"]
+    times = h.get("time") or []
+    if not times:
+        return hourly_multi_model
+
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
+    keep = [
+        i
+        for i, t in enumerate(times)
+        if datetime.fromisoformat(t) >= current_hour
+    ][:hours_ahead]
+
+    # No overlap at all means the data does not cover now — a stale cache or a
+    # timezone mismatch. Returning it untrimmed would hand back the wrong day
+    # dressed as the right one, so return an explicitly empty series and let
+    # the caller notice.
+    if not keep:
+        return {**hourly_multi_model, "hourly": {k: [] for k in h}}
+
+    return {
+        **hourly_multi_model,
+        "hourly": {
+            key: ([series[i] for i in keep if i < len(series)]
+                  if isinstance(series, list) else series)
+            for key, series in h.items()
+        },
+    }
