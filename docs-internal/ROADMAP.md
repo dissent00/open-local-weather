@@ -2220,3 +2220,71 @@ narrative when levels are notable, on the site and in the app. It also fits
 the "audience voices" work (item 14) unusually well — an allergy-focused
 voice is a genuine use case, not a novelty, and is exactly the kind of
 personalisation a single LLM call can produce for free.
+
+---
+
+## 30. Twilight times — the light people actually plan around · **Planned**
+
+Sunrise and sunset now reach the forecast (item 31's sibling change), but they
+are not the times most readers care about. On the lake, what matters is when
+there is enough light to get back in — which is civil twilight, roughly the
+period when the sun is within 6° below the horizon and you can still make out
+a shoreline without a torch.
+
+**Open-Meteo does not provide it.** Checked rather than assumed: the daily
+endpoint offers `sunrise`, `sunset`, `daylight_duration` and
+`sunshine_duration`, and rejects `civil_twilight_begin` outright with
+`Cannot initialize ForecastVariableDaily from invalid String value`. So this
+means computing solar position ourselves.
+
+That is a well-defined calculation — the NOAA solar position algorithm, taking
+latitude, longitude and date, and solving for the times the solar elevation
+crosses −6°. Perhaps forty lines. It fits the project's "all arithmetic in
+code" rule exactly, and it has to be **ported to Dart and vector-locked** like
+everything else in `daypart`.
+
+Two things to get right, both of which the sunrise/sunset work already hit:
+
+- **It has no answer at high latitude for part of the year.** In polar summer
+  the sun never gets 6° below the horizon and civil twilight never ends; in
+  polar winter it may never begin. The function must return "no such time"
+  rather than a number, and the display must omit the field rather than render
+  a blank one.
+- **Do not approximate it as "sunset plus 25 minutes."** That is roughly right
+  in Kisumu, where the sun sets nearly vertically, and badly wrong at 55°N
+  where twilight can last over an hour. An approximation that holds at the one
+  latitude we test is exactly the kind of thing that ships and is wrong
+  everywhere else.
+
+Worth doing after the app has a settled surface for showing it, since the
+value is in the display rather than in the narrative.
+
+---
+
+## 31. Do not mention a sunrise that has already happened · **Planned**
+
+A forecast issued at 18:15 has no business saying "sunrise at 06:40" as though
+it were coming. The `daypart` work already gives the pipeline everything
+needed to know this — the phase, and whether `now` is before or after each
+event — and the statement handed to the model already gets it right (it says
+"the sun rose at 06:40" after the fact, and names *tomorrow's* sunrise after
+dark).
+
+What is not yet handled is the **published stat block**, which renders
+`Sunrise 06:40 / Sunset 18:47` identically at every hour of the day. By the
+evening issuance the sunrise figure is a fact about a morning that is over.
+
+The shape of the fix, once the display settles:
+
+- Before sunrise: show today's sunrise and today's sunset.
+- Between them: show sunset, and today's sunrise as past tense or not at all.
+- After sunset: show **tomorrow's** sunrise, labelled as tomorrow's, and drop
+  today's sunset.
+
+This pairs naturally with the dusk mapping in `daypart` — the same phase
+already decides what the narrative leads with, so the stat block should follow
+it rather than keep its own rules. Two components deciding independently what
+"sunrise" means is how they end up disagreeing on the same page.
+
+Small, but the kind of detail that separates a forecast someone trusts from
+one that reads as generated.

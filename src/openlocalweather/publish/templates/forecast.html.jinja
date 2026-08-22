@@ -47,6 +47,14 @@
     {% if entry.air_quality_aqi %}
     <div class="stat"><span class="label">Air Quality</span><span class="value">{{ entry.air_quality_aqi }}</span></div>
     {% endif %}
+    {# Computed in code from the day's astronomical data, never written by the
+       model. Both are shown only when both exist: in polar night there is no
+       sunrise to report, and half a pair reads as a rendering fault rather
+       than as the honest answer it is. #}
+    {% if entry.sunrise and entry.sunset %}
+    <div class="stat"><span class="label">Sunrise</span><span class="value">{{ entry.sunrise }}</span></div>
+    <div class="stat"><span class="label">Sunset</span><span class="value">{{ entry.sunset }}</span></div>
+    {% endif %}
   </div>
 
   {{ narrative_html | safe }}

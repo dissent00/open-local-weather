@@ -875,3 +875,24 @@ def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
     )
     assert result.log_entry is not None
     assert len(llm.calls) == 1
+
+
+def test_sunrise_and_sunset_are_stored_from_code_not_the_narrative(tmp_path):
+    """Facts, not prose. Asking a language model to restate a computed time is
+    how a wrong one gets published — and these are checkable by anyone who
+    looks out of a window, so being wrong is expensive."""
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+    assert result.log_entry.sunrise == "06:40"
+    assert result.log_entry.sunset == "18:47"
+
+
+def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, monkeypatch):
+    """Polar night has no sunrise. An empty string would render as a blank
+    value next to the label, which reads as a broken page rather than as the
+    correct answer."""
+    monkeypatch.setattr(
+        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    )
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+    assert result.log_entry.sunrise is None
+    assert result.log_entry.sunset is None

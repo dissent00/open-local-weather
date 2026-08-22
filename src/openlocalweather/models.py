@@ -264,6 +264,17 @@ class DailyLogEntry(BaseModel):
     # rolling-stats philosophy.
     ground_aqi: list[GroundAQIReading] = Field(default_factory=list)
 
+    # Sunrise and sunset, local, as HH:MM. Set by CODE from the day's
+    # astronomical data, never by the model — they are facts, and asking a
+    # language model to restate a fact is how a wrong one gets published.
+    #
+    # None for entries written before this was stored, and legitimately None
+    # in polar night, where there is no sunrise to report. A reader at that
+    # latitude is better served by the field being absent than by a fabricated
+    # time.
+    sunrise: str | None = None
+    sunset: str | None = None
+
     model_predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
     verification: VerificationByLead = Field(default_factory=VerificationByLead)
 

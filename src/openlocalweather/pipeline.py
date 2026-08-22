@@ -690,6 +690,11 @@ def run_daily_pipeline(
         uv_index_max=tp.uv_index_max,
         air_quality_aqi=tp.air_quality_aqi,
         ground_aqi=guidance.ground_aqi_readings,
+        # From code, not from the narrative. Empty strings mean the sun times
+        # were unavailable — see daypart_without_sun — and are stored as None
+        # so an absent value is never rendered as an empty clock.
+        sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
+        sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
         model_predictions=ModelPredictionsByLead(
             day0=day0_predictions, day3=day3_predictions, day7=day7_predictions
         ),
