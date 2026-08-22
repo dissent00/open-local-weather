@@ -946,6 +946,20 @@ def run_refresh_pipeline(
             "uv_index_max": tp.uv_index_max,
             "air_quality_aqi": tp.air_quality_aqi,
             "ground_aqi": guidance.ground_aqi_readings,
+            # Set here too, not only on the day's first run.
+            #
+            # Missed when sunrise/sunset were added: only run_daily_pipeline
+            # set them, so any day whose entry was refreshed carried nulls
+            # from that point on — the site simply stopped showing sun times
+            # after the evening run, which nothing would have flagged.
+            #
+            # Falls back to what is already stored rather than overwriting
+            # with None: a failed sun fetch on a re-issue must not erase a
+            # good value the morning run captured.
+            "sunrise": (guidance.issuance.sunrise or None if guidance.issuance else None)
+            or existing_entry.sunrise,
+            "sunset": (guidance.issuance.sunset or None if guidance.issuance else None)
+            or existing_entry.sunset,
             "narrative_markdown": llm_response.today_narrative,
             "whatsapp_summary": llm_response.whatsapp_summary,
             "morning_issuance": morning_snapshot,

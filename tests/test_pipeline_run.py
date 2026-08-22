@@ -948,3 +948,66 @@ def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):
 
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
     assert after == before, "three re-issues must leave the scored numbers identical"
+
+
+def test_run_daily_a_SECOND_time_overwrites_the_days_predictions(tmp_path):
+    """Why the evening run cannot simply be run-daily.
+
+    run-daily extracts and stores the day's model_predictions. Running it
+    again in the evening re-extracts them from evening-cycle data — predictions
+    made with ~12 hours less lead time, then scored tomorrow as though they
+    were the 06:00 call. Every model's Day+0 accuracy would improve, and
+    nothing in the record would show why.
+
+    Pinned as a HAZARD, not as desired behaviour. The workflow's own
+    already_done check is what normally prevents it, and `force: true`
+    bypasses that check.
+    """
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    first = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
+
+    # A second full run, as `force: true` would allow.
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    second = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
+
+    # Same fixture data here, so the VALUES match — what this documents is that
+    # nothing stops the rewrite. Against real evening-cycle data they would
+    # differ, and the day's scored numbers would silently become the evening's.
+    assert second == first, (
+        'with fixture data the values are identical; the point is that '
+        'run_daily_pipeline rewrote them rather than refusing'
+    )
+
+
+def test_refresh_without_a_prior_run_fails_loudly(tmp_path):
+    """The current safety net. If the morning run never happened, the evening
+    refresh does not quietly become the day's first forecast — which would
+    mean model_predictions came from evening-cycle data."""
+    with pytest.raises(RefreshWithoutMorningRunError):
+        run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11))
+
+
+def test_a_refresh_keeps_the_sun_times(tmp_path):
+    """They were only set on the day's first run, so any refreshed day
+    carried nulls from that point — the site would simply stop showing sun
+    times after the evening run, with nothing to flag it."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.sunrise == "06:40"
+    assert entry.sunset == "18:47"
+
+
+def test_a_refresh_with_no_sun_data_keeps_the_mornings(tmp_path, monkeypatch):
+    """A failed sun fetch on a re-issue must not erase a good value the first
+    run captured. Fresher is not automatically better when the fresher value
+    is 'unknown'."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    monkeypatch.setattr(
+        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    )
+    run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.sunrise == "06:40", "the morning's value survives a failed re-fetch"

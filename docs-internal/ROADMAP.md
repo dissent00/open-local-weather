@@ -2327,3 +2327,41 @@ applies.
 
 **Not urgent.** Two runs a day is the current deployment and the common case
 for forkers. This becomes real the moment someone wants four.
+
+---
+
+## 33. A fresher null should not erase an older real reading · **Planned**
+
+Found while investigating the 2026-08-22 evening refresh. The morning run
+captured three ground AQI stations with real values — Kisumu Airport 46,
+Ochieng' Avenue **160**, Dunga Beach 27, all timestamped 00:00Z. The refresh
+re-fetched at 11:00Z, got the same three stations back with **`aqi: null`**,
+and stored those. The current entry now shows three nulls.
+
+The refresh worked correctly: it fetched, the timestamps advanced, upstream
+simply had no numeric AQI at that hour. The narrative fell back to CAMS model
+data, exactly as designed.
+
+**What is wrong is that a real measurement was replaced by an absence.** The
+morning's 160 at Ochieng' Avenue — Unhealthy for Sensitive Groups, the single
+most actionable number in that day's forecast — is now visible only inside
+`morning_issuance`. Anyone reading the current entry, the published page, or a
+future analysis of the stored record sees three nulls and no indication that a
+station read 160 nine hours earlier.
+
+This is not new and was not introduced by the time-awareness work; it has been
+true for every refresh. It became visible because the values happened to be
+interesting that day.
+
+**The shape of the fix.** A later reading replaces an earlier one only when it
+actually carries a value. Where the fresh fetch returns null, keep the stored
+reading and its original timestamp, so `hours_old` and the existing `stale`
+flag do their job — the machinery for "this reading is old" already exists and
+is the honest way to present it. The narrative can then say the last real
+reading was 160 at midnight and is now nine hours old, which is far more useful
+than silence.
+
+Worth applying the same rule anywhere a re-issue overwrites fetched data.
+Sun times already work this way as of the fix in the same commit as this note,
+and for the same reason: fresher is not better when the fresher value is
+"unknown".

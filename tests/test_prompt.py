@@ -219,6 +219,26 @@ def test_the_time_aware_section_must_not_change_what_gets_scored():
     assert "temp_high_c is the day's high whether or not it has already happened" in prompt
 
 
+def test_a_later_issuance_may_be_brief_but_may_not_drop_content():
+    """A real regression, caught on the live 18:07 run of 2026-08-22.
+
+    The met service was named 1-3 times in each of the previous three days'
+    refreshes and ZERO times in that one. Its data was present throughout —
+    kenya_met sat in day0 and day3 model_predictions and the 629-character
+    bulletin was stored — so nothing was lost upstream. The new LATER ISSUANCE
+    block pushed brevity hard enough ("do not restate at length", "say so
+    plainly and move on") that the model economised by dropping a peer model
+    entirely rather than by shortening prose.
+
+    Saying "nothing changed since this morning" IS a statement about the met
+    service. Silence is not.
+    """
+    prompt = build_system_prompt(KISUMU, is_reissue=True)
+    assert "BREVITY IS NOT OMISSION" in prompt
+    assert "local met service is still a peer model" in prompt
+    assert "every heading below appears on every issuance" in prompt
+
+
 def test_every_run_is_told_to_lead_with_what_matters_now():
     """Present on EVERY run, not just later ones: a first run at 06:00 and a
     first run at 16:00 are both possible once an operator picks their own
