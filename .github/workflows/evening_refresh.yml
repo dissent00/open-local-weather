@@ -8,28 +8,39 @@ name: Evening Forecast Refresh
 # the morning run (daily.yml) to have already run successfully today —
 # fails loudly, not silently, if there's nothing to refresh.
 
-# TRIGGERING: workflow_dispatch only. The refresh is driven from the
-# operator's own server crontab via ops/trigger_workflow.sh, which calls
-# GitHub's workflow_dispatch REST API directly.
+# TRIGGERING: two paths, deliberately in different failure domains.
 #
-# GitHub's own `schedule:` slots used to sit here as a backstop and have been
-# removed. The timing analysis that chose them still holds and is worth
-# keeping: ~18:07 EAT (15:07 UTC) was picked from the measured
-# model-availability table in ROADMAP.md, because by 13:19 UTC every model's
-# 06z cycle has landed and the aligned window — all four models on the same
+# PRIMARY is the operator's own server crontab, calling GitHub's
+# workflow_dispatch REST API via ops/trigger_workflow.sh. It exists because
+# GitHub's scheduler proved unreliable on this repo: this workflow's
+# first-ever scheduled occurrence fired ~56 minutes late with createdAt ==
+# startedAt, so the delay was entirely GitHub's side rather than queuing for
+# a runner, and daily.yml's schedule produced zero runs at all on two
+# separate occasions.
+#
+# BACKSTOP is the `schedule:` block below. It is NOT redundant with the
+# crontab — it is redundant *of a different kind*. The crontab routes around
+# GitHub's scheduler; the schedule routes around the server, its token, and
+# its network. Either alone is a single point of failure, and the failure is
+# quiet: a refresh that never runs produces no error anywhere, and
+# health_check.yml only looks weekly.
+#
+# Overlap is safe and nearly free. The `check` job below exits in seconds
+# without calling the model if today's entry is already refreshed, whichever
+# trigger got there first.
+#
+# ~18:07 Africa/Nairobi (EAT) = 15:07 UTC, chosen from the measured
+# model-availability table in ROADMAP.md: by 13:19 UTC every model's 06z
+# cycle has landed, and the aligned window — all four models on the same
 # cycle — holds from 14:00 UTC until just before 19:00 UTC, when the faster
-# models jump to 12z. An external cron should aim at the same window.
-#
-# The four slots (+0/+15/+30/+45) existed because GitHub's scheduler is
-# unreliable: this workflow's first-ever scheduled occurrence fired ~56
-# minutes late, with createdAt == startedAt, so the delay was entirely on
-# GitHub's side rather than queuing for a runner. That unreliability is
-# exactly why the trigger moved off it.
-#
-# Note the consequence: there is no longer a second mechanism. If the server's
-# crontab stops, nothing else will notice until health_check.yml runs, and
-# that is weekly.
+# models jump to 12z. The +15/+30/+45 slots cover a late or dropped
+# occurrence. The external cron aims at the same window.
 on:
+  schedule:
+    - cron: "7 15 * * *"
+    - cron: "22 15 * * *"
+    - cron: "37 15 * * *"
+    - cron: "52 15 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -131,9 +142,8 @@ jobs:
           # --- Gemini (the default provider) ---
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Which trigger produced this run. Recorded into the log entry so a
-          # dead workflow_dispatch path is visible in the committed record.
-          # It now records the ONLY trigger this workflow has, so a run
-          # missing from the record means the external cron did not fire.
+          # dead workflow_dispatch path is visible in the committed record
+          # rather than hidden behind the cron slots still firing.
           TRIGGER_SOURCE: ${{ github.event_name }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
