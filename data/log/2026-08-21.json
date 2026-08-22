@@ -199,8 +199,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 (2026-08-21 target): GFS, ECMWF, ICON, UKMO, and Best Match correctly verified the dry precipitation call, whereas Kenya Met missed with a false rain call. Temperature highs were well-captured across numerical guidance within 0.7°C error, though GFS over-forecasted surface winds by 18.7 km/h."
     },
     "day3": {
       "verified": false,
