@@ -15,8 +15,11 @@ from openlocalweather.daypart import (
     TODAY,
     TOMORROW,
     TONIGHT,
+    REST_OF_TODAY_TO_MIDNIGHT,
     classify_phase,
+    daypart_without_sun,
     forward_hours,
+    reconcile_now,
     summarize_daypart,
 )
 
@@ -212,3 +215,52 @@ def test_data_that_does_not_cover_now_returns_empty_rather_than_stale():
 def test_it_survives_empty_and_missing_input():
     assert forward_hours({}, at(12)) == {}
     assert forward_hours({"hourly": {}}, at(12)) == {"hourly": {}}
+
+
+# --- trusting the clock -----------------------------------------------------
+
+
+def test_a_correct_clock_is_left_alone():
+    """Small differences are normal and change nothing a forecast says."""
+    got, warning = reconcile_now(datetime(2026, 8, 22, 7, 1), "Sat, 22 Aug 2026 04:00:00 GMT", 10800)
+    assert got == datetime(2026, 8, 22, 7, 1)
+    assert warning is None
+
+
+def test_a_wrong_clock_is_corrected_and_reported():
+    """A host whose clock has drifted produces a forecast written confidently
+    for the wrong part of the day, and nothing in the output would show it.
+    One machine's clock against a public API's is not a close contest."""
+    got, warning = reconcile_now(datetime(2026, 8, 22, 19, 0), "Sat, 22 Aug 2026 04:00:00 GMT", 10800)
+    assert got == datetime(2026, 8, 22, 7, 0), "the server is believed"
+    assert warning is not None and "NTP" in warning
+
+
+def test_it_reconstructs_local_time_without_the_tz_database():
+    """The backup has to work on a container built without tzdata, where
+    ZoneInfo raises and there is no local timezone to fall back to. The Date
+    header plus utc_offset_seconds needs neither."""
+    got, _ = reconcile_now(datetime(2026, 8, 22, 19, 0), "Sat, 22 Aug 2026 04:00:00 GMT", 10800)
+    assert got.hour == 7  # 04:00 UTC + 3h, derived purely from the response
+
+
+def test_a_missing_or_unparseable_header_stops_checking_rather_than_guessing():
+    """An absent header is not evidence the clock is wrong. Treating it as
+    such would make every offline or proxied run 'correct' itself to nothing."""
+    for header in (None, "", "not a date"):
+        got, warning = reconcile_now(datetime(2026, 8, 22, 7, 0), header, 10800)
+        assert got == datetime(2026, 8, 22, 7, 0)
+        assert warning is None
+    got, warning = reconcile_now(datetime(2026, 8, 22, 7, 0), "Sat, 22 Aug 2026 04:00:00 GMT", None)
+    assert warning is None, "no offset means no comparison is possible"
+
+
+def test_without_the_sun_the_horizon_is_still_precise():
+    """Midnight is midnight at every latitude. Losing sunrise and sunset costs
+    the phase, not the precision — "tonight" would be a guess about where the
+    sun is, "the rest of today" would not."""
+    d = daypart_without_sun(datetime(2026, 8, 22, 18, 15))
+    assert d.phase == "unknown"
+    assert d.horizon == (REST_OF_TODAY_TO_MIDNIGHT, TOMORROW)
+    assert "midnight" in d.horizon[0]
+    assert "It is 18:15" in d.statement

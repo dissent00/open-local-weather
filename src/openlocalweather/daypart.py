@@ -32,7 +32,8 @@ sunset, which is what solar noon means, so it needs no ephemeris.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 
 # How long before sunset the light starts visibly going. Not an astronomical
 # quantity — civil twilight is defined after sunset — but the point at which
@@ -147,6 +148,11 @@ def classify_phase(now: datetime, sunrise: datetime, sunset: datetime) -> str:
 # run and "the small hours" by the next. Everything from dusk to dawn is one
 # period as far as a reader planning their night is concerned.
 TONIGHT = "tonight (dusk, evening and overnight through to dawn)"
+# Used when sunrise and sunset are unavailable. Midnight is midnight at every
+# latitude, so this stays exactly true where "tonight" and "this evening"
+# would be guesses — 18:00 is nearly dark in Kisumu and mid-afternoon in
+# Tromsø in June, but "the rest of today" means the same in both.
+REST_OF_TODAY_TO_MIDNIGHT = "the rest of today, through to midnight"
 TODAY = "today"
 REST_OF_TODAY = "the rest of today"
 TOMORROW = "tomorrow"
@@ -347,8 +353,10 @@ def daypart_without_sun(now: datetime) -> DayPart:
     says "this evening" while the sun is high is wrong in the way readers
     notice first.
 
-    The horizon stays deliberately vague for the same reason. "The hours
-    ahead" is true at any latitude; "tonight" would not be.
+    The horizon still gives the model something precise to aim at. Midnight is
+    midnight everywhere, so "the rest of today, through to midnight" then
+    "tomorrow" holds at any latitude — where "tonight" would be a guess about
+    where the sun is. Losing the sun costs the phase, not the precision.
     """
     return DayPart(
         local_time=_hhmm(now),
@@ -362,5 +370,71 @@ def daypart_without_sun(now: datetime) -> DayPart:
             f"It is {_hhmm(now)}. Sunrise and sunset could not be retrieved "
             f"for this location today, so treat the part of day as unknown."
         ),
-        horizon=("the hours ahead", TOMORROW),
+        horizon=(REST_OF_TODAY_TO_MIDNIGHT, TOMORROW),
+    )
+
+
+# How far the system clock may drift from the server's before it is treated as
+# wrong rather than merely imprecise. Generous: a couple of minutes changes
+# nothing a forecast says, and a threshold too tight would cry wolf on every
+# slightly-lagged container.
+MAX_CLOCK_SKEW = timedelta(minutes=5)
+
+
+def reconcile_now(
+    system_local: datetime,
+    server_date_header: str | None,
+    utc_offset_seconds: int | None,
+) -> tuple[datetime, str | None]:
+    """The local time to use, and a warning if the system clock cannot be trusted.
+
+    WHY A BACKUP IS NEEDED AT ALL.
+
+    A common worry is that `datetime.now(ZoneInfo(tz))` might return UTC or the
+    machine's own local time depending on how the host is configured. It does
+    not: it takes the current instant and renders it in the requested zone, so
+    the host's timezone setting is irrelevant. A server in California and one
+    in Nairobi both produce the same Africa/Nairobi wall clock.
+
+    What it DOES depend on is the machine's clock being right in absolute
+    terms, and on the tz database being present. Neither is guaranteed — an
+    unsynced VM, a container built without tzdata, a clock that drifted while
+    the host was suspended. In every one of those the failure is silent: a
+    forecast confidently written for the wrong part of the day.
+
+    THE BACKUP.
+
+    Every Open-Meteo response carries a `Date` header — the server's own UTC
+    clock — and the forecast payload carries `utc_offset_seconds` for the
+    requested location. Together they reconstruct local time without trusting
+    this machine's clock OR its timezone database, on a call already being
+    made for other reasons.
+
+    Where the two disagree by more than MAX_CLOCK_SKEW, the server is believed.
+    It is one machine's clock against a public API's, and the API is the one
+    that would be noticed if it were wrong.
+    """
+    if not server_date_header or utc_offset_seconds is None:
+        return system_local, None
+
+    try:
+        server_utc = parsedate_to_datetime(server_date_header)
+    except (TypeError, ValueError):
+        # An unparseable header is not a reason to distrust the clock; it is a
+        # reason to stop checking.
+        return system_local, None
+
+    if server_utc.tzinfo is None:
+        server_utc = server_utc.replace(tzinfo=timezone.utc)
+    server_local = (server_utc + timedelta(seconds=utc_offset_seconds)).replace(tzinfo=None)
+
+    skew = abs(server_local - system_local)
+    if skew <= MAX_CLOCK_SKEW:
+        return system_local, None
+
+    return server_local, (
+        f"System clock disagrees with the forecast server by {int(skew.total_seconds() // 60)} "
+        f"minutes ({system_local:%Y-%m-%d %H:%M} local vs {server_local:%Y-%m-%d %H:%M}). "
+        f"Using the server's time. Check NTP on this host — a wrong clock "
+        f"silently produces a forecast written for the wrong part of the day."
     )

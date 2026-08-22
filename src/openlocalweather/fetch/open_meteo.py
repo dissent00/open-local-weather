@@ -90,7 +90,14 @@ def _get(url: str, params: dict[str, Any]) -> dict:
             last_error = OpenMeteoFetchError(f"Request to {url} failed: {e}")
         else:
             if resp.status_code == 200:
-                return resp.json()
+                payload = resp.json()
+                # The server's own clock, carried on every response we already
+                # make. Free, and the only time reference here that does not
+                # depend on this machine being right — see daypart.reconcile_now.
+                server_date = resp.headers.get("Date")
+                if isinstance(payload, dict) and server_date:
+                    payload["_server_date"] = server_date
+                return payload
             # 4xx other than 429 means the REQUEST is wrong — a bad variable
             # name, an impossible coordinate. Retrying just repeats the
             # mistake more slowly, and hides it behind a longer wait.

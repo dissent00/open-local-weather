@@ -59,6 +59,7 @@ from openlocalweather.daypart import (
     DayPart,
     daypart_without_sun,
     forward_hours,
+    reconcile_now,
     summarize_daypart,
 )
 from openlocalweather.config import LocationConfig
@@ -274,7 +275,7 @@ def _clock(value) -> str | None:
         return None
 
 
-def _sun_context(location, now_local: datetime) -> DayPart | None:
+def _sun_context(location, now_local: datetime) -> tuple[DayPart | None, datetime]:
     """Sunrise/sunset for today and tomorrow, reduced to the issuance moment.
 
     Open-Meteo returns these as naive local strings when `timezone=` is set,
@@ -284,18 +285,29 @@ def _sun_context(location, now_local: datetime) -> DayPart | None:
     sun = open_meteo.fetch_sun_times(
         location.primary_point.lat, location.primary_point.lon, location.timezone
     )
+
+    # An independent check on this machine's clock, from a response already
+    # fetched. See daypart.reconcile_now — the host's own timezone setting is
+    # irrelevant, but its clock being wrong is silent and would produce a
+    # forecast written confidently for the wrong part of the day.
+    now_local, skew_warning = reconcile_now(
+        now_local, (sun or {}).get("_server_date"), (sun or {}).get("utc_offset_seconds")
+    )
+    if skew_warning:
+        print(f"WARNING: {skew_warning}", file=sys.stderr)
+
     daily = (sun or {}).get("daily") or {}
     rises, sets = daily.get("sunrise") or [], daily.get("sunset") or []
     if not rises or not sets:
         # Polar night returns no sunrise or sunset at all. Not an error, and
         # not something to fail a forecast over — the reader simply gets no
         # sun times, which at that latitude is the correct answer.
-        return None
+        return None, now_local
 
     sunrise = datetime.fromisoformat(rises[0])
     sunset = datetime.fromisoformat(sets[0])
     next_sunrise = datetime.fromisoformat(rises[1]) if len(rises) > 1 else None
-    return summarize_daypart(now_local, sunrise, sunset, next_sunrise)
+    return summarize_daypart(now_local, sunrise, sunset, next_sunrise), now_local
 
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
@@ -378,7 +390,12 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     # only refines it.
     now_local = now_in_tz(location.timezone)
     try:
-        issuance = _sun_context(location, now_local) or daypart_without_sun(now_local)
+        # Also returns the reconciled clock: if this host's time disagrees with
+        # the server's, the corrected value must reach the forward-window trim
+        # below too, or the two halves of the prompt would describe different
+        # moments.
+        sun_part, now_local = _sun_context(location, now_local)
+        issuance = sun_part or daypart_without_sun(now_local)
     except Exception as e:  # noqa: BLE001 - never fatal; the time still stands
         print(f"Sun times unavailable ({e}); using the clock alone.", file=sys.stderr)
         issuance = daypart_without_sun(now_local)
