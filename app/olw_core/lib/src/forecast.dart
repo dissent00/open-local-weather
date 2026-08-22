@@ -68,7 +68,15 @@ Future<ForecastRun> generateForecast({
   Object? groundAqiSummary,
   String localBulletinSourceName = '',
   String localBulletinText = '',
-  String? morningNarrative,
+  /// Previous issuances today, oldest first. Empty or null means this is
+  /// the day's first run.
+  List<Map<String, Object?>>? earlierToday,
+
+  /// Where this run sits in the day — see `daypart` in the Python pipeline.
+  Object? issuance,
+
+  /// Hourly guidance trimmed to the hours still ahead. Narrative only.
+  Object? forwardHourly,
 }) async {
   final hourlyFuture = client.fetchForecastHourlyToday(
     lat: location.lat, lon: location.lon, models: models, timezone: location.timezone,
@@ -106,7 +114,8 @@ Future<ForecastRun> generateForecast({
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
 
-  final systemPrompt = buildSystemPrompt(location, isRefresh: morningNarrative != null);
+  final systemPrompt = buildSystemPrompt(
+      location, isReissue: earlierToday != null && earlierToday.isNotEmpty);
   final userPrompt = buildUserPrompt(
     today: today,
     yesterday: addDays(today, -1),
@@ -132,7 +141,9 @@ Future<ForecastRun> generateForecast({
     },
     localBulletinSourceName: localBulletinSourceName,
     localBulletinText: localBulletinText,
-    morningNarrative: morningNarrative,
+    earlierToday: earlierToday,
+    issuance: issuance,
+    forwardHourly: forwardHourly,
     reviewContext: reviewContext,
     // The same extracted values that get scored, so the narrative and the
     // accuracy record describe one set of numbers rather than two.

@@ -19,6 +19,18 @@ def today_in_tz(tz_name: str) -> date:
     return datetime.now(ZoneInfo(tz_name)).date()
 
 
+def now_in_tz(tz_name: str) -> datetime:
+    """The current local wall-clock time, naive.
+
+    Naive on purpose: it is compared against Open-Meteo's sunrise/sunset and
+    hourly timestamps, which come back as naive local strings when
+    `timezone=` is set. Mixing an aware datetime with those would raise, and
+    making them aware instead would invite a UTC value to slip in unnoticed
+    and shift every part-of-day boundary by hours.
+    """
+    return datetime.now(ZoneInfo(tz_name)).replace(tzinfo=None)
+
+
 def add_days(d: date, n: int) -> date:
     return d + timedelta(days=n)
 

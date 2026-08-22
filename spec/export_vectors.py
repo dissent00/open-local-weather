@@ -612,7 +612,31 @@ def export_user_prompt() -> None:
         "review_context": {"data_sufficiency": "Day+0: 8 check(s) per model.", "findings": []},
         "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
     }
-    refresh = dict(full, morning_narrative="Warm and dry through the morning.")
+    # Two earlier issuances, not one: the vector has to exercise a LIST, or
+    # the Dart port could pass with a single-narrative implementation and
+    # diverge the first time an operator schedules a third run.
+    refresh = dict(
+        full,
+        earlier_today=[
+            {"time": "06:07", "narrative": "Warm and dry through the morning."},
+            {"time": "13:02", "narrative": "Cloud building over the lake."},
+        ],
+        issuance={
+            "local_time": "18:15",
+            "phase": "dusk",
+            "minutes_since_sunrise": 695,
+            "minutes_to_sunset": 32,
+            "sunrise": "06:40",
+            "sunset": "18:47",
+            "daylight_hours_left": 0,
+            "statement": "It is 18:15. Sunset is in 32 minutes.",
+            "horizon": [
+                "tonight (dusk, evening and overnight through to dawn)",
+                "tomorrow",
+            ],
+        },
+        forward_hourly={"hourly": {"time": ["2026-08-19T18:00"], "precipitation_gfs_seamless": [0.4]}},
+    )
     empty = {
         "today": date(2026, 8, 19),
         "yesterday": date(2026, 8, 18),
@@ -1182,7 +1206,7 @@ def export_system_prompt() -> None:
     ]
 
     cases = []
-    for name, loc, is_refresh, overrides in scenarios:
+    for name, loc, is_reissue, overrides in scenarios:
         kwargs = {
             "historical_lookback_days": HISTORICAL_LOOKBACK_DAYS,
             "rolling_window_short": ROLLING_WINDOW_SHORT,
@@ -1202,10 +1226,10 @@ def export_system_prompt() -> None:
                             "section_label": loc.secondary_point.section_label,
                         },
                     },
-                    "is_refresh": is_refresh,
+                    "is_reissue": is_reissue,
                     **kwargs,
                 },
-                "expected": build_system_prompt(loc, is_refresh=is_refresh, **kwargs),
+                "expected": build_system_prompt(loc, is_reissue=is_reissue, **kwargs),
             }
         )
     write(

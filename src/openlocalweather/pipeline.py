@@ -55,8 +55,9 @@ from typing import Protocol
 from openlocalweather import __version__
 from openlocalweather.aqi import GroundAQISummary, hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.comparison import compute_day_over_day
+from openlocalweather.daypart import DayPart, forward_hours, summarize_daypart
 from openlocalweather.config import LocationConfig
-from openlocalweather.dates import add_days, format_date, today_in_tz
+from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
     HISTORICAL_LOOKBACK_DAYS,
@@ -158,6 +159,7 @@ class ForwardGuidance:
     airport_metar: list[dict] | None
     ground_aqi_readings: list[GroundAQIReading]
     ground_aqi_summary: GroundAQISummary | None
+
     aqi_fetch_time: datetime
     bulletin_text: str
     synoptic: object | None = None
@@ -169,6 +171,11 @@ class ForwardGuidance:
     met_service_valid_for: date | None = None
     met_service_prediction_day3: ModelPrediction | None = None
     met_service_day3_valid_for: date | None = None
+    # Where this run sits in the day, and the hours still ahead of it. Both
+    # live here rather than being computed per call site so the first run of
+    # the day and the fourth cannot disagree about what time it is.
+    issuance: DayPart | None = None
+    forward_hourly: dict | None = None
 
 
 
@@ -230,6 +237,60 @@ def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
             )
 
     return _verify_recorded
+
+
+def _earlier_issuances(entry) -> list[dict]:
+    """Today's already-published narratives, oldest first.
+
+    The log currently stores one narrative per day plus an optional refreshed
+    one, so this returns at most two. It returns a LIST regardless, because
+    the number of runs a day is an operator's choice and the prompt should not
+    have to change when someone schedules a third.
+    """
+    out = []
+    morning = getattr(entry, "narrative_markdown", None)
+    if morning:
+        issued = getattr(entry.meta, "generated_at", None) if hasattr(entry, "meta") else None
+        out.append({"time": _clock(issued) or "earlier today", "narrative": morning})
+    return out
+
+
+def _clock(value) -> str | None:
+    """HH:MM from whatever the log stored, or None if it cannot be read.
+
+    Deliberately forgiving: a timestamp that will not parse is a reason to
+    say "earlier today" rather than to fail a run.
+    """
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%H:%M")
+    except (TypeError, ValueError):
+        return None
+
+
+def _sun_context(location, now_local: datetime) -> DayPart | None:
+    """Sunrise/sunset for today and tomorrow, reduced to the issuance moment.
+
+    Open-Meteo returns these as naive local strings when `timezone=` is set,
+    which is why `now_in_tz` is naive too — see its docstring on why mixing
+    the two would be worse than either.
+    """
+    sun = open_meteo.fetch_sun_times(
+        location.primary_point.lat, location.primary_point.lon, location.timezone
+    )
+    daily = (sun or {}).get("daily") or {}
+    rises, sets = daily.get("sunrise") or [], daily.get("sunset") or []
+    if not rises or not sets:
+        # Polar night returns no sunrise or sunset at all. Not an error, and
+        # not something to fail a forecast over — the reader simply gets no
+        # sun times, which at that latitude is the correct answer.
+        return None
+
+    sunrise = datetime.fromisoformat(rises[0])
+    sunset = datetime.fromisoformat(sets[0])
+    next_sunrise = datetime.fromisoformat(rises[1]) if len(rises) > 1 else None
+    return summarize_daypart(now_local, sunrise, sunset, next_sunrise)
 
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
@@ -294,7 +355,31 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     else:
         bulletin_text = deps.bulletin_fetcher.fetch()
 
+    # Where this run sits in the day, and the hours still ahead of it.
+    #
+    # Both are best-effort: a forecast without them is worse but still a
+    # forecast, whereas a run aborted because an astronomical lookup failed
+    # would turn a nice-to-have into a single point of failure. The prompt
+    # states plainly when they are missing rather than guessing.
+    issuance, forward_hourly = None, None
+    try:
+        now_local = now_in_tz(location.timezone)
+        issuance = _sun_context(location, now_local)
+        forward_hourly = forward_hours(
+            open_meteo.fetch_forecast_hourly_forward(
+                location.primary_point.lat,
+                location.primary_point.lon,
+                MODELS,
+                location.timezone,
+            ),
+            now_local,
+        )
+    except Exception as e:  # noqa: BLE001 - see above; never fatal
+        print(f"Time-of-day context unavailable ({e}); continuing without it.", file=sys.stderr)
+
     return ForwardGuidance(
+        issuance=issuance,
+        forward_hourly=forward_hourly,
         primary_hourly=primary_hourly,
         primary_daily=primary_daily,
         regional_pressure=regional_pressure,
@@ -541,6 +626,8 @@ def run_daily_pipeline(
         },
         local_bulletin_source_name=location.local_bulletin_source_name,
         local_bulletin_text=guidance.bulletin_text,
+        issuance=guidance.issuance,
+        forward_hourly=guidance.forward_hourly,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
@@ -728,7 +815,7 @@ def run_refresh_pipeline(
         "day7": [p.model_dump() for p in existing_entry.model_predictions.day7],
     }
 
-    system_prompt = build_system_prompt(location, is_refresh=True)
+    system_prompt = build_system_prompt(location, is_reissue=True)
     user_prompt = build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
@@ -753,7 +840,13 @@ def run_refresh_pipeline(
         },
         local_bulletin_source_name=location.local_bulletin_source_name,
         local_bulletin_text=guidance.bulletin_text,
-        morning_narrative=existing_entry.narrative_markdown,
+        issuance=guidance.issuance,
+        forward_hourly=guidance.forward_hourly,
+        # Every issuance already published today, in order. Was a single
+        # `morning_narrative`, which assumed the day has exactly two runs; an
+        # operator may schedule two or five, and each one after the first
+        # needs to know what its readers have already been told.
+        earlier_today=_earlier_issuances(existing_entry),
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the

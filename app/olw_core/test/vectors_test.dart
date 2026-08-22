@@ -274,7 +274,7 @@ void main() {
           historicalLookbackDaysArg: i['historical_lookback_days'] as int,
           rollingWindowShortArg: i['rolling_window_short'] as int,
           rollingWindowLongArg: i['rolling_window_long'] as int,
-          isRefresh: i['is_refresh'] as bool,
+          isReissue: i['is_reissue'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -665,7 +665,11 @@ void main() {
           todayWeatherData: (i['today_weather_data'] as Map).cast<String, Object?>(),
           localBulletinSourceName: i['local_bulletin_source_name'] as String,
           localBulletinText: i['local_bulletin_text'] as String,
-          morningNarrative: i['morning_narrative'] as String?,
+          earlierToday: (i['earlier_today'] as List?)
+              ?.map((e) => (e as Map).cast<String, Object?>())
+              .toList(),
+          issuance: i['issuance'],
+          forwardHourly: i['forward_hourly'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
         );

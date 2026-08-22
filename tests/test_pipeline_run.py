@@ -96,6 +96,28 @@ class FakeLLMProvider:
         return self.response
 
 
+def sun_fixture():
+    """Kisumu's real figures for the fixture date — sunset at 18:47 is the
+    number that started this: the "evening" run fires 32 minutes before it."""
+    return {
+        "daily": {
+            "time": ["2026-08-11", "2026-08-12"],
+            "sunrise": ["2026-08-11T06:40", "2026-08-12T06:40"],
+            "sunset": ["2026-08-11T18:47", "2026-08-12T18:46"],
+        }
+    }
+
+
+def forward_hourly_fixture():
+    """Two days of hourly data, so a run at any hour has hours still ahead."""
+    times, precip = [], []
+    for i in range(48):
+        day = 11 + i // 24
+        times.append(f"2026-08-{day:02d}T{i % 24:02d}:00")
+        precip.append(0.0)
+    return {"hourly": {"time": times, "precipitation_gfs_seamless": precip}}
+
+
 @pytest.fixture(autouse=True)
 def patch_fetches(monkeypatch):
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: hourly_fixture())
@@ -103,6 +125,14 @@ def patch_fetches(monkeypatch):
     monkeypatch.setattr(open_meteo, "fetch_regional_pressure", lambda *a, **k: {"daily": {}})
     monkeypatch.setattr(open_meteo, "fetch_synoptic_pressure", lambda *a, **k: {"points": []})
     monkeypatch.setattr(open_meteo, "fetch_air_quality", lambda *a, **k: {"hourly": {}})
+    # Time-of-day context. Mocked rather than left to degrade, because the
+    # pipeline treats these as best-effort — an unmocked failure here is
+    # invisible, and every prompt assertion below would then be checking the
+    # DEGRADED path while appearing to check the real one.
+    monkeypatch.setattr(open_meteo, "fetch_sun_times", lambda *a, **k: sun_fixture())
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
+    )
     monkeypatch.setattr(
         open_meteo, "fetch_archive_single_day", lambda lat, lon, day, tz: archive_fixture(day)
     )
@@ -640,7 +670,7 @@ def test_refresh_never_emails_even_when_email_sender_configured(tmp_path):
     assert emailed_entries == []
 
 
-def test_refresh_llm_receives_refresh_mode_prompt_and_morning_narrative(tmp_path):
+def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_path):
     morning_llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
 
@@ -648,9 +678,36 @@ def test_refresh_llm_receives_refresh_mode_prompt_and_morning_narrative(tmp_path
     run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
 
     system_prompt, user_prompt = evening_llm.calls[0]
-    assert "REFRESH MODE" in system_prompt
-    assert "MORNING NARRATIVE" in user_prompt
+    assert "LATER ISSUANCE" in system_prompt
+    assert "EARLIER TODAY" in user_prompt
     assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
+
+
+def test_every_run_is_told_what_time_it_is(tmp_path):
+    """The bug this whole change exists for: the prompt carried a date and
+    nothing else, so a run could not tell 06:00 from 18:00 and wrote as though
+    the whole day were still ahead."""
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "ISSUED:" in user_prompt
+    assert "WHAT MATTERS NOW:" in user_prompt
+    assert "sunset 18:47" in user_prompt
+
+
+def test_the_hours_ahead_are_supplied_separately_from_the_calendar_day(tmp_path):
+    """A run issued in the evening was being asked to talk about tonight while
+    holding only 00:00-23:00 of today."""
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "HOURS AHEAD" in user_prompt
+    assert "TODAY'S MULTI-MODEL GUIDANCE" in user_prompt, (
+        "the full calendar day is still needed for daily totals and the "
+        "day-over-day comparison"
+    )
 
 
 def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):

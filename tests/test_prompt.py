@@ -173,21 +173,40 @@ def test_user_prompt_includes_weather_data_sections():
 
 def test_system_prompt_refresh_block_absent_by_default():
     prompt = build_system_prompt(KISUMU)
-    assert "REFRESH MODE" not in prompt
+    assert "LATER ISSUANCE" not in prompt
 
 
-def test_system_prompt_refresh_block_present_when_requested():
-    prompt = build_system_prompt(KISUMU, is_refresh=True)
-    assert "REFRESH MODE" in prompt
-    assert "MORNING NARRATIVE" in prompt
+def test_system_prompt_reissue_block_present_when_requested():
+    prompt = build_system_prompt(KISUMU, is_reissue=True)
+    assert "LATER ISSUANCE" in prompt
+    assert "EARLIER TODAY" in prompt
     assert "not a repeat" in prompt
     assert 'empty array for "skill_profile_summaries"' in prompt
 
 
-def test_system_prompt_refresh_does_not_disturb_heading_order():
-    # The refresh block is instructional text, not a narrative heading —
+def test_a_later_issuance_is_allowed_to_say_nothing_has_changed():
+    """The most likely honest answer for a second run four hours later, and
+    the one a model will avoid unless told it is acceptable — padding an
+    update to look thorough is exactly how a forecast starts repeating itself."""
+    prompt = build_system_prompt(KISUMU, is_reissue=True)
+    assert "nothing material has changed" in prompt
+    assert "Do not manufacture change" in prompt
+
+
+def test_every_run_is_told_to_lead_with_what_matters_now():
+    """Present on EVERY run, not just later ones: a first run at 06:00 and a
+    first run at 16:00 are both possible once an operator picks their own
+    schedule, and neither should describe a day that has largely happened."""
+    prompt = build_system_prompt(KISUMU)
+    assert "ISSUANCE TIME" in prompt
+    assert "WHAT MATTERS NOW" in prompt
+    assert "dusk through to dawn" in prompt
+
+
+def test_system_prompt_reissue_does_not_disturb_heading_order():
+    # The reissue block is instructional text, not a narrative heading —
     # must not add or reorder the actual ## headings the LLM is told to use.
-    prompt = build_system_prompt(KISUMU, is_refresh=True)
+    prompt = build_system_prompt(KISUMU, is_reissue=True)
     top_level = [t for level, t in headings(prompt) if level == "##"]
     assert top_level == [
         "Overview",
@@ -199,26 +218,33 @@ def test_system_prompt_refresh_does_not_disturb_heading_order():
     ]
 
 
-def test_user_prompt_omits_morning_narrative_block_by_default():
+def test_user_prompt_omits_earlier_today_block_by_default():
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
         verification_context={}, track_record_context=[], historical_logs=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
     )
-    assert "MORNING NARRATIVE" not in prompt
+    assert "EARLIER TODAY" not in prompt
 
 
-def test_user_prompt_includes_morning_narrative_when_given():
+def test_user_prompt_lists_every_earlier_issuance_with_its_time():
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
         verification_context={}, track_record_context=[], historical_logs=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
-        morning_narrative="## Overview\nSunny and warm today.",
+        earlier_today=[
+            {"time": "06:07", "narrative": "## Overview\nSunny and warm today."},
+            {"time": "13:02", "narrative": "## Overview\nCloud building inland."},
+        ],
     )
-    assert "MORNING NARRATIVE" in prompt
+    # A list, not a single "morning narrative": the number of runs a day is
+    # the operator's choice, and the third one needs to know about the second.
+    assert "EARLIER TODAY" in prompt
+    assert "Issued 06:07" in prompt and "Issued 13:02" in prompt
     assert "Sunny and warm today." in prompt
+    assert "Cloud building inland." in prompt
     assert "not a repeat" in prompt
 
 

@@ -21,13 +21,15 @@ String buildSystemPrompt(
   int historicalLookbackDaysArg = historicalLookbackDays,
   int rollingWindowShortArg = rollingWindowShort,
   int rollingWindowLongArg = rollingWindowLong,
-  bool isRefresh = false,
+  bool isReissue = false,
 }) {
-  final refreshBlock = isRefresh
+  final reissueBlock = isReissue
       ? '''
 
 
-REFRESH MODE (this run only): this is a same-day UPDATE issued after the morning forecast, using a fresher model cycle - not a new day's forecast. No new verification has happened since the morning run (yesterday's actuals don't change during the day), so for "yesterday_verification" and "verification_notes" write a brief one-line placeholder noting this is a same-day refresh with no new verification - these two fields are read but NOT stored from a refresh response, so their exact wording doesn't matter, just don't leave them empty or fabricate new verification content. Return an empty array for "skill_profile_summaries" this run. The user message includes MORNING NARRATIVE - the forecast already published around 6 AM. Your job is to write an UPDATE, not a repeat: open the Overview by saying what has changed since the morning issuance (or say explicitly that nothing material has changed), shift emphasis toward tonight and tomorrow rather than re-covering the whole day, and only revisit the extended outlook if the fresher model cycle meaningfully altered it. Still follow the exact heading structure and every other instruction below.'''
+LATER ISSUANCE (this run only): a forecast for today has already been published — see EARLIER TODAY in the user message, which lists each previous issuance with the time it went out. Yesterday's actuals do not change during the day, so no new verification has happened: write a brief one-line placeholder for "yesterday_verification" and "verification_notes" noting this, and return an empty array for "skill_profile_summaries". Those three fields are read but NOT stored on a later issuance, so their wording does not matter; just do not leave them empty or invent verification that did not occur.
+
+Your job is an UPDATE, not a repeat. Open the Overview with what has changed since the last issuance. If nothing material has changed, say so plainly in a sentence and move on - a reader who has already read this morning's forecast is asking "is it still right?", and the honest answer to that is often "yes", said briefly. Do not manufacture change to justify the update, and do not restate the earlier forecast at length in order to look thorough. Only revisit the extended outlook if the fresher model cycle actually moved it.'''
       : '';
 
   final s = location.secondaryPoint;
@@ -74,7 +76,15 @@ DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
 - Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor's most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading's number into that summary yourself.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
-$refreshBlock
+
+ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
+
+"Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.
+
+HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, which is the data to reason from for near-term timing. TODAY'S MULTI-MODEL GUIDANCE still carries the full calendar day, needed for daily totals and for the day-over-day comparison; do not use it to describe the day as though it were all still ahead.
+
+The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, never recompute them, and never estimate sunset from latitude or season yourself.
+$reissueBlock
 ---
 
 ### WORKFLOW & INSTRUCTIONS:
@@ -139,9 +149,43 @@ String promptJson(Object? value) =>
 /// `yesterdayActual` is what was OBSERVED yesterday, distinct from
 /// `verificationContext`, which is how yesterday's *predictions* scored.
 ///
-/// `morningNarrative`, when given, marks this as an evening refresh: the
-/// narrative already published that morning, so the model writes an update
-/// rather than an unrelated repeat.
+/// `earlierToday`, when given, lists this day's previous issuances as
+/// {"time", "narrative"} in the order they went out. A LIST rather than the
+/// single morning narrative it replaces, because the day is no longer assumed
+/// to have exactly two runs — an operator may schedule two or five, and each
+/// one after the first needs to know what its readers were already told.
+///
+/// `issuance` carries the local time, the part of the day, and what a reader
+/// at this hour actually wants. Before it existed the prompt carried a date
+/// and nothing else, so a run at 18:15 could not tell itself apart from one
+/// at 06:00 and wrote as though the whole day were still ahead.
+///
+/// `forwardHourly` is hourly guidance trimmed to the hours still to come.
+/// Narrative input only — never scored, because per-model predictions come
+/// from the untrimmed day-0 fetch and must, or a model would be judged on a
+/// partial day against a full day's observation.
+/// The one line telling the model when it is writing.
+///
+/// Everything in it is computed in `daypart` — the time, the phase, the
+/// minutes to sunset, and which periods matter now. The model is told, never
+/// asked to work it out, exactly as with every other number here.
+String issuedLine(Object? issuance) {
+  if (issuance == null) {
+    return 'Time of day unavailable this run — write for the day as a whole.';
+  }
+  final d = issuance is Map<String, Object?>
+      ? issuance
+      : (issuance as dynamic).toJson() as Map<String, Object?>;
+  final horizonRaw = d['horizon'];
+  final horizon = (horizonRaw is List && horizonRaw.isNotEmpty)
+      ? horizonRaw.join(', then ')
+      : 'today';
+  return '${d['statement'] ?? ''} '
+      'Part of day: ${d['phase'] ?? 'unknown'}. '
+      'Sunrise ${d['sunrise'] ?? '?'}, sunset ${d['sunset'] ?? '?'}. '
+      'WHAT MATTERS NOW: $horizon.';
+}
+
 String buildUserPrompt({
   required DateTime today,
   required DateTime yesterday,
@@ -155,14 +199,21 @@ String buildUserPrompt({
   required Map<String, Object?> todayWeatherData,
   required String localBulletinSourceName,
   required String localBulletinText,
-  String? morningNarrative,
+  List<Map<String, Object?>>? earlierToday,
+  Object? issuance,
+  Object? forwardHourly,
   Object? reviewContext,
   Object? modelPredictionsContext,
   int historicalLookbackDaysArg = historicalLookbackDays,
 }) {
-  final morningNarrativeBlock = (morningNarrative == null || morningNarrative.isEmpty)
+  final earlierBlock = (earlierToday == null || earlierToday.isEmpty)
       ? ''
-      : '\n\nMORNING NARRATIVE (already published ~6 AM — this refresh should read as an update to it, not a repeat):\n$morningNarrative';
+      : '\n\nEARLIER TODAY (already published — this issuance must read as '
+          'an update to these, not a repeat of them):\n' +
+          earlierToday
+              .map((e) =>
+                  'Issued ${e['time'] ?? 'earlier'}:\n${e['narrative'] ?? ''}')
+              .join('\n\n');
 
   // Rebuilt key-by-key rather than passed through, so an extra key in the
   // caller's map can never silently enlarge the prompt.
@@ -182,6 +233,11 @@ String buildUserPrompt({
   return '''
 
 Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Public Webpage: $publicWebpageUrl
+
+ISSUED: ${issuedLine(issuance)}
+
+HOURS AHEAD (hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing):
+${forwardHourly == null ? 'Unavailable this run.' : promptJson(forwardHourly)}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code - write ABOUT these, don't recompute):
 ${promptJson(verificationContext)}
@@ -211,6 +267,6 @@ LONG-RUN REVIEW (computed in code over the whole stored record — these are the
 ${reviewContext == null ? 'Unavailable — no review computed this run.' : promptJson(reviewContext)}
 
 LOCAL BULLETIN ($localBulletinSourceName):
-$localBulletinText$morningNarrativeBlock
+$localBulletinText$earlierBlock
 ''';
 }

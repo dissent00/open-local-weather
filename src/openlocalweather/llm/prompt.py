@@ -27,13 +27,15 @@ def build_system_prompt(
     historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
-    is_refresh: bool = False,
+    is_reissue: bool = False,
 ) -> str:
-    refresh_block = (
+    reissue_block = (
         """
 
-REFRESH MODE (this run only): this is a same-day UPDATE issued after the morning forecast, using a fresher model cycle - not a new day's forecast. No new verification has happened since the morning run (yesterday's actuals don't change during the day), so for "yesterday_verification" and "verification_notes" write a brief one-line placeholder noting this is a same-day refresh with no new verification - these two fields are read but NOT stored from a refresh response, so their exact wording doesn't matter, just don't leave them empty or fabricate new verification content. Return an empty array for "skill_profile_summaries" this run. The user message includes MORNING NARRATIVE - the forecast already published around 6 AM. Your job is to write an UPDATE, not a repeat: open the Overview by saying what has changed since the morning issuance (or say explicitly that nothing material has changed), shift emphasis toward tonight and tomorrow rather than re-covering the whole day, and only revisit the extended outlook if the fresher model cycle meaningfully altered it. Still follow the exact heading structure and every other instruction below."""
-        if is_refresh
+LATER ISSUANCE (this run only): a forecast for today has already been published — see EARLIER TODAY in the user message, which lists each previous issuance with the time it went out. Yesterday's actuals do not change during the day, so no new verification has happened: write a brief one-line placeholder for "yesterday_verification" and "verification_notes" noting this, and return an empty array for "skill_profile_summaries". Those three fields are read but NOT stored on a later issuance, so their wording does not matter; just do not leave them empty or invent verification that did not occur.
+
+Your job is an UPDATE, not a repeat. Open the Overview with what has changed since the last issuance. If nothing material has changed, say so plainly in a sentence and move on - a reader who has already read this morning's forecast is asking "is it still right?", and the honest answer to that is often "yes", said briefly. Do not manufacture change to justify the update, and do not restate the earlier forecast at length in order to look thorough. Only revisit the extended outlook if the fresher model cycle actually moved it."""
+        if is_reissue
         else ""
     )
 
@@ -83,7 +85,15 @@ DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
 - Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor's most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading's number into that summary yourself.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
-{refresh_block}
+
+ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
+
+"Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.
+
+HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, which is the data to reason from for near-term timing. TODAY'S MULTI-MODEL GUIDANCE still carries the full calendar day, needed for daily totals and for the day-over-day comparison; do not use it to describe the day as though it were all still ahead.
+
+The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, never recompute them, and never estimate sunset from latitude or season yourself.
+{reissue_block}
 ---
 
 ### WORKFLOW & INSTRUCTIONS:
@@ -132,6 +142,25 @@ def _json(value: Any) -> str:
     return json.dumps(value, indent=2, default=str)
 
 
+def _issued_line(issuance: Any) -> str:
+    """The one line telling the model when it is writing.
+
+    Everything in it is computed in `daypart` — the time, the phase, the
+    minutes to sunset, and which periods matter now. The model is told, never
+    asked to work it out, exactly as with every other number here.
+    """
+    if issuance is None:
+        return "Time of day unavailable this run — write for the day as a whole."
+    d = issuance.to_json() if hasattr(issuance, "to_json") else issuance
+    horizon = ", then ".join(d.get("horizon") or []) or "today"
+    return (
+        f"{d.get('statement', '')} "
+        f"Part of day: {d.get('phase', 'unknown')}. "
+        f"Sunrise {d.get('sunrise', '?')}, sunset {d.get('sunset', '?')}. "
+        f"WHAT MATTERS NOW: {horizon}."
+    )
+
+
 def build_user_prompt(
     today: date,
     yesterday: date,
@@ -145,7 +174,9 @@ def build_user_prompt(
     today_weather_data: dict[str, Any],
     local_bulletin_source_name: str,
     local_bulletin_text: str,
-    morning_narrative: str | None = None,
+    earlier_today: list[dict] | None = None,
+    issuance: Any = None,
+    forward_hourly: Any = None,
     review_context: Any = None,
     model_predictions_context: Any = None,
 ) -> str:
@@ -170,16 +201,33 @@ def build_user_prompt(
     numbers appear in the published text, so any reader can check the
     subtraction.
 
-    `morning_narrative`, when given, is an evening REFRESH run's only
-    refresh-specific input: the narrative already published around 6 AM,
-    so the LLM can write an update rather than an unrelated repeat. See
-    build_system_prompt's `is_refresh` for the matching instructions.
+    `earlier_today`, when given, lists this day's previous issuances as
+    {"time", "narrative"} in the order they went out. It replaces what used
+    to be a single `morning_narrative`, because the day is no longer assumed
+    to have exactly two runs: an operator may schedule two or five, and each
+    one after the first needs to know what its readers have already been
+    told. See build_system_prompt's `is_reissue`.
+
+    `issuance` is a DayPart — the local time, the part of the day, and what a
+    reader at this hour actually wants. Before it existed the prompt carried a
+    date and nothing else, so a run at 18:15 could not tell itself apart from
+    one at 06:00, and reliably wrote as though the whole day were ahead.
+
+    `forward_hourly` is the multi-model hourly guidance trimmed to the hours
+    still to come. It is narrative input only and is never scored — per-model
+    predictions come from the untrimmed day-0 fetch, and must, or a model
+    would be judged on a partial day against a full day's observation.
     """
-    morning_narrative_block = (
-        f"\n\nMORNING NARRATIVE (already published ~6 AM — this refresh should read as an update to it, not a repeat):\n{morning_narrative}"
-        if morning_narrative
-        else ""
-    )
+    earlier_block = ""
+    if earlier_today:
+        issued = "\n\n".join(
+            f"Issued {e.get('time', 'earlier')}:\n{e.get('narrative', '')}"
+            for e in earlier_today
+        )
+        earlier_block = (
+            "\n\nEARLIER TODAY (already published — this issuance must read as "
+            "an update to these, not a repeat of them):\n" + issued
+        )
     weather_payload = {
         "primary_today_hourly": today_weather_data.get("primary_today_hourly"),
         "primary_extended_daily": today_weather_data.get("primary_extended_daily"),
@@ -199,6 +247,11 @@ def build_user_prompt(
 
     return f"""
 Today's Date: {today.isoformat()} | Yesterday: {yesterday.isoformat()} | Public Webpage: {public_webpage_url}
+
+ISSUED: {_issued_line(issuance)}
+
+HOURS AHEAD (hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing):
+{_json(forward_hourly) if forward_hourly is not None else "Unavailable this run."}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code - write ABOUT these, don't recompute):
 {_json(verification_context)}
@@ -228,5 +281,5 @@ LONG-RUN REVIEW (computed in code over the whole stored record — these are the
 {_json(review_context) if review_context is not None else "Unavailable — no review computed this run."}
 
 LOCAL BULLETIN ({local_bulletin_source_name}):
-{local_bulletin_text}{morning_narrative_block}
+{local_bulletin_text}{earlier_block}
 """

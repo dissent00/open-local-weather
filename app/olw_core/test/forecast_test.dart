@@ -239,7 +239,7 @@ void main() {
     expect(llm.seenUserPrompt, contains('locates a direction, not a centre or a front'));
   });
 
-  test('an evening refresh is issued as a refresh', () async {
+  test('a later issuance is told it is one, and shown every earlier narrative', () async {
     final llm = _StubProvider();
     await generateForecast(
       client: mockClient(),
@@ -247,10 +247,17 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
-      morningNarrative: 'Warm and dry through the morning.',
+      earlierToday: const [
+        {'time': '06:07', 'narrative': 'Warm and dry through the morning.'},
+        {'time': '13:02', 'narrative': 'Cloud building over the lake.'},
+      ],
     );
-    expect(llm.seenSystemPrompt, contains('REFRESH MODE'));
-    expect(llm.seenUserPrompt, contains('MORNING NARRATIVE'));
+    expect(llm.seenSystemPrompt, contains('LATER ISSUANCE'));
+    expect(llm.seenUserPrompt, contains('EARLIER TODAY'));
+    // A list, not one narrative: the number of runs a day is the operator's
+    // choice, and the third needs to know about the second.
+    expect(llm.seenUserPrompt, contains('Issued 06:07'));
+    expect(llm.seenUserPrompt, contains('Issued 13:02'));
     expect(llm.seenUserPrompt, contains('Warm and dry through the morning.'));
   });
 }

@@ -27,7 +27,7 @@ void main(List<String> args) {
       historicalLookbackDaysArg: i['historical_lookback_days'] as int,
       rollingWindowShortArg: i['rolling_window_short'] as int,
       rollingWindowLongArg: i['rolling_window_long'] as int,
-      isRefresh: i['is_refresh'] as bool,
+      isReissue: i['is_reissue'] as bool,
     ));
   }
   print(jsonEncode(out));
