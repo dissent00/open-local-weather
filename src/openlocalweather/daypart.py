@@ -89,7 +89,19 @@ class DayPart:
 
 
 def _mins(delta: timedelta) -> int:
-    return int(round(delta.total_seconds() / 60))
+    """Whole minutes, rounded half-UP by integer arithmetic.
+
+    Not `round()`. Python's round() is half-to-EVEN and Dart's .round() is
+    half-away-from-zero, so a duration with a 30-second remainder would come
+    out a minute apart in the two implementations — the same divergence that
+    once put "1006 hPa" on the site and "1007 hPa" in the app, and which no
+    behavioural test catches because both answers look reasonable.
+
+    Integer arithmetic sidesteps the question: there is no floating-point
+    halfway case to disagree about.
+    """
+    seconds = int(delta.total_seconds())
+    return (seconds + 30) // 60 if seconds >= 0 else -((-seconds + 30) // 60)
 
 
 def _hhmm(t: datetime) -> str:

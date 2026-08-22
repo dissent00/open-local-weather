@@ -15,6 +15,7 @@
 /// See `spec/README.md` for why that direction matters.
 library;
 
+export 'src/daypart.dart';
 export 'src/aqi.dart';
 export 'src/coverage.dart';
 export 'src/dates.dart';

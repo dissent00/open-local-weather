@@ -693,6 +693,65 @@ void main() {
     });
   });
 
+  group('daypart', () {
+    test('the part of day matches Python, statements included', () {
+      // Every string here goes into the prompt verbatim, so a difference of
+      // one word between the two implementations is a difference in what the
+      // model is told.
+      for (final c in loadVectors('daypart.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final next = i['next_sunrise'] as String?;
+        final got = summarizeDaypart(
+          DateTime.parse(i['now'] as String),
+          DateTime.parse(i['sunrise'] as String),
+          DateTime.parse(i['sunset'] as String),
+          next == null ? null : DateTime.parse(next),
+        ).toJson();
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
+    test('the no-sun fallback matches Python', () {
+      for (final c in loadVectors('daypart_without_sun.json')['cases'] as List) {
+        final got = daypartWithoutSun(
+                DateTime.parse(((c as Map)['input'] as Map)['now'] as String))
+            .toJson();
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
+    test('the clock reconciliation matches Python', () {
+      for (final c in loadVectors('daypart_clock.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final r = reconcileNow(
+          DateTime.parse(i['system_local'] as String),
+          i['server_date_header'] as String?,
+          i['utc_offset_seconds'] as int?,
+        );
+        expect(
+          {
+            'now': r.now.toIso8601String().replaceFirst(RegExp(r'\.\d+$'), ''),
+            'warned': r.warning != null,
+          },
+          equals(c['expected']),
+          reason: 'case "${c['name']}"',
+        );
+      }
+    });
+
+    test('the forward-hours trim matches Python', () {
+      for (final c in loadVectors('daypart_forward_hours.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = forwardHours(
+          (i['hourly_multi_model'] as Map).cast<String, Object?>(),
+          DateTime.parse(i['now'] as String),
+        );
+        expect(jsonDecode(jsonEncode(got)), equals(c['expected']),
+            reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -718,6 +777,10 @@ void main() {
       'spend.json',
       'verification.json',
       'day_over_day.json',
+      'daypart.json',
+      'daypart_without_sun.json',
+      'daypart_clock.json',
+      'daypart_forward_hours.json',
     };
     final onDisk = vectorsDir
         .listSync()

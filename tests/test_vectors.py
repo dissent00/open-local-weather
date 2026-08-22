@@ -36,6 +36,12 @@ from openlocalweather.extract import (
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
 from openlocalweather.comparison import compute_day_over_day
+from openlocalweather.daypart import (
+    daypart_without_sun,
+    forward_hours,
+    reconcile_now,
+    summarize_daypart,
+)
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.llm.schema import (
@@ -483,6 +489,10 @@ def test_every_vector_file_is_exercised():
         "spend.json",
         "verification.json",
         "day_over_day.json",
+        "daypart.json",
+        "daypart_without_sun.json",
+        "daypart_clock.json",
+        "daypart_forward_hours.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (
@@ -510,3 +520,40 @@ def test_readme_coverage_table_lists_every_vector():
         f"undocumented vectors: {sorted(on_disk - documented)}; "
         f"documented but missing: {sorted(documented - on_disk)}"
     )
+
+
+def test_vectors_daypart():
+    for c in load("daypart.json")["cases"]:
+        i = c["input"]
+        nxt = i.get("next_sunrise")
+        got = summarize_daypart(
+            datetime.fromisoformat(i["now"]),
+            datetime.fromisoformat(i["sunrise"]),
+            datetime.fromisoformat(i["sunset"]),
+            datetime.fromisoformat(nxt) if nxt else None,
+        )
+        check(c, got.to_json())
+
+
+def test_vectors_daypart_without_sun():
+    for c in load("daypart_without_sun.json")["cases"]:
+        got = daypart_without_sun(datetime.fromisoformat(c["input"]["now"]))
+        check(c, got.to_json())
+
+
+def test_vectors_daypart_clock():
+    for c in load("daypart_clock.json")["cases"]:
+        i = c["input"]
+        now, warning = reconcile_now(
+            datetime.fromisoformat(i["system_local"]),
+            i["server_date_header"],
+            i["utc_offset_seconds"],
+        )
+        check(c, {"now": now.isoformat(), "warned": warning is not None})
+
+
+def test_vectors_daypart_forward_hours():
+    for c in load("daypart_forward_hours.json")["cases"]:
+        i = c["input"]
+        got = forward_hours(i["hourly_multi_model"], datetime.fromisoformat(i["now"]))
+        check(c, got)

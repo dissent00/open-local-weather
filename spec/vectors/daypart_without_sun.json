@@ -1,0 +1,47 @@
+{
+  "vector_format_version": 1,
+  "function": "daypart_without_sun",
+  "description": "The issuance moment when sunrise and sunset could not be fetched. The phase is 'unknown' rather than guessed from the clock, but the horizon stays precise because midnight is midnight at every latitude.",
+  "cases": [
+    {
+      "name": "dusk-ish, sun unknown",
+      "input": {
+        "now": "2026-08-22T18:15"
+      },
+      "expected": {
+        "local_time": "18:15",
+        "phase": "unknown",
+        "minutes_since_sunrise": null,
+        "minutes_to_sunset": null,
+        "sunrise": "",
+        "sunset": "",
+        "daylight_hours_left": 0,
+        "statement": "It is 18:15. Sunrise and sunset could not be retrieved for this location today, so treat the part of day as unknown.",
+        "horizon": [
+          "the rest of today, through to midnight",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "morning, sun unknown",
+      "input": {
+        "now": "2026-08-22T09:00"
+      },
+      "expected": {
+        "local_time": "09:00",
+        "phase": "unknown",
+        "minutes_since_sunrise": null,
+        "minutes_to_sunset": null,
+        "sunrise": "",
+        "sunset": "",
+        "daylight_hours_left": 0,
+        "statement": "It is 09:00. Sunrise and sunset could not be retrieved for this location today, so treat the part of day as unknown.",
+        "horizon": [
+          "the rest of today, through to midnight",
+          "tomorrow"
+        ]
+      }
+    }
+  ]
+}

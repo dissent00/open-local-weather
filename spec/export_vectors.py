@@ -1302,9 +1302,196 @@ def export_day_over_day() -> None:
     )
 
 
+
+def export_daypart() -> None:
+    from datetime import datetime as _dt
+
+    from openlocalweather.daypart import (
+        daypart_without_sun,
+        forward_hours,
+        reconcile_now,
+        summarize_daypart,
+    )
+
+    # Kisumu's real figures for 2026-08-22. The 18:15 case is the one that
+    # started all of this: sunset was 18:47, so the "evening" run fires 32
+    # minutes BEFORE sunset.
+    sr = "2026-08-22T06:40"
+    ss = "2026-08-22T18:47"
+    nsr = "2026-08-23T06:40"
+
+    cases = []
+    for label, now in [
+        ("night, small hours", "2026-08-22T02:00"),
+        ("before sunrise", "2026-08-22T06:20"),
+        ("just after sunrise", "2026-08-22T06:50"),
+        ("morning", "2026-08-22T09:00"),
+        ("midday", "2026-08-22T12:30"),
+        ("afternoon", "2026-08-22T15:00"),
+        ("dusk — the 18:15 run", "2026-08-22T18:15"),
+        ("evening, after dark", "2026-08-22T21:00"),
+        ("late night", "2026-08-22T23:30"),
+        # A 30-second remainder: the halfway case where Python's half-to-even
+        # round() and Dart's half-away-from-zero .round() disagree.
+        ("half-minute rounding", "2026-08-22T18:16:30"),
+    ]:
+        cases.append(
+            {
+                "name": label,
+                "input": {"now": now, "sunrise": sr, "sunset": ss, "next_sunrise": nsr},
+                "expected": summarize_daypart(
+                    _dt.fromisoformat(now),
+                    _dt.fromisoformat(sr),
+                    _dt.fromisoformat(ss),
+                    _dt.fromisoformat(nsr),
+                ).to_json(),
+            }
+        )
+
+    # THE SAME CLOCK TIME AT THREE DIFFERENT SUN POSITIONS.
+    #
+    # Without these the whole vector set can be satisfied by a table of clock
+    # hours, because every other case shares one sunrise and one sunset. A
+    # port could hard-code "18:00 is dusk" and pass — then be wrong at every
+    # latitude this project is meant to be forked to. Verified: replacing the
+    # sun-relative logic with clock hours passes the rest of the set.
+    for label, now, rise, set_, why in [
+        ("18:00 in Kisumu in August", "2026-08-22T18:00", "2026-08-22T06:40",
+         "2026-08-22T18:47", "nearly sunset"),
+        ("18:00 far north in summer", "2026-08-22T18:00", "2026-08-22T03:30",
+         "2026-08-22T22:30", "sun still high"),
+        ("18:00 far north in winter", "2026-08-22T18:00", "2026-08-22T09:30",
+         "2026-08-22T15:15", "long dark"),
+        # 05:00 is "night" on any clock table, but not where the sun rose at
+        # 03:30.
+        ("05:00 far north in summer", "2026-08-22T05:00", "2026-08-22T03:30",
+         "2026-08-22T22:30", "well after sunrise"),
+    ]:
+        cases.append(
+            {
+                "name": f"{label} — {why}",
+                "input": {"now": now, "sunrise": rise, "sunset": set_, "next_sunrise": None},
+                "expected": summarize_daypart(
+                    _dt.fromisoformat(now), _dt.fromisoformat(rise), _dt.fromisoformat(set_)
+                ).to_json(),
+            }
+        )
+
+    # Polar cases, from the shapes Open-Meteo actually returns.
+    for label, now, rise, set_ in [
+        ("midnight sun, 23:00", "2026-06-21T23:00", "2026-06-21T00:00", "2026-06-22T00:00"),
+        ("midnight sun, 02:00", "2026-06-21T02:00", "2026-06-21T00:00", "2026-06-22T00:00"),
+        ("polar night", "2026-12-21T10:00", "2026-12-21T11:30", "2026-12-21T12:30"),
+    ]:
+        cases.append(
+            {
+                "name": label,
+                "input": {"now": now, "sunrise": rise, "sunset": set_, "next_sunrise": None},
+                "expected": summarize_daypart(
+                    _dt.fromisoformat(now), _dt.fromisoformat(rise), _dt.fromisoformat(set_)
+                ).to_json(),
+            }
+        )
+
+    write(
+        "daypart.json",
+        "summarize_daypart",
+        "Where the issuance moment sits in the day. Phases are sun-relative, "
+        "not clock-based, so the same clock time is a different part of the "
+        "day at a different latitude or season. Every string here is written "
+        "into the prompt verbatim, so the two implementations must agree "
+        "character for character.",
+        cases,
+    )
+
+    no_sun = [
+        {
+            "name": label,
+            "input": {"now": now},
+            "expected": daypart_without_sun(_dt.fromisoformat(now)).to_json(),
+        }
+        for label, now in [
+            ("dusk-ish, sun unknown", "2026-08-22T18:15"),
+            ("morning, sun unknown", "2026-08-22T09:00"),
+        ]
+    ]
+    write(
+        "daypart_without_sun.json",
+        "daypart_without_sun",
+        "The issuance moment when sunrise and sunset could not be fetched. "
+        "The phase is 'unknown' rather than guessed from the clock, but the "
+        "horizon stays precise because midnight is midnight at every latitude.",
+        no_sun,
+    )
+
+    clock = []
+    for label, sys_local, header, offset in [
+        ("agrees", "2026-08-22T07:01", "Sat, 22 Aug 2026 04:00:00 GMT", 10800),
+        ("wildly wrong", "2026-08-22T19:00", "Sat, 22 Aug 2026 04:00:00 GMT", 10800),
+        ("exactly at the skew limit", "2026-08-22T07:05", "Sat, 22 Aug 2026 04:00:00 GMT", 10800),
+        ("one minute past the limit", "2026-08-22T07:06", "Sat, 22 Aug 2026 04:00:00 GMT", 10800),
+        ("no header", "2026-08-22T07:00", None, 10800),
+        ("unparseable header", "2026-08-22T07:00", "not a date", 10800),
+        ("no offset", "2026-08-22T07:00", "Sat, 22 Aug 2026 04:00:00 GMT", None),
+    ]:
+        got, warning = reconcile_now(_dt.fromisoformat(sys_local), header, offset)
+        clock.append(
+            {
+                "name": label,
+                "input": {
+                    "system_local": sys_local,
+                    "server_date_header": header,
+                    "utc_offset_seconds": offset,
+                },
+                "expected": {"now": got.isoformat(), "warned": warning is not None},
+            }
+        )
+    write(
+        "daypart_clock.json",
+        "reconcile_now",
+        "A second opinion on the system clock, from the Date header of a "
+        "response already being fetched. Past five minutes of disagreement "
+        "the server is believed. A missing or unparseable header stops the "
+        "check rather than triggering it — an absent header is not evidence.",
+        clock,
+    )
+
+    fw_input = {
+        "hourly": {
+            "time": [
+                f"2026-08-{22 + (i // 24):02d}T{i % 24:02d}:00" for i in range(48)
+            ],
+            "temperature_2m_gfs_seamless": [float(i) for i in range(48)],
+            "temperature_2m_ecmwf_ifs025": [float(47 - i) for i in range(48)],
+        }
+    }
+    fw = [
+        {
+            "name": label,
+            "input": {"hourly_multi_model": fw_input, "now": now},
+            "expected": forward_hours(fw_input, _dt.fromisoformat(now)),
+        }
+        for label, now in [
+            ("the 06:07 run", "2026-08-22T06:07"),
+            ("the 18:15 run — must reach tomorrow", "2026-08-22T18:15"),
+            ("data that does not cover now", "2030-01-01T12:00"),
+        ]
+    ]
+    write(
+        "daypart_forward_hours.json",
+        "forward_hours",
+        "Hourly guidance trimmed to the hours still ahead. Narrative only — "
+        "nothing scored passes through here. Every model's series is trimmed "
+        "in step with the time array; data that does not overlap 'now' "
+        "returns an empty series rather than itself.",
+        fw,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
+    export_daypart()
     export_dates()
     export_scoring()
     export_extract()

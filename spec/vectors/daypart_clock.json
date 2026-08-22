@@ -1,0 +1,91 @@
+{
+  "vector_format_version": 1,
+  "function": "reconcile_now",
+  "description": "A second opinion on the system clock, from the Date header of a response already being fetched. Past five minutes of disagreement the server is believed. A missing or unparseable header stops the check rather than triggering it \u2014 an absent header is not evidence.",
+  "cases": [
+    {
+      "name": "agrees",
+      "input": {
+        "system_local": "2026-08-22T07:01",
+        "server_date_header": "Sat, 22 Aug 2026 04:00:00 GMT",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:01:00",
+        "warned": false
+      }
+    },
+    {
+      "name": "wildly wrong",
+      "input": {
+        "system_local": "2026-08-22T19:00",
+        "server_date_header": "Sat, 22 Aug 2026 04:00:00 GMT",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:00:00",
+        "warned": true
+      }
+    },
+    {
+      "name": "exactly at the skew limit",
+      "input": {
+        "system_local": "2026-08-22T07:05",
+        "server_date_header": "Sat, 22 Aug 2026 04:00:00 GMT",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:05:00",
+        "warned": false
+      }
+    },
+    {
+      "name": "one minute past the limit",
+      "input": {
+        "system_local": "2026-08-22T07:06",
+        "server_date_header": "Sat, 22 Aug 2026 04:00:00 GMT",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:00:00",
+        "warned": true
+      }
+    },
+    {
+      "name": "no header",
+      "input": {
+        "system_local": "2026-08-22T07:00",
+        "server_date_header": null,
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:00:00",
+        "warned": false
+      }
+    },
+    {
+      "name": "unparseable header",
+      "input": {
+        "system_local": "2026-08-22T07:00",
+        "server_date_header": "not a date",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "now": "2026-08-22T07:00:00",
+        "warned": false
+      }
+    },
+    {
+      "name": "no offset",
+      "input": {
+        "system_local": "2026-08-22T07:00",
+        "server_date_header": "Sat, 22 Aug 2026 04:00:00 GMT",
+        "utc_offset_seconds": null
+      },
+      "expected": {
+        "now": "2026-08-22T07:00:00",
+        "warned": false
+      }
+    }
+  ]
+}

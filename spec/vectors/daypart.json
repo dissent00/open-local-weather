@@ -1,0 +1,401 @@
+{
+  "vector_format_version": 1,
+  "function": "summarize_daypart",
+  "description": "Where the issuance moment sits in the day. Phases are sun-relative, not clock-based, so the same clock time is a different part of the day at a different latitude or season. Every string here is written into the prompt verbatim, so the two implementations must agree character for character.",
+  "cases": [
+    {
+      "name": "night, small hours",
+      "input": {
+        "now": "2026-08-22T02:00",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "02:00",
+        "phase": "night",
+        "minutes_since_sunrise": null,
+        "minutes_to_sunset": 1007,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 02:00. Sunrise is at 06:40.",
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ]
+      }
+    },
+    {
+      "name": "before sunrise",
+      "input": {
+        "now": "2026-08-22T06:20",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "06:20",
+        "phase": "dawn",
+        "minutes_since_sunrise": null,
+        "minutes_to_sunset": 747,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 06:20. Sunrise is in 20 minutes.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "just after sunrise",
+      "input": {
+        "now": "2026-08-22T06:50",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "06:50",
+        "phase": "dawn",
+        "minutes_since_sunrise": 10,
+        "minutes_to_sunset": 717,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 11,
+        "statement": "It is 06:50. The sun rose at 06:40.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "morning",
+      "input": {
+        "now": "2026-08-22T09:00",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "09:00",
+        "phase": "morning",
+        "minutes_since_sunrise": 140,
+        "minutes_to_sunset": 587,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 9,
+        "statement": "It is 09:00. Sunrise was at 06:40, sunset is at 18:47.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "midday",
+      "input": {
+        "now": "2026-08-22T12:30",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "12:30",
+        "phase": "midday",
+        "minutes_since_sunrise": 350,
+        "minutes_to_sunset": 377,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 6,
+        "statement": "It is 12:30. Sunset is at 18:47.",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "afternoon",
+      "input": {
+        "now": "2026-08-22T15:00",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "15:00",
+        "phase": "afternoon",
+        "minutes_since_sunrise": 500,
+        "minutes_to_sunset": 227,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 3,
+        "statement": "It is 15:00. Sunset is in 3 hours 47 minutes.",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "dusk \u2014 the 18:15 run",
+      "input": {
+        "now": "2026-08-22T18:15",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "18:15",
+        "phase": "dusk",
+        "minutes_since_sunrise": 695,
+        "minutes_to_sunset": 32,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 18:15. Sunset is in 32 minutes.",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "evening, after dark",
+      "input": {
+        "now": "2026-08-22T21:00",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "21:00",
+        "phase": "evening",
+        "minutes_since_sunrise": 860,
+        "minutes_to_sunset": null,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 21:00. The sun set at 18:47.",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "late night",
+      "input": {
+        "now": "2026-08-22T23:30",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "23:30",
+        "phase": "night",
+        "minutes_since_sunrise": 1010,
+        "minutes_to_sunset": null,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 23:30. Sunrise is at 06:40.",
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ]
+      }
+    },
+    {
+      "name": "half-minute rounding",
+      "input": {
+        "now": "2026-08-22T18:16:30",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": "2026-08-23T06:40"
+      },
+      "expected": {
+        "local_time": "18:16",
+        "phase": "dusk",
+        "minutes_since_sunrise": 697,
+        "minutes_to_sunset": 31,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 18:16. Sunset is in 31 minutes.",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "18:00 in Kisumu in August \u2014 nearly sunset",
+      "input": {
+        "now": "2026-08-22T18:00",
+        "sunrise": "2026-08-22T06:40",
+        "sunset": "2026-08-22T18:47",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "18:00",
+        "phase": "dusk",
+        "minutes_since_sunrise": 680,
+        "minutes_to_sunset": 47,
+        "sunrise": "06:40",
+        "sunset": "18:47",
+        "daylight_hours_left": 0,
+        "statement": "It is 18:00. Sunset is in 47 minutes.",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "18:00 far north in summer \u2014 sun still high",
+      "input": {
+        "now": "2026-08-22T18:00",
+        "sunrise": "2026-08-22T03:30",
+        "sunset": "2026-08-22T22:30",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "18:00",
+        "phase": "afternoon",
+        "minutes_since_sunrise": 870,
+        "minutes_to_sunset": 270,
+        "sunrise": "03:30",
+        "sunset": "22:30",
+        "daylight_hours_left": 4,
+        "statement": "It is 18:00. Sunset is in 4 hours 30 minutes.",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "18:00 far north in winter \u2014 long dark",
+      "input": {
+        "now": "2026-08-22T18:00",
+        "sunrise": "2026-08-22T09:30",
+        "sunset": "2026-08-22T15:15",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "18:00",
+        "phase": "evening",
+        "minutes_since_sunrise": 510,
+        "minutes_to_sunset": null,
+        "sunrise": "09:30",
+        "sunset": "15:15",
+        "daylight_hours_left": 0,
+        "statement": "It is 18:00. The sun set at 15:15.",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "05:00 far north in summer \u2014 well after sunrise",
+      "input": {
+        "now": "2026-08-22T05:00",
+        "sunrise": "2026-08-22T03:30",
+        "sunset": "2026-08-22T22:30",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "05:00",
+        "phase": "morning",
+        "minutes_since_sunrise": 90,
+        "minutes_to_sunset": 1050,
+        "sunrise": "03:30",
+        "sunset": "22:30",
+        "daylight_hours_left": 17,
+        "statement": "It is 05:00. Sunrise was at 03:30, sunset is at 22:30.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "midnight sun, 23:00",
+      "input": {
+        "now": "2026-06-21T23:00",
+        "sunrise": "2026-06-21T00:00",
+        "sunset": "2026-06-22T00:00",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "23:00",
+        "phase": "polar_afternoon",
+        "minutes_since_sunrise": 1380,
+        "minutes_to_sunset": 60,
+        "sunrise": "00:00",
+        "sunset": "00:00",
+        "daylight_hours_left": 0,
+        "statement": "It is 23:00. The sun does not set at this time of year.",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ]
+      }
+    },
+    {
+      "name": "midnight sun, 02:00",
+      "input": {
+        "now": "2026-06-21T02:00",
+        "sunrise": "2026-06-21T00:00",
+        "sunset": "2026-06-22T00:00",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "02:00",
+        "phase": "polar_morning",
+        "minutes_since_sunrise": 120,
+        "minutes_to_sunset": 1320,
+        "sunrise": "00:00",
+        "sunset": "00:00",
+        "daylight_hours_left": 0,
+        "statement": "It is 02:00. The sun does not set at this time of year.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    },
+    {
+      "name": "polar night",
+      "input": {
+        "now": "2026-12-21T10:00",
+        "sunrise": "2026-12-21T11:30",
+        "sunset": "2026-12-21T12:30",
+        "next_sunrise": null
+      },
+      "expected": {
+        "local_time": "10:00",
+        "phase": "polar_night",
+        "minutes_since_sunrise": null,
+        "minutes_to_sunset": 150,
+        "sunrise": "11:30",
+        "sunset": "12:30",
+        "daylight_hours_left": 0,
+        "statement": "It is 10:00. The sun does not rise at this time of year.",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ]
+      }
+    }
+  ]
+}
