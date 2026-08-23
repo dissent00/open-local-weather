@@ -392,5 +392,13 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
             peak_wind_kmh=max(wind) if wind else None,
             mslp_trend=(pressure[-1] - pressure[0]) if len(pressure) >= 2 else None,
             onset_hour=get_onset_hour(day["times"], day["precip"], threshold),
+            # Summed over hours that reported a value. An all-null day gives
+            # None rather than 0.0 — "no data" and "no rain" are different
+            # answers and the summary must not conflate them.
+            precip_mm=(
+                round(sum(v for v in day["precip"] if v is not None), 2)
+                if any(v is not None for v in day["precip"])
+                else None
+            ),
         )
     return result

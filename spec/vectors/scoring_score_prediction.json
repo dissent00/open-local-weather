@@ -13,7 +13,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -26,6 +27,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -43,6 +45,7 @@
           "model": "gfs_seamless",
           "rain": null,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -54,7 +57,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -67,6 +71,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -78,7 +83,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -98,6 +104,7 @@
           "model": "gfs_seamless",
           "rain": false,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -109,7 +116,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -129,6 +137,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -140,7 +149,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -160,6 +170,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -171,7 +182,8 @@
           "low_c": 19.0,
           "peak_wind_kmh": 25.0,
           "mslp_trend": 0.5,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -191,6 +203,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -202,7 +215,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "16:30"
+          "onset_hour": "16:30",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -222,6 +236,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -233,7 +248,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "16:30"
+          "onset_hour": "16:30",
+          "precip_mm": null
         },
         "lead_time_days": 3
       },
@@ -253,6 +269,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -264,7 +281,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -284,6 +302,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": null,
+          "precip_mm": null,
           "wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
@@ -295,7 +314,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 20.0,
           "mslp_trend": -1.0,
-          "onset_hour": "16:30"
+          "onset_hour": "16:30",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },
@@ -315,6 +335,7 @@
           "model": "gfs_seamless",
           "rain": true,
           "onset": "14:00",
+          "precip_mm": null,
           "wind_kmh": null,
           "high_c": null,
           "low_c": null,
@@ -326,7 +347,8 @@
           "low_c": null,
           "peak_wind_kmh": null,
           "mslp_trend": null,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "precip_mm": null
         },
         "lead_time_days": 0
       },

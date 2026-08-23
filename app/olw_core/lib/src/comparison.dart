@@ -96,6 +96,81 @@ String? _bandLabel(double? delta, String warmer, String cooler) {
   return '$word ${delta > 0 ? warmer : cooler}';
 }
 
+/// What separates a wet day from a dry one with a shower in it.
+///
+/// `rainThresholdMm` (0.5) answers a different question — "did measurable
+/// rain fall in any hour" — which is what per-model skill is scored on and
+/// must not change. It is a poor description of a DAY: half a millimetre at
+/// 20:00 and forty millimetres from dawn were both "rain", so the summary
+/// called both "another wet day".
+const List<(double, String)> dayRainBandsMm = [
+  (1.0, 'dry'),
+  (5.0, 'largely dry'),
+  (15.0, 'showery'),
+];
+const String wetDayLabel = 'wet';
+
+/// When rain arriving stops being a feature OF the day and becomes a feature
+/// AT THE END of it.
+const int eveningOnsetHour = 16;
+const int afternoonOnsetHour = 12;
+
+String? _onsetPhrase(String? onset) {
+  if (onset == null || onset.isEmpty) return null;
+  final hour = int.tryParse(onset.split(':').first);
+  if (hour == null) return null;
+  if (hour >= eveningOnsetHour) return 'evening';
+  if (hour >= afternoonOnsetHour) return 'afternoon';
+  return 'from the morning';
+}
+
+/// One phrase for the rain character of a day: how much, and when.
+///
+/// Null when there is no amount to reason from, so the caller omits the
+/// comparison rather than guessing.
+String? describeDayRain(double? precipMm, String? onset) {
+  if (precipMm == null) return null;
+
+  var band = wetDayLabel;
+  for (final (threshold, word) in dayRainBandsMm) {
+    if (precipMm < threshold) {
+      band = word;
+      break;
+    }
+  }
+  if (band == 'dry') return 'dry';
+
+  final when = _onsetPhrase(onset);
+
+  // Timing only qualifies the wetter bands. "Largely dry from the morning"
+  // reads as though the DRYNESS started in the morning.
+  if (band == 'largely dry') {
+    return when == 'evening' ? 'dry until evening showers' : 'largely dry';
+  }
+  if (when == 'evening') {
+    return 'dry until ${band == wetDayLabel ? 'heavy evening rain' : 'evening showers'}';
+  }
+  if (when == 'afternoon') return '$band from the afternoon';
+  // Morning onset, or none recorded: the band alone is the whole story.
+  return band;
+}
+
+/// The median onset among models that expect rain, as "HH:MM".
+///
+/// Median rather than mean: one model calling dawn while three call evening
+/// should not average into mid-afternoon — a shape of day none forecast.
+String? consensusOnset(List<ModelPrediction> predictions) {
+  final hours = <int>[];
+  for (final p in predictions) {
+    if (p.onset == null || p.onset!.isEmpty) continue;
+    final h = int.tryParse(p.onset!.split(':').first);
+    if (h != null) hours.add(h);
+  }
+  if (hours.isEmpty) return null;
+  hours.sort();
+  return '${hours[hours.length ~/ 2].toString().padLeft(2, '0')}:00';
+}
+
 /// Null when there is no observed record for yesterday — a gap must read as
 /// a gap, not as a day with unremarkable weather.
 DayOverDayComparison? computeDayOverDay(
@@ -126,22 +201,26 @@ DayOverDayComparison? computeDayOverDay(
   final bool? todayRain =
       votes.isEmpty ? null : votes.where((v) => v).length > votes.length / 2;
 
+  // Both days described by AMOUNT and TIMING, then compared — rather than by
+  // whether any hour crossed 0.5 mm, which called a clear day with evening
+  // storms "another wet day". todayRain above is still computed and still
+  // stored, because it is what the accuracy record scores; it is simply no
+  // longer what the reader is handed.
+  final todayPrecip = mean([for (final p in todayDay0Predictions) p.precipMm]);
+  final todayCharacter =
+      describeDayRain(todayPrecip, consensusOnset(todayDay0Predictions));
+  final yesterdayCharacter =
+      describeDayRain(yesterdayActual.precipMm, yesterdayActual.onsetHour);
+
   String? rainContrast;
-  if (votes.isNotEmpty) {
-    final y = yesterdayActual.rain;
+  if (todayCharacter != null && yesterdayCharacter != null) {
     // Reaches the reader almost verbatim — the prompt says to use this AS
     // GIVEN — so the wording is a user-facing decision, not an internal
-    // label. See the Python implementation for what the first version got
-    // wrong. Keep the two in step; the shared vectors enforce it.
-    if (y && !todayRain!) {
-      rainContrast = 'drier than yesterday, which saw rain';
-    } else if (!y && todayRain!) {
-      rainContrast = 'wetter than yesterday, which stayed dry';
-    } else if (y && todayRain!) {
-      rainContrast = 'another wet day, like yesterday';
-    } else {
-      rainContrast = 'dry again, like yesterday';
-    }
+    // label. Keep the two implementations in step; the shared vectors
+    // enforce it.
+    rainContrast = todayCharacter == yesterdayCharacter
+        ? '$todayCharacter again, like yesterday'
+        : '$todayCharacter today; yesterday was $yesterdayCharacter';
   }
 
   return DayOverDayComparison(

@@ -47,6 +47,15 @@ class ModelPrediction(BaseModel):
     # outlook. score_prediction() refuses to score a None.
     rain: bool | None = None
     onset: str | None = None  # "HH:MM", Day+0 only — no onset data at Day+3/+7
+    # Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
+    # `rain` above stays the boolean the accuracy record is built on, because
+    # changing what that means would make every stored day incomparable with
+    # every other.
+    #
+    # This exists because a boolean cannot tell 0.6 mm at 20:00 from 40 mm all
+    # day, and the day-over-day summary was calling both "another wet day".
+    # None on entries written before it was stored.
+    precip_mm: float | None = None
     wind_kmh: float | None = None
     high_c: float | None = None
     low_c: float | None = None
@@ -68,6 +77,15 @@ class DailyActual(BaseModel):
     peak_wind_kmh: float | None = None
     mslp_trend: float | None = None
     onset_hour: str | None = None  # "HH:MM"
+    # Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
+    # `rain` above stays the boolean the accuracy record is built on, because
+    # changing what that means would make every stored day incomparable with
+    # every other.
+    #
+    # This exists because a boolean cannot tell 0.6 mm at 20:00 from 40 mm all
+    # day, and the day-over-day summary was calling both "another wet day".
+    # None on entries written before it was stored.
+    precip_mm: float | None = None
 
 
 class VerificationScore(BaseModel):

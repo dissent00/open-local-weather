@@ -57,6 +57,13 @@ def extract_day0_predictions_from_hourly(
                 high_c=max(temp_vals) if temp_vals else None,
                 low_c=min(temp_vals) if temp_vals else None,
                 mslp_trend=(press_vals[-1] - press_vals[0]) if len(press_vals) >= 2 else None,
+                # Day total. Additive and never scored — `rain` above stays
+                # the boolean the record is built on. See ModelPrediction.
+                precip_mm=(
+                    round(sum(v for v in precip if v is not None), 2)
+                    if has_precip_data
+                    else None
+                ),
             )
         )
     return predictions
@@ -106,6 +113,9 @@ def extract_day_n_predictions_from_daily(
                 high_c=high,
                 low_c=low,
                 mslp_trend=mslp_trend,
+                # The daily endpoint already gives a total, so this IS the
+                # same quantity the Day+0 path sums by hand.
+                precip_mm=precip,
             )
         )
     return predictions

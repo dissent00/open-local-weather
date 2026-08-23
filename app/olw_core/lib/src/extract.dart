@@ -106,6 +106,14 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       lowC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a < b ? a : b),
       mslpTrend:
           pressVals.length >= 2 ? pressVals.last - pressVals.first : null,
+      // Summed over hours that reported a value. An all-null day gives
+      // null rather than 0.0 — "no data" and "no rain" are different
+      // answers and the summary must not conflate them.
+      precipMm: hasPrecipData
+          ? (((precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
+                  .roundToDouble() /
+              100)
+          : null,
     );
   }).toList();
 }
@@ -153,6 +161,9 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
       highC: at(highArr, dayIndex),
       lowC: at(lowArr, dayIndex),
       mslpTrend: mslpTrend,
+      // The daily endpoint already gives a total, so this IS the same
+      // quantity the Day+0 path sums by hand.
+      precipMm: precip,
     );
   }).toList();
 }

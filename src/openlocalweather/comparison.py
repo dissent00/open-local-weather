@@ -74,6 +74,106 @@ def _band_label(delta: float | None, warmer: str, cooler: str) -> str | None:
     return f"{word} {warmer if delta > 0 else cooler}"
 
 
+# What separates a wet day from a dry one with a shower in it.
+#
+# RAIN_THRESHOLD_MM (0.5) answers a different question — "did measurable rain
+# fall in any hour", which is what per-model skill is scored on and must not
+# change. It is a poor description of a DAY: half a millimetre at 20:00 and
+# forty millimetres from dawn were both "rain", so the summary called both
+# "another wet day". Kisumu on 2026-08-22 was clear and dry until evening
+# convection, and read as a wet day.
+DAY_RAIN_BANDS_MM = (
+    (1.0, "dry"),
+    (5.0, "largely dry"),
+    (15.0, "showery"),
+)
+WET_DAY_LABEL = "wet"
+
+# When rain arriving stops being a feature OF the day and becomes a feature
+# AT THE END of it. Someone deciding how to spend a day cares enormously
+# about the difference.
+EVENING_ONSET_HOUR = 16
+AFTERNOON_ONSET_HOUR = 12
+
+
+def _onset_phrase(onset: str | None) -> str | None:
+    """'evening', 'afternoon' or 'from the morning' — never a bare time.
+
+    The reader is being told what shape the day has, not given a timestamp to
+    interpret. A precise onset belongs in Today's Forecast, where it can be
+    acted on.
+    """
+    if not onset:
+        return None
+    try:
+        hour = int(onset.split(":")[0])
+    except (ValueError, IndexError):
+        return None
+    if hour >= EVENING_ONSET_HOUR:
+        return "evening"
+    if hour >= AFTERNOON_ONSET_HOUR:
+        return "afternoon"
+    return "from the morning"
+
+
+def describe_day_rain(precip_mm: float | None, onset: str | None) -> str | None:
+    """One phrase for the rain character of a day: how much, and when.
+
+    Returns None when there is no amount to reason from, so the caller omits
+    the comparison rather than guessing — a gap must read as a gap.
+    """
+    if precip_mm is None:
+        return None
+
+    band = WET_DAY_LABEL
+    for threshold, word in DAY_RAIN_BANDS_MM:
+        if precip_mm < threshold:
+            band = word
+            break
+
+    if band == "dry":
+        return "dry"
+
+    when = _onset_phrase(onset)
+
+    # Timing only qualifies the wetter bands. "Largely dry from the morning"
+    # reads as though the DRYNESS started in the morning; the band already
+    # carries the whole story for a day with a couple of millimetres in it.
+    if band == "largely dry":
+        return "largely dry" if when != "evening" else "dry until evening showers"
+
+    if when == "evening":
+        # The case that prompted this. A dry day with evening storms is a dry
+        # day, described as such, with the rain named for when it arrives.
+        return f"dry until {'heavy evening rain' if band == 'wet' else 'evening showers'}"
+    if when == "afternoon":
+        return f"{band} from the afternoon"
+    # Morning onset, or none recorded: the band alone is the whole story. A
+    # wet day that started in the morning is simply a wet day.
+    return band
+
+
+def _consensus_onset(predictions: list[ModelPrediction]) -> str | None:
+    """The median onset among models that expect rain, as "HH:MM".
+
+    Median rather than mean: onset is a time of day, and one model calling
+    dawn while three call evening should not average into mid-afternoon — a
+    shape of day none of them forecast.
+    """
+    hours = []
+    for p in predictions:
+        if not p.onset:
+            continue
+        try:
+            hours.append(int(p.onset.split(":")[0]))
+        except (ValueError, IndexError):
+            continue
+    if not hours:
+        return None
+    hours.sort()
+    return f"{hours[len(hours) // 2]:02d}:00"
+
+
 def compute_day_over_day(
     yesterday_actual: DailyActual | None,
     today_day0_predictions: list[ModelPrediction],
@@ -103,29 +203,40 @@ def compute_day_over_day(
         else:
             wind_label = "windier" if wind_delta > 0 else "calmer"
 
+    # Both days described by AMOUNT and TIMING, then compared — rather than
+    # by whether any hour crossed 0.5 mm, which called a clear day with
+    # evening storms "another wet day".
+    #
+    # today_rain (the boolean vote) is still computed and still stored, because
+    # it is what the accuracy record scores. It is simply no longer what the
+    # reader is handed.
     rain_contrast = None
     today_rain_votes = [p.rain for p in today_day0_predictions if p.rain is not None]
     today_rain = (
         sum(today_rain_votes) > len(today_rain_votes) / 2 if today_rain_votes else None
     )
-    if today_rain_votes and yesterday_actual.rain is not None:
+
+    today_precip = mean([p.precip_mm for p in today_day0_predictions])
+    today_onset = _consensus_onset(today_day0_predictions)
+    today_character = describe_day_rain(today_precip, today_onset)
+    yesterday_character = describe_day_rain(
+        yesterday_actual.precip_mm, yesterday_actual.onset_hour
+    )
+
+    if today_character and yesterday_character:
         # These strings reach the reader almost verbatim: the prompt tells the
         # model to use rain_contrast AS GIVEN, precisely so it can't invent a
         # difference the numbers don't support. That makes the wording here a
-        # user-facing decision, not an internal label — and the first version
-        # showed what happens when it's written as a data description instead
-        # of a sentence. "rain expected again today, as it rained yesterday
-        # too" is circular: it states the same fact twice and says nothing a
-        # reader can act on. The unchanged cases are the ones that need the
-        # most restraint, because there is genuinely no news in them.
-        if yesterday_actual.rain and not today_rain:
-            rain_contrast = "drier than yesterday, which saw rain"
-        elif not yesterday_actual.rain and today_rain:
-            rain_contrast = "wetter than yesterday, which stayed dry"
-        elif yesterday_actual.rain and today_rain:
-            rain_contrast = "another wet day, like yesterday"
+        # user-facing decision, not an internal label — and the unchanged
+        # cases need the most restraint, because there is genuinely no news
+        # in them.
+        if today_character == yesterday_character:
+            rain_contrast = f"{today_character} again, like yesterday"
         else:
-            rain_contrast = "dry again, like yesterday"
+            # "X today; yesterday was Y" rather than "X after a Y day",
+            # because the characters are phrases of varying shape and only
+            # this frame reads correctly for all of them.
+            rain_contrast = f"{today_character} today; yesterday was {yesterday_character}"
 
     return DayOverDayComparison(
         yesterday_high_c=yesterday_actual.high_c,

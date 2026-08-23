@@ -35,6 +35,13 @@ class ModelPrediction {
   final double? lowC;
   final double? mslpTrend;
 
+  /// Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
+  /// `rain` stays the boolean the accuracy record is built on, because
+  /// changing what that means would make every stored day incomparable with
+  /// every other. A boolean cannot tell 0.6 mm at 20:00 from 40 mm all day,
+  /// and the day-over-day summary was calling both "another wet day".
+  final double? precipMm;
+
   const ModelPrediction({
     required this.model,
     this.rain,
@@ -43,6 +50,7 @@ class ModelPrediction {
     this.highC,
     this.lowC,
     this.mslpTrend,
+    this.precipMm,
   });
 
   factory ModelPrediction.fromJson(Map<String, Object?> j) => ModelPrediction(
@@ -53,6 +61,7 @@ class ModelPrediction {
         highC: _toDouble(j['high_c']),
         lowC: _toDouble(j['low_c']),
         mslpTrend: _toDouble(j['mslp_trend']),
+        precipMm: _toDouble(j['precip_mm']),
       );
 
   Map<String, Object?> toJson() => {
@@ -63,6 +72,7 @@ class ModelPrediction {
         'high_c': highC,
         'low_c': lowC,
         'mslp_trend': mslpTrend,
+        'precip_mm': precipMm,
       };
 }
 
@@ -75,6 +85,13 @@ class DailyActual {
   final double? mslpTrend;
   final String? onsetHour;
 
+  /// Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
+  /// `rain` stays the boolean the accuracy record is built on, because
+  /// changing what that means would make every stored day incomparable with
+  /// every other. A boolean cannot tell 0.6 mm at 20:00 from 40 mm all day,
+  /// and the day-over-day summary was calling both "another wet day".
+  final double? precipMm;
+
   const DailyActual({
     required this.rain,
     this.highC,
@@ -82,6 +99,7 @@ class DailyActual {
     this.peakWindKmh,
     this.mslpTrend,
     this.onsetHour,
+    this.precipMm,
   });
 
   factory DailyActual.fromJson(Map<String, Object?> j) => DailyActual(
@@ -91,6 +109,7 @@ class DailyActual {
         peakWindKmh: _toDouble(j['peak_wind_kmh']),
         mslpTrend: _toDouble(j['mslp_trend']),
         onsetHour: j['onset_hour'] as String?,
+        precipMm: _toDouble(j['precip_mm']),
       );
 
   Map<String, Object?> toJson() => {
@@ -100,6 +119,7 @@ class DailyActual {
         'peak_wind_kmh': peakWindKmh,
         'mslp_trend': mslpTrend,
         'onset_hour': onsetHour,
+        'precip_mm': precipMm,
       };
 }
 

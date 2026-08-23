@@ -1246,18 +1246,25 @@ def export_day_over_day() -> None:
     """The Overview's opening sentence. Vector-tested because a live run got
     it wrong when the LLM was left to subtract: it called a 0.1°C difference
     "about 1°C cooler"."""
-    def preds(highs, lows=None, winds=None, rains=None):
+    def preds(highs, lows=None, winds=None, rains=None, mm=None, onsets=None):
         n = len(highs)
         lows = lows or [18.0] * n
         winds = winds or [20.0] * n
         rains = rains or [True] * n
+        # Amounts and onsets default to a genuinely wet day so the older
+        # temperature/wind cases keep a meaningful rain_contrast rather than
+        # quietly dropping to None.
+        mm = mm if mm is not None else [18.0] * n
+        onsets = onsets if onsets is not None else ["08:00"] * n
         return [
-            ModelPrediction(model=f"m{i}", rain=rains[i], high_c=highs[i], low_c=lows[i], wind_kmh=winds[i])
+            ModelPrediction(model=f"m{i}", rain=rains[i], high_c=highs[i], low_c=lows[i],
+                            wind_kmh=winds[i], precip_mm=mm[i], onset=onsets[i])
             for i in range(n)
         ]
 
     def actual(**kw):
-        base = dict(rain=True, high_c=29.6, low_c=18.8, peak_wind_kmh=40.7, mslp_trend=-0.5, onset_hour="16:00")
+        base = dict(rain=True, high_c=29.6, low_c=18.8, peak_wind_kmh=40.7, mslp_trend=-0.5,
+                    onset_hour="08:00", precip_mm=18.0)
         base.update(kw)
         return DailyActual(**base)
 
@@ -1271,8 +1278,32 @@ def export_day_over_day() -> None:
         ("exactly at a band boundary rounds into the higher band", actual(high_c=27.5), preds([29.0, 29.0, 29.0])),
         ("wind change below threshold is not remarked on", actual(peak_wind_kmh=25.0), preds([29.0], winds=[30.0])),
         ("big wind increase is called out", actual(peak_wind_kmh=15.0), preds([29.0], winds=[40.0])),
-        ("dry after a wet day", actual(rain=True), preds([29.0], rains=[False])),
-        ("wet after a dry day", actual(rain=False), preds([29.0], rains=[True])),
+        ("dry after a wet day", actual(rain=True), preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("wet after a dry day", actual(rain=False, precip_mm=0.0, onset_hour=None), preds([29.0], rains=[True])),
+        # THE CASE THAT PROMPTED ALL OF THIS. Kisumu, 2026-08-22: clear and
+        # dry until evening convection, described to the reader as "another
+        # wet day" because 0.5 mm in any hour made it one.
+        ("evening showers after a wet day is NOT another wet day",
+         actual(rain=True, precip_mm=19.0, onset_hour="07:00"),
+         preds([29.0], rains=[True], mm=[2.4], onsets=["19:00"])),
+        ("evening showers two days running",
+         actual(rain=True, precip_mm=2.1, onset_hour="18:00"),
+         preds([29.0], rains=[True], mm=[2.6], onsets=["19:00"])),
+        ("a genuinely wet day is still called wet",
+         actual(rain=False, precip_mm=0.2, onset_hour=None),
+         preds([29.0], rains=[True], mm=[24.0], onsets=["07:00"])),
+        ("half a millimetre at dusk is a dry day",
+         actual(rain=False, precip_mm=0.0, onset_hour=None),
+         preds([29.0], rains=[True], mm=[0.4], onsets=["20:00"])),
+        ("no amount recorded means no comparison, not a guess",
+         actual(rain=True, precip_mm=None),
+         preds([29.0], rains=[True], mm=[None], onsets=["19:00"])),
+        # One model calling dawn against three calling evening must not
+        # average into mid-afternoon — a shape of day none of them forecast.
+        ("a single outlier onset does not drag the consensus",
+         actual(rain=True, precip_mm=2.0, onset_hour="19:00"),
+         preds([29.0, 29.0, 29.0, 29.0], rains=[True] * 4, mm=[2.0] * 4,
+               onsets=["05:00", "19:00", "19:30", "20:00"])),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),

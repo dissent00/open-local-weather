@@ -54,7 +54,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 30.0,
           "mslp_trend": -1.0,
-          "onset_hour": "12:00"
+          "onset_hour": "12:00",
+          "precip_mm": 1.2
         },
         "2026-08-12": {
           "rain": false,
@@ -62,7 +63,8 @@
           "low_c": 17.0,
           "peak_wind_kmh": 21.0,
           "mslp_trend": -1.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "precip_mm": 0.1
         }
       }
     },
@@ -106,7 +108,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 25.0,
           "mslp_trend": 0.5,
-          "onset_hour": null
+          "onset_hour": null,
+          "precip_mm": 0.0
         }
       }
     },
@@ -146,7 +149,8 @@
           "low_c": 18.0,
           "peak_wind_kmh": 16.0,
           "mslp_trend": 0.5,
-          "onset_hour": null
+          "onset_hour": null,
+          "precip_mm": 0.0
         }
       }
     },

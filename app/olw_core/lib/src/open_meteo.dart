@@ -436,6 +436,14 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
       mslpTrend:
           pressure.length >= 2 ? pressure.last - pressure.first : null,
       onsetHour: getOnsetHour(day.times, day.precip, threshold: threshold),
+      // Summed over hours that reported a value. An all-null day gives
+      // null rather than 0.0 — "no data" and "no rain" are different
+      // answers and the summary must not conflate them.
+      precipMm: day.precip.any((v) => v != null)
+          ? (((day.precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
+                  .roundToDouble() /
+              100)
+          : null,
     );
   });
   return result;
