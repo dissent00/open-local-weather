@@ -201,8 +201,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: ECMWF and ICON successfully verified yesterday's precipitation call, with ECMWF catching onset precisely at 16:00 EAT while ICON showed a 7-hour early bias. GFS, UKMO, and Kenya Met failed to verify the rain event, while GFS over-forecasted surface wind speeds by 23.0 km/h."
     },
     "day3": {
       "verified": false,
