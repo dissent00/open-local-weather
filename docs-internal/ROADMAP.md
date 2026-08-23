@@ -2564,3 +2564,106 @@ If thunder is reported on evenings the forecast called quiet, that is a
 detectable pattern pointing at item 35, and it is the kind of blind spot no
 amount of archive verification would surface, because the archive agrees with
 the forecast that it barely rained.
+
+---
+
+## 37. Every variable needs a day-character, not just rain · **Planned**
+
+Item 33's fix taught the summary that 0.6 mm at 20:00 is not "a wet day". The
+same reasoning applies to every other headline variable and has not been done.
+
+**Wind.** `ModelPrediction.wind_kmh` is the day's PEAK and carries no timing.
+So 15 gusting 20 km/h from 08:00 — a genuinely breezy day someone plans around
+— is indistinguishable from the same peak arriving at 16:00, which is an
+afternoon feature at the end of a calm day. The operator raised exactly this.
+Needs a peak-wind HOUR stored alongside the value, then banded the way rain now
+is: calm / breezy / windy, crossed with morning / afternoon / evening.
+
+**Cloud cover.** `cloud_cover` is fetched and reaches the prompt, but nothing
+reduces it to a day-shape. "Sunny until midday then clouding over" and
+"overcast all day" are different days with similar averages, and the average is
+what a model reading raw hourly arrays will tend to describe.
+
+**The shared discipline** — and the reason these belong together — is that a
+mean over a calendar day is almost never the right summary of a day. The
+question is always *how much, and when*. Whatever is built here should follow
+the rain implementation: bands and onset computed in code, ready-made phrases
+handed to the prompt, and the SCORED values left untouched.
+
+The last part matters most. `rain` stayed a boolean when amount was added,
+because the accuracy record is built on it. Any wind or cloud work must keep
+`wind_kmh` exactly as it is scored today.
+
+---
+
+## 38. Humidity and "feels like" are not in the forecast at all · **Planned**
+
+Raised by the operator. Checked rather than assumed: `relative_humidity_2m`,
+`apparent_temperature` and `dew_point_2m` appear **nowhere** in the codebase.
+Only `cloud_cover` among the comfort-related variables is fetched.
+
+This is a real gap for Kisumu specifically. On the lake basin at ~1,100 m, 29°C
+at 40% humidity and 29°C at 85% are different days to be outside in, and the
+forecast currently reports one number for both. Humidity is arguably the
+variable a reader's body notices most after rain.
+
+All three are available from Open-Meteo hourly at no extra cost — the fetch
+already asks for a list of variables and adding to it is free.
+
+Where it should go:
+
+- **The Overview**, which is the "how will this feel" sentence and currently
+  has only temperature and rain to work with. "Warm and close" versus "warm and
+  dry" is the kind of orientation that sentence exists for.
+- Probably a stat-grid field, subject to the same rule as UV: omit it when it
+  is not telling the reader anything.
+
+Two cautions:
+
+- **Apparent temperature is a model output, not an observation**, and its
+  formula varies. Prefer stating humidity plainly alongside the real
+  temperature over publishing a single "feels like" number whose derivation we
+  cannot show. This project's whole posture is that its numbers are checkable.
+- **It needs a day-character like everything else** (item 37). Peak humidity at
+  dawn is normal and unremarkable; peak humidity at 15:00 with 29°C is the
+  thing worth saying.
+
+---
+
+## 39. Compute sun times instead of fetching them · **Raised in priority**
+
+Originally noted inside item 30 (twilight). A live failure on the first full
+day makes it worth its own entry.
+
+The 2026-08-23 morning run logged:
+
+```
+Sun times unavailable (Request to https://api.open-meteo.com/v1/forecast
+failed: ... Read timed out. (read timeout=30)); using the clock alone.
+```
+
+The degradation behaved correctly — the run continued, the forecast shipped,
+the prompt said the part of day was unknown rather than guessing. But the
+published forecast carried no sunrise or sunset that day, and the refresh
+inherits the gap because it now falls back to the stored value rather than
+overwriting a good one with null.
+
+**Sunrise and sunset are deterministic.** They depend on latitude, longitude
+and date, and nothing else. Fetching them over a network for a fixed location
+is the only part of this that can fail, and it is failing for a quantity that
+could be computed offline in about forty lines — the same NOAA solar-position
+routine item 30 needs for civil twilight.
+
+Doing that would:
+
+- remove a network call and its timeout from every run,
+- make sun times available even when Open-Meteo is unreachable, which is
+  precisely when a forecast most needs to explain what it is missing,
+- deliver twilight (item 30) as a by-product rather than as separate work,
+- and be vector-lockable across Python and Dart like everything else.
+
+The one thing to be careful of: Open-Meteo's values account for refraction and
+elevation, and a naive computation will differ by a minute or two. Match the
+convention (sun's upper limb at the horizon, standard refraction) and vector
+the result against a handful of known locations and dates — including a polar
+one, where the answer is "no sunrise" rather than a time.
