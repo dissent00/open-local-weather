@@ -21,6 +21,20 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  # The mailer is plain Apps Script with its own harness. It had no CI until
+  # a rewrite left test_mailer.js calling two functions that rewrite had
+  # deleted — it threw ReferenceError on its first line and sat broken for a
+  # day, because nothing ran it. Two lines here is the whole fix.
+  mailer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Run mailer harness
+        run: node mailer/test_mailer.js
+
   # The Dart core is held to the Python implementation's exact behaviour by
   # the shared vectors in spec/. Running it here means a divergence between
   # the two implementations fails CI rather than being discovered later in
