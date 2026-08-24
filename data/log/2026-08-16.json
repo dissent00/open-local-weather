@@ -36,12 +36,15 @@
       "measured_at": "2026-08-16T08:00:00Z"
     }
   ],
+  "sunrise": null,
+  "sunset": null,
   "model_predictions": {
     "day0": [
       {
         "model": "gfs_seamless",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 12.2,
         "high_c": 30.4,
         "low_c": 19.5,
@@ -51,6 +54,7 @@
         "model": "ecmwf_ifs025",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": null,
         "high_c": 30.2,
         "low_c": 21.0,
@@ -60,6 +64,7 @@
         "model": "icon_seamless",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 30.6,
         "high_c": 29.8,
         "low_c": 20.8,
@@ -69,6 +74,7 @@
         "model": "ukmo_seamless",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 41.4,
         "high_c": 29.6,
         "low_c": 16.9,
@@ -78,6 +84,7 @@
         "model": "best_match",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 30.6,
         "high_c": 29.6,
         "low_c": 20.8,
@@ -89,6 +96,7 @@
         "model": "gfs_seamless",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 18.4,
         "high_c": 31.7,
         "low_c": 18.3,
@@ -98,6 +106,7 @@
         "model": "ecmwf_ifs025",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 27.7,
         "high_c": 31.5,
         "low_c": 18.9,
@@ -107,6 +116,7 @@
         "model": "icon_seamless",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 31.0,
         "high_c": 29.2,
         "low_c": 21.6,
@@ -116,6 +126,7 @@
         "model": "ukmo_seamless",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 25.2,
         "high_c": 29.5,
         "low_c": 17.3,
@@ -125,6 +136,7 @@
         "model": "best_match",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 43.9,
         "high_c": 29.7,
         "low_c": 19.0,
@@ -136,6 +148,7 @@
         "model": "gfs_seamless",
         "rain": false,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 11.5,
         "high_c": 33.6,
         "low_c": 18.2,
@@ -145,6 +158,7 @@
         "model": "ecmwf_ifs025",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 34.2,
         "high_c": 27.0,
         "low_c": 20.4,
@@ -154,6 +168,7 @@
         "model": "icon_seamless",
         "rain": null,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -163,6 +178,7 @@
         "model": "ukmo_seamless",
         "rain": null,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -172,6 +188,7 @@
         "model": "best_match",
         "rain": true,
         "onset": null,
+        "precip_mm": null,
         "wind_kmh": 45.0,
         "high_c": 28.1,
         "low_c": 20.0,
@@ -189,8 +206,8 @@
       "note": "Day+3: GFS, ECMWF, and ICON accurately verified the rainfall call for August 16th, with ICON showing top temperature high alignment (-0.1°C error). UKMO missed the rain event, and GFS showed a high temperature cold bias (-2.6°C) and wind overestimation (+17.2 km/h)."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7: ECMWF and Best Match accurately verified the precipitation call for August 16th, whereas GFS incorrectly forecast dry conditions. GFS also exhibited a severe daytime cold bias (-3.6°C) and wind overestimation (+29.9 km/h)."
     }
   },
   "local_bulletin": null,
@@ -243,6 +260,7 @@
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "refreshed_at": "2026-08-16T15:02:07.030672Z"
+    "refreshed_at": "2026-08-16T15:02:07.030672Z",
+    "trigger_source": null
   }
 }
