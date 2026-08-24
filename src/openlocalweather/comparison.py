@@ -231,7 +231,11 @@ def compute_day_over_day(
         # cases need the most restraint, because there is genuinely no news
         # in them.
         if today_character == yesterday_character:
-            rain_contrast = f"{today_character} again, like yesterday"
+            # "again" alone carries it. The sentence this lands in is
+            # already a day-over-day comparison that opens with "much like
+            # yesterday", so appending ", like yesterday" produced "much like
+            # yesterday - ... until evening showers again, like yesterday".
+            rain_contrast = f"{today_character} again"
         else:
             # "X today; yesterday was Y" rather than "X after a Y day",
             # because the characters are phrases of varying shape and only

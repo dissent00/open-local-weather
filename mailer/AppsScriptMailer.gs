@@ -386,11 +386,10 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   if (runLabel) {
     lines.push('');
     lines.push(wrapText(
-      'This is an evening refresh of the forecast issued earlier today, ' +
-      're-synthesized on the freshest available model data for the rest ' +
-      "of today and tomorrow. It does not change today's accuracy-" +
-      'tracking record — only the morning run counts toward model ' +
-      'verification.',
+      'This updates the forecast already issued today, re-synthesized on ' +
+      'the freshest available model data. It does not change ' +
+      "today's accuracy-tracking record — only the day's FIRST run counts " +
+      'toward model verification.',
       AFD_WRAP_WIDTH
     ));
   }
@@ -488,7 +487,7 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
   const statGridHtml = buildStatGridHtml(entry);
 
   const refreshNoteHtml = runLabel
-    ? `<p style="font-size: 0.9em; color: ${SITE_MUTED}; margin: 0.4em 0 1em;">This is an evening refresh of the forecast issued earlier today, re-synthesized on the freshest available model data for the rest of today and tomorrow. It does not change today's accuracy-tracking record &mdash; only the morning run counts toward model verification.</p>`
+    ? `<p style="font-size: 0.9em; color: ${SITE_MUTED}; margin: 0.4em 0 1em;">This updates the forecast already issued today, re-synthesized on the freshest available model data. It does not change today's accuracy-tracking record &mdash; only the day's first run counts toward model verification.</p>`
     : '';
 
   const linksHtml = config.publicUrl

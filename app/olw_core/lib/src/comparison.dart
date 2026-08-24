@@ -219,7 +219,10 @@ DayOverDayComparison? computeDayOverDay(
     // label. Keep the two implementations in step; the shared vectors
     // enforce it.
     rainContrast = todayCharacter == yesterdayCharacter
-        ? '$todayCharacter again, like yesterday'
+        // "again" alone carries it — the sentence this lands in already
+        // opens with a day-over-day comparison, so appending ", like
+        // yesterday" said it twice.
+        ? '$todayCharacter again'
         : '$todayCharacter today; yesterday was $yesterdayCharacter';
   }
 

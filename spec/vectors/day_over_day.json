@@ -62,7 +62,7 @@
         "wind_delta_kmh": -4.0,
         "high_label": "about the same",
         "wind_label": "similar winds",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -124,7 +124,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "slightly warmer",
         "wind_label": "calmer",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -186,7 +186,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "noticeably cooler",
         "wind_label": "calmer",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -248,7 +248,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "much cooler",
         "wind_label": "calmer",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -310,7 +310,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "slightly warmer",
         "wind_label": "calmer",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -352,7 +352,7 @@
         "wind_delta_kmh": 5.0,
         "high_label": "about the same",
         "wind_label": "similar winds",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -394,7 +394,7 @@
         "wind_delta_kmh": 25.0,
         "high_label": "about the same",
         "wind_label": "windier",
-        "rain_contrast": "wet again, like yesterday"
+        "rain_contrast": "wet again"
       }
     },
     {
@@ -562,7 +562,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry until evening showers again, like yesterday"
+        "rain_contrast": "dry until evening showers again"
       }
     },
     {
@@ -646,7 +646,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry again, like yesterday"
+        "rain_contrast": "dry again"
       }
     },
     {
@@ -760,7 +760,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry until evening showers again, like yesterday"
+        "rain_contrast": "dry until evening showers again"
       }
     },
     {
