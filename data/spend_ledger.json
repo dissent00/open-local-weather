@@ -54,6 +54,12 @@
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
       "purpose": "refresh"
+    },
+    {
+      "at": "2026-08-25T03:04:08.384539+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast"
     }
   ]
 }
