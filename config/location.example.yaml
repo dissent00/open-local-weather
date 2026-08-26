@@ -38,8 +38,27 @@ location:
   #   lat: 0.0
   #   lon: 0.0
 
-  # ICAO code for a nearby airport with METAR reporting (aviationweather.gov
-  # covers most of the world, not just the US). Leave "" to skip METAR.
+  # ICAO code for a nearby airport with METAR reporting. Find yours at
+  # https://mesonet.agron.iastate.edu/request/download.phtml (pick your
+  # country, then your airport) — coverage is global, not US-only.
+  #
+  # WORTH REAL EFFORT TO GET RIGHT. This is not just narrative colour. The
+  # airport's present-weather reports are scored: a day it reports thunder
+  # counts as a day convection occurred, whatever the reanalysis grid cell
+  # recorded. That matters because the gridded archive every model is scored
+  # against smooths isolated storms into nothing — measured here, 5 of the
+  # first 42 days were filed as dry while the airport watched a storm pass
+  # over, and the models that called those days correctly were marked wrong
+  # for it. See docs-internal/ROADMAP.md item 42.
+  #
+  # Leave "" if there is genuinely no reporting station near you. Everything
+  # still works: `thunder` stays null, which is read as "not observed" and
+  # never as "no thunder", and scoring behaves as it did before the field
+  # existed. You just lose the only ground truth available for convection.
+  #
+  # Prefer a station close to your primary point. Thunder ten kilometres away
+  # is a different event from thunder overhead, and this cannot tell them
+  # apart.
   metar_station_icao: ""
 
   # Ground air-quality monitoring stations — any number, including zero.
