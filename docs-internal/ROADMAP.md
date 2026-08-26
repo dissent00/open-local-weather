@@ -3015,3 +3015,202 @@ to read.
 Related: item 24 (published data feed — same provenance question for
 machines), item 41 (satellite), item 42 (why this item exists), item 43
 (WAQI field naming, which this page would have made obvious).
+
+---
+
+## 45. Which source is "what actually happened" · **Planned**
+
+Raised by the operator on 2026-08-26, immediately after item 42 and item 44.
+
+Item 42 gave the airport a scored role for exactly one variable. The
+question that follows: what if the airport is simply *better*? Someone
+living beside a well-equipped station may reasonably want it to be reality
+every day — not a per-field patch applied when the reanalysis misses a
+storm. And a fork or app user who adds two, three, four sources of their
+own needs an answer to the same question at a larger scale.
+
+So: do we **learn** which source to believe, or **let the user choose**?
+
+### Choose. This one cannot be learned.
+
+Learning a source's quality requires scoring it against a truth. Here the
+sources *are* the truth candidates, so there is no held-out yardstick to
+fit against. That is the structural difference from model skill, which is
+learnable precisely because a forecast has something to be scored against.
+
+Item 42 is the proof. The archive's blind spot was not found by learning;
+it was found by a reader standing outside. Item 44's measurement is
+*agreement*, not accuracy — no volume of data would have said which of the
+two was right.
+
+What is measurable without a truth is **disagreement**. That is a flag for
+a human decision, not a weight.
+
+### Per-variable precedence, not a primary source
+
+Not one "reality" source, and not a blend. For each observed variable, an
+ordered chain; the first source that reported for that day wins.
+
+```yaml
+truth:
+  high_c:   [airport_hkki, era5_archive]
+  low_c:    [airport_hkki, era5_archive]
+  thunder:  [airport_hkki]              # nothing else observes it
+  wind_kmh: [era5_archive]              # see trap 1
+```
+
+Blending is wrong here. Averaging a point observation and a 25 km grid
+mean produces a number that is neither, and cannot be honestly scored
+against. `rain` is a boolean; there is nothing to average.
+
+### The four traps, worst first
+
+**1. Absence has three states, and they differ per variable.** A station
+can report a value, report and genuinely observe nothing, or not report at
+all. Only the third should fall through. METAR files a gust group *only*
+when a gust occurs — 2 of 42 days, per item 44. Read "no gust group" as
+"did not report" and the airport never wins the wind chain; read it as
+"0 km/h" and it is wrong every day. `DailyActual.thunder` already encodes
+this distinction for one field. Generalising it means per-variable absence
+semantics, never a naive "first not None".
+
+**2. Fall-through changes the yardstick mid-record.** The airport is truth
+for 300 days, down for 5, and those 5 are scored against a coarser
+instrument. That is acceptable — but only if provenance is stamped per day
+per variable in the stored actual, so an unexplained dip in the accuracy
+record can be traced rather than guessed at. `DailyActual` has no
+provenance field today: the METAR/archive split is implicit in
+`_apply_observed_thunder`. This is item 44's complaint one level deeper,
+and it is the prerequisite for everything else in this item.
+
+**3. Changing precedence must force a rescore, never a silent
+reinterpretation.** `olw rebuild-record` already does the work. The rule
+established for `precip_mm` applies unchanged: altering what a stored
+field means makes every stored day incomparable with every other.
+
+**4. `observed_convection()` is not a general merge rule.** Its OR is an
+asymmetry justified by physics — a station reporting `TS` is strong
+positive evidence, a grid cell reporting dry is weak negative evidence.
+For temperature, precedence is right and OR/max is nonsense. It must not
+become the template for the other variables.
+
+### The one question the "add a source" flow must ask
+
+Is this an **observation** (a truth candidate, joins a precedence chain) or
+a **prediction** (joins the scored model list)? Kenya Met is a prediction,
+scored as `kenya_met`. The airport is an observation. A user adding "my
+local met office app" will not classify it correctly unasked, and getting
+the fork wrong contaminates the record in a way that is hard to unwind.
+
+Item 11 already owes the app a source-discovery flow. This is the question
+that flow has to ask first.
+
+### Default from distance, do not assume
+
+"I live right by the airport" is doing a lot of work in the framing, and it
+is computable — the config already carries the station and the user's
+point. A fork 40 km from its nearest ASOS should not inherit
+airport-as-truth by default.
+
+### Sequencing
+
+Item 41's rule applies here too: cross-check before replacement. Stamp
+provenance, fetch the extra readings, store them alongside, change nothing
+that is scored. Let divergence accumulate for a few weeks, then decide with
+numbers. If the airport and the archive agree on temperature within noise —
+and item 44 measured mean +0.43 °C, so they do — the precedence machinery
+earns nothing for that variable, and that is worth knowing before building
+it.
+
+Concretely, the extra readings are cheaper than they look:
+`fetch_metar_archive` requests `data=metar`, the raw report text only. Iowa
+State's ASOS service exposes structured fields alongside it, so temperature
+and wind from the airport are a parameter change on an existing fetch, not
+a new source. **Check live whether HKKI actually files hourly precipitation
+before designing around it** — many non-US stations do not.
+
+Related: item 11 (source discovery in the app), item 35 (convective
+disagreement), item 36 (user feedback), item 41 (satellite as a candidate
+actuals source — the same decision at basin scale), item 42 (why this item
+exists), item 44 (the sources page, which needs the provenance field this
+item adds), item 46 (asking the reader when the chain is in doubt).
+
+---
+
+## 46. Ask the reader when the record is in doubt · **Planned**
+
+Proposed by the operator on 2026-08-26. App-first.
+
+Item 36 puts a standing *"was this right?"* line under every forecast. This
+is the sharper version: the app asks a **specific closed question about
+yesterday, only when the stored record is genuinely uncertain** — "did it
+rain here yesterday?", "was it mostly cloudy?" — and stays silent otherwise.
+
+The difference matters. A permanent feedback widget is passive and
+self-selecting: people answer when a forecast was wrong, which is the
+sample least useful for measuring anything. A question asked on the days
+the data cannot settle is targeted, cheap for the reader, and lands exactly
+where the archive is weakest.
+
+### When is there doubt
+
+All of these are derivable from data already stored, and each one names a
+known failure mode rather than a guess:
+
+- **Sources disagree.** Once item 45 stores more than one reading per
+  variable, disagreement is a first-class signal. The 5 convective days in
+  item 42 would all have fired.
+- **The rain boolean is near its threshold.** `RAIN_THRESHOLD_MM` is 0.5.
+  An archive day recording roughly 0.2–1.0 mm is close to a coin flip, and
+  the boolean it produces carries the whole accuracy record for rain.
+- **No observation was available.** `thunder is None` on a day the models
+  disagreed about convection (item 35) is the case where nothing in the
+  system knows what happened.
+- **A model broke from the pack.** One model calling rain against four is
+  either skill or noise, and the record cannot yet tell which.
+
+### Form
+
+One tap, a closed set of options, about yesterday only. Free text stays
+optional and secondary — item 36's reasoning holds: elaborate feedback goes
+unused. Asking about yesterday rather than now also keeps it answerable;
+people remember whether it rained, not what the peak gust was.
+
+### The toggle, and the frequency ceiling
+
+A hard off in settings, as asked. But the toggle is not the real control —
+**frequency is**. A prompt that appears daily trains people to dismiss it,
+and a dismissed prompt is worse than no prompt because it looks like
+consent. Cap it well below one ask per day, prefer streaks of silence, and
+treat repeated dismissal as an answer in itself: stop asking.
+
+Whether it defaults on or off is open. On is defensible only because the
+question is rare by construction.
+
+### What it is allowed to affect
+
+Not the published accuracy record. Item 36's constraint is inherited
+verbatim and is not negotiable: the figures on the accuracy page are
+deterministic and reproducible from the stored log, and that is the whole
+of their value. Human reports are stored and presented separately, always.
+
+What it *may* feed:
+
+- the reader's own view — their reports against what the record says
+- flagging days for the operator's weekly review (item 18)
+- item 35's convective disagreement, which is the pattern this is most
+  likely to expose
+
+### Why the app is the right surface
+
+Item 36 lists "it needs somewhere to go" as a hazard, because the pipeline
+is git-as-database with no inbound path and accepting input breaks the
+zero-infrastructure property. In the app that hazard mostly disappears: an
+answer can stay on the device and steer that user's display without ever
+being transmitted. Anything that does leave the device is a second
+decision, taken later, with item 36's personal-data constraints attached —
+location plus timestamp plus free text is enough to identify a routine.
+
+Related: item 16 (the app), item 18 (weekly review), item 35 (convective
+disagreement), item 36 (the general case this narrows), item 42 (the miss
+that a reader caught first), item 45 (source disagreement as the trigger).
