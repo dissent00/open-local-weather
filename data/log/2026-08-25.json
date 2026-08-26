@@ -208,8 +208,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: ECMWF, ICON, UKMO, Kenya Met, and Best Match accurately verified the dry call for August 25th, whereas GFS incorrectly predicted rain. High temperatures were captured within 0.2°C to 0.9°C across models, but GFS overpredicted surface winds by 18.7 km/h."
     },
     "day3": {
       "verified": false,
