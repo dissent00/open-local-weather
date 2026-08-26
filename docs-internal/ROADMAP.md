@@ -2697,3 +2697,71 @@ and both are clear. Not worth changing.
 
 Do the braces as a single mechanical commit. Take the rest opportunistically —
 when a function is being edited for another reason, bring it into line.
+
+---
+
+## 41. Satellite analysis · **Planned**
+
+Raised by the operator on 2026-08-26, in the same session that established
+why it matters: a thunderstorm was observed at Kisumu Airport on 2026-08-24
+(METAR `TS`, 13:30–14:30Z, with CB cloud and a 32°C→25°C outflow drop), and
+the reanalysis this project scores against recorded 0.5 mm and no
+thunderstorm code at all. See item 42 for the METAR fix that closed the
+immediate gap.
+
+METAR fixed the *point*. Satellite is the argument for fixing the *field*.
+
+### The two distinct things "satellite" could mean here
+
+**1. Cloud-top temperature, for convection.** Geostationary infrared gives
+cloud-top brightness temperature every 15 minutes or better. Deep convection
+has a signature that is hard to miss — cloud tops colder than roughly −60°C
+mean a storm with real vertical development. Over the Lake Victoria basin,
+which is among the most thunderstorm-prone places on Earth and whose
+convection is lake-breeze driven at scales global models at 9–25 km resolve
+poorly, this is the observation that would tell us what actually happened
+across the whole basin rather than at one runway.
+
+**2. Satellite precipitation estimates, for rainfall.** This is the one that
+may matter more, because it attacks the actuals problem directly. The
+project's entire accuracy record is scored against Open-Meteo's archive
+(ERA5-family reanalysis), and 2026-08-24 is a worked example of that archive
+smoothing an isolated tropical convective event into nothing. Satellite-based
+precipitation products are built for exactly this failure and run at far finer
+resolution.
+
+The second is a candidate *replacement or cross-check for the actuals source*,
+which makes it a much bigger change than the first — and a much bigger prize.
+
+### What needs verifying before any of this is committed to
+
+Everything below my training cutoff is stale by definition and none of it has
+been checked live. Do that first:
+
+- **Coverage.** East Africa sits under the Meteosat series at 0°/41.5°E
+  (EUMETSAT), not under GOES. Confirm which satellite and which service is
+  current, and whether the older MSG or the newer MTG generation is the one
+  serving data now.
+- **Access and licensing.** Registration requirements, rate limits, whether
+  free access covers automated daily pulls, and whether the licence permits
+  redistributing derived values in a public repo — this project commits its
+  data into git and publishes it. A source we cannot republish is a source
+  we cannot use here.
+- **Latency.** The morning run fires at 03:07 UTC and scores *yesterday*.
+  Anything with more than ~12 hours of latency still works for verification
+  even if it is useless for the forecast itself.
+- **Precipitation products specifically.** Confirm what is currently offered,
+  at what resolution and latency, and under what terms. Do not assume the
+  product names or the access paths I would reach for from memory still
+  describe reality.
+
+### Sequencing
+
+Cross-check before replacement. Fetch it, store it alongside the existing
+actuals, and let a few weeks of disagreement accumulate before any decision to
+score against it. If satellite and reanalysis agree on most days and diverge
+exactly on convective ones, that is a measured finding worth writing down —
+and the argument for switching makes itself.
+
+Related: item 35 (convective disagreement), item 36 (user feedback as ground
+truth), item 42 (METAR observations).
