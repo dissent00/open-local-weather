@@ -35,8 +35,6 @@ So:
   values (HTTP 200) get a constant regardless. Self-explanatory one-offs stay
   inline.
 - Early return and `continue` over nesting.
-- Function names under 30 characters.
-- Enums, not booleans, for function parameters.
 - Blank lines between logical blocks.
 - Always `{}`, including one-line `if`.
 - Keep members private unless the design requires otherwise. Ask before
@@ -45,6 +43,18 @@ So:
   driver layer exposing domain concepts.
 - Each layer talks only to the one directly below. No punching through.
 - Touch only what the change requires. Minimise changed lines.
+
+## Soft rules
+
+Apply judgement. If you see a case for these, ask before doing it.
+
+- **Enums instead of boolean parameters.** The rule targets languages where
+  `f(x, true)` is possible. Python keyword arguments and Dart named parameters
+  already make call sites self-describing, so the win is usually small. Worth
+  raising when the boolean is hiding more than two states.
+- **Function names under 30 characters.** Clarity beats the count.
+  `extract_day_n_predictions_from_daily` is 36 and says what it does. Raise it
+  when a long name signals the function is doing too much.
 
 ## Commits
 

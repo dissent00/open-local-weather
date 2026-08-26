@@ -2680,8 +2680,7 @@ individually harmless; the rule exists because adding a second statement to a
 brace-less `if` silently leaves it outside the branch. Mechanical, low risk,
 no behaviour change.
 
-**Enums instead of boolean parameters — worth doing only where the boolean is
-already wrong.** Four exist: `dry_run`, `force`, `is_reissue`,
+**Enums instead of boolean parameters — now a soft rule.** Four exist: `dry_run`, `force`, `is_reissue`,
 `duringValidation`. The rule targets languages where `f(x, true)` is possible;
 Python keyword arguments and Dart named parameters already make every call
 site here self-describing (`dry_run=False`, never a bare `False`). So the
@@ -2691,7 +2690,7 @@ The exception is `is_reissue`, which is genuinely mis-typed: the real question
 is *which run of the day is this*, and item 34 replaces it with that. Convert
 it there rather than in a sweep.
 
-**Function names under 30 characters — disagree, leave alone.**
+**Function names under 30 characters — now a soft rule.**
 `extract_day_n_predictions_from_daily` is 36 and says exactly what it does.
 Shortening it costs clarity to satisfy a number. Two names exceed the limit
 and both are clear. Not worth changing.
