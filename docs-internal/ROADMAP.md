@@ -2921,3 +2921,97 @@ Do this when item 24 is picked up, and probably as part of it:
   rename must not silently reinterpret history.
 
 Related: item 4 (ground AQI staleness), item 24 (published data feed).
+
+---
+
+## 44. A sources page — what feeds this, and what each source is for · **Planned**
+
+Raised by the operator on 2026-08-26, immediately after item 42 landed.
+
+The lesson from 42 was not "METAR is useful". It was that **a source had been
+in the config since the Apps Script original, and nobody — including the
+person who put it there — could remember whether it was a decision or an
+accident, or what it was allowed to affect.** The answer was buried in a
+comment on line 196 of a reference file. That is a bad place for it, and the
+same question is now live for every other source here.
+
+This project's entire claim is that its numbers are checkable. A reader
+cannot check a number whose origin is undocumented.
+
+### What is actually feeding the forecast right now
+
+Assembled while writing this item, and longer than it feels from inside the
+code:
+
+| Source | Used for | Scored? |
+|---|---|---|
+| Open-Meteo forecast API, 5 models (`gfs_seamless`, `ecmwf_ifs025`, `icon_seamless`, `ukmo_seamless`, `best_match`) | The forecast itself — hourly today, forward window, daily extended | Yes, per model per lead time |
+| Open-Meteo archive (ERA5 family) | "What actually happened" — every verification figure | It *is* the yardstick |
+| Kenya Met daily bulletin | Narrative context, and a peer prediction | Yes, as `kenya_met` |
+| Iowa State ASOS/METAR archive (HKKI) | Observed thunder → convection | Yes, since item 42 |
+| aviationweather.gov METAR (HKKI) | Current-conditions cross-check in the prompt | No |
+| Open-Meteo air-quality (CAMS) | Forecast AQI | No |
+| WAQI, 3 Kisumu stations | Ground-truth AQI, with staleness | No |
+| Open-Meteo regional + synoptic pressure | Pressure gradient, Synoptic Overview | No |
+| Open-Meteo sun times | Issuance/daypart reasoning | No |
+| Gemini | Prose only, never arithmetic | n/a |
+
+Nine data sources, four of them scored, and no single place says so.
+
+### What the page should show
+
+- **Every source, what it feeds, and whether it is scored.** Roughly the
+  table above, generated rather than typed.
+- **Which source verifies which variable.** This is the part that would have
+  prevented item 42's blind spot lasting as long as it did — see the
+  measurement below.
+- **Freshness and reachability.** Ground AQI already computes staleness; the
+  local bulletin has a `fetched_at_utc`; a source that silently stopped
+  returning data should be visible here rather than inferred from a gap in
+  the narrative.
+- **Per-source skill, where one exists.** The accuracy page has this for
+  models; a reader should be able to get from "who says this" to "how often
+  are they right" in one hop.
+
+### Measured: which sources actually disagree
+
+Checked 2026-08-26 across the 42 stored days, ERA5 archive against HKKI METAR:
+
+| Variable | Agreement | Conclusion |
+|---|---|---|
+| Daily high temperature | mean +0.43 °C (METAR warmer), max +1.9 °C, over 1 °C on 6 of 42 days | Agree within noise. METAR reports whole degrees, which explains much of the spread. Not worth cross-verifying. |
+| Peak wind gust | METAR reported a gust group on **2 of 42 days** | METAR only files a gust when one occurs. Too sparse to verify against. |
+| Convection | Diverged on **5 of 42 days**, every one a real storm the archive missed | The whole value was here |
+
+So the honest headline for the page: **the two sources agree on almost
+everything, and the one place they disagreed was invisible until someone
+standing outside said so.** That is worth stating on the page rather than
+implying every source is a redundant check on every other.
+
+### Two surfaces
+
+**Published page** (`docs/sources.html`). The extension point already exists
+and is clean: `render_accuracy_page` / `accuracy.html.jinja` / `NavLinks`
+have exactly the shape needed, and `publish/pages.py` regenerates on every
+run. Generated, never hand-edited — same rule as the rest of `docs/`, and
+doubly so here, because a hand-maintained sources list is the specific thing
+that goes stale and then lies.
+
+**App screen.** Same content from `olw_core`. The app has a stronger claim on
+it than the website does: someone who installed a weather app has no `config/`
+to read.
+
+### Notes for doing it
+
+- Build it from `config/location.yaml` plus `defaults.MODELS` plus what the
+  fetch layer actually returned this run — not a hardcoded list. A forker who
+  leaves `metar_station_icao` blank must see that reflected, not see HKKI.
+- Say plainly where a source is a single point (the airport) versus a grid
+  cell (the reanalysis) versus a model (CAMS). The failure in item 42 was
+  precisely a point-versus-grid confusion.
+- Licensing and attribution belong here too, and this is where item 41 will
+  need to declare whatever satellite terms come with it.
+
+Related: item 24 (published data feed — same provenance question for
+machines), item 41 (satellite), item 42 (why this item exists), item 43
+(WAQI field naming, which this page would have made obvious).
