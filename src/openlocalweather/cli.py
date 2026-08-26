@@ -20,7 +20,8 @@ from openlocalweather import __version__
 from openlocalweather.config import load_location_config
 from openlocalweather.coverage import actionable, detect_coverage, detect_trigger_regression
 from openlocalweather.defaults import LEAD_TIMES_DAYS, scored_models
-from openlocalweather.dates import today_in_tz
+from openlocalweather.dates import add_days, today_in_tz
+from openlocalweather.fetch import metar as metar_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd_daily import KenyaKMDDailyFetcher
@@ -40,8 +41,15 @@ from openlocalweather.pipeline import (
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
 from openlocalweather.review import build_weekly_review
-from openlocalweather.store.actuals_cache import as_date_dict, read_actuals_cache
+from openlocalweather.store.actuals_cache import (
+    as_date_dict,
+    read_actuals_cache,
+    replace_all,
+    write_actuals_cache,
+)
 from openlocalweather.store.log_store import list_log_dates, make_log_lookup
+from openlocalweather.store.track_record import read_track_record, write_track_record
+from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "config" / "location.yaml"
@@ -394,6 +402,102 @@ def _run_check_health(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _run_rebuild_record(args) -> int:
+    """Re-derive the accuracy record from raw stored predictions and freshly
+    fetched observations.
+
+    Exists because the record is supposed to be re-derivable — verify/ never
+    accumulates a running total, precisely so a correction to what was
+    OBSERVED propagates through every figure rather than only affecting days
+    scored after the fix. This is the command that exercises that property.
+
+    Written for the 2026-08-26 correction, when airport-observed thunder
+    became part of what a rain forecast is scored against and 5 of the 42
+    stored days turned out to have been filed as dry while a storm passed
+    over. It is not a one-off script: any future change to what counts as an
+    observation needs exactly this, and a rebuild nobody can run is a record
+    nobody can check.
+
+    Does NOT touch the narrative notes already published in data/log/*.json.
+    Those record what was said at the time, including where it was wrong, and
+    rewriting them would be a different and much less honest thing than
+    recomputing an arithmetic record.
+    """
+    location = load_location_config(args.config)
+    data_dir = Path(args.data_dir)
+
+    cache = read_actuals_cache(data_dir)
+    actuals = as_date_dict(cache.primary)
+    if not actuals:
+        print("No actuals cached — nothing to rebuild.", file=sys.stderr)
+        return 1
+
+    before = {d: a.observed_convection() for d, a in actuals.items()}
+
+    thunder_by_date = metar_fetch.observed_thunder_by_date(
+        location.metar_station_icao, min(actuals), max(actuals), location.timezone
+    )
+    if thunder_by_date is None:
+        print(
+            f"No METAR observations available for {location.metar_station_icao or '(no station configured)'} — "
+            "rebuilding from the reanalysis alone.",
+            file=sys.stderr,
+        )
+        thunder_by_date = {}
+
+    for day, actual in actuals.items():
+        if day not in thunder_by_date:
+            continue
+
+        actual.thunder = thunder_by_date[day]
+
+    changed = sorted(d for d, was in before.items() if was != actuals[d].observed_convection())
+    print(f"Days held: {len(actuals)}  observed thunder: {sum(1 for v in thunder_by_date.values() if v)}")
+    for day in changed:
+        print(f"  {day}: dry -> convective (reanalysis {actuals[day].precip_mm} mm, airport reported thunder)")
+    print(f"Days whose observed record changed: {len(changed)}")
+
+    log_dates = list_log_dates(data_dir)
+    today = today_in_tz(location.timezone)
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=make_log_lookup(data_dir),
+        prior_track_record=read_track_record(data_dir),
+        earliest_log_date=min(log_dates) if log_dates else None,
+        actuals_primary=actuals,
+        today=today,
+        yesterday=add_days(today, -1),
+        models=scored_models(location.local_bulletin_model_id),
+    )
+
+    prior = {
+        (e.model, e.lead_time_days): e.all_time_rain_pct
+        for e in read_track_record(data_dir).entries
+    }
+    print("\nDay+0 rain accuracy, all-time:")
+    for entry in sorted(result.updated_track_record.entries, key=lambda e: (e.lead_time_days, e.model)):
+        if entry.lead_time_days != 0:
+            continue
+
+        was = prior.get((entry.model, entry.lead_time_days))
+        now = entry.all_time_rain_pct
+        arrow = "" if was == now else f"   (was {_pct(was)})"
+        print(f"  {entry.model:16} {_pct(now)}  over {entry.all_time_checks} checks{arrow}")
+
+    if args.dry_run:
+        print("\nDry run — nothing written.")
+        return 0
+
+    replace_all(cache, "primary", actuals)
+    write_actuals_cache(data_dir, cache)
+    write_track_record(data_dir, result.updated_track_record)
+    print("\nWrote actuals_cache/actuals.json and track_record.json.")
+    return 0
+
+
+def _pct(value: float | None) -> str:
+    return "  n/a" if value is None else f"{value:5.1f}%"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="olw", description="Open Local Weather")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -431,6 +535,16 @@ def main(argv: list[str] | None = None) -> int:
     check_config = sub.add_parser("check-config", help="Load and validate a location.yaml, then exit.")
     check_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
 
+    rebuild = sub.add_parser(
+        "rebuild-record",
+        help="Re-derive the accuracy record from stored predictions and freshly fetched observations.",
+    )
+    rebuild.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    rebuild.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    rebuild.add_argument(
+        "--dry-run", action="store_true", help="Show what would change without writing anything."
+    )
+
     health = sub.add_parser(
         "check-health",
         help="Weekly health checks: model deprecation, repo staleness, data coverage.",
@@ -450,6 +564,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "refresh-forecast":
         return _run_refresh(args)
+
+    if args.command == "rebuild-record":
+        return _run_rebuild_record(args)
 
     if args.command == "check-health":
         return _run_check_health(args)

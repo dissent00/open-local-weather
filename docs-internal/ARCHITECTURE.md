@@ -170,6 +170,14 @@ is nothing honest to publish. METAR, ground AQI, and the local bulletin all
 return `None`/an explanatory string instead — the forecast still goes out,
 and the prompt instructs the LLM to say what was missing.
 
+METAR now has a second, heavier role. `fetch_metar()` remains the
+best-effort current-conditions cross-check described above, but
+`observed_thunder_by_date()` feeds the accuracy record itself, from a
+separate archive endpoint. It degrades the same way — no configured ICAO,
+or an unreachable archive, leaves every `thunder` at `None` and scoring
+behaves exactly as it did before the field existed — so a fork without an
+airport nearby loses nothing it previously had.
+
 The LLM call is required, but now retries transient 429/5xx errors with
 backoff before giving up (added after a real 503 aborted a run).
 
@@ -185,6 +193,9 @@ Break these and the system quietly stops being trustworthy:
 | The LLM's numbers are never read back as data | `verify/` owns all math | Prevents silent arithmetic drift |
 | Onset is scored only at Day+0 | `verify/scoring.score_prediction()` | Day+3/+7 never had onset data |
 | Missing model data is `rain=None`, never `False` | `extract.py` + `score_prediction()` | "No data" scored as "no rain" manufactures fake skill |
+| Rain is scored against observed CONVECTION, not reanalysis precipitation alone | `models.DailyActual.observed_convection()` | ERA5 at ~25 km smooths isolated tropical storms into nothing; 5 of the first 42 stored days were filed as dry while the airport watched a storm pass over |
+| An absent observation is `thunder=None`, never `False` | `fetch/metar.observed_thunder_by_date()` | A station that filed nothing is not a station that saw nothing |
+| The whole record is re-derivable from stored predictions plus refetched observations | `olw rebuild-record` | A correction to what was observed must reach every figure, not only days scored after the fix |
 | `docs/` is generated, never hand-edited | `publish/pages.py` | Overwritten every run |
 
 ## Extension points

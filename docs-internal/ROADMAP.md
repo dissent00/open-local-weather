@@ -445,7 +445,21 @@ fallback nobody's checked in months.
 
 ---
 
-## 4. Ground AQI staleness — review and decide on a fix · **Planned**
+## 4. Ground AQI staleness — review and decide on a fix · **Partly shipped**
+
+**Shipped 2026-08-26 — the reporting half.** When every station is stale,
+`summarize_ground_aqi` returned null, the prompt said "Not applicable", and
+the LLM improvised: 2026-08-25 gave no station numbers at all, 2026-08-26
+listed all three and then called them stale. Neither was wrong, and that was
+the problem — a different contract each morning. `last_known_ground_aqi` now
+quotes the most recent real reading with its station, its value and its age,
+and the prompt states that alongside the CAMS estimate so a reader can see
+which is which.
+
+That does not close this item. It makes the staleness *legible*; it does not
+make the sensors any fresher, and the underlying question — whether three
+stations that routinely go hours stale are the right ground truth at all —
+is still open. See also the pm25/pm10 mislabelling noted in item 43.
 
 ### The problem, with real morning evidence
 
@@ -2510,6 +2524,14 @@ accuracy record. Probably not directly — there is no CAPE observation to verif
 against — but "did thunder occur" may be answerable from METAR present-weather
 codes, which are already fetched.
 
+**Answered on 2026-08-26: yes, and it mattered more than expected.** METAR
+present-weather is now parsed and scored — see item 42. The Overview half of
+this item also shipped: `instability.py` decides on a 1000 J/kg threshold and
+the prompt must carry a thunder clause when it fires, rather than leaving the
+Overview to the temperature. What remains open here is the *hazard-section*
+requirement to name which model says what, which is still prompt guidance
+rather than anything code enforces.
+
 ---
 
 ## 36. User weather feedback — ground truth from the person standing outside · **Planned**
@@ -2765,3 +2787,137 @@ and the argument for switching makes itself.
 
 Related: item 35 (convective disagreement), item 36 (user feedback as ground
 truth), item 42 (METAR observations).
+
+---
+
+## 42. The reanalysis does not see thunderstorms · **Shipped**
+
+Found 2026-08-26, from a reader's own observation that a forecast had called
+the previous day "dry again" when it had thundered.
+
+Every accuracy figure in this project is scored against Open-Meteo's archive.
+For 2026-08-24 that archive recorded 0.5 mm and WMO codes 0/1/51 — clear sky
+and light drizzle, no thunderstorm code anywhere. Kisumu Airport, four
+kilometres away, reported this:
+
+| Time (Z) | Report |
+|---|---|
+| 13:00 | `FEW029CB` — cumulonimbus building |
+| 13:30 | `TS FEW029CB BKN030`, 31°C |
+| 14:00 | `TS FEW027CB BKN028`, 28°C |
+| 14:30 | `TS FEW024CB BKN025`, 25°C |
+
+A thunderstorm, with a 7°C outflow temperature drop across ninety minutes.
+ERA5-family reanalysis at ~25 km cannot resolve isolated tropical convection,
+and the Lake Victoria basin runs on exactly that.
+
+Archive CAPE was checked as an alternative signal and is useless here: the
+endpoint returns the variable and fills it with zeros at this location.
+
+### What it cost
+
+Not just prose. The verification note for that day reads *"GFS, ECMWF, and
+Kenya Met falsely predicted rainfall"* — three models were marked wrong for
+calling a day that convected, and the two that called it dry were credited.
+
+Measured across the 42 days then stored, **5 were filed as dry while the
+airport watched a storm pass over**: 2026-07-17, 07-20, 07-22, 08-17, 08-24.
+Sixteen of 44 days in the window had observed thunder.
+
+### What shipped
+
+- `DailyActual.thunder`, three-valued. `None` is "not observed" and never
+  "no thunder"; a fork with no ICAO configured scores exactly as before.
+- Rain scored against `observed_convection()` — reanalysis rain OR observed
+  thunder. A dry call on a thunder day is now wrong, which is the
+  uncomfortable half and the correct one.
+- `describe_day_rain` never calls a thunder day dry.
+- `olw rebuild-record`, which re-derives the whole record from stored
+  predictions plus refetched observations.
+
+### The rebuild, and what it did to the rankings
+
+| Model | Day+0 all-time, before | After |
+|---|---|---|
+| best_match | 73.3% | **86.7%** |
+| ecmwf_ifs025 | 73.3% | 73.3% |
+| icon_seamless | 86.7% | **73.3%** |
+| gfs_seamless | 40.0% | **53.3%** |
+| ukmo_seamless | 66.7% | **53.3%** |
+| kenya_met | 50.0% | **66.7%** |
+
+ICON was the headline performer and is now level with ECMWF; UKMO drops
+sharply. Both were being rewarded for calling dry days that thundered. Only
+15 Day+0 checks back this, so it is a correction to a thin record, not a
+settled ranking.
+
+### Source, and the constraint behind the choice
+
+Uses Iowa State's ASOS/METAR archive, not the aviationweather.gov endpoint
+already in use. That endpoint serves a rolling window (`hours`, verified to
+48; the `date` parameter returns HTTP 400), which is enough for a run that
+scores yesterday and never misses, but cannot rebuild history and would drop
+an observation permanently after a missed run. The archive is idempotent, so
+a gap self-heals on the next run.
+
+Verified live 2026-08-26: the archive covers 2026-07-14 onward for HKKI at a
+median of 34 reports/day.
+
+### Left alone deliberately
+
+The published narrative for 2026-08-24 still says those three models were
+wrong. It is a record of what was said at the time. Recomputing an arithmetic
+record is one thing; rewriting a published narrative to match is another, and
+this project does not do the second.
+
+### Still open
+
+- The reader who noticed this is a better convection sensor than either data
+  source. That is item 36.
+- METAR is one point. Item 41 is the argument for seeing the whole basin.
+- A station reporting `TS` with no rain group means thunder heard at the
+  aerodrome. Whether it rained a few kilometres away is not something this
+  can answer.
+
+Related: item 35 (convective disagreement), item 36 (user feedback), item 41
+(satellite analysis).
+
+---
+
+## 43. WAQI sub-indices are stored under concentration names · **Planned**
+
+Noticed 2026-08-26 while working on item 4, not acted on.
+
+`fetch/waqi.py` reads `iaqi.pm25.v` and `iaqi.pm10.v` into fields named
+`pm25` and `pm10`. WAQI's `iaqi` values are **AQI sub-indices, not µg/m³
+concentrations**. The evidence is in the stored data: `aqi` equals `pm25`
+exactly on every day both are present, which is what you would expect when
+PM2.5 is the dominant sub-index and the composite AQI is its maximum.
+
+Separately, `pm10` has been frozen at 15 / 18 / 37 for the three configured
+stations on **every day from 2026-08-17 to 2026-08-26** while `pm25` moves
+daily. Whatever that field is, it is not a live reading.
+
+| Date | Airport pm25 | Airport pm10 | Ochieng' pm10 | Dunga pm10 |
+|---|---|---|---|---|
+| 2026-08-17 | 84.0 | 15.0 | 18.0 | 37.0 |
+| 2026-08-21 | 69.0 | 15.0 | 18.0 | 37.0 |
+| 2026-08-26 | 63.0 | 15.0 | 18.0 | 37.0 |
+
+Neither field reaches the narrative today, so nothing published is currently
+wrong. But `data/log/*.json` is committed, and item 24 proposes publishing it
+as a feed for other apps — at which point a field labelled `pm25` carrying an
+AQI sub-index becomes someone else's bug.
+
+Do this when item 24 is picked up, and probably as part of it:
+
+- Rename to what the values are (`pm25_aqi` / `pm10_aqi`), or fetch genuine
+  concentrations if WAQI exposes them for these stations, and check live
+  which is actually available rather than assuming.
+- Decide what to do about the stuck `pm10`. A value that never changes is
+  either cached upstream or not measured at all; publishing it either way is
+  worse than omitting it.
+- Migrating stored entries is optional — the field is unread — but the
+  rename must not silently reinterpret history.
+
+Related: item 4 (ground AQI staleness), item 24 (published data feed).
