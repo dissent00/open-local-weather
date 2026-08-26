@@ -2667,3 +2667,34 @@ elevation, and a naive computation will differ by a minute or two. Match the
 convention (sun's upper limb at the horizon, standard refraction) and vector
 the result against a handful of known locations and dates — including a polar
 one, where the answer is "no sunrise" rather than a time.
+
+---
+
+## 40. Bring existing code up to AGENTS.md · **Planned, low priority**
+
+`AGENTS.md` was adopted after most of this code was written. Known gaps, with
+an honest read on whether each is worth the churn.
+
+**Braces on one-line `if` — worth doing.** 67 sites in `olw_core`. Each is
+individually harmless; the rule exists because adding a second statement to a
+brace-less `if` silently leaves it outside the branch. Mechanical, low risk,
+no behaviour change.
+
+**Enums instead of boolean parameters — worth doing only where the boolean is
+already wrong.** Four exist: `dry_run`, `force`, `is_reissue`,
+`duringValidation`. The rule targets languages where `f(x, true)` is possible;
+Python keyword arguments and Dart named parameters already make every call
+site here self-describing (`dry_run=False`, never a bare `False`). So the
+readability win is small.
+
+The exception is `is_reissue`, which is genuinely mis-typed: the real question
+is *which run of the day is this*, and item 34 replaces it with that. Convert
+it there rather than in a sweep.
+
+**Function names under 30 characters — disagree, leave alone.**
+`extract_day_n_predictions_from_daily` is 36 and says exactly what it does.
+Shortening it costs clarity to satisfy a number. Two names exceed the limit
+and both are clear. Not worth changing.
+
+Do the braces as a single mechanical commit. Take the rest opportunistically —
+when a function is being edited for another reason, bring it into line.
