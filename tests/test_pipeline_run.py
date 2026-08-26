@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
+from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import MODELS
 from openlocalweather.fetch import metar as metar_fetch
 import requests
@@ -11,8 +12,15 @@ from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import NullBulletinFetcher
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties, VerificationNote
-from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+from openlocalweather.models import (
+    DailyLogEntry,
+    GroundAQIReading,
+    LogEntryMeta,
+    ModelPredictionsByLead,
+)
+from openlocalweather import pipeline
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
 
 LOCATION = LocationConfig(
@@ -1011,3 +1019,119 @@ def test_a_refresh_with_no_sun_data_keeps_the_mornings(tmp_path, monkeypatch):
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.sunrise == "06:40", "the morning's value survives a failed re-fetch"
+
+
+# ---------------------------------------------------------------------------
+# The Overview's convective flag, the last-known AQI reading, and observed
+# thunder all reach the places that use them. Each of these defaults to None,
+# so a wiring mistake would degrade silently into "Unavailable" forever
+# rather than failing — which is exactly the failure mode these assert away.
+# ---------------------------------------------------------------------------
+
+
+def forward_hourly_from_now(**extra_series):
+    """Forward guidance anchored to the real clock.
+
+    daypart.forward_hours trims against wall-clock now, not against `today`,
+    so a fixture pinned to 2026-08-11 trims to nothing and every instability
+    assertion below would pass by testing the empty path.
+    """
+    start = now_in_tz(LOCATION.timezone).replace(minute=0, second=0, microsecond=0)
+    times = [(start + timedelta(hours=i)).strftime("%Y-%m-%dT%H:00") for i in range(48)]
+    series = {name: values(times) for name, values in extra_series.items()}
+    return {
+        "hourly": {
+            "time": times,
+            "precipitation_gfs_seamless": [0.0] * len(times),
+            **series,
+        }
+    }
+
+
+def convective_forward_hourly():
+    # A single convective afternoon spike, well above the threshold, placed
+    # a few hours ahead so it always lands inside the forward window.
+    def cape(times):
+        return [2400.0 if i == 3 else 50.0 for i in range(len(times))]
+
+    return forward_hourly_from_now(cape_gfs_seamless=cape)
+
+
+def test_user_prompt_carries_the_convective_flag(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert "CONVECTIVE INSTABILITY" in user_prompt
+    assert '"convective": true' in user_prompt
+    assert "2400.0" in user_prompt
+
+
+def test_user_prompt_says_when_there_is_no_instability_data(tmp_path, monkeypatch):
+    # Hours ahead are present; a CAPE series is not. That gap must read as a
+    # gap rather than as a calm afternoon.
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_from_now()
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert "no model supplied a CAPE series" in user_prompt
+
+
+def test_quiet_cape_does_not_set_the_convective_flag(tmp_path, monkeypatch):
+    def calm(times):
+        return [120.0] * len(times)
+
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        lambda *a, **k: forward_hourly_from_now(cape_gfs_seamless=calm),
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert '"convective": false' in user_prompt
+
+
+def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypatch):
+    stale_at = datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="Kisumu Airport", station_id="A1", aqi=63, measured_at=stale_at),
+            GroundAQIReading(name="Dunga Beach", station_id="A2", aqi=49, measured_at=stale_at),
+        ],
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert "GROUND AQI LAST KNOWN" in user_prompt
+    # The worst station at the newest timestamp, with its age attached.
+    assert '"station_name": "Kisumu Airport"' in user_prompt
+    assert '"aqi": 63' in user_prompt
+    assert '"stale": true' in user_prompt
+    assert '"stations_reporting": 2' in user_prompt
+
+
+def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_thunder_by_date",
+        lambda icao, start, end, tz: {d: True for d in (start, end)},
+    )
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    cache = actuals_cache_store.read_actuals_cache(tmp_path)
+    stored = actuals_cache_store.as_date_dict(cache.primary)
+    assert stored, "no actuals were written"
+    assert all(a.thunder is True for a in stored.values())

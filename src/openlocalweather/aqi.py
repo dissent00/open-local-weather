@@ -85,3 +85,70 @@ def summarize_ground_aqi(
         stations_stale=stale_count,
         stations_total=len(readings),
     )
+
+
+@dataclass
+class GroundAQILastKnown:
+    """The newest real ground reading available, whether or not it is fresh.
+
+    Exists because returning None from summarize_ground_aqi() left the prompt
+    with "Not applicable" and the LLM free to improvise. It improvised
+    differently on consecutive days: 2026-08-25 gave no station numbers at
+    all, 2026-08-26 listed all three and then called them stale. Neither was
+    wrong, and that is the problem — the reader got a different contract each
+    morning.
+
+    A stale reading is still the last time anyone actually measured the air.
+    Said with its age attached, it is more use than silence and cannot be
+    mistaken for current.
+    """
+
+    station_name: str
+    aqi: int
+    # ISO 8601, not a datetime object. This value exists to be printed into a
+    # prompt and pinned in a cross-language vector, and the two runtimes
+    # stringify a timestamp differently — Python's str() gives
+    # "2026-08-10 12:00:00+00:00" where Dart's gives "2026-08-10 12:00:00.000Z".
+    # Anything needing to compute with the age uses hours_old below.
+    measured_at: str
+    hours_old: float
+    stale: bool
+    # How many stations share this timestamp — so the narrative can say three
+    # stations reported at that hour rather than implying only one exists.
+    stations_reporting: int
+
+
+def last_known_ground_aqi(
+    readings: list[GroundAQIReading], now: datetime | None = None
+) -> GroundAQILastKnown | None:
+    """The most recent numeric ground reading, with its age.
+
+    Independent of freshness on purpose: this answers "when did anyone last
+    actually measure the air, and what did they get", which is a different
+    question from summarize_ground_aqi()'s "what is it right now". Callers
+    decide which to state; `stale` carries what they need to word it.
+
+    Readings with no timestamp are skipped entirely — "most recent" is a
+    claim about time, and one cannot be made about a reading whose time is
+    unknown. Ties resolve to the highest AQI, matching the worst-station rule
+    already used for the fresh range: when several stations report the same
+    hour, the one a reader should act on is the worst of them.
+    """
+    now = now or datetime.now(timezone.utc)
+    dated = [r for r in readings if r.aqi is not None and r.measured_at is not None]
+    if not dated:
+        return None
+
+    newest = max(r.measured_at for r in dated)
+    at_newest = [r for r in dated if r.measured_at == newest]
+    worst = max(at_newest, key=lambda r: r.aqi)
+    age = hours_old(worst, now)
+
+    return GroundAQILastKnown(
+        station_name=worst.name,
+        aqi=worst.aqi,
+        measured_at=newest.isoformat(),
+        hours_old=age,
+        stale=is_stale(worst, now),
+        stations_reporting=len(at_newest),
+    )

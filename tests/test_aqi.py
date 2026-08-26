@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
-from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.aqi import (
+    STALE_THRESHOLD_HOURS,
+    hours_old,
+    is_stale,
+    last_known_ground_aqi,
+    summarize_ground_aqi,
+)
 from openlocalweather.models import GroundAQIReading
 
 NOW = datetime(2026, 8, 12, 5, 0, tzinfo=timezone.utc)
@@ -141,3 +147,68 @@ def test_summarize_stations_stale_only_counts_stale_stations_that_had_a_numeric_
     assert summary.stations_stale == 1
     assert summary.stations_with_aqi == 1
     assert summary.stations_total == 3
+
+
+# ---------------------------------------------------------------------------
+# last_known_ground_aqi — what to say when nothing is fresh
+# ---------------------------------------------------------------------------
+
+
+def test_last_known_none_when_no_station_has_a_number():
+    assert last_known_ground_aqi([reading(aqi=None), reading(aqi=None)], NOW) is None
+
+
+def test_last_known_none_when_no_readings_at_all():
+    assert last_known_ground_aqi([], NOW) is None
+
+
+def test_last_known_picks_the_freshest_reading():
+    old = reading(name="Old", aqi=90, measured_at=NOW - timedelta(hours=9))
+    new = reading(name="New", aqi=40, measured_at=NOW - timedelta(hours=4))
+    result = last_known_ground_aqi([old, new], NOW)
+    assert result.station_name == "New"
+    assert result.aqi == 40
+    assert result.hours_old == 4.0
+    assert result.measured_at == (NOW - timedelta(hours=4)).isoformat()
+
+
+def test_last_known_reports_staleness_so_the_prompt_can_say_so():
+    stale = reading(aqi=60, measured_at=NOW - timedelta(hours=STALE_THRESHOLD_HOURS + 1))
+    assert last_known_ground_aqi([stale], NOW).stale is True
+
+    fresh = reading(aqi=60, measured_at=NOW - timedelta(minutes=30))
+    assert last_known_ground_aqi([fresh], NOW).stale is False
+
+
+def test_last_known_ties_break_to_the_worst_station():
+    # The live case: all three Kisumu stations report on the same hour. The
+    # highest reading is the one a reader needs to act on.
+    same_time = NOW - timedelta(hours=8)
+    readings = [
+        reading(name="Kisumu Airport", aqi=63, measured_at=same_time),
+        reading(name="Ochieng' Avenue", aqi=54, measured_at=same_time),
+        reading(name="Dunga Beach", aqi=49, measured_at=same_time),
+    ]
+    result = last_known_ground_aqi(readings, NOW)
+    assert result.station_name == "Kisumu Airport"
+    assert result.aqi == 63
+    assert result.stations_reporting == 3
+
+
+def test_last_known_counts_only_stations_sharing_that_timestamp():
+    same_time = NOW - timedelta(hours=8)
+    readings = [
+        reading(name="A", aqi=63, measured_at=same_time),
+        reading(name="B", aqi=54, measured_at=same_time),
+        reading(name="C", aqi=99, measured_at=NOW - timedelta(hours=20)),
+    ]
+    assert last_known_ground_aqi(readings, NOW).stations_reporting == 2
+
+
+def test_last_known_skips_readings_with_no_timestamp():
+    # Unknown freshness cannot be "the most recent" — there is nothing to
+    # anchor the claim to, and the whole point is quoting a time.
+    undated = reading(name="Undated", aqi=95, measured_at=None)
+    dated = reading(name="Dated", aqi=40, measured_at=NOW - timedelta(hours=6))
+    assert last_known_ground_aqi([undated, dated], NOW).station_name == "Dated"
+    assert last_known_ground_aqi([undated], NOW) is None

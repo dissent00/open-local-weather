@@ -47,10 +47,14 @@ def score_prediction(
     if predicted.rain is None:
         return None
 
-    rain_correct = predicted.rain == actual.rain
+    # Scored against observed CONVECTION, not against reanalysis rain alone.
+    # A thunderstorm the airport watched pass overhead counts even when the
+    # grid cell recorded half a millimetre — see DailyActual.observed_convection.
+    observed_rain = actual.observed_convection()
+    rain_correct = predicted.rain == observed_rain
 
     onset_error_hrs = None
-    if lead_time_days == 0 and actual.rain and predicted.onset and actual.onset_hour:
+    if lead_time_days == 0 and observed_rain and predicted.onset and actual.onset_hour:
         onset_error_hrs = _hour_diff(predicted.onset, actual.onset_hour)
 
     def _diff(pred_val: float | None, actual_val: float | None) -> float | None:

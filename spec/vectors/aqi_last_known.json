@@ -1,0 +1,152 @@
+{
+  "vector_format_version": 1,
+  "function": "last_known_ground_aqi",
+  "description": "The most recent reading any station actually took, with its age \u2014 what the narrative quotes when nothing is fresh enough for the range. Independent of staleness; `stale` carries that. Undated readings are skipped, since 'most recent' is a claim about time.",
+  "cases": [
+    {
+      "name": "freshest reading wins",
+      "input": {
+        "readings": [
+          {
+            "name": "Older Station",
+            "station_id": "airport",
+            "aqi": 90,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          },
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "station_name": "Airport",
+        "aqi": 42,
+        "measured_at": "2026-08-11T05:30:00+00:00",
+        "hours_old": 0.5,
+        "stale": false,
+        "stations_reporting": 1
+      }
+    },
+    {
+      "name": "tie at the same hour resolves to the worst station",
+      "input": {
+        "readings": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Second Station",
+            "station_id": "airport",
+            "aqi": 30,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "station_name": "Airport",
+        "aqi": 42,
+        "measured_at": "2026-08-11T05:30:00+00:00",
+        "hours_old": 0.5,
+        "stale": false,
+        "stations_reporting": 2
+      }
+    },
+    {
+      "name": "stale reading is still reported, flagged stale",
+      "input": {
+        "readings": [
+          {
+            "name": "Beach",
+            "station_id": "beach",
+            "aqi": 171,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T22:48:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "station_name": "Beach",
+        "aqi": 171,
+        "measured_at": "2026-08-10T22:48:00+00:00",
+        "hours_old": 7.2,
+        "stale": true,
+        "stations_reporting": 1
+      }
+    },
+    {
+      "name": "undated reading cannot be the most recent",
+      "input": {
+        "readings": [
+          {
+            "name": "Unknown",
+            "station_id": "unknown",
+            "aqi": 99,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": null
+          },
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": {
+        "station_name": "Airport",
+        "aqi": 42,
+        "measured_at": "2026-08-11T05:30:00+00:00",
+        "hours_old": 0.5,
+        "stale": false,
+        "stations_reporting": 1
+      }
+    },
+    {
+      "name": "no numeric aqi yields null",
+      "input": {
+        "readings": [
+          {
+            "name": "NoComposite",
+            "station_id": "nocomposite",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": null
+    },
+    {
+      "name": "empty list yields null",
+      "input": {
+        "readings": [],
+        "now": "2026-08-11T06:00:00+00:00"
+      },
+      "expected": null
+    }
+  ]
+}

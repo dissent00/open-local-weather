@@ -35,7 +35,9 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
-from openlocalweather.comparison import compute_day_over_day
+from openlocalweather.aqi import last_known_ground_aqi
+from openlocalweather.comparison import compute_day_over_day, describe_day_rain
+from openlocalweather.instability import summarize_instability
 from openlocalweather.daypart import (
     daypart_without_sun,
     forward_hours,
@@ -459,6 +461,33 @@ def test_vectors_day_over_day():
         )
 
 
+def test_vectors_describe_day_rain():
+    """The phrase that reaches the reader almost verbatim, including the
+    thunder override that stops an observed storm reading as "dry"."""
+    for case in load("describe_day_rain.json")["cases"]:
+        i = case["input"]
+        assert describe_day_rain(i["precip_mm"], i["onset"], i["thunder"]) == case["expected"], (
+            f"vector case failed: {case['name']}"
+        )
+
+
+def test_vectors_aqi_last_known():
+    for case in load("aqi_last_known.json")["cases"]:
+        i = case["input"]
+        readings = [GroundAQIReading.model_validate(r) for r in i["readings"]]
+        got = last_known_ground_aqi(readings, datetime.fromisoformat(i["now"]))
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_instability():
+    """Whether the Overview must mention thunder — a threshold decision, so
+    both implementations have to land on the same side of it."""
+    for case in load("instability.json")["cases"]:
+        i = case["input"]
+        got = summarize_instability(i["hourly_multi_model"], i["models"], i["threshold"])
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
 # ---------------------------------------------------------------------------
 # Meta
 # ---------------------------------------------------------------------------
@@ -489,6 +518,9 @@ def test_every_vector_file_is_exercised():
         "spend.json",
         "verification.json",
         "day_over_day.json",
+        "describe_day_rain.json",
+        "aqi_last_known.json",
+        "instability.json",
         "daypart.json",
         "daypart_without_sun.json",
         "daypart_clock.json",

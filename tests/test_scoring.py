@@ -311,3 +311,51 @@ def test_trend_exactly_at_threshold_counts_as_improving_or_declining():
     label_down, delta_down = compute_rain_pct_trend(45.0, 60.0, 10, 20, **TREND_ARGS)
     assert label_down == "declining"
     assert delta_down == pytest.approx(-15.0)
+
+
+# ---------------------------------------------------------------------------
+# Observed thunder as convection (see DailyActual.observed_convection)
+# ---------------------------------------------------------------------------
+
+
+def test_rain_call_is_correct_on_an_observed_thunder_day():
+    # 2026-08-24, the case that prompted this: 0.5 mm in the reanalysis, TS at
+    # the airport. GFS, ECMWF and Kenya Met all called rain and were scored
+    # wrong for it.
+    score = score_prediction(prediction(rain=True), actual(rain=False, thunder=True), 0)
+    assert score.rain_correct is True
+
+
+def test_dry_call_is_wrong_on_an_observed_thunder_day():
+    # The other half of the same correction, and the uncomfortable half: ICON
+    # and UKMO called that day dry and were credited for it.
+    score = score_prediction(prediction(rain=False), actual(rain=False, thunder=True), 0)
+    assert score.rain_correct is False
+
+
+def test_thunder_none_scores_exactly_as_before():
+    # A deployment with no METAR station must be unaffected.
+    assert score_prediction(prediction(rain=False), actual(rain=False, thunder=None), 0).rain_correct is True
+    assert score_prediction(prediction(rain=True), actual(rain=False, thunder=None), 0).rain_correct is False
+
+
+def test_thunder_false_is_evidence_not_absence():
+    # The station reported and saw nothing: a dry call is genuinely right.
+    score = score_prediction(prediction(rain=False), actual(rain=False, thunder=False), 0)
+    assert score.rain_correct is True
+
+
+def test_rain_and_thunder_together_still_convective():
+    score = score_prediction(prediction(rain=True), actual(rain=True, thunder=True), 0)
+    assert score.rain_correct is True
+
+
+def test_onset_error_scored_on_a_thunder_day_that_had_rain_timing():
+    # Onset only exists when the reanalysis saw measurable rain, but the day
+    # is now convective, so the timing comparison must still happen.
+    score = score_prediction(
+        prediction(rain=True, onset="14:00"),
+        actual(rain=False, thunder=True, onset_hour="15:30"),
+        0,
+    )
+    assert score.onset_error_hrs == 1.5

@@ -1,0 +1,160 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_day_rain",
+  "description": "One phrase for a day's rain character: how much, when, and whether it thundered. Thunder outranks the amount \u2014 a day the airport observed a storm on is never described as dry, whatever the grid cell recorded.",
+  "cases": [
+    {
+      "name": "no amount is a gap",
+      "input": {
+        "precip_mm": null,
+        "onset": null,
+        "thunder": null
+      },
+      "expected": null
+    },
+    {
+      "name": "plain dry day",
+      "input": {
+        "precip_mm": 0.0,
+        "onset": null,
+        "thunder": null
+      },
+      "expected": "dry"
+    },
+    {
+      "name": "dry with thunder is never dry",
+      "input": {
+        "precip_mm": 0.5,
+        "onset": null,
+        "thunder": true
+      },
+      "expected": "dry but thundery"
+    },
+    {
+      "name": "thunder false still reads dry",
+      "input": {
+        "precip_mm": 0.5,
+        "onset": null,
+        "thunder": false
+      },
+      "expected": "dry"
+    },
+    {
+      "name": "thunder unobserved still reads dry",
+      "input": {
+        "precip_mm": 0.5,
+        "onset": null,
+        "thunder": null
+      },
+      "expected": "dry"
+    },
+    {
+      "name": "dry band with an evening shower",
+      "input": {
+        "precip_mm": 0.9,
+        "onset": "17:00",
+        "thunder": null
+      },
+      "expected": "dry apart from a brief evening shower"
+    },
+    {
+      "name": "dry band with an afternoon shower",
+      "input": {
+        "precip_mm": 0.9,
+        "onset": "13:00",
+        "thunder": null
+      },
+      "expected": "dry apart from a brief afternoon shower"
+    },
+    {
+      "name": "dry band with an early shower",
+      "input": {
+        "precip_mm": 0.9,
+        "onset": "07:00",
+        "thunder": null
+      },
+      "expected": "dry apart from an early shower"
+    },
+    {
+      "name": "just over the dry band, evening",
+      "input": {
+        "precip_mm": 1.1,
+        "onset": "17:00",
+        "thunder": null
+      },
+      "expected": "dry until evening showers"
+    },
+    {
+      "name": "largely dry, no timing",
+      "input": {
+        "precip_mm": 3.0,
+        "onset": null,
+        "thunder": null
+      },
+      "expected": "largely dry"
+    },
+    {
+      "name": "largely dry, evening onset",
+      "input": {
+        "precip_mm": 3.0,
+        "onset": "17:00",
+        "thunder": null
+      },
+      "expected": "dry until evening showers"
+    },
+    {
+      "name": "showery from the afternoon",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "13:00",
+        "thunder": null
+      },
+      "expected": "showery from the afternoon"
+    },
+    {
+      "name": "showery with evening thunder",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "17:00",
+        "thunder": true
+      },
+      "expected": "dry until evening thunderstorms"
+    },
+    {
+      "name": "showery with afternoon thunder",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "13:00",
+        "thunder": true
+      },
+      "expected": "showery with afternoon thunderstorms"
+    },
+    {
+      "name": "wet day from the morning",
+      "input": {
+        "precip_mm": 20.0,
+        "onset": "07:00",
+        "thunder": null
+      },
+      "expected": "wet"
+    },
+    {
+      "name": "wet day with thunder",
+      "input": {
+        "precip_mm": 20.0,
+        "onset": "07:00",
+        "thunder": true
+      },
+      "expected": "wet with thunderstorms"
+    },
+    {
+      "name": "heavy evening rain",
+      "input": {
+        "precip_mm": 20.0,
+        "onset": "17:00",
+        "thunder": null
+      },
+      "expected": "dry until heavy evening rain"
+    }
+  ]
+}

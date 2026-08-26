@@ -1,0 +1,351 @@
+{
+  "vector_format_version": 1,
+  "function": "summarize_instability",
+  "description": "Peak CAPE per model over the hours ahead, and whether any model crosses the threshold that supports thunderstorms. Max across models, never the mean \u2014 averaging a disagreement away is the failure this exists to prevent. Absent CAPE is a gap, not a calm afternoon.",
+  "cases": [
+    {
+      "name": "no data",
+      "input": {
+        "hourly_multi_model": {},
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": null
+    },
+    {
+      "name": "no cape series",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": null
+    },
+    {
+      "name": "all-null cape series",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": null
+    },
+    {
+      "name": "quiet afternoon",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              10.0,
+              120.0,
+              80.0
+            ],
+            "cape_icon_seamless": [
+              20.0,
+              200.0,
+              150.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 200.0,
+        "peak_model": "icon_seamless",
+        "peak_hour": "15:00",
+        "convective": false,
+        "models_above_threshold": [],
+        "peak_cape_by_model": {
+          "gfs_seamless": 120.0,
+          "icon_seamless": 200.0
+        }
+      }
+    },
+    {
+      "name": "models disagree, two above threshold",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              50.0,
+              300.0,
+              180.0
+            ],
+            "cape_icon_seamless": [
+              100.0,
+              2400.0,
+              1900.0
+            ],
+            "cape_ukmo_seamless": [
+              90.0,
+              2600.0,
+              2100.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 2600.0,
+        "peak_model": "ukmo_seamless",
+        "peak_hour": "15:00",
+        "convective": true,
+        "models_above_threshold": [
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "peak_cape_by_model": {
+          "gfs_seamless": 300.0,
+          "icon_seamless": 2400.0,
+          "ukmo_seamless": 2600.0
+        }
+      }
+    },
+    {
+      "name": "one model alone above threshold",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              10.0,
+              20.0,
+              30.0
+            ],
+            "cape_icon_seamless": [
+              10.0,
+              1500.0,
+              40.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 1500.0,
+        "peak_model": "icon_seamless",
+        "peak_hour": "15:00",
+        "convective": true,
+        "models_above_threshold": [
+          "icon_seamless"
+        ],
+        "peak_cape_by_model": {
+          "gfs_seamless": 30.0,
+          "icon_seamless": 1500.0
+        }
+      }
+    },
+    {
+      "name": "exactly at the threshold",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              0.0,
+              1000.0,
+              0.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 1000.0,
+        "peak_model": "gfs_seamless",
+        "peak_hour": "15:00",
+        "convective": true,
+        "models_above_threshold": [
+          "gfs_seamless"
+        ],
+        "peak_cape_by_model": {
+          "gfs_seamless": 1000.0
+        }
+      }
+    },
+    {
+      "name": "one below the threshold",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              0.0,
+              999.0,
+              0.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 999.0,
+        "peak_model": "gfs_seamless",
+        "peak_hour": "15:00",
+        "convective": false,
+        "models_above_threshold": [],
+        "peak_cape_by_model": {
+          "gfs_seamless": 999.0
+        }
+      }
+    },
+    {
+      "name": "nulls within a series are skipped",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape_gfs_seamless": [
+              null,
+              1400.0,
+              null
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 1400.0,
+        "peak_model": "gfs_seamless",
+        "peak_hour": "15:00",
+        "convective": true,
+        "models_above_threshold": [
+          "gfs_seamless"
+        ],
+        "peak_cape_by_model": {
+          "gfs_seamless": 1400.0
+        }
+      }
+    },
+    {
+      "name": "unsuffixed series for a single-model fetch",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-26T12:00",
+              "2026-08-26T15:00",
+              "2026-08-26T18:00"
+            ],
+            "cape": [
+              0.0,
+              1200.0,
+              0.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "threshold": 1000.0
+      },
+      "expected": {
+        "peak_cape_jkg": 1200.0,
+        "peak_model": "gfs_seamless",
+        "peak_hour": "15:00",
+        "convective": true,
+        "models_above_threshold": [
+          "gfs_seamless",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "peak_cape_by_model": {
+          "gfs_seamless": 1200.0,
+          "icon_seamless": 1200.0,
+          "ukmo_seamless": 1200.0
+        }
+      }
+    }
+  ]
+}

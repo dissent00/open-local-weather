@@ -35,11 +35,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.aqi import (
+    STALE_THRESHOLD_HOURS,
+    hours_old,
+    is_stale,
+    last_known_ground_aqi,
+    summarize_ground_aqi,
+)
+from openlocalweather.comparison import describe_day_rain
+from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 
 
@@ -460,6 +468,41 @@ def export_aqi() -> None:
         "Stale and unknown-freshness readings are excluded from the range but "
         "still counted in stations_stale/stations_total.",
         summary_cases,
+    )
+
+    older = fresh.model_copy(
+        update={
+            "name": "Older Station",
+            "aqi": 90,
+            "measured_at": now - timedelta(hours=9),
+        }
+    )
+    same_hour = fresh.model_copy(update={"name": "Second Station", "aqi": 30})
+    last_known_scenarios = [
+        ("freshest reading wins", [older, fresh]),
+        ("tie at the same hour resolves to the worst station", [fresh, same_hour]),
+        ("stale reading is still reported, flagged stale", [stale]),
+        ("undated reading cannot be the most recent", [no_ts, fresh]),
+        ("no numeric aqi yields null", [no_aqi]),
+        ("empty list yields null", []),
+    ]
+    last_known_cases = []
+    for name, readings in last_known_scenarios:
+        last_known_cases.append(
+            {
+                "name": name,
+                "input": {"readings": [dump(r) for r in readings], "now": now.isoformat()},
+                "expected": dump(last_known_ground_aqi(readings, now)),
+            }
+        )
+    write(
+        "aqi_last_known.json",
+        "last_known_ground_aqi",
+        "The most recent reading any station actually took, with its age — what "
+        "the narrative quotes when nothing is fresh enough for the range. "
+        "Independent of staleness; `stale` carries that. Undated readings are "
+        "skipped, since 'most recent' is a claim about time.",
+        last_known_cases,
     )
 
 
@@ -1304,6 +1347,20 @@ def export_day_over_day() -> None:
          actual(rain=True, precip_mm=2.0, onset_hour="19:00"),
          preds([29.0, 29.0, 29.0, 29.0], rains=[True] * 4, mm=[2.0] * 4,
                onsets=["05:00", "19:00", "19:30", "20:00"])),
+        # 2026-08-24: the airport reported TS for an hour; the reanalysis
+        # recorded 0.5 mm. The next morning's Overview said "dry again".
+        ("thunder yesterday is never 'dry again'",
+         actual(rain=False, precip_mm=0.5, onset_hour=None, thunder=True),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("thunder observed as absent still reads dry again",
+         actual(rain=False, precip_mm=0.5, onset_hour=None, thunder=False),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("no thunder observation at all behaves as before",
+         actual(rain=False, precip_mm=0.5, onset_hour=None, thunder=None),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("a wet thundery day contrasted against a dry one",
+         actual(rain=True, precip_mm=8.0, onset_hour="17:00", thunder=True),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),
@@ -1519,6 +1576,122 @@ def export_daypart() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# day character and instability
+# ---------------------------------------------------------------------------
+
+
+def export_describe_day_rain() -> None:
+    """The phrase that reaches the reader almost verbatim inside
+    rain_contrast. Vector-tested separately from compute_day_over_day because
+    the band edges and the thunder override are where it goes wrong: a live
+    run described a day with an observed thunderstorm as "dry again"."""
+    scenarios = [
+        ("no amount is a gap", None, None, None),
+        ("plain dry day", 0.0, None, None),
+        ("dry with thunder is never dry", 0.5, None, True),
+        ("thunder false still reads dry", 0.5, None, False),
+        ("thunder unobserved still reads dry", 0.5, None, None),
+        ("dry band with an evening shower", 0.9, "17:00", None),
+        ("dry band with an afternoon shower", 0.9, "13:00", None),
+        ("dry band with an early shower", 0.9, "07:00", None),
+        ("just over the dry band, evening", 1.1, "17:00", None),
+        ("largely dry, no timing", 3.0, None, None),
+        ("largely dry, evening onset", 3.0, "17:00", None),
+        ("showery from the afternoon", 8.0, "13:00", None),
+        ("showery with evening thunder", 8.0, "17:00", True),
+        ("showery with afternoon thunder", 8.0, "13:00", True),
+        ("wet day from the morning", 20.0, "07:00", None),
+        ("wet day with thunder", 20.0, "07:00", True),
+        ("heavy evening rain", 20.0, "17:00", None),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"precip_mm": precip, "onset": onset, "thunder": thunder},
+            "expected": describe_day_rain(precip, onset, thunder),
+        }
+        for name, precip, onset, thunder in scenarios
+    ]
+    write(
+        "describe_day_rain.json",
+        "describe_day_rain",
+        "One phrase for a day's rain character: how much, when, and whether it "
+        "thundered. Thunder outranks the amount — a day the airport observed a "
+        "storm on is never described as dry, whatever the grid cell recorded.",
+        cases,
+    )
+
+
+def export_instability() -> None:
+    """Whether the Overview must mention thunder. A threshold decision, so it
+    belongs in code and has to agree across implementations."""
+    models = ["gfs_seamless", "icon_seamless", "ukmo_seamless"]
+    times = ["2026-08-26T12:00", "2026-08-26T15:00", "2026-08-26T18:00"]
+
+    def payload(**series):
+        return {"hourly": {"time": times, **series}}
+
+    scenarios = [
+        ("no data", {}),
+        ("no cape series", payload()),
+        ("all-null cape series", payload(cape_gfs_seamless=[None, None, None])),
+        (
+            "quiet afternoon",
+            payload(
+                cape_gfs_seamless=[10.0, 120.0, 80.0],
+                cape_icon_seamless=[20.0, 200.0, 150.0],
+            ),
+        ),
+        (
+            "models disagree, two above threshold",
+            payload(
+                cape_gfs_seamless=[50.0, 300.0, 180.0],
+                cape_icon_seamless=[100.0, 2400.0, 1900.0],
+                cape_ukmo_seamless=[90.0, 2600.0, 2100.0],
+            ),
+        ),
+        (
+            "one model alone above threshold",
+            payload(
+                cape_gfs_seamless=[10.0, 20.0, 30.0],
+                cape_icon_seamless=[10.0, 1500.0, 40.0],
+            ),
+        ),
+        (
+            "exactly at the threshold",
+            payload(cape_gfs_seamless=[0.0, CONVECTIVE_CAPE_THRESHOLD_JKG, 0.0]),
+        ),
+        (
+            "one below the threshold",
+            payload(cape_gfs_seamless=[0.0, CONVECTIVE_CAPE_THRESHOLD_JKG - 1, 0.0]),
+        ),
+        ("nulls within a series are skipped", payload(cape_gfs_seamless=[None, 1400.0, None])),
+        ("unsuffixed series for a single-model fetch", payload(cape=[0.0, 1200.0, 0.0])),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {
+                "hourly_multi_model": hourly,
+                "models": models,
+                "threshold": CONVECTIVE_CAPE_THRESHOLD_JKG,
+            },
+            "expected": dump(summarize_instability(hourly, models)),
+        }
+        for name, hourly in scenarios
+    ]
+    write(
+        "instability.json",
+        "summarize_instability",
+        "Peak CAPE per model over the hours ahead, and whether any model "
+        "crosses the threshold that supports thunderstorms. Max across models, "
+        "never the mean — averaging a disagreement away is the failure this "
+        "exists to prevent. Absent CAPE is a gap, not a calm afternoon.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -1537,6 +1710,8 @@ def main() -> None:
     export_spend()
     export_verification()
     export_day_over_day()
+    export_describe_day_rain()
+    export_instability()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

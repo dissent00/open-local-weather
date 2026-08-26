@@ -53,7 +53,15 @@ from pathlib import Path
 from typing import Protocol
 
 from openlocalweather import __version__
-from openlocalweather.aqi import GroundAQISummary, hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.aqi import (
+    GroundAQILastKnown,
+    GroundAQISummary,
+    hours_old,
+    is_stale,
+    last_known_ground_aqi,
+    summarize_ground_aqi,
+)
+from openlocalweather.instability import InstabilityOutlook, summarize_instability
 from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.daypart import (
     DayPart,
@@ -87,6 +95,7 @@ from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
 from openlocalweather.models import (
     LocalBulletinRecord,
+    DailyActual,
     DailyLogEntry,
     GroundAQIReading,
     LogEntryMeta,
@@ -165,6 +174,11 @@ class ForwardGuidance:
     airport_metar: list[dict] | None
     ground_aqi_readings: list[GroundAQIReading]
     ground_aqi_summary: GroundAQISummary | None
+    # What to say when nothing is fresh, and whether the afternoon is
+    # unstable enough to belong in the Overview. Both live here rather than
+    # in each run's own code so the morning and the refresh cannot drift.
+    ground_aqi_last_known: GroundAQILastKnown | None
+    instability: InstabilityOutlook | None
 
     aqi_fetch_time: datetime
     bulletin_text: str
@@ -310,6 +324,38 @@ def _sun_context(location, now_local: datetime) -> tuple[DayPart | None, datetim
     return summarize_daypart(now_local, sunrise, sunset, next_sunrise), now_local
 
 
+def _apply_observed_thunder(
+    actuals: dict[date, DailyActual], location: LocationConfig
+) -> None:
+    """Stamps airport-observed thunder onto the days just bucketed from the
+    reanalysis archive.
+
+    PRIMARY POINT ONLY. The METAR station sits at the primary place; the
+    secondary point is a lake position that can be a hundred kilometres away,
+    and convection there is genuinely a different event. Copying one onto the
+    other would invent an observation.
+
+    Silent no-op when no ICAO is configured or the archive is unreachable,
+    which leaves every `thunder` at None — "not observed", never "no
+    thunder". Runs in both the daily and the weekly-batch branch, so a
+    re-fetch reapplies it rather than quietly dropping it.
+    """
+    if not actuals:
+        return
+
+    thunder_by_date = metar_fetch.observed_thunder_by_date(
+        location.metar_station_icao, min(actuals), max(actuals), location.timezone
+    )
+    if thunder_by_date is None:
+        return
+
+    for day, actual in actuals.items():
+        if day not in thunder_by_date:
+            continue
+
+        actual.thunder = thunder_by_date[day]
+
+
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     location = deps.location
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
@@ -352,6 +398,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
 
     ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
     ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
+    ground_aqi_last_known = last_known_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
     # A fetcher that can also yield a structured prediction exposes
     # fetch_forecast(); the plain BulletinFetcher protocol does not. Duck-typed
     # rather than added to the Protocol so existing fork implementations keep
@@ -414,9 +461,15 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     except Exception as e:  # noqa: BLE001 - the calendar day is still supplied
         print(f"Forward hourly window unavailable ({e}); continuing without it.", file=sys.stderr)
 
+    # From the trimmed forward window, never the calendar day: a CAPE peak
+    # that already passed this morning is not a reason to warn about tonight.
+    instability = summarize_instability(forward_hourly or {}, MODELS)
+
     return ForwardGuidance(
         issuance=issuance,
         forward_hourly=forward_hourly,
+        ground_aqi_last_known=ground_aqi_last_known,
+        instability=instability,
         primary_hourly=primary_hourly,
         primary_daily=primary_daily,
         regional_pressure=regional_pressure,
@@ -497,7 +550,9 @@ def run_daily_pipeline(
         primary_archive = open_meteo.fetch_archive_range(
             location.primary_point.lat, location.primary_point.lon, batch_start, yesterday, location.timezone
         )
-        actuals_cache_store.replace_all(cache, "primary", open_meteo.bucket_hourly_by_date(primary_archive))
+        primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
+        _apply_observed_thunder(primary_actuals, location)
+        actuals_cache_store.replace_all(cache, "primary", primary_actuals)
         if location.secondary_point.enabled:
             secondary_archive = open_meteo.fetch_archive_range(
                 location.secondary_point.lat,
@@ -513,7 +568,9 @@ def run_daily_pipeline(
         primary_archive = open_meteo.fetch_archive_single_day(
             location.primary_point.lat, location.primary_point.lon, yesterday, location.timezone
         )
-        for d, actual in open_meteo.bucket_hourly_by_date(primary_archive).items():
+        primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
+        _apply_observed_thunder(primary_actuals, location)
+        for d, actual in primary_actuals.items():
             actuals_cache_store.upsert_day(cache.primary, d, actual)
         if location.secondary_point.enabled:
             secondary_archive = open_meteo.fetch_archive_single_day(
@@ -645,6 +702,8 @@ def run_daily_pipeline(
         historical_logs=historical_logs,
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
+        ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
+        instability=asdict(guidance.instability) if guidance.instability is not None else None,
         # What actually HAPPENED yesterday, so the Overview can open with a
         # real day-over-day comparison. Distinct from verification_context,
         # which is how yesterday's predictions SCORED. Free: this is the same
@@ -868,6 +927,8 @@ def run_refresh_pipeline(
         historical_logs=historical_logs,
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
+        ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
+        instability=asdict(guidance.instability) if guidance.instability is not None else None,
         yesterday_actual=refresh_yesterday_actual,
         review_context=refresh_review_context,
         today_weather_data={

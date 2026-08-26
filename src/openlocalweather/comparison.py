@@ -40,6 +40,10 @@ class DayOverDayComparison:
     yesterday_high_c: float | None
     yesterday_low_c: float | None
     yesterday_rain: bool | None
+    # Surfaced beside the label for the same reason today_rain_expected is:
+    # a raw observation in the payload is much harder for the LLM to misread
+    # than a phrase alone. None means no station observation, not "no thunder".
+    yesterday_thunder: bool | None
     yesterday_peak_wind_kmh: float | None
     # Exposed alongside the derived label, not just folded into it. A live
     # run read "rain again, as yesterday" and wrote "wetter conditions",
@@ -116,11 +120,18 @@ def _onset_phrase(onset: str | None) -> str | None:
     return "from the morning"
 
 
-def describe_day_rain(precip_mm: float | None, onset: str | None) -> str | None:
-    """One phrase for the rain character of a day: how much, and when.
+def describe_day_rain(
+    precip_mm: float | None, onset: str | None, thunder: bool | None = None
+) -> str | None:
+    """One phrase for the rain character of a day: how much, when, and
+    whether it thundered.
 
     Returns None when there is no amount to reason from, so the caller omits
     the comparison rather than guessing — a gap must read as a gap.
+
+    `thunder` is an OBSERVATION and therefore only ever meaningful for a day
+    that has already happened; today's side of the comparison always passes
+    None. See DailyActual.thunder for why None and False differ.
     """
     if precip_mm is None:
         return None
@@ -131,10 +142,36 @@ def describe_day_rain(precip_mm: float | None, onset: str | None) -> str | None:
             band = word
             break
 
-    if band == "dry":
-        return "dry"
-
     when = _onset_phrase(onset)
+
+    # Thunder outranks the amount. A storm that passes over the city and
+    # drops half a millimetre is the thing the reader remembers about the
+    # day, and calling that day "dry" to their face is how this project
+    # loses their trust — they were standing outside in it. Measured case:
+    # 2026-08-24, told to readers the next morning as "dry again".
+    if thunder:
+        if band == "dry":
+            return "dry but thundery"
+        if when == "evening":
+            return "dry until evening thunderstorms"
+        if when == "afternoon":
+            return f"{band} with afternoon thunderstorms"
+        return f"{band} with thunderstorms"
+
+    if band == "dry":
+        # The band edge was a cliff. 0.9 mm falling entirely at 17:00 read
+        # "dry"; 1.1 mm at 17:00 read "dry until evening showers". A fifth of
+        # a millimetre should not redescribe the day, so timing qualifies the
+        # dry band too — an onset exists only when some hour actually crossed
+        # the rain threshold, which is a shower whatever the daily total.
+        if when == "evening":
+            return "dry apart from a brief evening shower"
+        if when == "afternoon":
+            return "dry apart from a brief afternoon shower"
+        if when == "from the morning":
+            return "dry apart from an early shower"
+
+        return "dry"
 
     # Timing only qualifies the wetter bands. "Largely dry from the morning"
     # reads as though the DRYNESS started in the morning; the band already
@@ -218,9 +255,11 @@ def compute_day_over_day(
 
     today_precip = mean([p.precip_mm for p in today_day0_predictions])
     today_onset = _consensus_onset(today_day0_predictions)
-    today_character = describe_day_rain(today_precip, today_onset)
+    # Today has no thunder observation — it has not happened yet. Today's
+    # convective risk is a forecast, and belongs to the hazard sections.
+    today_character = describe_day_rain(today_precip, today_onset, thunder=None)
     yesterday_character = describe_day_rain(
-        yesterday_actual.precip_mm, yesterday_actual.onset_hour
+        yesterday_actual.precip_mm, yesterday_actual.onset_hour, yesterday_actual.thunder
     )
 
     if today_character and yesterday_character:
@@ -246,6 +285,7 @@ def compute_day_over_day(
         yesterday_high_c=yesterday_actual.high_c,
         yesterday_low_c=yesterday_actual.low_c,
         yesterday_rain=yesterday_actual.rain,
+        yesterday_thunder=yesterday_actual.thunder,
         yesterday_peak_wind_kmh=yesterday_actual.peak_wind_kmh,
         today_rain_expected=today_rain,
         today_consensus_high_c=round(consensus_high, 1) if consensus_high is not None else None,

@@ -2,6 +2,8 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
+from openlocalweather import pipeline
+from openlocalweather.config import load_location_config
 from openlocalweather.models import DailyActual, DailyLogEntry, LogEntryMeta, ModelPrediction, ModelPredictionsByLead, TrackRecord, TrackRecordEntry
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
@@ -456,3 +458,72 @@ def test_all_time_counters_still_advance_on_a_genuinely_new_day():
     assert entry.all_time_checks == 2
     assert entry.all_time_correct == 2
     assert entry.last_verified_target_date == day2_yesterday
+
+# ---------------------------------------------------------------------------
+# Observed thunder stamped onto the actuals (see fetch/metar.py)
+# ---------------------------------------------------------------------------
+
+AUG_24 = date(2026, 8, 24)
+AUG_25 = date(2026, 8, 25)
+
+
+def thunder_location(icao: str = "HKKI"):
+    return load_location_config("config/location.example.yaml").model_copy(
+        update={"metar_station_icao": icao, "timezone": "Africa/Nairobi"}
+    )
+
+
+def two_days() -> dict[date, DailyActual]:
+    return {
+        AUG_24: DailyActual(rain=False, precip_mm=0.5),
+        AUG_25: DailyActual(rain=False, precip_mm=0.4),
+    }
+
+
+def stub_thunder(monkeypatch, result):
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_thunder_by_date", lambda *a, **k: result
+    )
+
+
+def test_apply_observed_thunder_stamps_each_day(monkeypatch):
+    stub_thunder(monkeypatch, {AUG_24: True, AUG_25: False})
+    actuals = two_days()
+    pipeline._apply_observed_thunder(actuals, thunder_location())
+    assert actuals[AUG_24].thunder is True
+    assert actuals[AUG_25].thunder is False
+
+
+def test_apply_observed_thunder_leaves_none_when_archive_unavailable(monkeypatch):
+    stub_thunder(monkeypatch, None)
+    actuals = two_days()
+    pipeline._apply_observed_thunder(actuals, thunder_location())
+    assert all(a.thunder is None for a in actuals.values())
+
+
+def test_apply_observed_thunder_leaves_unreported_days_alone(monkeypatch):
+    # A day the station filed nothing for stays None, not False.
+    stub_thunder(monkeypatch, {AUG_24: True})
+    actuals = two_days()
+    pipeline._apply_observed_thunder(actuals, thunder_location())
+    assert actuals[AUG_25].thunder is None
+
+
+def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_thunder_by_date",
+        lambda icao, start, end, tz: seen.update(icao=icao, start=start, end=end, tz=tz) or None,
+    )
+    pipeline._apply_observed_thunder(two_days(), thunder_location())
+    assert seen == {"icao": "HKKI", "start": AUG_24, "end": AUG_25, "tz": "Africa/Nairobi"}
+
+
+def test_apply_observed_thunder_empty_actuals_is_a_no_op(monkeypatch):
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_thunder_by_date",
+        lambda *a, **k: pytest.fail("must not fetch for an empty range"),
+    )
+    pipeline._apply_observed_thunder({}, thunder_location())

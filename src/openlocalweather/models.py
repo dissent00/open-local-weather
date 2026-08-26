@@ -86,6 +86,34 @@ class DailyActual(BaseModel):
     # day, and the day-over-day summary was calling both "another wet day".
     # None on entries written before it was stored.
     precip_mm: float | None = None
+    # Did the airport observe thunder on this local day (fetch/metar.py)?
+    #
+    # THREE-VALUED, AND THE THIRD VALUE MATTERS. None means no observation was
+    # available — no ICAO configured, the archive unreachable, or the station
+    # filed nothing that day — and must never be read as "no thunder". False
+    # means the station reported and saw none, which is real evidence a dry
+    # call can be scored against.
+    #
+    # This is not a decoration on `rain`. It CHANGES what a rain forecast is
+    # scored against, via observed_convection() below. Measured on 2026-08-26
+    # across the 42 days then stored: 5 had an observed thunderstorm that the
+    # reanalysis recorded as a dry day, and every model that called those days
+    # correctly had been marked wrong for it.
+    thunder: bool | None = None
+
+    def observed_convection(self) -> bool:
+        """What a rain forecast is actually scored against.
+
+        Reanalysis precipitation OR observed thunder. A day with a
+        thunderstorm over the city and 0.5 mm in a 25 km grid cell is a day
+        the convective models called correctly, and scoring it as dry
+        punishes exactly the models most worth trusting here — over a lake
+        basin whose storms global models already under-resolve.
+
+        Thunder being None leaves this as plain `rain`, so a deployment with
+        no METAR station scores exactly as it did before.
+        """
+        return self.rain or bool(self.thunder)
 
 
 class VerificationScore(BaseModel):

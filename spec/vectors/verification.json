@@ -40,7 +40,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           }
         },
         "today": "2026-08-21",
@@ -403,7 +404,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-10": {
             "rain": true,
@@ -412,7 +414,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-11": {
             "rain": true,
@@ -421,7 +424,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-12": {
             "rain": true,
@@ -430,7 +434,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-13": {
             "rain": true,
@@ -439,7 +444,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-14": {
             "rain": true,
@@ -448,7 +454,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-15": {
             "rain": true,
@@ -457,7 +464,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-16": {
             "rain": true,
@@ -466,7 +474,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-17": {
             "rain": true,
@@ -475,7 +484,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-18": {
             "rain": true,
@@ -484,7 +494,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-19": {
             "rain": true,
@@ -493,7 +504,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-20": {
             "rain": true,
@@ -502,7 +514,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           }
         },
         "today": "2026-08-21",
@@ -865,7 +878,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-10": {
             "rain": true,
@@ -874,7 +888,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-11": {
             "rain": true,
@@ -883,7 +898,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-12": {
             "rain": true,
@@ -892,7 +908,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-13": {
             "rain": true,
@@ -901,7 +918,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-14": {
             "rain": true,
@@ -910,7 +928,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-15": {
             "rain": true,
@@ -919,7 +938,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-16": {
             "rain": true,
@@ -928,7 +948,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-17": {
             "rain": true,
@@ -937,7 +958,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-18": {
             "rain": true,
@@ -946,7 +968,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-19": {
             "rain": true,
@@ -955,7 +978,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-20": {
             "rain": true,
@@ -964,7 +988,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           }
         },
         "today": "2026-08-21",
@@ -1158,7 +1183,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-17": {
             "rain": true,
@@ -1167,7 +1193,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-18": {
             "rain": true,
@@ -1176,7 +1203,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-19": {
             "rain": true,
@@ -1185,7 +1213,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           },
           "2026-08-20": {
             "rain": true,
@@ -1194,7 +1223,8 @@
             "peak_wind_kmh": 20.0,
             "mslp_trend": -1.0,
             "onset_hour": null,
-            "precip_mm": null
+            "precip_mm": null,
+            "thunder": null
           }
         },
         "today": "2026-08-21",

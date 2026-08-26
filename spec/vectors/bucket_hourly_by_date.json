@@ -55,7 +55,8 @@
           "peak_wind_kmh": 30.0,
           "mslp_trend": -1.0,
           "onset_hour": "12:00",
-          "precip_mm": 1.2
+          "precip_mm": 1.2,
+          "thunder": null
         },
         "2026-08-12": {
           "rain": false,
@@ -64,7 +65,8 @@
           "peak_wind_kmh": 21.0,
           "mslp_trend": -1.0,
           "onset_hour": null,
-          "precip_mm": 0.1
+          "precip_mm": 0.1,
+          "thunder": null
         }
       }
     },
@@ -109,7 +111,8 @@
           "peak_wind_kmh": 25.0,
           "mslp_trend": 0.5,
           "onset_hour": null,
-          "precip_mm": 0.0
+          "precip_mm": 0.0,
+          "thunder": null
         }
       }
     },
@@ -150,7 +153,8 @@
           "peak_wind_kmh": 16.0,
           "mslp_trend": 0.5,
           "onset_hour": null,
-          "precip_mm": 0.0
+          "precip_mm": 0.0,
+          "thunder": null
         }
       }
     },

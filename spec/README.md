@@ -75,11 +75,14 @@ absent values are `null`, never omitted keys.
 |---|---|---|
 | `aqi_staleness.json` | `hours_old / is_stale` | 4 |
 | `aqi_summary.json` | `summarize_ground_aqi` | 6 |
+| `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 4 |
 | `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 11 |
+| `describe_day_rain.json` | `describe_day_rain` | 17 |
+| `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 4 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
