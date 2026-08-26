@@ -21,6 +21,7 @@ export 'src/coverage.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
 export 'src/forecast.dart';
+export 'src/instability.dart';
 export 'src/models.dart';
 export 'src/comparison.dart';
 export 'src/config.dart';

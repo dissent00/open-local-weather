@@ -4,6 +4,7 @@ import 'daypart.dart';
 import 'dates.dart';
 import 'config.dart';
 import 'extract.dart';
+import 'instability.dart';
 import 'llm/prompt.dart';
 import 'llm/provider.dart';
 import 'llm/schema.dart';
@@ -67,6 +68,11 @@ Future<ForecastRun> generateForecast({
   Object? yesterdayActual,
   Object? groundAqiReadings,
   Object? groundAqiSummary,
+
+  /// The most recent real ground reading, with its age — what the narrative
+  /// quotes when nothing is fresh enough for the summary above. Supplied by
+  /// the caller alongside `groundAqiSummary`, which it computes the same way.
+  Object? groundAqiLastKnown,
   String localBulletinSourceName = '',
   String localBulletinText = '',
   /// Previous issuances today, oldest first. Empty or null means this is
@@ -171,6 +177,13 @@ Future<ForecastRun> generateForecast({
     }
   }
 
+  // From the trimmed forward window, never the calendar day: a CAPE peak that
+  // already passed this morning is not a reason to warn about tonight.
+  final instability = summarizeInstability(
+    (resolvedForward as Map<String, Object?>?) ?? const <String, Object?>{},
+    models,
+  );
+
   final day0 = extractDay0PredictionsFromHourly(hourly, models);
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
@@ -186,6 +199,8 @@ Future<ForecastRun> generateForecast({
     historicalLogs: historicalLogs,
     groundAqiReadings: groundAqiReadings,
     groundAqiSummary: groundAqiSummary,
+    groundAqiLastKnown: groundAqiLastKnown,
+    instability: instability?.toJson(),
     yesterdayActual: yesterdayActual,
     todayWeatherData: {
       'primary_today_hourly': hourly,

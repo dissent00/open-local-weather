@@ -19,13 +19,17 @@ VerificationScore? scorePrediction(
   if (predicted == null || actual == null) return null;
   if (predicted.rain == null) return null;
 
-  final rainCorrect = predicted.rain == actual.rain;
+  // Scored against observed CONVECTION, not against reanalysis rain alone. A
+  // thunderstorm the airport watched pass overhead counts even when the grid
+  // cell recorded half a millimetre — see DailyActual.observedConvection.
+  final observedRain = actual.observedConvection();
+  final rainCorrect = predicted.rain == observedRain;
 
   double? onsetErrorHrs;
   // Onset error is Day+0 only: Day+3/+7 predictions carry no onset timing to
   // begin with, so a non-null value at those lead times would be fabricated.
   if (leadTimeDays == 0 &&
-      actual.rain &&
+      observedRain &&
       predicted.onset != null &&
       actual.onsetHour != null) {
     onsetErrorHrs = _hourDiff(predicted.onset!, actual.onsetHour!);

@@ -38,7 +38,7 @@ List<double?> _numList(Object? v) {
 /// and never tries the working key. In Python that cost the live deployment
 /// every Day+0 ECMWF wind score for months, with no error raised anywhere.
 /// Mirrors `pick_series` in the Python implementation.
-List<double?> _pickSeries(Map<String, Object?> h, List<String> candidateKeys) {
+List<double?> pickSeries(Map<String, Object?> h, List<String> candidateKeys) {
   for (final key in candidateKeys) {
     final value = h[key];
     if (value is List && value.any((e) => e != null)) return _numList(value);
@@ -52,7 +52,7 @@ List<double?> _pickSeries(Map<String, Object?> h, List<String> candidateKeys) {
 /// single-model response uses the bare `{variable}`. Both shapes appear in
 /// practice, so both are handled — same as the Python implementation.
 List<double?> _series(Map<String, Object?> h, String variable, String model) =>
-    _pickSeries(h, ['${variable}_$model', variable]);
+    pickSeries(h, ['${variable}_$model', variable]);
 
 /// Wind gusts, newest spelling first.
 ///
@@ -62,7 +62,7 @@ List<double?> _series(Map<String, Object?> h, String variable, String model) =>
 /// data and identical values elsewhere (verified 2026-08-19 against the live
 /// API). Both are tried so a stored response in either shape still reads.
 List<double?> _windSeries(Map<String, Object?> h, String model, String legacy, String current) =>
-    _pickSeries(h, ['${current}_$model', '${legacy}_$model', current, legacy]);
+    pickSeries(h, ['${current}_$model', '${legacy}_$model', current, legacy]);
 
 /// Pulls each model's Day+0 prediction from hourly data. Onset comes from the
 /// actual hour-by-hour series, which only exists at hourly resolution.

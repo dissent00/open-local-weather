@@ -693,6 +693,51 @@ void main() {
     });
   });
 
+  group('day character', () {
+    test('describe_day_rain', () {
+      // The phrase that reaches the reader almost verbatim, including the
+      // thunder override that stops an observed storm reading as "dry".
+      for (final c in casesOf('describe_day_rain.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = describeDayRain(
+          (i['precip_mm'] as num?)?.toDouble(),
+          i['onset'] as String?,
+          i['thunder'] as bool?,
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
+  group('ground aqi last known', () {
+    test('last_known_ground_aqi', () {
+      for (final c in casesOf('aqi_last_known.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final readings = (i['readings'] as List)
+            .map((r) => GroundAqiReading.fromJson(r as Map<String, Object?>))
+            .toList();
+        final got = lastKnownGroundAqi(readings, DateTime.parse(i['now'] as String));
+        expectMatches(got?.toJson(), c['expected'], c['name'] as String);
+      }
+    });
+  });
+
+  group('instability', () {
+    test('summarize_instability', () {
+      // Whether the Overview must mention thunder — a threshold decision, so
+      // both implementations have to land on the same side of it.
+      for (final c in casesOf('instability.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = summarizeInstability(
+          i['hourly_multi_model'] as Map<String, Object?>,
+          (i['models'] as List).cast<String>(),
+          (i['threshold'] as num).toDouble(),
+        );
+        expectMatches(got?.toJson(), c['expected'], c['name'] as String);
+      }
+    });
+  });
+
   group('daypart', () {
     test('the part of day matches Python, statements included', () {
       // Every string here goes into the prompt verbatim, so a difference of
@@ -777,6 +822,9 @@ void main() {
       'spend.json',
       'verification.json',
       'day_over_day.json',
+      'describe_day_rain.json',
+      'aqi_last_known.json',
+      'instability.json',
       'daypart.json',
       'daypart_without_sun.json',
       'daypart_clock.json',

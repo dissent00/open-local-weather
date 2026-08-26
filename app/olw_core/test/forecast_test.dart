@@ -257,6 +257,97 @@ void main() {
     expect(llm.seenUserPrompt, contains('locates a direction, not a centre or a front'));
   });
 
+  test('the convective flag reaches the prompt, decided in code', () async {
+    // The Overview is a tight slot and nothing competed for it: a real
+    // forecast opened "similar warmth, calmer winds, and dry again" on a day
+    // whose afternoon CAPE reached 2600 J/kg on two models.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      forwardHourly: const {
+        'hourly': {
+          'time': ['2026-08-19T12:00', '2026-08-19T15:00', '2026-08-19T18:00'],
+          'cape_gfs_seamless': [50.0, 2400.0, 1900.0],
+        }
+      },
+    );
+    expect(llm.seenUserPrompt, contains('CONVECTIVE INSTABILITY'));
+    expect(llm.seenUserPrompt, contains('"convective": true'));
+    expect(llm.seenUserPrompt, contains('"peak_hour": "15:00"'));
+  });
+
+  test('a quiet afternoon does not raise the convective flag', () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      forwardHourly: const {
+        'hourly': {
+          'time': ['2026-08-19T12:00', '2026-08-19T15:00'],
+          'cape_gfs_seamless': [50.0, 120.0],
+        }
+      },
+    );
+    expect(llm.seenUserPrompt, contains('"convective": false'));
+  });
+
+  test('an absent cape series reads as a gap, not a calm afternoon', () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      forwardHourly: const {
+        'hourly': {
+          'time': ['2026-08-19T12:00'],
+          'precipitation_gfs_seamless': [0.0],
+        }
+      },
+    );
+    expect(llm.seenUserPrompt, contains('no model supplied a CAPE series'));
+  });
+
+  test('the last known ground reading reaches the prompt with its age', () async {
+    final llm = _StubProvider();
+    final readings = [
+      GroundAqiReading(
+        name: 'Kisumu Airport',
+        stationId: 'A1',
+        aqi: 63,
+        measuredAt: DateTime.utc(2026, 8, 19, 0, 0),
+      ),
+      GroundAqiReading(
+        name: 'Dunga Beach',
+        stationId: 'A2',
+        aqi: 49,
+        measuredAt: DateTime.utc(2026, 8, 19, 0, 0),
+      ),
+    ];
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      groundAqiLastKnown:
+          lastKnownGroundAqi(readings, DateTime.utc(2026, 8, 19, 9, 0))?.toJson(),
+    );
+    expect(llm.seenUserPrompt, contains('GROUND AQI LAST KNOWN'));
+    // Worst station at the newest timestamp, flagged stale, with its age.
+    expect(llm.seenUserPrompt, contains('"station_name": "Kisumu Airport"'));
+    expect(llm.seenUserPrompt, contains('"stale": true'));
+    expect(llm.seenUserPrompt, contains('"stations_reporting": 2'));
+  });
+
   test('a later issuance is told it is one, and shown every earlier narrative', () async {
     final llm = _StubProvider();
     await generateForecast(

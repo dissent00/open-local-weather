@@ -92,6 +92,18 @@ class DailyActual {
   /// and the day-over-day summary was calling both "another wet day".
   final double? precipMm;
 
+  /// Did the airport observe thunder on this local day?
+  ///
+  /// THREE-VALUED, AND THE THIRD VALUE MATTERS. Null means no observation was
+  /// available — no ICAO configured, the archive unreachable, or the station
+  /// filed nothing that day — and must never read as "no thunder". False
+  /// means the station reported and saw none, which is real evidence a dry
+  /// call can be scored against.
+  ///
+  /// Not a decoration on `rain`: it changes what a rain forecast is scored
+  /// against, via [observedConvection].
+  final bool? thunder;
+
   const DailyActual({
     required this.rain,
     this.highC,
@@ -100,7 +112,20 @@ class DailyActual {
     this.mslpTrend,
     this.onsetHour,
     this.precipMm,
+    this.thunder,
   });
+
+  /// What a rain forecast is actually scored against.
+  ///
+  /// Reanalysis precipitation OR observed thunder. A day with a thunderstorm
+  /// over the city and 0.5 mm in a 25 km grid cell is a day the convective
+  /// models called correctly, and scoring it as dry punishes exactly the
+  /// models most worth trusting over a lake basin whose storms global models
+  /// already under-resolve.
+  ///
+  /// Thunder being null leaves this as plain `rain`, so a deployment with no
+  /// METAR station scores exactly as it did before.
+  bool observedConvection() => rain || thunder == true;
 
   factory DailyActual.fromJson(Map<String, Object?> j) => DailyActual(
         rain: j['rain'] as bool,
@@ -110,6 +135,7 @@ class DailyActual {
         mslpTrend: _toDouble(j['mslp_trend']),
         onsetHour: j['onset_hour'] as String?,
         precipMm: _toDouble(j['precip_mm']),
+        thunder: j['thunder'] as bool?,
       );
 
   Map<String, Object?> toJson() => {
@@ -120,6 +146,7 @@ class DailyActual {
         'mslp_trend': mslpTrend,
         'onset_hour': onsetHour,
         'precip_mm': precipMm,
+        'thunder': thunder,
       };
 }
 
@@ -203,6 +230,49 @@ class GroundAqiReading {
 }
 
 /// Deterministic range/worst-station summary across ground stations.
+/// The newest real ground reading available, whether or not it is fresh.
+///
+/// Exists because a null summary left the prompt with "Not applicable" and
+/// the LLM free to improvise, which it did differently on consecutive days.
+/// A stale reading is still the last time anyone actually measured the air;
+/// said with its age attached it is more use than silence, and cannot be
+/// mistaken for current.
+class GroundAqiLastKnown {
+  final String stationName;
+  final int aqi;
+
+  /// ISO 8601, not a DateTime. This value is printed into a prompt and pinned
+  /// in a cross-language vector, and the two runtimes stringify a timestamp
+  /// differently — Dart's toIso8601String() gives "...T05:30:00.000Z" where
+  /// Python's isoformat() gives "...T05:30:00+00:00". Anything computing with
+  /// the age uses [hoursOld] instead.
+  final String measuredAt;
+  final double hoursOld;
+  final bool stale;
+
+  /// How many stations share this timestamp — so the narrative can say three
+  /// stations reported at that hour rather than implying only one exists.
+  final int stationsReporting;
+
+  const GroundAqiLastKnown({
+    required this.stationName,
+    required this.aqi,
+    required this.measuredAt,
+    required this.hoursOld,
+    required this.stale,
+    required this.stationsReporting,
+  });
+
+  Map<String, Object?> toJson() => {
+        'station_name': stationName,
+        'aqi': aqi,
+        'measured_at': measuredAt,
+        'hours_old': hoursOld,
+        'stale': stale,
+        'stations_reporting': stationsReporting,
+      };
+}
+
 class GroundAqiSummary {
   final int aqiMin;
   final int aqiMax;

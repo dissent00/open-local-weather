@@ -37,6 +37,10 @@ class DayOverDayComparison {
   final double? todayConsensusHighC;
   final double? todayConsensusLowC;
   final double? todayConsensusPeakWindKmh;
+  /// Surfaced beside the derived label for the same reason todayRainExpected
+  /// is: a raw observation is harder for the LLM to misread than a phrase
+  /// alone. Null means no station observation, not "no thunder".
+  final bool? yesterdayThunder;
   final double? highDeltaC;
   final double? lowDeltaC;
   final double? windDeltaKmh;
@@ -48,6 +52,7 @@ class DayOverDayComparison {
     this.yesterdayHighC,
     this.yesterdayLowC,
     this.yesterdayRain,
+    this.yesterdayThunder,
     this.yesterdayPeakWindKmh,
     this.todayRainExpected,
     this.todayConsensusHighC,
@@ -65,6 +70,7 @@ class DayOverDayComparison {
         'yesterday_high_c': yesterdayHighC,
         'yesterday_low_c': yesterdayLowC,
         'yesterday_rain': yesterdayRain,
+        'yesterday_thunder': yesterdayThunder,
         'yesterday_peak_wind_kmh': yesterdayPeakWindKmh,
         'today_rain_expected': todayRainExpected,
         'today_consensus_high_c': todayConsensusHighC,
@@ -128,7 +134,7 @@ String? _onsetPhrase(String? onset) {
 ///
 /// Null when there is no amount to reason from, so the caller omits the
 /// comparison rather than guessing.
-String? describeDayRain(double? precipMm, String? onset) {
+String? describeDayRain(double? precipMm, String? onset, [bool? thunder]) {
   if (precipMm == null) return null;
 
   var band = wetDayLabel;
@@ -138,9 +144,33 @@ String? describeDayRain(double? precipMm, String? onset) {
       break;
     }
   }
-  if (band == 'dry') return 'dry';
 
   final when = _onsetPhrase(onset);
+
+  // Thunder outranks the amount. A storm that passes over the city and drops
+  // half a millimetre is what the reader remembers about the day, and calling
+  // that day "dry" to their face is how this project loses their trust — they
+  // were standing outside in it. Measured case: 2026-08-24, told to readers
+  // the next morning as "dry again".
+  if (thunder == true) {
+    if (band == 'dry') return 'dry but thundery';
+    if (when == 'evening') return 'dry until evening thunderstorms';
+    if (when == 'afternoon') return '$band with afternoon thunderstorms';
+    return '$band with thunderstorms';
+  }
+
+  if (band == 'dry') {
+    // The band edge was a cliff. 0.9 mm falling entirely at 17:00 read "dry";
+    // 1.1 mm at 17:00 read "dry until evening showers". A fifth of a
+    // millimetre should not redescribe the day, so timing qualifies the dry
+    // band too — an onset exists only when some hour actually crossed the
+    // rain threshold, which is a shower whatever the daily total.
+    if (when == 'evening') return 'dry apart from a brief evening shower';
+    if (when == 'afternoon') return 'dry apart from a brief afternoon shower';
+    if (when == 'from the morning') return 'dry apart from an early shower';
+
+    return 'dry';
+  }
 
   // Timing only qualifies the wetter bands. "Largely dry from the morning"
   // reads as though the DRYNESS started in the morning.
@@ -207,10 +237,12 @@ DayOverDayComparison? computeDayOverDay(
   // stored, because it is what the accuracy record scores; it is simply no
   // longer what the reader is handed.
   final todayPrecip = mean([for (final p in todayDay0Predictions) p.precipMm]);
+  // Today has no thunder observation — it has not happened yet. Today's
+  // convective risk is a forecast, and belongs to the hazard sections.
   final todayCharacter =
-      describeDayRain(todayPrecip, consensusOnset(todayDay0Predictions));
-  final yesterdayCharacter =
-      describeDayRain(yesterdayActual.precipMm, yesterdayActual.onsetHour);
+      describeDayRain(todayPrecip, consensusOnset(todayDay0Predictions), null);
+  final yesterdayCharacter = describeDayRain(
+      yesterdayActual.precipMm, yesterdayActual.onsetHour, yesterdayActual.thunder);
 
   String? rainContrast;
   if (todayCharacter != null && yesterdayCharacter != null) {
@@ -230,6 +262,7 @@ DayOverDayComparison? computeDayOverDay(
     yesterdayHighC: yesterdayActual.highC,
     yesterdayLowC: yesterdayActual.lowC,
     yesterdayRain: yesterdayActual.rain,
+    yesterdayThunder: yesterdayActual.thunder,
     yesterdayPeakWindKmh: yesterdayActual.peakWindKmh,
     todayRainExpected: todayRain,
     todayConsensusHighC: _round1(consensusHigh),
