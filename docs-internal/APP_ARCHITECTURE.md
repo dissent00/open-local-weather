@@ -319,10 +319,10 @@ already contains hand-computed fixtures for exactly these modules:
 | `test_dates.py` | 5 |
 | **total** | **68** |
 
-**Done** — see [`spec/`](../spec/README.md). 54 cases across 10 files,
-covering `score_prediction`, `compute_rain_pct_trend`, `mean`, both
-extraction functions, `get_onset_hour`, `prediction_row_date_for_target`,
-`add_days`, `hours_old`/`is_stale` and `summarize_ground_aqi`.
+**Done** — see [`spec/`](../spec/README.md), which carries the current
+coverage table. It has grown well past the original scope: 28 vector files
+now, reaching the prompts, the weekly review, the synoptic summary, spend
+and daypart. Do not maintain a second count here.
 
 `tests/test_vectors.py` asserts Python still satisfies its own exported
 vectors, so the contract cannot silently rot as the code changes. That
@@ -523,13 +523,22 @@ than a v1 blocker.
    `test/forecast_test.dart` with every HTTP call mocked, so it runs in CI
    at no cost and cannot flake on a network. The user prompt is now held
    byte-for-byte against Python by `spec/vectors/llm_user_prompt.json`.
-4. **Minimal UI**: Today + Settings, standalone, tap-to-generate only.
-   This alone is a usable app on both platforms.
-5. **Storage + history + accuracy charts.**
-6. **Spend controls** — budget cap, usage display, confirm-on-manual.
-   Before any automatic generation exists, so a scheduled run can never
-   predate the cap that governs it.
-7. **Scheduled local generation + notifications (Android).**
+4. ~~**Minimal UI**: Today + Settings, standalone, tap-to-generate only.~~
+   — **done**. `today_screen.dart`, `settings_screen.dart`,
+   `onboarding/`.
+5. **Storage + history + accuracy charts** — **partly done**. History,
+   verification and the accuracy screen are all live; storage is still JSON
+   in shared preferences rather than sqflite. That swap is its own item in
+   the Ensemble roadmap and is blocked on a device, and it is what would
+   remove the per-isolate cache hazard behind Ensemble item 5.
+6. ~~**Spend controls** — budget cap, usage display, confirm-on-manual.~~
+   — **done**. `spend_store.dart`, enforced in `ForecastRunner`, covered by
+   `test/spend_cap_test.dart`. The ordering held: the cap shipped before
+   step 7, so no scheduled run has ever predated it.
+7. ~~**Scheduled local generation + notifications (Android).**~~ — **done**,
+   first live run 2026-08-22. Exact alarms, a background isolate, re-arm
+   before generating. Two findings came out of watching it as a user rather
+   than as a test: Ensemble roadmap items 5 and 6.
 8. **Staleness prompt (both platforms).**
 9. **iOS release.**
 10. **Later:** connected mode, night-before generation, in-app deployment

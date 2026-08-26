@@ -153,6 +153,15 @@ which was right.
    matches byte-for-byte.
 6. **Both suites green** before committing. Commit the regenerated vectors
    with the change; they *are* the contract.
+7. **Push, then pull the core into the app.** Ensemble consumes `olw_core`
+   by git ref and pins the resolved commit in its own `pubspec.lock`, so
+   nothing there changes until someone runs `flutter pub upgrade olw_core`
+   and its suite. Skip this and the app keeps computing with the old core
+   while the site uses the new one — the two disagreeing about the same
+   weather, which is the failure the vectors exist to prevent, arriving by
+   a different route. `aeddf6c` in that repo is this step done by hand.
+
+Step 7 is easy to miss because steps 1-6 all go green without it.
 
 ### Verify the test can actually fail
 

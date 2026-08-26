@@ -3,7 +3,15 @@
 Ordered roughly by value-per-effort. Each item states the problem first,
 because several of these look obvious until you hit the actual constraint.
 
-Status legend: **Next** · **Planned** · **Deferred** · **Done**
+Status legend: **Next** · **Planned** · **Partly shipped** · **Shipped** ·
+**Deferred** · **Done**
+
+Several items here need work in the Ensemble app, which is a separate private
+repository. That side of the ledger lives in one place — the "Owed from
+open-local-weather" table at the end of `ROADMAP.md` there — so it cannot
+drift out of step with a copy kept here. Add to that table when an item
+raised here lands app work. Shared forecast logic is a different question and
+follows `spec/README.md`.
 
 ---
 
@@ -1947,12 +1955,16 @@ reports.
 
 ---
 
-## 26. Hard cap on LLM calls — required in BOTH surfaces · **Shipped (pipeline); app pending**
+## 26. Hard cap on LLM calls — required in BOTH surfaces · **Shipped**
 
 **Shipped in the pipeline** (`spend.py`, enforced at both LLM call sites,
 configured by `max_llm_calls_per_24h` in `config/location.yaml`, default 10).
-**Not yet in the app** — Ensemble needs the same guard over its local
-database, set during onboarding and editable in Settings.
+
+**Shipped in the app too**, later: `spend_store.dart`, enforced in
+`ForecastRunner`, covered by `test/spend_cap_test.dart`. The ledger counts
+HTTP requests rather than forecasts in both surfaces — a retry loop that
+runs out of budget is stopped mid-flight, and the invariants are pinned
+across the two implementations by the S1-S6 table in `spec/README.md`.
 
 The design notes below stand as written; what follows describes the problem
 as it was, and the resolution of the "wrinkle" is recorded at the end.
