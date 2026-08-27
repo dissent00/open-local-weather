@@ -557,6 +557,44 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _predictions_already_recorded(entry: DailyLogEntry | None) -> ModelPredictionsByLead | None:
+    """The scored predictions this date already holds, or None if it holds
+    none.
+
+    Empty lists count as none: an entry carrying no predictions has nothing
+    to protect, and refusing to write would leave that date permanently
+    unscoreable.
+    """
+    if entry is None:
+        return None
+
+    stored = entry.model_predictions
+    if not (stored.day0 or stored.day3 or stored.day7):
+        return None
+
+    return stored
+
+
+def _model_predictions_prompt_payload(
+    day0: list[ModelPrediction], day3: list[ModelPrediction], day7: list[ModelPrediction]
+) -> dict:
+    """The extracted predictions as the forecaster is allowed to see them —
+    its own blend removed from Day+0.
+
+    The blend is stored, scored and published as a peer model, and withheld
+    from the prompt permanently: see models_visible_to_the_forecaster. This
+    is the third block it can leak through, after the track record and the
+    review findings, and the only one carrying predictions rather than
+    scores. It leaks here only on a re-issue, which is handed the day's
+    STORED predictions — and the stored Day+0 list has the blend in it.
+    """
+    return {
+        "day0": [p.model_dump() for p in day0 if p.model != BLEND_MODEL_ID],
+        "day3": [p.model_dump() for p in day3],
+        "day7": [p.model_dump() for p in day7],
+    }
+
+
 def _with_merged_ground_aqi(
     guidance: ForwardGuidance, stored: list[GroundAQIReading]
 ) -> ForwardGuidance:
@@ -714,6 +752,35 @@ def run_daily_pipeline(
         day3_predictions = [*day3_predictions, met_day3]
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
+    # The day's predictions are written once, and the first write wins.
+    #
+    # A second full run re-extracts them from a later model cycle, and
+    # tomorrow scores those as though they had been issued at 06:00 —
+    # every model's Day+0 accuracy improves and nothing in the record shows
+    # why. The guards that used to prevent it both live OUTSIDE this
+    # pipeline: daily.yml's already_done condition, and a crontab on a
+    # machine this repo cannot see or test. Neither survives someone ticking
+    # `force` on a manual dispatch.
+    #
+    # THE TRIGGER IS UNTRUSTED INPUT. A caller must be able to invoke this
+    # with any combination of flags and be unable to corrupt the record; the
+    # worst it should achieve is a wasted API call. Same rule and same
+    # reasoning as HistoryStore.savePredictions in the app.
+    #
+    # `force` still forces the NARRATIVE, which is the only thing it was
+    # ever wanted for. The blend is dropped from the day0 list here because
+    # everything downstream of this point treats day0_predictions as the
+    # models' own calls — the stored value below keeps it.
+    #
+    # day_over_day above is deliberately left reasoning from the fresh
+    # cycle: it frames today against yesterday for the prose and is not part
+    # of the scored record.
+    recorded_predictions = _predictions_already_recorded(log_lookup(today))
+    if recorded_predictions is not None:
+        day0_predictions = [p for p in recorded_predictions.day0 if p.model != BLEND_MODEL_ID]
+        day3_predictions = recorded_predictions.day3
+        day7_predictions = recorded_predictions.day7
+
     # --- Step 6: call the LLM ---
     system_prompt = build_system_prompt(location)
     verification_context = [
@@ -751,11 +818,9 @@ def run_daily_pipeline(
     # narrative and the accuracy record describe one set of numbers rather
     # than two. This is also where the met service becomes visible as a peer
     # of the numerical models rather than only as prose.
-    model_predictions_context = {
-        "day0": [p.model_dump() for p in day0_predictions],
-        "day3": [p.model_dump() for p in day3_predictions],
-        "day7": [p.model_dump() for p in day7_predictions],
-    }
+    model_predictions_context = _model_predictions_prompt_payload(
+        day0_predictions, day3_predictions, day7_predictions
+    )
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
@@ -818,7 +883,13 @@ def run_daily_pipeline(
         # so an absent value is never rendered as an empty clock.
         sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
         sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
-        model_predictions=ModelPredictionsByLead(
+        # Whatever this date already holds, byte-for-byte, or the freshly
+        # extracted set on the day's first run — see the write-once note in
+        # Step 5. This run's own blend is not appended to a kept set either:
+        # it is a prediction like any other and the day's belongs to the run
+        # that made it first.
+        model_predictions=recorded_predictions
+        or ModelPredictionsByLead(
             # The blend joins Day+0 as a peer of the models it synthesizes, so
             # tomorrow scores the forecast this run actually published and not
             # only the guidance that fed it. Day+0 only: today_properties is a
@@ -963,7 +1034,14 @@ def run_refresh_pipeline(
         _refresh_actuals.get(_refresh_yesterday), existing_entry.model_predictions.day0
     )
     refresh_yesterday_actual = asdict(_refresh_comparison) if _refresh_comparison is not None else None
-    track_record_context = [e.model_dump() for e in track_record_store.read_track_record(deps.data_dir).entries]
+    # Same filter as the morning run, for the same standing reason: the blend
+    # is scored and published, and never shown to the forecaster that makes
+    # it — see models_visible_to_the_forecaster.
+    track_record_context = [
+        e.model_dump()
+        for e in track_record_store.read_track_record(deps.data_dir).entries
+        if e.model != BLEND_MODEL_ID
+    ]
 
     # The refresh does no verification, but the long-run findings still
     # describe which models have earned trust here — relevant to the
@@ -974,6 +1052,7 @@ def run_refresh_pipeline(
             actuals=_refresh_actuals,
             all_log_dates=log_store.list_log_dates(deps.data_dir),
             today=today,
+            models=models_visible_to_the_forecaster(location.local_bulletin_model_id),
         )
     )
 
@@ -982,11 +1061,11 @@ def run_refresh_pipeline(
     # tomorrow's verification will score. Re-deriving them from the fresher
     # cycle would leave the narrative describing values the record doesn't
     # contain.
-    refresh_predictions_context = {
-        "day0": [p.model_dump() for p in existing_entry.model_predictions.day0],
-        "day3": [p.model_dump() for p in existing_entry.model_predictions.day3],
-        "day7": [p.model_dump() for p in existing_entry.model_predictions.day7],
-    }
+    refresh_predictions_context = _model_predictions_prompt_payload(
+        existing_entry.model_predictions.day0,
+        existing_entry.model_predictions.day3,
+        existing_entry.model_predictions.day7,
+    )
 
     system_prompt = build_system_prompt(location, is_reissue=True)
     user_prompt = build_user_prompt(

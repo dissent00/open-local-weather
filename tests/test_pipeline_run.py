@@ -176,6 +176,14 @@ def make_deps(tmp_path, llm=None) -> PipelineDeps:
     )
 
 
+def predictions_block(user_prompt: str) -> str:
+    """Just the EXTRACTED PER-MODEL PREDICTIONS section. The raw guidance
+    arrays above it carry the same numbers, so an assertion against the whole
+    prompt cannot tell which block a value came from."""
+    start = user_prompt.index("EXTRACTED PER-MODEL PREDICTIONS")
+    return user_prompt[start : user_prompt.index("\nCONVECTIVE INSTABILITY", start)]
+
+
 def test_dry_run_does_not_write_any_files(tmp_path):
     deps = make_deps(tmp_path)
     result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
@@ -247,6 +255,25 @@ def test_the_forecaster_is_never_shown_its_own_record(tmp_path):
     system_prompt, user_prompt = deps.llm_provider.calls[-1]
     assert BLEND_MODEL_ID not in user_prompt, (
         "the forecaster can see its own track record or review finding"
+    )
+    assert BLEND_MODEL_ID not in system_prompt
+
+
+def test_a_re_issue_is_never_shown_the_blend_either(tmp_path):
+    """A THIRD block the rule leaks through, after the track record and the
+    review findings: a re-issue is handed the day's stored predictions so its
+    narrative describes the numbers the record holds — and the stored Day+0
+    list has the blend in it, because the blend is scored."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    llm = FakeLLMProvider()
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False
+    )
+
+    system_prompt, user_prompt = llm.calls[-1]
+    assert BLEND_MODEL_ID not in user_prompt, (
+        "the re-issue can see its own prediction in the model predictions block"
     )
     assert BLEND_MODEL_ID not in system_prompt
 
@@ -1106,33 +1133,80 @@ def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):
     assert after == before, "three re-issues must leave the scored numbers identical"
 
 
-def test_run_daily_a_SECOND_time_overwrites_the_days_predictions(tmp_path):
-    """Why the evening run cannot simply be run-daily.
+def test_run_daily_a_SECOND_time_KEEPS_the_days_predictions(tmp_path, monkeypatch):
+    """Why a second full run cannot be allowed to re-extract them.
 
-    run-daily extracts and stores the day's model_predictions. Running it
-    again in the evening re-extracts them from evening-cycle data — predictions
-    made with ~12 hours less lead time, then scored tomorrow as though they
-    were the 06:00 call. Every model's Day+0 accuracy would improve, and
-    nothing in the record would show why.
+    run-daily stores the day's model_predictions. Running it again in the
+    evening re-extracts them from evening-cycle data — predictions made with
+    ~12 hours less lead time, then scored tomorrow as though they were the
+    06:00 call. Every model's Day+0 accuracy would improve, and nothing in
+    the record would show why.
 
-    Pinned as a HAZARD, not as desired behaviour. The workflow's own
-    already_done check is what normally prevents it, and `force: true`
-    bypasses that check.
+    The guards that used to prevent this both live OUTSIDE the pipeline: a
+    YAML already_done condition and a cron line on a machine this repo cannot
+    see or test, neither of which survives someone ticking force on a manual
+    dispatch. The trigger is untrusted input — a caller must be able to
+    invoke this with any combination of flags and be unable to corrupt the
+    record.
     """
     run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     first = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
 
-    # A second full run, as `force: true` would allow.
+    # A genuinely different cycle. With the shared fixture a rewrite and a
+    # refusal look identical, which is why the old version of this test could
+    # only document the hazard rather than catch it.
+    def evening_cycle_hourly(*args, **kwargs):
+        fixture = hourly_fixture()
+        for model in MODELS:
+            fixture["hourly"][f"temperature_2m_{model}"] = [19.0, 23.0, 31.0]
+        return fixture
+
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", evening_cycle_hourly)
     run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     second = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
 
-    # Same fixture data here, so the VALUES match — what this documents is that
-    # nothing stops the rewrite. Against real evening-cycle data they would
-    # differ, and the day's scored numbers would silently become the evening's.
-    assert second == first, (
-        'with fixture data the values are identical; the point is that '
-        'run_daily_pipeline rewrote them rather than refusing'
+    assert second == first, "a second run rewrote the numbers tomorrow scores"
+
+
+def test_a_second_run_still_writes_a_fresh_narrative(tmp_path):
+    """The other half of the rule: force forces the NARRATIVE, and can never
+    reach the scored numbers. A guard that also froze the prose would make a
+    forced re-run pointless."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    evening = FakeLLMProvider()
+    evening.response = evening.response.model_copy(
+        update={"today_narrative": "## Overview\nStorms arrived after all."}
     )
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
+    )
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.narrative_markdown == "## Overview\nStorms arrived after all."
+
+
+def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypatch):
+    """A run whose predictions are kept must be told the KEPT ones. Handing it
+    the fresher extraction would leave the narrative quoting values the record
+    does not contain — the same reason the refresh path passes the stored
+    predictions rather than re-deriving them."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    def evening_cycle_hourly(*args, **kwargs):
+        fixture = hourly_fixture()
+        for model in MODELS:
+            fixture["hourly"][f"temperature_2m_{model}"] = [19.0, 23.0, 31.0]
+        return fixture
+
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", evening_cycle_hourly)
+    evening = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = evening.calls[-1]
+    block = predictions_block(user_prompt)
+    assert '"high_c": 26.0' in block, "the morning's Day+0 call is what got stored"
+    assert "31.0" not in block, "the narrative was shown a prediction the record does not hold"
 
 
 def test_refresh_without_a_prior_run_fails_loudly(tmp_path):

@@ -2356,7 +2356,7 @@ for forkers. This becomes real the moment someone wants four.
 
 ---
 
-## 33. A fresher null should not erase an older real reading · **Planned**
+## 33. A fresher null should not erase an older real reading · **Shipped**
 
 Found while investigating the 2026-08-22 evening refresh. The morning run
 captured three ground AQI stations with real values — Kisumu Airport 46,
@@ -2392,16 +2392,37 @@ Sun times already work this way as of the fix in the same commit as this note,
 and for the same reason: fresher is not better when the fresher value is
 "unknown".
 
+**Shipped.** `aqi.merge_ground_aqi` keeps a stored reading, with its original
+timestamp, wherever the fresh fetch has no value for that station; a station
+absent from the re-fetch is treated identically, since `fetch_ground_aqi_stations`
+drops a station whose fetch failed and absence cannot be told apart from one.
+The refresh merges before it builds the prompt, and the summary and last-known
+reading are recomputed from the merged list, so the narrative quotes the kept
+160 with its true age instead of reporting nothing. Not ported to `olw_core`:
+the app consumes no ground AQI at all, so a Dart copy would be code nothing
+runs.
+
 ---
 
-## 34. One forecast command that knows whether it is the day's first · **Split — see below**
+## 34. One forecast command that knows whether it is the day's first · **34a shipped — 34b planned**
 
 **Decided 2026-08-27: this splits in two, and only the first half is urgent.**
 
-**34a — move the guard into the pipeline. Cheap, no coordination, do it early.**
-`run_daily_pipeline` must refuse to overwrite `model_predictions` for a date it
-already holds, exactly as `HistoryStore.savePredictions` now does in the app.
-`force` then forces the NARRATIVE and can never reach the scored numbers.
+**34a — move the guard into the pipeline. SHIPPED.**
+`run_daily_pipeline` now keeps whatever `model_predictions` the date already
+holds, byte-for-byte, exactly as `HistoryStore.savePredictions` does in the
+app — this run's own blend is not appended to a kept set either, since the
+day's blend belongs to the run that made it first. `force` reaches the
+narrative and nothing else. A run whose predictions are kept is handed the
+KEPT ones for its prompt, so the narrative cannot describe values the record
+does not contain.
+
+Found and fixed alongside it: a re-issue was being shown the blend's own row
+in all three prompt blocks that name models — the predictions block (which is
+the stored Day+0 list, blend included), the track record, and the review
+findings. Only `run_daily_pipeline` had ever been filtered, and only
+`run_daily_pipeline` had a test asserting on the prompt text. Both paths are
+now covered.
 
 **34b — the single `olw forecast` verb and the workflow collapse.** Everything
 described below this point. It buys operator ergonomics, not record integrity,
@@ -2484,8 +2505,8 @@ the accuracy record trustworthy.
 - **`--force` must not become a way to overwrite predictions.** If a forced
   re-run of a completed day is wanted, it should force the *narrative*, never
   the scored numbers. DECIDED: remove `force`'s ability to reach the
-  prediction path at all — this is 34a, and it is the whole reason the split
-  exists.
+  prediction path at all — this is 34a, shipped, and it is the whole reason
+  the split exists.
 - **A first run that fails must not leave a half-entry** that makes the next
   run look like a re-issue. Check what happens today if the LLM call fails
   after the entry is written.
@@ -2512,13 +2533,14 @@ Sequence it so nothing is ever broken between steps: add `forecast.yml`
 alongside the existing two, switch the crontab to it, confirm a real run from
 each slot, and only then delete the old workflows. Do NOT delete first.
 
-### The app has the same hazard
+### The app had the same hazard · **Fixed first**
 
-`ForecastRunner.run` in Ensemble always calls `savePredictions`, which does a
-straight overwrite by date. A second generate on the same day replaces the
-day's predictions with fresher-cycle ones. It has not bitten because nobody
-has generated twice in a day, and it should be fixed in the same change — the
-app also needs to pass `earlierToday` so a later generate reads as an update.
+`ForecastRunner.run` in Ensemble always called `savePredictions`, which
+overwrote by date, so a second generate on the same day replaced the day's
+predictions with fresher-cycle ones. `PrefsHistoryStore.savePredictions` now
+returns early for a date it already holds, and the runner passes
+`earlierToday` so a later generate reads as an update. The app got the rule
+before the pipeline did, which is why 34a describes it as the reference.
 
 ---
 
