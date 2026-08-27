@@ -2437,6 +2437,19 @@ narrative and nothing else. A run whose predictions are kept is handed the
 KEPT ones for its prompt, so the narrative cannot describe values the record
 does not contain.
 
+**The rest of it, closed next:** a forced re-run kept the scored numbers but
+still rewrote the day's own history — it built a brand-new entry, wiping
+`morning_issuance` (the only copy of the morning's narrative), resetting
+`meta.generated_at_utc`, and clearing `meta.refreshed_at`, which re-opened
+`evening_refresh.yml`'s gate so the next refresh would snapshot the FORCED
+narrative as that day's morning issuance. A run on a date that already has an
+entry is now a later issuance whatever verb was typed: it is told so, it is
+shown what has already been published, and it carries forward
+`morning_issuance`, `generated_at_utc`, the verification block and
+`yesterday_verification_summary`. Its verification notes — a placeholder by
+design on a re-issue — no longer reach the historical row the morning run
+scored.
+
 Found and fixed alongside it: a re-issue was being shown the blend's own row
 in all three prompt blocks that name models — the predictions block (which is
 the stored Day+0 list, blend included), the track record, and the review

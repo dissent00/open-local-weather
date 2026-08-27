@@ -557,6 +557,33 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _morning_snapshot(entry: DailyLogEntry) -> MorningIssuanceSnapshot:
+    """The day's first issuance, captured from an entry about to be
+    overwritten by a later one.
+
+    Taken exactly once per day — every caller guards on
+    `entry.morning_issuance` already being set. Re-snapshotting on a second
+    re-issue would replace the morning's copy with an already-refreshed one,
+    which is the whole thing this exists to prevent.
+    """
+    return MorningIssuanceSnapshot(
+        rain_expected=entry.rain_expected,
+        onset_window=entry.onset_window,
+        peak_wind_kmh=entry.peak_wind_kmh,
+        temp_high_c=entry.temp_high_c,
+        temp_low_c=entry.temp_low_c,
+        temp_high_low_display=entry.temp_high_low_display,
+        mslp_trend_24h=entry.mslp_trend_24h,
+        synoptic_pattern=entry.synoptic_pattern,
+        uv_index_max=entry.uv_index_max,
+        air_quality_aqi=entry.air_quality_aqi,
+        ground_aqi=entry.ground_aqi,
+        narrative_markdown=entry.narrative_markdown,
+        whatsapp_summary=entry.whatsapp_summary,
+        generated_at_utc=entry.meta.generated_at_utc,
+    )
+
+
 def _predictions_already_recorded(entry: DailyLogEntry | None) -> ModelPredictionsByLead | None:
     """The scored predictions this date already holds, or None if it holds
     none.
@@ -775,7 +802,8 @@ def run_daily_pipeline(
     # day_over_day above is deliberately left reasoning from the fresh
     # cycle: it frames today against yesterday for the prose and is not part
     # of the scored record.
-    recorded_predictions = _predictions_already_recorded(log_lookup(today))
+    existing_entry = log_lookup(today)
+    recorded_predictions = _predictions_already_recorded(existing_entry)
     if recorded_predictions is not None:
         day0_predictions = [p for p in recorded_predictions.day0 if p.model != BLEND_MODEL_ID]
         day3_predictions = recorded_predictions.day3
@@ -786,7 +814,14 @@ def run_daily_pipeline(
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
     # no station reported — nothing reported because nothing was configured.
     ground_stations_configured = bool(location.waqi_stations)
-    system_prompt = build_system_prompt(location, ground_stations_configured=ground_stations_configured)
+    # A run on a day that already has an entry is a later issuance, whatever
+    # verb was typed. Told otherwise it writes a fresh morning-style forecast
+    # over one the readers have already had, and emails it as the day's first.
+    system_prompt = build_system_prompt(
+        location,
+        is_reissue=existing_entry is not None,
+        ground_stations_configured=ground_stations_configured,
+    )
     verification_context = [
         {
             "lead_time_days": r.lead_time_days,
@@ -858,6 +893,7 @@ def run_daily_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         issuance=guidance.issuance,
         forward_hourly=guidance.forward_hourly,
+        earlier_today=_earlier_issuances(existing_entry) if existing_entry is not None else None,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
@@ -927,6 +963,38 @@ def run_daily_pipeline(
         ),
     )
 
+    # A later run of the day rewrites the narrative. It must not rewrite the
+    # day's own history with it.
+    #
+    # Traced on a real sequence — morning run, evening refresh, forced
+    # run-daily: the third run built a brand-new entry, which wiped
+    # morning_issuance (the only copy of what was published this morning),
+    # reset generated_at_utc so the entry claimed to have been created hours
+    # after it was, and cleared refreshed_at — which re-opened
+    # evening_refresh's gate, so the NEXT refresh would snapshot the forced
+    # narrative as that day's morning issuance.
+    #
+    # yesterday_verification_summary and verification are carried for a
+    # related reason: this run is now told it is a later issuance, so the
+    # model returns a PLACEHOLDER for the verification fields (by design —
+    # see the LATER ISSUANCE block). Storing that would overwrite the real
+    # verification the day's first run wrote.
+    if existing_entry is not None:
+        log_entry = log_entry.model_copy(
+            update={
+                "morning_issuance": existing_entry.morning_issuance
+                or _morning_snapshot(existing_entry),
+                "verification": existing_entry.verification,
+                "yesterday_verification_summary": existing_entry.yesterday_verification_summary,
+                "meta": log_entry.meta.model_copy(
+                    update={
+                        "generated_at_utc": existing_entry.meta.generated_at_utc,
+                        "refreshed_at": datetime.now(timezone.utc),
+                    }
+                ),
+            }
+        )
+
     published = False
     emailed = False
 
@@ -935,7 +1003,16 @@ def run_daily_pipeline(
         log_store.write_log_entry(deps.data_dir, log_entry)
         actuals_cache_store.write_actuals_cache(deps.data_dir, cache)
 
-        notes_by_lead = {n.lead_time_days: n.note for n in llm_response.verification_notes}
+        # A later issuance does no verification, and returns a placeholder for
+        # these fields by design. The row it would land on was scored by the
+        # day's first run, and the note there is the record of what was
+        # actually checked — re-running the scoring pass is idempotent, but
+        # overwriting its note with "no new verification this run" is not.
+        notes_by_lead = (
+            {}
+            if existing_entry is not None
+            else {n.lead_time_days: n.note for n in llm_response.verification_notes}
+        )
         for row_date, lead_time_days in verification_result.newly_verified:
             historical_entry = log_lookup(row_date)
             if historical_entry is None:
@@ -1136,22 +1213,7 @@ def run_refresh_pipeline(
     # being set — but the guard costs nothing and matches this project's
     # existing belt-and-suspenders idempotency style, e.g.
     # last_verified_target_date in verify/pipeline.py.) ---
-    morning_snapshot = existing_entry.morning_issuance or MorningIssuanceSnapshot(
-        rain_expected=existing_entry.rain_expected,
-        onset_window=existing_entry.onset_window,
-        peak_wind_kmh=existing_entry.peak_wind_kmh,
-        temp_high_c=existing_entry.temp_high_c,
-        temp_low_c=existing_entry.temp_low_c,
-        temp_high_low_display=existing_entry.temp_high_low_display,
-        mslp_trend_24h=existing_entry.mslp_trend_24h,
-        synoptic_pattern=existing_entry.synoptic_pattern,
-        uv_index_max=existing_entry.uv_index_max,
-        air_quality_aqi=existing_entry.air_quality_aqi,
-        ground_aqi=existing_entry.ground_aqi,
-        narrative_markdown=existing_entry.narrative_markdown,
-        whatsapp_summary=existing_entry.whatsapp_summary,
-        generated_at_utc=existing_entry.meta.generated_at_utc,
-    )
+    morning_snapshot = existing_entry.morning_issuance or _morning_snapshot(existing_entry)
 
     tp = llm_response.today_properties
     updated_entry = existing_entry.model_copy(

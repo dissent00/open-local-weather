@@ -347,6 +347,48 @@ def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
     assert patched.verification.day0.note == "Rain correctly not predicted."
 
 
+def test_a_forced_re_run_does_not_rewrite_yesterdays_verification_note(tmp_path):
+    """A later issuance returns a PLACEHOLDER for the verification fields, by
+    design. Those must not reach a historical row that was scored this
+    morning — the note on yesterday's entry is the record of what was checked,
+    not of what the last run of today happened to say."""
+    today, yesterday = date(2026, 8, 11), date(2026, 8, 10)
+    _seed_yesterday_log_entry(tmp_path, yesterday)
+
+    morning = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="Correct no-rain call.",
+            verification_notes=[VerificationNote(lead_time_days=0, note="Rain correctly not predicted.")],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain=False,
+                rain_expected="Unlikely", temp_high_c=27.0, temp_low_c=18.0, temp_high_low="27°C / 81°F"
+            ),
+            today_narrative="## Overview\nDry.",
+        )
+    )
+    run_daily_pipeline(make_deps(tmp_path, llm=morning), today=today, dry_run=False)
+
+    forced = FakeLLMProvider(
+        morning.response.model_copy(
+            update={
+                "yesterday_verification": "No new verification this run.",
+                "verification_notes": [
+                    VerificationNote(lead_time_days=0, note="No new verification this run.")
+                ],
+            }
+        )
+    )
+    run_daily_pipeline(make_deps(tmp_path, llm=forced), today=today, dry_run=False)
+
+    assert log_store.read_log_entry(tmp_path, yesterday).verification.day0.note == (
+        "Rain correctly not predicted."
+    )
+    assert log_store.read_log_entry(tmp_path, today).yesterday_verification_summary == (
+        "Correct no-rain call."
+    )
+
+
 def test_publisher_and_email_sender_invoked_when_configured(tmp_path):
     published_entries = []
     emailed_entries = []
@@ -1236,6 +1278,69 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
     block = predictions_block(user_prompt)
     assert '"high_c": 26.0' in block, "the morning's Day+0 call is what got stored"
     assert "31.0" not in block, "the narrative was shown a prediction the record does not hold"
+
+
+def _forced_rerun(tmp_path, narrative, after_refresh: bool):
+    """A day that has already been forecast, then run-daily again — the shape
+    `force: true` on a manual dispatch produces."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    if after_refresh:
+        evening = FakeLLMProvider()
+        evening.response = evening.response.model_copy(
+            update={"today_narrative": "## Overview\nEvening refresh."}
+        )
+        run_refresh_pipeline(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+
+    forced = FakeLLMProvider()
+    forced.response = forced.response.model_copy(update={"today_narrative": narrative})
+    deps = make_deps(tmp_path, llm=forced)
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    return log_store.read_log_entry(tmp_path, date(2026, 8, 11)), forced
+
+
+def test_a_forced_re_run_keeps_the_days_history(tmp_path):
+    """The scored numbers already survive a forced re-run; the day's own
+    history did not.
+
+    A second run-daily built a brand-new entry, which wiped morning_issuance
+    — the only copy of what was published this morning — reset
+    generated_at_utc to the evening, so the entry claimed to have been created
+    at a time it was not, and cleared refreshed_at, which re-opened
+    evening_refresh's gate so the NEXT refresh would snapshot the forced
+    narrative as that day's morning issuance.
+    """
+    entry, _ = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
+
+    assert entry.morning_issuance is not None
+    assert entry.morning_issuance.narrative_markdown == "## Overview\nDry and warm.", (
+        "the morning issuance must stay the MORNING's, not the last run's"
+    )
+    assert entry.meta.generated_at_utc == entry.morning_issuance.generated_at_utc, (
+        "generated_at_utc records when this entry first existed"
+    )
+    assert entry.meta.refreshed_at is not None, (
+        "a later run IS a narrative refresh; clearing this re-opens the evening gate"
+    )
+    assert entry.narrative_markdown == "## Overview\nForced re-run."
+
+
+def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
+    """The same hazard without an evening refresh in between: run-daily twice
+    and the morning's narrative is the one being overwritten."""
+    entry, _ = _forced_rerun(tmp_path, "## Overview\nSecond run.", after_refresh=False)
+
+    assert entry.morning_issuance is not None
+    assert entry.morning_issuance.narrative_markdown == "## Overview\nDry and warm."
+
+
+def test_a_forced_re_run_is_told_it_is_a_later_issuance(tmp_path):
+    """Otherwise it writes a fresh morning-style forecast over one its readers
+    have already read, and emails it as though it were the day's first."""
+    _, forced = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
+
+    system_prompt, user_prompt = forced.calls[-1]
+    assert "LATER ISSUANCE" in system_prompt
+    assert "Evening refresh." in user_prompt, "shown what has already been published"
 
 
 def test_refresh_without_a_prior_run_fails_loudly(tmp_path):
