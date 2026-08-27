@@ -3288,3 +3288,115 @@ airport".
 
 Related: item 11 (source discovery), item 42 (why this matters at all),
 item 44 (the sources screen), item 45 (observation vs prediction).
+
+---
+
+## 48. Prompt review: what the 2026-08-27 pass found and did not fix · **Planned**
+
+A full read of `llm/prompt.py`, prompted by the observation that the prompt
+has changed with nearly every revision and needed checking as a whole rather
+than patch by patch. Three findings shipped that day (items in 597b8d1 and
+635bbab). These are the rest, in the order worth doing them.
+
+Do this periodically. The individual tweaks are each defensible and the drift
+they produce collectively is not visible from any one of them.
+
+### 1. The re-issue block contradicts the Overview spec · **live bug**
+
+The Overview section says "OPEN with the day-over-day comparison". The
+re-issue block says "Open the Overview with what has changed since the last
+issuance, and with what is still AHEAD". On a later issuance the model
+receives two mandatory openings and has to choose.
+
+Fix: the re-issue instruction should REPLACE the day-over-day opening, not sit
+beside it. Yesterday-vs-today is a first-issuance frame; by 22:00 the reader's
+reference point is this morning's forecast, not yesterday's weather.
+
+### 2. Emphasis is spent
+
+Roughly twenty ALL-CAPS directives. "USE rain_contrast VERBATIM" is
+typographically equal to "the record does not yet support ranking models".
+When everything is shouted the model infers priority from position and
+recency, which favours whatever was patched last.
+
+The Overview enumeration bug was the symptom: an explicit collapse instruction
+lost to an example sitting beside it. That is instruction saturation, not a
+bad example.
+
+Restructure into three tiers, caps reserved for the first:
+
+1. Inviolable — what may not be asserted. Don't recompute, don't rank without
+   a finding, don't upgrade confidence, don't invent. Six rules or so.
+2. Section contracts — what each heading must contain.
+3. Style — phrasing, units, tone. No caps at all.
+
+Related: "do not recompute" appears eight times in different words. Once, as a
+principle with a list of the pre-computed blocks, would be shorter and
+stronger.
+
+### 3. Block ordering works against the model
+
+The user prompt runs ISSUED, HOURS AHEAD, verification, track record,
+historical notes, AQI x3, instability, day-over-day, TODAY'S GUIDANCE,
+extracted predictions, review, bulletin.
+
+The weather sits in the middle, where attention is weakest, and statistics
+ABOUT PAST FORECASTS get primacy over the data this forecast is about. Put
+today's guidance and HOURS AHEAD adjacent near the top; move verification,
+track record and review to the end, where recency helps them — they inform
+confidence language, which is written last anyway.
+
+### 4. No uncertainty-expression rules · **the biggest gap**
+
+The prompt says "state the spread" for CAPE and pressure and never governs how
+certainty reaches the reader. Nothing stops `onset_window: "13:00-16:00"` when
+the models span 11:00 to 19:00.
+
+Elaborate machinery exists to avoid overclaiming about MODEL SKILL, and
+overclaiming about TODAY is ungoverned. Require the onset window to reflect
+actual model spread, and forbid a single time unless the models agree within a
+stated band. Note that `onset_hour` (635bbab) now makes the overclaim
+scoreable, which is the first time this has been measurable.
+
+### 5. The learning loop is two-thirds closed
+
+The system learns through the track record, the verification notes fed
+forward, and the review findings. The prompt exploits the first and third
+hard. It WRITES the second — "these get stored back and read as context in
+future runs, so be specific" — and then never instructs the model to use them.
+`HISTORICAL NOTES` is passed with no directive attached.
+
+Add one: before finalising, check whether today's setup resembles a documented
+past miss, and say so. Cheapest high-value change available.
+
+### 6. No general negative-space check
+
+Item 42's thunder miss was "the data supported a statement nobody made". The
+fix was a hard-coded CAPE flag — a patch for one instance of a general class.
+A closing instruction ("every provided block appears in the output or is
+explicitly noted unavailable") generalises it and would have caught the
+original miss without a bespoke flag.
+
+### 7. Over-constraint: phrasing is governed, judgement is not
+
+Several verbatim rules are really one rule — "do not contradict a computed
+value". Stated once as a principle, the model could phrase `rain_contrast`
+naturally instead of pasting a fragment into the most-read sentence in the
+product. Watch for every Overview reading identically across a week; that is
+the cost of the current approach.
+
+The persona also fights itself: "Lead Synoptic & Regional Meteorologist"
+followed immediately by "your role is narrower than it might look".
+
+### Not in this list, tracked elsewhere
+
+- **A persistence baseline.** Nothing scores "same as yesterday", which in
+  the tropics is a strong baseline. If the ensemble cannot beat it, that is
+  the most important honesty fact about the product and nothing could
+  currently reveal it. Scoring change, not a prompt change.
+- **Climatology.** No seasonal normal is available, so "32 C" cannot be
+  reported as "3 above normal for late August" — context readers value and
+  the record has no source for.
+- **Unscored prose.** Synoptic reading, hazard calls and boater conditions
+  are asserted and never verified. Item 47's stations make the hazard half
+  scoreable; the rest is item 46's territory.
