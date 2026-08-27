@@ -204,7 +204,7 @@ def test_todays_forecast_covers_the_hours_ahead_not_the_calendar_day():
     prompt = build_system_prompt(KISUMU)
     assert "next 12-18 hours" in prompt
     assert "HOURS AHEAD" in prompt
-    assert "PAST TENSE" in prompt
+    assert "past tense, or left out" in prompt
 
 
 def test_the_time_aware_section_must_not_change_what_gets_scored():
@@ -277,7 +277,7 @@ def test_the_forecast_does_not_state_the_unactionable():
     """"The UV index has dropped to zero following sunset" — true,
     unsurprising, and useless. The reader can see it is dark."""
     prompt = build_system_prompt(KISUMU)
-    assert "DO NOT STATE THE OBVIOUS OR THE UNACTIONABLE" in prompt
+    assert "Do not state the obvious or the unactionable" in prompt
     assert "OMIT it rather than reporting its null state" in prompt
 
 
@@ -349,7 +349,7 @@ def test_system_prompt_asks_for_a_concrete_comparison_against_observed_condition
     prompt = build_system_prompt(KISUMU)
     assert "DAY-OVER-DAY COMPARISON" in prompt
     # The labels are computed in code; the LLM must not redo the subtraction.
-    assert "do NOT subtract the temperatures yourself" in prompt
+    assert "do not subtract the temperatures yourself" in prompt
     # And must not invent a change when there genuinely isn't one.
     assert "do not manufacture a difference" in prompt
     # Must be anchored to observations, not to how the models scored.

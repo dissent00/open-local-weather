@@ -3291,14 +3291,14 @@ item 44 (the sources screen), item 45 (observation vs prediction).
 
 ---
 
-## 48. Prompt review: what the 2026-08-27 pass found · **Partly shipped**
+## 48. Prompt review: what the 2026-08-27 pass found · **Shipped**
 
 A full read of `llm/prompt.py`, prompted by the observation that the prompt
 has changed with nearly every revision and needed checking as a whole rather
 than patch by patch. Three findings shipped that day (items in 597b8d1 and
-635bbab). These are the rest, in the order worth doing them. Findings 1, 4, 5 and 6
-shipped in 7613f94; 2, 3 and 7 are the remaining backlog, deliberately left
-whole rather than half-done.
+635bbab). All seven findings have now shipped — 1, 4, 5 and 6 in 7613f94, and 2, 3 and 7
+in the follow-up. Finding 2 shipped in substance rather than to the letter; see
+its entry for what was deliberately not done.
 
 Do this periodically. The individual tweaks are each defensible and the drift
 they produce collectively is not visible from any one of them.
@@ -3314,7 +3314,7 @@ Fix: the re-issue instruction should REPLACE the day-over-day opening, not sit
 beside it. Yesterday-vs-today is a first-issuance frame; by 22:00 the reader's
 reference point is this morning's forecast, not yesterday's weather.
 
-### 2. Emphasis is spent · **Still open**
+### 2. Emphasis is spent · **Shipped, in substance**
 
 Roughly twenty ALL-CAPS directives. "USE rain_contrast VERBATIM" is
 typographically equal to "the record does not yet support ranking models".
@@ -3336,7 +3336,23 @@ Related: "do not recompute" appears eight times in different words. Once, as a
 principle with a list of the pre-computed blocks, would be shorter and
 stronger.
 
-### 3. Block ordering works against the model · **Still open**
+**What shipped, and what did not.** A tier-one block now opens the prompt: six
+numbered rules stated to outrank everything below them, covering what may not
+be CLAIMED rather than how to write. "Do not recompute" went from eight
+scattered injunctions to one, with the list of pre-computed blocks attached —
+the count is now literally one mention in the file. Editorial directives lost
+their capitals so the tier-one rules keep theirs; correctness and honesty
+directives kept them.
+
+NOT done, and deliberately: the full three-way split of the body. Section
+contracts and style guidance are still interleaved inside each heading's
+parenthetical, because separating them means rewriting every section wholesale
+and the risk of silently dropping a rule outweighs the tidiness. The emphasis
+problem — which is what the finding was actually about — is addressed by the
+tier-one block and the de-capping. Revisit the split only if a later review
+finds instructions still being lost.
+
+### 3. Block ordering works against the model · **Shipped**
 
 The user prompt runs ISSUED, HOURS AHEAD, verification, track record,
 historical notes, AQI x3, instability, day-over-day, TODAY'S GUIDANCE,
@@ -3379,7 +3395,7 @@ A closing instruction ("every provided block appears in the output or is
 explicitly noted unavailable") generalises it and would have caught the
 original miss without a bespoke flag.
 
-### 7. Over-constraint: phrasing is governed, judgement is not · **Still open**
+### 7. Over-constraint: phrasing is governed, judgement is not · **Shipped**
 
 Several verbatim rules are really one rule — "do not contradict a computed
 value". Stated once as a principle, the model could phrase `rain_contrast`
@@ -3389,6 +3405,12 @@ the cost of the current approach.
 
 The persona also fights itself: "Lead Synoptic & Regional Meteorologist"
 followed immediately by "your role is narrower than it might look".
+
+**Shipped.** The role now states what the job IS rather than what it is not:
+the arithmetic is done, and what is left — reconciling models that disagree,
+deciding which to believe today, judging what a reader needs — is the reason a
+forecaster is in the loop at all. "Narrower than it might look" is gone; it
+framed the most valuable half of the work as a restriction.
 
 ### Not in this list, tracked elsewhere
 
