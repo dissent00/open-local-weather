@@ -2439,7 +2439,7 @@ invention. `generateForecast` derives the flag from
 
 ---
 
-## 34. One forecast command that knows whether it is the day's first · **34a shipped — 34b planned**
+## 34. One forecast command that knows whether it is the day's first · **Shipped — two operator steps remain**
 
 **Decided 2026-08-27: this splits in two, and only the first half is urgent.**
 
@@ -2472,9 +2472,45 @@ findings. Only `run_daily_pipeline` had ever been filtered, and only
 `run_daily_pipeline` had a test asserting on the prompt text. Both paths are
 now covered.
 
-**34b — the single `olw forecast` verb and the workflow collapse.** Everything
-described below this point. It buys operator ergonomics, not record integrity,
-and once 34a lands it stops being urgent.
+**34b — the single `olw forecast` verb and the workflow collapse. SHIPPED in
+the repo; two steps remain on the operator's machine.**
+
+`olw forecast` reads the day and dispatches: no entry → `run_daily_pipeline`,
+entry → `run_refresh_pipeline`. A dispatcher, not a rewrite — the two keep
+their own bodies, because merging them would lose the invariant that makes
+the accuracy record trustworthy.
+
+The `check` jobs are gone, and that is the substance of it rather than a
+tidy-up. Two guards written in YAML, on behaviour this repo could not test,
+are replaced by one inside the pipeline: a trigger repeating one from the
+last hour (`MIN_REISSUE_INTERVAL_MINUTES`) returns without calling the model.
+`--force` overrides that and nothing else — since 34a it cannot reach the
+scored numbers. A skip exits 0, because a backup slot that correctly did
+nothing must not colour a run red.
+
+`forecast.yml` carries all eight backstop slots. `daily.yml` and
+`evening_refresh.yml` are dispatch-only now — their `schedule:` blocks were
+removed in the same commit, so two workflows can never fire for the same day
+— and they stay until the crontab is switched, because a cron line naming a
+deleted workflow fails silently from the crontab's side.
+
+The crontab's two lines are now IDENTICAL apart from the hour, which is the
+whole point: `ops/trigger_workflow.sh` defaults to `forecast.yml`, so adding a
+third issuance is one more cron line and nothing else.
+
+**Remaining, on the operator's machine, in this order:**
+
+1. Switch both crontab lines to `ops/trigger_workflow.sh` with no argument.
+2. Confirm a real run from the morning slot and the evening slot, then delete
+   `daily.yml` and `evening_refresh.yml`.
+
+The dispatch script was overhauled in the same pass, since a forgotten
+deployment's likeliest silence is its own trigger: three attempts with a
+pause for network failures and 5xx, no retry on a 4xx (an answer, not a
+blip), timestamped output so a log answers "when did this stop working", an
+explicit HTTP 401 message naming an expired fine-grained PAT, an explicit 404
+naming a workflow that no longer exists, and a warning on a world-readable
+token file. Exercised against a local stub for each path.
 
 ### Why the split, and the principle behind it
 

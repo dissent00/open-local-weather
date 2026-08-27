@@ -33,9 +33,12 @@ from openlocalweather.llm.anthropic import AnthropicProvider
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.pipeline import (
+    ForecastSkipped,
     PipelineDeps,
+    PipelineRunResult,
     RefreshWithoutMorningRunError,
     run_daily_pipeline,
+    run_forecast,
     run_refresh_pipeline,
 )
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
@@ -271,17 +274,7 @@ def _run_daily(args: argparse.Namespace) -> int:
         print(f"Critical Error: pipeline aborted, the LLM call failed: {e}", file=sys.stderr)
         return 1
 
-    entry = result.log_entry
-    print(f"Pipeline run complete for {result.today} (dry_run={args.dry_run}).")
-    print(f"  rain_expected:   {entry.rain_expected}")
-    print(f"  temp:            {entry.temp_high_low_display}")
-    print(f"  synoptic:        {entry.synoptic_pattern}")
-    print(f"  newly_verified:  {result.newly_verified}")
-    print(f"  published:       {result.published}")
-    print(f"  emailed:         {result.emailed}")
-    if args.dry_run:
-        print("\n--- narrative preview (not written to data/, nothing published/emailed) ---\n")
-        print(entry.narrative_markdown)
+    _print_daily_result(result, args.dry_run)
     return 0
 
 
@@ -299,16 +292,76 @@ def _run_refresh(args: argparse.Namespace) -> int:
         print(f"Critical Error: refresh aborted, the LLM call failed: {e}", file=sys.stderr)
         return 1
 
+    _print_refresh_result(result, args.dry_run)
+    return 0
+
+
+# What kind of run this turned out to be, on its own line and first.
+#
+# A contract, not decoration: .github/workflows/forecast.yml greps for these
+# to pick a commit subject, because one workflow now produces both kinds and
+# "forecast:" against every commit would flatten the archive's own history.
+# Change the strings and change the workflow with them.
+RUN_KIND_FIRST = "run-kind: first"
+RUN_KIND_REISSUE = "run-kind: reissue"
+RUN_KIND_SKIPPED = "run-kind: skipped"
+
+
+def _print_daily_result(result, dry_run: bool) -> None:
     entry = result.log_entry
-    print(f"Refresh run complete for {result.today} (dry_run={args.dry_run}).")
+    print(f"Pipeline run complete for {result.today} (dry_run={dry_run}).")
+    print(f"  rain_expected:   {entry.rain_expected}")
+    print(f"  temp:            {entry.temp_high_low_display}")
+    print(f"  synoptic:        {entry.synoptic_pattern}")
+    print(f"  newly_verified:  {result.newly_verified}")
+    print(f"  published:       {result.published}")
+    print(f"  emailed:         {result.emailed}")
+    if dry_run:
+        print("\n--- narrative preview (not written to data/, nothing published/emailed) ---\n")
+        print(entry.narrative_markdown)
+
+
+def _print_refresh_result(result, dry_run: bool) -> None:
+    entry = result.log_entry
+    print(f"Refresh run complete for {result.today} (dry_run={dry_run}).")
     print(f"  rain_expected:   {entry.rain_expected}")
     print(f"  temp:            {entry.temp_high_low_display}")
     print(f"  synoptic:        {entry.synoptic_pattern}")
     print(f"  refreshed_at:    {entry.meta.refreshed_at}")
     print(f"  published:       {result.published}")
-    if args.dry_run:
+    if dry_run:
         print("\n--- narrative preview (not written to data/, nothing published) ---\n")
         print(entry.narrative_markdown)
+
+
+def _run_forecast(args: argparse.Namespace) -> int:
+    """The verb to schedule. Which kind of run this is, is the day's business,
+    not the operator's — see pipeline.run_forecast.
+    """
+    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
+    try:
+        result = run_forecast(deps, dry_run=args.dry_run, force=args.force)
+    except OpenMeteoFetchError as e:
+        print(f"Critical Error: forecast aborted, a required weather fetch failed: {e}", file=sys.stderr)
+        return 1
+    except LLMResponseError as e:
+        print(f"Critical Error: forecast aborted, the LLM call failed: {e}", file=sys.stderr)
+        return 1
+
+    # A skip is the system working, so it exits 0. A red run for a backup
+    # slot that correctly did nothing teaches an operator to ignore red runs.
+    if isinstance(result, ForecastSkipped):
+        print(RUN_KIND_SKIPPED)
+        print(f"Nothing to do for {result.today}: {result.reason}")
+        return 0
+
+    if isinstance(result, PipelineRunResult):
+        print(RUN_KIND_FIRST)
+        _print_daily_result(result, args.dry_run)
+        return 0
+
+    print(RUN_KIND_REISSUE)
+    _print_refresh_result(result, args.dry_run)
     return 0
 
 
@@ -503,7 +556,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command")
 
-    run_daily = sub.add_parser("run-daily", help="Run the daily forecast pipeline.")
+    forecast = sub.add_parser(
+        "forecast",
+        help=(
+            "Forecast for today — a full run if the day has no entry yet, a narrative "
+            "re-issue if it has. The verb to schedule."
+        ),
+    )
+    forecast.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    forecast.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    forecast.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
+    forecast.add_argument(
+        "--public-url",
+        default="",
+        help="Public GitHub Pages URL. Included in the LLM prompt; also enables GitHub Pages publishing if set.",
+    )
+    forecast.add_argument(
+        "--dry-run", action="store_true", help="Run fetch/verify/LLM for real but skip writes, publish, and email."
+    )
+    forecast.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Re-issue even if a forecast went out in the last hour. Forces the NARRATIVE only — "
+            "the day's scored predictions are written once and cannot be reached from here."
+        ),
+    )
+
+    run_daily = sub.add_parser(
+        "run-daily",
+        help="The day's FIRST run explicitly. Prefer `forecast`, which decides for itself.",
+    )
     run_daily.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
     run_daily.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
     run_daily.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
@@ -558,6 +641,9 @@ def main(argv: list[str] | None = None) -> int:
         cfg = load_location_config(args.config)
         print(f"OK: {cfg.primary_place_name} ({cfg.region_name}), tz={cfg.timezone}")
         return 0
+
+    if args.command == "forecast":
+        return _run_forecast(args)
 
     if args.command == "run-daily":
         return _run_daily(args)

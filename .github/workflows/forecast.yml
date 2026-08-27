@@ -1,0 +1,150 @@
+name: Forecast
+
+# The day's forecast, whichever run of the day this is.
+#
+# Replaces daily.yml + evening_refresh.yml. The operator used to pick a
+# workflow by time of day, and that was the wrong axis: the real distinction
+# is whether today already has an entry. The FIRST run of a day owns
+# verification and the day's model_predictions — the numbers tomorrow scores.
+# EVERY later run is an update: narrative only, predictions preserved
+# byte-for-byte. `olw forecast` reads the day and decides; see
+# pipeline.run_forecast.
+#
+# THERE IS NO `check` JOB, and that is the point. daily.yml gated on the
+# day's file existing, evening_refresh.yml on meta.refreshed_at being set —
+# two guards, in YAML, on behaviour this repo could not test, and neither
+# survived someone ticking `force`. The guard now lives in the pipeline: a
+# trigger that repeats one from the last hour returns without calling the
+# model, and `force` overrides that and nothing else — since the write-once
+# guard it cannot reach the scored numbers. A check job would also have spun
+# up a runner, so this costs about the same and removes the YAML logic.
+#
+# TRIGGERING: two paths, deliberately in different failure domains.
+#
+# PRIMARY is the operator's own crontab, calling GitHub's workflow_dispatch
+# REST API via ops/trigger_workflow.sh. It exists because GitHub's scheduler
+# proved unreliable on this repo: a first-ever scheduled occurrence fired ~56
+# minutes late with createdAt == startedAt, and daily.yml's schedule produced
+# zero runs at all on two separate occasions.
+#
+# BACKSTOP is the `schedule:` block below. Not redundant with the crontab —
+# redundant of a different KIND. The crontab routes around GitHub's
+# scheduler; the schedule routes around the operator's server, its token and
+# its network. Either alone is a single point of failure, and the failure is
+# quiet: a run that never happens produces no error anywhere, and
+# health_check.yml only looks weekly.
+#
+# TIMES, from the measured model-availability table in ROADMAP.md:
+#   03:07 UTC = ~06:07 EAT. Aligned model windows open at 02:00 UTC.
+#   15:07 UTC = ~18:07 EAT. By 13:19 UTC every model's 06z cycle has landed,
+#     and the aligned window holds until just before 19:00 UTC.
+# The +15/+30/+45 slots cover a late or dropped occurrence — confirmed
+# necessary twice. They are nearly free: a slot behind one that already
+# delivered skips inside the pipeline without an API call.
+on:
+  schedule:
+    - cron: "7 3 * * *"
+    - cron: "22 3 * * *"
+    - cron: "37 3 * * *"
+    - cron: "52 3 * * *"
+    - cron: "7 15 * * *"
+    - cron: "22 15 * * *"
+    - cron: "37 15 * * *"
+    - cron: "52 15 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run fetch/verify/LLM for real but skip writes, commit, publish and email"
+        type: boolean
+        default: false
+      force:
+        description: "Re-issue even if a forecast went out in the last hour. Forces the NARRATIVE only -- the day's scored predictions are written once and cannot be reached from here. Leave false for routine automated dispatch (e.g. ops/trigger_workflow.sh)."
+        type: boolean
+        default: false
+
+# Least-privilege default; the `run` job overrides to `write` for the step
+# that actually needs it.
+permissions:
+  contents: read
+
+# Deliberately the same group daily.yml and evening_refresh.yml used: all
+# three write data/log/<date>.json, so a delayed run still in progress when
+# the next fires must be queued, not raced.
+concurrency:
+  group: daily-forecast
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Determine public Pages URL
+        id: pages_url
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          echo "url=https://${OWNER,,}.github.io/${REPO,,}/" >> "$GITHUB_OUTPUT"
+
+      - name: Forecast
+        env:
+          # --- LLM provider selection (see QUICKSTART.md) ---
+          # Leave all of these unset to use Gemini, the default.
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_JSON_MODE: ${{ vars.LLM_JSON_MODE }}
+          LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # --- Gemini (the default provider) ---
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Which trigger produced this run. Recorded into the log entry so a
+          # dead workflow_dispatch path is visible in the committed record
+          # rather than hidden behind the cron slots still firing.
+          TRIGGER_SOURCE: ${{ github.event_name }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
+          WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
+        run: |
+          FLAGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FLAGS="$FLAGS --force"
+          fi
+          olw forecast --public-url "${{ steps.pages_url.outputs.url }}" $FLAGS \
+            | tee "$RUNNER_TEMP/forecast.log"
+
+      - name: Commit and push data/docs changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          # The commit subject follows what the run actually did. `olw
+          # forecast` prints "run-kind: first|reissue|skipped" as its first
+          # line for exactly this — see RUN_KIND_* in cli.py. One subject for
+          # both kinds would flatten the archive's own history, and the
+          # archive is the product.
+          SUBJECT="forecast"
+          if grep -q "^run-kind: reissue$" "$RUNNER_TEMP/forecast.log"; then
+            SUBJECT="forecast refresh"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ docs/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "${SUBJECT}: $(date -u +%Y-%m-%d)"
+            git push
+          fi

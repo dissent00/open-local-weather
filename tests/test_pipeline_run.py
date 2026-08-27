@@ -1561,3 +1561,91 @@ def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     stored = actuals_cache_store.as_date_dict(cache.primary)
     assert stored, "no actuals were written"
     assert all(a.thunder is True for a in stored.values())
+
+
+# ---------------------------------------------------------------------------
+# olw forecast — one verb that reads the day and dispatches
+# ---------------------------------------------------------------------------
+
+
+def test_forecast_runs_the_full_pipeline_when_the_day_is_empty(tmp_path):
+    result = pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
+
+    assert isinstance(result, pipeline.PipelineRunResult)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.model_predictions.day0, "the day's first run owns the predictions"
+    assert entry.meta.refreshed_at is None
+
+
+def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
+    """The real distinction has nothing to do with the clock: the first run of
+    a day owns verification and the scored numbers, every later run is an
+    update. An operator picking a verb by time of day is the last place the
+    morning/evening split survives."""
+    pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
+    before = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    evening = FakeLLMProvider()
+    evening.response = evening.response.model_copy(
+        update={"today_narrative": "## Overview\nEvening update."}
+    )
+    result = pipeline.run_forecast(
+        make_deps(tmp_path, llm=evening),
+        today=date(2026, 8, 11),
+        now=before.meta.generated_at_utc + timedelta(hours=12),
+    )
+
+    assert isinstance(result, pipeline.RefreshRunResult)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.narrative_markdown == "## Overview\nEvening update."
+    assert entry.model_predictions == before.model_predictions
+    assert entry.meta.refreshed_at is not None
+
+
+def test_forecast_skips_a_trigger_that_repeats_one_just_run(tmp_path):
+    """The backup schedule slots are +15/+30/+45 minutes behind the primary,
+    and a crontab may dispatch the same workflow the same minute. The guard
+    lives HERE rather than in a YAML condition, because YAML on a machine this
+    repo cannot test is exactly what item 34a was about.
+    """
+    pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    llm = FakeLLMProvider()
+    result = pipeline.run_forecast(
+        make_deps(tmp_path, llm=llm),
+        today=date(2026, 8, 11),
+        now=entry.meta.generated_at_utc + timedelta(minutes=45),
+    )
+
+    assert isinstance(result, pipeline.ForecastSkipped)
+    assert llm.calls == [], "a repeat trigger must not reach the model"
+
+
+def test_forecast_force_overrides_the_skip_but_not_the_predictions(tmp_path):
+    """force forces the NARRATIVE. After 34a it cannot reach the scored
+    numbers whatever it does."""
+    pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    forced = FakeLLMProvider()
+    forced.response = forced.response.model_copy(
+        update={"today_narrative": "## Overview\nForced."}
+    )
+    result = pipeline.run_forecast(
+        make_deps(tmp_path, llm=forced),
+        today=date(2026, 8, 11),
+        now=entry.meta.generated_at_utc + timedelta(minutes=5),
+        force=True,
+    )
+
+    assert isinstance(result, pipeline.RefreshRunResult)
+    after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert after.narrative_markdown == "## Overview\nForced."
+    assert after.model_predictions == entry.model_predictions
+
+
+def test_forecast_dry_run_writes_nothing(tmp_path):
+    pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+
+    assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None

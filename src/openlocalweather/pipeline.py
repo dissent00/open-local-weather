@@ -154,6 +154,30 @@ class RefreshRunResult:
     published: bool
 
 
+@dataclass
+class ForecastSkipped:
+    """Returned when a trigger repeats one that just ran — see run_forecast.
+
+    A skip is a success, not a failure: a duplicate trigger is the system
+    working (a backup schedule slot firing behind a primary that already
+    delivered), and it must not colour a workflow run red.
+    """
+
+    today: date
+    reason: str
+
+
+# How recently a run has to have happened for the next trigger to be a
+# repeat of it rather than a new issuance.
+#
+# The backup schedule slots sit +15/+30/+45 minutes behind each primary, and
+# an operator's crontab may aim at the same minute as GitHub's own scheduler,
+# so anything under an hour is a duplicate of the run before it. The cost of
+# the bound is that runs scheduled less than an hour apart are refused; four
+# runs a day, the most anyone has wanted, is six hours apart.
+MIN_REISSUE_INTERVAL_MINUTES = 60
+
+
 class RefreshWithoutMorningRunError(RuntimeError):
     """Raised when run_refresh_pipeline() is called for a date with no
     existing log entry — there is nothing to refresh, and silently creating
@@ -1055,6 +1079,64 @@ def run_daily_pipeline(
         published=published,
         emailed=emailed,
     )
+
+
+def _last_issued_at(entry: DailyLogEntry) -> datetime:
+    """When this entry last said something — the re-issue if there was one,
+    otherwise the run that created it."""
+    return entry.meta.refreshed_at or entry.meta.generated_at_utc
+
+
+def run_forecast(
+    deps: PipelineDeps,
+    today: date | None = None,
+    dry_run: bool = False,
+    force: bool = False,
+    now: datetime | None = None,
+) -> PipelineRunResult | RefreshRunResult | ForecastSkipped:
+    """The day's forecast, whichever run of the day this is.
+
+    One verb, because the operator was picking between two by time of day and
+    that is the wrong axis. The real distinction has nothing to do with the
+    clock:
+
+      - The FIRST run of a day owns verification and the day's
+        model_predictions — the numbers tomorrow scores.
+      - EVERY later run is an update: narrative only, predictions preserved.
+
+    A dispatcher, not a rewrite. run_daily_pipeline and run_refresh_pipeline
+    keep their own bodies, because the two have genuinely different
+    responsibilities and merging them would lose the invariant that makes the
+    accuracy record trustworthy.
+
+    Repeat triggers are skipped here rather than in a workflow condition. A
+    YAML `if:` and a crontab line are not code this repo can test, and both
+    are the operator's to get wrong; a caller must be able to invoke this
+    thing with any combination of flags and be unable to corrupt the record —
+    the worst it should achieve is a wasted API call, and the skip means it
+    does not even achieve that. `force` overrides the skip and nothing else:
+    since the write-once guard it cannot reach the scored numbers.
+    """
+    location = deps.location
+    today = today or today_in_tz(location.timezone)
+    existing_entry = log_store.read_log_entry(deps.data_dir, today)
+
+    if existing_entry is None:
+        return run_daily_pipeline(deps, today=today, dry_run=dry_run)
+
+    now = now or datetime.now(timezone.utc)
+    age_minutes = (now - _last_issued_at(existing_entry)).total_seconds() / 60
+    if not force and age_minutes < MIN_REISSUE_INTERVAL_MINUTES:
+        return ForecastSkipped(
+            today=today,
+            reason=(
+                f"a forecast for {today} was issued {age_minutes:.0f} minute(s) ago; "
+                f"this trigger repeats it. Re-issues are {MIN_REISSUE_INTERVAL_MINUTES} "
+                "minutes apart at the closest — pass force to override."
+            ),
+        )
+
+    return run_refresh_pipeline(deps, today=today, dry_run=dry_run)
 
 
 def run_refresh_pipeline(

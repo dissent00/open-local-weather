@@ -28,8 +28,8 @@ failure shapes:
   much against a delay that shape, since it hits all of them roughly
   equally.
 
-Net effect: the backup-slot redundancy (still in `daily.yml` /
-`evening_refresh.yml`, left in place as a backstop) meaningfully reduces
+Net effect: the backup-slot redundancy (now in `forecast.yml`, left in
+place as a backstop) meaningfully reduces
 the odds of a *total* miss, but does nothing for punctuality when GitHub's
 own scheduler queue backs up — and a forecast that lands two hours late is
 still a missed subscriber email that day, since the mailer's own retry
@@ -61,8 +61,11 @@ infrastructure behind it and don't mind writing a few lines of JS — also
 free, also no credit card, capped at 3 triggers/Worker at 1-minute
 granularity.
 
-Setup (per workflow — repeat for both `daily.yml` and
-`evening_refresh.yml`, each as its own cron job with its own time):
+Setup. There is **one workflow to call, `forecast.yml`**, and the two cron
+jobs differ only in their time — the day decides whether a run is its first
+or an update (see `pipeline.run_forecast`). Add a third job at another hour
+and it becomes a third issuance; nothing else needs to change. Runs less
+than an hour apart are refused as duplicate triggers.
 
 1. Create a **fine-grained GitHub PAT scoped to this repo only**, with
    just the **"Actions: Read and write"** permission — nothing broader.
@@ -70,8 +73,8 @@ Setup (per workflow — repeat for both `daily.yml` and
    note below for why both of these matter here specifically.
 2. In cron-job.org (or equivalent), create a job:
    - **URL**:
-     `https://api.github.com/repos/<owner>/<repo>/actions/workflows/daily.yml/dispatches`
-     (swap `daily.yml` for `evening_refresh.yml` on the second job)
+     `https://api.github.com/repos/<owner>/<repo>/actions/workflows/forecast.yml/dispatches`
+     (the same URL for both jobs)
    - **Method**: `POST`
    - **Headers**:
      `Authorization: Bearer <your PAT>`
@@ -80,19 +83,20 @@ Setup (per workflow — repeat for both `daily.yml` and
      `Content-Type: application/json`
    - **Body**: `{"ref":"main"}`
    - **Schedule**: the workflow's intended time (03:07 UTC / 15:07 UTC for
-     this deployment — see each workflow file's own cron comment). No need
+     this deployment — see `forecast.yml`'s own cron comment). No need
      to offset off the exact hour the way GitHub's own crons do; that
      trick works around GitHub Actions' scheduler congestion specifically,
      which doesn't apply to a dedicated cron service.
 3. A successful dispatch returns HTTP 204 with an empty body — it means
    GitHub accepted the request to start a run, not that the run will
    succeed. GitHub's own `schedule:` crons stay in the workflow files as a
-   backstop; both are safe to overlap, since each workflow's `check` job
-   skips duplicate real work regardless of which trigger produced today's
-   result. **Don't pass a `force` input on the dispatch call** — leaving
-   it at its default (`false`) is what lets this trigger safely lose the
-   race to GitHub's own schedule (or a backup slot) without burning a
-   redundant Gemini call; `force: true` exists only for a human
+   backstop; both are safe to overlap, since a trigger that repeats one
+   from the last hour returns inside the pipeline without calling the
+   model, whichever trigger got there first. **Don't pass a `force` input
+   on the dispatch call** — leaving it at its default (`false`) is what
+   lets this trigger safely lose the race to GitHub's own schedule (or a
+   backup slot) without burning a redundant call; `force: true` exists
+   only for a human
    deliberately regenerating today's forecast by hand, not for routine
    automated triggers.
 
@@ -132,8 +136,8 @@ server's security becomes the perimeter instead). See the script's own
 header comment for full setup steps.
 
 **3. Full migration off GitHub Actions (not built, a real option if ever
-needed).** Run `olw run-daily` / `olw refresh-forecast` directly from cron
-on a server you control — no GitHub Actions involved in scheduling *or*
+needed).** Run `olw forecast` directly from cron
+on a server you control, at whatever times you want issuances — no GitHub Actions involved in scheduling *or*
 execution. The most reliable option for scheduling specifically, at the
 cost of everything path 1 is designed to avoid: secrets move off GitHub's
 encrypted secrets onto your box, you're patching/monitoring/paying for a

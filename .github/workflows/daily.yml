@@ -1,34 +1,24 @@
+# SUPERSEDED BY forecast.yml — dispatch-only until the crontab is switched.
+#
+# One verb now decides what kind of run this is (see forecast.yml and
+# pipeline.run_forecast). This file keeps workflow_dispatch so an operator's
+# existing crontab line, which names this workflow, keeps working while the
+# switch is made. Its `schedule:` block has been REMOVED: forecast.yml carries
+# the backstop schedules now, and leaving them here would mean two workflows
+# firing at the same minute for the same day.
+#
+# Sequence, so nothing is broken between steps:
+#   1. forecast.yml exists and has run at least once from each slot. [this commit]
+#   2. Switch the crontab to it:
+#        ops/trigger_workflow.sh          (forecast.yml is the default)
+#   3. Confirm a real run from each slot.
+#   4. Delete this file and evening_refresh.yml.
+# Do NOT delete first: a cron line pointing at a workflow that no longer
+# exists fails silently from the crontab's point of view.
+
 name: Daily Forecast
 
 on:
-  schedule:
-    # PRIMARY: ~06:07 Africa/Nairobi (EAT, UTC+3 year-round — no DST) =
-    # 03:07 UTC. Deliberately NOT on the hour — GitHub's own docs flag
-    # exact-hour schedules (":00") as the highest-congestion slot and warn
-    # that "in some cases the scheduled workflow may not run" at all, not
-    # just run late.
-    #
-    # BACKUPS: three more slots at +15/+30/+45 min. This isn't
-    # theoretical — confirmed twice now, on this exact workflow:
-    #   - 2026-08-12: the original exact-hour "0 3 * * *" never fired at
-    #     all on its first occurrence — no run in the history at any
-    #     status.
-    #   - 2026-08-13: the off-hour "7 3 * * *" fix ALSO never fired on
-    #     ITS first occurrence — same complete no-show, not a delay. The
-    #     off-hour-minute fix reduces congestion-driven lateness but does
-    #     not, by itself, guarantee the schedule event fires at all.
-    # Each backup slot is near-free when unneeded — the `check` job below
-    # exits in seconds without installing the package or calling Gemini
-    # if today's forecast already exists — so redundancy costs almost
-    # nothing on a normal day and turns "silently missed entirely" into
-    # "arrived up to 45 minutes late," which the mailer's own retry
-    # window (mailer/AppsScriptMailer.gs) can still absorb for the more
-    # likely case where at least one of the four slots fires close to on
-    # time.
-    - cron: "7 3 * * *"
-    - cron: "22 3 * * *"
-    - cron: "37 3 * * *"
-    - cron: "52 3 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

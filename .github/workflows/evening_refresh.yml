@@ -1,3 +1,21 @@
+# SUPERSEDED BY forecast.yml — dispatch-only until the crontab is switched.
+#
+# One verb now decides what kind of run this is (see forecast.yml and
+# pipeline.run_forecast). This file keeps workflow_dispatch so an operator's
+# existing crontab line, which names this workflow, keeps working while the
+# switch is made. Its `schedule:` block has been REMOVED: forecast.yml carries
+# the backstop schedules now, and leaving them here would mean two workflows
+# firing at the same minute for the same day.
+#
+# Sequence, so nothing is broken between steps:
+#   1. forecast.yml exists and has run at least once from each slot. [this commit]
+#   2. Switch the crontab to it:
+#        ops/trigger_workflow.sh          (forecast.yml is the default)
+#   3. Confirm a real run from each slot.
+#   4. Delete this file and evening_refresh.yml.
+# Do NOT delete first: a cron line pointing at a workflow that no longer
+# exists fails silently from the crontab's point of view.
+
 name: Evening Forecast Refresh
 
 # Optional same-day update — see docs-internal/ROADMAP.md's "Second daily
@@ -36,11 +54,6 @@ name: Evening Forecast Refresh
 # models jump to 12z. The +15/+30/+45 slots cover a late or dropped
 # occurrence. The external cron aims at the same window.
 on:
-  schedule:
-    - cron: "7 15 * * *"
-    - cron: "22 15 * * *"
-    - cron: "37 15 * * *"
-    - cron: "52 15 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

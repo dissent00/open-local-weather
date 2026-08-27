@@ -1,5 +1,7 @@
 import subprocess
 
+import pytest
+
 from openlocalweather.cli import _github_repo_slug
 
 
@@ -186,3 +188,47 @@ def test_empty_max_tokens_falls_back_rather_than_crashing(monkeypatch):
     provider = _build_llm_provider()
     assert provider.max_tokens == 8192
     assert provider.endpoint == "https://api.anthropic.com/v1/messages"
+
+
+# ---------------------------------------------------------------------------
+# `olw forecast` — the one verb, and what it does with what comes back
+# ---------------------------------------------------------------------------
+
+
+def _forecast_argv(*extra):
+    return ["forecast", "--config", "c.yaml", "--data-dir", "d", "--docs-dir", "docs", *extra]
+
+
+def test_forecast_verb_reports_a_skip_as_success(monkeypatch, capsys):
+    """A duplicate trigger is the system working — a backup slot firing behind
+    a primary that already delivered. Colouring that run red trains an
+    operator to ignore red runs."""
+    from datetime import date
+
+    from openlocalweather import cli
+    from openlocalweather.pipeline import ForecastSkipped
+
+    monkeypatch.setattr(cli, "_build_pipeline_deps", lambda *a, **k: object())
+    monkeypatch.setattr(
+        cli, "run_forecast", lambda deps, dry_run, force: ForecastSkipped(date(2026, 8, 11), "just ran")
+    )
+
+    assert cli.main(_forecast_argv()) == 0
+    assert "just ran" in capsys.readouterr().out
+
+
+def test_forecast_verb_passes_force_through(monkeypatch):
+    from openlocalweather import cli
+
+    seen = {}
+
+    def fake(deps, dry_run, force):
+        seen.update(dry_run=dry_run, force=force)
+        raise SystemExit(0)
+
+    monkeypatch.setattr(cli, "_build_pipeline_deps", lambda *a, **k: object())
+    monkeypatch.setattr(cli, "run_forecast", fake)
+
+    with pytest.raises(SystemExit):
+        cli.main(_forecast_argv("--force", "--dry-run"))
+    assert seen == {"dry_run": True, "force": True}

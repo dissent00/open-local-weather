@@ -237,7 +237,11 @@ Add secret `WAQI_TOKEN`, and list the stations in `config/location.yaml`:
 
 ## Step 7 — Run it once, and check that it worked
 
-Don't wait for the schedule. **Actions → Daily Forecast → Run workflow**.
+Don't wait for the schedule. **Actions → Forecast → Run workflow**.
+
+One workflow covers every run of the day: the first run of a day produces
+the forecast and the numbers tomorrow scores, and any later run re-issues
+the narrative with a fresher model cycle, leaving those numbers alone.
 
 Give it a couple of minutes, then verify all three:
 
