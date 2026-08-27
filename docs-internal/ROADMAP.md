@@ -467,7 +467,10 @@ which is which.
 That does not close this item. It makes the staleness *legible*; it does not
 make the sensors any fresher, and the underlying question — whether three
 stations that routinely go hours stale are the right ground truth at all —
-is still open. See also the pm25/pm10 mislabelling noted in item 43.
+is still open. See also the pm25/pm10 mislabelling noted in item 43, and
+item 33, which stopped an afternoon re-fetch replacing the morning's real
+readings with nulls — so a station that reports once a day now keeps that
+reading for the whole day.
 
 ### The problem, with real morning evidence
 
