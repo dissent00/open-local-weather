@@ -222,8 +222,8 @@
       "note": "Day+0: GFS, ECMWF, ICON, Kenya Met, and Best Match correctly verified the rain call for August 23rd, while UKMO failed to predict rainfall. High temperatures were captured with precision (within 0.5°C) across most models, though surface wind speeds were over-forecast by 11 to 17 km/h."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3 (2026-08-23 target): GFS, ICON, UKMO, Kenya Met, and Best Match correctly verified the rain event. ECMWF missed with a false dry call, and GFS overpredicted surface wind by 13.7 km/h."
     },
     "day7": {
       "verified": false,
