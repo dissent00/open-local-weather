@@ -47,7 +47,7 @@ subscribers.
 from __future__ import annotations
 
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -59,6 +59,7 @@ from openlocalweather.aqi import (
     hours_old,
     is_stale,
     last_known_ground_aqi,
+    merge_ground_aqi,
     summarize_ground_aqi,
 )
 from openlocalweather.instability import InstabilityOutlook, summarize_instability
@@ -556,6 +557,28 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _with_merged_ground_aqi(
+    guidance: ForwardGuidance, stored: list[GroundAQIReading]
+) -> ForwardGuidance:
+    """A re-issue's guidance, with its ground AQI merged against what the
+    day's entry already holds — see aqi.merge_ground_aqi for why a fresher
+    null must not overwrite an older real reading.
+
+    The summary and the last-known reading are recomputed from the merged
+    list rather than carried over, so the prompt, the stored entry and the
+    published page all describe one set of readings. Recomputing is also
+    what lets the narrative quote a kept reading with its true age instead
+    of reporting nothing.
+    """
+    merged = merge_ground_aqi(stored, guidance.ground_aqi_readings)
+    return replace(
+        guidance,
+        ground_aqi_readings=merged,
+        ground_aqi_summary=summarize_ground_aqi(merged, now=guidance.aqi_fetch_time),
+        ground_aqi_last_known=last_known_ground_aqi(merged, now=guidance.aqi_fetch_time),
+    )
+
+
 def run_daily_pipeline(
     deps: PipelineDeps, today: date | None = None, dry_run: bool = False
 ) -> PipelineRunResult:
@@ -897,6 +920,7 @@ def run_refresh_pipeline(
 
     # --- Step 1: fresh forward-looking guidance (later model cycle) ---
     guidance = _fetch_forward_guidance(deps)
+    guidance = _with_merged_ground_aqi(guidance, existing_entry.ground_aqi)
 
     # --- Step 2: historical notes context, same as the morning run ---
     historical_logs = []

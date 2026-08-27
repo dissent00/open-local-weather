@@ -808,6 +808,96 @@ def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
     assert result.log_entry.ground_aqi[0].aqi == 90  # the fresh evening reading, not the morning's 30
 
 
+MORNING_AQI_AT = datetime(2026, 8, 11, 0, 0, tzinfo=timezone.utc)
+AFTERNOON_AQI_AT = datetime(2026, 8, 11, 11, 0, tzinfo=timezone.utc)
+
+
+def _station_location():
+    from openlocalweather.config import WaqiStation
+
+    return LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="Ochieng' Avenue", station_id="A1")]}
+    )
+
+
+def _run_morning_then_refetching(tmp_path, monkeypatch, refetched, llm=None):
+    """A morning run that captures a real 160, then a refresh whose re-fetch
+    returns `refetched`. Returns the refreshed entry."""
+    location = _station_location()
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(
+                name="Ochieng' Avenue", station_id="A1", aqi=160, measured_at=MORNING_AQI_AT
+            )
+        ],
+    )
+    morning_deps = make_deps(tmp_path)
+    morning_deps.location = location
+    run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+
+    monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: refetched)
+    refresh_deps = make_deps(tmp_path, llm=llm)
+    refresh_deps.location = location
+    return pipeline.run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=True).log_entry
+
+
+def test_a_refetched_null_does_not_erase_the_mornings_reading(tmp_path, monkeypatch):
+    """2026-08-22, live: the morning captured Ochieng' Avenue at 160 —
+    Unhealthy for Sensitive Groups, the most actionable number in that day's
+    forecast. The 11:00Z re-fetch returned the same station with aqi: null and
+    the entry kept the absence. Fresher is not better when the fresher value
+    is "unknown"; the sun times already work this way."""
+    entry = _run_morning_then_refetching(
+        tmp_path,
+        monkeypatch,
+        [
+            GroundAQIReading(
+                name="Ochieng' Avenue", station_id="A1", aqi=None, measured_at=AFTERNOON_AQI_AT
+            )
+        ],
+    )
+
+    assert entry.ground_aqi[0].aqi == 160
+    assert entry.ground_aqi[0].measured_at == MORNING_AQI_AT, (
+        "the kept reading must keep its own timestamp, or hours_old and stale lie about it"
+    )
+
+
+def test_a_station_missing_from_the_refetch_keeps_its_reading(tmp_path, monkeypatch):
+    """fetch_ground_aqi_stations drops a station that failed, so a station
+    that is simply absent is a fetch failure — the same absence as a null, and
+    it must not erase a measurement either."""
+    entry = _run_morning_then_refetching(tmp_path, monkeypatch, [])
+
+    assert [r.aqi for r in entry.ground_aqi] == [160]
+
+
+def test_the_kept_reading_reaches_the_prompt_with_its_age(tmp_path, monkeypatch):
+    """The point of keeping it. The narrative can say the last real reading
+    was 160 at midnight and is now hours old, which is far more useful than
+    the silence a null produces."""
+    llm = FakeLLMProvider()
+    _run_morning_then_refetching(
+        tmp_path,
+        monkeypatch,
+        [
+            GroundAQIReading(
+                name="Ochieng' Avenue", station_id="A1", aqi=None, measured_at=AFTERNOON_AQI_AT
+            )
+        ],
+        llm=llm,
+    )
+
+    _, user_prompt = llm.calls[-1]
+    assert '"aqi": 160' in user_prompt
+    assert '"stale": true' in user_prompt
+    assert "GROUND AQI LAST KNOWN" in user_prompt, (
+        "the re-issue must quote the last real reading, not report nothing"
+    )
+
+
 # ---------------------------------------------------------------------------
 # The hard spend cap, exercised through a real pipeline run
 # ---------------------------------------------------------------------------

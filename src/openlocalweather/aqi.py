@@ -152,3 +152,47 @@ def last_known_ground_aqi(
         stale=is_stale(worst, now),
         stations_reporting=len(at_newest),
     )
+
+
+def merge_ground_aqi(
+    stored: list[GroundAQIReading], fresh: list[GroundAQIReading]
+) -> list[GroundAQIReading]:
+    """A re-issue's readings, in which a fresher absence never replaces an
+    older measurement.
+
+    Confirmed live on 2026-08-22: the morning run captured three stations
+    with real values — Ochieng' Avenue among them at 160, Unhealthy for
+    Sensitive Groups — and the 11:00Z re-fetch returned the same three
+    stations with `aqi: null`. Storing those left the day's entry showing
+    three nulls, and the single most actionable number that day survived
+    only inside morning_issuance. Nothing had failed: upstream simply had no
+    composite AQI at that hour, which is ordinary (see the "-" sentinel in
+    fetch/waqi.py).
+
+    A station missing from `fresh` is treated the same as one that came back
+    null. fetch_ground_aqi_stations drops a station whose fetch errored, so
+    absence IS a failed fetch and cannot be told apart from one.
+
+    The kept reading keeps its ORIGINAL measured_at, which is the point:
+    hours_old() and is_stale() then describe it honestly, and the narrative
+    can say the last real reading was 160 at midnight and is nine hours old
+    — more use than silence, and impossible to mistake for current.
+
+    Stations are matched on station_id, not name: `name` is our display
+    label and an operator can change it, while station_id is the identity
+    WAQI answers to. Order follows `fresh` (configured station order), with
+    stored-only stations appended.
+    """
+    stored_by_id = {r.station_id: r for r in stored}
+    merged = []
+
+    for reading in fresh:
+        previous = stored_by_id.pop(reading.station_id, None)
+        if reading.aqi is None and previous is not None and previous.aqi is not None:
+            merged.append(previous)
+            continue
+
+        merged.append(reading)
+
+    merged.extend(stored_by_id.values())
+    return merged

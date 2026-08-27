@@ -5,6 +5,7 @@ from openlocalweather.aqi import (
     hours_old,
     is_stale,
     last_known_ground_aqi,
+    merge_ground_aqi,
     summarize_ground_aqi,
 )
 from openlocalweather.models import GroundAQIReading
@@ -212,3 +213,62 @@ def test_last_known_skips_readings_with_no_timestamp():
     dated = reading(name="Dated", aqi=40, measured_at=NOW - timedelta(hours=6))
     assert last_known_ground_aqi([undated, dated], NOW).station_name == "Dated"
     assert last_known_ground_aqi([undated], NOW) is None
+
+
+# ---------------------------------------------------------------------------
+# merge_ground_aqi
+# ---------------------------------------------------------------------------
+
+
+def test_merge_prefers_the_fresh_reading_when_it_has_a_value():
+    stored = [reading(aqi=30, measured_at=NOW - timedelta(hours=9))]
+    fresh = [reading(aqi=90)]
+    merged = merge_ground_aqi(stored, fresh)
+    assert [r.aqi for r in merged] == [90]
+    assert merged[0].measured_at == NOW
+
+
+def test_merge_keeps_a_stored_value_when_the_fresh_one_is_null():
+    # The 2026-08-22 incident: three stations re-fetched at 11:00Z came back
+    # with aqi: null and replaced the morning's real readings.
+    stored = [reading(name="Ochieng' Avenue", aqi=160, measured_at=NOW - timedelta(hours=9))]
+    fresh = [reading(name="Ochieng' Avenue", aqi=None)]
+    merged = merge_ground_aqi(stored, fresh)
+    assert merged[0].aqi == 160
+    assert merged[0].measured_at == NOW - timedelta(hours=9), (
+        "the kept reading must carry its ORIGINAL timestamp, or it reads as current"
+    )
+
+
+def test_merge_keeps_a_station_the_refetch_did_not_return():
+    # fetch_ground_aqi_stations drops a station that errored, so absence is
+    # indistinguishable from "offline" — and neither erases a measurement.
+    stored = [reading(name="Dunga Beach", station_id="A2", aqi=27)]
+    merged = merge_ground_aqi(stored, [])
+    assert [r.name for r in merged] == ["Dunga Beach"]
+    assert merged[0].aqi == 27
+
+
+def test_merge_takes_the_fresh_reading_when_neither_has_a_value():
+    # Nothing to protect, and the fresh one is at least newer — its pm25 may
+    # be present even when the composite AQI is not.
+    stored = [reading(aqi=None, pm25=None, measured_at=NOW - timedelta(hours=9))]
+    fresh = [reading(aqi=None, pm25=41.0)]
+    merged = merge_ground_aqi(stored, fresh)
+    assert merged[0].pm25 == 41.0
+    assert merged[0].measured_at == NOW
+
+
+def test_merge_matches_stations_by_id_not_by_name():
+    # name is our display label and an operator can rename one; station_id is
+    # the identity WAQI answers to.
+    stored = [reading(name="Old Label", station_id="A1", aqi=160, measured_at=NOW - timedelta(hours=9))]
+    fresh = [reading(name="New Label", station_id="A1", aqi=None)]
+    merged = merge_ground_aqi(stored, fresh)
+    assert len(merged) == 1
+    assert merged[0].aqi == 160
+
+
+def test_merge_of_nothing_stored_is_the_fresh_list():
+    fresh = [reading(aqi=44)]
+    assert merge_ground_aqi([], fresh) == fresh
