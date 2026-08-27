@@ -2394,7 +2394,44 @@ and for the same reason: fresher is not better when the fresher value is
 
 ---
 
-## 34. One forecast command that knows whether it is the day's first · **High priority, needs a coordinated server change**
+## 34. One forecast command that knows whether it is the day's first · **Split — see below**
+
+**Decided 2026-08-27: this splits in two, and only the first half is urgent.**
+
+**34a — move the guard into the pipeline. Cheap, no coordination, do it early.**
+`run_daily_pipeline` must refuse to overwrite `model_predictions` for a date it
+already holds, exactly as `HistoryStore.savePredictions` now does in the app.
+`force` then forces the NARRATIVE and can never reach the scored numbers.
+
+**34b — the single `olw forecast` verb and the workflow collapse.** Everything
+described below this point. It buys operator ergonomics, not record integrity,
+and once 34a lands it stops being urgent.
+
+### Why the split, and the principle behind it
+
+The record is not currently being muddled. Two guards hold: the operator's
+crontab calls `evening_refresh.yml` in the afternoon, which is the SAFE path —
+`run_refresh_pipeline` deliberately keeps the morning's predictions and even
+computes its day-over-day comparison against them — and `daily.yml`'s
+`already_done` check skips a duplicate daily run. `trigger_workflow.sh`
+deliberately never sets `force`.
+
+But both of those guards live OUTSIDE the pipeline, in a YAML condition and a
+cron line on a machine this repo cannot see or test. The app enforces the same
+rule in its store, where it is structural and covered by tests. One of those
+survives someone ticking `force` on a manual dispatch; the other does not.
+
+**THE TRIGGER IS UNTRUSTED INPUT.** A crontab line, a workflow_dispatch click,
+a fork's own scheduler, an operator's `at` job — none of it is code this
+project reviews, and all of it can pass parameters. Every guard that protects
+the accuracy record belongs inside the pipeline. A caller should be able to
+invoke this thing wrongly, with any combination of flags, and be unable to
+corrupt the record; the worst it should achieve is a wasted API call.
+
+That generalises past this item and is worth applying to anything else a
+trigger can reach.
+
+### The original writeup follows
 
 Today there are two commands, and the operator picks between them by time of
 day: `run-daily` in the morning, `refresh-forecast` in the evening. That is
@@ -2446,8 +2483,9 @@ the accuracy record trustworthy.
   re-issues leave them byte-identical is the guard; it must keep passing.
 - **`--force` must not become a way to overwrite predictions.** If a forced
   re-run of a completed day is wanted, it should force the *narrative*, never
-  the scored numbers. Consider removing `force`'s ability to reach the
-  prediction path at all.
+  the scored numbers. DECIDED: remove `force`'s ability to reach the
+  prediction path at all — this is 34a, and it is the whole reason the split
+  exists.
 - **A first run that fails must not leave a half-entry** that makes the next
   run look like a re-issue. Check what happens today if the LLM call fails
   after the entry is written.
