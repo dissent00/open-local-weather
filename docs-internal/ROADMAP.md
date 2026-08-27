@@ -2617,6 +2617,31 @@ Sequence it so nothing is ever broken between steps: add `forecast.yml`
 alongside the existing two, switch the crontab to it, confirm a real run from
 each slot, and only then delete the old workflows. Do NOT delete first.
 
+### What the app shares, and what it does not
+
+Worth being exact, because "the engine decides" is true of the RULES and not
+of one shared implementation.
+
+Shared, and vector-locked: the prompt (including `isReissue`), the extraction
+and scoring, `mergeGroundAqi`, and the two configured/unconfigured source
+states. Both sides derive "this is a later issuance" from the same input —
+Python from the day's entry, Dart from `earlierToday`.
+
+NOT shared: `run_forecast` itself. There is no Dart dispatcher. The app's
+`ForecastRunner` reads `ForecastStore.issuedOn`, passes `earlierToday`, and
+calls `savePredictions` unconditionally — the write-once rule living in
+`PrefsHistoryStore` rather than in a caller. Same two rules, two
+implementations, and only the Python one refuses a duplicate trigger inside
+an hour; the app's equivalent bound is the spend cap, which counts calls
+rather than issuances.
+
+That is defensible — the app has a user tapping a button, not a crontab, and
+a shared dispatcher would have to abstract over storage that has nothing in
+common. It is also exactly the shape of drift the vectors exist to catch, and
+the vectors do not cover it. If a third rule is ever added to the "which run
+is this" decision, it has to be added twice, and nothing will fail if it is
+not.
+
 ### The app had the same hazard · **Fixed first**
 
 `ForecastRunner.run` in Ensemble always called `savePredictions`, which
