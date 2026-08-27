@@ -3291,17 +3291,19 @@ item 44 (the sources screen), item 45 (observation vs prediction).
 
 ---
 
-## 48. Prompt review: what the 2026-08-27 pass found and did not fix · **Planned**
+## 48. Prompt review: what the 2026-08-27 pass found · **Partly shipped**
 
 A full read of `llm/prompt.py`, prompted by the observation that the prompt
 has changed with nearly every revision and needed checking as a whole rather
 than patch by patch. Three findings shipped that day (items in 597b8d1 and
-635bbab). These are the rest, in the order worth doing them.
+635bbab). These are the rest, in the order worth doing them. Findings 1, 4, 5 and 6
+shipped in 7613f94; 2, 3 and 7 are the remaining backlog, deliberately left
+whole rather than half-done.
 
 Do this periodically. The individual tweaks are each defensible and the drift
 they produce collectively is not visible from any one of them.
 
-### 1. The re-issue block contradicts the Overview spec · **live bug**
+### 1. The re-issue block contradicts the Overview spec · **Shipped** (7613f94)
 
 The Overview section says "OPEN with the day-over-day comparison". The
 re-issue block says "Open the Overview with what has changed since the last
@@ -3312,7 +3314,7 @@ Fix: the re-issue instruction should REPLACE the day-over-day opening, not sit
 beside it. Yesterday-vs-today is a first-issuance frame; by 22:00 the reader's
 reference point is this morning's forecast, not yesterday's weather.
 
-### 2. Emphasis is spent
+### 2. Emphasis is spent · **Still open**
 
 Roughly twenty ALL-CAPS directives. "USE rain_contrast VERBATIM" is
 typographically equal to "the record does not yet support ranking models".
@@ -3334,7 +3336,7 @@ Related: "do not recompute" appears eight times in different words. Once, as a
 principle with a list of the pre-computed blocks, would be shorter and
 stronger.
 
-### 3. Block ordering works against the model
+### 3. Block ordering works against the model · **Still open**
 
 The user prompt runs ISSUED, HOURS AHEAD, verification, track record,
 historical notes, AQI x3, instability, day-over-day, TODAY'S GUIDANCE,
@@ -3346,7 +3348,7 @@ today's guidance and HOURS AHEAD adjacent near the top; move verification,
 track record and review to the end, where recency helps them — they inform
 confidence language, which is written last anyway.
 
-### 4. No uncertainty-expression rules · **the biggest gap**
+### 4. No uncertainty-expression rules · **Shipped** (7613f94)
 
 The prompt says "state the spread" for CAPE and pressure and never governs how
 certainty reaches the reader. Nothing stops `onset_window: "13:00-16:00"` when
@@ -3358,7 +3360,7 @@ actual model spread, and forbid a single time unless the models agree within a
 stated band. Note that `onset_hour` (635bbab) now makes the overclaim
 scoreable, which is the first time this has been measurable.
 
-### 5. The learning loop is two-thirds closed
+### 5. The learning loop is two-thirds closed · **Shipped** (7613f94)
 
 The system learns through the track record, the verification notes fed
 forward, and the review findings. The prompt exploits the first and third
@@ -3369,7 +3371,7 @@ future runs, so be specific" — and then never instructs the model to use them.
 Add one: before finalising, check whether today's setup resembles a documented
 past miss, and say so. Cheapest high-value change available.
 
-### 6. No general negative-space check
+### 6. No general negative-space check · **Shipped** (7613f94)
 
 Item 42's thunder miss was "the data supported a statement nobody made". The
 fix was a hard-coded CAPE flag — a patch for one instance of a general class.
@@ -3377,7 +3379,7 @@ A closing instruction ("every provided block appears in the output or is
 explicitly noted unavailable") generalises it and would have caught the
 original miss without a bespoke flag.
 
-### 7. Over-constraint: phrasing is governed, judgement is not
+### 7. Over-constraint: phrasing is governed, judgement is not · **Still open**
 
 Several verbatim rules are really one rule — "do not contradict a computed
 value". Stated once as a principle, the model could phrase `rain_contrast`
