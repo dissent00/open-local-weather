@@ -206,6 +206,37 @@ void main() {
       }
     });
 
+    test('merge_ground_aqi', () {
+      // Timestamps are compared as instants, not as strings: the vectors
+      // carry Python's ISO form and GroundAqiReading.toJson emits Dart's,
+      // which differ in the fractional part. What this vector pins is WHICH
+      // reading survives and with which timestamp; the string form itself is
+      // already pinned by aqi_last_known.json.
+      Object? asInstants(List<Object?> readings) => readings.map((r) {
+            final m = Map<String, Object?>.from(r as Map);
+            final at = m['measured_at'];
+            m['measured_at'] =
+                at == null ? null : DateTime.parse(at as String).toUtc().microsecondsSinceEpoch;
+            return m;
+          }).toList();
+
+      for (final c in casesOf('aqi_merge.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        List<GroundAqiReading> readingsOf(String key) => (i[key] as List)
+            .map((r) => GroundAqiReading.fromJson(r as Map<String, Object?>))
+            .toList();
+
+        final got = mergeGroundAqi(readingsOf('stored'), readingsOf('fresh'))
+            .map((r) => r.toJson())
+            .toList();
+        expectMatches(
+          asInstants(got),
+          asInstants(c['expected'] as List),
+          c['name'] as String,
+        );
+      }
+    });
+
     test('summarize_ground_aqi', () {
       for (final c in casesOf('aqi_summary.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -275,6 +306,7 @@ void main() {
           rollingWindowShortArg: i['rolling_window_short'] as int,
           rollingWindowLongArg: i['rolling_window_long'] as int,
           isReissue: i['is_reissue'] as bool,
+          groundStationsConfigured: i['ground_stations_configured'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -672,6 +704,7 @@ void main() {
           forwardHourly: i['forward_hourly'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
+          groundStationsConfigured: i['ground_stations_configured'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -828,6 +861,7 @@ void main() {
       'extract_onset_hour.json',
       'aqi_staleness.json',
       'aqi_summary.json',
+      'aqi_merge.json',
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_strict.json',

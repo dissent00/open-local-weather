@@ -1,0 +1,333 @@
+{
+  "vector_format_version": 1,
+  "function": "merge_ground_aqi",
+  "description": "A re-issue's readings. A fresher ABSENCE never replaces an older measurement \u2014 the kept reading keeps its own measured_at, so its age and staleness stay honest. A station missing from the refetch is the same absence, since a failed station fetch is dropped from the list. Matched on station_id; ordered by the fresh list, stored-only stations appended.",
+  "cases": [
+    {
+      "name": "a fresh value replaces the stored one",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 46,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": 46,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        }
+      ]
+    },
+    {
+      "name": "a fresh null keeps the stored value AND its timestamp",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": 160,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "a station missing from the refetch keeps its reading",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": []
+      },
+      "expected": [
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": 160,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "neither has a value: the fresher reading wins",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": null,
+            "pm25": 41.0,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": null,
+          "pm25": 41.0,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        }
+      ]
+    },
+    {
+      "name": "stations are matched on id, not display name",
+      "input": {
+        "stored": [
+          {
+            "name": "Old Label",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "New Label",
+            "station_id": "ochieng' avenue",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Old Label",
+          "station_id": "ochieng' avenue",
+          "aqi": 160,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "nothing stored yields the fresh list",
+      "input": {
+        "stored": [],
+        "fresh": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Beach",
+            "station_id": "beach",
+            "aqi": 171,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T22:48:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Airport",
+          "station_id": "airport",
+          "aqi": 42,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        },
+        {
+          "name": "Beach",
+          "station_id": "beach",
+          "aqi": 171,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T22:48:00Z"
+        }
+      ]
+    },
+    {
+      "name": "a station only the refetch knows about is added",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": null,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          },
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": 160,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        },
+        {
+          "name": "Airport",
+          "station_id": "airport",
+          "aqi": 42,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        }
+      ]
+    },
+    {
+      "name": "stored-only stations are appended after the fresh ones",
+      "input": {
+        "stored": [
+          {
+            "name": "Ochieng' Avenue",
+            "station_id": "ochieng' avenue",
+            "aqi": 160,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          },
+          {
+            "name": "Dunga Beach",
+            "station_id": "dunga beach",
+            "aqi": 27,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-10T21:00:00Z"
+          }
+        ],
+        "fresh": [
+          {
+            "name": "Airport",
+            "station_id": "airport",
+            "aqi": 42,
+            "pm25": null,
+            "pm10": null,
+            "measured_at": "2026-08-11T05:30:00Z"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "name": "Airport",
+          "station_id": "airport",
+          "aqi": 42,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T05:30:00Z"
+        },
+        {
+          "name": "Ochieng' Avenue",
+          "station_id": "ochieng' avenue",
+          "aqi": 160,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        },
+        {
+          "name": "Dunga Beach",
+          "station_id": "dunga beach",
+          "aqi": 27,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-10T21:00:00Z"
+        }
+      ]
+    },
+    {
+      "name": "both empty",
+      "input": {
+        "stored": [],
+        "fresh": []
+      },
+      "expected": []
+    }
+  ]
+}

@@ -64,6 +64,50 @@ GroundAqiSummary? summarizeGroundAqi(
 }
 
 
+/// A re-issue's readings, in which a fresher absence never replaces an older
+/// measurement.
+///
+/// Confirmed live on 2026-08-22 in the pipeline this shares its logic with:
+/// the morning run captured three stations with real values — one of them
+/// 160, Unhealthy for Sensitive Groups — and the 11:00Z re-fetch returned the
+/// same three with a null AQI. Storing those left the day showing three
+/// nulls, and the most actionable number of the day was gone. Nothing had
+/// failed; upstream simply had no composite AQI at that hour, which is
+/// ordinary.
+///
+/// A station missing from [fresh] is treated the same as one that came back
+/// null: a station whose fetch fails is dropped from the list, so absence IS
+/// a failed fetch and cannot be told apart from one.
+///
+/// The kept reading keeps its ORIGINAL measuredAt, which is the point:
+/// [hoursOld] and [isStale] then describe it honestly, and the narrative can
+/// say the last real reading was 160 at midnight and is nine hours old.
+///
+/// Stations are matched on stationId, not name — `name` is the display label
+/// and can be changed, stationId is the identity the source answers to. Order
+/// follows [fresh], with stored-only stations appended.
+List<GroundAqiReading> mergeGroundAqi(
+  List<GroundAqiReading> stored,
+  List<GroundAqiReading> fresh,
+) {
+  final storedById = {for (final r in stored) r.stationId: r};
+  final merged = <GroundAqiReading>[];
+
+  for (final reading in fresh) {
+    final previous = storedById.remove(reading.stationId);
+    if (reading.aqi == null && previous != null && previous.aqi != null) {
+      merged.add(previous);
+      continue;
+    }
+
+    merged.add(reading);
+  }
+
+  merged.addAll(storedById.values);
+  return merged;
+}
+
+
 /// Python's `datetime.isoformat()`, reproduced exactly.
 ///
 /// Dart's own `toIso8601String()` renders UTC as "...T05:30:00.000Z" while

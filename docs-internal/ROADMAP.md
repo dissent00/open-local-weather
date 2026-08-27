@@ -2401,9 +2401,26 @@ absent from the re-fetch is treated identically, since `fetch_ground_aqi_station
 drops a station whose fetch failed and absence cannot be told apart from one.
 The refresh merges before it builds the prompt, and the summary and last-known
 reading are recomputed from the merged list, so the narrative quotes the kept
-160 with its true age instead of reporting nothing. Not ported to `olw_core`:
-the app consumes no ground AQI at all, so a Dart copy would be code nothing
-runs.
+160 with its true age instead of reporting nothing.
+
+Ported to `olw_core` as `mergeGroundAqi` and vector-locked (`aqi_merge.json`,
+9 cases), ahead of the app consuming ground AQI: the rule is about which
+reading survives a re-issue, and the app re-issues too. `generateForecast`'s
+doc names it, so whoever wires the app's stations cannot miss it.
+
+**Its sibling, fixed in the same pass: a deployment with no stations was told
+about them anyway.** Both prompts rendered `GROUND AQI STATIONS: Unavailable —
+no ground station reported data today` whether the stations were silent or
+had never been configured, and the system prompt asked the model to note when
+"none report". A fork with no WAQI token would report that failure every day,
+for stations it never had. `build_system_prompt` and `build_user_prompt` now
+take `ground_stations_configured` (Dart: `groundStationsConfigured`, and
+`generateForecast` defaults it to false, since an app has none until someone
+configures them): false drops every ground-station passage and all three
+blocks, and the data-quality note says air quality comes from model (CAMS)
+data alone. Absent instructions beat instructions that say "ignore this" —
+the model cannot mention what it was never told about. Vector cases added on
+both prompts.
 
 ---
 

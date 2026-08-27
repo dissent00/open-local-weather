@@ -76,6 +76,7 @@ absent values are `null`, never omitted keys.
 | `aqi_staleness.json` | `hours_old / is_stale` | 4 |
 | `aqi_summary.json` | `summarize_ground_aqi` | 6 |
 | `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
+| `aqi_merge.json` | `merge_ground_aqi` | 9 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 4 |
 | `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
@@ -89,8 +90,8 @@ absent values are `null`, never omitted keys.
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
 | `llm_schema_gemini.json` | `to_gemini_schema` | 1 |
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
-| `llm_system_prompt.json` | `build_system_prompt` | 4 |
-| `llm_user_prompt.json` | `build_user_prompt` | 3 |
+| `llm_system_prompt.json` | `build_system_prompt` | 5 |
+| `llm_user_prompt.json` | `build_user_prompt` | 4 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 12 |

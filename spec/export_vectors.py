@@ -44,6 +44,7 @@ from openlocalweather.aqi import (
     hours_old,
     is_stale,
     last_known_ground_aqi,
+    merge_ground_aqi,
     summarize_ground_aqi,
 )
 from openlocalweather.comparison import describe_day_rain
@@ -500,6 +501,60 @@ def export_aqi() -> None:
                 "expected": dump(last_known_ground_aqi(readings, now)),
             }
         )
+    # Purpose-built rather than reusing the readings above, because the
+    # merge is about station IDENTITY: every case here has to control
+    # station_id explicitly, and reading() derives it from the name.
+    stored_real = reading("Ochieng' Avenue", 160, 9.0)
+    refetched_null = stored_real.model_copy(update={"aqi": None, "measured_at": fresh.measured_at})
+    other_stored = reading("Dunga Beach", 27, 9.0)
+
+    merge_scenarios = [
+        (
+            "a fresh value replaces the stored one",
+            [stored_real],
+            [stored_real.model_copy(update={"aqi": 46, "measured_at": fresh.measured_at})],
+        ),
+        ("a fresh null keeps the stored value AND its timestamp", [stored_real], [refetched_null]),
+        ("a station missing from the refetch keeps its reading", [stored_real], []),
+        (
+            "neither has a value: the fresher reading wins",
+            [stored_real.model_copy(update={"aqi": None})],
+            [refetched_null.model_copy(update={"pm25": 41.0})],
+        ),
+        (
+            "stations are matched on id, not display name",
+            [stored_real.model_copy(update={"name": "Old Label"})],
+            [refetched_null.model_copy(update={"name": "New Label"})],
+        ),
+        ("nothing stored yields the fresh list", [], [fresh, stale]),
+        ("a station only the refetch knows about is added", [stored_real], [refetched_null, fresh]),
+        ("stored-only stations are appended after the fresh ones", [stored_real, other_stored], [fresh]),
+        ("both empty", [], []),
+    ]
+    merge_cases = []
+    for name, stored, fresh_readings in merge_scenarios:
+        merge_cases.append(
+            {
+                "name": name,
+                "input": {
+                    "stored": [dump(r) for r in stored],
+                    "fresh": [dump(r) for r in fresh_readings],
+                },
+                "expected": [dump(r) for r in merge_ground_aqi(stored, fresh_readings)],
+            }
+        )
+    write(
+        "aqi_merge.json",
+        "merge_ground_aqi",
+        "A re-issue's readings. A fresher ABSENCE never replaces an older "
+        "measurement — the kept reading keeps its own measured_at, so its age "
+        "and staleness stay honest. A station missing from the refetch is the "
+        "same absence, since a failed station fetch is dropped from the list. "
+        "Matched on station_id; ordered by the fresh list, stored-only "
+        "stations appended.",
+        merge_cases,
+    )
+
     write(
         "aqi_last_known.json",
         "last_known_ground_aqi",
@@ -659,6 +714,7 @@ def export_user_prompt() -> None:
         "local_bulletin_text": "Sunny intervals, light rains expected over few places.",
         "review_context": {"data_sufficiency": "Day+0: 8 check(s) per model.", "findings": []},
         "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
+        "ground_stations_configured": True,
     }
     # Two earlier issuances, not one: the vector has to exercise a LIST, or
     # the Dart port could pass with a single-narrative implementation and
@@ -685,6 +741,21 @@ def export_user_prompt() -> None:
         },
         forward_hourly={"hourly": {"time": ["2026-08-19T18:00"], "precipitation_gfs_seamless": [0.4]}},
     )
+    no_stations = {
+        "today": date(2026, 8, 19),
+        "yesterday": date(2026, 8, 18),
+        "public_webpage_url": "https://example.com/",
+        "verification_context": [],
+        "track_record_context": [],
+        "historical_logs": [],
+        "ground_aqi_readings": [],
+        "ground_aqi_summary": None,
+        "yesterday_actual": None,
+        "today_weather_data": {},
+        "local_bulletin_source_name": "",
+        "local_bulletin_text": "",
+        "ground_stations_configured": False,
+    }
     empty = {
         "today": date(2026, 8, 19),
         "yesterday": date(2026, 8, 18),
@@ -698,6 +769,7 @@ def export_user_prompt() -> None:
         "today_weather_data": {},
         "local_bulletin_source_name": "",
         "local_bulletin_text": "",
+        "ground_stations_configured": True,
     }
 
     def case(name, kwargs):
@@ -711,13 +783,17 @@ def export_user_prompt() -> None:
         "llm_user_prompt.json",
         "build_user_prompt",
         "The full per-run user message, verbatim. Covers a fully-populated "
-        "run, an evening refresh, and a cold start where every optional input "
-        "is absent — the last matters most, because each 'Unavailable' string "
-        "is what stops a gap being read as a measurement.",
+        "run, an evening refresh, a cold start where every optional input "
+        "is absent, and a deployment with no ground stations configured. The "
+        "cold start matters most, because each 'Unavailable' string is what "
+        "stops a gap being read as a measurement — and the last case is its "
+        "mirror: where a source was never configured, the block is absent "
+        "rather than reported unavailable.",
         [
             case("fully populated", full),
             case("evening refresh carries the morning narrative", refresh),
             case("cold start — every optional input absent", empty),
+            case("no ground stations configured — the blocks are absent", no_stations),
         ],
     )
 
@@ -1251,6 +1327,10 @@ def export_system_prompt() -> None:
             False,
             {"historical_lookback_days": 14, "rolling_window_short": 5, "rolling_window_long": 20},
         ),
+        # A fork that polls no ground stations. Every ground-station passage
+        # drops out rather than being softened: a deployment cannot report a
+        # station as absent when none was ever configured.
+        ("no ground stations configured", plain, False, {"ground_stations_configured": False}),
     ]
 
     cases = []
@@ -1259,6 +1339,7 @@ def export_system_prompt() -> None:
             "historical_lookback_days": HISTORICAL_LOOKBACK_DAYS,
             "rolling_window_short": ROLLING_WINDOW_SHORT,
             "rolling_window_long": ROLLING_WINDOW_LONG,
+            "ground_stations_configured": True,
         }
         kwargs.update(overrides)
         cases.append(
@@ -1284,7 +1365,9 @@ def export_system_prompt() -> None:
         "llm_system_prompt.json",
         "build_system_prompt",
         "The full system prompt, verbatim. Covers the secondary-point branch "
-        "(present/absent), refresh mode, and window-size interpolation.",
+        "(present/absent), refresh mode, window-size interpolation, and a "
+        "deployment with no ground AQI stations, where every ground-station "
+        "passage is omitted rather than reworded.",
         cases,
     )
 

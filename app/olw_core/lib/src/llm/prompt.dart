@@ -22,7 +22,29 @@ String buildSystemPrompt(
   int rollingWindowShortArg = rollingWindowShort,
   int rollingWindowLongArg = rollingWindowLong,
   bool isReissue = false,
+
+  /// Whether this deployment polls any ground AQI stations at all.
+  ///
+  /// False drops every ground-station passage rather than softening it: a
+  /// fork with no stations configured used to be told to note when "none
+  /// report", which made each forecast report an absence that was not a
+  /// failure. The model cannot mention what it was never told about.
+  bool groundStationsConfigured = true,
 }) {
+  final groundAqiQualityNote = groundStationsConfigured
+      ? '- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor\'s most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading\'s number into that summary yourself.'
+      : '- No ground AQI stations are configured for this location, so air quality comes from model (CAMS) data alone. State it plainly with the EPA thresholds and do NOT mention ground stations, sensors, or their absence - nothing is missing, and a daily note that no station reported would report a failure that did not happen.';
+  final airQualityGuidance = groundStationsConfigured
+      ? '   AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous. WHEN NOTHING IS FRESH, QUOTE THE LAST REAL READING RATHER THAN GOING SILENT. If "GROUND AQI SUMMARY" is not applicable because every station is stale, "GROUND AQI LAST KNOWN" carries the most recent reading anyone actually took, with its station, its value, its age in hours and how many stations reported at that hour. State it in that form - no current ground data; the last actual reading was X at STATION, N hours ago; the model guidance says Y - using the pre-computed values as given. Both halves are required: the reader gets the real measurement AND the model estimate, and can see which is which. Do not present a stale reading as current, and do not silently drop it either - a forecast that said nothing about ground sensors one morning and listed all three the next taught readers nothing about either day. When multiple ground AQI stations are configured, a PRE-COMPUTED range (min-max) and the name of the currently-worst station are provided under "GROUND AQI SUMMARY" in the user message - state that range in Today\'s Forecast and explicitly name the worst station there (use the pre-computed values as given). List each individual station\'s own reading by name in the Detailed Discussion.'
+      : '   AIR QUALITY: model (CAMS) data is the only source configured here, so state it as the estimate it is. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous.';
+  // Item 6 asks for every block to be accounted for, and item 1 forbids
+  // recomputing the pre-computed ones. Naming a block that was never
+  // supplied is how "explicitly noted as unavailable" becomes a daily line
+  // about missing sensors.
+  final groundAqiChecklistItem = groundStationsConfigured ? 'GROUND AQI, ' : '';
+  final groundAqiPrecomputedItem =
+      groundStationsConfigured ? 'the ground AQI summary and last-known reading, ' : '';
+
   final reissueBlock = isReissue
       ? '''
 
@@ -56,7 +78,7 @@ So: WRITE ABOUT the numbers, never recompute them. Produce a qualitative "yester
 
 THE SIX RULES BELOW OUTRANK EVERYTHING ELSE IN THIS PROMPT. Everything after them describes what to write and how; these describe what may not be claimed, and no instruction further down licenses breaking one. If a later rule seems to require it, you have misread the later rule.
 
-1. NEVER RECOMPUTE A PRE-COMPUTED VALUE. Blocks labelled "pre-computed by code" are final: the verification results, the model track record, the day-over-day labels, the ground AQI summary and last-known reading, the convective instability flag, the synoptic pressure ring, and the sun times. Use them as given, in the words or numbers given. Deriving your own version of one is how two figures for the same thing end up in a single published forecast.
+1. NEVER RECOMPUTE A PRE-COMPUTED VALUE. Blocks labelled "pre-computed by code" are final: the verification results, the model track record, the day-over-day labels, ${groundAqiPrecomputedItem}the convective instability flag, the synoptic pressure ring, and the sun times. Use them as given, in the words or numbers given. Deriving your own version of one is how two figures for the same thing end up in a single published forecast.
 2. NEVER RANK MODELS WITHOUT A REVIEW FINDING THAT RANKS THEM. The comparison has already been made in code and withheld because the sample is too thin to support it. Eyeballing the track record percentages yourself reintroduces exactly the small-sample error the gate exists to prevent.
 3. NEVER UPGRADE A FINDING'S STATED CONFIDENCE. "Provisional" is not "established", and a finding describes the record so far, never today.
 4. NEVER CLAIM MORE PRECISION THAN THE MODELS AGREE ON. A named hour asserts that they agree on the hour. Where they do not, say so in words instead.
@@ -91,7 +113,7 @@ LEAD-TIME AWARENESS: A model's Day+0 skill and its Day+3/Day+7 skill can differ 
 
 DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
-- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor's most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading's number into that summary yourself.
+$groundAqiQualityNote
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
 
 ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
@@ -149,7 +171,7 @@ $secondaryHeadingBlock
 
    Do not state the obvious or the unactionable. A forecast is read by someone deciding what to do next. "The UV index has dropped to zero following sunset" is true, unsurprising, and useless - the reader can see it is dark. Where a variable is irrelevant at the issuance hour, OMIT it rather than reporting its null state: no UV after dark, no "peak temperature already occurred" unless the number itself still matters for what comes next. This is the same discipline as not narrating hours already passed - say the things that change what someone does.
 
-   AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous. WHEN NOTHING IS FRESH, QUOTE THE LAST REAL READING RATHER THAN GOING SILENT. If "GROUND AQI SUMMARY" is not applicable because every station is stale, "GROUND AQI LAST KNOWN" carries the most recent reading anyone actually took, with its station, its value, its age in hours and how many stations reported at that hour. State it in that form - no current ground data; the last actual reading was X at STATION, N hours ago; the model guidance says Y - using the pre-computed values as given. Both halves are required: the reader gets the real measurement AND the model estimate, and can see which is which. Do not present a stale reading as current, and do not silently drop it either - a forecast that said nothing about ground sensors one morning and listed all three the next taught readers nothing about either day. When multiple ground AQI stations are configured, a PRE-COMPUTED range (min-max) and the name of the currently-worst station are provided under "GROUND AQI SUMMARY" in the user message - state that range in Today's Forecast and explicitly name the worst station there (use the pre-computed values as given). List each individual station's own reading by name in the Detailed Discussion.
+$airQualityGuidance
 
 4. today_properties FIELDS: rain_expected, onset_window (Day+0 only), peak_wind_kmh (secondary point), temp_high_c and temp_low_c (plain numbers, Celsius - the display string in both units is COMPUTED from these in code, do not produce one), mslp_trend_24h, synoptic_pattern, uv_index_max, air_quality_aqi. This is your synthesized BLENDED call across all models - genuine reasoning, not any one model's raw number.
 
@@ -161,7 +183,7 @@ $secondaryHeadingBlock
 
 5. WHATSAPP SUMMARY (optional, roadmap item): concise mobile summary under 600 characters, emojis welcome.
 
-6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, GROUND AQI, the synoptic ring, the local bulletin, the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
+6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, ${groundAqiChecklistItem}the synoptic ring, the local bulletin, the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
 
 Return ONLY valid JSON adhering strictly to the requested schema.
 ''';
@@ -245,6 +267,13 @@ String buildUserPrompt({
   Object? reviewContext,
   Object? modelPredictionsContext,
   int historicalLookbackDaysArg = historicalLookbackDays,
+
+  /// Whether this deployment polls any ground AQI stations at all.
+  ///
+  /// False omits the three GROUND AQI blocks entirely, rather than rendering
+  /// them as "Unavailable" — a station that was never configured has not
+  /// failed to report. Mirrors the same flag on [buildSystemPrompt].
+  bool groundStationsConfigured = true,
 }) {
   final earlierBlock = (earlierToday == null || earlierToday.isEmpty)
       ? ''
@@ -270,6 +299,24 @@ String buildUserPrompt({
     'synoptic_scale_pressure': todayWeatherData['synoptic_scale_pressure'],
   };
 
+  // Omitted entirely where the location polls no ground stations — see the
+  // flag's own doc above.
+  final groundAqiBlock = groundStationsConfigured
+      // Dart drops the newline immediately after the opening quotes, so the
+      // blank line separating this from the block above needs two.
+      ? '''
+
+
+GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
+${groundAqiReadings == null || (groundAqiReadings is List && groundAqiReadings.isEmpty) ? 'Unavailable — no ground station reported data today.' : promptJson(groundAqiReadings)}
+
+GROUND AQI SUMMARY (pre-computed by code — state as given if present):
+${groundAqiSummary == null ? 'Not applicable — no station reported a numeric AQI right now.' : promptJson(groundAqiSummary)}
+
+GROUND AQI LAST KNOWN (pre-computed by code — the most recent reading any station actually took, with its age; state as given):
+${groundAqiLastKnown == null ? 'Unavailable — no station has a timestamped reading at all.' : promptJson(groundAqiLastKnown)}'''
+      : '';
+
   return '''
 
 Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Public Webpage: $publicWebpageUrl
@@ -289,16 +336,7 @@ CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE 
 ${instability == null ? 'Unavailable — no model supplied a CAPE series this run.' : promptJson(instability)}
 
 DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — use high_label / wind_label / rain_contrast as given):
-${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; omit the day-over-day comparison.' : promptJson(yesterdayActual)}
-
-GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
-${groundAqiReadings == null || (groundAqiReadings is List && groundAqiReadings.isEmpty) ? 'Unavailable — no ground station reported data today.' : promptJson(groundAqiReadings)}
-
-GROUND AQI SUMMARY (pre-computed by code — state as given if present):
-${groundAqiSummary == null ? 'Not applicable — no station reported a numeric AQI right now.' : promptJson(groundAqiSummary)}
-
-GROUND AQI LAST KNOWN (pre-computed by code — the most recent reading any station actually took, with its age; state as given):
-${groundAqiLastKnown == null ? 'Unavailable — no station has a timestamped reading at all.' : promptJson(groundAqiLastKnown)}
+${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; omit the day-over-day comparison.' : promptJson(yesterdayActual)}$groundAqiBlock
 
 LOCAL BULLETIN ($localBulletinSourceName):
 $localBulletinText

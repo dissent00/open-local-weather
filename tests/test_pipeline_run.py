@@ -553,10 +553,16 @@ def test_llm_receives_stale_flag_and_hours_old_per_reading(tmp_path, monkeypatch
     assert "Not applicable" in user_prompt
 
 
-def test_no_stations_configured_yields_empty_ground_aqi_and_no_summary(tmp_path):
-    # LOCATION already has waqi_stations=[] — confirms the pre-existing
-    # zero-station path (fetch_ground_aqi_stations mocked to [] by the
-    # autouse fixture) still degrades cleanly, not just the new multi path.
+def test_no_stations_configured_says_nothing_about_ground_stations(tmp_path):
+    """A fork that polls no stations must not be told about a source it does
+    not have. LOCATION has waqi_stations=[].
+
+    The blocks used to be rendered as "Unavailable — no ground station
+    reported data today", which is a fetch failure being reported for
+    stations that were never configured, every single day. Absent
+    instructions beat instructions saying "ignore this": the model cannot
+    mention what it was never told about, and CAMS is then simply the source.
+    """
     llm = FakeLLMProvider()
     deps = PipelineDeps(
         location=LOCATION,
@@ -567,9 +573,32 @@ def test_no_stations_configured_yields_empty_ground_aqi_and_no_summary(tmp_path)
     )
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
 
-    _, user_prompt = llm.calls[0]
-    assert "no ground station reported data" in user_prompt
-    assert "Not applicable" in user_prompt
+    system_prompt, user_prompt = llm.calls[0]
+    assert "GROUND AQI" not in user_prompt
+    assert "no ground station reported data" not in user_prompt
+    assert "GROUND AQI" not in system_prompt
+    assert "cross-reference ground sensor data" not in system_prompt
+    assert "Ground AQI stations may occasionally be offline" not in system_prompt
+    assert "model (CAMS) data alone" in system_prompt, (
+        "the model still has to be told where air quality comes from"
+    )
+
+
+def test_stations_configured_still_get_their_blocks(tmp_path, monkeypatch):
+    """The other half of the same switch — the shipped deployment's path."""
+    from openlocalweather.config import WaqiStation
+
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="Kisumu Airport", station_id="A1")]}
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    system_prompt, user_prompt = llm.calls[0]
+    assert "GROUND AQI STATIONS" in user_prompt
+    assert "no ground station reported data" in user_prompt, "configured but silent today"
+    assert "Ground AQI stations may occasionally be offline" in system_prompt
 
 
 # ---------------------------------------------------------------------------
@@ -1322,6 +1351,8 @@ def test_quiet_cape_does_not_set_the_convective_flag(tmp_path, monkeypatch):
 
 
 def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypatch):
+    from openlocalweather.config import WaqiStation
+
     stale_at = datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(
         waqi_fetch,
@@ -1332,7 +1363,16 @@ def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypa
         ],
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(
+        update={
+            "waqi_stations": [
+                WaqiStation(name="Kisumu Airport", station_id="A1"),
+                WaqiStation(name="Dunga Beach", station_id="A2"),
+            ]
+        }
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "GROUND AQI LAST KNOWN" in user_prompt

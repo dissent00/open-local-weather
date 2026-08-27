@@ -90,6 +90,18 @@ Future<ForecastRun> generateForecast({
   Object? groundAqiReadings,
   Object? groundAqiSummary,
 
+  /// Whether this deployment polls ground AQI stations at all.
+  ///
+  /// Defaults to false because an app has none until someone configures
+  /// them, and a deployment with no stations must not be told about a source
+  /// it does not have — every ground-station passage and block drops out
+  /// instead. Pass true (with the readings) once stations are configured.
+  ///
+  /// On a RE-ISSUE, merge the fresh readings against the stored ones with
+  /// [mergeGroundAqi] before passing them: a re-fetch that comes back with no
+  /// value must not erase a real reading the day's first run captured.
+  bool groundStationsConfigured = false,
+
   /// The most recent real ground reading, with its age — what the narrative
   /// quotes when nothing is fresh enough for the summary above. Supplied by
   /// the caller alongside `groundAqiSummary`, which it computes the same way.
@@ -210,7 +222,10 @@ Future<ForecastRun> generateForecast({
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
 
   final systemPrompt = buildSystemPrompt(
-      location, isReissue: earlierToday != null && earlierToday.isNotEmpty);
+    location,
+    isReissue: earlierToday != null && earlierToday.isNotEmpty,
+    groundStationsConfigured: groundStationsConfigured,
+  );
   final userPrompt = buildUserPrompt(
     today: today,
     yesterday: addDays(today, -1),
@@ -221,6 +236,7 @@ Future<ForecastRun> generateForecast({
     groundAqiReadings: groundAqiReadings,
     groundAqiSummary: groundAqiSummary,
     groundAqiLastKnown: groundAqiLastKnown,
+    groundStationsConfigured: groundStationsConfigured,
     instability: instability?.toJson(),
     yesterdayActual: yesterdayActual,
     todayWeatherData: {

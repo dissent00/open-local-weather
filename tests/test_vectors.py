@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
+from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
@@ -186,6 +186,14 @@ def test_vectors_aqi_summary():
         i = case["input"]
         readings = [GroundAQIReading.model_validate(r) for r in i["readings"]]
         check(case, summarize_ground_aqi(readings, datetime.fromisoformat(i["now"])))
+
+
+def test_vectors_aqi_merge():
+    for case in load("aqi_merge.json")["cases"]:
+        i = case["input"]
+        stored = [GroundAQIReading.model_validate(r) for r in i["stored"]]
+        fresh = [GroundAQIReading.model_validate(r) for r in i["fresh"]]
+        check(case, merge_ground_aqi(stored, fresh))
 
 
 def test_vectors_bucket_hourly_by_date():
@@ -451,6 +459,7 @@ def test_vectors_system_prompt():
             rolling_window_short=i["rolling_window_short"],
             rolling_window_long=i["rolling_window_long"],
             is_reissue=i["is_reissue"],
+            ground_stations_configured=i["ground_stations_configured"],
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
@@ -522,6 +531,7 @@ def test_every_vector_file_is_exercised():
         "extract_onset_hour.json",
         "aqi_staleness.json",
         "aqi_summary.json",
+        "aqi_merge.json",
         "bucket_hourly_by_date.json",
         "llm_schema_gemini.json",
         "llm_schema_strict.json",

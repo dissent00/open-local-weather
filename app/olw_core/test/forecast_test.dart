@@ -229,7 +229,51 @@ void main() {
       llm.seenUserPrompt,
       contains('Unavailable — no observed record for yesterday'),
     );
-    expect(llm.seenUserPrompt, contains('no ground station reported data today'));
+    // No stations are configured here, so the ground AQI blocks are absent
+    // rather than reported unavailable — see the dedicated test below.
+    expect(llm.seenUserPrompt, isNot(contains('GROUND AQI')));
+  });
+
+  test('a deployment with no ground stations is never told about them', () async {
+    // The app polls none until someone configures them. Rendering the blocks
+    // as "Unavailable — no ground station reported data today" would report a
+    // failed fetch for stations that never existed, every single run.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, isNot(contains('GROUND AQI')));
+    expect(llm.seenSystemPrompt, isNot(contains('GROUND AQI')));
+    expect(llm.seenSystemPrompt, isNot(contains('cross-reference ground sensor data')));
+    // It still has to be told where air quality comes from.
+    expect(llm.seenSystemPrompt, contains('model (CAMS) data alone'));
+  });
+
+  test('configuring stations brings the blocks and the guidance back', () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      groundStationsConfigured: true,
+      groundAqiReadings: const [
+        {'name': 'Kisumu Airport', 'aqi': 46, 'stale': false},
+      ],
+    );
+
+    expect(llm.seenUserPrompt, contains('GROUND AQI STATIONS'));
+    expect(llm.seenUserPrompt, contains('"aqi": 46'));
+    expect(
+      llm.seenSystemPrompt,
+      contains('Ground AQI stations may occasionally be offline'),
+    );
   });
 
   test('a failed optional fetch costs a section, not the forecast', () async {
@@ -361,6 +405,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      groundStationsConfigured: true,
       groundAqiLastKnown:
           lastKnownGroundAqi(readings, DateTime.utc(2026, 8, 19, 9, 0))?.toJson(),
     );

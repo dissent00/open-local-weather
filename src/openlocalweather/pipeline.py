@@ -782,7 +782,11 @@ def run_daily_pipeline(
         day7_predictions = recorded_predictions.day7
 
     # --- Step 6: call the LLM ---
-    system_prompt = build_system_prompt(location)
+    # A location with no WAQI stations gets a prompt with no ground-station
+    # guidance and no GROUND AQI blocks at all, rather than a daily note that
+    # no station reported — nothing reported because nothing was configured.
+    ground_stations_configured = bool(location.waqi_stations)
+    system_prompt = build_system_prompt(location, ground_stations_configured=ground_stations_configured)
     verification_context = [
         {
             "lead_time_days": r.lead_time_days,
@@ -832,6 +836,7 @@ def run_daily_pipeline(
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
+        ground_stations_configured=ground_stations_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
         # What actually HAPPENED yesterday, so the Overview can open with a
         # real day-over-day comparison. Distinct from verification_context,
@@ -1067,7 +1072,10 @@ def run_refresh_pipeline(
         existing_entry.model_predictions.day7,
     )
 
-    system_prompt = build_system_prompt(location, is_reissue=True)
+    ground_stations_configured = bool(location.waqi_stations)
+    system_prompt = build_system_prompt(
+        location, is_reissue=True, ground_stations_configured=ground_stations_configured
+    )
     user_prompt = build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
@@ -1079,6 +1087,7 @@ def run_refresh_pipeline(
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
+        ground_stations_configured=ground_stations_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
         yesterday_actual=refresh_yesterday_actual,
         review_context=refresh_review_context,
