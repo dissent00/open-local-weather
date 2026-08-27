@@ -27,7 +27,7 @@ const String forecastSchemaName = 'GeminiForecastResponse';
 
 const String _todayPropertiesDescription =
     "The LLM's synthesized, BLENDED call across all models — genuine\n"
-    "reasoning, not any one model's raw number. Only rain_expected,\n"
+    "reasoning, not any one model's raw number. Only rain_expected, rain,\n"
     "temp_high_c and temp_low_c are required.\n"
     "\n"
     "`temp_high_low` is deliberately absent. It was a display string the model\n"
@@ -84,6 +84,9 @@ Map<String, Object?> _geminiTodayProperties() => {
         'peak_wind_kmh': {'type': 'NUMBER', 'nullable': true},
         'temp_high_c': {'type': 'NUMBER'},
         'temp_low_c': {'type': 'NUMBER'},
+        'rain': {'type': 'BOOLEAN'},
+        'onset_hour': {'type': 'STRING', 'nullable': true},
+        'precip_mm': {'type': 'NUMBER', 'nullable': true},
         'mslp_trend_24h': {'type': 'STRING', 'nullable': true},
         'synoptic_pattern': {'type': 'STRING', 'nullable': true},
         'uv_index_max': {'type': 'STRING', 'nullable': true},
@@ -93,6 +96,7 @@ Map<String, Object?> _geminiTodayProperties() => {
         'rain_expected',
         'temp_high_c',
         'temp_low_c',
+        'rain',
       ],
       'description': _todayPropertiesDescription,
     };
@@ -163,6 +167,9 @@ Map<String, Object?> _strictTodayProperties() => {
         },
         'temp_high_c': {'type': 'number'},
         'temp_low_c': {'type': 'number'},
+        'rain': {'type': 'boolean'},
+        'onset_hour': {'type': ['string', 'null']},
+        'precip_mm': {'type': ['number', 'null']},
         'mslp_trend_24h': {
           'type': ['string', 'null']
         },
@@ -182,6 +189,9 @@ Map<String, Object?> _strictTodayProperties() => {
         'peak_wind_kmh',
         'temp_high_c',
         'temp_low_c',
+        'rain',
+        'onset_hour',
+        'precip_mm',
         'mslp_trend_24h',
         'synoptic_pattern',
         'uv_index_max',
@@ -226,6 +236,22 @@ class TodayProperties {
   /// to supply this and it drifted in value and in format — see
   /// [formatTempHighLow].
   String get tempHighLow => formatTempHighLow(tempHighC, tempLowC);
+
+  /// The scored commitment.
+  ///
+  /// [rainExpected] and [onsetWindow] above are prose, written for a reader.
+  /// These are the same calls in the form the accuracy record can check, and
+  /// they are what the blend is scored on as a peer of the models it
+  /// synthesizes. Prose is what the forecast SAYS; these are what it COMMITS
+  /// to, and a forecast whose prose and commitment disagree is a bug that is
+  /// now visible instead of unfalsifiable.
+  final bool rain;
+
+  /// "HH:MM" local, Day+0 only. Null means no rain expected, or expected
+  /// without resolvable timing — never midnight.
+  final String? onsetHour;
+  final double? precipMm;
+
   final String? mslpTrend24h;
   final String? synopticPattern;
   final String? uvIndexMax;
@@ -237,6 +263,9 @@ class TodayProperties {
     this.peakWindKmh,
     required this.tempHighC,
     required this.tempLowC,
+    required this.rain,
+    this.onsetHour,
+    this.precipMm,
     this.mslpTrend24h,
     this.synopticPattern,
     this.uvIndexMax,
@@ -249,6 +278,9 @@ class TodayProperties {
         peakWindKmh: _toDouble(j['peak_wind_kmh']),
         tempHighC: _toDouble(j['temp_high_c'])!,
         tempLowC: _toDouble(j['temp_low_c'])!,
+        rain: j['rain'] as bool,
+        onsetHour: j['onset_hour'] as String?,
+        precipMm: _toDouble(j['precip_mm']),
         mslpTrend24h: j['mslp_trend_24h'] as String?,
         synopticPattern: j['synoptic_pattern'] as String?,
         uvIndexMax: j['uv_index_max'] as String?,
@@ -268,6 +300,9 @@ class TodayProperties {
         'peak_wind_kmh': peakWindKmh,
         'temp_high_c': tempHighC,
         'temp_low_c': tempLowC,
+        'rain': rain,
+        'onset_hour': onsetHour,
+        'precip_mm': precipMm,
         'temp_high_low': tempHighLow,
         'mslp_trend_24h': mslpTrend24h,
         'synoptic_pattern': synopticPattern,

@@ -42,6 +42,7 @@ void main() {
                         'onset_window': '13:00-16:00',
                         'temp_high_c': 27.5,
                         'temp_low_c': 18.0,
+        'rain': true,
                         'temp_high_low': '27.5°C / 81.5°F high, 18.0°C / 64.4°F low',
                         'mslp_trend_24h': 'Falling slowly',
                         'synoptic_pattern': 'Weak easterly flow',

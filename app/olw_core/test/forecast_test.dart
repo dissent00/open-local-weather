@@ -54,6 +54,7 @@ final _llmPayload = {
     'onset_window': '13:00-16:00',
     'temp_high_c': 27.5,
     'temp_low_c': 18.0,
+        'rain': true,
     'temp_high_low': '27.5°C / 81.5°F high, 18.0°C / 64.4°F low',
     'mslp_trend_24h': 'Falling slowly',
     'synoptic_pattern': 'Weak easterly flow over the basin',
@@ -158,13 +159,28 @@ void main() {
     expect(run.response.todayNarrative, contains('Overview'));
 
     // Predictions were extracted at every tracked lead time, one per model.
-    expect(run.day0Predictions, hasLength(defaultModels.length));
+    expect(run.day0Predictions, hasLength(defaultModels.length + 1),
+        reason: 'every model, plus our own blended call');
     expect(run.day3Predictions, hasLength(defaultModels.length));
     expect(run.day7Predictions, hasLength(defaultModels.length));
 
     // And they carry real values, not nulls from a mis-keyed lookup.
     final gfs = run.day0Predictions.firstWhere((p) => p.model == 'gfs_seamless');
     expect(gfs.rain, isTrue);
+
+    // ...and our own blended call sits alongside them, scored as a peer of
+    // the guidance that fed it. Built from today_properties' structured
+    // fields, so what is verified is what the forecaster committed to.
+    final blend = run.day0Predictions.singleWhere((p) => p.model == blendModelId);
+    expect(blend.highC, run.response.todayProperties.tempHighC);
+    expect(blend.rain, run.response.todayProperties.rain);
+    expect(blend.windKmh, isNull,
+        reason: 'absent, never zero — peakWindKmh is the secondary point');
+
+    // Day+0 only: today_properties is a call about today, and an extended
+    // row for it would be an unscoreable placeholder in the record.
+    expect(run.day3Predictions.map((p) => p.model), isNot(contains(blendModelId)));
+    expect(run.day7Predictions.map((p) => p.model), isNot(contains(blendModelId)));
     expect(gfs.windKmh, 28.0);
     expect(gfs.highC, 27.5);
   });
@@ -182,9 +198,16 @@ void main() {
     );
 
     expect(llm.seenUserPrompt, contains('EXTRACTED PER-MODEL PREDICTIONS'));
-    for (final p in run.day0Predictions) {
+    for (final p in run.day0Predictions.where((p) => p.model != blendModelId)) {
       expect(llm.seenUserPrompt, contains('"model": "${p.model}"'));
     }
+
+    // The blend is scored and stored, and never shown to the forecaster.
+    // Here it cannot be shown — it does not exist until the reply arrives —
+    // but the assertion is worth pinning on this side too, because the
+    // withholding is a standing rule rather than an accident of ordering.
+    expect(llm.seenUserPrompt, isNot(contains(blendModelId)));
+    expect(llm.seenSystemPrompt, isNot(contains(blendModelId)));
     expect(llm.seenSystemPrompt, contains('You are'));
   });
 

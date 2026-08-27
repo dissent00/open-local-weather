@@ -4,7 +4,7 @@ import pytest
 
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
-from openlocalweather.defaults import MODELS
+from openlocalweather.defaults import MODELS, BLEND_MODEL_ID
 from openlocalweather.fetch import metar as metar_fetch
 import requests
 
@@ -82,6 +82,7 @@ class FakeLLMProvider:
             verification_notes=[VerificationNote(lead_time_days=0, note="Rain call was accurate.")],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Unlikely",
                 temp_high_c=27.0,
                 temp_low_c=18.0,
@@ -204,9 +205,61 @@ def test_real_run_writes_log_entry_and_track_record(tmp_path):
 def test_today_entry_carries_extracted_model_predictions(tmp_path):
     deps = make_deps(tmp_path)
     result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
-    assert len(result.log_entry.model_predictions.day0) == len(MODELS)
+    day0 = result.log_entry.model_predictions.day0
+
+    # Every extracted model, PLUS our own blended call — the forecast the
+    # reader actually gets, scored as a peer of the guidance that fed it.
+    assert {p.model for p in day0} == {*MODELS, BLEND_MODEL_ID}
     assert len(result.log_entry.model_predictions.day3) == len(MODELS)
     assert len(result.log_entry.model_predictions.day7) == len(MODELS)
+
+
+def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
+    # Built from today_properties' structured fields, not parsed back out of
+    # the prose. What gets scored is what the forecaster committed to.
+    deps = make_deps(tmp_path)
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    blend = next(
+        p for p in result.log_entry.model_predictions.day0 if p.model == BLEND_MODEL_ID
+    )
+
+    assert blend.high_c == result.log_entry.temp_high_c
+    assert blend.low_c == result.log_entry.temp_low_c
+    # Absent, never zero: peak_wind_kmh in today_properties is the SECONDARY
+    # point's and mslp_trend_24h is prose, so scoring either against the
+    # primary point's observations would compare two different things.
+    assert blend.wind_kmh is None
+    assert blend.mslp_trend is None
+
+
+def test_the_forecaster_is_never_shown_its_own_record(tmp_path):
+    """The blend is scored, stored and published, and withheld from the
+    prompt. Seeing another model's record adjusts how an external input is
+    weighed; seeing its OWN closes a loop, and the cheap way to protect a
+    score you can see is to stop making independent calls.
+
+    Asserted on the prompt text because that is the only place the rule can
+    actually be broken, and it leaks through two separate blocks — the track
+    record and the review findings, which name models."""
+    deps = make_deps(tmp_path)
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    system_prompt, user_prompt = deps.llm_provider.calls[-1]
+    assert BLEND_MODEL_ID not in user_prompt, (
+        "the forecaster can see its own track record or review finding"
+    )
+    assert BLEND_MODEL_ID not in system_prompt
+
+
+def test_the_blend_has_no_extended_range_entry(tmp_path):
+    # today_properties is a call about today. Emitting a Day+3 row for it
+    # would put an unscoreable placeholder into the record and give the
+    # accuracy page a model that appears to forecast a range it never did.
+    deps = make_deps(tmp_path)
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day3}
+    assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day7}
 
 
 def _seed_yesterday_log_entry(tmp_path, d: date) -> None:
@@ -251,6 +304,7 @@ def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
             verification_notes=[VerificationNote(lead_time_days=0, note="Rain correctly not predicted.")],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Unlikely", temp_high_c=27.0, temp_low_c=18.0, temp_high_low="27°C / 81°F"
             ),
             today_narrative="## Overview\nDry.",
@@ -521,6 +575,7 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
             verification_notes=[],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Now raining", temp_high_c=25.0, temp_low_c=17.0, temp_high_low="25°C / 77°F"
             ),
             today_narrative="## Overview\nRain has moved in this evening.",
@@ -553,6 +608,7 @@ def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
             verification_notes=[],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Now raining", temp_high_c=25.0, temp_low_c=17.0, temp_high_low="25°C / 77°F"
             ),
             today_narrative="## Overview\nRain has moved in this evening.",
@@ -583,6 +639,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
         GeminiForecastResponse(
             yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Light rain", temp_high_c=24.0, temp_low_c=16.0, temp_high_low="24°C / 75°F"
             ),
             today_narrative="## Overview\nFirst refresh.",
@@ -594,6 +651,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
         GeminiForecastResponse(
             yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
             today_properties=TodayProperties(
+                rain=False,
                 rain_expected="Heavy rain", temp_high_c=22.0, temp_low_c=15.0, temp_high_low="22°C / 72°F"
             ),
             today_narrative="## Overview\nSecond refresh.",

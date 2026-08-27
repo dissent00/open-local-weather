@@ -62,6 +62,43 @@ const List<String> defaultModels = [
   'best_match',
 ];
 
+/// Our own synthesis, scored as a peer of the models it synthesizes.
+///
+/// Every INPUT to a forecast was scored and the OUTPUT was not — the blended
+/// call a reader actually reads had no accuracy record at all, while
+/// `best_match` (Open-Meteo's own blend) did. Mirrors `BLEND_MODEL_ID` in the
+/// Python implementation.
+const String blendModelId = 'olw_blend';
+
+/// Every model with a tracked skill record, our own blend included.
+List<String> scoredModels({String localBulletinModelId = ''}) => [
+      ...defaultModels,
+      blendModelId,
+      if (localBulletinModelId.isNotEmpty) localBulletinModelId,
+    ];
+
+/// [scoredModels] minus our own blend — what the forecaster is shown.
+///
+/// THE BLEND IS SCORED, STORED AND PUBLISHED. It is withheld from the
+/// forecaster's own context, and this is a deliberate standing rule rather
+/// than a temporary omission, so it is not "fixed" later by someone who reads
+/// the exclusion as an oversight.
+///
+/// Seeing another model's record adjusts how an external input is weighed and
+/// closes no loop. Seeing its OWN closes one: the output becomes the record
+/// becomes the output. The likely equilibrium is not self-correction but
+/// consensus-hugging — the cheapest way to protect a score you can see is to
+/// stop making independent calls, which would destroy the only thing the
+/// synthesis is for while every published statistic improved.
+///
+/// Off everywhere it ships, including on a phone: a deployment cannot run the
+/// experiment that would justify enabling it after the fact, because once
+/// enabled there is no un-self-aware baseline left to compare against.
+List<String> modelsVisibleToTheForecaster({String localBulletinModelId = ''}) =>
+    scoredModels(localBulletinModelId: localBulletinModelId)
+        .where((m) => m != blendModelId)
+        .toList();
+
 /// Lead times tracked and scored independently.
 const List<int> leadTimesDays = [0, 3, 7];
 

@@ -74,9 +74,11 @@ from openlocalweather.config import LocationConfig
 from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
+    BLEND_MODEL_ID,
     HISTORICAL_LOOKBACK_DAYS,
     MODELS,
     WEEKLY_BATCH_WEEKDAY,
+    models_visible_to_the_forecaster,
     scored_models,
 )
 from openlocalweather.extract import (
@@ -92,13 +94,14 @@ from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather.spend import assert_capacity, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
-from openlocalweather.llm.schema import GeminiForecastResponse
+from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     LocalBulletinRecord,
     DailyActual,
     DailyLogEntry,
     GroundAQIReading,
     LogEntryMeta,
+    ModelPrediction,
     ModelPredictionsByLead,
     MorningIssuanceSnapshot,
     TrackRecord,
@@ -490,6 +493,35 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     )
 
 
+def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
+    """The forecaster's own Day+0 call, in the form the record can score.
+
+    Every INPUT to a forecast was scored and the OUTPUT was not: the blended
+    call a reader actually reads had no accuracy record, while `best_match` —
+    Open-Meteo's own blend — did. So the record could say which model was best
+    and never whether synthesizing them helped.
+
+    Built from the STRUCTURED fields rather than parsed back out of the prose,
+    so what is scored is what the forecaster committed to rather than what a
+    regex could recover from a sentence.
+    """
+    return ModelPrediction(
+        model=BLEND_MODEL_ID,
+        rain=tp.rain,
+        onset=tp.onset_hour,
+        high_c=tp.temp_high_c,
+        low_c=tp.temp_low_c,
+        precip_mm=tp.precip_mm,
+        # Deliberately absent, not zero. peak_wind_kmh in today_properties is
+        # the SECONDARY point's, and mslp_trend_24h is prose; scoring either
+        # against the primary point's observations would be comparing two
+        # different things. A null reads as "not forecast" everywhere in this
+        # record, which is the truthful answer until both are structured.
+        wind_kmh=None,
+        mslp_trend=None,
+    )
+
+
 def _review_prompt_payload(review: WeeklyReview) -> dict[str, Any]:
     """The parts of a review the LLM should reason from — and no more.
 
@@ -669,7 +701,15 @@ def run_daily_pipeline(
         }
         for r in verification_result.lead_time_results
     ]
-    track_record_context = [e.model_dump() for e in verification_result.updated_track_record.entries]
+    # The forecaster's own blend is scored and published, and withheld from
+    # its own context — see models_visible_to_the_forecaster for why this is a
+    # standing rule and not a temporary omission.
+    forecaster_models = models_visible_to_the_forecaster(location.local_bulletin_model_id)
+    track_record_context = [
+        e.model_dump()
+        for e in verification_result.updated_track_record.entries
+        if e.model != BLEND_MODEL_ID
+    ]
     # Long-run review findings, recomputed from the raw record every run
     # rather than stored — same reasoning as every other statistic here: a
     # figure that can only be re-derived is a figure that can be checked,
@@ -681,7 +721,7 @@ def run_daily_pipeline(
             actuals=actuals_primary,
             all_log_dates=log_store.list_log_dates(deps.data_dir),
             today=today,
-            models=scored_models(location.local_bulletin_model_id),
+            models=forecaster_models,
         )
     )
     # The same extracted values that get scored, handed to the LLM so its
@@ -756,7 +796,14 @@ def run_daily_pipeline(
         sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
         sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
         model_predictions=ModelPredictionsByLead(
-            day0=day0_predictions, day3=day3_predictions, day7=day7_predictions
+            # The blend joins Day+0 as a peer of the models it synthesizes, so
+            # tomorrow scores the forecast this run actually published and not
+            # only the guidance that fed it. Day+0 only: today_properties is a
+            # call about today, and there is no extended-range equivalent to
+            # score until the outlook carries structured numbers too.
+            day0=[*day0_predictions, _blend_prediction(tp)],
+            day3=day3_predictions,
+            day7=day7_predictions,
         ),
         # Stored verbatim, and stored even when it says "unavailable" — see
         # LocalBulletinRecord. A met service's forecast cannot be re-fetched

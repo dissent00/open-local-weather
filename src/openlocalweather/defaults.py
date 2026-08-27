@@ -29,15 +29,51 @@ MODELS: list[str] = [
 # do we ask Open-Meteo for".
 
 
+# Our own synthesis, scored as a peer of the models it synthesizes.
+#
+# Every INPUT to a forecast was scored and the OUTPUT was not — the blended
+# call a reader actually reads had no accuracy record at all, while
+# `best_match` (Open-Meteo's own blend) did. So the record could say which
+# model was best and never whether combining them helped.
+BLEND_MODEL_ID = "olw_blend"
+
+
 def scored_models(local_bulletin_model_id: str = "") -> list[str]:
-    """Every model with a tracked skill record, met service included.
+    """Every model with a tracked skill record: the numerical models, the met
+    service where one is configured, and our own blended call.
 
     Kept a function rather than a second constant because whether a local
-    met service participates is per-location config, not a global fact —
-    and a fork with no parseable bulletin must produce exactly the previous
-    list, so its track record and accuracy page are unchanged.
+    met service participates is per-location config, not a global fact.
     """
-    return [*MODELS, local_bulletin_model_id] if local_bulletin_model_id else list(MODELS)
+    models = [*MODELS, BLEND_MODEL_ID]
+    return [*models, local_bulletin_model_id] if local_bulletin_model_id else models
+
+
+def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[str]:
+    """[scored_models] minus our own blend — what the LLM is shown.
+
+    THE BLEND IS SCORED, STORED AND PUBLISHED. It is withheld from the
+    forecaster's own context, and this is a deliberate standing rule rather
+    than a temporary omission, so that it is not "fixed" later by someone who
+    reads the exclusion as an oversight.
+
+    Seeing another model's record adjusts how the forecaster weighs an
+    external input, and closes no loop. Seeing its OWN record closes one: the
+    output becomes the record becomes the output. The likely equilibrium is
+    not self-correction but consensus-hugging — a forecaster that has learned
+    it is scored will protect the score, and the cheapest way to protect it is
+    to stop making independent calls. That would quietly destroy the only
+    thing the synthesis is for, while every statistic on the page improved.
+
+    The condition for changing this is an experiment, not a date: evidence
+    that self-awareness improves calibration WITHOUT narrowing the spread of
+    calls against consensus. Note that a deployment cannot run that experiment
+    on itself after the fact — once enabled there is no un-self-aware baseline
+    left to compare against, which is why the default has to be off everywhere
+    it ships, including a fork and an app on someone's phone. It is not a
+    per-user setting for the same reason.
+    """
+    return [m for m in scored_models(local_bulletin_model_id) if m != BLEND_MODEL_ID]
 
 
 # Which lead times get independently tracked and scored. Day+0 is verified

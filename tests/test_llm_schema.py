@@ -34,7 +34,12 @@ def test_nested_object_with_required_and_optional_fields():
     schema = to_gemini_schema(GeminiForecastResponse)
     today_properties = schema["properties"]["today_properties"]
     assert today_properties["type"] == "OBJECT"
-    assert set(today_properties["required"]) == {"rain_expected", "temp_high_c", "temp_low_c"}
+    assert set(today_properties["required"]) == {
+        "rain_expected",
+        "rain",
+        "temp_high_c",
+        "temp_low_c",
+    }
     # temp_high_low is NOT asked of the model: it is computed from the two
     # numbers above by models.format_temp_high_low. A model that returns it
     # anyway is returning a field nothing reads.

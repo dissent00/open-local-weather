@@ -136,6 +136,12 @@ $secondaryHeadingBlock
 
 4. today_properties FIELDS: rain_expected, onset_window (Day+0 only), peak_wind_kmh (secondary point), temp_high_c and temp_low_c (plain numbers, Celsius - the display string in both units is COMPUTED from these in code, do not produce one), mslp_trend_24h, synoptic_pattern, uv_index_max, air_quality_aqi. This is your synthesized BLENDED call across all models - genuine reasoning, not any one model's raw number.
 
+   THIS IS A SCORED FORECAST, NOT A SUMMARY. Your blended call is stored as a prediction and verified against tomorrow's observations exactly like GFS or ECMWF, and it is published on the accuracy page beside them. The fields "rain" (true/false), "onset_hour" ("HH:MM" local, Day+0 only) and "precip_mm" are that commitment in machine-readable form; "rain_expected" and "onset_window" are the same calls in prose for the reader. They must AGREE - prose that hedges toward rain while "rain" is false is a forecast that cannot be held to anything, and the disagreement is now visible in the record rather than hidden in a sentence.
+
+   Set "rain" by the same standard the models are scored on: whether measurable rain falls at the location during the day, not whether any is theoretically possible. "onset_hour" is null when no rain is expected OR when rain is expected but the models do not agree on timing closely enough to name an hour - null there means "not forecast", which is honest, and a guessed hour is scored as wrong just as confidently as a real one. Do NOT default it to midnight or to the start of the day.
+
+   Your own accuracy record is deliberately NOT in your context. Do not speculate about how you have scored historically, and do not describe yourself as a model in the narrative - write the forecast, and let the record speak for itself.
+
 5. WHATSAPP SUMMARY (optional, roadmap item): concise mobile summary under 600 characters, emojis welcome.
 
 Return ONLY valid JSON adhering strictly to the requested schema.

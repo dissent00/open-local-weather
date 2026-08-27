@@ -28,6 +28,7 @@ const validPayload = {
     'rain_expected': 'Likely',
     'temp_high_c': 26.0,
     'temp_low_c': 18.0,
+        'rain': true,
     'temp_high_low': '26°C / 79°F',
   },
   'today_narrative': '## Overview\nRain expected.',
@@ -325,6 +326,7 @@ void main() {
       // so a client inventing its own would produce records the server could
       // not import.
       const original = TodayProperties(
+        rain: false,
         rainExpected: 'Yes — showers likely',
         onsetWindow: '13:00-16:00',
         peakWindKmh: 28.4,
@@ -351,6 +353,7 @@ void main() {
       // A model that omits optional fields must not produce a record that
       // fails to read back.
       const sparse = TodayProperties(
+        rain: false,
         rainExpected: 'No',
         tempHighC: 26.0,
         tempLowC: 18.0,

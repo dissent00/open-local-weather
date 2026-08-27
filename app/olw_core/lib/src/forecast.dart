@@ -54,6 +54,27 @@ class ForecastRun {
 /// degrade to null rather than failing the run, matching the Python
 /// pipeline's treatment of air quality and the secondary point; the primary
 /// hourly and daily fetches are required, and a failure there aborts.
+/// The forecaster's own Day+0 call, in the form the record can score.
+///
+/// Built from the STRUCTURED fields rather than parsed back out of the prose,
+/// so what is scored is what the forecaster committed to rather than what a
+/// regex could recover from a sentence. Mirrors `_blend_prediction` in the
+/// Python pipeline.
+ModelPrediction blendPrediction(TodayProperties tp) => ModelPrediction(
+      model: blendModelId,
+      rain: tp.rain,
+      onset: tp.onsetHour,
+      highC: tp.tempHighC,
+      lowC: tp.tempLowC,
+      precipMm: tp.precipMm,
+      // Deliberately absent, not zero. peakWindKmh is the SECONDARY point's
+      // and mslpTrend24h is prose; scoring either against the primary point's
+      // observations would compare two different things, and a null reads as
+      // "not forecast" everywhere in this record.
+      windKmh: null,
+      mslpTrend: null,
+    );
+
 Future<ForecastRun> generateForecast({
   required OpenMeteoClient client,
   required LlmProvider llm,
@@ -233,7 +254,12 @@ Future<ForecastRun> generateForecast({
   final response = await llm.generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
   return ForecastRun(
     response: response,
-    day0Predictions: day0,
+    // The blend joins Day+0 as a peer of the models it synthesizes, so what
+    // gets scored tomorrow includes the forecast this run actually produced
+    // and not only the guidance that fed it. Day+0 only: today_properties is
+    // a call about today, and there is no extended-range equivalent to score
+    // until the outlook carries structured numbers too.
+    day0Predictions: [...day0, blendPrediction(response.todayProperties)],
     day3Predictions: day3,
     day7Predictions: day7,
     systemPrompt: systemPrompt,

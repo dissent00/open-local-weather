@@ -18,7 +18,7 @@ VALID_INPUT = {
     "verification_notes": [{"lead_time_days": 0, "note": "Spot on."}],
     "skill_profile_summaries": [{"model": "gfs_seamless", "lead_time_days": 0, "summary": "Reliable."}],
     "today_properties": {
-        "rain_expected": "Likely",
+        "rain_expected": "Likely", "rain": False,
         "temp_high_c": 26.0,
         "temp_low_c": 18.0,
         "temp_high_low": "26°C / 79°F",

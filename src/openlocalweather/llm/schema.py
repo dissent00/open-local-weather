@@ -26,7 +26,7 @@ class SkillProfileSummaryItem(BaseModel):
 
 class TodayProperties(BaseModel):
     """The LLM's synthesized, BLENDED call across all models — genuine
-    reasoning, not any one model's raw number. Only rain_expected,
+    reasoning, not any one model's raw number. Only rain_expected, rain,
     temp_high_c and temp_low_c are required.
 
     `temp_high_low` is deliberately absent. It was a display string the model
@@ -40,6 +40,20 @@ class TodayProperties(BaseModel):
     peak_wind_kmh: float | None = None  # secondary point, if configured
     temp_high_c: float
     temp_low_c: float
+
+    # The scored commitment.
+    #
+    # rain_expected and onset_window above are prose, written for a reader.
+    # These are the same calls in the form the accuracy record can check, and
+    # they are what the blend is scored on as a peer of the models it
+    # synthesizes. Prose is what the forecast SAYS; these are what it COMMITS
+    # to, and a forecast whose prose and commitment disagree is a bug that is
+    # now visible instead of unfalsifiable.
+    rain: bool
+    # "HH:MM" local, Day+0 only. None means no rain expected, or expected
+    # without resolvable timing — never midnight.
+    onset_hour: str | None = None
+    precip_mm: float | None = None
     mslp_trend_24h: str | None = None
     synoptic_pattern: str | None = None
     uv_index_max: str | None = None

@@ -74,6 +74,17 @@
               "temp_low_c": {
                 "type": "NUMBER"
               },
+              "rain": {
+                "type": "BOOLEAN"
+              },
+              "onset_hour": {
+                "type": "STRING",
+                "nullable": true
+              },
+              "precip_mm": {
+                "type": "NUMBER",
+                "nullable": true
+              },
               "mslp_trend_24h": {
                 "type": "STRING",
                 "nullable": true
@@ -94,9 +105,10 @@
             "required": [
               "rain_expected",
               "temp_high_c",
-              "temp_low_c"
+              "temp_low_c",
+              "rain"
             ],
-            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code."
+            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected, rain,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code."
           },
           "today_narrative": {
             "type": "STRING"
