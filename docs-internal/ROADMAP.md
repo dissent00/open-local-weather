@@ -2422,6 +2422,21 @@ data alone. Absent instructions beat instructions that say "ignore this" —
 the model cannot mention what it was never told about. Vector cases added on
 both prompts.
 
+**And the same for the local met service**, which had the same three states
+collapsed into two. `LOCAL BULLETIN ():` with nothing under it is a fetch that
+failed; a location with no service wired has not failed at anything, and the
+prompt went on to demand the service be named EVERY TIME. Now:
+*configured and answered* carries the bulletin; *configured and silent* still
+says so explicitly, which is why the states are worth separating; *not
+configured* drops the peer-model guidance, the naming rule and the block.
+
+One deliberate asymmetry with the AQI case: the met service's absence is
+still STATED once, because the model knows real met services for a real place
+and silence would leave it free to attribute a forecast to one it never
+consulted. Silence prevents a report of a failure; it does not prevent an
+invention. `generateForecast` derives the flag from
+`localBulletinSourceName` — a source with no name is not a source.
+
 ---
 
 ## 34. One forecast command that knows whether it is the day's first · **34a shipped — 34b planned**

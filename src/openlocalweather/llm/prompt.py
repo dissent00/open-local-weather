@@ -29,6 +29,7 @@ def build_system_prompt(
     rolling_window_long: int = ROLLING_WINDOW_LONG,
     is_reissue: bool = False,
     ground_stations_configured: bool = True,
+    local_bulletin_configured: bool = True,
 ) -> str:
     # The ground-station passages, in the two shapes a deployment can be in.
     # A fork with no WAQI stations configured used to receive all of this
@@ -53,6 +54,20 @@ def build_system_prompt(
     ground_aqi_precomputed_item = (
         "the ground AQI summary and last-known reading, " if ground_stations_configured else ""
     )
+
+    # The local met service, in the two shapes a deployment can be in. Same
+    # reasoning as the ground stations above, with one difference that
+    # matters: an unconfigured service still has to be named as absent HERE,
+    # because the model knows real met services for a real place and would
+    # otherwise be free to attribute a forecast to one. Silence prevents a
+    # report of a failure; it does not prevent an invention.
+    local_met_model_block = (
+        "\n\n" + 'LOCAL MET SERVICE AS A MODEL: where a national met service is configured, its own forecast appears in EXTRACTED PER-MODEL PREDICTIONS as another model, with its own track record and its own entry in the review findings. Treat it as a peer of the numerical models, not as a more authoritative source and not as a lesser one - what it has earned is whatever its verification record says it has earned, exactly as for GFS or ECMWF. It has genuine local knowledge a global model cannot have, and it is also a forecast that can be wrong; both are settled by the record rather than by deference. Note that it supplies only rain and temperature - no wind, no pressure, no onset - so a null there means "not forecast", never "no rain" or "calm". When it disagrees with the numerical consensus, say so explicitly and explain which way you lean and why, citing its track record at the lead time in question.' if local_bulletin_configured else ""
+    )
+    local_met_naming_rule = (
+        '   NAME THE LOCAL MET SERVICE EVERY TIME. It is a peer model with its own entry in MODEL TRACK RECORD and its own prediction in EXTRACTED PER-MODEL PREDICTIONS, and it is the forecast your readers can compare you against for free. State what it called for today and whether it agrees with the numerical consensus, whichever way that lands. If LOCAL BULLETIN is unavailable this run, say that instead - explicitly, in one clause. Silence is the one option that is not available, and it is what happened: a live forecast weighed five numerical models and never mentioned the national service that had published a forecast for the same day, which reads as though it was never consulted.)' if local_bulletin_configured else '   No national met service is configured for this location, so there is no peer forecast to name - and none must be invented. Do not attribute a forecast to a met service, named or unnamed, and do not note the absence of one either.)'
+    )
+    local_bulletin_checklist_item = "the local bulletin, " if local_bulletin_configured else ""
 
     reissue_block = (
         """
@@ -111,9 +126,7 @@ You are provided with:
 
 WEIGHTING EVIDENCE: When recent (last {rolling_window_short}-check) verification results conflict with a model's longer-term ({rolling_window_long}-check/all-time) track record, weight the recent evidence more heavily in your reasoning - the long-term stats exist to catch slow, systematic bias, not to override what's actually happening lately. State explicitly in the Forecaster Confidence Notes when you're doing this. Each (model, lead time) entry in MODEL TRACK RECORD carries a pre-computed "rain_pct_trend" ("improving" / "declining" / "stable" / null) and "rain_pct_trend_delta" - already the recent-vs-longer-term comparison described above, done in code. Use this field as given; a null trend means there isn't yet enough history in one of the windows to call it either way, and you should say so rather than guessing. When a model's trend is "declining" for a lead time you're relying on, name that explicitly and explain how it affects your confidence - this is exactly the kind of divergence the track record exists to catch.
 
-LEARNING FROM PAST MISSES: HISTORICAL NOTES carries the verification notes written on previous runs - each one a specific, recorded account of how a past forecast went wrong. You write those notes in Step 1 for exactly this purpose, and they are worth nothing if no run ever reads them. Before you finalise the narrative, look for a past entry whose SETUP resembles today's - the same synoptic pattern, the same disagreement between the same models, the same marginal call on timing or convection. When you find one, say so in the Forecaster Confidence Notes and say what it changes: "the last two days with this pattern both over-forecast the afternoon rain, so I am leaning drier than the consensus". A recorded miss that repeats without ever being recognised is the most expensive kind, because the record shows it was avoidable. If nothing in the notes resembles today, say nothing - do not manufacture a resemblance to appear thorough.
-
-LOCAL MET SERVICE AS A MODEL: where a national met service is configured, its own forecast appears in EXTRACTED PER-MODEL PREDICTIONS as another model, with its own track record and its own entry in the review findings. Treat it as a peer of the numerical models, not as a more authoritative source and not as a lesser one - what it has earned is whatever its verification record says it has earned, exactly as for GFS or ECMWF. It has genuine local knowledge a global model cannot have, and it is also a forecast that can be wrong; both are settled by the record rather than by deference. Note that it supplies only rain and temperature - no wind, no pressure, no onset - so a null there means "not forecast", never "no rain" or "calm". When it disagrees with the numerical consensus, say so explicitly and explain which way you lean and why, citing its track record at the lead time in question.
+LEARNING FROM PAST MISSES: HISTORICAL NOTES carries the verification notes written on previous runs - each one a specific, recorded account of how a past forecast went wrong. You write those notes in Step 1 for exactly this purpose, and they are worth nothing if no run ever reads them. Before you finalise the narrative, look for a past entry whose SETUP resembles today's - the same synoptic pattern, the same disagreement between the same models, the same marginal call on timing or convection. When you find one, say so in the Forecaster Confidence Notes and say what it changes: "the last two days with this pattern both over-forecast the afternoon rain, so I am leaning drier than the consensus". A recorded miss that repeats without ever being recognised is the most expensive kind, because the record shows it was avoidable. If nothing in the notes resembles today, say nothing - do not manufacture a resemblance to appear thorough.{local_met_model_block}
 
 LONG-RUN REVIEW FINDINGS: The user message carries a REVIEW section: conclusions computed in code across the whole stored record, each carrying the evidence and confidence that produced it, plus a "data_sufficiency" statement of how much the record currently supports. These are the ONLY cross-model, long-run comparative claims you may make. Each one is gated on sample size in code - a ranking is emitted only when both models have enough verified checks AND their gap exceeds the sampling-noise floor.
 
@@ -170,7 +183,7 @@ The sun times in ISSUED are computed in code and correct for this location and d
    (OPEN with the large-scale picture, then narrow to the local one. "synoptic_scale_pressure" in the user message carries a nine-point pressure ring spanning roughly 2,600 km, already reduced in code to which direction is lowest and highest, the spread between them, and each direction's three-day tendency — plus ready-made "statements". Use those as given rather than re-deriving which quadrant is lowest from the raw numbers. This is the difference between "a strong gradient with lower pressure to the northeast, and pressure falling to the west" and a bare local trend, and it is the sentence a reader expects here. STAY INSIDE WHAT THE SAMPLING SUPPORTS: say lower pressure LIES TOWARD a direction, never that a named low is centred over a named place, and never state a track, a speed of approach, or a frontal position — points 12 degrees apart locate a direction, not a centre, and the true centre may sit between points or outside the ring. If "synoptic_scale_pressure" is unavailable, say the large-scale picture could not be assessed this run rather than substituting the local gradient for it. THEN cover the regional MSLP pattern across {location.region_name}, 24-72h trends at the basin points, and implications for convection/rain/risk.)
    ### Forecaster Confidence Notes
    (explicitly say how the track record - INCLUDING its lead-time breakdown - and recent verification results influenced your model weighting today.
-   NAME THE LOCAL MET SERVICE EVERY TIME. It is a peer model with its own entry in MODEL TRACK RECORD and its own prediction in EXTRACTED PER-MODEL PREDICTIONS, and it is the forecast your readers can compare you against for free. State what it called for today and whether it agrees with the numerical consensus, whichever way that lands. If LOCAL BULLETIN is unavailable this run, say that instead - explicitly, in one clause. Silence is the one option that is not available, and it is what happened: a live forecast weighed five numerical models and never mentioned the national service that had published a forecast for the same day, which reads as though it was never consulted.)
+{local_met_naming_rule}
 
 3. FORMATTING RULES:
    - Wind always as "X km/h (Y kt) from [CARDINAL]" (8-point compass), e.g. "23 km/h (12 kt) from the SE". Knots = km/h ÷ 1.852. Call out cardinal-direction shifts explicitly.
@@ -195,7 +208,7 @@ The sun times in ISSUED are computed in code and correct for this location and d
 
 5. WHATSAPP SUMMARY (optional, roadmap item): concise mobile summary under 600 characters, emojis welcome.
 
-6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, {ground_aqi_checklist_item}the synoptic ring, the local bulletin, the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
+6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, {ground_aqi_checklist_item}the synoptic ring, {local_bulletin_checklist_item}the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
 
 Return ONLY valid JSON adhering strictly to the requested schema.
 """
@@ -245,6 +258,7 @@ def build_user_prompt(
     ground_aqi_last_known: Any = None,
     instability: Any = None,
     ground_stations_configured: bool = True,
+    local_bulletin_configured: bool = True,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -304,6 +318,20 @@ GROUND AQI LAST KNOWN (pre-computed by code — the most recent reading any stat
         else ""
     )
 
+    # Omitted where no met service is configured. "LOCAL BULLETIN ():" with
+    # nothing under it is a fetch that failed; a location with no service
+    # wired has not failed at anything. The system prompt states the absence
+    # once, in the one place it prevents an invention — see
+    # build_system_prompt.
+    local_bulletin_block = (
+        f"""
+
+LOCAL BULLETIN ({local_bulletin_source_name}):
+{local_bulletin_text}"""
+        if local_bulletin_configured
+        else ""
+    )
+
     earlier_block = ""
     if earlier_today:
         issued = "\n\n".join(
@@ -349,10 +377,7 @@ CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE 
 {_json(instability) if instability is not None else "Unavailable — no model supplied a CAPE series this run."}
 
 DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — use high_label / wind_label / rain_contrast as given):
-{_json(yesterday_actual) if yesterday_actual is not None else "Unavailable — no observed record for yesterday; omit the day-over-day comparison."}{ground_aqi_block}
-
-LOCAL BULLETIN ({local_bulletin_source_name}):
-{local_bulletin_text}
+{_json(yesterday_actual) if yesterday_actual is not None else "Unavailable — no observed record for yesterday; omit the day-over-day comparison."}{ground_aqi_block}{local_bulletin_block}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these):
 {_json(verification_context)}

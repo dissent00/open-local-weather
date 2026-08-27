@@ -108,6 +108,13 @@ Future<ForecastRun> generateForecast({
   Object? groundAqiLastKnown,
   String localBulletinSourceName = '',
   String localBulletinText = '',
+
+  /// Whether a national met service is wired for this location.
+  ///
+  /// Derived from [localBulletinSourceName] rather than passed: a source with
+  /// no name is not a source. False drops the LOCAL BULLETIN block and the
+  /// peer-model guidance, and the system prompt states the absence once so no
+  /// forecast is attributed to a service that was never consulted.
   /// Previous issuances today, oldest first. Empty or null means this is
   /// the day's first run.
   List<Map<String, Object?>>? earlierToday,
@@ -225,6 +232,7 @@ Future<ForecastRun> generateForecast({
     location,
     isReissue: earlierToday != null && earlierToday.isNotEmpty,
     groundStationsConfigured: groundStationsConfigured,
+    localBulletinConfigured: localBulletinSourceName.isNotEmpty,
   );
   final userPrompt = buildUserPrompt(
     today: today,
@@ -237,6 +245,7 @@ Future<ForecastRun> generateForecast({
     groundAqiSummary: groundAqiSummary,
     groundAqiLastKnown: groundAqiLastKnown,
     groundStationsConfigured: groundStationsConfigured,
+    localBulletinConfigured: localBulletinSourceName.isNotEmpty,
     instability: instability?.toJson(),
     yesterdayActual: yesterdayActual,
     todayWeatherData: {

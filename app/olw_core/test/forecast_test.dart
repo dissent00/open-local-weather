@@ -254,6 +254,47 @@ void main() {
     expect(llm.seenSystemPrompt, contains('model (CAMS) data alone'));
   });
 
+  test('no met service configured is a state, not a missing bulletin', () async {
+    // 'LOCAL BULLETIN ():' with nothing under it is a fetch that failed, and
+    // the prompt went on to demand the service be named EVERY TIME. The
+    // absence is stated once instead — the model knows real met services for
+    // a real place, so silence would leave it free to attribute a forecast to
+    // one it never consulted.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, isNot(contains('LOCAL BULLETIN')));
+    expect(llm.seenSystemPrompt, isNot(contains('NAME THE LOCAL MET SERVICE')));
+    expect(llm.seenSystemPrompt, isNot(contains('LOCAL MET SERVICE AS A MODEL')));
+    expect(llm.seenSystemPrompt, contains('No national met service is configured'));
+  });
+
+  test('a named met service is carried and must be named', () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      localBulletinSourceName: 'Kenya Meteorological Department (KMD)',
+      localBulletinText: 'Sunny intervals, light rains over a few places.',
+    );
+
+    expect(
+      llm.seenUserPrompt,
+      contains('LOCAL BULLETIN (Kenya Meteorological Department (KMD)):'),
+    );
+    expect(llm.seenUserPrompt, contains('Sunny intervals'));
+    expect(llm.seenSystemPrompt, contains('NAME THE LOCAL MET SERVICE EVERY TIME'));
+  });
+
   test('configuring stations brings the blocks and the guidance back', () async {
     final llm = _StubProvider();
     await generateForecast(

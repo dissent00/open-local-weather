@@ -643,6 +643,65 @@ def test_stations_configured_still_get_their_blocks(tmp_path, monkeypatch):
     assert "Ground AQI stations may occasionally be offline" in system_prompt
 
 
+def test_no_met_service_configured_is_a_state_not_a_missing_bulletin(tmp_path):
+    """LOCATION has no local_bulletin_source_name.
+
+    "LOCAL BULLETIN ():" with nothing under it is a fetch that failed, and the
+    prompt went on to demand the service be named EVERY TIME. A fork with no
+    met service wired would either report a daily failure or attribute a
+    forecast to a service it never consulted.
+
+    Unlike the ground stations, the absence is still stated once — the model
+    knows real met services for a real place, so silence here prevents a
+    report of a failure but not an invention.
+    """
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+
+    system_prompt, user_prompt = llm.calls[0]
+    assert "LOCAL BULLETIN" not in user_prompt
+    assert "NAME THE LOCAL MET SERVICE" not in system_prompt
+    assert "LOCAL MET SERVICE AS A MODEL" not in system_prompt
+    assert "No national met service is configured" in system_prompt
+
+
+def test_a_configured_met_service_is_named_and_carried(tmp_path):
+    """The shipped deployment's path, and the one that must not regress: a
+    configured service is a peer model the narrative has to name."""
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(
+        update={"local_bulletin_source_name": "Kenya Meteorological Department (KMD)"}
+    )
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    system_prompt, user_prompt = llm.calls[0]
+    assert "LOCAL BULLETIN (Kenya Meteorological Department (KMD)):" in user_prompt
+    assert "NAME THE LOCAL MET SERVICE EVERY TIME" in system_prompt
+    assert "No national met service is configured" not in system_prompt
+
+
+def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
+    """The third state, and the reason the other two are worth separating: a
+    service that IS configured and did not answer is a real absence, and the
+    bulletin block has to carry it."""
+    class _DownFetcher:
+        def fetch(self) -> str:
+            return "Bulletin unavailable this run — the source did not respond."
+
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(
+        update={"local_bulletin_source_name": "Kenya Meteorological Department (KMD)"}
+    )
+    deps.bulletin_fetcher = _DownFetcher()
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+
+    _, user_prompt = llm.calls[0]
+    assert "LOCAL BULLETIN (Kenya Meteorological Department (KMD)):" in user_prompt
+    assert "Bulletin unavailable this run" in user_prompt
+
+
 # ---------------------------------------------------------------------------
 # run_refresh_pipeline — the evening second run
 # ---------------------------------------------------------------------------

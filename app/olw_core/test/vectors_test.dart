@@ -307,6 +307,7 @@ void main() {
           rollingWindowLongArg: i['rolling_window_long'] as int,
           isReissue: i['is_reissue'] as bool,
           groundStationsConfigured: i['ground_stations_configured'] as bool,
+          localBulletinConfigured: i['local_bulletin_configured'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -705,6 +706,7 @@ void main() {
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
           groundStationsConfigured: i['ground_stations_configured'] as bool,
+          localBulletinConfigured: i['local_bulletin_configured'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }

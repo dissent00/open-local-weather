@@ -715,6 +715,7 @@ def export_user_prompt() -> None:
         "review_context": {"data_sufficiency": "Day+0: 8 check(s) per model.", "findings": []},
         "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
         "ground_stations_configured": True,
+        "local_bulletin_configured": True,
     }
     # Two earlier issuances, not one: the vector has to exercise a LIST, or
     # the Dart port could pass with a single-narrative implementation and
@@ -755,6 +756,7 @@ def export_user_prompt() -> None:
         "local_bulletin_source_name": "",
         "local_bulletin_text": "",
         "ground_stations_configured": False,
+        "local_bulletin_configured": True,
     }
     empty = {
         "today": date(2026, 8, 19),
@@ -770,6 +772,7 @@ def export_user_prompt() -> None:
         "local_bulletin_source_name": "",
         "local_bulletin_text": "",
         "ground_stations_configured": True,
+        "local_bulletin_configured": True,
     }
 
     def case(name, kwargs):
@@ -794,6 +797,10 @@ def export_user_prompt() -> None:
             case("evening refresh carries the morning narrative", refresh),
             case("cold start — every optional input absent", empty),
             case("no ground stations configured — the blocks are absent", no_stations),
+            case(
+                "no local met service configured — the bulletin block is absent",
+                dict(full, local_bulletin_configured=False),
+            ),
         ],
     )
 
@@ -1331,6 +1338,11 @@ def export_system_prompt() -> None:
         # drops out rather than being softened: a deployment cannot report a
         # station as absent when none was ever configured.
         ("no ground stations configured", plain, False, {"ground_stations_configured": False}),
+        # A fork with no national met service wired. The peer-model guidance
+        # and the naming rule drop out, and the absence is stated once — the
+        # model knows real met services for a real place, so silence would
+        # leave it free to attribute a forecast to one.
+        ("no local met service configured", plain, False, {"local_bulletin_configured": False}),
     ]
 
     cases = []
@@ -1340,6 +1352,7 @@ def export_system_prompt() -> None:
             "rolling_window_short": ROLLING_WINDOW_SHORT,
             "rolling_window_long": ROLLING_WINDOW_LONG,
             "ground_stations_configured": True,
+            "local_bulletin_configured": True,
         }
         kwargs.update(overrides)
         cases.append(
@@ -1367,7 +1380,10 @@ def export_system_prompt() -> None:
         "The full system prompt, verbatim. Covers the secondary-point branch "
         "(present/absent), refresh mode, window-size interpolation, and a "
         "deployment with no ground AQI stations, where every ground-station "
-        "passage is omitted rather than reworded.",
+        "passage is omitted rather than reworded, and one with no local met "
+        "service, where the peer-model guidance goes but the absence is still "
+        "stated once so no forecast gets attributed to a service that was "
+        "never consulted.",
         cases,
     )
 

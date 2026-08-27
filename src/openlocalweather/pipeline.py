@@ -814,6 +814,10 @@ def run_daily_pipeline(
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
     # no station reported — nothing reported because nothing was configured.
     ground_stations_configured = bool(location.waqi_stations)
+    # Same distinction for the met service: a location with none wired is a
+    # state, not a fetch that came back empty. LocalBulletinRecord already
+    # keys off this same field for whether to store a bulletin at all.
+    local_bulletin_configured = bool(location.local_bulletin_source_name)
     # A run on a day that already has an entry is a later issuance, whatever
     # verb was typed. Told otherwise it writes a fresh morning-style forecast
     # over one the readers have already had, and emails it as the day's first.
@@ -821,6 +825,7 @@ def run_daily_pipeline(
         location,
         is_reissue=existing_entry is not None,
         ground_stations_configured=ground_stations_configured,
+        local_bulletin_configured=local_bulletin_configured,
     )
     verification_context = [
         {
@@ -872,6 +877,7 @@ def run_daily_pipeline(
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
         ground_stations_configured=ground_stations_configured,
+        local_bulletin_configured=local_bulletin_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
         # What actually HAPPENED yesterday, so the Overview can open with a
         # real day-over-day comparison. Distinct from verification_context,
@@ -1150,8 +1156,12 @@ def run_refresh_pipeline(
     )
 
     ground_stations_configured = bool(location.waqi_stations)
+    local_bulletin_configured = bool(location.local_bulletin_source_name)
     system_prompt = build_system_prompt(
-        location, is_reissue=True, ground_stations_configured=ground_stations_configured
+        location,
+        is_reissue=True,
+        ground_stations_configured=ground_stations_configured,
+        local_bulletin_configured=local_bulletin_configured,
     )
     user_prompt = build_user_prompt(
         today=today,
@@ -1165,6 +1175,7 @@ def run_refresh_pipeline(
         ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
         ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
         ground_stations_configured=ground_stations_configured,
+        local_bulletin_configured=local_bulletin_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
         yesterday_actual=refresh_yesterday_actual,
         review_context=refresh_review_context,
