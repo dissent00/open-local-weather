@@ -64,7 +64,12 @@ from openlocalweather.extract import (
     extract_day_n_predictions_from_daily,
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
-from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.models import (
+    DailyActual,
+    GroundAQIReading,
+    ModelPrediction,
+    format_temp_high_low,
+)
 from openlocalweather.comparison import compute_day_over_day
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
@@ -1319,6 +1324,13 @@ def export_day_over_day() -> None:
         ("5C cooler is noticeable", actual(high_c=34.0), preds([29.0, 29.0, 29.0])),
         ("10C cooler is much", actual(high_c=39.0), preds([29.0, 29.0, 29.0])),
         ("exactly at a band boundary rounds into the higher band", actual(high_c=27.5), preds([29.0, 29.0, 29.0])),
+        # 2026-08-27 live: forecast 33.5 against yesterday's observed 32.3.
+        # The old 1.5 C band called this "about the same" while the page
+        # showed 90 F yesterday and 92 F today, and the reader disagreed.
+        ("1.2C warmer is a change the reader can see",
+         actual(high_c=32.3), preds([33.5, 33.5, 33.5])),
+        ("0.9C warmer is still about the same",
+         actual(high_c=32.6), preds([33.5, 33.5, 33.5])),
         ("wind change below threshold is not remarked on", actual(peak_wind_kmh=25.0), preds([29.0], winds=[30.0])),
         ("big wind increase is called out", actual(peak_wind_kmh=15.0), preds([29.0], winds=[40.0])),
         ("dry after a wet day", actual(rain=True), preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
@@ -1623,6 +1635,43 @@ def export_describe_day_rain() -> None:
     )
 
 
+def export_temp_high_low() -> None:
+    """The headline temperature line, in both units.
+
+    Vector-tested because it is arithmetic that used to be an LLM's job and
+    drifted: a blended high of 33.5 C was published as "34C / 93F" when 33.5 C
+    is 92.3 F. The .5 cases below are the cross-language edge — Python's round
+    is half-to-even and Dart's is half away from zero, the same divergence that
+    once put "1006 hPa" on the site and "1007 hPa" in the app."""
+    scenarios = [
+        ("the live case that prompted this", 33.5, 18.0),
+        ("yesterday, for the comparison", 32.3, 18.0),
+        ("half to EVEN rounds down here", 32.5, 17.5),
+        ("half to EVEN rounds up here", 33.5, 18.5),
+        ("whole numbers stay put", 30.0, 20.0),
+        ("a cold low", 28.0, -1.5),
+        ("below freezing both ends", -2.5, -7.5),
+        ("fahrenheit crossing a ten", 37.2, 21.7),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"high_c": high, "low_c": low},
+            "expected": format_temp_high_low(high, low),
+        }
+        for name, high, low in scenarios
+    ]
+    write(
+        "temp_high_low.json",
+        "format_temp_high_low",
+        "The headline temperature string. Each unit is rounded from the true "
+        "Celsius value rather than one from the other, so the pair does not "
+        "round-trip: 33.5 C gives 34C / 92F, and 34 C is 93.2 F. Rounding "
+        "twice is what this replaced.",
+        cases,
+    )
+
+
 def export_instability() -> None:
     """Whether the Overview must mention thunder. A threshold decision, so it
     belongs in code and has to agree across implementations."""
@@ -1711,6 +1760,7 @@ def main() -> None:
     export_verification()
     export_day_over_day()
     export_describe_day_rain()
+    export_temp_high_low()
     export_instability()
     print("\nDone. Commit the result — the vectors are the contract.")
 

@@ -18,6 +18,51 @@ double? _toDouble(Object? v) => v == null ? null : (v as num).toDouble();
 int? _toInt(Object? v) => v == null ? null : (v as num).toInt();
 
 /// One model's prediction for one target date at one lead time.
+/// The headline temperature line, in both units.
+///
+/// Computed here rather than asked of the model. It used to be a string the
+/// LLM wrote, and it drifted in both of the ways an LLM-written number does.
+///
+/// It drifted in VALUE: on 2026-08-27 a blended high of 33.5 °C was published
+/// as "34°C / 93°F". 33.5 °C is 92.3 °F — the model rounded to 34 first and
+/// converted that. The day's comparison label, computed in code, said the day
+/// was about the same as yesterday's observed 32.3 °C, and a reader looking at
+/// 90 °F yesterday and 93 °F today reasonably disagreed.
+///
+/// And it drifted in FORM: the day before, the same field came out as
+/// "32°C / 90°F (High) | 18°C / 64°F (Low)". Two consecutive days, two
+/// formats, because nothing had ever fixed one.
+///
+/// Each unit is rounded from the true Celsius value rather than one from the
+/// other, so both are the closest whole number to what was actually forecast.
+/// A consequence worth keeping rather than "fixing": 33.5 °C gives
+/// "34°C / 92°F", and 34 °C converts to 93.2 °F. The pair does not round-trip,
+/// because rounding twice is what caused this.
+String formatTempHighLow(double highC, double lowC) {
+  String both(double celsius) =>
+      '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F';
+
+  return '${both(highC)} high, ${both(lowC)} low';
+}
+
+/// Matches Python's `round()`, which is half-to-EVEN.
+///
+/// NOT Dart's `.round()`, which is half away from zero: 32.5 would come out as
+/// 33 here and 32 there, publishing a different temperature on the site than
+/// in the app. Same divergence as `_fmt0` in synoptic.dart guards against.
+int _roundHalfEven(double v) {
+  final floor = v.floor();
+  final frac = v - floor;
+  if (frac > 0.5) {
+    return floor + 1;
+  }
+  if (frac < 0.5) {
+    return floor;
+  }
+
+  return floor.isEven ? floor : floor + 1;
+}
+
 class ModelPrediction {
   final String model;
 

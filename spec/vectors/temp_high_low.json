@@ -1,0 +1,71 @@
+{
+  "vector_format_version": 1,
+  "function": "format_temp_high_low",
+  "description": "The headline temperature string. Each unit is rounded from the true Celsius value rather than one from the other, so the pair does not round-trip: 33.5 C gives 34C / 92F, and 34 C is 93.2 F. Rounding twice is what this replaced.",
+  "cases": [
+    {
+      "name": "the live case that prompted this",
+      "input": {
+        "high_c": 33.5,
+        "low_c": 18.0
+      },
+      "expected": "34\u00b0C / 92\u00b0F high, 18\u00b0C / 64\u00b0F low"
+    },
+    {
+      "name": "yesterday, for the comparison",
+      "input": {
+        "high_c": 32.3,
+        "low_c": 18.0
+      },
+      "expected": "32\u00b0C / 90\u00b0F high, 18\u00b0C / 64\u00b0F low"
+    },
+    {
+      "name": "half to EVEN rounds down here",
+      "input": {
+        "high_c": 32.5,
+        "low_c": 17.5
+      },
+      "expected": "32\u00b0C / 90\u00b0F high, 18\u00b0C / 64\u00b0F low"
+    },
+    {
+      "name": "half to EVEN rounds up here",
+      "input": {
+        "high_c": 33.5,
+        "low_c": 18.5
+      },
+      "expected": "34\u00b0C / 92\u00b0F high, 18\u00b0C / 65\u00b0F low"
+    },
+    {
+      "name": "whole numbers stay put",
+      "input": {
+        "high_c": 30.0,
+        "low_c": 20.0
+      },
+      "expected": "30\u00b0C / 86\u00b0F high, 20\u00b0C / 68\u00b0F low"
+    },
+    {
+      "name": "a cold low",
+      "input": {
+        "high_c": 28.0,
+        "low_c": -1.5
+      },
+      "expected": "28\u00b0C / 82\u00b0F high, -2\u00b0C / 29\u00b0F low"
+    },
+    {
+      "name": "below freezing both ends",
+      "input": {
+        "high_c": -2.5,
+        "low_c": -7.5
+      },
+      "expected": "-2\u00b0C / 28\u00b0F high, -8\u00b0C / 18\u00b0F low"
+    },
+    {
+      "name": "fahrenheit crossing a ten",
+      "input": {
+        "high_c": 37.2,
+        "low_c": 21.7
+      },
+      "expected": "37\u00b0C / 99\u00b0F high, 22\u00b0C / 71\u00b0F low"
+    }
+  ]
+}

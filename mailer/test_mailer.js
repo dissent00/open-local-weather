@@ -406,4 +406,53 @@ assert.ok(!sentEmails[0].body.includes('Past forecasts and the full accuracy rec
 scriptProps.PUBLIC_URL = 'https://dissent00.github.io/open-local-weather/'; // restore for any future tests
 console.log('PASS: the reported broken-link bug no longer reproduces');
 
+// --- The re-issue note belongs in the Detailed Discussion, not above the
+// forecast. It is a note about the accuracy record; on an evening update it
+// used to be the first thing a reader met, ahead of anything about the sky. ---
+reset();
+servedEntry = refreshedEntryRaw;
+sendForecastEmail();
+{
+  const text = sentEmails[0].body;
+  const html = sentEmails[0].htmlBody;
+  const note = 'accuracy-tracking record';
+
+  assert.ok(text.includes(note), 'a re-issue must still carry the note somewhere');
+  assert.ok(
+    text.indexOf(note) > text.indexOf('.DETAILED DISCUSSION...'),
+    'plain-text note must sit inside the Detailed Discussion, not above the forecast'
+  );
+  assert.ok(
+    text.indexOf(note) > text.indexOf('.OVERVIEW...'),
+    'and specifically below the Overview, which is what the reader came for'
+  );
+
+  assert.ok(html.includes(note), 'the HTML re-issue note must survive too');
+  assert.ok(
+    html.indexOf(note) > html.indexOf('Detailed Discussion'),
+    'HTML note must follow the Detailed Discussion heading'
+  );
+}
+console.log('PASS: the re-issue note sits in the Detailed Discussion');
+
+// --- ...and a renamed heading must not lose it. The heading is written by
+// the model, so the fallback is the difference between a re-issue that says
+// so at the bottom and one that reads exactly like a first run. ---
+reset();
+servedEntry = {
+  ...refreshedEntryRaw,
+  narrative_markdown: (refreshedEntryRaw.narrative_markdown || '')
+    .replace(/## Detailed Discussion/g, '## Forecaster Notes'),
+};
+sendForecastEmail();
+assert.ok(
+  sentEmails[0].body.includes('accuracy-tracking record'),
+  'plain-text note must fall back below the narrative when the heading is renamed'
+);
+assert.ok(
+  sentEmails[0].htmlBody.includes('accuracy-tracking record'),
+  'HTML note must fall back too'
+);
+console.log('PASS: a renamed discussion heading does not lose the re-issue note');
+
 console.log('\nALL MAILER HARNESS CHECKS PASSED');

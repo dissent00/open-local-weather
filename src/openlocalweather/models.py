@@ -21,6 +21,39 @@ from pydantic import BaseModel, Field
 LeadTime = int  # one of 0, 3, 7 — not a real enum, kept as int to match defaults.LEAD_TIMES_DAYS
 
 
+def format_temp_high_low(high_c: float, low_c: float) -> str:
+    """The headline temperature line, in both units.
+
+    Computed here rather than asked of the model. It used to be a string the
+    LLM wrote, and it drifted in both of the ways an LLM-written number does.
+
+    It drifted in VALUE: on 2026-08-27 a blended high of 33.5 °C was published
+    as "34°C / 93°F". 33.5 °C is 92.3 °F — the model rounded to 34 first and
+    converted that. The day's comparison label, computed in code, said the day
+    was about the same as yesterday's observed 32.3 °C, and a reader looking at
+    90 °F yesterday and 93 °F today reasonably disagreed. Roughly a third of
+    that gap was invented in the rounding.
+
+    And it drifted in FORM: the day before, the same field came out as
+    "32°C / 90°F (High) | 18°C / 64°F (Low)". Two consecutive days, two
+    formats, because nothing had ever fixed one.
+
+    Each unit is rounded from the true Celsius value rather than one from the
+    other, so both are the closest whole number to what was actually
+    forecast. A consequence worth keeping rather than "fixing": 33.5 °C gives
+    "34°C / 92°F", and 34 °C converts to 93.2 °F. The pair does not round-trip,
+    because rounding twice is what caused this.
+
+    `round` is Python's half-to-even, which is the convention this project
+    already pins across the two implementations — see `_fmt0` in the Dart
+    `synoptic.dart` for the matching half.
+    """
+    def both(celsius: float) -> str:
+        return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
+
+    return f"{both(high_c)} high, {both(low_c)} low"
+
+
 # ---------------------------------------------------------------------------
 # Predictions and actuals
 # ---------------------------------------------------------------------------

@@ -102,6 +102,7 @@ from openlocalweather.models import (
     ModelPredictionsByLead,
     MorningIssuanceSnapshot,
     TrackRecord,
+    format_temp_high_low,
 )
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
@@ -743,7 +744,7 @@ def run_daily_pipeline(
         peak_wind_kmh=tp.peak_wind_kmh,
         temp_high_c=tp.temp_high_c,
         temp_low_c=tp.temp_low_c,
-        temp_high_low_display=tp.temp_high_low,
+        temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
         mslp_trend_24h=tp.mslp_trend_24h or "",
         synoptic_pattern=tp.synoptic_pattern or "",
         uv_index_max=tp.uv_index_max,
@@ -1001,7 +1002,7 @@ def run_refresh_pipeline(
             "peak_wind_kmh": tp.peak_wind_kmh,
             "temp_high_c": tp.temp_high_c,
             "temp_low_c": tp.temp_low_c,
-            "temp_high_low_display": tp.temp_high_low,
+            "temp_high_low_display": format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
             "mslp_trend_24h": tp.mslp_trend_24h or "",
             "synoptic_pattern": tp.synoptic_pattern or "",
             "uv_index_max": tp.uv_index_max,

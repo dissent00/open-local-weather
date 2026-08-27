@@ -19,7 +19,10 @@ import 'scoring.dart' show mean;
 /// perception, not instrument precision — roughly a degree is inside
 /// day-to-day noise and shouldn't be announced as a change at all.
 const List<(double, String)> tempChangeBandsC = [
-  (1.5, 'about the same'),
+  // 1.0 °C is 1.8 °F. It was 1.5 (2.7 °F), so two days could differ by nearly
+  // three Fahrenheit degrees and still be called the same — and on 2026-08-27
+  // one did, with the page showing 90 °F yesterday and 92 °F today.
+  (1.0, 'about the same'),
   (3.0, 'slightly'),
   (6.0, 'noticeably'),
   (99.0, 'much'),

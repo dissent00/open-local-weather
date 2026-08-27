@@ -27,15 +27,19 @@ class SkillProfileSummaryItem(BaseModel):
 class TodayProperties(BaseModel):
     """The LLM's synthesized, BLENDED call across all models — genuine
     reasoning, not any one model's raw number. Only rain_expected,
-    temp_high_c, temp_low_c, and temp_high_low are required; the original
-    schema's `required` list is preserved exactly."""
+    temp_high_c and temp_low_c are required.
+
+    `temp_high_low` is deliberately absent. It was a display string the model
+    wrote, and it drifted in both value and format; it is now computed from
+    the two numbers here by `models.format_temp_high_low`. Asking a language
+    model to convert units is asking it to do arithmetic, which this project
+    does in code."""
 
     rain_expected: str
     onset_window: str | None = None  # Day+0 only
     peak_wind_kmh: float | None = None  # secondary point, if configured
     temp_high_c: float
     temp_low_c: float
-    temp_high_low: str
     mslp_trend_24h: str | None = None
     synoptic_pattern: str | None = None
     uv_index_max: str | None = None

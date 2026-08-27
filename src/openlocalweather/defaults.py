@@ -113,8 +113,16 @@ TREND_THRESHOLD_PCT = 15.0
 # and shouldn't be announced as a change at all, which is exactly the
 # mistake a live run made when the LLM was left to do this subtraction
 # itself (it called a 0.1°C difference "about 1°C cooler").
+# The first band is what a reader will accept as "much like yesterday".
+#
+# It was 1.5 C, which is 2.7 F — so two days could differ by nearly three
+# Fahrenheit degrees and still be called the same. On 2026-08-27 a forecast
+# high of 33.5 C against yesterday's observed 32.3 C was labelled "about the
+# same", and the reader, looking at 90 F yesterday and 92 F today, disagreed.
+# 1.0 C is 1.8 F: close enough that the numbers on the page do not contradict
+# the word.
 TEMP_CHANGE_BANDS_C = [
-    (1.5, "about the same"),
+    (1.0, "about the same"),
     (3.0, "slightly"),
     (6.0, "noticeably"),
     (99.0, "much"),

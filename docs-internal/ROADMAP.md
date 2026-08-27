@@ -3226,3 +3226,65 @@ location plus timestamp plus free text is enough to identify a routine.
 Related: item 16 (the app), item 18 (weekly review), item 35 (convective
 disagreement), item 36 (the general case this narrows), item 42 (the miss
 that a reader caught first), item 45 (source disagreement as the trigger).
+
+---
+
+## 47. A nearby observing station is the single biggest accuracy lever a reader controls · **Planned, app-first**
+
+Item 42 established that reanalysis does not see thunderstorms, and shipped
+`observed_convection` so a day the airport watched a storm on is no longer
+scored dry. That fix only works where an ICAO code is configured. Everywhere
+else `thunder` stays null, `observed_convection` collapses back to reanalysis
+precipitation, and the models that call convection best go on being marked
+wrong for it.
+
+So the accuracy record's quality is gated on a piece of configuration most
+readers do not know exists, and nothing anywhere tells them so.
+
+### What a station actually changes
+
+Not a decoration on the forecast — a change to what the forecast is SCORED
+against, which compounds. Every day without one is a day the record cannot
+distinguish "the models were wrong" from "the grid cell did not notice".
+
+Concretely, from Kisumu on 2026-08-22: thunder over the city, little measured
+rain, and every convective model penalised for calling it right. Without a
+station that day is a permanent, invisible defect in the record.
+
+### The two halves
+
+**Tell them it matters.** Both products currently present source
+configuration as setup, at the same weight as a timezone. It is not: it is
+the one input a reader controls that improves the record for as long as they
+keep using the product. The sources screen (item 44) is the natural home, but
+this has to reach someone who has not gone looking — onboarding in the app,
+and the setup docs on the site.
+
+**Make it findable.** Asking someone for an ICAO code is asking them to know
+what an ICAO code is. A reader who has just entered a location has already
+given us the input needed to find the nearest reporting stations — the search
+should be ours to do, offering candidates by name and distance with a plain
+statement of what each one would add. Multiple stations should be allowed:
+one airport 40 km east is better than nothing and worse than two.
+
+METAR is the obvious first network because it is free, global, standardised
+and already parsed on the Python side (`fetch/metar.py`). It is not the only
+one, and the design should not assume it is — the question a reader is
+answering is "what real observations exist near me", not "what is your
+airport".
+
+### Constraints this inherits
+
+- **Item 45 decides the classification.** A station is an OBSERVATION source,
+  a truth candidate the record is measured against — not another model to
+  score. Getting that backwards contaminates the record in a way that is hard
+  to unwind, so this cannot ship before that question is settled.
+- **Distance has to be shown, not hidden.** A station 80 km away across a lake
+  is not the reader's weather, and presenting it as "your local station"
+  would put confident wrong observations into the truth column.
+- **Absence stays honest.** Somewhere with no nearby station must say so
+  plainly and keep working, exactly as `thunder: null` already does. The
+  fallback is the current behaviour, not a degraded one.
+
+Related: item 11 (source discovery), item 42 (why this matters at all),
+item 44 (the sources screen), item 45 (observation vs prediction).

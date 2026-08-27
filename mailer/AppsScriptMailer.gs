@@ -375,28 +375,43 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   const discussion = convertMarkdownToAfdText(entry.narrative_markdown || '');
   const locationLine = runLabel ? `${config.locationName} — ${runLabel}` : config.locationName;
 
-  // Disclaimer deliberately lives at the BOTTOM, not right under the
-  // header — moved there on request; the evening-refresh explanation
-  // (when present) stays up top since it's context for reading what
-  // follows, not boilerplate, and belongs next to the thing it explains.
+  // Both disclaimers live BELOW the forecast rather than under the header.
+  //
+  // The re-issue note used to sit up top, on the reasoning that it was
+  // context for reading what follows. In practice it was the first thing a
+  // reader met on an evening update — a paragraph about the accuracy record
+  // ahead of anything about the sky. It is now inside the Detailed
+  // Discussion, which is where a reader who wants to know how the record
+  // works is already looking.
+  const refreshNote = runLabel
+    ? wrapText(
+        'This updates the forecast already issued today, re-synthesized on ' +
+        'the freshest available model data. It does not change ' +
+        "today's accuracy-tracking record — only the day's FIRST run counts " +
+        'toward model verification.',
+        AFD_WRAP_WIDTH
+      )
+    : '';
+  // The heading is written by the model, so a rename must not silently drop
+  // the note — without the fallback a re-issue would read as a first run.
+  const discussionMarker = '.DETAILED DISCUSSION...';
+  const noteFitsInDiscussion = refreshNote && discussion.includes(discussionMarker);
+  const discussionText = noteFitsInDiscussion
+    ? discussion.replace(discussionMarker, `${discussionMarker}\n\n${refreshNote}`)
+    : discussion;
+
   const lines = [];
   lines.push('Open Local Weather — Experimental Forecast Discussion');
   lines.push(locationLine);
   lines.push(`Issued ${issuedStr} (${config.timezone})`);
-  if (runLabel) {
-    lines.push('');
-    lines.push(wrapText(
-      'This updates the forecast already issued today, re-synthesized on ' +
-      'the freshest available model data. It does not change ' +
-      "today's accuracy-tracking record — only the day's FIRST run counts " +
-      'toward model verification.',
-      AFD_WRAP_WIDTH
-    ));
-  }
   lines.push('');
   lines.push(AFD_DIVIDER);
   lines.push('');
-  lines.push(discussion);
+  lines.push(discussionText);
+  if (refreshNote && !noteFitsInDiscussion) {
+    lines.push('');
+    lines.push(refreshNote);
+  }
   lines.push('');
   lines.push(AFD_DIVIDER);
   lines.push('');
@@ -486,9 +501,23 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
   const narrativeHtml = convertMarkdownToHtml(entry.narrative_markdown || '');
   const statGridHtml = buildStatGridHtml(entry);
 
+  // Placed INSIDE the Detailed Discussion, not above the forecast.
+  //
+  // It is a note about the accuracy record, not about the weather, and at the
+  // top it was the first thing a reader met on a re-issue — ahead of what the
+  // sky is doing. The fallback matters: the heading is written by the model,
+  // so if it is ever renamed the note lands under the narrative instead of
+  // disappearing. Silently dropping it would leave a re-issue looking like a
+  // first run.
   const refreshNoteHtml = runLabel
     ? `<p style="font-size: 0.9em; color: ${SITE_MUTED}; margin: 0.4em 0 1em;">This updates the forecast already issued today, re-synthesized on the freshest available model data. It does not change today's accuracy-tracking record &mdash; only the day's first run counts toward model verification.</p>`
     : '';
+  const discussionHeading = /(<h2[^>]*>\s*Detailed Discussion\s*<\/h2>)/i;
+  const narrativeWithNote = refreshNoteHtml && discussionHeading.test(narrativeHtml)
+    ? narrativeHtml.replace(discussionHeading, `$1${refreshNoteHtml}`)
+    : narrativeHtml;
+  const trailingNoteHtml =
+    refreshNoteHtml && narrativeWithNote === narrativeHtml ? refreshNoteHtml : '';
 
   const linksHtml = config.publicUrl
     ? `<p style="font-size: 0.9em; margin: 1.2em 0 0.3em;"><a href="${escapeHtml(config.publicUrl)}" style="color: ${SITE_ACCENT};">View on the web</a> &middot; <a href="${escapeHtml(config.publicUrl)}archive/" style="color: ${SITE_ACCENT};">Archive</a></p>`
@@ -498,9 +527,9 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${SITE_FG}; background: ${SITE_BG}; max-width: 640px; margin: 0 auto; line-height: 1.5;">
   <h1 style="font-size: 1.4em; margin: 0 0 0.1em;">${escapeHtml(locationLine)}</h1>
   <p style="font-size: 0.85em; color: ${SITE_MUTED}; margin: 0 0 1em;">Forecast for ${escapeHtml(dateStr)} &middot; issued ${escapeHtml(issuedStr)} (${escapeHtml(config.timezone)}) &middot; multi-model synthesis via Open Local Weather</p>
-  ${refreshNoteHtml}
   ${statGridHtml}
-  <div>${narrativeHtml}</div>
+  <div>${narrativeWithNote}</div>
+  ${trailingNoteHtml}
   ${linksHtml}
   <p style="font-size: 0.8em; color: ${SITE_MUTED}; margin: 1.5em 0 0;">You are receiving this because you subscribed to this experimental forecast service.</p>
   <div style="background: ${SITE_WARN_BG}; border: 1px solid ${SITE_WARN_BORDER}; color: ${SITE_WARN_FG}; border-radius: 8px; padding: 0.75em 1em; margin: 1.2em 0 0; font-size: 0.85em; line-height: 1.5;">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult your national meteorological service (in Kenya: the Kenya Meteorological Department, meteo.go.ke).</div>

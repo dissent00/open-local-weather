@@ -709,6 +709,23 @@ void main() {
     });
   });
 
+  group('temperature display', () {
+    test('temp_high_low', () {
+      // Arithmetic that used to be the model's job. The .5 cases are the
+      // cross-language edge: Python rounds half to EVEN and Dart's .round()
+      // rounds half away from zero, so a port using the latter publishes a
+      // different temperature than the site.
+      for (final c in casesOf('temp_high_low.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = formatTempHighLow(
+          (i['high_c'] as num).toDouble(),
+          (i['low_c'] as num).toDouble(),
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   group('ground aqi last known', () {
     test('last_known_ground_aqi', () {
       for (final c in casesOf('aqi_last_known.json')) {
@@ -823,6 +840,7 @@ void main() {
       'verification.json',
       'day_over_day.json',
       'describe_day_rain.json',
+      'temp_high_low.json',
       'aqi_last_known.json',
       'instability.json',
       'daypart.json',

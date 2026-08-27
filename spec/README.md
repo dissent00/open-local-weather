@@ -82,6 +82,7 @@ absent values are `null`, never omitted keys.
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 11 |
 | `describe_day_rain.json` | `describe_day_rain` | 17 |
+| `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 4 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |

@@ -324,6 +324,134 @@
       }
     },
     {
+      "name": "1.2C warmer is a change the reader can see",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 32.3,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          },
+          {
+            "model": "m1",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          },
+          {
+            "model": "m2",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 32.3,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 33.5,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": 1.2,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "slightly warmer",
+        "wind_label": "calmer",
+        "rain_contrast": "wet again"
+      }
+    },
+    {
+      "name": "0.9C warmer is still about the same",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 32.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          },
+          {
+            "model": "m1",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          },
+          {
+            "model": "m2",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "wind_kmh": 20.0,
+            "high_c": 33.5,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 32.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 33.5,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": 0.9,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "calmer",
+        "rain_contrast": "wet again"
+      }
+    },
+    {
       "name": "wind change below threshold is not remarked on",
       "input": {
         "yesterday_actual": {

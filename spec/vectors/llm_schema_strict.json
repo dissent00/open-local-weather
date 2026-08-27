@@ -80,9 +80,6 @@
               "temp_low_c": {
                 "type": "number"
               },
-              "temp_high_low": {
-                "type": "string"
-              },
               "mslp_trend_24h": {
                 "type": [
                   "string",
@@ -114,14 +111,13 @@
               "peak_wind_kmh",
               "temp_high_c",
               "temp_low_c",
-              "temp_high_low",
               "mslp_trend_24h",
               "synoptic_pattern",
               "uv_index_max",
               "air_quality_aqi"
             ],
             "additionalProperties": false,
-            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected,\ntemp_high_c, temp_low_c, and temp_high_low are required; the original\nschema's `required` list is preserved exactly."
+            "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code."
           },
           "today_narrative": {
             "type": "string"

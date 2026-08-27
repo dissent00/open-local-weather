@@ -21,13 +21,20 @@ library;
 /// keeping it identical means requests from both implementations are
 /// byte-for-byte the same, which is one less thing to reason about when
 /// comparing them.
+import '../models.dart';
+
 const String forecastSchemaName = 'GeminiForecastResponse';
 
 const String _todayPropertiesDescription =
     "The LLM's synthesized, BLENDED call across all models — genuine\n"
     "reasoning, not any one model's raw number. Only rain_expected,\n"
-    "temp_high_c, temp_low_c, and temp_high_low are required; the original\n"
-    "schema's `required` list is preserved exactly.";
+    "temp_high_c and temp_low_c are required.\n"
+    "\n"
+    "`temp_high_low` is deliberately absent. It was a display string the model\n"
+    "wrote, and it drifted in both value and format; it is now computed from\n"
+    "the two numbers here by `models.format_temp_high_low`. Asking a language\n"
+    "model to convert units is asking it to do arithmetic, which this project\n"
+    "does in code.";
 
 /// Gemini's `responseSchema` dialect: uppercase type names, a `nullable`
 /// flag, and no `$ref`/`$defs`.
@@ -77,7 +84,6 @@ Map<String, Object?> _geminiTodayProperties() => {
         'peak_wind_kmh': {'type': 'NUMBER', 'nullable': true},
         'temp_high_c': {'type': 'NUMBER'},
         'temp_low_c': {'type': 'NUMBER'},
-        'temp_high_low': {'type': 'STRING'},
         'mslp_trend_24h': {'type': 'STRING', 'nullable': true},
         'synoptic_pattern': {'type': 'STRING', 'nullable': true},
         'uv_index_max': {'type': 'STRING', 'nullable': true},
@@ -87,7 +93,6 @@ Map<String, Object?> _geminiTodayProperties() => {
         'rain_expected',
         'temp_high_c',
         'temp_low_c',
-        'temp_high_low',
       ],
       'description': _todayPropertiesDescription,
     };
@@ -158,7 +163,6 @@ Map<String, Object?> _strictTodayProperties() => {
         },
         'temp_high_c': {'type': 'number'},
         'temp_low_c': {'type': 'number'},
-        'temp_high_low': {'type': 'string'},
         'mslp_trend_24h': {
           'type': ['string', 'null']
         },
@@ -178,7 +182,6 @@ Map<String, Object?> _strictTodayProperties() => {
         'peak_wind_kmh',
         'temp_high_c',
         'temp_low_c',
-        'temp_high_low',
         'mslp_trend_24h',
         'synoptic_pattern',
         'uv_index_max',
@@ -219,7 +222,10 @@ class TodayProperties {
   final double? peakWindKmh;
   final double tempHighC;
   final double tempLowC;
-  final String tempHighLow;
+  /// Computed from [tempHighC] and [tempLowC], never parsed. The model used
+  /// to supply this and it drifted in value and in format — see
+  /// [formatTempHighLow].
+  String get tempHighLow => formatTempHighLow(tempHighC, tempLowC);
   final String? mslpTrend24h;
   final String? synopticPattern;
   final String? uvIndexMax;
@@ -231,7 +237,6 @@ class TodayProperties {
     this.peakWindKmh,
     required this.tempHighC,
     required this.tempLowC,
-    required this.tempHighLow,
     this.mslpTrend24h,
     this.synopticPattern,
     this.uvIndexMax,
@@ -244,7 +249,6 @@ class TodayProperties {
         peakWindKmh: _toDouble(j['peak_wind_kmh']),
         tempHighC: _toDouble(j['temp_high_c'])!,
         tempLowC: _toDouble(j['temp_low_c'])!,
-        tempHighLow: j['temp_high_low'] as String,
         mslpTrend24h: j['mslp_trend_24h'] as String?,
         synopticPattern: j['synoptic_pattern'] as String?,
         uvIndexMax: j['uv_index_max'] as String?,

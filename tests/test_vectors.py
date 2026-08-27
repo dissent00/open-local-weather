@@ -34,7 +34,12 @@ from openlocalweather.extract import (
     extract_day_n_predictions_from_daily,
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
-from openlocalweather.models import DailyActual, GroundAQIReading, ModelPrediction
+from openlocalweather.models import (
+    DailyActual,
+    GroundAQIReading,
+    ModelPrediction,
+    format_temp_high_low,
+)
 from openlocalweather.aqi import last_known_ground_aqi
 from openlocalweather.comparison import compute_day_over_day, describe_day_rain
 from openlocalweather.instability import summarize_instability
@@ -471,6 +476,16 @@ def test_vectors_describe_day_rain():
         )
 
 
+def test_vectors_temp_high_low():
+    """The headline temperature line, including the half-to-even edges where
+    a Dart port using .round() would diverge."""
+    for case in load("temp_high_low.json")["cases"]:
+        i = case["input"]
+        assert format_temp_high_low(i["high_c"], i["low_c"]) == case["expected"], (
+            f"vector case failed: {case['name']}"
+        )
+
+
 def test_vectors_aqi_last_known():
     for case in load("aqi_last_known.json")["cases"]:
         i = case["input"]
@@ -519,6 +534,7 @@ def test_every_vector_file_is_exercised():
         "verification.json",
         "day_over_day.json",
         "describe_day_rain.json",
+        "temp_high_low.json",
         "aqi_last_known.json",
         "instability.json",
         "daypart.json",

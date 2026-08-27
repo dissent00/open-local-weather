@@ -330,7 +330,6 @@ void main() {
         peakWindKmh: 28.4,
         tempHighC: 27.5,
         tempLowC: 18.0,
-        tempHighLow: '27.5°C / 81.5°F high',
         mslpTrend24h: 'Falling slowly',
         synopticPattern: 'Weak easterly flow',
         uvIndexMax: '9 (Very High)',
@@ -355,7 +354,6 @@ void main() {
         rainExpected: 'No',
         tempHighC: 26.0,
         tempLowC: 18.0,
-        tempHighLow: '26/18',
       );
       final back = TodayProperties.fromJson(sparse.toJson());
       expect(back.onsetWindow, isNull);
