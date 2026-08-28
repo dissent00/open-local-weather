@@ -66,81 +66,54 @@ Apply judgement. If you see a case for these, ask before doing it.
 6. Wrap body at 72 chars.
 7. Body explains what and why. The code explains how.
 
-## Delegation
+## Working alone, and clearing on purpose
 
-A session that does the work itself fills its own context with the work.
-Long sessions then lose the thread of WHY, which is the part that is
-expensive to rebuild and the part this repo's comments exist to preserve.
+Handing the work to sub-sessions was tried for a day and measured. It moves
+tokens rather than saving them: ~715k spent in workers to keep ~140k out of
+this session, about five times the total for the same changes. What it bought
+— an uncluttered controller context — is bought more cheaply by writing the
+WHY down as you go, which this repo already requires. So do the work here.
 
-So the session you are talking to is a **controller**. It classifies a task,
-spawns a worker to do it, and reviews what comes back. It keeps diagnosis,
-design, review, and every commit and push for itself.
+Clear the session deliberately, at a seam: a shipped change, a closed roadmap
+item, a finished investigation. Not when the context overflows, because by
+then the thread being lost is the one you needed. Before clearing, the
+reasoning belongs in `docs-internal/ROADMAP.md` or in a comment beside the code. Those
+are what a cold session reads, and they are the only part that survives.
 
-| Task | Worker |
-|---|---|
-| Simple, mechanical — a rename, a doc edit, a known one-line fix | Haiku |
-| Normal coding — a specified change with tests | Sonnet |
-| Difficult or ambiguous — design, unclear cause, cross-cutting | Opus |
+Two things are still worth handing out, both because they are mostly READING
+or mostly WAITING rather than thinking: a search whose answer is one line but
+whose method is opening fifty files, and a verification loop long enough that
+you would otherwise sit idle. Point either at prior art in this repo before
+the outside world — measured 2026-08-28, a search sent straight outside spent
+~98k tokens rediscovering endpoints `docs-internal/ROADMAP.md` already documented.
 
-**Classify by the work that remains, not by the work as it arrived.** A
-failure that looked ambiguous is a Sonnet task once the controller has
-diagnosed it and written the specification. A one-line change is an Opus task
-if nobody yet knows which line.
+## Do not trust your own diff
 
-The controller does not delegate: triage of a live failure, the decision about
-what the fix should be, reviewing the diff, or committing and pushing.
+Code someone else wrote gets audited; code you wrote yourself gets believed.
+That asymmetry is the expensive one, because the tests that ship with a
+change are written by whoever misunderstood the problem.
 
-**Delegation does not save tokens; it moves them.** Measured on the first use,
-2026-08-28: a two-file workflow fix cost the worker ~59k tokens to rediscover
-a repo it started cold in, against maybe 20k had the controller done it
-inline. What it bought was controller context — roughly 6k spent on the brief,
-the summary and the review, instead of 20k. Total consumption went UP; the
-scarce resource went DOWN.
+Before committing:
 
-So delegate work that is mostly READING, or mostly waiting: a search across
-many files, a change whose verification loop is long, an implementation whose
-shape is already specified. Do it inline when the brief would be longer than
-the change, or when reviewing it properly means re-deriving the context
-anyway — writing a design document is the clearest case, since the brief for
-one is the document.
-
-Review is not the place to economise. On that same first use the worker's
-report described behaviour the shell did not have (a `git pull` failing inside
-`set -e` does not fall through to the next retry, it ends the step). Nothing
-shipped wrong, because the diff was read.
-
-**Read the diff with suspicion, and it stays a habit.** This is the part
-that turned out to matter most, and it is a side effect rather than the
-point: code someone else wrote gets audited, and code you wrote yourself
-gets believed. Three defects were caught this way in one session — a
-timestamp that stamped every issuance of a day with the first one's clock, a
-docstring claiming more than its function delivered, and the rounding
-divergence above. None would have been caught by the tests that shipped with
-them.
-
-**Point the brief at prior art before the outside world.** Measured
-2026-08-28: a worker sent to find out whether Open-Meteo exposes model-run
-metadata spent ~98k tokens discovering endpoints this repo had already used
-to build a table in `docs-internal/ROADMAP.md`. It answered the question
-correctly and paid full price for knowledge the repo already held. Name the
-files that already touch the subject, every time.
-
-**Sweep any arithmetic a worker ports.** Same day: a Dart port of
-`round(hours, 1)` passed its test and the shared vectors, and disagreed with
-Python on 962 of 4801 swept values. Vectors pin the cases you chose; two
-implementations agreeing at those cases is not the same as the functions
-agreeing. For anything numeric that crosses a language boundary, generate a
-few thousand inputs and diff the two outputs — it takes one command and it is
-the only thing that would have caught it.
-
-**A worker brief is a specification, not a hint.** It carries the files, the
-constraint, the tests that must pass, and the rules above that apply — a
-worker starts cold and has read none of this conversation. It ends with what
-to report: a summary, the diff, and test output.
-
-**Review what comes back before it is committed.** Read the diff, not the
-summary. A worker that says a test passes and a test that passes are
-different claims, and only one of them is checkable.
+- **Read the diff as a separate act**, after writing rather than during.
+  Three defects were caught this way on 2026-08-28 — a timestamp that stamped
+  every issuance of a day with the first one's clock, a docstring claiming
+  more than its function delivered, and a rounding divergence — and none
+  would have been caught by the tests that came with them.
+- **Sweep any arithmetic that crosses the Python/Dart boundary.** Vectors pin
+  the cases you chose, not the function: a Dart rounding passed every vector
+  case and still disagreed with Python on 962 of 4801 swept values. Generating
+  a few thousand inputs and diffing the two outputs takes one command.
+- **Run the thing, not only its tests.** A suite of mocks proves the wiring,
+  not the behaviour. Driving the real path is what showed that a re-issue
+  archived every issuance under the first one's timestamp, while the suite
+  was green.
+- **Verify a claim before writing it as a comment.** "Measured", "verified"
+  and "confirmed" are load-bearing words here; a comment that carries one
+  falsely is worse than no comment, because the next person will not re-check
+  it.
+- **Say what you did not check.** Naming the gap costs a sentence, and it is
+  the difference between a report and a claim.
 
 ## Bugs
 
