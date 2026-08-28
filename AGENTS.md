@@ -109,6 +109,30 @@ report described behaviour the shell did not have (a `git pull` failing inside
 `set -e` does not fall through to the next retry, it ends the step). Nothing
 shipped wrong, because the diff was read.
 
+**Read the diff with suspicion, and it stays a habit.** This is the part
+that turned out to matter most, and it is a side effect rather than the
+point: code someone else wrote gets audited, and code you wrote yourself
+gets believed. Three defects were caught this way in one session — a
+timestamp that stamped every issuance of a day with the first one's clock, a
+docstring claiming more than its function delivered, and the rounding
+divergence above. None would have been caught by the tests that shipped with
+them.
+
+**Point the brief at prior art before the outside world.** Measured
+2026-08-28: a worker sent to find out whether Open-Meteo exposes model-run
+metadata spent ~98k tokens discovering endpoints this repo had already used
+to build a table in `docs-internal/ROADMAP.md`. It answered the question
+correctly and paid full price for knowledge the repo already held. Name the
+files that already touch the subject, every time.
+
+**Sweep any arithmetic a worker ports.** Same day: a Dart port of
+`round(hours, 1)` passed its test and the shared vectors, and disagreed with
+Python on 962 of 4801 swept values. Vectors pin the cases you chose; two
+implementations agreeing at those cases is not the same as the functions
+agreeing. For anything numeric that crosses a language boundary, generate a
+few thousand inputs and diff the two outputs — it takes one command and it is
+the only thing that would have caught it.
+
 **A worker brief is a specification, not a hint.** It carries the files, the
 constraint, the tests that must pass, and the rules above that apply — a
 worker starts cold and has read none of this conversation. It ends with what

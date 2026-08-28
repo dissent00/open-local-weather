@@ -37,6 +37,16 @@ were worked out by hand rather than generated. The exported cases
 deliberately mirror those tests' edge cases so the hand-verified
 expectations carry through.
 
+**And they pin the cases you chose, not the function.** Measured
+2026-08-28: a Dart port of a one-decimal rounding passed every vector case
+and still disagreed with Python on 962 of 4801 values swept at 0.05 steps —
+Python's `round()` rounds the decimal expansion of a binary float, and the
+port scaled and rounded the float itself. The sampled points happened to
+agree. When a vector covers arithmetic, choose its cases to be the ties and
+the boundaries where two implementations would part company, not a spread of
+ordinary values; and sweep the two implementations against each other once,
+outside the suite, before trusting the green.
+
 Three layers, none sufficient alone:
 
 | Layer | Asserts | Where |
