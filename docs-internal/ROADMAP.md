@@ -3706,3 +3706,66 @@ GitHub's scheduler and becomes a question with a column of numbers behind it.
 answers "is this trigger a repeat of the last one", and a run nine hours late
 is genuinely not a repeat. Two questions, two guards.
 
+---
+
+## 50. An issuance is justified by fresher data, not a later clock · **Partly shipped**
+
+The original design had a "morning" forecast and an "evening" refresh, and
+that framing survived in the code long after the runs stopped being tied to
+those hours. Item 34b removed the last place the OPERATOR had to pick by time
+of day. This item removes the last place the SYSTEM thinks in those terms.
+
+The reason a second run exists was never that it is evening. It is that the
+data is fresher. Nothing in the record said how fresh, so the pipeline could
+not state its own justification for re-issuing, and a run on twelve-hour-old
+guidance looked exactly like a run on fresh guidance.
+
+**Shipped 2026-08-28:**
+
+- `cycle.aligned_cycle_at` infers the cycle from the measured aligned-window
+  table, ported to Dart and vector-locked. An inference, and it says so. Read
+  it as a FLOOR on the age of the guidance: a window stays clean about two
+  hours before the faster models jump ahead, so outside that the cycle named
+  is the one the SLOWEST model is still on.
+- `fetch/model_run.py` observes the real thing for `ecmwf_ifs025`, the one
+  model of the five that can answer — the other four are blends and return
+  HTTP 500, having no single run to report. ECMWF is the right one to ask
+  anyway: measured slowest to publish, so its newest run is in practice the
+  newest cycle every model has.
+- An observation counts only once it has SETTLED (`RUN_SETTLE_MINUTES`), on
+  the provider's own eventual-consistency recommendation. Unsettled falls
+  back to the derived floor rather than claiming data we may not have
+  received.
+- Each issuance stores its own `guidance_initialised_at`, `guidance_age_hours`
+  and `guidance_source` — which is why item 32 had to land first. A re-issue
+  archives the outgoing issuance's recency along with its narrative.
+- Observed and derived are compared on every run, and a disagreement prints a
+  warning naming both. The table is a one-time hand measurement from
+  2026-08-11; this comparison is the only thing that would ever say it had
+  drifted.
+
+Validated twice against live metadata: at 2026-08-28T00:27Z derived said 12z
+and ECMWF's 18z was not yet available; at 09:29Z both said 00z.
+
+**Remaining:**
+
+1. **Tell the model.** The prompt still cannot say why this issuance exists.
+   It should state the age as a floor — "the models were last all on the same
+   cycle at X", never "the data is from X" — and on a re-issue, whether that
+   is newer than the previous issuance's. When it is NOT newer, the honest
+   line is that no new guidance has landed, which is far better than
+   manufacturing change. Shared prompt, so Python then Dart then vectors.
+2. **Surface the drift warning where someone reads it.** Today it prints into
+   a run log. `check-health` is the surface that already exists for "something
+   that only rots slowly", and re-measuring the table stays a manual act the
+   warning exists to prompt.
+3. **Settle item 49 with the evidence.** The choice about late slots was
+   blocked on not knowing how bad a late run's data actually is. It is now a
+   recorded number per issuance.
+
+**Deliberately not done:** guessing the raw-model mapping for the other four.
+`gfs_seamless` resolves to `ncep_gfs013` for near-term hours here, and the
+seamless names resolve differently by LOCATION — icon_d2 and icon_eu do not
+cover Kisumu. A mapping that is right for this deployment and wrong for a
+fork does not belong in a permanent archive.
+

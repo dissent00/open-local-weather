@@ -8,6 +8,7 @@ from openlocalweather.defaults import MODELS, BLEND_MODEL_ID
 from openlocalweather.fetch import metar as metar_fetch
 import requests
 
+from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import NullBulletinFetcher
@@ -150,6 +151,10 @@ def patch_fetches(monkeypatch):
     )
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
     monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: [])
+    # Default: no observed run available, same as the four blend models'
+    # real HTTP 500 — every test not specifically about guidance recency
+    # exercises the DERIVED fallback path, not a live request.
+    monkeypatch.setattr(model_run_fetch, "fetch_model_run", lambda model: None)
 
     # Backstop: anything NOT patched above must fail loudly rather than reach
     # the internet. Adding fetch_synoptic_pressure to the pipeline silently
@@ -1678,3 +1683,149 @@ def test_forecast_dry_run_writes_nothing(tmp_path):
     pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
 
     assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
+
+
+# ---------------------------------------------------------------------------
+# Guidance recency — observed (fetch/model_run.py) vs derived
+# (cycle.aligned_cycle_at), and the settle rule between them. See
+# pipeline.py's guidance-cycle resolution and cycle.py's module docstring.
+# ---------------------------------------------------------------------------
+
+
+def test_a_settled_observation_is_recorded_as_observed(tmp_path, monkeypatch):
+    now = datetime.now(timezone.utc)
+    observed_initialised = now - timedelta(hours=9)
+    observed_available = now - timedelta(minutes=30)  # well past RUN_SETTLE_MINUTES
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=observed_initialised, available_at=observed_available
+        ),
+    )
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = result.log_entry
+
+    assert entry.guidance_source == "observed"
+    assert entry.guidance_initialised_at == observed_initialised
+    assert entry.guidance_age_hours == pytest.approx(
+        (now - observed_initialised).total_seconds() / 3600, abs=0.05
+    )
+
+
+def test_an_unsettled_observation_is_ignored_and_derived_is_used(tmp_path, monkeypatch):
+    """Open-Meteo recommends waiting ~10 minutes after a run becomes
+    available before relying on it (its servers are eventually consistent).
+    A run that became available seconds ago fails that check, so the
+    observation must be discarded in favour of the conservative derived
+    floor — not merely "used but noted as fresh"."""
+    from openlocalweather.cycle import aligned_cycle_at
+
+    now = datetime.now(timezone.utc)
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=now - timedelta(hours=1), available_at=now - timedelta(seconds=5)
+        ),
+    )
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = result.log_entry
+    expected = aligned_cycle_at(now).initialised_at
+
+    assert entry.guidance_source == "derived"
+    assert entry.guidance_initialised_at == expected
+
+
+def test_a_metadata_fetch_returning_none_costs_the_run_nothing(tmp_path, monkeypatch):
+    monkeypatch.setattr(model_run_fetch, "fetch_model_run", lambda model: None)
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = result.log_entry
+
+    assert entry.guidance_source == "derived"
+    assert entry.guidance_initialised_at is not None
+    assert entry.guidance_age_hours is not None
+
+
+def test_a_metadata_fetch_that_raises_costs_the_run_nothing(tmp_path, monkeypatch):
+    """Not a mock of fetch_model_run itself — this drives the REAL driver
+    (fetch/model_run.py) through the pipeline with only requests.get made to
+    raise, proving the driver's own try/except (not a pipeline-side guard)
+    is what keeps a network failure here from costing the run anything."""
+
+    def _raise(*args, **kwargs):
+        raise requests.ConnectionError("boom")
+
+    monkeypatch.setattr(requests, "get", _raise)
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = result.log_entry
+
+    assert entry.guidance_source == "derived"
+    assert entry.guidance_initialised_at is not None
+
+
+def test_disagreement_between_observed_and_derived_warns_and_keeps_observed(tmp_path, monkeypatch, capsys):
+    """The rot detector: the derived table is a hand-measured snapshot, and
+    nothing else would ever tell us it had drifted. A disagreement must be
+    surfaced, not silently resolved — but the run still uses the
+    observation, since it is the more trustworthy of the two answers."""
+    from openlocalweather.cycle import aligned_cycle_at
+
+    now = datetime.now(timezone.utc)
+    derived_initialised = aligned_cycle_at(now).initialised_at
+    observed_initialised = derived_initialised - timedelta(hours=6)  # deliberately different cycle
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=observed_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    captured = capsys.readouterr()
+    assert "WARNING" in captured.err
+    assert "ROADMAP.md" in captured.err
+    assert observed_initialised.isoformat() in captured.err
+    assert derived_initialised.isoformat() in captured.err
+    assert result.log_entry.guidance_source == "observed"
+    assert result.log_entry.guidance_initialised_at == observed_initialised
+
+
+def test_a_reissue_archives_the_first_issuances_guidance_recency(tmp_path, monkeypatch):
+    """The whole point of storing this per-issuance: a re-issue must not
+    let the evening's fresher cycle overwrite the morning's, since the
+    morning issuance is what actually went out at 6 AM."""
+    now = datetime.now(timezone.utc)
+    morning_initialised = now - timedelta(hours=10)
+    evening_initialised = now - timedelta(hours=4)
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=morning_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=evening_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+    refresh_result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = refresh_result.log_entry
+
+    assert entry.guidance_source == "observed"
+    assert entry.guidance_initialised_at == evening_initialised
+    assert len(entry.earlier_issuances) == 1
+    assert entry.earlier_issuances[0].guidance_source == "observed"
+    assert entry.earlier_issuances[0].guidance_initialised_at == morning_initialised

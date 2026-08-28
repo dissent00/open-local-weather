@@ -287,6 +287,13 @@ class IssuanceSnapshot(BaseModel):
     whatsapp_summary: str | None = None
     generated_at_utc: datetime
 
+    # How old the guidance behind THIS issuance was — see DailyLogEntry's
+    # fields of the same name for why these exist and what "observed" vs
+    # "derived" means. None for every entry committed before this existed.
+    guidance_initialised_at: datetime | None = None
+    guidance_age_hours: float | None = None
+    guidance_source: str | None = None
+
 
 class LocalBulletinRecord(BaseModel):
     """The local met service's own bulletin, stored verbatim as fetched.
@@ -386,6 +393,26 @@ class DailyLogEntry(BaseModel):
     # this field would be exactly that change.
     morning_issuance: IssuanceSnapshot | None = None
 
+    # How old the guidance behind THIS issuance was, resolved by
+    # pipeline._resolve_guidance_cycle at the moment this issuance was
+    # generated — never recomputed by a later reader, because "how old was
+    # the guidance when this issuance went out" is a fact about that
+    # moment, not something derivable from today's clock. guidance_source
+    # says which of cycle.py's two answers produced it: "observed" (Open-
+    # Meteo's own ecmwf_ifs025 meta.json — see fetch/model_run.py — once it
+    # has settled) or "derived" (cycle.aligned_cycle_at's inferred floor,
+    # used whenever the observation is unavailable or has not yet settled).
+    # A later run archives the issuance it is about to overwrite into
+    # earlier_issuances via to_issuance_snapshot(), which copies these three
+    # fields too — so a re-issue keeps the FIRST issuance's own recency
+    # rather than letting the later run's fresher cycle overwrite it. None
+    # for every entry committed before this existed; no migration ever
+    # backfills data/log/*.json to add it — same reasoning as
+    # earlier_issuances above.
+    guidance_initialised_at: datetime | None = None
+    guidance_age_hours: float | None = None
+    guidance_source: str | None = None
+
     meta: LogEntryMeta
 
     @property
@@ -428,6 +455,9 @@ class DailyLogEntry(BaseModel):
             narrative_markdown=self.narrative_markdown,
             whatsapp_summary=self.whatsapp_summary,
             generated_at_utc=self.last_issued_at,
+            guidance_initialised_at=self.guidance_initialised_at,
+            guidance_age_hours=self.guidance_age_hours,
+            guidance_source=self.guidance_source,
         )
 
     def issuance_log(self) -> list[IssuanceSnapshot]:

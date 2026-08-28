@@ -186,6 +186,45 @@ def test_a_later_issuance_carries_its_own_time_not_the_first_runs():
     assert entry.to_issuance_snapshot().generated_at_utc == latest
 
 
+def test_old_shape_entry_has_no_guidance_fields():
+    """Every entry committed before guidance_initialised_at/
+    guidance_age_hours/guidance_source existed carries none of those keys at
+    all — not present as null, ABSENT. Must parse and read as None forever,
+    same dual-read discipline as morning_issuance/earlier_issuances above; no
+    migration ever touches data/log/*.json to backfill this. Built via
+    model_validate on a plain dict so the missing keys are actually
+    exercised, not a Python default standing in for them.
+    """
+    old_shape = dict(
+        date=date(2026, 8, 11),
+        rain_expected="Likely",
+        temp_high_c=26.0,
+        temp_low_c=18.0,
+        temp_high_low_display="26°C / 79°F",
+        mslp_trend_24h="falling",
+        synoptic_pattern="trough",
+        narrative_markdown="## Overview\nNo guidance fields at all.",
+        meta=dict(
+            generated_at_utc=datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc),
+            llm_provider="gemini",
+            llm_model="gemini-test",
+            pipeline_version="0.1.0",
+        ),
+    )
+    entry = DailyLogEntry.model_validate(old_shape)
+
+    assert entry.guidance_initialised_at is None
+    assert entry.guidance_age_hours is None
+    assert entry.guidance_source is None
+
+    # A snapshot taken of an old-shape entry must carry the same absence
+    # through rather than substituting a value that was never really there.
+    snapshot = entry.to_issuance_snapshot()
+    assert snapshot.guidance_initialised_at is None
+    assert snapshot.guidance_age_hours is None
+    assert snapshot.guidance_source is None
+
+
 # ---------------------------------------------------------------------------
 # track_record
 # ---------------------------------------------------------------------------

@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import asdict, dataclass, field, replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -72,6 +72,7 @@ from openlocalweather.daypart import (
     summarize_daypart,
 )
 from openlocalweather.config import LocationConfig
+from openlocalweather.cycle import aligned_cycle_at
 from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
@@ -87,6 +88,7 @@ from openlocalweather.extract import (
     extract_day_n_predictions_from_daily,
 )
 from openlocalweather.fetch import metar as metar_fetch
+from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
@@ -176,6 +178,15 @@ class ForecastSkipped:
 # runs a day, the most anyone has wanted, is six hours apart.
 MIN_REISSUE_INTERVAL_MINUTES = 60
 
+# Open-Meteo's own documentation warns its servers are eventually
+# consistent and recommends waiting ~10 minutes after a run's availability
+# time before relying on it. A run observed as available seconds ago may
+# not yet be what the forecast fetch actually received, so it is not
+# treated as in hand until this much time has passed — see
+# _resolve_guidance_cycle below, which falls back to the derived floor
+# rather than trust an unsettled observation.
+RUN_SETTLE_MINUTES = 10
+
 
 class RefreshWithoutMorningRunError(RuntimeError):
     """Raised when run_refresh_pipeline() is called for a date with no
@@ -184,6 +195,22 @@ class RefreshWithoutMorningRunError(RuntimeError):
     extracted from evening-cycle data, not what was actually true at 6 AM
     when a run_daily_pipeline() call would normally have captured them.
     """
+
+
+@dataclass
+class ResolvedGuidanceCycle:
+    """The model cycle actually behind this run's guidance, resolved once so
+    every reader — the log entry, the snapshot archived on a re-issue —
+    derives its three stored values from one place. Either OBSERVED (Open-
+    Meteo's own ecmwf_ifs025 meta.json — fetch/model_run.py — once it has
+    settled, see RUN_SETTLE_MINUTES) or DERIVED (cycle.aligned_cycle_at's
+    inferred floor, used whenever the observation is unavailable or has not
+    yet settled). See _resolve_guidance_cycle below.
+    """
+
+    initialised_at: datetime
+    age_hours: float
+    source: str  # "observed" or "derived"
 
 
 @dataclass
@@ -210,6 +237,7 @@ class ForwardGuidance:
 
     aqi_fetch_time: datetime
     bulletin_text: str
+    guidance_cycle: ResolvedGuidanceCycle
     synoptic: object | None = None
     # Structured half of the same bulletin fetch, when the source supports
     # it (see fetch/bulletin/kenya_kmd_daily). None for a met service whose
@@ -382,6 +410,46 @@ def _apply_observed_thunder(
         actual.thunder = thunder_by_date[day]
 
 
+# The one raw model observed for guidance recency — see fetch/model_run.py's
+# module docstring for why this model specifically (slowest of the five to
+# publish, so its newest run is in practice the newest cycle every model
+# has) and why the other four cannot answer this question at all.
+_OBSERVED_MODEL = "ecmwf_ifs025"
+
+
+def _resolve_guidance_cycle(now: datetime) -> ResolvedGuidanceCycle:
+    """Which model cycle is behind the guidance fetched at `now`: OBSERVED
+    when Open-Meteo's own record of _OBSERVED_MODEL's last run is in hand
+    and settled, DERIVED otherwise.
+
+    A disagreement between the two, when the observation is used, is
+    printed rather than silently resolved — the derived table
+    (docs-internal/ROADMAP.md) is a one-time hand measurement, and this
+    comparison is the only thing that would ever say it had drifted. The
+    run is not affected either way: the observation is still used, since it
+    is the more trustworthy of the two answers.
+    """
+    derived = aligned_cycle_at(now)
+    observed = model_run_fetch.fetch_model_run(_OBSERVED_MODEL)
+
+    settled = observed is not None and (now - observed.available_at) >= timedelta(minutes=RUN_SETTLE_MINUTES)
+    if settled:
+        if observed.initialised_at != derived.initialised_at:
+            print(
+                f"WARNING: observed {_OBSERVED_MODEL} run ({observed.initialised_at.isoformat()}) "
+                f"disagrees with the derived aligned cycle ({derived.initialised_at.isoformat()}) "
+                f"at {now.isoformat()} — docs-internal/ROADMAP.md's measured aligned-window table "
+                "may need re-measuring. Using the observation.",
+                file=sys.stderr,
+            )
+        initialised_at, source = observed.initialised_at, "observed"
+    else:
+        initialised_at, source = derived.initialised_at, "derived"
+
+    age_hours = (now - initialised_at).total_seconds() / 3600
+    return ResolvedGuidanceCycle(initialised_at=initialised_at, age_hours=age_hours, source=source)
+
+
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     location = deps.location
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
@@ -410,6 +478,11 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
 
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
     aqi_fetch_time = datetime.now(timezone.utc)
+    # Reuses aqi_fetch_time as "now" rather than a second datetime.now()
+    # call, for the same reason ground_aqi_summary/ground_aqi_last_known do
+    # below: one clock read per run, so every "how old" figure this run
+    # produces agrees with every other.
+    guidance_cycle = _resolve_guidance_cycle(aqi_fetch_time)
     # Synoptic-scale pressure ring. One request, ~3 KB — see synoptic.py for
     # why the near-field region_points cannot answer this. Optional: losing it
     # costs a paragraph of context, not the forecast.
@@ -507,6 +580,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         ground_aqi_summary=ground_aqi_summary,
         aqi_fetch_time=aqi_fetch_time,
         bulletin_text=bulletin_text,
+        guidance_cycle=guidance_cycle,
         synoptic=synoptic,
         met_service_prediction=met_prediction,
         met_service_valid_for=met_valid_for,
@@ -954,6 +1028,9 @@ def run_daily_pipeline(
         yesterday_verification_summary=llm_response.yesterday_verification,
         narrative_markdown=llm_response.today_narrative,
         whatsapp_summary=llm_response.whatsapp_summary,
+        guidance_initialised_at=guidance.guidance_cycle.initialised_at,
+        guidance_age_hours=guidance.guidance_cycle.age_hours,
+        guidance_source=guidance.guidance_cycle.source,
         meta=LogEntryMeta(
             generated_at_utc=datetime.now(timezone.utc),
             llm_provider=type(deps.llm_provider).__name__,
@@ -1309,6 +1386,12 @@ def run_refresh_pipeline(
             or existing_entry.sunset,
             "narrative_markdown": llm_response.today_narrative,
             "whatsapp_summary": llm_response.whatsapp_summary,
+            # This issuance's own recency, not the morning's — current_snapshot
+            # above (built from existing_entry, before this overwrite) is what
+            # carries the morning's guidance_* values into earlier_issuances.
+            "guidance_initialised_at": guidance.guidance_cycle.initialised_at,
+            "guidance_age_hours": guidance.guidance_cycle.age_hours,
+            "guidance_source": guidance.guidance_cycle.source,
             "morning_issuance": morning_snapshot,
             "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
             "meta": existing_entry.meta.model_copy(update={"refreshed_at": datetime.now(timezone.utc)}),
