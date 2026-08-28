@@ -110,6 +110,7 @@ absent values are `null`, never omitted keys.
 | `synoptic.json` | `summarize_synoptic` | 6 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |
 | `weekly_review.json` | `build_weekly_review` | 5 |
+| `solar.json` | `sun_times` | Sunrise and sunset for a LOCAL date, computed from latitude, longitude and the location's UTC offset. Whole minutes, truncated. The midnight sun is midnight to midnight; polar night is a span of zero. |
 | `daypart.json` | `summarize_daypart` | Where the issuance moment sits in the day. Sun-relative, so the same clock time is a different part of the day at another latitude. Every string is written into the prompt verbatim. |
 | `daypart_without_sun.json` | `daypart_without_sun` | The issuance moment when sunrise/sunset could not be fetched — phase `unknown` rather than guessed, horizon still precise because midnight is midnight everywhere. |
 | `daypart_clock.json` | `reconcile_now` | A second opinion on the system clock from the API's `Date` header. Past five minutes the server is believed; a missing header stops the check rather than triggering it. |

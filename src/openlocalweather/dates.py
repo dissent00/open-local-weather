@@ -31,6 +31,23 @@ def now_in_tz(tz_name: str) -> datetime:
     return datetime.now(ZoneInfo(tz_name)).replace(tzinfo=None)
 
 
+def utc_offset_seconds(tz_name: str, d: date) -> int:
+    """The location's offset from UTC on a given local date.
+
+    Taken at local NOON, not midnight. A date's midnight can fall inside a
+    daylight-saving gap or fold, where the offset is ambiguous or the wall
+    clock does not exist; noon never is.
+
+    One offset stands for the whole date, which is also Open-Meteo's
+    convention — its responses carry a single `utc_offset_seconds`. On a
+    changeover day an event on the far side of the transition is therefore an
+    hour out, which for sunrise and sunset is a minute of daylight nobody
+    plans around.
+    """
+    noon = datetime(d.year, d.month, d.day, 12, tzinfo=ZoneInfo(tz_name))
+    return int(noon.utcoffset().total_seconds())
+
+
 def add_days(d: date, n: int) -> date:
     return d + timedelta(days=n)
 

@@ -1959,10 +1959,90 @@ def export_cycle() -> None:
     )
 
 
+def export_solar() -> None:
+    from openlocalweather.dates import utc_offset_seconds
+    from openlocalweather.solar import sun_times
+
+    # Every case is checked against a source outside this project before it is
+    # exported — see tests/test_solar.py, which pins the same values and says
+    # where each came from. The selection is not a spread of ordinary days: it
+    # is the places a port parts company with this implementation.
+    cases = []
+    for name, lat, lon, tz, day in [
+        (
+            "Kisumu, the day the Met Department bulletin covers",
+            -0.0917, 34.7680, "Africa/Nairobi", "2026-08-19",
+        ),
+        (
+            "Kisumu, the date the daypart vectors are built on",
+            -0.0917, 34.7680, "Africa/Nairobi", "2026-08-22",
+        ),
+        (
+            "London at the solstice — a 16h33m day",
+            51.5072, -0.1276, "Europe/London", "2026-06-21",
+        ),
+        (
+            "Sydney in August — the southern hemisphere runs the other way",
+            -33.87, 151.21, "Australia/Sydney", "2026-08-28",
+        ),
+        (
+            "the midnight sun: midnight to midnight, a 24h span",
+            78.2232, 15.6469, "Arctic/Longyearbyen", "2026-06-21",
+        ),
+        (
+            "polar night: both times local midnight, a span of zero",
+            78.2232, 15.6469, "Arctic/Longyearbyen", "2025-12-21",
+        ),
+        (
+            "Kiritimati, whose UTC+14 disagrees with its longitude by a day",
+            1.87, -157.40, "Pacific/Kiritimati", "2026-08-28",
+        ),
+        (
+            "London the day the clocks go back",
+            51.5072, -0.1276, "Europe/London", "2025-10-26",
+        ),
+        (
+            "Longyearbyen three days after the midnight sun ends",
+            78.2232, 15.6469, "Arctic/Longyearbyen", "2026-08-27",
+        ),
+    ]:
+        d = date.fromisoformat(day)
+        offset = utc_offset_seconds(tz, d)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "lat": lat,
+                    "lon": lon,
+                    "day": day,
+                    "utc_offset_seconds": offset,
+                },
+                "expected": sun_times(lat, lon, d, offset).to_json(),
+            }
+        )
+
+    write(
+        "solar.json",
+        "sun_times",
+        "Sunrise and sunset for a LOCAL date, computed from latitude, "
+        "longitude and the location's UTC offset — no network. Whole minutes, "
+        "TRUNCATED, which is what Open-Meteo and the Kenya Met Department "
+        "bulletin both do; rounding would publish a minute later than the "
+        "sources a reader can check. Two conventions carry meaning rather "
+        "than data: the midnight sun is local midnight to local midnight, a "
+        "24 hour span, and polar night is local midnight to local midnight, a "
+        "span of zero. daypart.classify_phase reads those spans to reach its "
+        "polar phases, so an implementation that returned null instead would "
+        "pass nothing here and silently disable them.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
     export_daypart()
+    export_solar()
     export_dates()
     export_scoring()
     export_extract()

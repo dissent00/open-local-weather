@@ -1,0 +1,124 @@
+{
+  "vector_format_version": 1,
+  "function": "sun_times",
+  "description": "Sunrise and sunset for a LOCAL date, computed from latitude, longitude and the location's UTC offset \u2014 no network. Whole minutes, TRUNCATED, which is what Open-Meteo and the Kenya Met Department bulletin both do; rounding would publish a minute later than the sources a reader can check. Two conventions carry meaning rather than data: the midnight sun is local midnight to local midnight, a 24 hour span, and polar night is local midnight to local midnight, a span of zero. daypart.classify_phase reads those spans to reach its polar phases, so an implementation that returned null instead would pass nothing here and silently disable them.",
+  "cases": [
+    {
+      "name": "Kisumu, the day the Met Department bulletin covers",
+      "input": {
+        "lat": -0.0917,
+        "lon": 34.768,
+        "day": "2026-08-19",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "sunrise": "2026-08-19T06:41:00",
+        "sunset": "2026-08-19T18:47:00"
+      }
+    },
+    {
+      "name": "Kisumu, the date the daypart vectors are built on",
+      "input": {
+        "lat": -0.0917,
+        "lon": 34.768,
+        "day": "2026-08-22",
+        "utc_offset_seconds": 10800
+      },
+      "expected": {
+        "sunrise": "2026-08-22T06:40:00",
+        "sunset": "2026-08-22T18:47:00"
+      }
+    },
+    {
+      "name": "London at the solstice \u2014 a 16h33m day",
+      "input": {
+        "lat": 51.5072,
+        "lon": -0.1276,
+        "day": "2026-06-21",
+        "utc_offset_seconds": 3600
+      },
+      "expected": {
+        "sunrise": "2026-06-21T04:43:00",
+        "sunset": "2026-06-21T21:21:00"
+      }
+    },
+    {
+      "name": "Sydney in August \u2014 the southern hemisphere runs the other way",
+      "input": {
+        "lat": -33.87,
+        "lon": 151.21,
+        "day": "2026-08-28",
+        "utc_offset_seconds": 36000
+      },
+      "expected": {
+        "sunrise": "2026-08-28T06:19:00",
+        "sunset": "2026-08-28T17:34:00"
+      }
+    },
+    {
+      "name": "the midnight sun: midnight to midnight, a 24h span",
+      "input": {
+        "lat": 78.2232,
+        "lon": 15.6469,
+        "day": "2026-06-21",
+        "utc_offset_seconds": 7200
+      },
+      "expected": {
+        "sunrise": "2026-06-21T00:00:00",
+        "sunset": "2026-06-22T00:00:00"
+      }
+    },
+    {
+      "name": "polar night: both times local midnight, a span of zero",
+      "input": {
+        "lat": 78.2232,
+        "lon": 15.6469,
+        "day": "2025-12-21",
+        "utc_offset_seconds": 3600
+      },
+      "expected": {
+        "sunrise": "2025-12-21T00:00:00",
+        "sunset": "2025-12-21T00:00:00"
+      }
+    },
+    {
+      "name": "Kiritimati, whose UTC+14 disagrees with its longitude by a day",
+      "input": {
+        "lat": 1.87,
+        "lon": -157.4,
+        "day": "2026-08-28",
+        "utc_offset_seconds": 50400
+      },
+      "expected": {
+        "sunrise": "2026-08-28T06:26:00",
+        "sunset": "2026-08-28T18:35:00"
+      }
+    },
+    {
+      "name": "London the day the clocks go back",
+      "input": {
+        "lat": 51.5072,
+        "lon": -0.1276,
+        "day": "2025-10-26",
+        "utc_offset_seconds": 0
+      },
+      "expected": {
+        "sunrise": "2025-10-26T06:43:00",
+        "sunset": "2025-10-26T16:44:00"
+      }
+    },
+    {
+      "name": "Longyearbyen three days after the midnight sun ends",
+      "input": {
+        "lat": 78.2232,
+        "lon": 15.6469,
+        "day": "2026-08-27",
+        "utc_offset_seconds": 7200
+      },
+      "expected": {
+        "sunrise": "2026-08-27T02:26:00",
+        "sunset": "2026-08-27T23:16:00"
+      }
+    }
+  ]
+}

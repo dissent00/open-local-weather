@@ -45,6 +45,7 @@ from openlocalweather.models import (
 from openlocalweather.aqi import last_known_ground_aqi
 from openlocalweather.comparison import compute_day_over_day, describe_day_rain
 from openlocalweather.instability import summarize_instability
+from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
     daypart_without_sun,
     forward_hours,
@@ -579,6 +580,7 @@ def test_every_vector_file_is_exercised():
         "daypart_without_sun.json",
         "daypart_clock.json",
         "daypart_forward_hours.json",
+        "solar.json",
         "aligned_cycle.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
@@ -607,6 +609,15 @@ def test_readme_coverage_table_lists_every_vector():
         f"undocumented vectors: {sorted(on_disk - documented)}; "
         f"documented but missing: {sorted(documented - on_disk)}"
     )
+
+
+def test_vectors_solar():
+    for c in load("solar.json")["cases"]:
+        i = c["input"]
+        got = sun_times(
+            i["lat"], i["lon"], date.fromisoformat(i["day"]), i["utc_offset_seconds"]
+        )
+        assert got.to_json() == c["expected"], c["name"]
 
 
 def test_vectors_daypart():

@@ -73,7 +73,13 @@ from openlocalweather.daypart import (
 )
 from openlocalweather.config import LocationConfig
 from openlocalweather.cycle import aligned_cycle_at, round_hours_to_tenths
-from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
+from openlocalweather.dates import (
+    add_days,
+    format_date,
+    now_in_tz,
+    today_in_tz,
+    utc_offset_seconds,
+)
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
     BLEND_MODEL_ID,
@@ -94,6 +100,7 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.review import WeeklyReview, build_weekly_review
+from openlocalweather import solar
 from openlocalweather.spend import assert_capacity, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
@@ -334,39 +341,44 @@ def _clock(value) -> str | None:
         return None
 
 
-def _sun_context(location, now_local: datetime) -> tuple[DayPart | None, datetime]:
+def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[DayPart, datetime]:
     """Sunrise/sunset for today and tomorrow, reduced to the issuance moment.
 
-    Open-Meteo returns these as naive local strings when `timezone=` is set,
-    which is why `now_in_tz` is naive too — see its docstring on why mixing
-    the two would be worse than either.
-    """
-    sun = open_meteo.fetch_sun_times(
-        location.primary_point.lat, location.primary_point.lon, location.timezone
-    )
+    COMPUTED, not fetched — see `solar` for the six days of null sun times
+    that motivated the change, and for how far the computation can be trusted.
 
-    # An independent check on this machine's clock, from a response already
-    # fetched. See daypart.reconcile_now — the host's own timezone setting is
-    # irrelevant, but its clock being wrong is silent and would produce a
-    # forecast written confidently for the wrong part of the day.
+    `clock_reference` is any Open-Meteo response already fetched this run. It
+    is read for two things only: the server's `Date` header and the location's
+    UTC offset, which together are an independent check on this machine's
+    clock. That check used to ride on the sun fetch; with the sun fetch gone
+    it rides on a mandatory one instead, which makes it strictly harder to
+    lose. See `daypart.reconcile_now` — the host's own timezone setting is
+    irrelevant, but its clock being wrong is silent, and would produce a
+    forecast written confidently for the wrong part of the day.
+
+    Naive local throughout, because `now_in_tz` and Open-Meteo's hourly
+    timestamps both are; see its docstring on why mixing the two would be
+    worse than either.
+    """
     now_local, skew_warning = reconcile_now(
-        now_local, (sun or {}).get("_server_date"), (sun or {}).get("utc_offset_seconds")
+        now_local,
+        (clock_reference or {}).get("_server_date"),
+        (clock_reference or {}).get("utc_offset_seconds"),
     )
     if skew_warning:
         print(f"WARNING: {skew_warning}", file=sys.stderr)
 
-    daily = (sun or {}).get("daily") or {}
-    rises, sets = daily.get("sunrise") or [], daily.get("sunset") or []
-    if not rises or not sets:
-        # Polar night returns no sunrise or sunset at all. Not an error, and
-        # not something to fail a forecast over — the reader simply gets no
-        # sun times, which at that latitude is the correct answer.
-        return None, now_local
+    lat, lon = location.primary_point.lat, location.primary_point.lon
+    today = now_local.date()
+    tomorrow = add_days(today, 1)
 
-    sunrise = datetime.fromisoformat(rises[0])
-    sunset = datetime.fromisoformat(sets[0])
-    next_sunrise = datetime.fromisoformat(rises[1]) if len(rises) > 1 else None
-    return summarize_daypart(now_local, sunrise, sunset, next_sunrise), now_local
+    # A separate offset per date rather than one for both, so a run on a
+    # daylight-saving changeover does not report tomorrow's sunrise an hour
+    # out. The location's zone, never this host's — see dates.utc_offset_seconds.
+    sun = solar.sun_times(lat, lon, today, utc_offset_seconds(location.timezone, today))
+    next_sun = solar.sun_times(lat, lon, tomorrow, utc_offset_seconds(location.timezone, tomorrow))
+
+    return summarize_daypart(now_local, sun.sunrise, sun.sunset, next_sun.sunrise), now_local
 
 
 def _apply_observed_thunder(
@@ -509,28 +521,24 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
 
     # Where this run sits in the day, and the hours still ahead of it.
     #
-    # Both are best-effort: a forecast without them is worse but still a
-    # forecast, whereas a run aborted because an astronomical lookup failed
-    # would turn a nice-to-have into a single point of failure. The prompt
-    # states plainly when they are missing rather than guessing.
     # The clock, the sun, and the hours ahead are three separate things, and
-    # they fail separately.
+    # they still fail separately. An earlier version put all three in one try,
+    # so a failed astronomical lookup also skipped the forward window AND
+    # threw away the local time — leaving the prompt to say "time of day
+    # unavailable" for a run that knew perfectly well it was 18:15. Knowing
+    # the time is most of the value; knowing where the sun is only refines it.
     #
-    # now_in_tz reads the system clock and cannot fail over the network;
-    # sunrise/sunset and the forward window both can. An earlier version put
-    # all three in one try, so a failed astronomical lookup also skipped the
-    # forward window AND threw away the local time — leaving the prompt to say
-    # "time of day unavailable" for a run that knew perfectly well it was
-    # 18:15. Knowing the time is most of the value; knowing where the sun is
-    # only refines it.
+    # The sun no longer fails over the network — it is computed. What the try
+    # now guards is a defect in that arithmetic, and the guarantee it keeps is
+    # unchanged: a run does not abort because it could not place itself in the
+    # day, and a lost sun does not cost the clock as well.
     now_local = now_in_tz(location.timezone)
     try:
         # Also returns the reconciled clock: if this host's time disagrees with
         # the server's, the corrected value must reach the forward-window trim
         # below too, or the two halves of the prompt would describe different
         # moments.
-        sun_part, now_local = _sun_context(location, now_local)
-        issuance = sun_part or daypart_without_sun(now_local)
+        issuance, now_local = _sun_context(location, now_local, primary_hourly)
     except Exception as e:  # noqa: BLE001 - never fatal; the time still stands
         print(f"Sun times unavailable ({e}); using the clock alone.", file=sys.stderr)
         issuance = daypart_without_sun(now_local)

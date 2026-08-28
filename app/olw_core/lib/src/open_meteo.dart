@@ -143,7 +143,21 @@ class OpenMeteoClient {
       }
 
       if (resp != null) {
-        if (resp.statusCode == 200) return jsonDecode(resp.body);
+        if (resp.statusCode == 200) {
+          final payload = jsonDecode(resp.body);
+          // The server's own clock, carried on every response already being
+          // fetched. Free, and the only time reference here that does not
+          // depend on the device being right — see daypart's reconcileNow,
+          // which was inert in this package until this key existed.
+          //
+          // Guarded on Map because a multi-coordinate request answers with a
+          // JSON array; see _getRaw.
+          final serverDate = resp.headers['date'];
+          if (payload is Map<String, Object?> && serverDate != null) {
+            payload['_serverDate'] = serverDate;
+          }
+          return payload;
+        }
         final body =
             resp.body.length > 500 ? resp.body.substring(0, 500) : resp.body;
         // A 4xx other than 429 means the REQUEST is wrong — a misspelled
@@ -191,32 +205,6 @@ class OpenMeteoClient {
         'models': models.join(','),
       });
 
-  /// Sunrise and sunset, in the location's own local time.
-  ///
-  /// No `models` parameter: an astronomical event is not model-dependent, and
-  /// asking four models for it would return four identical series under four
-  /// different keys.
-  ///
-  /// Two days by default because the sunrise a reader cares about after dark
-  /// is tomorrow's, not the one seventeen hours behind them.
-  ///
-  /// Open-Meteo has no twilight variable — verified, it rejects
-  /// `civil_twilight_begin` outright — so twilight has to be computed from
-  /// solar position (ROADMAP item 30).
-  Future<Map<String, Object?>> fetchSunTimes({
-    required double lat,
-    required double lon,
-    required String timezone,
-    int days = 2,
-  }) =>
-      _get(forecastUrl, {
-        'latitude': '\$lat',
-        'longitude': '\$lon',
-        'daily': 'sunrise,sunset,daylight_duration',
-        'forecast_days': '\$days',
-        'timezone': timezone,
-      });
-
   /// Hourly multi-model guidance covering today AND tomorrow.
   ///
   /// A SEPARATE call rather than widening [fetchForecastHourlyToday], and
@@ -237,8 +225,8 @@ class OpenMeteoClient {
     required String timezone,
   }) =>
       _get(forecastUrl, {
-        'latitude': '\$lat',
-        'longitude': '\$lon',
+        'latitude': '$lat',
+        'longitude': '$lon',
         'hourly': hourlyForecastVars,
         'forecast_days': '2',
         'timezone': timezone,

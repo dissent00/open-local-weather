@@ -127,31 +127,6 @@ def fetch_forecast_hourly_today(lat: float, lon: float, models: list[str], timez
     return _get(FORECAST_URL, params)
 
 
-def fetch_sun_times(lat: float, lon: float, timezone: str, days: int = 2) -> dict:
-    """Sunrise and sunset, in the location's own local time.
-
-    Not model-dependent, so no `models` parameter — asking four models for the
-    same astronomical event would return four identical series under four
-    different keys.
-
-    Two days by default because the sunrise a reader cares about after dark is
-    tomorrow's, not the one seventeen hours behind them.
-
-    Open-Meteo has no twilight variable: the daily endpoint offers sunrise,
-    sunset, daylight_duration and sunshine_duration, and rejects
-    civil_twilight_begin outright. Twilight would have to be computed from
-    solar position.
-    """
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "daily": "sunrise,sunset,daylight_duration",
-        "forecast_days": days,
-        "timezone": timezone,
-    }
-    return _get(FORECAST_URL, params)
-
-
 def fetch_forecast_hourly_forward(
     lat: float, lon: float, models: list[str], timezone: str
 ) -> dict:

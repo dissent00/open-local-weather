@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 
@@ -20,6 +20,8 @@ from openlocalweather.models import (
     ModelPredictionsByLead,
 )
 from openlocalweather import pipeline
+from openlocalweather import solar
+from openlocalweather.solar import SunTimes, sun_times as real_sun_times
 from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
@@ -106,16 +108,24 @@ class FakeLLMProvider:
         return self.response
 
 
-def sun_fixture():
-    """Kisumu's real figures for the fixture date — sunset at 18:47 is the
-    number that started this: the "evening" run fires 32 minutes before it."""
-    return {
-        "daily": {
-            "time": ["2026-08-11", "2026-08-12"],
-            "sunrise": ["2026-08-11T06:40", "2026-08-12T06:40"],
-            "sunset": ["2026-08-11T18:47", "2026-08-12T18:46"],
-        }
-    }
+def sun_fixture(lat, lon, day, utc_offset_seconds):
+    """A fixed, known pair of sun times, on whatever date is asked for.
+
+    Pinned to the DATE REQUESTED rather than to 2026-08-11, because the
+    pipeline asks for the date it is actually running on — `now_local.date()`,
+    the real clock — while these tests pass `today=2026-08-11` for the
+    forecast date. The old fixture answered 2026-08-11 to every question, so
+    every daypart in this suite was computed with a sunset seventeen days in
+    the past and came out "night" whatever time the suite ran.
+
+    The values are Kisumu's for 2026-08-22, not this LOCATION's — LOCATION
+    sits at 1N 2E in UTC. They are here because 18:47 is the number that
+    started all of this: the real "evening" run fires 32 minutes before it.
+    """
+    return SunTimes(
+        datetime.combine(day, time(6, 40)),
+        datetime.combine(day, time(18, 47)),
+    )
 
 
 def forward_hourly_fixture():
@@ -135,11 +145,12 @@ def patch_fetches(monkeypatch):
     monkeypatch.setattr(open_meteo, "fetch_regional_pressure", lambda *a, **k: {"daily": {}})
     monkeypatch.setattr(open_meteo, "fetch_synoptic_pressure", lambda *a, **k: {"points": []})
     monkeypatch.setattr(open_meteo, "fetch_air_quality", lambda *a, **k: {"hourly": {}})
-    # Time-of-day context. Mocked rather than left to degrade, because the
-    # pipeline treats these as best-effort — an unmocked failure here is
-    # invisible, and every prompt assertion below would then be checking the
-    # DEGRADED path while appearing to check the real one.
-    monkeypatch.setattr(open_meteo, "fetch_sun_times", lambda *a, **k: sun_fixture())
+    # Time-of-day context. The sun is computed, not fetched, so nothing here
+    # can fail — it is pinned so that assertions on "sunset 18:47" keep
+    # meaning something as the calendar moves. See
+    # test_the_computed_sun_times_reach_the_prompt_and_the_entry for the one
+    # that runs the real thing.
+    monkeypatch.setattr(solar, "sun_times", sun_fixture)
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
     )
@@ -1151,14 +1162,17 @@ def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
 def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatch):
     """The clock is not the sun.
 
-    now_in_tz reads the system clock and cannot fail over the network;
-    sunrise and sunset can. An earlier version put both in one try block, so a
-    failed astronomical lookup made the prompt say "time of day unavailable"
-    for a run that knew perfectly well it was 18:15. Knowing the time is most
-    of the value here — knowing where the sun is only refines it.
+    An earlier version put both in one try block, so a failed astronomical
+    lookup made the prompt say "time of day unavailable" for a run that knew
+    perfectly well it was 18:15. Knowing the time is most of the value here —
+    knowing where the sun is only refines it.
+
+    The sun no longer fails over the network, so this now stands for a defect
+    in the computation rather than a timeout. The guarantee is the same one
+    and worth keeping either way.
     """
     monkeypatch.setattr(
-        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+        solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
@@ -1172,11 +1186,11 @@ def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatc
 
 
 def test_a_failed_sun_lookup_does_not_also_lose_the_hours_ahead(tmp_path, monkeypatch):
-    """They are separate fetches and fail separately. Sharing one try block
-    meant an astronomical lookup could silently cost the forward window —
-    which is the more useful of the two."""
+    """Separate concerns, separate try blocks. Sharing one meant an
+    astronomical lookup could silently cost the forward window — which is the
+    more useful of the two."""
     monkeypatch.setattr(
-        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+        solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
@@ -1204,10 +1218,11 @@ def test_a_failed_forward_window_does_not_lose_the_sun_or_the_time(tmp_path, mon
 def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
     """A forecast without sun times is worse. A forecast that does not happen
     because an astronomical lookup failed is much worse."""
-    for name in ("fetch_sun_times", "fetch_forecast_hourly_forward"):
-        monkeypatch.setattr(
-            open_meteo, name, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
-        )
+    def down(*a, **k):
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(solar, "sun_times", down)
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", down)
     llm = FakeLLMProvider()
     result = run_daily_pipeline(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
@@ -1225,12 +1240,56 @@ def test_sunrise_and_sunset_are_stored_from_code_not_the_narrative(tmp_path):
     assert result.log_entry.sunset == "18:47"
 
 
+def test_the_computed_sun_times_reach_the_prompt_and_the_entry(tmp_path, monkeypatch):
+    """The one test in this file that runs the real computation.
+
+    Everything else pins `solar.sun_times` so its assertions stay meaningful
+    as the calendar moves, which means everything else would still pass if the
+    pipeline handed the computation the wrong coordinates, the wrong date or
+    the wrong offset. That is the failure this file has seen before: a value
+    correctly computed and never wired to what consumes it.
+
+    The equality is the sharp check — it fails if the pipeline hands the
+    computation the wrong latitude, longitude, date or offset. Verified by
+    swapping lat and lon in `_sun_context`, which turns it red.
+
+    The band is the blunt one, and it is what stops both sides being wrong
+    together. LOCATION sits within a degree of the equator, where the year's
+    whole spread is 05:33-06:03 and 17:37-18:08; the bounds below leave room
+    for that and still exclude a value that is missing, garbled, or from
+    somewhere else entirely.
+    """
+    monkeypatch.setattr(solar, "sun_times", real_sun_times)
+    llm = FakeLLMProvider()
+    result = run_daily_pipeline(
+        make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
+    )
+    _, user_prompt = llm.calls[0]
+
+    today_local = now_in_tz(LOCATION.timezone).date()
+    expected = real_sun_times(
+        LOCATION.primary_point.lat, LOCATION.primary_point.lon, today_local, 0
+    )
+    assert result.log_entry.sunrise == expected.sunrise.strftime("%H:%M")
+    assert result.log_entry.sunset == expected.sunset.strftime("%H:%M")
+    assert f"sunset {result.log_entry.sunset}" in user_prompt
+
+    assert "05:15" < result.log_entry.sunrise < "06:20", result.log_entry.sunrise
+    assert "17:20" < result.log_entry.sunset < "18:25", result.log_entry.sunset
+
+
 def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, monkeypatch):
-    """Polar night has no sunrise. An empty string would render as a blank
-    value next to the label, which reads as a broken page rather than as the
-    correct answer."""
+    """An empty string would render as a blank value next to the label, which
+    reads as a broken page rather than as the correct answer.
+
+    The docstring used to say "polar night has no sunrise". That was wrong
+    about the data as well as about polar night: Open-Meteo reports polar
+    night as sunrise and sunset both at local midnight, verified against the
+    live API on 2026-08-28, and `solar.sun_times` now matches it. This path is
+    reached when the sun could not be worked out at all, not at high
+    latitude."""
     monkeypatch.setattr(
-        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+        solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
     assert result.log_entry.sunrise is None
@@ -1457,12 +1516,12 @@ def test_a_refresh_keeps_the_sun_times(tmp_path):
 
 
 def test_a_refresh_with_no_sun_data_keeps_the_mornings(tmp_path, monkeypatch):
-    """A failed sun fetch on a re-issue must not erase a good value the first
+    """A failed sun lookup on a re-issue must not erase a good value the first
     run captured. Fresher is not automatically better when the fresher value
     is 'unknown'."""
     run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     monkeypatch.setattr(
-        open_meteo, "fetch_sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+        solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 

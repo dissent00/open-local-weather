@@ -2268,9 +2268,17 @@ means computing solar position ourselves.
 
 That is a well-defined calculation — the NOAA solar position algorithm, taking
 latitude, longitude and date, and solving for the times the solar elevation
-crosses −6°. Perhaps forty lines. It fits the project's "all arithmetic in
-code" rule exactly, and it has to be **ported to Dart and vector-locked** like
-everything else in `daypart`.
+crosses −6°. It fits the project's "all arithmetic in code" rule exactly, and
+it has to be **ported to Dart and vector-locked** like everything else in
+`daypart`.
+
+**Most of it is already written.** Item 39 shipped that algorithm in
+`solar.py` and `solar.dart`, solving for −0.833° — the sun's upper limb at the
+horizon. Civil twilight is the same routine with the altitude at −6°, so this
+is now a parameter and two vector cases rather than forty lines. Read
+`solar`'s docstring before starting: the accuracy table there is the answer to
+"is this good enough at my latitude", and twilight at high latitude is
+*harder* than sunrise, not easier, because the crossing is shallower still.
 
 Two things to get right, both of which the sunrise/sunset work already hit:
 
@@ -2278,7 +2286,10 @@ Two things to get right, both of which the sunrise/sunset work already hit:
   the sun never gets 6° below the horizon and civil twilight never ends; in
   polar winter it may never begin. The function must return "no such time"
   rather than a number, and the display must omit the field rather than render
-  a blank one.
+  a blank one. Note that `sun_times` does NOT do this — it matches
+  Open-Meteo's convention of a 24-hour or zero-length day instead, because
+  `daypart.classify_phase` reads that span. Twilight has no such consumer, so
+  it is free to say "no such time", and should.
 - **Do not approximate it as "sunset plus 25 minutes."** That is roughly right
   in Kisumu, where the sun sets nearly vertically, and badly wrong at 55°N
   where twilight can last over an hour. An approximation that holds at the one
@@ -2874,7 +2885,7 @@ Two cautions:
 
 ---
 
-## 39. Compute sun times instead of fetching them · **Raised in priority**
+## 39. Compute sun times instead of fetching them · **Shipped**
 
 Originally noted inside item 30 (twilight). A live failure on the first full
 day makes it worth its own entry.
@@ -2933,6 +2944,65 @@ elevation, and a naive computation will differ by a minute or two. Match the
 convention (sun's upper limb at the horizon, standard refraction) and vector
 the result against a handful of known locations and dates — including a polar
 one, where the answer is "no sunrise" rather than a time.
+
+### What shipped, 2026-08-28
+
+`solar.sun_times` in Python and `sunTimes` in `olw_core`: NOAA's solar
+position equations for the sun's centre at -0.833 degrees, which is upper limb
+plus standard refraction — Open-Meteo's convention, so this is a replacement
+and not a change. `fetch_sun_times` and `fetchSunTimes` are gone from both
+fetch layers. Vectored as `spec/vectors/solar.json`, nine cases.
+
+**Accuracy, measured against Open-Meteo over 108 consecutive days at each of
+eleven locations.** One minute at worst from the equator to 55 degrees, two to
+64 degrees, 14 at Tromso (median 2) and 21 at Longyearbyen (median 4). The
+high-latitude spread is inherent and NOAA documents it above about 72 degrees:
+the sun crosses the horizon at a shallow angle there, so a small difference in
+the assumed altitude moves the crossing by many minutes. It concentrates at
+the ends of the midnight sun — every Tromso disagreement over 5 minutes falls
+in the three days after its midnight sun ended. Kisumu is at 0.09 degrees
+south, where the worst case is one minute; the table is in `solar`'s
+docstring for anyone forking further north.
+
+**Python and Dart swept against each other over 17,787 cases** — latitude -89
+to +89, every longitude, a full year, and nine UTC offsets including the
+half-hour and three-quarter-hour ones. Zero disagreements. The vector cases
+alone would not have shown that; see `spec/README.md` on why they pin the
+cases you chose rather than the function.
+
+**Two polar conventions were matched rather than invented**, because
+`daypart.classify_phase` reads the SPAN between sunrise and sunset to reach
+its polar phases. The midnight sun is local midnight to local midnight the
+next day, a 24 hour span; polar night is local midnight to local midnight, a
+span of zero. Both verified against the live API on 2026-08-28, and matched on
+all 148 polar days in the accuracy sample.
+
+### Three things found while doing it
+
+**Polar night does not return nulls.** A comment in `pipeline._sun_context`
+said it did, and the `if not rises or not sets` branch beneath it existed to
+handle that. Open-Meteo returns 00:00 for both with `daylight_duration` 0.
+Nothing depended on the claim, which is how it survived.
+
+**Open-Meteo applies ONE UTC offset to a whole response, and not always the
+right one.** Asked for Europe/London on 2025-12-15 alone — deep in GMT — it
+answered `utc_offset_seconds: 3600` and put sunrise at 08:59 against a
+published 07:59. Across the 2025 changeover it returned 3600 for all three
+days, so the two after it were an hour out. Kisumu keeps no daylight saving
+and the live pipeline only ever asked for today, so this never reached
+production here; a fork in a DST zone would have met it immediately.
+`dates.utc_offset_seconds` takes the offset per date, at local noon.
+
+**The app's Dart client had `'\$lat'` — the dollar escaped — in
+`fetchSunTimes` AND `fetchForecastHourlyForward`.** Both sent the literal five
+characters, both 400'd, and both callers swallow failures by design. Shipped
+2026-08-22 in `5e625e7`; found 2026-08-28. So since the day the feature
+landed, an app-generated forecast has had no sun times AND no forward window —
+`daypartWithoutSun` every run, and no overnight data. The sun half is gone
+with the fetch; the forward half is fixed, and both now have a request-shape
+test, which is what was missing. The same commit's `_fetch` never captured the
+`Date` header either, so `reconcileNow` was a no-op in the app; it captures it
+now.
 
 ---
 
@@ -3923,11 +3993,13 @@ schema drift better. Settle it when building, not now.
 ### Thresholds are per-source, because "normal" differs
 
 A WAQI station going quiet for two days is routine (item 4 documents how
-routine). A daily met bulletin missing twice is not. Sun times failing once
-is already wrong, since nothing about them should require a network at all
-(item 39). `COVERAGE_ABSENT_RUNS = 3` is the existing precedent for "more
-than one, because a single failed fetch is noise" — a starting point per
-source, not a global.
+routine). A daily met bulletin missing twice is not. Sun times were the third
+example here and are no longer a source at all — item 39 computes them, which
+is the other way to fix a source that should never have needed a network.
+Worth remembering when setting a threshold: sometimes the answer is to remove
+the fetch rather than to watch it. `COVERAGE_ABSENT_RUNS = 3` is the existing
+precedent for "more than one, because a single failed fetch is noise" — a
+starting point per source, not a global.
 
 ### The specific debt this pays off first
 

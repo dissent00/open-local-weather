@@ -21,6 +21,12 @@ const _location = LocationConfig(
 );
 
 Map<String, Object?> _hourlyBody(List<String> models) => {
+      // The location's offset from UTC, which every Open-Meteo response with a
+      // `timezone=` carries. Not decoration: the issuance is derived from it
+      // now that the sun is computed rather than fetched, and a body without
+      // it degrades to daypartWithoutSun — silently, which is how a mock
+      // stops testing the path it looks like it is testing.
+      'utc_offset_seconds': 10800,
       'hourly': {
         'time': ['2026-08-19T12:00', '2026-08-19T13:00', '2026-08-19T14:00'],
         for (final m in models) ...{
@@ -96,24 +102,6 @@ void main() {
       client: MockClient((request) async {
         requestedUrls.add(request.url.toString());
         final path = request.url.path;
-        // Sunrise/sunset: Kisumu's real figures for the fixture date. Sunset
-        // at 18:47 is the number that started the time-awareness work — the
-        // "evening" run fires 32 minutes BEFORE it.
-        if (request.url.queryParameters['daily'] ==
-            'sunrise,sunset,daylight_duration') {
-          return http.Response(
-            jsonEncode({
-              'utc_offset_seconds': 10800,
-              'daily': {
-                'time': ['2026-08-19', '2026-08-20'],
-                'sunrise': ['2026-08-19T06:40', '2026-08-20T06:40'],
-                'sunset': ['2026-08-19T18:47', '2026-08-20T18:46'],
-              },
-            }),
-            200,
-            headers: {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
         // The synoptic ring is a multi-coordinate request: an ARRAY.
         if (request.url.queryParameters['daily'] == 'pressure_msl_mean') {
           return http.Response(

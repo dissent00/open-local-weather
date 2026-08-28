@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'daypart.dart';
+import 'solar.dart';
 import 'dates.dart';
 import 'config.dart';
 import 'cycle.dart';
@@ -173,30 +174,39 @@ Future<ForecastRun> generateForecast({
   // astronomical lookup also discarded the local time and the forward window,
   // and the prompt reported "time of day unavailable" for a run that knew
   // perfectly well what time it was.
-  final now = nowLocal ?? DateTime.now();
+  var now = nowLocal ?? DateTime.now();
   var resolvedIssuance = issuance;
   if (resolvedIssuance == null) {
     try {
-      final sun = await client.fetchSunTimes(
-          lat: location.lat, lon: location.lon, timezone: location.timezone);
-      final reconciled = reconcileNow(
-        now,
-        sun['_serverDate'] as String?,
-        (sun['utc_offset_seconds'] as num?)?.toInt(),
-      );
-      final daily = (sun['daily'] as Map?)?.cast<String, Object?>() ?? {};
-      final rises = daily['sunrise'] as List?;
-      final sets = daily['sunset'] as List?;
-      resolvedIssuance = (rises == null || sets == null || rises.isEmpty || sets.isEmpty)
-          // Polar night returns no sunrise or sunset at all. Not an error, and
-          // not something to fail a forecast over.
-          ? daypartWithoutSun(reconciled.now)
-          : summarizeDaypart(
-              reconciled.now,
-              DateTime.parse(rises[0] as String),
-              DateTime.parse(sets[0] as String),
-              rises.length > 1 ? DateTime.parse(rises[1] as String) : null,
-            );
+      // Both of these ride on a response already fetched. The sun used to have
+      // a request of its own; it is computed now, and the clock check that
+      // shared that request moved onto this one — which is mandatory, so the
+      // check is harder to lose than it was.
+      final utcOffsetSeconds = (hourly['utc_offset_seconds'] as num?)?.toInt();
+      final reconciled =
+          reconcileNow(now, hourly['_serverDate'] as String?, utcOffsetSeconds);
+      // The corrected clock has to reach the forward-window trim below as
+      // well, or the two halves of the prompt describe different moments.
+      now = reconciled.now;
+
+      if (utcOffsetSeconds == null) {
+        // The location's offset is the one input the computation cannot do
+        // without, and Dart has no timezone database to fall back on. The
+        // device's own offset would be a guess about where the user is
+        // standing relative to the place they asked about.
+        resolvedIssuance = daypartWithoutSun(now);
+      } else {
+        final sun = sunTimes(location.lat, location.lon, now, utcOffsetSeconds);
+        // DateTime.utc for tomorrow's date, not DateTime: only the calendar
+        // fields are read, and a local constructor can shift them. In a zone
+        // whose clocks go back AT midnight — Santiago, Havana — DateTime(y, m,
+        // d + 1) returns 23:00 on day d, so tomorrow's sunrise would silently
+        // be today's.
+        final next = sunTimes(location.lat, location.lon,
+            DateTime.utc(now.year, now.month, now.day + 1), utcOffsetSeconds);
+        resolvedIssuance =
+            summarizeDaypart(now, sun.sunrise, sun.sunset, next.sunrise);
+      }
     } catch (_) {
       // Losing the sun is no reason to discard the clock.
       resolvedIssuance = daypartWithoutSun(now);

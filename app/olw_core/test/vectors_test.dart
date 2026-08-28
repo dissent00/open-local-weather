@@ -865,6 +865,26 @@ void main() {
       }
     });
 
+    test('computed sunrise and sunset match Python', () {
+      String iso(DateTime t) =>
+          t.toIso8601String().replaceFirst(RegExp(r'\.\d+$'), '');
+
+      for (final c in loadVectors('solar.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = sunTimes(
+          (i['lat'] as num).toDouble(),
+          (i['lon'] as num).toDouble(),
+          DateTime.parse(i['day'] as String),
+          i['utc_offset_seconds'] as int,
+        );
+        expect(
+          {'sunrise': iso(got.sunrise), 'sunset': iso(got.sunset)},
+          equals(c['expected']),
+          reason: 'case "${c['name']}"',
+        );
+      }
+    });
+
     test('the no-sun fallback matches Python', () {
       for (final c in loadVectors('daypart_without_sun.json')['cases'] as List) {
         final got = daypartWithoutSun(
@@ -941,6 +961,7 @@ void main() {
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',
+      'solar.json',
       'aligned_cycle.json',
     };
     final onDisk = vectorsDir

@@ -50,6 +50,32 @@ void main() {
       expect(cap.params['hourly'], contains('precipitation'));
     });
 
+    test('the forward window sends real coordinates, not an unescaped template',
+        () async {
+      // A LIVE BUG this test was written to close, shipped 2026-08-22 in
+      // 5e625e7 and found on 2026-08-28. The parameters read '\$lat' and
+      // '\$lon' with the dollar escaped, so Dart sent the literal five
+      // characters instead of interpolating — every request 400'd, the caller
+      // swallowed it, and the app had no forward window at all from the day
+      // the feature shipped. Nothing failed: the fetch is best-effort by
+      // design, and no test asserted the request's shape.
+      //
+      // fetchSunTimes carried the same defect and is gone; this is its
+      // surviving sibling.
+      final cap = _Capture();
+      await OpenMeteoClient(client: cap.client).fetchForecastHourlyForward(
+        lat: -0.0917,
+        lon: 34.768,
+        models: ['gfs_seamless'],
+        timezone: 'Africa/Nairobi',
+      );
+
+      expect(cap.params['latitude'], '-0.0917');
+      expect(cap.params['longitude'], '34.768');
+      expect(cap.params['forecast_days'], '2',
+          reason: 'today and tomorrow — an evening run needs the overnight');
+    });
+
     test('daily extended defaults to 8 days, not 7', () async {
       // Index 0 is today, so 8 days is what makes index 7 genuinely "seven
       // full days out". A default of 7 would silently shift every Day+7
@@ -140,6 +166,24 @@ void main() {
       final got = await OpenMeteoClient(client: cap.client)
           .fetchAirQuality(lat: 1, lon: 2, timezone: 'UTC');
       expect(got.containsKey('hourly'), isTrue);
+    });
+
+    test("the server's Date header is carried on the decoded response", () async {
+      // The one clock reference here that does not depend on the device being
+      // right, and free on a response already being fetched. Python has taken
+      // it since reconcileNow existed; this package did not, so its clock
+      // check was inert — a no-op that read as a safeguard. See
+      // daypart.reconcileNow, and the Python fetch/open_meteo._get.
+      final client = MockClient((req) async => http.Response(
+            jsonEncode({'hourly': <String, Object?>{}}),
+            200,
+            headers: {'date': 'Wed, 19 Aug 2026 04:00:00 GMT'},
+          ));
+      final got = await OpenMeteoClient(client: client)
+          .fetchForecastHourlyToday(
+              lat: 1, lon: 2, models: ['gfs_seamless'], timezone: 'UTC');
+
+      expect(got['_serverDate'], 'Wed, 19 Aug 2026 04:00:00 GMT');
     });
   });
 
