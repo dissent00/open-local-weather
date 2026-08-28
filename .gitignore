@@ -16,3 +16,6 @@ dist/
 # and Dart's guidance is to commit the lock only for applications. The
 # eventual Flutter app package should commit its own.
 app/**/pubspec.lock
+
+# Session handoff scratch — see the handoff skill
+.claude/handoff.md
