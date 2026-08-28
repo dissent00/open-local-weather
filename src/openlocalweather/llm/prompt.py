@@ -76,6 +76,8 @@ LATER ISSUANCE (this run only): a forecast for today has already been published 
 
 Your job is an UPDATE, not a repeat. THIS REPLACES THE DAY-OVER-DAY OPENING described in the Overview section below - on a later issuance, do not open with the comparison against yesterday at all. Yesterday-vs-today is a first-issuance frame; by now the reader's reference point is the forecast they have already read today, not yesterday's weather, and opening with both leaves you choosing between two instructions that each claim the first sentence. Open the Overview with what has changed since the last issuance, and with what is still AHEAD of the reader - never with a recap of the hours they have already lived through. A reader opening a 22:00 update wants tonight, tomorrow morning and onward; the day's high and the day's UV are settled facts they experienced, and leading with them spends the most valuable sentence in the forecast on nothing. A real evening update opened "With evening underway, daytime highs near 32C / 90F and solar UV exposure are in the past", which tells the reader only that the day they just lived is over. If the honest summary is that little has changed, say that and then say what is coming. If nothing material has changed, say so plainly in a sentence and move on - a reader who has already read today's earlier forecast is asking "is it still right?", and the honest answer to that is often "yes", said briefly. Do not manufacture change to justify the update, and do not restate the earlier forecast at length in order to look thorough. Only revisit the extended outlook if the fresher model cycle actually moved it.
 
+NO NEW GUIDANCE IS AN ANSWER. GUIDANCE RECENCY carries "newer_than_previous_issuance". When it is false, no new model cycle has landed since the forecast you are updating: whatever has changed, the models did not change their minds - the hours simply advanced. Say so plainly, keep the update short, and do not hunt for differences to justify it. "No new model guidance since this morning; the picture is unchanged, and here is what is still ahead" is a better update than a paragraph rewritten to look like news. When it is true, a newer cycle HAS landed, and a change you report is a real change of mind rather than the day moving on.
+
 BREVITY IS NOT OMISSION. Being an update licenses you to say "little has changed" instead of repeating a paragraph. It does NOT license dropping content this forecast is required to carry. In particular the local met service is still a peer model with its own track record and must still be weighed and named in the Forecaster Confidence Notes, exactly as on a first issuance - "nothing changed since this morning" is a statement ABOUT it, not a reason to stop mentioning it. The same holds for the sections themselves: every heading below appears on every issuance, however short its content."""
         if is_reissue
         else ""
@@ -139,6 +141,7 @@ LEAD-TIME AWARENESS: A model's Day+0 skill and its Day+3/Day+7 skill can differ 
 DATA QUALITY NOTES:
 - METAR observations (if provided) may be sparse, delayed, or missing for regional airports - if stale or absent, say so explicitly and do not treat it as live ground truth; the archive/reanalysis data is the primary "actuals" source.
 {ground_aqi_quality_note}
+- GUIDANCE RECENCY is a FLOOR on how old the model data is, not a description of all of it. It names the cycle the SLOWEST model this project fetches is still on; faster models may already have moved past it. State it as "the models were last all on the same cycle at HH:MMZ, N hours ago" or "the guidance behind this is at least N hours old" - never as "the data is from HH:MMZ", which claims more than the number supports. Say it only when it is worth saying: a few hours is ordinary and needs no mention. Old enough to matter - roughly half a day or more - belongs in the Forecaster Confidence Notes, because it widens the uncertainty on everything downstream of it.
 - Day+3 and Day+7 predictions have NO onset-timing data (only daily-resolution aggregates are fetched that far out, to control cost) - never state a specific onset time for the extended outlook, only day-level rain/no-rain, totals, and ranges.
 
 ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
@@ -259,6 +262,7 @@ def build_user_prompt(
     instability: Any = None,
     ground_stations_configured: bool = True,
     local_bulletin_configured: bool = True,
+    guidance_recency: Any = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -372,6 +376,9 @@ TODAY'S MULTI-MODEL GUIDANCE:
 
 EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):
 {_json(model_predictions_context) if model_predictions_context is not None else "Unavailable this run."}
+
+GUIDANCE RECENCY (pre-computed by code — how old the model data behind everything above is, as a FLOOR: the cycle the slowest fetched model is still on, which faster ones may have moved past):
+{_json(guidance_recency) if guidance_recency is not None else "Unavailable — this run could not establish which model cycle its guidance came from."}
 
 CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE per model, and whether any model crosses the threshold that supports thunderstorms):
 {_json(instability) if instability is not None else "Unavailable — no model supplied a CAPE series this run."}

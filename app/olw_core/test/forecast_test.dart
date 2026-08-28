@@ -501,4 +501,75 @@ void main() {
     expect(llm.seenUserPrompt, contains('WHAT MATTERS NOW: tonight'));
     expect(llm.seenUserPrompt, contains('HOURS AHEAD'));
   });
+
+  test('generateForecast computes the derived guidance recency floor', () async {
+    // The app has no metadata fetch (see forecast.dart), so this is always
+    // the DERIVED floor from cycle.dart, never OBSERVED, and there is no
+    // stored previous issuance here to diff against — see forecast.dart's
+    // comment on why newer_than_previous_issuance is always null on this
+    // side. now.hour=15 falls in cycle.dart's ">=14" window, aligning to
+    // 06:00Z the same day — a plain 9.0-hour age, no rounding tie involved.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      nowLocal: DateTime.utc(2026, 8, 19, 15),
+    );
+
+    expect(llm.seenUserPrompt, contains('GUIDANCE RECENCY'));
+    expect(llm.seenUserPrompt, contains('"models_last_aligned_at": "2026-08-19T06:00:00+00:00"'));
+    expect(llm.seenUserPrompt, contains('"hours_old": 9.0'));
+    expect(llm.seenUserPrompt, contains('"source": "derived"'));
+    expect(llm.seenUserPrompt, contains('"newer_than_previous_issuance": null'));
+  });
+
+  test('guidance recency hours_old rounds half-to-even, matching Python', () async {
+    // now=2026-08-11T06:15Z falls in cycle.dart's ">=2" window, aligning to
+    // 2026-08-10T18:00Z — age_hours is exactly 12.25, a genuine tie at one
+    // decimal place. Measured: Python's round(12.25, 1) is 12.2, not the
+    // 12.3 a naive scale-and-round-away-from-zero would give — see
+    // _roundHoursOld in forecast.dart.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 11),
+      publicWebpageUrl: 'https://example.com/',
+      nowLocal: DateTime.utc(2026, 8, 11, 6, 15),
+    );
+
+    expect(llm.seenUserPrompt, contains('"hours_old": 12.2'));
+    expect(llm.seenUserPrompt, isNot(contains('"hours_old": 12.3')));
+  });
+
+  test('the GUIDANCE RECENCY block falls back to Unavailable, ported verbatim', () {
+    // buildUserPrompt keeps this fallback for parity with the Python port
+    // even though generateForecast itself never triggers it — the app always
+    // has a derived floor to state. Mirrors the vector's cold-start case.
+    final prompt = buildUserPrompt(
+      today: DateTime.utc(2026, 8, 19),
+      yesterday: DateTime.utc(2026, 8, 18),
+      publicWebpageUrl: 'https://example.com/',
+      verificationContext: const <Object>[],
+      trackRecordContext: const <Object>[],
+      historicalLogs: const <Object>[],
+      groundAqiReadings: const <Object>[],
+      groundAqiSummary: null,
+      yesterdayActual: null,
+      todayWeatherData: const <String, Object?>{},
+      localBulletinSourceName: '',
+      localBulletinText: '',
+      guidanceRecency: null,
+    );
+
+    expect(
+      prompt,
+      contains('Unavailable — this run could not establish which model '
+          'cycle its guidance came from.'),
+    );
+  });
 }

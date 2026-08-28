@@ -1,0 +1,119 @@
+{
+  "vector_format_version": 1,
+  "function": "round_hours_to_tenths",
+  "description": "One decimal place, half-to-even, done with identical IEEE-754 float arithmetic in both languages rather than either language's own rounding \u2014 which disagree on 20% of a 0.05-step sweep. See the function's docstring for the measurement.",
+  "cases": [
+    {
+      "name": "0.0 hours",
+      "input": {
+        "hours": 0.0
+      },
+      "expected": 0.0
+    },
+    {
+      "name": "0.04 hours",
+      "input": {
+        "hours": 0.04
+      },
+      "expected": 0.0
+    },
+    {
+      "name": "0.05 hours",
+      "input": {
+        "hours": 0.05
+      },
+      "expected": 0.0
+    },
+    {
+      "name": "0.15 hours",
+      "input": {
+        "hours": 0.15
+      },
+      "expected": 0.2
+    },
+    {
+      "name": "0.35 hours",
+      "input": {
+        "hours": 0.35
+      },
+      "expected": 0.4
+    },
+    {
+      "name": "0.45 hours",
+      "input": {
+        "hours": 0.45
+      },
+      "expected": 0.4
+    },
+    {
+      "name": "0.65 hours",
+      "input": {
+        "hours": 0.65
+      },
+      "expected": 0.6
+    },
+    {
+      "name": "0.95 hours",
+      "input": {
+        "hours": 0.95
+      },
+      "expected": 1.0
+    },
+    {
+      "name": "1.05 hours",
+      "input": {
+        "hours": 1.05
+      },
+      "expected": 1.0
+    },
+    {
+      "name": "2.45 hours",
+      "input": {
+        "hours": 2.45
+      },
+      "expected": 2.4
+    },
+    {
+      "name": "6.25 hours",
+      "input": {
+        "hours": 6.25
+      },
+      "expected": 6.2
+    },
+    {
+      "name": "9.55 hours",
+      "input": {
+        "hours": 9.55
+      },
+      "expected": 9.6
+    },
+    {
+      "name": "12.25 hours",
+      "input": {
+        "hours": 12.25
+      },
+      "expected": 12.2
+    },
+    {
+      "name": "12.35 hours",
+      "input": {
+        "hours": 12.35
+      },
+      "expected": 12.4
+    },
+    {
+      "name": "23.75 hours",
+      "input": {
+        "hours": 23.75
+      },
+      "expected": 23.8
+    },
+    {
+      "name": "239.95 hours",
+      "input": {
+        "hours": 239.95
+      },
+      "expected": 240.0
+    }
+  ]
+}

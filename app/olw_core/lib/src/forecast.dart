@@ -3,6 +3,7 @@
 import 'daypart.dart';
 import 'dates.dart';
 import 'config.dart';
+import 'cycle.dart';
 import 'extract.dart';
 import 'instability.dart';
 import 'llm/prompt.dart';
@@ -228,6 +229,23 @@ Future<ForecastRun> generateForecast({
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
 
+  // The app has no metadata fetch (fetch/model_run.py's HTTP call to
+  // Open-Meteo's own meta.json), so guidance recency here is always the
+  // DERIVED floor from cycle.dart, never OBSERVED — see cycle.py's
+  // docstring for what that means. Still computed rather than reported
+  // "Unavailable" every run: the derived floor costs nothing, and hiding a
+  // number the app can produce for free would be a worse forecast than an
+  // approximate one. `newer_than_previous_issuance` is always null — this
+  // function holds no previous issuance to diff against; that comparison
+  // belongs to whatever persists issuances on this side, not here.
+  final alignedCycle = alignedCycleAt(now.toUtc());
+  final guidanceRecency = {
+    'models_last_aligned_at': _isoLikePython(alignedCycle.initialisedAt),
+    'hours_old': roundHoursToTenths(alignedCycle.ageHours),
+    'source': 'derived',
+    'newer_than_previous_issuance': null,
+  };
+
   final systemPrompt = buildSystemPrompt(
     location,
     isReissue: earlierToday != null && earlierToday.isNotEmpty,
@@ -274,6 +292,7 @@ Future<ForecastRun> generateForecast({
       'day3': day3.map((p) => p.toJson()).toList(),
       'day7': day7.map((p) => p.toJson()).toList(),
     },
+    guidanceRecency: guidanceRecency,
   );
 
   final response = await llm.generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
@@ -290,4 +309,20 @@ Future<ForecastRun> generateForecast({
     systemPrompt: systemPrompt,
     userPrompt: userPrompt,
   );
+}
+
+/// Python's `datetime.isoformat()`, reproduced exactly — same measured
+/// finding as `_isoLikePython` in aqi.dart: Dart's `toIso8601String()` would
+/// render UTC as "...T00:00:00.000Z", Python as "...T00:00:00+00:00", and
+/// this value is stated verbatim in the prompt.
+String _isoLikePython(DateTime value) {
+  final utc = value.toUtc();
+  String pad(int n, int width) => n.toString().padLeft(width, '0');
+
+  final micros = utc.microsecond + utc.millisecond * 1000;
+  final fraction = micros == 0 ? '' : '.${pad(micros, 6)}';
+
+  return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)}'
+      'T${pad(utc.hour, 2)}:${pad(utc.minute, 2)}:${pad(utc.second, 2)}'
+      '$fraction+00:00';
 }

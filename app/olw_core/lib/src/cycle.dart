@@ -97,3 +97,30 @@ AlignedCycle alignedCycleAt(DateTime now) {
     ageHours: ageHours,
   );
 }
+
+/// One decimal place, half-to-even, computed the same way in both languages
+/// — deliberately NOT a language's own rounding.
+///
+/// See `round_hours_to_tenths` in cycle.py for the measured finding: a
+/// scale-and-round-half-even here disagreed with Python's `round(x, 1)` on
+/// 962 of 4801 values swept at 0.05 steps, because Python rounds the DECIMAL
+/// expansion of a binary float. Both sides now do identical IEEE-754
+/// arithmetic, which is exactly specified and so bit-identical across
+/// languages; the same sweep gives 0 divergences. Vector-locked. Do not
+/// "simplify" either side back to `.round()` or `round()`.
+double roundHoursToTenths(double hours) {
+  final scaled = hours * 10;
+  final floor = scaled.floor();
+  final frac = scaled - floor;
+
+  final int tenths;
+  if (frac > 0.5) {
+    tenths = floor + 1;
+  } else if (frac < 0.5) {
+    tenths = floor;
+  } else {
+    tenths = floor.isEven ? floor : floor + 1;
+  }
+
+  return tenths / 10;
+}

@@ -3747,9 +3747,40 @@ guidance looked exactly like a run on fresh guidance.
 Validated twice against live metadata: at 2026-08-28T00:27Z derived said 12z
 and ECMWF's 18z was not yet available; at 09:29Z both said 00z.
 
+**Shipped 2026-08-28, part two — the prompt states it.** GUIDANCE RECENCY
+carries `models_last_aligned_at`, `hours_old`, `source` and
+`newer_than_previous_issuance`. The key is named for the FLOOR so a reader of
+the prompt cannot mistake it for a claim about every model, and the system
+prompt says to state it as "the models were last all on the same cycle at X",
+never "the data is from X". When no newer cycle has landed since the forecast
+being updated, the model is told that plainly — an honest "no new model
+guidance since this morning" is a better update than a paragraph rewritten to
+look like news.
+
+Three edge cases have guards, each with the reasoning attached:
+
+- **An impossible age** (a cycle initialised in the future) means this
+  machine's clock is wrong or the provider said something impossible. The
+  record keeps the anomaly; the prompt is told the recency is unknown rather
+  than handed a negative number to narrate.
+- **A cycle OLDER than the previous issuance's** means this run fell back to
+  the derived floor while the last one had a real observation — we know less
+  than the run before us did. That is not "no new guidance" (which licenses a
+  short, quiet update), it is no basis for comparison, and `null` says so.
+- **Cross-language rounding.** `hours_old` is rendered into a prompt whose two
+  versions are pinned character for character, and Python's `round(x, 1)`
+  rounds the DECIMAL expansion of a binary float in a way no reasonable Dart
+  implementation reproduces. Measured over a 0.05-step sweep from 0 to 240
+  hours: **962 of 4801 values disagreed**, including 0.05 and 9.55. Both
+  sides now run identical IEEE-754 arithmetic —
+  `cycle.round_hours_to_tenths` / `roundHoursToTenths`, vector-locked with the
+  tie values as its cases — and the same sweep gives 0 divergences. Caught in
+  review of the port, not by the vectors, whose sampled points happened to
+  agree.
+
 **Remaining:**
 
-1. **Tell the model.** The prompt still cannot say why this issuance exists.
+1. ~~**Tell the model.**~~ **Done, above.** For the record, the original note: The prompt still cannot say why this issuance exists.
    It should state the age as a floor — "the models were last all on the same
    cycle at X", never "the data is from X" — and on a re-issue, whether that
    is newer than the previous issuance's. When it is NOT newer, the honest

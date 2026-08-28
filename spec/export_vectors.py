@@ -39,6 +39,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from openlocalweather.cycle import round_hours_to_tenths
 from openlocalweather.aqi import (
     STALE_THRESHOLD_HOURS,
     hours_old,
@@ -717,6 +718,15 @@ def export_user_prompt() -> None:
         "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
         "ground_stations_configured": True,
         "local_bulletin_configured": True,
+        # A first issuance: no previous entry to compare against, so
+        # newer_than_previous_issuance is null, not false. hours_old ends in
+        # .5 deliberately — see the Dart port's rounding note in forecast.dart.
+        "guidance_recency": {
+            "models_last_aligned_at": "2026-08-19T00:00:00+00:00",
+            "hours_old": 6.5,
+            "source": "observed",
+            "newer_than_previous_issuance": None,
+        },
     }
     # Two earlier issuances, not one: the vector has to exercise a LIST, or
     # the Dart port could pass with a single-narrative implementation and
@@ -742,6 +752,27 @@ def export_user_prompt() -> None:
             ],
         },
         forward_hourly={"hourly": {"time": ["2026-08-19T18:00"], "precipitation_gfs_seamless": [0.4]}},
+        # A re-issue whose observed cycle has moved on since the morning:
+        # newer_than_previous_issuance true, real news to narrate.
+        guidance_recency={
+            "models_last_aligned_at": "2026-08-19T12:00:00+00:00",
+            "hours_old": 2.3,
+            "source": "observed",
+            "newer_than_previous_issuance": True,
+        },
+    )
+    # Same re-issue, but no new cycle has landed since the morning — the
+    # case that changes what the prompt tells the model to write: stay
+    # quiet rather than manufacture a change. See prompt.py's
+    # "NO NEW GUIDANCE IS AN ANSWER" passage.
+    refresh_no_new_cycle = dict(
+        refresh,
+        guidance_recency={
+            "models_last_aligned_at": "2026-08-19T06:00:00+00:00",
+            "hours_old": 8.3,
+            "source": "derived",
+            "newer_than_previous_issuance": False,
+        },
     )
     no_stations = {
         "today": date(2026, 8, 19),
@@ -758,6 +789,7 @@ def export_user_prompt() -> None:
         "local_bulletin_text": "",
         "ground_stations_configured": False,
         "local_bulletin_configured": True,
+        "guidance_recency": None,
     }
     empty = {
         "today": date(2026, 8, 19),
@@ -774,6 +806,9 @@ def export_user_prompt() -> None:
         "local_bulletin_text": "",
         "ground_stations_configured": True,
         "local_bulletin_configured": True,
+        # Cold start: no basis for a recency reading either — pins the
+        # "Unavailable" fallback wording.
+        "guidance_recency": None,
     }
 
     def case(name, kwargs):
@@ -796,6 +831,7 @@ def export_user_prompt() -> None:
         [
             case("fully populated", full),
             case("evening refresh carries the morning narrative", refresh),
+            case("evening refresh — no newer model cycle since the morning", refresh_no_new_cycle),
             case("cold start — every optional input absent", empty),
             case("no ground stations configured — the blocks are absent", no_stations),
             case(
@@ -1855,6 +1891,26 @@ def _dump_aligned_cycle(c) -> dict:
     }
 
 
+def export_round_hours() -> None:
+    # The values chosen are the ones that MATTER: every case here except the
+    # plain ones is a tie or near-tie where Python's own round() disagrees
+    # with this function. A port that reimplements this with its language's
+    # rounding passes the plain cases and fails these.
+    values = [0.0, 0.04, 0.05, 0.15, 0.35, 0.45, 0.65, 0.95, 1.05, 2.45, 6.25, 9.55, 12.25, 12.35, 23.75, 239.95]
+    write(
+        "round_hours_to_tenths.json",
+        "round_hours_to_tenths",
+        "One decimal place, half-to-even, done with identical IEEE-754 float "
+        "arithmetic in both languages rather than either language's own "
+        "rounding — which disagree on 20% of a 0.05-step sweep. See the "
+        "function's docstring for the measurement.",
+        [
+            {"name": f"{v} hours", "input": {"hours": v}, "expected": round_hours_to_tenths(v)}
+            for v in values
+        ],
+    )
+
+
 def export_cycle() -> None:
     def at(y, m, d, h, minute=0, second=0):
         return datetime(y, m, d, h, minute, second, tzinfo=timezone.utc)
@@ -1925,6 +1981,7 @@ def main() -> None:
     export_temp_high_low()
     export_instability()
     export_cycle()
+    export_round_hours()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

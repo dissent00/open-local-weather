@@ -191,6 +191,22 @@ void main() {
     });
   });
 
+  group('round hours to tenths', () {
+    // The cases that matter are the ties: a port using the language's own
+    // rounding passes the plain values and fails these. See cycle.py's
+    // round_hours_to_tenths for the 962-of-4801 measurement behind it.
+    test('round_hours_to_tenths', () {
+      for (final c in casesOf('round_hours_to_tenths.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expectMatches(
+          roundHoursToTenths((i['hours'] as num).toDouble()),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+  });
+
   group('ground aqi', () {
     test('hours_old / is_stale', () {
       for (final c in casesOf('aqi_staleness.json')) {
@@ -705,6 +721,7 @@ void main() {
           forwardHourly: i['forward_hourly'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
+          guidanceRecency: i['guidance_recency'],
           groundStationsConfigured: i['ground_stations_configured'] as bool,
           localBulletinConfigured: i['local_bulletin_configured'] as bool,
         );
@@ -904,6 +921,7 @@ void main() {
       'aqi_staleness.json',
       'aqi_summary.json',
       'aqi_merge.json',
+      'round_hours_to_tenths.json',
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_strict.json',

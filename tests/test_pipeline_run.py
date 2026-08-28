@@ -1829,3 +1829,123 @@ def test_a_reissue_archives_the_first_issuances_guidance_recency(tmp_path, monke
     assert len(entry.earlier_issuances) == 1
     assert entry.earlier_issuances[0].guidance_source == "observed"
     assert entry.earlier_issuances[0].guidance_initialised_at == morning_initialised
+
+
+def test_an_impossible_guidance_age_is_not_narrated(tmp_path, monkeypatch):
+    """A cycle initialised in the future means this machine's clock is wrong,
+    or the provider said something impossible. The entry still records what
+    was computed — the anomaly belongs in the record — but the prompt is told
+    the recency is unknown rather than handed a negative number to explain."""
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model,
+            initialised_at=datetime.now(timezone.utc) + timedelta(hours=3),
+            available_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        ),
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert "could not establish which model cycle" in user_prompt
+    assert '"hours_old"' not in user_prompt
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.guidance_age_hours < 0, "the record keeps the anomaly"
+
+
+def test_the_days_first_run_has_no_previous_issuance_to_compare(tmp_path):
+    """No stored entry yet, so there is no basis for the comparison — null,
+    not false. Uses the default derived-cycle fallback from patch_fetches."""
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert '"newer_than_previous_issuance": null' in user_prompt
+
+
+def test_a_reissue_reports_true_when_a_newer_cycle_has_landed(tmp_path, monkeypatch):
+    """A re-issue whose observed cycle is newer than the morning's stored
+    one is real news — the models changed their minds, not just the clock."""
+    now = datetime.now(timezone.utc)
+    morning_initialised = now - timedelta(hours=10)
+    advanced_initialised = now - timedelta(hours=4)
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=morning_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=advanced_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+    evening_llm = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = evening_llm.calls[0]
+    assert '"newer_than_previous_issuance": true' in user_prompt
+
+
+def test_a_reissue_reports_false_when_no_newer_cycle_has_landed(tmp_path, monkeypatch):
+    """A re-issue whose observed cycle matches the morning's stored one:
+    the hours moved, the models did not — the prompt must say so plainly
+    rather than let the model hunt for manufactured differences."""
+    now = datetime.now(timezone.utc)
+    unchanged_initialised = now - timedelta(hours=10)
+
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model, initialised_at=unchanged_initialised, available_at=now - timedelta(minutes=30)
+        ),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    evening_llm = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = evening_llm.calls[0]
+    assert '"newer_than_previous_issuance": false' in user_prompt
+
+
+def test_a_run_that_knows_less_than_the_last_one_says_so(tmp_path, monkeypatch):
+    """A resolved cycle OLDER than the previous issuance's means this run fell
+    back to the derived floor while the last one had a real observation. That
+    is not "no new guidance has landed" — which tells the model to keep the
+    update short — it is no basis for the comparison, and null says so."""
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    observed = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    monkeypatch.setattr(
+        model_run_fetch,
+        "fetch_model_run",
+        lambda model: model_run_fetch.ModelRun(
+            model=model,
+            initialised_at=observed,
+            available_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        ),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    # The re-issue loses the observation and falls back to the derived floor,
+    # which is older than what the first run recorded.
+    monkeypatch.setattr(model_run_fetch, "fetch_model_run", lambda model: None)
+    llm = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert '"newer_than_previous_issuance": null' in user_prompt
+    assert '"newer_than_previous_issuance": false' not in user_prompt

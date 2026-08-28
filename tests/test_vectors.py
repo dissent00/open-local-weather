@@ -29,6 +29,7 @@ import pytest
 
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
 from openlocalweather.cycle import aligned_cycle_at
+from openlocalweather.cycle import round_hours_to_tenths
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
@@ -195,6 +196,12 @@ def test_vectors_aqi_merge():
         stored = [GroundAQIReading.model_validate(r) for r in i["stored"]]
         fresh = [GroundAQIReading.model_validate(r) for r in i["fresh"]]
         check(case, merge_ground_aqi(stored, fresh))
+
+
+def test_vectors_round_hours_to_tenths():
+    for case in load("round_hours_to_tenths.json")["cases"]:
+        got = round_hours_to_tenths(case["input"]["hours"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
 def test_vectors_bucket_hourly_by_date():
@@ -552,6 +559,7 @@ def test_every_vector_file_is_exercised():
         "aqi_staleness.json",
         "aqi_summary.json",
         "aqi_merge.json",
+        "round_hours_to_tenths.json",
         "bucket_hourly_by_date.json",
         "llm_schema_gemini.json",
         "llm_schema_strict.json",

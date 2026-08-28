@@ -72,7 +72,7 @@ from openlocalweather.daypart import (
     summarize_daypart,
 )
 from openlocalweather.config import LocationConfig
-from openlocalweather.cycle import aligned_cycle_at
+from openlocalweather.cycle import aligned_cycle_at, round_hours_to_tenths
 from openlocalweather.dates import add_days, format_date, now_in_tz, today_in_tz
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
@@ -652,6 +652,54 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _guidance_recency_payload(guidance: ForwardGuidance, previous: DailyLogEntry | None) -> dict | None:
+    """How old the guidance behind this run is, as the prompt sees it.
+
+    `newer_than_previous_issuance` is the field that matters on a re-issue,
+    and it is computed here rather than left to the model because the model
+    cannot subtract two timestamps it was never given. None on a day's first
+    run, and on a re-issue of an entry written before this was recorded —
+    both mean "no basis for the comparison", which is different from false.
+
+    The key is named for the FLOOR it describes, not for a cycle, so that a
+    reader of the prompt cannot mistake it for a claim about every model.
+    See cycle.py's docstring.
+    """
+    cycle = guidance.guidance_cycle
+    # A negative age means the cycle behind our guidance initialised in the
+    # future, which is not a thing that happens — it means this machine's
+    # clock is wrong, or the provider reported something impossible. Either
+    # way we do not know how old the data is, so say that rather than hand
+    # the model a confident negative number to narrate. The stored value
+    # keeps whatever was computed; the RECORD should show the anomaly even
+    # though the prompt cannot use it. This project already treats the system
+    # clock as worth a second opinion — see daypart.reconcile_now.
+    if cycle.age_hours < 0:
+        return None
+
+    newer = None
+    if previous is not None and previous.guidance_initialised_at is not None:
+        if cycle.initialised_at > previous.guidance_initialised_at:
+            newer = True
+        elif cycle.initialised_at == previous.guidance_initialised_at:
+            newer = False
+        else:
+            # OLDER than what the previous issuance recorded, which is not a
+            # thing the world does — cycles only move forward. It means this
+            # run fell back to the derived floor while the last one had a real
+            # observation, so we know LESS than the run before us did. That is
+            # not "no new guidance has landed" (which licenses a short, quiet
+            # update), it is no basis for the comparison at all. None says so.
+            newer = None
+
+    return {
+        "models_last_aligned_at": cycle.initialised_at.isoformat(),
+        "hours_old": round_hours_to_tenths(cycle.age_hours),
+        "source": cycle.source,
+        "newer_than_previous_issuance": newer,
+    }
+
+
 def _predictions_already_recorded(entry: DailyLogEntry | None) -> ModelPredictionsByLead | None:
     """The scored predictions this date already holds, or None if it holds
     none.
@@ -947,6 +995,7 @@ def run_daily_pipeline(
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
+        guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         # What actually HAPPENED yesterday, so the Overview can open with a
         # real day-over-day comparison. Distinct from verification_context,
         # which is how yesterday's predictions SCORED. Free: this is the same
@@ -1301,6 +1350,7 @@ def run_refresh_pipeline(
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
+        guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=refresh_yesterday_actual,
         review_context=refresh_review_context,
         today_weather_data={
