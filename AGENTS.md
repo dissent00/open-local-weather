@@ -87,6 +87,18 @@ you would otherwise sit idle. Point either at prior art in this repo before
 the outside world — measured 2026-08-28, a search sent straight outside spent
 ~98k tokens rediscovering endpoints `docs-internal/ROADMAP.md` already documented.
 
+**Offer the handoff at a seam, unprompted.** A seam is an event, not a
+feeling: a change committed and pushed, a roadmap item closed, an
+investigation answered. Say so in one line and let the user decide — they
+know what the next hour holds and you do not.
+
+Tie it to the event because the alternative does not work. How much has been
+read is not a number this session can see, so "the context is getting long"
+is noticed too late to act on, if at all. A rule that has to fire without
+being asked also has to live in a file that is loaded without being asked —
+which is this one, and is why the trigger is written here rather than in the
+handoff skill that cannot remind anyone to invoke it.
+
 ## Do not trust your own diff
 
 Code someone else wrote gets audited; code you wrote yourself gets believed.
