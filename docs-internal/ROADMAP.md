@@ -2892,6 +2892,28 @@ published forecast carried no sunrise or sunset that day, and the refresh
 inherits the gap because it now falls back to the stored value rather than
 overwriting a good one with null.
 
+**Measured 2026-08-28, and it is not one bad day: it is every day.** All 18
+committed log entries carry `sunrise: null`. The field shipped on 2026-08-22
+(846c146, with the refresh-path fix at 267df6f the same evening), so the
+entries that should hold a value are 08-23 onward — and they do not. Three
+production run logs were read in full: 2026-08-26T03:03:29Z,
+2026-08-27T03:03:24Z and 2026-08-28T00:29:56Z. All three logged the same 30
+second read timeout on `api.open-meteo.com/v1/forecast`. The runs of 08-23,
+08-24 and 08-25 were not checked; the three that were are unanimous.
+
+The same call from a laptop answers in well under a second, and a full
+pipeline run against the live network stores `sunrise: '06:38'` — so this is
+not the endpoint being down, and not a bug in the current tree. It is that
+one specific call, from GitHub's runners, reliably enough to have never once
+succeeded there.
+
+Note what that means for the reader: the site has shown no sun times for six
+days, and every prompt in that window was told the part of day was unknown —
+`daypart_without_sun` keeps the clock and drops the phase, so the model has
+been writing "it is 06:01" without knowing whether that is before or after
+dawn. Nothing flagged it. This is item 51's motivating case, found while
+looking for something else.
+
 **Sunrise and sunset are deterministic.** They depend on latitude, longitude
 and date, and nothing else. Fetching them over a network for a fixed location
 is the only part of this that can fail, and it is failing for a quantity that
@@ -3834,3 +3856,90 @@ seamless names resolve differently by LOCATION — icon_d2 and icon_eu do not
 cover Kisumu. A mapping that is right for this deployment and wrong for a
 fork does not belong in a permanent archive.
 
+---
+
+## 51. Tell a blip from a death · **Planned**
+
+Raised by Conor on 2026-08-28, from the third outcome in item 50's
+aligned-window check: "we're relying on a lot of free/open sources here, and
+some that may change without notice — there's nothing telling your local
+airport or forecast service that they can't change their URL, or even that
+Open-Meteo can't change or pass on changes from upstream. Or that they need
+to have more than a few nines, if any as we see with AQI data, of uptime. So
+all that to say, how we handle both temporary failures, and long-term
+failures, has to be resilient and aware of the difference."
+
+Every best-effort source in this project is handled tolerantly: the fetch
+returns None, the run continues, the record stores the absence, and the
+prompt says what is missing rather than guessing. That is correct for a blip
+and wrong for a death, and **nothing currently tells them apart.**
+
+### The case that proves it, found the same day
+
+Sun times have failed on every production run for six days (item 39). The
+degradation worked perfectly each time. Nobody knew. The published forecast
+lost a feature within a day of gaining it, and the only reason it surfaced
+was an unrelated read of the log file.
+
+Item 25 already established the principle for model VARIABLES — tolerance
+keeps the system running, visibility is a separate property, and absence
+that propagates cleanly is absence nobody investigates. This is the same
+lesson one layer out: it applies to whole SOURCES, not just to fields within
+a source that answered.
+
+### Two questions, two mechanisms
+
+- **"Did this fetch fail?"** is per-run, belongs in the driver, and is
+  already answered: best-effort, never fatal. Nothing to change.
+- **"Has this source been failing?"** is a property of the record over time.
+  `coverage.py` already answers exactly this shape twice — `detect_coverage`
+  for a variable that stopped arriving, `detect_trigger_regression` for a
+  trigger that died while output carried on — and both derive it from the
+  committed log with no new storage and no extra fetch. That is the pattern
+  to extend, not a new subsystem.
+
+Surface it through `check-health`, which item 50 just established as the
+place for things that rot slowly, under the same rule that check follows: a
+blip must not turn the job red, a death must.
+
+### The real work: the record stores the absence, not the reason
+
+`sunrise: null` looks identical whether the fetch timed out, the response
+shape changed, or the location is in polar night — and the third is a
+correct answer, not a fault. `ground_aqi: []` is a WAQI outage and a station
+with nothing to report. Until a run records WHY it has no value, a
+record-based check can only count nulls, and counting nulls would have
+alarmed on Longyearbyen.
+
+So the sequence is: record the reason, then count consecutive failures, then
+report. Not the other way round.
+
+**Where the reason lives is not decided.** A per-run `sources` block
+(`{name: ok | absent | failed}`) is one place to look and one thing to write;
+a sibling field next to each optional value keeps the reason beside the
+thing it explains. The first is probably right, but the second survives
+schema drift better. Settle it when building, not now.
+
+### Thresholds are per-source, because "normal" differs
+
+A WAQI station going quiet for two days is routine (item 4 documents how
+routine). A daily met bulletin missing twice is not. Sun times failing once
+is already wrong, since nothing about them should require a network at all
+(item 39). `COVERAGE_ABSENT_RUNS = 3` is the existing precedent for "more
+than one, because a single failed fetch is noise" — a starting point per
+source, not a global.
+
+### The specific debt this pays off first
+
+`check-health`'s aligned-window check reports NOT_CHECKED and exits 0 when
+the metadata endpoint says nothing, because a blip must not go red. A
+permanently dead endpoint therefore stays permanently green. The record
+already holds the fix: every issuance stores `guidance_source`, so "the last
+N issuances all fell back to `derived`" is the failing condition, and it
+needs no new state.
+
+Blocked on rows: 0 of 18 entries carry `guidance_source` as of 2026-08-28,
+the field having shipped after that day's only run. The same wait gates item
+49.
+
+Related: items 4, 25, 39, 49, 50.

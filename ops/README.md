@@ -179,11 +179,14 @@ Four things that are easy to get wrong here:
   offset off the exact hour the way the GitHub-side crons do; that trick
   works around GitHub Actions' scheduler congestion, which an ordinary cron
   daemon does not share.
-- **A copy of the script is not the script.** `$HOME/bin/trigger_workflow.sh`
-  above is a copy, so `git pull` in the checkout will not update it. Symlink
-  it to `ops/trigger_workflow.sh` in the checkout, or re-copy after every
-  pull — otherwise the version in version control and the version cron runs
-  drift apart, invisibly, until they behave differently.
+- **A copy of the script is not the script, and that is the right trade.**
+  `$HOME/bin/trigger_workflow.sh` above is a copy, so `git pull` in a
+  checkout will not update it, and the two can drift apart invisibly. Copy
+  it anyway rather than symlinking cron's target into a working tree: a
+  symlink turns `git pull` into a deployment with no review step, so
+  whatever lands in the repo executes as your cron user on the next tick.
+  Re-copy deliberately when the script changes — the drift is a thing you
+  can check, while the symlink is a standing grant.
 
 The trailing `forecast.yml` is optional: the script defaults to it, and
 naming it is a spelling opportunity that a bare call does not have (a
