@@ -2320,7 +2320,7 @@ one that reads as generated.
 
 ---
 
-## 32. Storage keeps two issuances a day, the prompt now allows any number · **Planned**
+## 32. Storage keeps two issuances a day, the prompt now allows any number · **Shipped**
 
 Making every run time-aware (items 30/31's sibling work) generalised the
 *prompt* to any number of issuances a day. Storage did not follow, and the gap
@@ -2356,6 +2356,47 @@ applies.
 
 **Not urgent.** Two runs a day is the current deployment and the common case
 for forkers. This becomes real the moment someone wants four.
+
+**Shipped 2026-08-28**, and it stopped being hypothetical first: `olw forecast`
+(item 34b) makes a third issuance a cron line rather than a code change, and a
+delayed scheduler slot can produce one unasked (item 49).
+
+`DailyLogEntry.earlier_issuances` holds every issuance before the current one,
+oldest first; the current one stays in the top-level fields, so there is never
+a second copy of the latest narrative to keep consistent.
+`MorningIssuanceSnapshot` is now `IssuanceSnapshot` — named for what it holds
+rather than when. `morning_issuance` keeps being written, redundantly and
+deliberately: `data/log/*.json` is the public archive and `publish/pages.py`
+keys off it by name. One accessor, `issuance_log()`, reads both shapes and
+appends the current issuance last; committed entries are never migrated, and
+the docstring says why — an archive rewritten to look like it always had a
+field is no longer a true account of what was stored.
+
+**Two bugs came out of it, both in the prompt rather than the storage.**
+
+The block listing what has already been published today returned ONE element,
+`narrative_markdown` — so a third run saw the second issuance and had no idea
+the first existed, though `morning_issuance` held it the whole time. That was
+the half of this item that improves output rather than only the record.
+
+And it read `entry.meta.generated_at`, which does not exist. `getattr` returned
+None every time, so every earlier issuance reached the prompt as "earlier
+today" rather than a clock time. Silent for as long as the field has existed.
+
+**Timestamps needed care, found in review of the change itself.** An
+issuance's time is `last_issued_at` — `refreshed_at` if the entry has been
+re-issued, else `generated_at_utc`. The predecessor helper only ever captured
+the day's FIRST issuance, where the two are equal; generalising it to any
+issuance made that equivalence false, and a snapshot reading
+`generated_at_utc` stamps a 22:00 update as 06:07 in both the archive and the
+next run's prompt. Verified against all 18 committed entries, which now yield
+correct per-issuance times through the accessor.
+
+**Deferred, deliberately:** the published archive still renders exactly two
+pages a day, `<date>.html` and `<date>-morning.html`, from `morning_issuance`.
+Those URLs are published and permanent. Showing a day as it actually unfolded
+is the follow-on, and it needs a URL scheme that can name an arbitrary
+issuance without breaking the two that already exist.
 
 ---
 

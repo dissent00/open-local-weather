@@ -50,7 +50,7 @@ def _narrative_html(entry: DailyLogEntry) -> str:
 def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
     """Reconstructs what `entry` looked like right before an evening
     refresh overwrote it, as a full DailyLogEntry — not just the raw
-    MorningIssuanceSnapshot fields — so the exact same forecast_page
+    IssuanceSnapshot fields — so the exact same forecast_page
     template renders it with zero morning/evening-aware branching baked
     into the template itself. Only ever called when entry.morning_issuance
     is not None. `morning_issuance` is cleared on the result (nothing to
@@ -286,7 +286,7 @@ class GitHubPagesPublisher:
         # never stacked alongside an earlier one. Tried and reverted: it
         # buried whichever issuance was current below the other, forcing a
         # scroll past stale content to reach the thing most readers
-        # actually want. See MorningIssuanceSnapshot's doc comment
+        # actually want. See IssuanceSnapshot's doc comment
         # (models.py) for the fuller history.
         index_html = render_forecast_page(
             entry, self.location, self.nav, is_latest=True, issuance_label=_issuance_label(entry, morning=False)

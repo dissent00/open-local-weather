@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 
 from openlocalweather.defaults import LEAD_TIMES_DAYS, MODELS
 from openlocalweather.models import (
+    IssuanceSnapshot,
     DailyActual,
     DailyLogEntry,
     LogEntryMeta,
@@ -89,6 +90,100 @@ def test_make_log_lookup(tmp_path):
     lookup = log_store.make_log_lookup(tmp_path)
     assert lookup(d) == entry
     assert lookup(date(2099, 1, 1)) is None
+
+
+# ---------------------------------------------------------------------------
+# DailyLogEntry.issuance_log
+# ---------------------------------------------------------------------------
+
+
+def test_issuance_log_has_one_element_for_a_day_never_reissued():
+    entry = make_log_entry(date(2026, 8, 11))
+    log = entry.issuance_log()
+    assert len(log) == 1
+    assert log[0].narrative_markdown == entry.narrative_markdown
+
+
+def test_issuance_log_reads_the_old_shape_via_morning_issuance():
+    """Every entry committed before earlier_issuances existed carries only
+    morning_issuance, with no earlier_issuances key in the JSON at all —
+    not an empty list, an ABSENT key. issuance_log() must read that shape
+    forever: data/log/ is the project's record, and rewriting an old entry
+    to carry the new field would edit history to look like it always did.
+    Built via model_validate on a plain dict so the missing key is actually
+    exercised, not a Python default standing in for it.
+    """
+    old_shape = dict(
+        date=date(2026, 8, 11),
+        rain_expected="Likely",
+        temp_high_c=26.0,
+        temp_low_c=18.0,
+        temp_high_low_display="26°C / 79°F",
+        mslp_trend_24h="falling",
+        synoptic_pattern="trough",
+        narrative_markdown="## Overview\nSecond issuance.",
+        morning_issuance=dict(
+            rain_expected="Unlikely",
+            temp_high_c=27.0,
+            temp_low_c=19.0,
+            temp_high_low_display="27°C / 81°F",
+            mslp_trend_24h="steady",
+            synoptic_pattern="ridge",
+            narrative_markdown="## Overview\nFirst issuance.",
+            generated_at_utc=datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc),
+        ),
+        meta=dict(
+            generated_at_utc=datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc),
+            llm_provider="gemini",
+            llm_model="gemini-test",
+            pipeline_version="0.1.0",
+        ),
+    )
+    entry = DailyLogEntry.model_validate(old_shape)
+
+    log = entry.issuance_log()
+    assert len(log) == 2
+    assert "First issuance" in log[0].narrative_markdown
+    assert "Second issuance" in log[1].narrative_markdown
+
+
+def test_a_later_issuance_carries_its_own_time_not_the_first_runs():
+    """An issuance's time is when the entry last SAID something, not when it
+    first existed.
+
+    meta.generated_at_utc is deliberately frozen at the day's first run — it
+    is the audit trail for when the entry came into being, and a later run
+    must not move it. So a snapshot that reads generated_at_utc stamps every
+    issuance of the day with the first one's clock: an update published at
+    22:00 lands in the archive, and in the next run's prompt, claiming 06:07.
+    Wrong quietly, and more wrongly than the "earlier today" it replaced,
+    because it is confident.
+    """
+    first = datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc)
+    latest = datetime(2026, 8, 11, 22, 0, tzinfo=timezone.utc)
+    entry = make_log_entry(date(2026, 8, 11)).model_copy(
+        update={
+            "narrative_markdown": "## Overview\nThe 22:00 update.",
+            "earlier_issuances": [
+                IssuanceSnapshot(
+                    rain_expected="Unlikely",
+                    temp_high_c=27.0,
+                    temp_low_c=19.0,
+                    temp_high_low_display="27°C / 81°F",
+                    mslp_trend_24h="steady",
+                    synoptic_pattern="ridge",
+                    narrative_markdown="## Overview\nThe 06:07 issuance.",
+                    generated_at_utc=first,
+                )
+            ],
+        }
+    )
+    entry.meta.generated_at_utc = first
+    entry.meta.refreshed_at = latest
+
+    log = entry.issuance_log()
+    assert [i.generated_at_utc for i in log] == [first, latest]
+    assert entry.to_issuance_snapshot().generated_at_utc == latest
 
 
 # ---------------------------------------------------------------------------

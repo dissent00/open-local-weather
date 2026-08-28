@@ -249,27 +249,27 @@ class LogEntryMeta(BaseModel):
     trigger_source: str | None = None
 
 
-class MorningIssuanceSnapshot(BaseModel):
+class IssuanceSnapshot(BaseModel):
     """A frozen copy of DailyLogEntry's public-facing fields exactly as
-    they stood right before an evening refresh overwrote them in place.
+    they stood right before a later run overwrote them in place.
 
-    Real bug this fixes: run_refresh_pipeline merges the evening's fresh
+    Real bug this fixes: run_refresh_pipeline merges a later run's fresh
     narrative_markdown/today_properties/ground_aqi/whatsapp_summary
-    directly into the existing entry, so the morning issuance's actual
+    directly into the existing entry, so an earlier issuance's actual
     published text was silently gone from both the committed JSON and the
-    rendered archive page the moment a refresh landed — recoverable only
-    by digging through git history for the pre-refresh commit, not from
+    rendered archive page the moment a later run landed — recoverable only
+    by digging through git history for the pre-overwrite commit, not from
     anything the site or data file exposed. model_predictions/verification
     were never affected (those already survive a refresh untouched — see
     LogEntryMeta) and are deliberately NOT duplicated here; this only
-    covers the fields a refresh actually overwrites.
+    covers the fields a later run actually overwrites.
 
-    Captured once, by whichever refresh run is first to find
-    DailyLogEntry.morning_issuance unset — see run_refresh_pipeline. A
-    second same-day refresh (shouldn't normally happen; the GitHub Actions
-    `check` job gates on meta.refreshed_at already being set — see
-    evening_refresh.yml) must never re-snapshot an already-refreshed
-    entry as if it were the true morning issuance.
+    Named for what it captures, not when: this used to hold at most one of
+    these, as DailyLogEntry.morning_issuance, back when a day held at most
+    two issuances — so the only snapshot ever taken was the morning's. A
+    day can now hold any number, so DailyLogEntry.earlier_issuances holds
+    one of these per issuance before the current one; see its doc comment,
+    and DailyLogEntry.issuance_log() for the accessor that reads both.
     """
 
     rain_expected: str
@@ -366,13 +366,94 @@ class DailyLogEntry(BaseModel):
     narrative_markdown: str
     whatsapp_summary: str | None = None
 
-    # Set only when an evening refresh has overwritten the fields above —
-    # the pre-refresh (morning) issuance, preserved so it stays readable
-    # and archived rather than silently lost. None for an entry that's
-    # never been refreshed. See MorningIssuanceSnapshot's doc comment.
-    morning_issuance: MorningIssuanceSnapshot | None = None
+    # Every issuance BEFORE the current one, oldest first. The current
+    # issuance is never duplicated in here — it stays in the top-level
+    # fields above, exactly as it always has. Absent/empty on every entry
+    # committed before this field existed; see issuance_log() below for the
+    # accessor that reads both shapes.
+    earlier_issuances: list[IssuanceSnapshot] = Field(default_factory=list)
+
+    # Set only when a later run has overwritten the fields above — the
+    # pre-refresh (morning) issuance, preserved so it stays readable and
+    # archived rather than silently lost. None for an entry that's never
+    # been refreshed. See IssuanceSnapshot's doc comment.
+    #
+    # Redundant with earlier_issuances[0] once that list is non-empty, and
+    # deliberately kept anyway: data/log/*.json is this project's public
+    # archive, and publish/pages.py (plus any external reader) keys off
+    # this field by name to build archive/<date>-morning.html. That schema
+    # is allowed to grow but must never change under a reader — removing
+    # this field would be exactly that change.
+    morning_issuance: IssuanceSnapshot | None = None
 
     meta: LogEntryMeta
+
+    @property
+    def last_issued_at(self) -> datetime:
+        """When this entry last SAID something.
+
+        Not meta.generated_at_utc, which is deliberately frozen at the day's
+        first run — that field is the audit trail for when the entry came
+        into being, and a later run must not move it. refreshed_at is when
+        the current narrative went out; it is None until something re-issues.
+        """
+        return self.meta.refreshed_at or self.meta.generated_at_utc
+
+    def to_issuance_snapshot(self) -> IssuanceSnapshot:
+        """This entry's current top-level fields, frozen as an
+        IssuanceSnapshot — what a later run must capture before it
+        overwrites them. Moved here from pipeline.py's `_morning_snapshot`:
+        it is model knowledge (which fields make up one issuance), and
+        issuance_log() below needs it too.
+
+        Stamped with last_issued_at, not generated_at_utc. The predecessor
+        of this method only ever captured the day's FIRST issuance, where
+        the two are the same value; generalising it to any issuance made
+        that equivalence false, and stamping a 22:00 update with the 06:07
+        clock is a confident wrong answer where the old code had an
+        "earlier today" shrug.
+        """
+        return IssuanceSnapshot(
+            rain_expected=self.rain_expected,
+            onset_window=self.onset_window,
+            peak_wind_kmh=self.peak_wind_kmh,
+            temp_high_c=self.temp_high_c,
+            temp_low_c=self.temp_low_c,
+            temp_high_low_display=self.temp_high_low_display,
+            mslp_trend_24h=self.mslp_trend_24h,
+            synoptic_pattern=self.synoptic_pattern,
+            uv_index_max=self.uv_index_max,
+            air_quality_aqi=self.air_quality_aqi,
+            ground_aqi=self.ground_aqi,
+            narrative_markdown=self.narrative_markdown,
+            whatsapp_summary=self.whatsapp_summary,
+            generated_at_utc=self.last_issued_at,
+        )
+
+    def issuance_log(self) -> list[IssuanceSnapshot]:
+        """Every issuance of the day, oldest first, the CURRENT one last.
+
+        Reads two shapes on purpose and never rewrites either into the
+        other. An entry written after earlier_issuances existed carries it
+        directly; every entry committed before that change (everything in
+        data/log/ as of this change) has none, so this falls back to
+        [morning_issuance] when that is set, or to nothing when the day was
+        never re-issued. Either way, the current top-level fields are
+        appended last.
+
+        The archive in data/log/ is this project's record. Migrating old
+        entries to carry earlier_issuances would edit history to look like
+        it always had this field — which destroys the very thing an
+        archive is for: a true account of what was actually stored at the
+        time. Reading both shapes forever costs one small function; the
+        alternative costs the archive's own honesty.
+        """
+        current = self.to_issuance_snapshot()
+        if self.earlier_issuances:
+            return [*self.earlier_issuances, current]
+        if self.morning_issuance is not None:
+            return [self.morning_issuance, current]
+        return [current]
 
 
 # ---------------------------------------------------------------------------

@@ -906,6 +906,27 @@ def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_pat
     assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
 
 
+def test_a_third_run_is_shown_both_earlier_narratives(tmp_path):
+    """_earlier_issuances used to return only entry.narrative_markdown — one
+    element — so a third run was shown the second issuance and had no idea
+    the first one existed, even though morning_issuance still held it. The
+    prompt must carry every issuance published today, not just the last."""
+    run_daily_pipeline(make_deps(tmp_path, llm=FakeLLMProvider()), today=date(2026, 8, 11), dry_run=False)
+
+    second = FakeLLMProvider()
+    second.response = second.response.model_copy(
+        update={"today_narrative": "## Overview\nSECOND issuance."}
+    )
+    run_refresh_pipeline(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
+
+    third = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=True)
+
+    _, user_prompt = third.calls[0]
+    assert "Dry and warm" in user_prompt, "the first issuance"
+    assert "SECOND issuance" in user_prompt, "the second issuance"
+
+
 def test_every_run_is_told_what_time_it_is(tmp_path):
     """The bug this whole change exists for: the prompt carried a date and
     nothing else, so a run could not tell 06:00 from 18:00 and wrote as though
@@ -1211,16 +1232,16 @@ def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, 
     assert result.log_entry.sunset is None
 
 
-def test_a_third_run_loses_the_middle_narrative(tmp_path):
-    """Storage keeps the FIRST issuance and the LATEST, not the ones between.
+def test_three_issuances_are_all_recoverable_from_the_stored_entry(tmp_path):
+    """Storage used to keep the FIRST issuance and the LATEST, not the ones
+    between: morning_issuance was written only if not already set, so run 3
+    preserved run 1 and overwrote run 2 with nothing left to recover it
+    from. With two runs a day nothing was lost; with three or more, the
+    middle ones were gone from the committed record. See ROADMAP item 32.
 
-    morning_issuance is written only if not already set, so run 3 preserves
-    run 1 and overwrites run 2. With two runs a day nothing is lost; with
-    three or more, the middle ones are gone from the committed record.
-
-    Pinned as a KNOWN LIMIT rather than as desired behaviour — the prompt now
-    generalises to any number of runs, and the storage does not yet. See
-    ROADMAP item 32.
+    Now every issuance before the current one is kept, oldest first, in
+    earlier_issuances — the current one stays where it always has, at the
+    top level. morning_issuance still tracks the first, unchanged.
     """
     deps1 = make_deps(tmp_path, llm=FakeLLMProvider())
     run_daily_pipeline(deps1, today=date(2026, 8, 11), dry_run=False)
@@ -1238,11 +1259,19 @@ def test_a_third_run_loses_the_middle_narrative(tmp_path):
     run_refresh_pipeline(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert "THIRD" in entry.narrative_markdown, "the latest survives"
+    assert "THIRD" in entry.narrative_markdown, "the latest stays at the top level"
+    assert len(entry.earlier_issuances) == 2
+    assert "Dry and warm" in entry.earlier_issuances[0].narrative_markdown, "first, oldest first"
+    assert "SECOND" in entry.earlier_issuances[1].narrative_markdown, "second, no longer lost"
     assert entry.morning_issuance is not None
-    assert "Dry and warm" in entry.morning_issuance.narrative_markdown, "the first survives"
-    assert "SECOND" not in entry.morning_issuance.narrative_markdown
-    assert "SECOND" not in entry.narrative_markdown, "the middle one is gone"
+    assert "Dry and warm" in entry.morning_issuance.narrative_markdown, "still the first"
+
+    log = entry.issuance_log()
+    assert [i.narrative_markdown for i in log] == [
+        entry.earlier_issuances[0].narrative_markdown,
+        entry.earlier_issuances[1].narrative_markdown,
+        entry.narrative_markdown,
+    ]
 
 
 def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):

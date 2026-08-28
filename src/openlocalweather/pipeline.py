@@ -104,7 +104,6 @@ from openlocalweather.models import (
     LogEntryMeta,
     ModelPrediction,
     ModelPredictionsByLead,
-    MorningIssuanceSnapshot,
     TrackRecord,
     format_temp_high_low,
 )
@@ -288,20 +287,18 @@ def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
     return _verify_recorded
 
 
-def _earlier_issuances(entry) -> list[dict]:
+def _issuances_for_prompt(entry: DailyLogEntry) -> list[dict]:
     """Today's already-published narratives, oldest first.
 
-    The log currently stores one narrative per day plus an optional refreshed
-    one, so this returns at most two. It returns a LIST regardless, because
-    the number of runs a day is an operator's choice and the prompt should not
-    have to change when someone schedules a third.
+    One dict per issuance in entry.issuance_log() — now the model's concept,
+    not this module's. Used to return only entry.narrative_markdown, one
+    element, so a third run was shown the second issuance and had no idea
+    the first one ever existed even though morning_issuance still held it.
     """
-    out = []
-    morning = getattr(entry, "narrative_markdown", None)
-    if morning:
-        issued = getattr(entry.meta, "generated_at", None) if hasattr(entry, "meta") else None
-        out.append({"time": _clock(issued) or "earlier today", "narrative": morning})
-    return out
+    return [
+        {"time": _clock(issuance.generated_at_utc) or "earlier today", "narrative": issuance.narrative_markdown}
+        for issuance in entry.issuance_log()
+    ]
 
 
 def _clock(value) -> str | None:
@@ -579,33 +576,6 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
         }
         for r in guidance.ground_aqi_readings
     ]
-
-
-def _morning_snapshot(entry: DailyLogEntry) -> MorningIssuanceSnapshot:
-    """The day's first issuance, captured from an entry about to be
-    overwritten by a later one.
-
-    Taken exactly once per day — every caller guards on
-    `entry.morning_issuance` already being set. Re-snapshotting on a second
-    re-issue would replace the morning's copy with an already-refreshed one,
-    which is the whole thing this exists to prevent.
-    """
-    return MorningIssuanceSnapshot(
-        rain_expected=entry.rain_expected,
-        onset_window=entry.onset_window,
-        peak_wind_kmh=entry.peak_wind_kmh,
-        temp_high_c=entry.temp_high_c,
-        temp_low_c=entry.temp_low_c,
-        temp_high_low_display=entry.temp_high_low_display,
-        mslp_trend_24h=entry.mslp_trend_24h,
-        synoptic_pattern=entry.synoptic_pattern,
-        uv_index_max=entry.uv_index_max,
-        air_quality_aqi=entry.air_quality_aqi,
-        ground_aqi=entry.ground_aqi,
-        narrative_markdown=entry.narrative_markdown,
-        whatsapp_summary=entry.whatsapp_summary,
-        generated_at_utc=entry.meta.generated_at_utc,
-    )
 
 
 def _predictions_already_recorded(entry: DailyLogEntry | None) -> ModelPredictionsByLead | None:
@@ -923,7 +893,7 @@ def run_daily_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         issuance=guidance.issuance,
         forward_hourly=guidance.forward_hourly,
-        earlier_today=_earlier_issuances(existing_entry) if existing_entry is not None else None,
+        earlier_today=_issuances_for_prompt(existing_entry) if existing_entry is not None else None,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
@@ -1010,10 +980,11 @@ def run_daily_pipeline(
     # see the LATER ISSUANCE block). Storing that would overwrite the real
     # verification the day's first run wrote.
     if existing_entry is not None:
+        current_snapshot = existing_entry.to_issuance_snapshot()
         log_entry = log_entry.model_copy(
             update={
-                "morning_issuance": existing_entry.morning_issuance
-                or _morning_snapshot(existing_entry),
+                "morning_issuance": existing_entry.morning_issuance or current_snapshot,
+                "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
                 "verification": existing_entry.verification,
                 "yesterday_verification_summary": existing_entry.yesterday_verification_summary,
                 "meta": log_entry.meta.model_copy(
@@ -1081,12 +1052,6 @@ def run_daily_pipeline(
     )
 
 
-def _last_issued_at(entry: DailyLogEntry) -> datetime:
-    """When this entry last said something — the re-issue if there was one,
-    otherwise the run that created it."""
-    return entry.meta.refreshed_at or entry.meta.generated_at_utc
-
-
 def run_forecast(
     deps: PipelineDeps,
     today: date | None = None,
@@ -1125,7 +1090,7 @@ def run_forecast(
         return run_daily_pipeline(deps, today=today, dry_run=dry_run)
 
     now = now or datetime.now(timezone.utc)
-    age_minutes = (now - _last_issued_at(existing_entry)).total_seconds() / 60
+    age_minutes = (now - existing_entry.last_issued_at).total_seconds() / 60
     if not force and age_minutes < MIN_REISSUE_INTERVAL_MINUTES:
         return ForecastSkipped(
             today=today,
@@ -1279,7 +1244,7 @@ def run_refresh_pipeline(
         # `morning_narrative`, which assumed the day has exactly two runs; an
         # operator may schedule two or five, and each one after the first
         # needs to know what its readers have already been told.
-        earlier_today=_earlier_issuances(existing_entry),
+        earlier_today=_issuances_for_prompt(existing_entry),
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
@@ -1296,17 +1261,23 @@ def run_refresh_pipeline(
     # narrative/today_properties/ground_aqi/whatsapp_summary and a new
     # refreshed_at timestamp are updated.
     #
-    # Before overwriting them, snapshot the morning issuance's own version
-    # of those same fields into morning_issuance — but ONLY if one isn't
-    # already captured. A day's true morning issuance must be snapshotted
-    # exactly once; re-snapshotting on a hypothetical second same-day
-    # refresh would silently replace it with an already-refreshed version,
-    # defeating the whole point. (In practice this shouldn't happen —
-    # evening_refresh.yml's `check` job gates on meta.refreshed_at already
-    # being set — but the guard costs nothing and matches this project's
-    # existing belt-and-suspenders idempotency style, e.g.
-    # last_verified_target_date in verify/pipeline.py.) ---
-    morning_snapshot = existing_entry.morning_issuance or _morning_snapshot(existing_entry)
+    # Before overwriting them, snapshot the existing entry's own version of
+    # those same fields — current_snapshot always gets appended below to
+    # earlier_issuances, since it is by definition an issuance that
+    # happened before the one this run is about to write.
+    #
+    # morning_issuance is different: it must be snapshotted exactly ONCE,
+    # by whichever run is first to find it unset, so it keeps the day's
+    # TRUE morning content. Re-snapshotting on a later refresh would
+    # silently replace it with an already-refreshed version — hence the
+    # `or`, which only reaches current_snapshot the first time. (A second
+    # same-day refresh finding morning_issuance already set shouldn't
+    # normally happen — evening_refresh.yml's `check` job gates on
+    # meta.refreshed_at already being set — but the guard costs nothing and
+    # matches this project's existing belt-and-suspenders idempotency
+    # style, e.g. last_verified_target_date in verify/pipeline.py.)
+    current_snapshot = existing_entry.to_issuance_snapshot()
+    morning_snapshot = existing_entry.morning_issuance or current_snapshot
 
     tp = llm_response.today_properties
     updated_entry = existing_entry.model_copy(
@@ -1339,6 +1310,7 @@ def run_refresh_pipeline(
             "narrative_markdown": llm_response.today_narrative,
             "whatsapp_summary": llm_response.whatsapp_summary,
             "morning_issuance": morning_snapshot,
+            "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
             "meta": existing_entry.meta.model_copy(update={"refreshed_at": datetime.now(timezone.utc)}),
         }
     )

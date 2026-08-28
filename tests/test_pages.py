@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.models import LogEntryMeta, ModelPredictionsByLead, MorningIssuanceSnapshot
+from openlocalweather.models import IssuanceSnapshot, LogEntryMeta, ModelPredictionsByLead
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.publish.pages import (
     ArchiveItem,
@@ -107,7 +107,7 @@ def _refreshed_entry(d=date(2026, 8, 11), **overrides):
     defaults = dict(
         rain_expected="Heavy rain now",
         narrative_markdown="## Overview\nEvening: rain has arrived.",
-        morning_issuance=MorningIssuanceSnapshot(
+        morning_issuance=IssuanceSnapshot(
             rain_expected="Dry all day",
             temp_high_c=26.0,
             temp_low_c=18.0,
