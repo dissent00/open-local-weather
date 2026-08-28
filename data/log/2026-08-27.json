@@ -218,8 +218,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: All models correctly verified the dry precipitation call for August 27th. ECMWF and Best Match captured high temperatures exceptionally well (0.1°C error), whereas Kenya Met (+2.9°C) and UKMO (+2.1°C) exhibited warm high bias, and GFS/UKMO overpredicted peak winds by 20–24 km/h."
     },
     "day3": {
       "verified": false,

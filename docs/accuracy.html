@@ -24,84 +24,114 @@
   <p class="meta">How well each forecast model has actually performed <em>here</em>, scored against observed conditions. Every figure on this page is recomputed from the raw committed record on each run &mdash; nothing is carried forward, so anything here can be re-derived from <a href="https://github.com/dissent00/open-local-weather">the repository</a>.</p>
 
   <h2>How much data is behind this</h2>
-  <p class="sufficiency">Reviewed 17 day(s) of stored forecasts (2026-08-11 to 2026-08-26), of which 16 have observations to score against. Day+0: 7 check(s) per model — directional only, not yet enough to rank models against each other. (Coverage at Day+0 is uneven: kenya_met has fewer than the 16 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (olw_blend has no verified checks at Day+0 yet and is not included in the figure above.) Day+3: 4 check(s) per model — not enough to say anything; roughly 1 more day(s) before even a provisional read. (Coverage at Day+3 is uneven: kenya_met has fewer than the 13 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (olw_blend has no verified checks at Day+3 yet and is not included in the figure above.) Day+7: 9 check(s) per model — directional only, not yet enough to rank models against each other. (icon_seamless, kenya_met, olw_blend, ukmo_seamless have no verified checks at Day+7 yet and are not included in the figure above.)</p>
+  <p class="sufficiency">Reviewed 18 day(s) of stored forecasts (2026-08-11 to 2026-08-27), of which 17 have observations to score against. Day+0: 8 check(s) per model — directional only, not yet enough to rank models against each other. (Coverage at Day+0 is uneven: kenya_met has fewer than the 17 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (olw_blend has no verified checks at Day+0 yet and is not included in the figure above.) Day+3: 5 check(s) per model — directional only, not yet enough to rank models against each other. (Coverage at Day+3 is uneven: kenya_met has fewer than the 14 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (olw_blend has no verified checks at Day+3 yet and is not included in the figure above.) Day+7: 10 check(s) per model — enough to compare models, though differences smaller than about 15 points remain noise. (icon_seamless, kenya_met, olw_blend, ukmo_seamless have no verified checks at Day+7 yet and are not included in the figure above.)</p>
 
   <h2>What the record supports</h2>
   <ul class="findings">
     <li>
       <span class="claim">At Day+0, best_match is the strongest rain caller here and gfs_seamless the weakest.</span>
-      <span class="evidence">best_match 14/16 (88%) vs gfs_seamless 9/16 (56%); a 31-point gap, above the 15-point noise floor.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">best_match 15/17 (88%) vs gfs_seamless 10/17 (59%); a 29-point gap, above the 15-point noise floor.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, gfs_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +19.8 km/h across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error +20.0 km/h across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, ecmwf_ifs025 systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +9.4 km/h across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error +9.1 km/h across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, icon_seamless systematically over-forecasts overnight lows here.</span>
-      <span class="evidence">Mean error -2.5°C across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error -2.6°C across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, icon_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +9.4 km/h across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error +8.8 km/h across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, ukmo_seamless systematically under-forecasts overnight lows here.</span>
-      <span class="evidence">Mean error +1.4°C across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error +1.3°C across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, ukmo_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +14.5 km/h across 16 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 16 checks</span>
+      <span class="evidence">Mean error +14.8 km/h across 17 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, best_match is the strongest rain caller here and icon_seamless the weakest.</span>
-      <span class="evidence">best_match 12/13 (92%) vs icon_seamless 8/13 (62%); a 31-point gap, above the 15-point noise floor.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">best_match 13/14 (93%) vs icon_seamless 9/14 (64%); a 29-point gap, above the 15-point noise floor.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, gfs_seamless systematically over-forecasts daytime highs here.</span>
-      <span class="evidence">Mean error -1.4°C across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error -1.3°C across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, gfs_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +16.8 km/h across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error +16.5 km/h across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, ecmwf_ifs025 systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +10.0 km/h across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error +9.7 km/h across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, icon_seamless systematically over-forecasts overnight lows here.</span>
-      <span class="evidence">Mean error -2.7°C across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error -2.8°C across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, icon_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +9.2 km/h across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error +9.0 km/h across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, ukmo_seamless systematically under-forecasts overnight lows here.</span>
-      <span class="evidence">Mean error +1.5°C across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error +1.5°C across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, ukmo_seamless systematically under-forecasts peak wind here.</span>
-      <span class="evidence">Mean error +17.3 km/h across 13 checks.</span>
-      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+      <span class="evidence">Mean error +17.2 km/h across 14 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 14 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, no model is meaningfully better than the others here yet.</span>
+      <span class="evidence">Best-to-worst spread is only 10 points across 3 models with enough checks to compare, within the 15-point noise floor.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, gfs_seamless systematically under-forecasts peak wind here.</span>
+      <span class="evidence">Mean error +21.5 km/h across 10 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, ecmwf_ifs025 systematically under-forecasts daytime highs here.</span>
+      <span class="evidence">Mean error +1.8°C across 10 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, ecmwf_ifs025 systematically over-forecasts overnight lows here.</span>
+      <span class="evidence">Mean error -1.8°C across 10 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, best_match systematically under-forecasts daytime highs here.</span>
+      <span class="evidence">Mean error +1.3°C across 10 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, best_match systematically over-forecasts overnight lows here.</span>
+      <span class="evidence">Mean error -1.5°C across 10 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 10 checks</span>
     </li>
   </ul>
 
@@ -115,56 +145,56 @@
     <tbody>
       <tr>
         <td>gfs_seamless</td>
-        <td>9/16</td>
-        <td>56%</td>
+        <td>10/17</td>
+        <td>59%</td>
         <td>-0.3&deg;C</td>
-        <td>-0.5&deg;C</td>
-        <td>+19.8 km/h</td>
+        <td>-0.6&deg;C</td>
+        <td>+20.0 km/h</td>
         <td>+0.4 hPa</td>
         <td>+0.0 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>ecmwf_ifs025</td>
-        <td>12/16</td>
-        <td>75%</td>
+        <td>13/17</td>
+        <td>76%</td>
         <td>+0.2&deg;C</td>
         <td>-0.8&deg;C</td>
-        <td>+9.4 km/h</td>
+        <td>+9.1 km/h</td>
         <td>+0.9 hPa</td>
         <td>+1.0 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>icon_seamless</td>
-        <td>12/16</td>
-        <td>75%</td>
-        <td>+0.2&deg;C</td>
-        <td>-2.5&deg;C</td>
-        <td>+9.4 km/h</td>
+        <td>13/17</td>
+        <td>76%</td>
+        <td>+0.3&deg;C</td>
+        <td>-2.6&deg;C</td>
+        <td>+8.8 km/h</td>
         <td>+0.7 hPa</td>
         <td>+3.6 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>ukmo_seamless</td>
-        <td>9/16</td>
-        <td>56%</td>
-        <td>+0.5&deg;C</td>
-        <td>+1.4&deg;C</td>
-        <td>+14.5 km/h</td>
-        <td>+0.2 hPa</td>
+        <td>10/17</td>
+        <td>59%</td>
+        <td>+0.6&deg;C</td>
+        <td>+1.3&deg;C</td>
+        <td>+14.8 km/h</td>
+        <td>+0.1 hPa</td>
         <td>-7.0 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>best_match</td>
-        <td>14/16</td>
+        <td>15/17</td>
         <td>88%</td>
-        <td>+0.2&deg;C</td>
+        <td>+0.1&deg;C</td>
         <td>+0.0&deg;C</td>
-        <td>+6.4 km/h</td>
-        <td>+0.5 hPa</td>
+        <td>+5.9 km/h</td>
+        <td>+0.6 hPa</td>
         <td>+0.5 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
@@ -181,9 +211,9 @@
       </tr>
       <tr>
         <td>kenya_met</td>
-        <td>5/7</td>
-        <td>71%</td>
-        <td>+0.4&deg;C</td>
+        <td>6/8</td>
+        <td>75%</td>
+        <td>+0.7&deg;C</td>
         <td>-0.7&deg;C</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
@@ -200,55 +230,55 @@
     <tbody>
       <tr>
         <td>gfs_seamless</td>
-        <td>10/13</td>
-        <td>77%</td>
-        <td>-1.4&deg;C</td>
+        <td>11/14</td>
+        <td>79%</td>
+        <td>-1.3&deg;C</td>
         <td>-0.4&deg;C</td>
-        <td>+16.8 km/h</td>
+        <td>+16.5 km/h</td>
         <td>+0.4 hPa</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>ecmwf_ifs025</td>
-        <td>10/13</td>
-        <td>77%</td>
-        <td>-0.2&deg;C</td>
-        <td>-0.8&deg;C</td>
-        <td>+10.0 km/h</td>
+        <td>11/14</td>
+        <td>79%</td>
+        <td>-0.3&deg;C</td>
+        <td>-0.9&deg;C</td>
+        <td>+9.7 km/h</td>
         <td>+0.6 hPa</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>icon_seamless</td>
-        <td>8/13</td>
-        <td>62%</td>
-        <td>+0.5&deg;C</td>
-        <td>-2.7&deg;C</td>
-        <td>+9.2 km/h</td>
+        <td>9/14</td>
+        <td>64%</td>
+        <td>+0.6&deg;C</td>
+        <td>-2.8&deg;C</td>
+        <td>+9.0 km/h</td>
         <td>+0.2 hPa</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>ukmo_seamless</td>
-        <td>9/13</td>
-        <td>69%</td>
-        <td>+0.6&deg;C</td>
+        <td>10/14</td>
+        <td>71%</td>
+        <td>+0.7&deg;C</td>
         <td>+1.5&deg;C</td>
-        <td>+17.3 km/h</td>
-        <td>+0.2 hPa</td>
+        <td>+17.2 km/h</td>
+        <td>+0.3 hPa</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>best_match</td>
-        <td>12/13</td>
-        <td>92%</td>
-        <td>-0.3&deg;C</td>
+        <td>13/14</td>
+        <td>93%</td>
         <td>-0.4&deg;C</td>
-        <td>+1.4 km/h</td>
+        <td>-0.4&deg;C</td>
+        <td>+0.8 km/h</td>
         <td>+0.5 hPa</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-usable">usable</span></td>
@@ -266,14 +296,14 @@
       </tr>
       <tr>
         <td>kenya_met</td>
-        <td>4/4</td>
+        <td>5/5</td>
         <td>100%</td>
-        <td>+1.0&deg;C</td>
-        <td>-0.4&deg;C</td>
+        <td>+1.2&deg;C</td>
+        <td>-0.7&deg;C</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
-        <td><span class="confidence confidence-insufficient">insufficient</span></td>
+        <td><span class="confidence confidence-provisional">provisional</span></td>
       </tr>
     </tbody>
   </table>
@@ -285,25 +315,25 @@
     <tbody>
       <tr>
         <td>gfs_seamless</td>
-        <td>7/9</td>
-        <td>78%</td>
-        <td>-1.0&deg;C</td>
+        <td>8/10</td>
+        <td>80%</td>
+        <td>-0.8&deg;C</td>
         <td>-0.3&deg;C</td>
         <td>+21.5 km/h</td>
         <td>+0.3 hPa</td>
         <td>&mdash;</td>
-        <td><span class="confidence confidence-provisional">provisional</span></td>
+        <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>ecmwf_ifs025</td>
-        <td>6/9</td>
-        <td>67%</td>
-        <td>+1.9&deg;C</td>
+        <td>7/10</td>
+        <td>70%</td>
+        <td>+1.8&deg;C</td>
         <td>-1.8&deg;C</td>
-        <td>+7.0 km/h</td>
-        <td>+0.2 hPa</td>
+        <td>+7.1 km/h</td>
+        <td>+0.3 hPa</td>
         <td>&mdash;</td>
-        <td><span class="confidence confidence-provisional">provisional</span></td>
+        <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>icon_seamless</td>
@@ -329,14 +359,14 @@
       </tr>
       <tr>
         <td>best_match</td>
-        <td>6/9</td>
-        <td>67%</td>
-        <td>+1.2&deg;C</td>
+        <td>7/10</td>
+        <td>70%</td>
+        <td>+1.3&deg;C</td>
         <td>-1.5&deg;C</td>
-        <td>-3.2 km/h</td>
-        <td>+0.2 hPa</td>
+        <td>-2.5 km/h</td>
+        <td>+0.3 hPa</td>
         <td>&mdash;</td>
-        <td><span class="confidence confidence-provisional">provisional</span></td>
+        <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>olw_blend</td>

@@ -226,8 +226,8 @@
       "note": "Day+3: All models successfully verified the rainfall event for August 20th. Kenya Met and ECMWF delivered high-accuracy temperature predictions (+0.4°C high error for ECMWF, 0.0°C low error for Kenya Met), though GFS and UKMO over-predicted surface wind speeds."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7: GFS, ECMWF, and Best Match all verified the rainfall call for August 20th, though GFS overpredicted peak wind speed by 21.6 km/h."
     }
   },
   "local_bulletin": {
