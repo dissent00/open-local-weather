@@ -10,8 +10,8 @@ not forks of the logic itself.
 ## Why this exists
 
 GitHub's own docs for the `schedule` event say: *"some queued jobs may be
-dropped"* under high load. Confirmed on this repo, twice, in two different
-failure shapes:
+dropped"* under high load. Confirmed on this repo, three times, in three
+different failure shapes:
 
 - `daily.yml`'s schedule trigger produced **zero runs** across its first
   two real scheduled occurrences (once on an exact-hour cron, once on the
@@ -27,6 +27,21 @@ failure shapes:
   amount. Spacing multiple cron entries a few minutes apart doesn't help
   much against a delay that shape, since it hits all of them roughly
   equally.
+- On 2026-08-28, four `forecast.yml` runs were created between 00:22:32Z
+  and 00:37:28Z — 3 to 6 minutes apart instead of the 15 their cron entries
+  ask for, and hours from any slot the file declares. The likeliest reading
+  is that these were the previous day's 15:0x slots draining, since GitHub
+  does not fire a schedule early. Crossing UTC midnight, they stopped being
+  yesterday's re-issue and became today's FIRST run, at 00:27 — before the
+  02:00 UTC window in which the models are aligned. A slot that arrives late
+  enough does not simply run late; it runs as a different kind of run, on a
+  different day, against a cycle nobody chose. The concurrency group queued the second run behind the first, as
+  intended, but `actions/checkout@v7` with no `ref:` had already pinned it
+  to `github.sha` — the branch head at creation time, before the first
+  run's commit. The queued run's checkout never saw that commit, so the
+  pipeline's own duplicate-trigger guard found no log entry, ran a full
+  first-run LLM call it didn't need, and its `git push` was rejected
+  non-fast-forward.
 
 Net effect: the backup-slot redundancy (now in `forecast.yml`, left in
 place as a backstop) meaningfully reduces

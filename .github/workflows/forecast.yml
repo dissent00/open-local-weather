@@ -81,6 +81,23 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # With no `ref:`, checkout pins to `github.sha` -- the branch
+          # head when THIS RUN WAS CREATED, not when it started. Measured
+          # 2026-08-28: runs 33129511456 (created 00:22:32Z) and 33129761608
+          # (created 00:27:05Z) were 4m33s apart instead of the 15 minutes
+          # the cron slots ask for. The concurrency group correctly queued
+          # run 2 behind run 1 -- it started work at ~00:27:48, after run 1
+          # had committed and pushed -- but its checkout was still the
+          # pre-push SHA. run_forecast (pipeline.py) found no
+          # data/log/2026-08-28.json, did a full "first" run (a wasted ~5
+          # minute LLM call), and its git push was then rejected as
+          # non-fast-forward. Pinning to `main` lets a queued run see what
+          # an earlier run in the same group already pushed -- which is
+          # what the pipeline's own duplicate-trigger guard
+          # (MIN_REISSUE_INTERVAL_MINUTES) needs in order to see the
+          # earlier run's commit at all.
+          ref: main
 
       - uses: actions/setup-python@v7
         with:
@@ -146,5 +163,32 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "${SUBJECT}: $(date -u +%Y-%m-%d)"
-            git push
+
+            # Residual race, distinct from the checkout fix above: the
+            # `ref: main` pin stops a queued run from missing an earlier
+            # run's commit before it starts, but two runs in the same
+            # concurrency group can still each commit and then race the
+            # push. Rebase, not merge -- each day's write is an independent
+            # commit and the archive reads better linear. Bounded retries:
+            # a push still failing after real rebases is a different
+            # problem and should fail the job, not loop forever.
+            PUSHED=0
+            for attempt in 1 2 3; do
+              if git push; then
+                PUSHED=1
+                break
+              fi
+              if [ "$attempt" -eq 3 ]; then
+                break
+              fi
+              echo "git push rejected (attempt $attempt/3); pulling --rebase and retrying" >&2
+              # Not guarded: a rebase that CONFLICTS means two runs wrote the
+              # same day differently, which is a different problem and ends
+              # the step here rather than being retried into a worse state.
+              git pull --rebase
+            done
+            if [ "$PUSHED" -ne 1 ]; then
+              echo "git push failed after retries" >&2
+              exit 1
+            fi
           fi
