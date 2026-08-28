@@ -1,0 +1,161 @@
+{
+  "vector_format_version": 1,
+  "function": "aligned_cycle_at",
+  "description": "Which model run this project INFERS is aligned across all five models at a given moment, from the measured availability table in docs-internal/ROADMAP.md (search 'Aligned windows open at'). Not an observation \u2014 nothing in an Open-Meteo response says which cycle produced it. The 12z window is the one row that spans midnight, so it is the only cycle reached by two different date-relative rows.",
+  "cases": [
+    {
+      "name": "20:00 opens the 12z window, today",
+      "input": {
+        "now": "2026-08-11T20:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T12:00:00+00:00",
+        "window_opened_at": "2026-08-11T20:00:00+00:00",
+        "age_hours": 8.0
+      }
+    },
+    {
+      "name": "14:00 opens the 06z window, today",
+      "input": {
+        "now": "2026-08-11T14:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T06:00:00+00:00",
+        "window_opened_at": "2026-08-11T14:00:00+00:00",
+        "age_hours": 8.0
+      }
+    },
+    {
+      "name": "08:00 opens the 00z window, today",
+      "input": {
+        "now": "2026-08-11T08:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T00:00:00+00:00",
+        "window_opened_at": "2026-08-11T08:00:00+00:00",
+        "age_hours": 8.0
+      }
+    },
+    {
+      "name": "02:00 opens the 18z window, yesterday",
+      "input": {
+        "now": "2026-08-11T02:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-10T18:00:00+00:00",
+        "window_opened_at": "2026-08-11T02:00:00+00:00",
+        "age_hours": 8.0
+      }
+    },
+    {
+      "name": "00:00 is still the 12z window, yesterday",
+      "input": {
+        "now": "2026-08-11T00:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-10T12:00:00+00:00",
+        "window_opened_at": "2026-08-10T20:00:00+00:00",
+        "age_hours": 12.0
+      }
+    },
+    {
+      "name": "one second before 08:00 is still 18z yesterday",
+      "input": {
+        "now": "2026-08-11T07:59:59+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-10T18:00:00+00:00",
+        "window_opened_at": "2026-08-11T02:00:00+00:00",
+        "age_hours": 13.999722222222223
+      }
+    },
+    {
+      "name": "one second before 14:00 is still 00z today",
+      "input": {
+        "now": "2026-08-11T13:59:59+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T00:00:00+00:00",
+        "window_opened_at": "2026-08-11T08:00:00+00:00",
+        "age_hours": 13.999722222222223
+      }
+    },
+    {
+      "name": "one second before 20:00 is still 06z today",
+      "input": {
+        "now": "2026-08-11T19:59:59+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T06:00:00+00:00",
+        "window_opened_at": "2026-08-11T14:00:00+00:00",
+        "age_hours": 13.999722222222223
+      }
+    },
+    {
+      "name": "one second before 02:00 is still 12z yesterday",
+      "input": {
+        "now": "2026-08-11T01:59:59+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-10T12:00:00+00:00",
+        "window_opened_at": "2026-08-10T20:00:00+00:00",
+        "age_hours": 13.999722222222223
+      }
+    },
+    {
+      "name": "23:59:59 is 12z framed as today",
+      "input": {
+        "now": "2026-08-11T23:59:59+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T12:00:00+00:00",
+        "window_opened_at": "2026-08-11T20:00:00+00:00",
+        "age_hours": 11.999722222222223
+      }
+    },
+    {
+      "name": "00:00:00 the next day is the SAME 12z run, now framed as yesterday",
+      "input": {
+        "now": "2026-08-12T00:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T12:00:00+00:00",
+        "window_opened_at": "2026-08-11T20:00:00+00:00",
+        "age_hours": 12.0
+      }
+    },
+    {
+      "name": "03:00 UTC matches ROADMAP.md's measured 9h morning row",
+      "input": {
+        "now": "2026-08-11T03:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-10T18:00:00+00:00",
+        "window_opened_at": "2026-08-11T02:00:00+00:00",
+        "age_hours": 9.0
+      }
+    },
+    {
+      "name": "15:00 UTC matches ROADMAP.md's measured 9h evening row",
+      "input": {
+        "now": "2026-08-11T15:00:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-11T06:00:00+00:00",
+        "window_opened_at": "2026-08-11T14:00:00+00:00",
+        "age_hours": 9.0
+      }
+    },
+    {
+      "name": "the 00:27 incident this function exists to surface: a scored forecast built on data over 12 hours old",
+      "input": {
+        "now": "2026-08-28T00:27:00+00:00"
+      },
+      "expected": {
+        "initialised_at": "2026-08-27T12:00:00+00:00",
+        "window_opened_at": "2026-08-27T20:00:00+00:00",
+        "age_hours": 12.45
+      }
+    }
+  ]
+}

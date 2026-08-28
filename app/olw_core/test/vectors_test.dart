@@ -774,6 +774,46 @@ void main() {
     });
   });
 
+  group('aligned cycle', () {
+    test('aligned_cycle_at', () {
+      // Compared as instants, not raw strings, for the same reason as
+      // merge_ground_aqi above: Python's isoformat() ("+00:00") and Dart's
+      // toIso8601String() ("Z", milliseconds) differ in form for the same
+      // moment. What this vector pins is WHICH cycle and window, not the
+      // string spelling.
+      for (final c in casesOf('aligned_cycle.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final expected = c['expected'] as Map<String, Object?>;
+        final now = DateTime.parse(i['now'] as String).toUtc();
+        final got = alignedCycleAt(now);
+        expectMatches(
+          {
+            'initialised_at': got.initialisedAt.microsecondsSinceEpoch,
+            'window_opened_at': got.windowOpenedAt.microsecondsSinceEpoch,
+            'age_hours': got.ageHours,
+          },
+          {
+            'initialised_at': DateTime.parse(expected['initialised_at'] as String)
+                .toUtc()
+                .microsecondsSinceEpoch,
+            'window_opened_at': DateTime.parse(expected['window_opened_at'] as String)
+                .toUtc()
+                .microsecondsSinceEpoch,
+            'age_hours': expected['age_hours'],
+          },
+          c['name'] as String,
+        );
+      }
+    });
+
+    test('rejects a non-UTC DateTime', () {
+      // Dart has no naive/aware distinction like Python's — only isUtc — so
+      // this is the equivalent of test_naive_datetime_is_rejected on the
+      // Python side.
+      expect(() => alignedCycleAt(DateTime(2026, 8, 11, 8, 0, 0)), throwsArgumentError);
+    });
+  });
+
   group('instability', () {
     test('summarize_instability', () {
       // Whether the Overview must mention thunder — a threshold decision, so
@@ -883,6 +923,7 @@ void main() {
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',
+      'aligned_cycle.json',
     };
     final onDisk = vectorsDir
         .listSync()

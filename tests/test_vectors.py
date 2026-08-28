@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
+from openlocalweather.cycle import aligned_cycle_at
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
@@ -496,6 +497,24 @@ def test_vectors_temp_high_low():
         )
 
 
+def test_vectors_aligned_cycle():
+    """Datetime fields, not stringified ones — as_json()'s dataclass branch
+    is asdict(), which leaves nested datetime objects unconverted, so this
+    compares the ISO strings by hand rather than routing through check()."""
+    for case in load("aligned_cycle.json")["cases"]:
+        now = datetime.fromisoformat(case["input"]["now"])
+        got = aligned_cycle_at(now)
+        assert got.initialised_at.isoformat() == case["expected"]["initialised_at"], (
+            f"vector case failed: {case['name']}"
+        )
+        assert got.window_opened_at.isoformat() == case["expected"]["window_opened_at"], (
+            f"vector case failed: {case['name']}"
+        )
+        assert got.age_hours == pytest.approx(case["expected"]["age_hours"]), (
+            f"vector case failed: {case['name']}"
+        )
+
+
 def test_vectors_aqi_last_known():
     for case in load("aqi_last_known.json")["cases"]:
         i = case["input"]
@@ -552,6 +571,7 @@ def test_every_vector_file_is_exercised():
         "daypart_without_sun.json",
         "daypart_clock.json",
         "daypart_forward_hours.json",
+        "aligned_cycle.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

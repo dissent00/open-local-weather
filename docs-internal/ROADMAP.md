@@ -3637,7 +3637,7 @@ framed the most valuable half of the work as a restriction.
 
 ---
 
-## 49. A slot that arrives late enough is a different run · **Planned**
+## 49. A slot that arrives late enough is a different run · **Planned — evidence landing**
 
 Found on 2026-08-28, live. Four `forecast.yml` runs were created between
 00:22:32Z and 00:37:28Z — three to six minutes apart, and hours from any slot
@@ -3694,6 +3694,13 @@ not the schedule's. So the pipeline sees only "a trigger arrived at 00:27".
 Option 3 is where this sits today, by default rather than by decision. Worth
 settling once the crontab is switched to `forecast.yml`, since that changes
 how often the scheduler is the trigger that wins.
+
+**Progress 2026-08-28: the evidence this needs is being built.** Deciding
+between the three options above meant guessing how bad a late run's data
+actually is. `cycle.aligned_cycle_at` now answers it in code: the 00:27 run
+was working from 12z guidance initialised 12.45 hours earlier. Once each
+issuance records its own data age, the choice stops being a judgement about
+GitHub's scheduler and becomes a question with a column of numbers behind it.
 
 **Do not "fix" this by widening `MIN_REISSUE_INTERVAL_MINUTES`.** That guard
 answers "is this trigger a repeat of the last one", and a run nine hours late

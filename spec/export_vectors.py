@@ -50,6 +50,7 @@ from openlocalweather.aqi import (
 from openlocalweather.comparison import describe_day_rain
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.cycle import aligned_cycle_at
 
 
 def _iso(d):
@@ -1840,6 +1841,68 @@ def export_instability() -> None:
     )
 
 
+def _dump_aligned_cycle(c) -> dict:
+    """`dump()`'s dataclass branch is `asdict(value)`, which does NOT convert
+    nested datetime fields to strings — `AlignedCycle` is the first exported
+    dataclass to hold a raw datetime rather than an already-stringified
+    field, and asdict() would hand json.dumps() a datetime object it cannot
+    serialize. Converting by hand here rather than teaching dump() a general
+    case for two call sites."""
+    return {
+        "initialised_at": c.initialised_at.isoformat(),
+        "window_opened_at": c.window_opened_at.isoformat(),
+        "age_hours": c.age_hours,
+    }
+
+
+def export_cycle() -> None:
+    def at(y, m, d, h, minute=0, second=0):
+        return datetime(y, m, d, h, minute, second, tzinfo=timezone.utc)
+
+    scenarios = [
+        ("20:00 opens the 12z window, today", at(2026, 8, 11, 20, 0, 0)),
+        ("14:00 opens the 06z window, today", at(2026, 8, 11, 14, 0, 0)),
+        ("08:00 opens the 00z window, today", at(2026, 8, 11, 8, 0, 0)),
+        ("02:00 opens the 18z window, yesterday", at(2026, 8, 11, 2, 0, 0)),
+        ("00:00 is still the 12z window, yesterday", at(2026, 8, 11, 0, 0, 0)),
+        ("one second before 08:00 is still 18z yesterday", at(2026, 8, 11, 7, 59, 59)),
+        ("one second before 14:00 is still 00z today", at(2026, 8, 11, 13, 59, 59)),
+        ("one second before 20:00 is still 06z today", at(2026, 8, 11, 19, 59, 59)),
+        ("one second before 02:00 is still 12z yesterday", at(2026, 8, 11, 1, 59, 59)),
+        ("23:59:59 is 12z framed as today", at(2026, 8, 11, 23, 59, 59)),
+        (
+            "00:00:00 the next day is the SAME 12z run, now framed as yesterday",
+            at(2026, 8, 12, 0, 0, 0),
+        ),
+        ("03:00 UTC matches ROADMAP.md's measured 9h morning row", at(2026, 8, 11, 3, 0, 0)),
+        ("15:00 UTC matches ROADMAP.md's measured 9h evening row", at(2026, 8, 11, 15, 0, 0)),
+        (
+            "the 00:27 incident this function exists to surface: a scored "
+            "forecast built on data over 12 hours old",
+            at(2026, 8, 28, 0, 27, 0),
+        ),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"now": now.isoformat()},
+            "expected": _dump_aligned_cycle(aligned_cycle_at(now)),
+        }
+        for name, now in scenarios
+    ]
+    write(
+        "aligned_cycle.json",
+        "aligned_cycle_at",
+        "Which model run this project INFERS is aligned across all five "
+        "models at a given moment, from the measured availability table in "
+        "docs-internal/ROADMAP.md (search 'Aligned windows open at'). Not an "
+        "observation — nothing in an Open-Meteo response says which cycle "
+        "produced it. The 12z window is the one row that spans midnight, so "
+        "it is the only cycle reached by two different date-relative rows.",
+        cases,
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -1861,6 +1924,7 @@ def main() -> None:
     export_describe_day_rain()
     export_temp_high_low()
     export_instability()
+    export_cycle()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 
