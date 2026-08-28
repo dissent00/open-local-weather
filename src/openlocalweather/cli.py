@@ -22,11 +22,17 @@ from openlocalweather.coverage import actionable, detect_coverage, detect_trigge
 from openlocalweather.defaults import LEAD_TIMES_DAYS, scored_models
 from openlocalweather.dates import add_days, today_in_tz
 from openlocalweather.fetch import metar as metar_fetch
+from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd_daily import KenyaKMDDailyFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
-from openlocalweather.health_check import check_model_deprecation, check_repo_staleness
+from openlocalweather.health_check import (
+    AlignedWindowStatus,
+    check_aligned_window,
+    check_model_deprecation,
+    check_repo_staleness,
+)
 from openlocalweather.llm.anthropic import DEFAULT_BASE_URL as DEFAULT_ANTHROPIC_BASE_URL
 from openlocalweather.llm.anthropic import DEFAULT_MAX_TOKENS as DEFAULT_ANTHROPIC_MAX_TOKENS
 from openlocalweather.llm.anthropic import AnthropicProvider
@@ -439,6 +445,27 @@ def _run_check_health(args: argparse.Namespace) -> int:
     inert = len(findings) - len(needs_attention)
     if inert:
         print(f"  ({inert} known or universal gap(s) not reported — see acknowledged_coverage_gaps.)")
+
+    # Slow rot, like the staleness proxy below: the aligned-window table is
+    # a hand measurement from 2026-08-11, every forecast that cannot observe
+    # a real run falls back to it, and nothing else in this project would
+    # ever notice it had moved.
+    print("Checking the aligned-window table against a live observation...")
+    now = datetime.now(timezone.utc)
+    window = check_aligned_window(now, model_run_fetch.fetch_settled_run(now))
+    if window.status is AlignedWindowStatus.DRIFTED:
+        print(f"  WARNING: {window.message}")
+        # Fails the check, which is the entire point of moving this here:
+        # the forecast pipeline already prints the same comparison into a
+        # run log nobody reads. A red weekly job is the notification.
+        ok = False
+    elif window.status is AlignedWindowStatus.AGREES:
+        print(f"  OK — {window.message}")
+    else:
+        # Not a failure. The observation is best-effort by design (see
+        # fetch/model_run.py), and a silent endpoint says nothing about
+        # whether the table is still right.
+        print(f"  {window.message}")
 
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")

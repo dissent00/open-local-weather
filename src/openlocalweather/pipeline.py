@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import asdict, dataclass, field, replace
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -178,15 +178,6 @@ class ForecastSkipped:
 # runs a day, the most anyone has wanted, is six hours apart.
 MIN_REISSUE_INTERVAL_MINUTES = 60
 
-# Open-Meteo's own documentation warns its servers are eventually
-# consistent and recommends waiting ~10 minutes after a run's availability
-# time before relying on it. A run observed as available seconds ago may
-# not yet be what the forecast fetch actually received, so it is not
-# treated as in hand until this much time has passed — see
-# _resolve_guidance_cycle below, which falls back to the derived floor
-# rather than trust an unsettled observation.
-RUN_SETTLE_MINUTES = 10
-
 
 class RefreshWithoutMorningRunError(RuntimeError):
     """Raised when run_refresh_pipeline() is called for a date with no
@@ -202,10 +193,10 @@ class ResolvedGuidanceCycle:
     """The model cycle actually behind this run's guidance, resolved once so
     every reader — the log entry, the snapshot archived on a re-issue —
     derives its three stored values from one place. Either OBSERVED (Open-
-    Meteo's own ecmwf_ifs025 meta.json — fetch/model_run.py — once it has
-    settled, see RUN_SETTLE_MINUTES) or DERIVED (cycle.aligned_cycle_at's
-    inferred floor, used whenever the observation is unavailable or has not
-    yet settled). See _resolve_guidance_cycle below.
+    Meteo's own record of the last ecmwf_ifs025 run, once it has settled —
+    fetch/model_run.py's fetch_settled_run) or DERIVED (cycle.
+    aligned_cycle_at's inferred floor, used whenever the observation is
+    unavailable or has not yet settled). See _resolve_guidance_cycle below.
     """
 
     initialised_at: datetime
@@ -410,17 +401,10 @@ def _apply_observed_thunder(
         actual.thunder = thunder_by_date[day]
 
 
-# The one raw model observed for guidance recency — see fetch/model_run.py's
-# module docstring for why this model specifically (slowest of the five to
-# publish, so its newest run is in practice the newest cycle every model
-# has) and why the other four cannot answer this question at all.
-_OBSERVED_MODEL = "ecmwf_ifs025"
-
-
 def _resolve_guidance_cycle(now: datetime) -> ResolvedGuidanceCycle:
     """Which model cycle is behind the guidance fetched at `now`: OBSERVED
-    when Open-Meteo's own record of _OBSERVED_MODEL's last run is in hand
-    and settled, DERIVED otherwise.
+    when Open-Meteo's own record of the last ecmwf_ifs025 run is in hand and
+    settled, DERIVED otherwise.
 
     A disagreement between the two, when the observation is used, is
     printed rather than silently resolved — the derived table
@@ -428,15 +412,20 @@ def _resolve_guidance_cycle(now: datetime) -> ResolvedGuidanceCycle:
     comparison is the only thing that would ever say it had drifted. The
     run is not affected either way: the observation is still used, since it
     is the more trustworthy of the two answers.
+
+    This line goes into a run log, which is a poor place to notice
+    something that rots over months, so check-health runs the same
+    comparison weekly and fails on it — health_check.check_aligned_window.
+    Both surfaces, not one: this one records the disagreement at the moment
+    it actually affected a forecast.
     """
     derived = aligned_cycle_at(now)
-    observed = model_run_fetch.fetch_model_run(_OBSERVED_MODEL)
+    observed = model_run_fetch.fetch_settled_run(now)
 
-    settled = observed is not None and (now - observed.available_at) >= timedelta(minutes=RUN_SETTLE_MINUTES)
-    if settled:
+    if observed is not None:
         if observed.initialised_at != derived.initialised_at:
             print(
-                f"WARNING: observed {_OBSERVED_MODEL} run ({observed.initialised_at.isoformat()}) "
+                f"WARNING: observed {observed.model} run ({observed.initialised_at.isoformat()}) "
                 f"disagrees with the derived aligned cycle ({derived.initialised_at.isoformat()}) "
                 f"at {now.isoformat()} — docs-internal/ROADMAP.md's measured aligned-window table "
                 "may need re-measuring. Using the observation.",

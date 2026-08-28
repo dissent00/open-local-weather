@@ -1,4 +1,5 @@
-"""Weekly health checks: Gemini model deprecation status + repo staleness.
+"""Weekly health checks: Gemini model deprecation status, repo staleness,
+and whether the measured aligned-window table still matches reality.
 
 Built in direct response to a real incident during initial setup: the
 default model (gemini-2.5-flash at the time) started 404ing with "no longer
@@ -19,8 +20,12 @@ reliable signals instead:
    DEFAULT_STALENESS_WARNING_DAYS (50) gives a real lead-time window to
    react, since the checking workflow is (by construction) still running
    normally at day 50 — the 60-day disable hasn't happened yet.
+3. Compare the derived aligned-window table against one live observation
+   (check_aligned_window below). Belongs here for the same reason as the
+   staleness proxy: it decays slowly, invisibly, and only a periodic look
+   would ever notice.
 
-Both checks run on their own weekly schedule (see
+These checks run on their own weekly schedule (see
 .github/workflows/health_check.yml), decoupled from the daily forecast
 pipeline's own cron so a health-check failure never blocks or depends on
 that day's forecast run.
@@ -29,10 +34,14 @@ that day's forecast run.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
 
 import requests
 from pydantic import BaseModel
 
+from openlocalweather.cycle import AlignedCycle, aligned_cycle_at
+from openlocalweather.fetch.model_run import RUN_SETTLE_MINUTES, ModelRun
 from openlocalweather.llm.provider import LLMProvider
 
 DEPRECATIONS_PAGE_URL = "https://ai.google.dev/gemini-api/docs/deprecations"
@@ -94,3 +103,131 @@ def check_repo_staleness(
     trivially testable without any git/filesystem dependency.
     """
     return days_since_last_commit >= warning_threshold_days
+
+
+class AlignedWindowStatus(Enum):
+    """Three outcomes, not a boolean: "the table looks wrong" and "nothing
+    could be compared this time" call for different words and different exit
+    codes, and collapsing them would report a silent endpoint as agreement.
+    """
+
+    AGREES = "agrees"
+    DRIFTED = "drifted"
+    NOT_CHECKED = "not_checked"
+
+
+@dataclass
+class AlignedWindowCheck:
+    status: AlignedWindowStatus
+    message: str
+
+
+# How far from a window boundary the observation and the table stop being
+# comparable. The availability delays the table was built from vary run to
+# run — ECMWF ~7.1 h measured twice on 2026-08-11, then 8h25m for 18z and
+# 7h46m for 00z on 2026-08-28 — while the windows are written on the hour.
+# So for about an hour around a boundary the observed cycle can sit ahead of
+# the table (that run published early) or behind it (that run has not landed
+# yet), and neither is evidence about the table itself.
+WINDOW_BOUNDARY_SLACK_HOURS = 1
+
+_BOUNDARY_CAVEAT = (
+    " This ran within an hour of a window boundary, where the observation and the table "
+    "disagree for reasons that say nothing about the table — re-run it well inside a window "
+    "before re-measuring anything."
+)
+
+
+def _near_a_window_boundary(now: datetime, derived: AlignedCycle) -> bool:
+    """Asks cycle.aligned_cycle_at rather than restating where the windows
+    fall: if the answer an hour from now names a different window, one opens
+    within the hour."""
+    slack = timedelta(hours=WINDOW_BOUNDARY_SLACK_HOURS)
+
+    just_opened = (now - derived.window_opened_at) < slack
+    opens_shortly = aligned_cycle_at(now + slack).window_opened_at != derived.window_opened_at
+
+    return just_opened or opens_shortly
+
+
+def _drift_message(now: datetime, derived: AlignedCycle, observed: ModelRun) -> str:
+    direction = (
+        "the table claims a cycle is aligned before the slowest model has it, so the derived "
+        "floor is understating how old the guidance is"
+        if observed.initialised_at < derived.initialised_at
+        else "the window is opening earlier than the table says, so the derived floor is only "
+        "pessimistic"
+    )
+    caveat = _BOUNDARY_CAVEAT if _near_a_window_boundary(now, derived) else ""
+
+    return (
+        f"observed {observed.model} run ({observed.initialised_at.isoformat()}) disagrees with "
+        f"the derived aligned cycle ({derived.initialised_at.isoformat()}) at "
+        f"{now.isoformat()} — {direction}. Re-measure the aligned-window table in "
+        "docs-internal/ROADMAP.md from each model's own /data/<model>/static/meta.json."
+        f"{caveat}"
+    )
+
+
+def check_aligned_window(now: datetime, observed: ModelRun | None) -> AlignedWindowCheck:
+    """Does the derived aligned-window table still agree with what the one
+    observable model actually published? Pure — the caller fetches (see
+    fetch/model_run.fetch_settled_run), for the same reason
+    check_repo_staleness does not shell out to git.
+
+    WHY THIS IS A HEALTH CHECK. The table in docs-internal/ROADMAP.md is a
+    hand measurement taken twice on 2026-08-11 and never since. Every
+    forecast that cannot observe a real run falls back to it, and a stale
+    table is invisible from the forecast itself: the number it produces
+    looks exactly as authoritative as an observed one. This comparison is
+    the only thing that would ever say the table had moved, and re-measuring
+    it stays a manual act this warning exists to prompt.
+
+    It also covers a surface that cannot check itself: the mobile app makes
+    no metadata request at all, so EVERY forecast it issues states the
+    derived floor (app/olw_core's forecast.dart). The table being right
+    matters more there than here, and this weekly comparison is the only
+    thing watching it on the app's behalf.
+
+    WHAT A DISAGREEMENT MEANS, IN EACH DIRECTION:
+
+    - Observed OLDER than derived — the table claims a cycle is aligned
+      before the slowest model even has it. The dangerous direction: the
+      derived floor then understates the age of the guidance, which is the
+      one thing the floor exists to never do.
+    - Observed NEWER than derived — the window is opening earlier than the
+      table says, so the floor is merely pessimistic. Safe, but it is the
+      same evidence that the table has moved, and it bears on when the
+      pipeline could usefully run (roadmap item 49).
+
+    NEAR A WINDOW BOUNDARY THE TWO LEGITIMATELY DISAGREE — see
+    _near_a_window_boundary, which does not change the verdict but says so
+    in the message. The weekly slot (04:17 UTC) is over two hours inside an
+    open window and clear of all four boundaries; a check-health run by hand
+    is not necessarily.
+    """
+    derived = aligned_cycle_at(now)
+
+    if observed is None:
+        return AlignedWindowCheck(
+            status=AlignedWindowStatus.NOT_CHECKED,
+            message=(
+                "No settled model run to compare against — the metadata endpoint was "
+                f"unreachable, or its newest run landed within the last {RUN_SETTLE_MINUTES} "
+                "minutes. The aligned-window table was not checked this time."
+            ),
+        )
+
+    if observed.initialised_at == derived.initialised_at:
+        return AlignedWindowCheck(
+            status=AlignedWindowStatus.AGREES,
+            message=(
+                f"observed {observed.model} run {observed.initialised_at.isoformat()} matches the "
+                f"derived aligned cycle at {now.isoformat()}."
+            ),
+        )
+
+    return AlignedWindowCheck(
+        status=AlignedWindowStatus.DRIFTED,
+        message=_drift_message(now, derived, observed),
+    )

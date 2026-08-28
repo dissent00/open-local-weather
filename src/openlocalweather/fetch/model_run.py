@@ -30,12 +30,24 @@ None. Nothing here raises into the caller.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
 META_URL_TEMPLATE = "https://api.open-meteo.com/data/{model}/static/meta.json"
 REQUEST_TIMEOUT_S = 15
+
+# The one model this project asks, for the reasons in the docstring above:
+# the only one of the five that can answer at all, and the slowest to
+# publish, so its newest run is in practice the newest cycle every model has.
+OBSERVED_MODEL = "ecmwf_ifs025"
+
+# Open-Meteo's own documentation warns its servers are eventually consistent
+# and recommends waiting ~10 minutes after a run's availability time before
+# relying on it. A run observed as available seconds ago may not yet be what
+# the forecast fetch actually received, so it is not treated as in hand
+# until this much time has passed.
+RUN_SETTLE_MINUTES = 10
 
 
 @dataclass
@@ -73,3 +85,28 @@ def fetch_model_run(model: str) -> ModelRun | None:
         return None
 
     return ModelRun(model=model, initialised_at=initialised_at, available_at=available_at)
+
+
+def fetch_settled_run(now: datetime) -> ModelRun | None:
+    """OBSERVED_MODEL's most recent run once it has SETTLED, or None — while
+    it has not settled, and on every failure fetch_model_run() already
+    swallows.
+
+    Two callers ask this question: the forecast pipeline, resolving the
+    guidance recency it records and states in the prompt, and check-health,
+    testing the derived aligned-window table against reality. Both need the
+    same two facts — which model can answer, and when its answer is
+    trustworthy — so the facts live here, once, rather than in each caller.
+
+    Collapsing "unavailable" and "not yet settled" into one None is
+    deliberate: neither caller may use the observation, and both already
+    have the same fallback.
+    """
+    run = fetch_model_run(OBSERVED_MODEL)
+    if run is None:
+        return None
+
+    if (now - run.available_at) < timedelta(minutes=RUN_SETTLE_MINUTES):
+        return None
+
+    return run

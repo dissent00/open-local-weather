@@ -3786,10 +3786,44 @@ Three edge cases have guards, each with the reasoning attached:
    is newer than the previous issuance's. When it is NOT newer, the honest
    line is that no new guidance has landed, which is far better than
    manufacturing change. Shared prompt, so Python then Dart then vectors.
-2. **Surface the drift warning where someone reads it.** Today it prints into
-   a run log. `check-health` is the surface that already exists for "something
-   that only rots slowly", and re-measuring the table stays a manual act the
+2. ~~**Surface the drift warning where someone reads it.**~~ **Done
+   2026-08-28.** For the record, the original note: Today it prints into a run
+   log. `check-health` is the surface that already exists for "something that
+   only rots slowly", and re-measuring the table stays a manual act the
    warning exists to prompt.
+
+   `health_check.check_aligned_window` runs the same comparison weekly and
+   **fails the check** when the two disagree — a green log nobody reads would
+   have moved the problem, not fixed it, so the notification is a red job.
+   Three outcomes, not two: a metadata endpoint that says nothing is reported
+   as NOT CHECKED and does not fail, because silence is not evidence the table
+   is still right. The pipeline keeps its own stderr line: that one records the
+   disagreement at the moment it actually affected a forecast.
+
+   The model to ask and the settle rule moved to `fetch/model_run.py`
+   (`fetch_settled_run`), so the two surfaces cannot drift on either.
+
+   Worth stating because it is easy to miss: the app makes no metadata
+   request at all, so every forecast it issues states the DERIVED floor
+   (`app/olw_core`'s `forecast.dart`). The table being right matters more
+   on that side than on this one, and this check is the only thing watching
+   it there.
+
+   **A boundary caveat, measured.** ECMWF's availability delay varies more
+   than the whole hour the windows are rounded to — ~7.1 h on 2026-08-11,
+   8h25m for 18z and 7h46m for 00z on 2026-08-28 — so within about an hour of
+   a window opening the observation legitimately runs a cycle ahead of the
+   table (published early) or behind it (not landed yet). The verdict is
+   unchanged there, but the message says so, because re-measuring the table by
+   hand is real work to send someone on for nothing. The 04:17 UTC weekly slot
+   sits over two hours inside an open window and is clear of all four
+   boundaries.
+
+   Verified: 644 Python tests, and the check driven against the live endpoint
+   at 2026-08-28T10:22Z — derived 00z, observed 00z (available 07:45:55Z),
+   AGREES. NOT verified: no `check-health` run has yet gone red on this, and
+   the weekly job has not run with the check in place; the drift path is
+   proven by tests and by the exit code, not by a real disagreement.
 3. **Settle item 49 with the evidence.** The choice about late slots was
    blocked on not knowing how bad a late run's data actually is. It is now a
    recorded number per issuance.

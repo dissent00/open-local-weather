@@ -232,3 +232,87 @@ def test_forecast_verb_passes_force_through(monkeypatch):
     with pytest.raises(SystemExit):
         cli.main(_forecast_argv("--force", "--dry-run"))
     assert seen == {"dry_run": True, "force": True}
+
+
+# ---------------------------------------------------------------------------
+# check-health: the aligned-window check's exit code. The point of running
+# this comparison weekly is that a drifted table turns the job red, where
+# the same comparison in a forecast run only reaches a log nobody reads.
+# ---------------------------------------------------------------------------
+
+
+def _health_argv(data_dir):
+    from openlocalweather import cli
+
+    return ["check-health", "--config", str(cli.DEFAULT_CONFIG_PATH), "--data-dir", str(data_dir)]
+
+
+def _stub_the_other_health_checks(monkeypatch):
+    """Everything check-health does apart from the aligned-window check.
+    Stubbed so the exit code under test is that check's alone — the LLM
+    call in particular must not be made."""
+    from openlocalweather import cli
+    from openlocalweather.health_check import ModelDeprecationCheck
+
+    class FakeProvider:
+        model = "gemini-3.6-flash"
+
+    monkeypatch.setattr(cli, "_build_llm_provider", lambda **kwargs: FakeProvider())
+    monkeypatch.setattr(
+        cli,
+        "check_model_deprecation",
+        lambda llm, model_name: ModelDeprecationCheck(deprecated_or_scheduled=False, notes="Not listed."),
+    )
+    monkeypatch.setattr(cli, "detect_trigger_regression", lambda lookup, today: None)
+    monkeypatch.setattr(cli, "detect_coverage", lambda *args: [])
+    monkeypatch.setattr(cli, "_days_since_last_commit", lambda: 0)
+
+
+def _observed_at(offset_hours):
+    """A settled observation `offset_hours` from whatever cycle the table
+    derives for the clock the CLI actually reads — computed from the `now`
+    the CLI passes in, so the test cannot straddle a window boundary."""
+    from datetime import timedelta
+
+    from openlocalweather.cycle import aligned_cycle_at
+    from openlocalweather.fetch.model_run import OBSERVED_MODEL, ModelRun
+
+    def fake(now):
+        initialised_at = aligned_cycle_at(now).initialised_at + timedelta(hours=offset_hours)
+        return ModelRun(model=OBSERVED_MODEL, initialised_at=initialised_at, available_at=now)
+
+    return fake
+
+
+def test_check_health_fails_when_the_aligned_window_table_has_drifted(monkeypatch, capsys, tmp_path):
+    from openlocalweather import cli
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    _stub_the_other_health_checks(monkeypatch)
+    monkeypatch.setattr(model_run_fetch, "fetch_settled_run", _observed_at(-6))
+
+    assert cli.main(_health_argv(tmp_path)) == 1
+    assert "WARNING" in capsys.readouterr().out
+
+
+def test_check_health_passes_when_the_observation_matches_the_table(monkeypatch, capsys, tmp_path):
+    from openlocalweather import cli
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    _stub_the_other_health_checks(monkeypatch)
+    monkeypatch.setattr(model_run_fetch, "fetch_settled_run", _observed_at(0))
+
+    assert cli.main(_health_argv(tmp_path)) == 0
+
+
+def test_check_health_does_not_fail_when_there_is_nothing_to_compare(monkeypatch, capsys, tmp_path):
+    """A silent metadata endpoint is not evidence about the table, and a
+    best-effort observation must never be the reason a check goes red."""
+    from openlocalweather import cli
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    _stub_the_other_health_checks(monkeypatch)
+    monkeypatch.setattr(model_run_fetch, "fetch_settled_run", lambda now: None)
+
+    assert cli.main(_health_argv(tmp_path)) == 0
+    assert "not checked" in capsys.readouterr().out

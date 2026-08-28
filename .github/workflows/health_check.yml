@@ -2,12 +2,19 @@ name: Weekly Health Check
 
 # Decoupled from daily.yml's own cron on purpose — a health-check failure
 # should never block or depend on that day's forecast run, and vice versa.
-# See health_check.py's module docstring for what these two checks catch
-# and why (in short: a live Gemini deprecations-page read, since a bare
+# See health_check.py's module docstring for what these checks catch and
+# why (in short: a live Gemini deprecations-page read, since a bare
 # model-list check missed a real account-tier restriction during initial
-# setup; and days-since-last-commit, a proxy for "is daily.yml actually
+# setup; days-since-last-commit, a proxy for "is the forecast actually
 # running and pushing," warned at 50 days to give real lead time before
-# GitHub's 60-day scheduled-workflow auto-disable).
+# GitHub's 60-day scheduled-workflow auto-disable; and the aligned-window
+# table against one live model-run observation).
+#
+# The hour matters for that last one: 04:17 UTC is over two hours inside an
+# aligned window, where the table and the observation are comparable. A
+# check moved to within an hour of 02:00, 08:00, 14:00 or 20:00 UTC would
+# report disagreements that are only the table's whole-hour rounding — see
+# health_check.check_aligned_window.
 on:
   schedule:
     # Deliberately off the exact hour — see daily.yml's schedule comment
