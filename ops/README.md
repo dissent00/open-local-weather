@@ -150,6 +150,47 @@ third-party dashboard, which is its own, different trust tradeoff — your
 server's security becomes the perimeter instead). See the script's own
 header comment for full setup steps.
 
+The two crontab lines this deployment runs, with its own paths replaced by
+`$HOME` (cron sets `HOME` from `/etc/passwd`, so this works verbatim):
+
+```cron
+1 3  * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token $HOME/bin/trigger_workflow.sh forecast.yml >> $HOME/olw-dispatch.log 2>&1
+1 15 * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token $HOME/bin/trigger_workflow.sh forecast.yml >> $HOME/olw-dispatch.log 2>&1
+```
+
+Identical bar the hour, which is the whole point of one `forecast.yml`: the
+day decides whether a run is its first or an update. A third line at another
+hour becomes a third issuance and nothing else needs to know.
+
+Four things that are easy to get wrong here:
+
+- **The times are your server's timezone, not UTC.** These assume a
+  UTC-configured box; check `timedatectl` before copying them. Getting this
+  wrong lands the first run of the day outside the window in which the
+  models are on the same cycle (`cycle.py`), which costs freshness silently
+  — the forecast still publishes.
+- **Redirect the output.** Without `>>` the script's timestamped log goes to
+  cron's mail, which on most servers means nowhere. That log is the only
+  thing that answers "when did this stop working": the failure mode here is
+  silence, and silence is what a missing log looks like too.
+- **The minute is deliberate.** 03:01 arrives six minutes before
+  `forecast.yml`'s own first backstop slot (03:07 UTC), so the crontab wins
+  the race and GitHub's scheduler stays the fallback. There is no need to
+  offset off the exact hour the way the GitHub-side crons do; that trick
+  works around GitHub Actions' scheduler congestion, which an ordinary cron
+  daemon does not share.
+- **A copy of the script is not the script.** `$HOME/bin/trigger_workflow.sh`
+  above is a copy, so `git pull` in the checkout will not update it. Symlink
+  it to `ops/trigger_workflow.sh` in the checkout, or re-copy after every
+  pull — otherwise the version in version control and the version cron runs
+  drift apart, invisibly, until they behave differently.
+
+The trailing `forecast.yml` is optional: the script defaults to it, and
+naming it is a spelling opportunity that a bare call does not have (a
+misspelt workflow is an HTTP 404 the script reports and does not retry).
+Naming it is still defensible — it says in the crontab what the line
+actually dispatches.
+
 **3. Full migration off GitHub Actions (not built, a real option if ever
 needed).** Run `olw forecast` directly from cron
 on a server you control, at whatever times you want issuances — no GitHub Actions involved in scheduling *or*

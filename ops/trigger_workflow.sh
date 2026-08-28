@@ -62,10 +62,12 @@
 # 3. Add to crontab (`crontab -e`). Cron times are in YOUR SERVER's
 #    configured timezone, not necessarily UTC — check `timedatectl` or
 #    equivalent before copying these times verbatim. These two lines
-#    assume a UTC-configured server, matching forecast.yml's own cron
-#    comments (03:07 UTC / 15:07 UTC — see that file for why those times):
-#      7 3  * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token /path/to/ops/trigger_workflow.sh >> $HOME/olw-dispatch.log 2>&1
-#      7 15 * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token /path/to/ops/trigger_workflow.sh >> $HOME/olw-dispatch.log 2>&1
+#    assume a UTC-configured server, and sit a few minutes AHEAD of
+#    forecast.yml's own first backstop slot (03:07 / 15:07 UTC — see that
+#    file for why those hours) so this trigger wins the race and GitHub's
+#    scheduler stays the fallback:
+#      1 3  * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token /path/to/ops/trigger_workflow.sh >> $HOME/olw-dispatch.log 2>&1
+#      1 15 * * * TOKEN_FILE=$HOME/.secrets/olw-dispatch-token /path/to/ops/trigger_workflow.sh >> $HOME/olw-dispatch.log 2>&1
 #    BOTH LINES ARE IDENTICAL, and that is the change: one workflow, and
 #    the day decides whether a run is its first or an update. Add a third
 #    line at another hour and it becomes a third issuance; nothing else
