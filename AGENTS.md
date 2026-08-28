@@ -88,8 +88,26 @@ diagnosed it and written the specification. A one-line change is an Opus task
 if nobody yet knows which line.
 
 The controller does not delegate: triage of a live failure, the decision about
-what the fix should be, reviewing the diff, or committing and pushing. It
-should delegate anything whose method is already settled.
+what the fix should be, reviewing the diff, or committing and pushing.
+
+**Delegation does not save tokens; it moves them.** Measured on the first use,
+2026-08-28: a two-file workflow fix cost the worker ~59k tokens to rediscover
+a repo it started cold in, against maybe 20k had the controller done it
+inline. What it bought was controller context — roughly 6k spent on the brief,
+the summary and the review, instead of 20k. Total consumption went UP; the
+scarce resource went DOWN.
+
+So delegate work that is mostly READING, or mostly waiting: a search across
+many files, a change whose verification loop is long, an implementation whose
+shape is already specified. Do it inline when the brief would be longer than
+the change, or when reviewing it properly means re-deriving the context
+anyway — writing a design document is the clearest case, since the brief for
+one is the document.
+
+Review is not the place to economise. On that same first use the worker's
+report described behaviour the shell did not have (a `git pull` failing inside
+`set -e` does not fall through to the next retry, it ends the step). Nothing
+shipped wrong, because the diff was read.
 
 **A worker brief is a specification, not a hint.** It carries the files, the
 constraint, the tests that must pass, and the rules above that apply — a

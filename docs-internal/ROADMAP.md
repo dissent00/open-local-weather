@@ -3593,3 +3593,68 @@ framed the most valuable half of the work as a restriction.
 - **Unscored prose.** Synoptic reading, hazard calls and boater conditions
   are asserted and never verified. Item 47's stations make the hazard half
   scoreable; the rest is item 46's territory.
+
+---
+
+## 49. A slot that arrives late enough is a different run · **Planned**
+
+Found on 2026-08-28, live. Four `forecast.yml` runs were created between
+00:22:32Z and 00:37:28Z — three to six minutes apart, and hours from any slot
+the file declares (03:07/22/37/52 and 15:07/22/37/52 UTC). GitHub does not
+fire a schedule early, so the likeliest reading is that these were the
+previous day's 15:0x slots draining. That is the third measured shape of
+scheduler failure on this repo; `ops/README.md` carries all three.
+
+**The consequence is not lateness.** Crossing UTC midnight, those runs stopped
+being yesterday's re-issue and became **today's first run**, at 00:27 — which
+is the run that owns verification and the day's `model_predictions`, taken
+before the 02:00 UTC window in which the models are aligned. The record is
+honest about it (`generated_at_utc`, `trigger_source: schedule`), and the
+operator's own 03:01 dispatch then correctly skipped a day already done. But
+the numbers tomorrow scores came from a cycle nobody chose, and the 03:07 slot
+— the one picked from a measured availability table — contributed nothing.
+
+The stale-checkout fix in the same incident is unrelated to this and already
+shipped; this is the half that remains.
+
+### Why the pipeline cannot currently tell
+
+A run has no idea which cron slot produced it. `github.event.schedule` names
+the cron expression that fired, but nothing in the payload distinguishes "this
+slot, on time" from "this slot, nine hours late" — the event carries no
+intended-fire timestamp, and the run's own creation time is the delivery time,
+not the schedule's. So the pipeline sees only "a trigger arrived at 00:27".
+
+### Three options, none chosen
+
+1. **A "not before" bound on the first run of a day.** Config gets an hour
+   before which a first run is refused (say 02:00 UTC, when the aligned window
+   opens), and a trigger arriving earlier returns `ForecastSkipped`. Cheap,
+   testable, and in the pipeline where every guard now lives. The cost is a
+   real one: a day whose only trigger arrives at 00:27 then gets NO forecast
+   at all until the next one, and "no forecast" is worse than "a forecast from
+   an early cycle" for a reader. It also needs care at high latitude and in
+   timezones where the local morning sits either side of UTC midnight — the
+   bound is a statement about model cycles, which are UTC, not about the
+   reader's morning.
+2. **Pass the intended hour into the run.** `forecast.yml` could hand each
+   slot its own expected time (a per-cron input, or a matrix), and the pipeline
+   could refuse a run arriving more than N hours from it. Distinguishes late
+   from early correctly, and does not blank a day: a late slot simply becomes
+   a re-issue if the day already has an entry. Costs a second place where the
+   schedule is written down, which is the coupling item 34 just removed.
+3. **Accept it, and let the record show it.** A first run at 00:27 is a worse
+   forecast than one at 03:07, not a wrong one. The archive already carries
+   the hour, and the accuracy record scores what was published. The operator's
+   crontab — which fires on time, being an ordinary cron daemon — is the real
+   answer to GitHub's scheduler, and this only bites when the crontab is not
+   the trigger that got there first.
+
+Option 3 is where this sits today, by default rather than by decision. Worth
+settling once the crontab is switched to `forecast.yml`, since that changes
+how often the scheduler is the trigger that wins.
+
+**Do not "fix" this by widening `MIN_REISSUE_INTERVAL_MINUTES`.** That guard
+answers "is this trigger a repeat of the last one", and a run nine hours late
+is genuinely not a repeat. Two questions, two guards.
+
