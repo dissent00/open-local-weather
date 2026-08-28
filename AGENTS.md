@@ -66,6 +66,40 @@ Apply judgement. If you see a case for these, ask before doing it.
 6. Wrap body at 72 chars.
 7. Body explains what and why. The code explains how.
 
+## Delegation
+
+A session that does the work itself fills its own context with the work.
+Long sessions then lose the thread of WHY, which is the part that is
+expensive to rebuild and the part this repo's comments exist to preserve.
+
+So the session you are talking to is a **controller**. It classifies a task,
+spawns a worker to do it, and reviews what comes back. It keeps diagnosis,
+design, review, and every commit and push for itself.
+
+| Task | Worker |
+|---|---|
+| Simple, mechanical — a rename, a doc edit, a known one-line fix | Haiku |
+| Normal coding — a specified change with tests | Sonnet |
+| Difficult or ambiguous — design, unclear cause, cross-cutting | Opus |
+
+**Classify by the work that remains, not by the work as it arrived.** A
+failure that looked ambiguous is a Sonnet task once the controller has
+diagnosed it and written the specification. A one-line change is an Opus task
+if nobody yet knows which line.
+
+The controller does not delegate: triage of a live failure, the decision about
+what the fix should be, reviewing the diff, or committing and pushing. It
+should delegate anything whose method is already settled.
+
+**A worker brief is a specification, not a hint.** It carries the files, the
+constraint, the tests that must pass, and the rules above that apply — a
+worker starts cold and has read none of this conversation. It ends with what
+to report: a summary, the diff, and test output.
+
+**Review what comes back before it is committed.** Read the diff, not the
+summary. A worker that says a test passes and a test that passes are
+different claims, and only one of them is checkable.
+
 ## Bugs
 
 Write the failing test first. Watch it fail. Then fix. Then watch it pass.
