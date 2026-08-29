@@ -228,8 +228,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 (2026-08-28): All models correctly verified the dry precipitation call. High temperature estimates were tight, with OLW blend within -0.1°C, while GFS overestimated peak surface winds by 30.6 km/h."
     },
     "day3": {
       "verified": false,
