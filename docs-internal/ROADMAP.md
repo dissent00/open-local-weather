@@ -3837,6 +3837,19 @@ done it here, not the possibility: a crontab firing late, a server in the
 wrong timezone, or a hand dispatch at the wrong hour would do the same. That
 is option 1, still unbuilt, now the only part of this item outstanding.
 
+**Why the lost backstop is acceptable today, stated so it can expire.** The
+operator is watching the daily runs directly during the beta, which turns a
+silent miss from a gap into a reading — the thing this repo otherwise has no
+way to measure is how often the crontab alone actually delivers. That holds
+only while someone is looking. When the beta ends, or attention moves, the
+weekly `health_check.yml` becomes the only watcher again, and nothing in it
+asks "did today's run happen at all" — item 51 is the same blip-versus-death
+problem one layer out, applied to sources rather than to the trigger, so the
+frame exists and the check does not.
+
+A fork gets none of that attention and should not inherit this deployment's
+trigger either way — item 52.
+
 ---
 
 ## 50. An issuance is justified by fresher data, not a later clock · **Partly shipped**
@@ -4056,3 +4069,47 @@ the field having shipped after that day's only run. Item 49 no longer waits
 on this — two issuances were enough to settle it.
 
 Related: items 4, 25, 39, 49, 50.
+
+---
+
+## 52. A fork should choose its own trigger, not inherit this one · **Planned**
+
+Deleting `forecast.yml`'s `schedule:` block (item 49) fixed this deployment
+and made a fork's first day harder: a fork now inherits no trigger at all.
+The setup burden moved from "nothing to do, and it fires at the wrong time"
+to "read `ops/README.md` and pick a path" — more honest, still a wall of
+prose that ends in one deployment's two crontab lines.
+
+**Those two times are not copyable, and nothing says so loudly enough.**
+03:01 and 15:01 UTC are two decisions wearing one number. Half of it
+travels: both sit inside an aligned model window, and model cycles are UTC,
+so that reasoning holds anywhere. Half of it does not: they were picked to
+land near 06:00 and 18:00 EAT. A forker in Lagos pasting them gets a 04:01
+local forecast; one in Suva gets 15:01. Both still publish, which is why
+this is worth an item — the failure is a reader opening the page before the
+day's forecast exists, and from the operator's side that looks like nothing
+at all.
+
+**What would count as done**
+
+- One command that answers the question actually being asked. `olw schedule
+  --at 06:00` reads the configured location's timezone, prints the UTC times
+  inside an aligned window that land nearest it, and emits the paste-ready
+  artefact for each path: a `schedule:` block, cron-job.org's field values,
+  crontab lines. `cycle.py` already holds the window table; this reads it
+  forward instead of the operator reading it by hand.
+- The derivation living once, where the answer is generated, instead of
+  three times in prose (`ops/README.md`, `forecast.yml`'s header comment,
+  QUICKSTART step 9).
+- QUICKSTART step 9 collapses to: run the command, paste the output, done.
+
+**What this is not.** Not a scheduler, and not configuration the pipeline
+reads at run time. The trigger stays outside the repo — being outside is
+what makes it route around GitHub's scheduler at all. This generates the
+thing an operator installs; it does not own or execute it.
+
+**The open question, and why this is Planned rather than Next.** How much of
+the window logic belongs on this side. `olw_core`'s `cycle.dart` carries the
+same table (item 50), the two are vector-locked, and a generator here is a
+third reader of a table that must not drift. Worth settling before writing
+it, not after.
