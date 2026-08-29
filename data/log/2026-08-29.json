@@ -7,33 +7,33 @@
   "temp_low_c": 17.7,
   "temp_high_low_display": "32°C / 90°F high, 18°C / 64°F low",
   "mslp_trend_24h": "-0.6 hPa",
-  "synoptic_pattern": "Strong regional MSLP gradient (14.6 hPa spread) with lower pressure to the northeast and higher pressure to the south.",
+  "synoptic_pattern": "Strong south-to-northeast gradient across 2,600 km ring",
   "uv_index_max": "9.1 (Very High)",
-  "air_quality_aqi": "68–95 (Moderate, CAMS)",
+  "air_quality_aqi": "69 (Moderate, stale sensor)",
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
       "station_id": "A418534",
-      "aqi": null,
-      "pm25": 55.0,
+      "aqi": 69,
+      "pm25": 69.0,
       "pm10": 15.0,
-      "measured_at": "2026-08-28T05:00:00Z"
+      "measured_at": "2026-08-29T12:00:00Z"
     },
     {
       "name": "Ochieng' Avenue, Kisumu Central",
       "station_id": "A418300",
-      "aqi": null,
-      "pm25": 60.0,
+      "aqi": 62,
+      "pm25": 62.0,
       "pm10": 18.0,
-      "measured_at": "2026-08-28T05:00:00Z"
+      "measured_at": "2026-08-29T12:00:00Z"
     },
     {
       "name": "Dunga Beach",
       "station_id": "A418504",
-      "aqi": null,
-      "pm25": 45.0,
+      "aqi": 61,
+      "pm25": 61.0,
       "pm10": 37.0,
-      "measured_at": "2026-08-28T05:00:00Z"
+      "measured_at": "2026-08-29T12:00:00Z"
     }
   ],
   "sunrise": "06:38",
@@ -246,8 +246,8 @@
     "fetched_at_utc": "2026-08-29T00:06:05.612004Z"
   },
   "yesterday_verification_summary": "For yesterday (August 28), all model guidance (GFS, ECMWF, ICON, UKMO, Best Match, and Kenya Met) accurately verified the dry precipitation call for Kisumu across Day+0, Day+3, and Day+7 lead times. Temperature predictions at Day+0 were exceptionally accurate, with the OLW blended forecast capturing high temperatures within 0.1°C of observed actuals.",
-  "narrative_markdown": "## Overview\nUpdated dawn guidance confirms a dry and warm day ahead across Kisumu, with daytime temperatures reaching 32°C / 90°F and light to moderate lake breezes developing by afternoon. Fresher model cycles (aligned at 18:00Z) maintain full agreement on dry conditions through tonight.\n\n## Today's Forecast\nWith dawn underway, temperatures start near 17°C / 63°F–18°C / 64°F under clear to partly cloudy skies before rising quickly after sunrise (06:38). Daytime high temperatures will peak around 32°C / 90°F (ranging from 31°C / 88°F on UKMO to 33°C / 91°F on GFS), matching the Kenya Meteorological Department's official call of 32°C / 90°F. Afternoon lake breezes will push from the SSW at 12 km/h (6 kt) to 15 km/h (8 kt), with peak gusts near 30 km/h (16 kt). Peak UV index will reach 9.1 (Very High) around midday. Air quality assessment relies on CAMS atmospheric modeling showing Moderate conditions (US AQI 68–95), as local ground monitoring sensors remain stale. Dry weather continues through dusk (sunset 18:45) and overnight, with lows cooling back to 18°C / 64°F.\n\n## Extended Outlook\n- **Days 1–3 (Sunday – Tuesday):** Near-term confidence is high. Sunday through Tuesday remain dry with daytime highs of 32°C / 90°F to 33°C / 91°F and overnight lows near 18°C / 64°F to 19°C / 66°F. Basin winds strengthen on Sunday and Monday, with peak gusts reaching 34–41 km/h (18–22 kt). Daily rainfall totals remain 0.0 mm across consensus (ECMWF indicates a minor 0.3 mm on Monday).\n- **Days 4–7 (Wednesday – Saturday):** Guidance diverges noticeably by Day+7 (Saturday, Sep 5). ECMWF projects a cooler, wetter shift with 1.8 mm of rain, highs dropping to 30°C / 86°F, and gusty winds up to 41 km/h (22 kt). GFS keeps the extended range dry and unseasonably warm at 36°C / 97°F. Kenya Met maintains sunny intervals through Wednesday (Day+4).\n\n## Severe Weather / Hazard Potential\nConvective instability guidance was unavailable from model feeds on this cycle. Under prevailing dry synoptic conditions and low atmospheric moisture, no thunderstorm or severe weather hazards are anticipated for the basin today.\n\n## Lake Victoria — Conditions for Boaters\nEarly morning winds over open waters will blow from the SSE at 20 km/h (11 kt) to 29 km/h (16 kt), producing moderate choppy conditions with gusts reaching 32–43 km/h (17–23 kt) on open water guidance. Winds will shift to the SSW by late afternoon while easing to 15–20 km/h (8–11 kt). Clear visibility and dry conditions will prevail across all shipping routes.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1020 hPa) — a 15 hPa spread, representing a strong large-scale gradient. Pressure is also falling toward the southwest, while pressure overhead remains steady near 1013–1014 hPa. Regionally across Nyanza Basin, MSLP shows slight 24-hour falls (-0.3 to -1.4 hPa across models). Higher MSLP at elevated southern stations (1016.2 hPa) relative to northern points (1013.8 hPa) continues to sustain daytime thermal contrasts and predictable lake-breeze circulation.\n\n### Forecaster Confidence Notes\nModel guidance refreshed prior to this issuance, with the slowest model cycle aligned at 18:00Z (9 hours old), confirming the morning outlook.\n\nFor today's call, ECMWF (100% rolling Day+0 rain verification, +0.3°C daytime high error) and ICON (90% rolling Day+0 rain verification) receive primary weight for temperature and dry precipitation calls. GFS surface wind predictions are discounted due to its established overestimation bias (+18.0 km/h 10-check error; +20.6 km/h long-run bias).\n\nThe Kenya Meteorological Department (KMD) forecast calls for sunny intervals with a maximum of 32.0°C and minimum of 17.0°C for Kisumu today, aligning fully with numerical consensus.\n\nRegarding air quality, ground stations (Kisumu Airport, Ochieng' Avenue, Dunga Beach) are stale (most recent readings 22 hours old); current assessment is based on CAMS model output.\n\nLong-run review findings indicate that at Day+0, Best Match (89%) is the strongest rain caller and GFS (61%) the weakest. At Day+3, Best Match leads (93%) while ICON is weakest (67%). At Day+7, no model meaningfully outperforms the others within sampling noise limits (9-point spread).",
-  "whatsapp_summary": "UPDATE (06:00 EAT): Sunny and warm today in Kisumu with highs near 32°C / 90°F ☀️. Light to moderate afternoon lake breezes up to 30 km/h (16 kt) 🌬️. Dry conditions confirmed across all models through tonight. High UV (9.1) around noon — wear sun protection 🕶️.",
+  "narrative_markdown": "## Overview\nNo material changes have occurred in model guidance since earlier today; dry and warm conditions remain locked in across Kisumu for tonight and into Sunday, with overnight lows cooling to near 18°C / 64°F under light winds.\n\n## Today's Forecast\nWith dusk underway and sunset approaching at 18:45, daytime temperatures that peaked around 32°C / 90°F (matching Kenya Met's 32°C / 90°F call) are steadily falling through 28°C / 82°F. Overnight skies will remain clear to partly cloudy as temperatures settle to a low near 18°C / 64°F (ranging from 17°C / 63°F on GFS and Kenya Met to 18.5°C / 65°F on ECMWF). Light daytime lake breezes will decay into calm land breezes from the east to southeast overnight at 5 km/h (3 kt) to 10 km/h (5 kt). No rainfall is expected overnight (0.0 mm / 0.00 in across all models).\n\nCurrently, no fresh ground air quality data is available; the last actual reading was an AQI of 69 at Kisumu Airport, 3 hours ago (with 3 stations reporting at that time), while CAMS model guidance projects US AQI values around 76 to 90 (Moderate) for tonight.\n\n## Extended Outlook\n- **Days 1–3 (Sunday – Tuesday):** High confidence in dry weather continuing across the basin. Sunday through Tuesday will see daytime highs around 32°C / 90°F to 33°C / 91°F and overnight lows near 17°C / 63°F to 18°C / 64°F. Winds across the basin will intensify on Sunday and Monday, with peak afternoon gusts reaching 32 km/h (17 kt) to 40 km/h (22 kt) on ECMWF and Best Match guidance. Daily rainfall totals remain at 0.0 mm / 0.00 in across consensus.\n- **Days 4–7 (Wednesday – Saturday):** Guidance diverges markedly by Day+7 (Saturday, Sep 5). ECMWF projects a cooler, wetter trend with 1.8 mm / 0.07 in of rainfall, daytime highs dropping to 29°C / 84°F, and wind gusts up to 43 km/h (23 kt). Conversely, GFS maintains dry conditions and unseasonable warmth with highs up to 34°C–36°C / 93°F–97°F. Kenya Met's 5-day bulletin keeps sunny intervals through Wednesday (Day+4) with highs of 32°C–33°C / 90°F–91°F.\n\n## Severe Weather / Hazard Potential\nModel convective instability guidance (CAPE) was unavailable for this cycle. Under stable synoptic conditions and limited atmospheric moisture, no thunderstorm or severe weather hazards are anticipated for the basin tonight or tomorrow.\n\n## Lake Victoria — Conditions for Boaters\nWinds over open waters will remain mild through the evening, blowing from the WSW before veering to the S and SE overnight at 10 km/h (5 kt) to 18 km/h (10 kt) with light chop. However, boaters should prepare for significantly stronger winds starting early Sunday morning: south-southeasterly winds will build over open water to 30 km/h (16 kt) to 34 km/h (18 kt), with peak gusts pushing 43 km/h (23 kt) to 45 km/h (24 kt) by mid-morning on ECMWF and ICON guidance, generating moderate to heavy chop.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1020 hPa) — a 15 hPa spread, a strong large-scale gradient. Pressure is also falling toward the northwest, south, southwest, and west, while pressure overhead remains near-steady at 1013–1014 hPa. Regionally across Nyanza Basin, mean sea-level pressure shows minor 24-hour falls (-0.3 to -1.4 hPa across models). Elevated southern basin stations (1016.6 hPa at location 3) maintain higher MSLP than northern lowlands (1014.0 hPa at location 1), sustaining local diurnal land/lake breeze circulation.\n\n### Forecaster Confidence Notes\nModel guidance refreshed prior to this issuance, with the slowest model cycle aligned at 06:00Z (9 hours old), confirming that numerical guidance has not shifted since earlier today.\n\nECMWF (100% Day+0 rain accuracy rolling, +0.3°C daytime high error) and ICON (90% Day+0 rain verification) are weighted most heavily for near-term temperature and dry precipitation calls. GFS surface wind predictions are discounted due to its established overestimation bias (+18.0 km/h 10-check error; +20.6 km/h long-run bias).\n\nThe Kenya Meteorological Department (KMD) bulletin calls for sunny intervals with a maximum of 32.0°C / 90°F and a minimum of 17.0°C / 63°F for Kisumu, in full agreement with numerical model consensus.\n\nRegarding air quality, ground monitoring stations are stale (most recent readings 3 hours old: Kisumu Airport at 69 AQI, Ochieng' Avenue, Kisumu Central at 62 AQI, and Dunga Beach at 61 AQI); current assessment relies on CAMS model output.\n\nLong-run review findings indicate that at Day+0, Best Match (89%) is the strongest rain caller and GFS (61%) the weakest. At Day+3, Best Match leads (93%) while ICON is weakest (67%). At Day+7, no model meaningfully outperforms the others within sampling noise limits (9-point spread across 3 models).",
+  "whatsapp_summary": "Nyanza Basin Evening Update (Aug 29): 🌙 Dry & calm conditions tonight across Kisumu, dropping to 18°C. ☀️ Warm & dry Sunday with highs around 32°C. 🚤 Lake boaters: light evening breezes tonight, building to 30-43 km/h from SE on Sunday morning.",
   "earlier_issuances": [
     {
       "rain_expected": "Dry / Elevated Evening Thunder Potential",
@@ -291,6 +291,50 @@
       "generated_at_utc": "2026-08-29T00:06:05.612020Z",
       "guidance_initialised_at": "2026-08-28T12:00:00Z",
       "guidance_age_hours": 12.027316578888888,
+      "guidance_source": "observed"
+    },
+    {
+      "rain_expected": "Dry / No Rain",
+      "onset_window": null,
+      "peak_wind_kmh": 29.8,
+      "temp_high_c": 32.3,
+      "temp_low_c": 17.7,
+      "temp_high_low_display": "32°C / 90°F high, 18°C / 64°F low",
+      "mslp_trend_24h": "-0.6 hPa",
+      "synoptic_pattern": "Strong regional MSLP gradient (14.6 hPa spread) with lower pressure to the northeast and higher pressure to the south.",
+      "uv_index_max": "9.1 (Very High)",
+      "air_quality_aqi": "68–95 (Moderate, CAMS)",
+      "ground_aqi": [
+        {
+          "name": "Kisumu Airport",
+          "station_id": "A418534",
+          "aqi": null,
+          "pm25": 55.0,
+          "pm10": 15.0,
+          "measured_at": "2026-08-28T05:00:00Z"
+        },
+        {
+          "name": "Ochieng' Avenue, Kisumu Central",
+          "station_id": "A418300",
+          "aqi": null,
+          "pm25": 60.0,
+          "pm10": 18.0,
+          "measured_at": "2026-08-28T05:00:00Z"
+        },
+        {
+          "name": "Dunga Beach",
+          "station_id": "A418504",
+          "aqi": null,
+          "pm25": 45.0,
+          "pm10": 37.0,
+          "measured_at": "2026-08-28T05:00:00Z"
+        }
+      ],
+      "narrative_markdown": "## Overview\nUpdated dawn guidance confirms a dry and warm day ahead across Kisumu, with daytime temperatures reaching 32°C / 90°F and light to moderate lake breezes developing by afternoon. Fresher model cycles (aligned at 18:00Z) maintain full agreement on dry conditions through tonight.\n\n## Today's Forecast\nWith dawn underway, temperatures start near 17°C / 63°F–18°C / 64°F under clear to partly cloudy skies before rising quickly after sunrise (06:38). Daytime high temperatures will peak around 32°C / 90°F (ranging from 31°C / 88°F on UKMO to 33°C / 91°F on GFS), matching the Kenya Meteorological Department's official call of 32°C / 90°F. Afternoon lake breezes will push from the SSW at 12 km/h (6 kt) to 15 km/h (8 kt), with peak gusts near 30 km/h (16 kt). Peak UV index will reach 9.1 (Very High) around midday. Air quality assessment relies on CAMS atmospheric modeling showing Moderate conditions (US AQI 68–95), as local ground monitoring sensors remain stale. Dry weather continues through dusk (sunset 18:45) and overnight, with lows cooling back to 18°C / 64°F.\n\n## Extended Outlook\n- **Days 1–3 (Sunday – Tuesday):** Near-term confidence is high. Sunday through Tuesday remain dry with daytime highs of 32°C / 90°F to 33°C / 91°F and overnight lows near 18°C / 64°F to 19°C / 66°F. Basin winds strengthen on Sunday and Monday, with peak gusts reaching 34–41 km/h (18–22 kt). Daily rainfall totals remain 0.0 mm across consensus (ECMWF indicates a minor 0.3 mm on Monday).\n- **Days 4–7 (Wednesday – Saturday):** Guidance diverges noticeably by Day+7 (Saturday, Sep 5). ECMWF projects a cooler, wetter shift with 1.8 mm of rain, highs dropping to 30°C / 86°F, and gusty winds up to 41 km/h (22 kt). GFS keeps the extended range dry and unseasonably warm at 36°C / 97°F. Kenya Met maintains sunny intervals through Wednesday (Day+4).\n\n## Severe Weather / Hazard Potential\nConvective instability guidance was unavailable from model feeds on this cycle. Under prevailing dry synoptic conditions and low atmospheric moisture, no thunderstorm or severe weather hazards are anticipated for the basin today.\n\n## Lake Victoria — Conditions for Boaters\nEarly morning winds over open waters will blow from the SSE at 20 km/h (11 kt) to 29 km/h (16 kt), producing moderate choppy conditions with gusts reaching 32–43 km/h (17–23 kt) on open water guidance. Winds will shift to the SSW by late afternoon while easing to 15–20 km/h (8–11 kt). Clear visibility and dry conditions will prevail across all shipping routes.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the south (1020 hPa) — a 15 hPa spread, representing a strong large-scale gradient. Pressure is also falling toward the southwest, while pressure overhead remains steady near 1013–1014 hPa. Regionally across Nyanza Basin, MSLP shows slight 24-hour falls (-0.3 to -1.4 hPa across models). Higher MSLP at elevated southern stations (1016.2 hPa) relative to northern points (1013.8 hPa) continues to sustain daytime thermal contrasts and predictable lake-breeze circulation.\n\n### Forecaster Confidence Notes\nModel guidance refreshed prior to this issuance, with the slowest model cycle aligned at 18:00Z (9 hours old), confirming the morning outlook.\n\nFor today's call, ECMWF (100% rolling Day+0 rain verification, +0.3°C daytime high error) and ICON (90% rolling Day+0 rain verification) receive primary weight for temperature and dry precipitation calls. GFS surface wind predictions are discounted due to its established overestimation bias (+18.0 km/h 10-check error; +20.6 km/h long-run bias).\n\nThe Kenya Meteorological Department (KMD) forecast calls for sunny intervals with a maximum of 32.0°C and minimum of 17.0°C for Kisumu today, aligning fully with numerical consensus.\n\nRegarding air quality, ground stations (Kisumu Airport, Ochieng' Avenue, Dunga Beach) are stale (most recent readings 22 hours old); current assessment is based on CAMS model output.\n\nLong-run review findings indicate that at Day+0, Best Match (89%) is the strongest rain caller and GFS (61%) the weakest. At Day+3, Best Match leads (93%) while ICON is weakest (67%). At Day+7, no model meaningfully outperforms the others within sampling noise limits (9-point spread).",
+      "whatsapp_summary": "UPDATE (06:00 EAT): Sunny and warm today in Kisumu with highs near 32°C / 90°F ☀️. Light to moderate afternoon lake breezes up to 30 km/h (16 kt) 🌬️. Dry conditions confirmed across all models through tonight. High UV (9.1) around noon — wear sun protection 🕶️.",
+      "generated_at_utc": "2026-08-29T03:04:51.954220Z",
+      "guidance_initialised_at": "2026-08-28T18:00:00Z",
+      "guidance_age_hours": 9.028734183888888,
       "guidance_source": "observed"
     }
   ],
@@ -338,15 +382,15 @@
     "guidance_age_hours": 12.027316578888888,
     "guidance_source": "observed"
   },
-  "guidance_initialised_at": "2026-08-28T18:00:00Z",
-  "guidance_age_hours": 9.028734183888888,
+  "guidance_initialised_at": "2026-08-29T06:00:00Z",
+  "guidance_age_hours": 9.022881236944444,
   "guidance_source": "observed",
   "meta": {
     "generated_at_utc": "2026-08-29T00:06:05.612020Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "refreshed_at": "2026-08-29T03:04:51.954220Z",
+    "refreshed_at": "2026-08-29T15:04:37.541173Z",
     "trigger_source": "schedule"
   }
 }
