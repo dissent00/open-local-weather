@@ -35,8 +35,9 @@ and also the reference example for forking to a new location.
    no claim rather than a confident guess, and the results are published as
    an accuracy page and fed back into the next day's reasoning.
 
-All of this runs daily on GitHub Actions' free scheduled-workflow minutes, on
-a public repo.
+All of this runs daily on GitHub Actions' free minutes, on a public repo.
+The trigger is yours to choose — `forecast.yml` declares no `schedule:`, for
+reasons its header comment and [ops/README.md](ops/README.md) record.
 
 ## Set it up for your own town
 
@@ -61,10 +62,10 @@ Ollama are all supported alternatives.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — conventions, and the contribution
   terms (this project is dual-licensed, so please read before opening a PR).
 - **[mailer/README.md](mailer/README.md)** — email delivery setup.
-- **[ops/README.md](ops/README.md)** — optional, deployment-specific
-  scheduling reliability setup (documents multiple paths — GitHub Actions
-  alone, GitHub Actions with an externally-triggered dispatch, or a full
-  migration off GitHub Actions — same core pipeline either way).
+- **[ops/README.md](ops/README.md)** — deployment-specific triggering and
+  reliability setup (documents multiple paths — a GitHub `schedule:` block,
+  an externally-triggered dispatch, or a full migration off GitHub Actions
+  — same core pipeline either way).
 
 (`docs/` is the *generated* Pages site — don't hand-edit it; the pipeline
 overwrites it every run.)

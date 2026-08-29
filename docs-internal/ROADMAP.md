@@ -2540,11 +2540,12 @@ last hour (`MIN_REISSUE_INTERVAL_MINUTES`) returns without calling the model.
 scored numbers. A skip exits 0, because a backup slot that correctly did
 nothing must not colour a run red.
 
-`forecast.yml` carries all eight backstop slots. `daily.yml` and
-`evening_refresh.yml` are dispatch-only now — their `schedule:` blocks were
-removed in the same commit, so two workflows can never fire for the same day
-— and they stay until the crontab is switched, because a cron line naming a
-deleted workflow fails silently from the crontab's side.
+`forecast.yml` carried all eight backstop slots. It carries none now — see
+item 49 for why they were removed on 2026-08-29. `daily.yml` and
+`evening_refresh.yml` are dispatch-only — their `schedule:` blocks were
+removed in the same commit as 34b, so two workflows can never fire for the
+same day — and they stay until the crontab is switched, because a cron line
+naming a deleted workflow fails silently from the crontab's side.
 
 The crontab's two lines are now IDENTICAL apart from the hour, which is the
 whole point: `ops/trigger_workflow.sh` defaults to `forecast.yml`, so adding a
@@ -3729,7 +3730,7 @@ framed the most valuable half of the work as a restriction.
 
 ---
 
-## 49. A slot that arrives late enough is a different run · **Planned — evidence landing**
+## 49. A slot that arrives late enough is a different run · **Shipped — one guard outstanding**
 
 Found on 2026-08-28, live. Four `forecast.yml` runs were created between
 00:22:32Z and 00:37:28Z — three to six minutes apart, and hours from any slot
@@ -3797,6 +3798,44 @@ GitHub's scheduler and becomes a question with a column of numbers behind it.
 **Do not "fix" this by widening `MIN_REISSUE_INTERVAL_MINUTES`.** That guard
 answers "is this trigger a repeat of the last one", and a run nine hours late
 is genuinely not a repeat. Two questions, two guards.
+
+### Settled 2026-08-29: option 4, delete the slots
+
+It happened again the night the crontab was finally pointed at
+`forecast.yml`, which made the cost legible. Four schedule runs 23:59:53Z–
+00:09:21Z; the first wrote `forecast: 2026-08-29` at 00:06:05Z on 12z
+guidance, age 12.03 h; the crontab dispatch fired on time at 03:01:04Z into
+the 02:00 UTC window and could only re-issue the narrative, because the
+numbers were already written. Twice in two days the day's scored predictions
+came from the trigger nobody chose.
+
+The measurement that decides it is the whole history of those four 03:0x
+crons, under this file and `daily.yml` before it with identical entries:
+33–52 min late on 08-26, ~11 h late on 08-27, a cluster around midnight on
+08-28 and 08-29. Not once punctual. The 15:0x family has never been more
+than ~35 min out. Attribution of a run to a declared slot is inference —
+GitHub exposes no intended-fire time — but the arrival times are not. A
+backstop that is never on time for the run that matters is not redundancy,
+it is a second scheduler competing to own the day.
+
+So: **`forecast.yml`'s `schedule:` block was removed.** The crontab is the
+only trigger. What that gives up is real and was the block's whole purpose —
+a dead server, a rotated token or a broken cron line now produces silence,
+and `health_check.yml` only looks weekly. The trade was made deliberately:
+the mailer sends on novelty, so a surplus issuance is a surplus email to
+every subscriber, and for a beta with real readers one silent morning costs
+less than spam.
+
+Options 1 and 2 above are not wrong and are not built. They stay written
+down because anyone who puts a `schedule:` block back — a fork with no
+external trigger, which is the documented reason to — inherits the same
+problem, and option 1 is the cheap half of the answer.
+
+**What is still unguarded.** Nothing in the pipeline refuses to open a day
+on stale guidance. Removing the block removes the only trigger that has ever
+done it here, not the possibility: a crontab firing late, a server in the
+wrong timezone, or a hand dispatch at the wrong hour would do the same. That
+is option 1, still unbuilt, now the only part of this item outstanding.
 
 ---
 
@@ -3918,7 +3957,9 @@ Three edge cases have guards, each with the reasoning attached:
    proven by tests and by the exit code, not by a real disagreement.
 3. **Settle item 49 with the evidence.** The choice about late slots was
    blocked on not knowing how bad a late run's data actually is. It is now a
-   recorded number per issuance.
+   recorded number per issuance. Settled 2026-08-29, on the second day those
+   numbers said 12 hours: the `schedule:` block was deleted rather than
+   guarded.
 
 **Deliberately not done:** guessing the raw-model mapping for the other four.
 `gfs_seamless` resolves to `ncep_gfs013` for near-term hours here, and the
@@ -4011,7 +4052,7 @@ N issuances all fell back to `derived`" is the failing condition, and it
 needs no new state.
 
 Blocked on rows: 0 of 18 entries carry `guidance_source` as of 2026-08-28,
-the field having shipped after that day's only run. The same wait gates item
-49.
+the field having shipped after that day's only run. Item 49 no longer waits
+on this — two issuances were enough to settle it.
 
 Related: items 4, 25, 39, 49, 50.

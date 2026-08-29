@@ -1,11 +1,9 @@
-# Operational extras (optional, deployment-specific)
+# Operational extras (deployment-specific)
 
-Everything in `ops/` is **optional**. Forking this project and running it
-on GitHub Actions alone — the default, zero-servers-required path — works
-fine without anything in this directory. `ops/` exists for operators who
-want tighter scheduling reliability than GitHub Actions' own `schedule`
-trigger provides. Same core pipeline either way — these are trigger paths,
-not forks of the logic itself.
+`ops/` is one way to trigger the pipeline; it is not the only one, and
+nothing here is part of the forecast logic. Pick a path below — since
+`forecast.yml` carries no `schedule:` block, picking one is required, not
+an upgrade. Same core pipeline whichever you pick.
 
 ## Why this exists
 
@@ -42,24 +40,40 @@ different failure shapes:
   pipeline's own duplicate-trigger guard found no log entry, ran a full
   first-run LLM call it didn't need, and its `git push` was rejected
   non-fast-forward.
+- It happened again on 2026-08-29: four runs created 23:59:53Z–00:09:21Z,
+  the first writing `forecast: 2026-08-29` at 00:06:05Z on guidance
+  initialised 12z, age 12.03 h. Which declared slot produced each run is
+  not knowable — GitHub exposes no intended-fire time — and the draining
+  reading above no longer obviously fits, since that day's 15:0x slots had
+  already fired at 15:16–15:41Z. What is knowable is arrival times against
+  the slots that exist, over the whole history of these four 03:0x crons
+  under `forecast.yml` and under `daily.yml` before it with identical
+  entries: 33–52 min late on 2026-08-26, ~11 h late on 2026-08-27
+  (14:04–14:34Z), a cluster around midnight on 08-28 and again on 08-29.
+  Not once punctual. The 15:0x family has never been more than ~35 min out.
 
-Net effect: the backup-slot redundancy (now in `forecast.yml`, left in
-place as a backstop) meaningfully reduces
-the odds of a *total* miss, but does nothing for punctuality when GitHub's
-own scheduler queue backs up — and a forecast that lands two hours late is
-still a missed subscriber email that day, since the mailer's own retry
-window (`mailer/AppsScriptMailer.gs`) is only a few minutes wide. For a
-daily product where "the email actually went out this morning" matters,
-this is the reason to trigger from somewhere else entirely.
+Net effect, and the decision taken on 2026-08-29: **`forecast.yml`'s
+`schedule:` block was removed.** Backup slots lower the odds of a *total*
+miss and do nothing for punctuality once GitHub's queue backs up. Worse, a
+03:0x slot arriving after 00:00 UTC is not a late backstop — it is the next
+day's FIRST run, and the first run owns the write-once numbers the accuracy
+record scores. Twice running those were built on 12-hour-old guidance while
+the crontab dispatch, firing on time, could only re-issue the narrative. It
+also buys an extra issuance, and the mailer sends on novelty
+(`mailer/AppsScriptMailer.gs`, 30-minute poll), so an extra issuance is an
+extra email to every subscriber. For a daily product with real readers, one
+trigger that is occasionally silent beats two that occasionally collide.
 
 ## The documented setup paths
 
-**1. GitHub Actions only (the default, no `ops/` involved).** Fork the
-repo, add the required secrets, done. Reliability is whatever GitHub's
-`schedule` trigger delivers that day. This is the only path that requires
-zero infrastructure of your own, which matters for this project's actual
-goal: forkable for underserved locations by people who may not have (or
-want to pay for/maintain) anything else.
+**1. GitHub Actions' own `schedule:` (removed here, restorable in a
+fork).** Add a `schedule:` block back to `forecast.yml` and it needs no
+trigger of your own at all — the lowest-setup path, and the reason it
+existed: forkable for underserved locations by people who may not have (or
+want to pay for/maintain) anything else. Reliability is whatever GitHub
+delivers that day, which on this repo has meant slots hours late often
+enough to matter (see *Why this exists*). Path 2a costs one dashboard form
+and removes that, so prefer it if you can.
 
 **2a. A free hosted cron service — no server, no script, the easiest real
 fix (recommended starting point).** Services like
@@ -97,21 +111,24 @@ than an hour apart are refused as duplicate triggers.
      `X-GitHub-Api-Version: 2022-11-28`
      `Content-Type: application/json`
    - **Body**: `{"ref":"main"}`
-   - **Schedule**: the workflow's intended time (03:07 UTC / 15:07 UTC for
-     this deployment — see `forecast.yml`'s own cron comment). No need
-     to offset off the exact hour the way GitHub's own crons do; that
-     trick works around GitHub Actions' scheduler congestion specifically,
-     which doesn't apply to a dedicated cron service.
+   - **Schedule**: whatever times you want issuances. Pick the first one
+     inside an aligned model window (`cycle.py`) — this deployment uses
+     03:01 and 15:01 UTC, the crontab lines below. No need to offset off
+     the exact hour the way GitHub's own crons do; that trick works around
+     GitHub Actions' scheduler congestion specifically, which doesn't
+     apply to a dedicated cron service.
 3. A successful dispatch returns HTTP 204 with an empty body — it means
    GitHub accepted the request to start a run, not that the run will
-   succeed. GitHub's own `schedule:` crons stay in the workflow files as a
-   backstop; both are safe to overlap, since a trigger that repeats one
-   from the last hour returns inside the pipeline without calling the
-   model, whichever trigger got there first. **Don't pass a `force` input
+   succeed. This is now the only trigger — `forecast.yml` declares no
+   `schedule:` — so if it stops firing, nothing else covers it. Adding a
+   second trigger is safe in itself: one that repeats another from the last
+   hour returns inside the pipeline without calling the model, whichever
+   got there first. Read *Why this exists* before adding one anyway; the
+   collision that matters is not a wasted call but which trigger gets to
+   open the day. **Don't pass a `force` input
    on the dispatch call** — leaving it at its default (`false`) is what
-   lets this trigger safely lose the race to GitHub's own schedule (or a
-   backup slot) without burning a redundant call; `force: true` exists
-   only for a human
+   lets this trigger safely lose a race to any other trigger without
+   burning a redundant call; `force: true` exists only for a human
    deliberately regenerating today's forecast by hand, not for routine
    automated triggers.
 
@@ -173,11 +190,12 @@ Four things that are easy to get wrong here:
   cron's mail, which on most servers means nowhere. That log is the only
   thing that answers "when did this stop working": the failure mode here is
   silence, and silence is what a missing log looks like too.
-- **The minute is deliberate.** 03:01 arrives six minutes before
-  `forecast.yml`'s own first backstop slot (03:07 UTC), so the crontab wins
-  the race and GitHub's scheduler stays the fallback. There is no need to
-  offset off the exact hour the way the GitHub-side crons do; that trick
-  works around GitHub Actions' scheduler congestion, which an ordinary cron
+- **The minute is deliberate.** 03:01 UTC puts the first run of the day
+  just inside the 02:00 UTC aligned window (`cycle.py`), which is what the
+  hour is chosen for; the minute itself no longer has to beat anything,
+  since there are no GitHub-side slots left to race. There is no need to
+  offset off the exact hour the way GitHub-side crons do; that trick works
+  around GitHub Actions' scheduler congestion, which an ordinary cron
   daemon does not share.
 - **A copy of the script is not the script, and that is the right trade.**
   `$HOME/bin/trigger_workflow.sh` above is a copy, so `git pull` in a
@@ -198,19 +216,19 @@ actually dispatches.
 needed).** Run `olw forecast` directly from cron
 on a server you control, at whatever times you want issuances — no GitHub Actions involved in scheduling *or*
 execution. The most reliable option for scheduling specifically, at the
-cost of everything path 1 is designed to avoid: secrets move off GitHub's
-encrypted secrets onto your box, you're patching/monitoring/paying for a
-server instead of free GitHub compute, and a fork of this project would
-inherit "go run a server" as a requirement instead of "fork the repo, add
-two secrets." Not pursued while path 2a/2b cover the actual reliability
+cost of everything paths 1 and 2a are designed to avoid: secrets move off
+GitHub's encrypted secrets onto your box, you're patching/monitoring/paying
+for a server instead of free GitHub compute, and a fork of this project
+would inherit "go run a server" as a requirement instead of "fork the repo,
+add two secrets." Not pursued while path 2a/2b cover the actual reliability
 gap without that tradeoff — documented here (and in
 [ROADMAP.md item 10](../docs-internal/ROADMAP.md), a possible future
 free-tier OCI walkthrough) so it doesn't need re-deriving if circumstances
 change.
 
-Paths 2a, 2b, and 3 are all optional, deployment-specific choices layered
-on top of the same core pipeline — picking one doesn't change what forkers
-inherit by default (path 1).
+All four are deployment-specific choices layered on the same core pipeline;
+none of them forks the logic. This deployment runs 2b. A fork inherits no
+trigger at all, which is the one thing to notice before relying on it.
 
 ## Credential handling (planned improvement)
 

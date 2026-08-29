@@ -237,7 +237,7 @@ Add secret `WAQI_TOKEN`, and list the stations in `config/location.yaml`:
 
 ## Step 7 — Run it once, and check that it worked
 
-Don't wait for the schedule. **Actions → Forecast → Run workflow**.
+**Actions → Forecast → Run workflow**. Nothing runs it for you yet — see Step 9.
 
 One workflow covers every run of the day: the first run of a day produces
 the forecast and the numbers tomorrow scores, and any later run re-issues
@@ -291,27 +291,39 @@ isn't here.
 
 ---
 
-## Step 9 — *(Recommended)* Make the schedule reliable
+## Step 9 — Give it a trigger
 
-GitHub's own documentation admits that under load, scheduled workflows may
-be delayed **or dropped entirely**. This project has hit both: two complete
-no-shows, and a morning where every backup slot fired about two hours late.
+**`forecast.yml` has no `schedule:` block, so nothing runs it for you.**
+Until you do this, the only forecasts you get are the ones you start by
+hand in Step 7.
 
-The workflows already schedule four attempts per run to soften this. If
-you want it genuinely dependable, trigger it from outside GitHub — a free
-hosted cron service like [cron-job.org](https://cron-job.org) can call
-GitHub's API on schedule with no server of your own.
+The block was removed rather than left in because GitHub's own
+documentation admits scheduled workflows may be delayed **or dropped
+entirely**, and this project hit both: two complete no-shows, a morning
+where every backup slot fired about two hours late, and slots arriving so
+late they crossed UTC midnight and became the *next* day's first run — on
+half-day-old model guidance, and an extra email to every subscriber.
+[`ops/README.md`](ops/README.md) has the measurements.
 
-[`ops/README.md`](ops/README.md) has the field-by-field setup, including
-the security notes for the access token it needs.
+Two ways to fix that, in order of effort:
+
+- **A free hosted cron service** like [cron-job.org](https://cron-job.org)
+  calling GitHub's dispatch API on schedule. No server of your own, no code
+  — a web form. [`ops/README.md`](ops/README.md) has the field-by-field
+  setup, including the security notes for the access token it needs.
+- **Put a `schedule:` block back** in `.github/workflows/forecast.yml` if
+  you would rather have nothing to configure and can live with the
+  punctuality above. Read that file's header comment first; it says what
+  a late slot does to the accuracy record.
 
 ---
 
 ## Troubleshooting
 
 **The workflow never ran.**
-Actions aren't enabled on your fork (Step 1a), or the schedule was dropped
-by GitHub (Step 9). Use **Run workflow** to trigger it by hand.
+Actions aren't enabled on your fork (Step 1a), or you have no trigger yet
+(Step 9) — `forecast.yml` ships without a `schedule:` block. Use **Run
+workflow** to trigger it by hand.
 
 **`GEMINI_API_KEY environment variable is required`**
 The secret isn't set, or is named differently. Check

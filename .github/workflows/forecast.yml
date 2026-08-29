@@ -19,38 +19,53 @@ name: Forecast
 # guard it cannot reach the scored numbers. A check job would also have spun
 # up a runner, so this costs about the same and removes the YAML logic.
 #
-# TRIGGERING: two paths, deliberately in different failure domains.
+# TRIGGERING: one path. The operator's crontab calls GitHub's
+# workflow_dispatch REST API via ops/trigger_workflow.sh, at the times and
+# for the reasons ops/README.md records.
 #
-# PRIMARY is the operator's own crontab, calling GitHub's workflow_dispatch
-# REST API via ops/trigger_workflow.sh. It exists because GitHub's scheduler
-# proved unreliable on this repo: a first-ever scheduled occurrence fired ~56
-# minutes late with createdAt == startedAt, and daily.yml's schedule produced
-# zero runs at all on two separate occasions.
+# THERE IS NO `schedule:` BLOCK. That is a decision, not an omission.
 #
-# BACKSTOP is the `schedule:` block below. Not redundant with the crontab —
-# redundant of a different KIND. The crontab routes around GitHub's
-# scheduler; the schedule routes around the operator's server, its token and
-# its network. Either alone is a single point of failure, and the failure is
-# quiet: a run that never happens produces no error anywhere, and
-# health_check.yml only looks weekly.
+# Eight backstop slots — 03:07/22/37/52 and 15:07/22/37/52 UTC — were removed
+# on 2026-08-29. What they covered was real: the crontab routes around
+# GitHub's scheduler, the schedule routed around the operator's server, its
+# token and its network, and a run that never happens produces no error
+# anywhere while health_check.yml only looks weekly. They were removed
+# because the 03:0x family cost more than it covered.
 #
-# TIMES, from the measured model-availability table in ROADMAP.md:
-#   03:07 UTC = ~06:07 EAT. Aligned model windows open at 02:00 UTC.
-#   15:07 UTC = ~18:07 EAT. By 13:19 UTC every model's 06z cycle has landed,
-#     and the aligned window holds until just before 19:00 UTC.
-# The +15/+30/+45 slots cover a late or dropped occurrence — confirmed
-# necessary twice. They are nearly free: a slot behind one that already
-# delivered skips inside the pipeline without an API call.
+# MEASURED, across the whole run history of those four slots under this file
+# and daily.yml before it, which carried the identical crons: they have never
+# been punctual. 33–52 min late on 2026-08-26; ~11 h late on 2026-08-27
+# (14:04–14:34Z); and on both 2026-08-28 and 2026-08-29 a group of four
+# landing around 00:00 UTC. The 15:0x family has never been more than ~35
+# min out. Which declared slot produced a given run is not knowable — GitHub
+# exposes no intended-fire time — so these are arrival times against the
+# slots that exist, not a per-slot attribution.
+#
+# A slot late enough does not run late — it runs as a different kind of run.
+# Crossing UTC midnight, those 00:0x arrivals were not yesterday's re-issue;
+# they were the FIRST run of the next day, which owns the write-once
+# model_predictions the accuracy record scores. Twice running, that day's
+# numbers were built on 12-hour-old guidance (2026-08-29: 12z, age 12.03 h)
+# rather than the ~9 h a 03:0x run gets from the 02:00 UTC aligned window,
+# and the crontab dispatch — on time, 03:01:04Z — could then only re-issue
+# the narrative. Every guard in the pipeline behaved correctly. None of them
+# is about which trigger gets to be first.
+#
+# The cost is also a message. The mailer sends on novelty
+# (mailer/AppsScriptMailer.gs), so a third issuance is a third email to every
+# subscriber. A missed morning is cheaper than that.
+#
+# ALL EIGHT WENT, not just the four that misbehave. A 15:0x slot delivered
+# late enough lands after midnight too — that was the original reading of the
+# 2026-08-28 cluster — so keeping the evening four would keep a second
+# scheduler able to open a day it was never meant to open.
+#
+# FORKERS: with no `schedule:` here, this workflow never runs by itself. Give
+# it a trigger before relying on it — a free hosted cron service calling the
+# dispatch API needs no server of your own (QUICKSTART.md step 9,
+# ops/README.md), or add a `schedule:` block back and accept the punctuality
+# above.
 on:
-  schedule:
-    - cron: "7 3 * * *"
-    - cron: "22 3 * * *"
-    - cron: "37 3 * * *"
-    - cron: "52 3 * * *"
-    - cron: "7 15 * * *"
-    - cron: "22 15 * * *"
-    - cron: "37 15 * * *"
-    - cron: "52 15 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
