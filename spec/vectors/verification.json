@@ -41,7 +41,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           }
         },
         "today": "2026-08-21",
@@ -405,7 +407,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-10": {
             "rain": true,
@@ -415,7 +419,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-11": {
             "rain": true,
@@ -425,7 +431,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-12": {
             "rain": true,
@@ -435,7 +443,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-13": {
             "rain": true,
@@ -445,7 +455,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-14": {
             "rain": true,
@@ -455,7 +467,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-15": {
             "rain": true,
@@ -465,7 +479,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-16": {
             "rain": true,
@@ -475,7 +491,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-17": {
             "rain": true,
@@ -485,7 +503,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-18": {
             "rain": true,
@@ -495,7 +515,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-19": {
             "rain": true,
@@ -505,7 +527,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-20": {
             "rain": true,
@@ -515,7 +539,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           }
         },
         "today": "2026-08-21",
@@ -879,7 +905,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-10": {
             "rain": true,
@@ -889,7 +917,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-11": {
             "rain": true,
@@ -899,7 +929,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-12": {
             "rain": true,
@@ -909,7 +941,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-13": {
             "rain": true,
@@ -919,7 +953,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-14": {
             "rain": true,
@@ -929,7 +965,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-15": {
             "rain": true,
@@ -939,7 +977,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-16": {
             "rain": true,
@@ -949,7 +989,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-17": {
             "rain": true,
@@ -959,7 +1001,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-18": {
             "rain": true,
@@ -969,7 +1013,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-19": {
             "rain": true,
@@ -979,7 +1025,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-20": {
             "rain": true,
@@ -989,7 +1037,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           }
         },
         "today": "2026-08-21",
@@ -1184,7 +1234,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-17": {
             "rain": true,
@@ -1194,7 +1246,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-18": {
             "rain": true,
@@ -1204,7 +1258,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-19": {
             "rain": true,
@@ -1214,7 +1270,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           },
           "2026-08-20": {
             "rain": true,
@@ -1224,7 +1282,9 @@
             "mslp_trend": -1.0,
             "onset_hour": null,
             "precip_mm": null,
-            "thunder": null
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
           }
         },
         "today": "2026-08-21",

@@ -5,6 +5,7 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import MODELS, BLEND_MODEL_ID
+from openlocalweather.fetch.metar import StationWeather
 from openlocalweather.fetch import metar as metar_fetch
 import requests
 
@@ -1643,8 +1644,10 @@ def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypa
 def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_thunder_by_date",
-        lambda icao, start, end, tz: {d: True for d in (start, end)},
+        "observed_weather_by_date",
+        lambda icao, start, end, tz: {
+            d: StationWeather(thunder=True, precipitation=False) for d in (start, end)
+        },
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -2008,3 +2011,143 @@ def test_a_run_that_knows_less_than_the_last_one_says_so(tmp_path, monkeypatch):
     _, user_prompt = llm.calls[0]
     assert '"newer_than_previous_issuance": null' in user_prompt
     assert '"newer_than_previous_issuance": false' not in user_prompt
+
+
+# ---------------------------------------------------------------------------
+# Item 53.2 — the forward fetch is not the only place CAPE lives.
+# ---------------------------------------------------------------------------
+
+
+def today_only_hourly_from_now(**extra_series):
+    """The day-0 fetch, anchored to the real clock so hours remain ahead.
+
+    Shape matters: `fetch_forecast_hourly_today` asks for forecast_days=1, so
+    this is ONE local day and stops at 23:00 — which is exactly the limit the
+    fallback has to be honest about.
+    """
+    start = now_in_tz(LOCATION.timezone).replace(minute=0, second=0, microsecond=0)
+    times = [(start + timedelta(hours=i)).strftime("%Y-%m-%dT%H:00") for i in range(6)]
+    series = {name: values(times) for name, values in extra_series.items()}
+    return {"hourly": {"time": times, "precipitation_gfs_seamless": [0.0] * len(times), **series}}
+
+
+def test_a_failed_forward_window_falls_back_to_the_day_zero_cape(tmp_path, monkeypatch):
+    """The 2026-08-29 run, in miniature.
+
+    `fetch_forecast_hourly_forward` timed out three runs running while
+    `fetch_forecast_hourly_today` — same host, same endpoint, same variable
+    list including cape — succeeded in every one of them. The convective
+    outlook was reported "unavailable" with the data sitting in memory.
+    """
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("read timed out")),
+    )
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_today",
+        lambda *a, **k: today_only_hourly_from_now(
+            cape_ukmo_seamless=lambda times: [1830.0 if i == 1 else 40.0 for i in range(len(times))]
+        ),
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "no model supplied a CAPE series" not in user_prompt
+    assert '"convective": true' in user_prompt
+    assert '"peak_cape_jkg": 1830.0' in user_prompt
+
+
+def test_the_fallback_window_says_it_is_only_the_rest_of_today(tmp_path, monkeypatch):
+    """A window that stops at 23:00 must not be read as covering tonight and
+    tomorrow. The narrative is told the window narrowed, so "no instability
+    overnight" cannot be inferred from a series that simply ends."""
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("read timed out")),
+    )
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_today",
+        lambda *a, **k: today_only_hourly_from_now(
+            cape_ukmo_seamless=lambda times: [1830.0 if i == 1 else 40.0 for i in range(len(times))]
+        ),
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    # Case-insensitive: the prompt shouts it, and the emphasis is styling
+    # rather than the behaviour under test.
+    assert "rest of today only" in user_prompt.lower()
+    assert "ENDS AT 23:00 local" in user_prompt
+    assert "Unavailable this run." not in user_prompt.split("HOURS AHEAD")[1][:200]
+
+
+def test_the_full_forward_window_is_not_labelled_as_narrowed(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "rest of today only" not in user_prompt.lower()
+
+
+# ---------------------------------------------------------------------------
+# Item 53.3 — a gap must not be reportable as safety.
+# ---------------------------------------------------------------------------
+
+
+def test_an_absent_cape_series_forbids_an_all_clear(tmp_path, monkeypatch):
+    """The sentence that actually reached readers on 2026-08-29:
+
+        "Model convective instability guidance (CAPE) was unavailable for
+        this cycle. Under stable synoptic conditions and limited atmospheric
+        moisture, no thunderstorm or severe weather hazards are anticipated
+        for the basin tonight or tomorrow."
+
+    The code half of the contract held — summarize_instability returned None,
+    exactly as instability.py promises. Nothing forbade the narrative from
+    filling the hole with reassurance, so it reasoned from absence of
+    evidence to evidence of absence, in the section a reader checks before
+    going out on the water.
+    """
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("read timed out")),
+    )
+    # No CAPE anywhere: not in the forward window, not in the day-0 fallback.
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: today_only_hourly_from_now()
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    system_prompt, user_prompt = llm.calls[0]
+
+    assert "no model supplied a CAPE series" in user_prompt
+    # The gap is stated AND the inference from it is refused, in the block
+    # itself rather than only in the system prompt — the failing run had the
+    # system prompt in front of it too.
+    assert "absence of evidence" in user_prompt.lower()
+    assert "do NOT" in user_prompt
+    # And the rule is in the standing instructions as well, so it survives a
+    # reader of either half.
+    assert "A MISSING BLOCK IS NOT AN ALL-CLEAR" in system_prompt
+
+
+def test_a_present_cape_series_carries_no_gap_warning(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
+    )
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    _, user_prompt = llm.calls[0]
+
+    assert "no model supplied a CAPE series" not in user_prompt
+    assert "absence of evidence" not in user_prompt.lower()

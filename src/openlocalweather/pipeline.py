@@ -233,6 +233,10 @@ class ForwardGuidance:
     ground_aqi_last_known: GroundAQILastKnown | None
     instability: InstabilityOutlook | None
 
+    # True when the forward fetch failed and the window came from the day-0
+    # fetch instead — the rest of today, with nothing past midnight.
+    forward_window_narrowed: bool
+
     aqi_fetch_time: datetime
     bulletin_text: str
     guidance_cycle: ResolvedGuidanceCycle
@@ -381,11 +385,11 @@ def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[
     return summarize_daypart(now_local, sun.sunrise, sun.sunset, next_sun.sunrise), now_local
 
 
-def _apply_observed_thunder(
+def _apply_station_observations(
     actuals: dict[date, DailyActual], location: LocationConfig
 ) -> None:
-    """Stamps airport-observed thunder onto the days just bucketed from the
-    reanalysis archive.
+    """Stamps what the airport observed — thunder and precipitation — onto the
+    days just bucketed from the reanalysis archive.
 
     PRIMARY POINT ONLY. The METAR station sits at the primary place; the
     secondary point is a lake position that can be a hundred kilometres away,
@@ -393,24 +397,31 @@ def _apply_observed_thunder(
     other would invent an observation.
 
     Silent no-op when no ICAO is configured or the archive is unreachable,
-    which leaves every `thunder` at None — "not observed", never "no
-    thunder". Runs in both the daily and the weekly-batch branch, so a
+    which leaves every flag at None — "not observed", never "nothing
+    happened". Runs in both the daily and the weekly-batch branch, so a
     re-fetch reapplies it rather than quietly dropping it.
     """
     if not actuals:
         return
 
-    thunder_by_date = metar_fetch.observed_thunder_by_date(
+    weather_by_date = metar_fetch.observed_weather_by_date(
         location.metar_station_icao, min(actuals), max(actuals), location.timezone
     )
-    if thunder_by_date is None:
+    if weather_by_date is None:
         return
 
     for day, actual in actuals.items():
-        if day not in thunder_by_date:
+        if day not in weather_by_date:
             continue
 
-        actual.thunder = thunder_by_date[day]
+        observed = weather_by_date[day]
+        actual.thunder = observed.thunder
+        actual.precipitation = observed.precipitation
+        # All THREE fields, not the two booleans. Storing the flag without the
+        # onset leaves the day-over-day description with no timing to reach
+        # the dry band's shower phrases with, so a corrected day goes on being
+        # called "dry" — see DailyActual.observed_onset and ROADMAP 53.1a.
+        actual.precipitation_onset = observed.precipitation_onset
 
 
 def _resolve_guidance_cycle(now: datetime) -> ResolvedGuidanceCycle:
@@ -544,6 +555,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         issuance = daypart_without_sun(now_local)
 
     forward_hourly = None
+    forward_window_narrowed = False
     try:
         forward_hourly = forward_hours(
             open_meteo.fetch_forecast_hourly_forward(
@@ -557,6 +569,28 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     except Exception as e:  # noqa: BLE001 - the calendar day is still supplied
         print(f"Forward hourly window unavailable ({e}); continuing without it.", file=sys.stderr)
 
+    if forward_hourly is None:
+        # THE DAY-0 FETCH ALREADY HAS THIS DATA. `fetch_forecast_hourly_today`
+        # asks the same host and the same endpoint for the same
+        # HOURLY_FORECAST_VARS — cape included — differing only in
+        # forecast_days=1, and it is fetched unguarded above, so reaching this
+        # line at all means it succeeded.
+        #
+        # Measured 2026-08-29 and 08-30: the forward call read-timed out on
+        # three consecutive runs while the day-0 call succeeded in every one,
+        # and the convective outlook was published as "unavailable" with a
+        # 1830 J/kg UKMO peak sitting in memory. A reader was rained on that
+        # evening. See ROADMAP item 53.
+        #
+        # WHAT THE FALLBACK DOES NOT COVER: forecast_days=1 stops at 23:00
+        # local, so an evening run sees this evening and nothing past
+        # midnight. That is the peak worth warning about and it is NOT the
+        # whole window the prompt normally gets, which is why the narrowing
+        # is flagged rather than passed off as a full window.
+        print("Falling back to the day-0 hourly window (rest of today only).", file=sys.stderr)
+        forward_hourly = forward_hours(primary_hourly, now_local)
+        forward_window_narrowed = True
+
     # From the trimmed forward window, never the calendar day: a CAPE peak
     # that already passed this morning is not a reason to warn about tonight.
     instability = summarize_instability(forward_hourly or {}, MODELS)
@@ -564,6 +598,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     return ForwardGuidance(
         issuance=issuance,
         forward_hourly=forward_hourly,
+        forward_window_narrowed=forward_window_narrowed,
         ground_aqi_last_known=ground_aqi_last_known,
         instability=instability,
         primary_hourly=primary_hourly,
@@ -785,7 +820,7 @@ def run_daily_pipeline(
             location.primary_point.lat, location.primary_point.lon, batch_start, yesterday, location.timezone
         )
         primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
-        _apply_observed_thunder(primary_actuals, location)
+        _apply_station_observations(primary_actuals, location)
         actuals_cache_store.replace_all(cache, "primary", primary_actuals)
         if location.secondary_point.enabled:
             secondary_archive = open_meteo.fetch_archive_range(
@@ -803,7 +838,7 @@ def run_daily_pipeline(
             location.primary_point.lat, location.primary_point.lon, yesterday, location.timezone
         )
         primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
-        _apply_observed_thunder(primary_actuals, location)
+        _apply_station_observations(primary_actuals, location)
         for d, actual in primary_actuals.items():
             actuals_cache_store.upsert_day(cache.primary, d, actual)
         if location.secondary_point.enabled:
@@ -1013,6 +1048,7 @@ def run_daily_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         issuance=guidance.issuance,
         forward_hourly=guidance.forward_hourly,
+        forward_window_narrowed=guidance.forward_window_narrowed,
         earlier_today=_issuances_for_prompt(existing_entry) if existing_entry is not None else None,
     )
     # Route EVERY request the provider makes through the cap — retries
@@ -1364,6 +1400,7 @@ def run_refresh_pipeline(
         local_bulletin_text=guidance.bulletin_text,
         issuance=guidance.issuance,
         forward_hourly=guidance.forward_hourly,
+        forward_window_narrowed=guidance.forward_window_narrowed,
         # Every issuance already published today, in order. Was a single
         # `morning_narrative`, which assumed the day has exactly two runs; an
         # operator may schedule two or five, and each one after the first

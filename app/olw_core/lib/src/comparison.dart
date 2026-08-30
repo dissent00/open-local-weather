@@ -245,7 +245,14 @@ DayOverDayComparison? computeDayOverDay(
   final todayCharacter =
       describeDayRain(todayPrecip, consensusOnset(todayDay0Predictions), null);
   final yesterdayCharacter = describeDayRain(
-      yesterdayActual.precipMm, yesterdayActual.onsetHour, yesterdayActual.thunder);
+      yesterdayActual.precipMm,
+      // observedOnset(), not onsetHour: a shower the reanalysis missed
+      // entirely leaves onsetHour null, and the dry band's shower phrases are
+      // reached by TIMING. Without this the description says "dry" for a day
+      // the record scores as wet — the same contradiction, one layer down,
+      // that item 42 was raised to fix.
+      yesterdayActual.observedOnset(),
+      yesterdayActual.thunder);
 
   String? rainContrast;
   if (todayCharacter != null && yesterdayCharacter != null) {

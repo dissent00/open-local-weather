@@ -6,7 +6,7 @@ wrong ICAO code, a station with no current report, or an API hiccup all
 return None rather than raising, and the system prompt instructs the
 narrative not to treat stale or absent METAR as live ground truth.
 
-OBSERVATIONS (`observed_thunder_by_date`, Iowa State's archive) is not a
+OBSERVATIONS (`observed_weather_by_date`, Iowa State's archive) is not a
 garnish. It is scored.
 
 WHY A SECOND SOURCE EXISTS. This project scores every model against
@@ -29,6 +29,26 @@ whole record can be rescored from scratch. That matches how
 verify/scoring.py already works: rolling stats are always recomputed from
 raw stored predictions plus freshly fetched actuals, never accumulated.
 
+WHY IT READS RAIN AND NOT ONLY THUNDER. The thunder-only version above
+closed the 2026-08-24 gap and left the neighbouring one open. On 2026-08-29
+this station reported `-RA` at 16:00Z and `RERA` at 17:00Z and 18:00Z, with
+cumulonimbus and a 32°C -> 22°C outflow drop, and NO `TS` group anywhere —
+the reader outside heard no thunder either. The reanalysis recorded 0.0 mm.
+So `rain` was False and `thunder` was False, the day scored DRY, and every
+model that called it dry banked a win for a day it rained. The groups that
+prove it were already in the reports this module downloads.
+
+Measured on the 45 days then stored: the station observed
+precipitation on 9 of them, and 2 were days that BOTH the reanalysis and the
+thunder check had called dry — 2026-07-21 (reanalysis 0.9 mm) and 2026-08-29
+(0.0 mm). Correcting those two dropped every model's all-time Day+0 rain
+accuracy by about five points, and Kenya Met's by ten. Rain without thunder is
+therefore RARER here than thunder, not commoner — the guess that it would be
+commoner was written before the rebuild was run, and the rebuild disagreed.
+It is worth catching anyway: those two days were invisible by construction,
+and an accuracy record that flatters itself by five points is the failure
+this project exists to avoid. See ROADMAP item 53.
+
 Both remain optional. No configured ICAO, or a station that reported
 nothing, yields None — which is NOT False. See DailyActual.thunder.
 """
@@ -37,6 +57,7 @@ from __future__ import annotations
 
 import csv
 import re
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -69,6 +90,29 @@ NON_OBSERVED_SECTIONS = ("RMK", "TEMPO", "BECMG", "NOSIG", "FM")
 # that happened), and any precipitation it arrived with.
 THUNDER_GROUP = re.compile(
     r"(?:^|\s)[+-]?(?:VC|RE)?TS(?:RA|GR|GS|SN|PL|DZ)?(?=\s|$)"
+)
+
+# Precipitation in every form METAR writes it as an OBSERVATION, built from
+# the WMO present-weather grammar: optional RE (recent — it fell since the
+# last report, which is still rain that fell), optional intensity, optional
+# descriptor, then one or more precipitation types.
+#
+# VC IS DELIBERATELY ABSENT HERE, unlike THUNDER_GROUP. `VCTS` counts because
+# thunder is heard across a city and a city-wide forecast should own it.
+# `VCSH` is a shower seen 8 km away that did not reach the runway, and it
+# carries no precipitation type at all — so it cannot match this pattern, and
+# should not. A scoring change should flip the days it can prove, not the
+# days it can guess at.
+#
+# Every alternative must be a WHOLE whitespace-delimited token: the leading
+# (?:^|\s) and trailing lookahead are what stop `FEW024CB`, `SCT028` and
+# `BKN080` being read as weather. Verified against the 2026-08-29 reports in
+# test_observed_weather_ignores_precipitation_lookalikes.
+PRECIPITATION_TYPES = "DZ|RA|SN|SG|PL|GR|GS|IC|UP"
+PRECIPITATION_DESCRIPTORS = "MI|BC|PR|DR|BL|SH|TS|FZ"
+PRECIPITATION_GROUP = re.compile(
+    rf"(?:^|\s)(?:RE)?[+-]?(?:{PRECIPITATION_DESCRIPTORS})?"
+    rf"(?:{PRECIPITATION_TYPES})+(?=\s|$)"
 )
 
 
@@ -110,6 +154,38 @@ def _observed_body(raw_metar: str) -> str:
 def report_has_thunder(raw_metar: str) -> bool:
     """True if this single report observed thunder at or beside the station."""
     return THUNDER_GROUP.search(_observed_body(raw_metar)) is not None
+
+
+def report_has_precipitation(raw_metar: str) -> bool:
+    """True if this single report observed precipitation AT the station."""
+    return PRECIPITATION_GROUP.search(_observed_body(raw_metar)) is not None
+
+
+@dataclass(frozen=True)
+class StationWeather:
+    """What the airport actually saw on one local calendar day.
+
+    Two flags rather than one, because they answer different questions and
+    fail differently. Thunder is what the reader remembers; precipitation is
+    what the accuracy record was getting wrong. A dry thunderstorm sets the
+    first alone, drizzle from stratus sets the second alone, and `TSRA` sets
+    both.
+    """
+
+    thunder: bool
+    precipitation: bool
+
+    # LOCAL "HH:MM" of the FIRST report that observed precipitation, or None
+    # when none did. The day-over-day description falls back to this when the
+    # reanalysis recorded no onset because it recorded no rain at all — see
+    # DailyActual.observed_onset.
+    #
+    # First rather than last: it is an onset. A `RE`-prefixed group is the
+    # only trace of rain that ended between two routine reports, so the time
+    # taken from one is a few minutes LATE rather than early; that is the
+    # honest direction to err, and the phrase it feeds resolves to a part of
+    # the day rather than a clock reading anyway.
+    precipitation_onset: str | None = None
 
 
 def fetch_metar_archive(
@@ -159,15 +235,20 @@ def fetch_metar_archive(
     return reports or None
 
 
-def observed_thunder_by_date(
+def observed_weather_by_date(
     icao: str, start: date, end: date, timezone_name: str
-) -> dict[date, bool] | None:
-    """Whether thunder was observed on each LOCAL calendar day in the range.
+) -> dict[date, StationWeather] | None:
+    """What the station observed on each LOCAL calendar day in the range.
 
-    A date is absent when the station filed no report for it; the value is
-    False only when it reported and saw no thunder. That distinction is the
+    A date is absent when the station filed no report for it; a flag is False
+    only when it reported and saw none of that thing. That distinction is the
     whole point — see DailyActual.thunder, where absent becomes None and is
     scored as "no observation" rather than as a quiet day.
+
+    ONE FETCH, BOTH FLAGS. The archive request carries a 90-second timeout and
+    is the slowest call in the verification pass; asking it the same question
+    twice to get two booleans out of the same reports would double that for
+    nothing.
 
     Local, not UTC: the forecast, the log entry and the accuracy record are
     all keyed on the reader's calendar day, and a 21:30Z storm belongs to
@@ -182,13 +263,28 @@ def observed_thunder_by_date(
         return None
 
     local_zone = ZoneInfo(timezone_name)
-    thunder_by_date: dict[date, bool] = {}
+    weather_by_date: dict[date, StationWeather] = {}
     for observed_at, raw_metar in reports:
         local_date = observed_at.astimezone(local_zone).date()
         if local_date < start or local_date > end:
             continue
 
-        seen_before = thunder_by_date.get(local_date, False)
-        thunder_by_date[local_date] = seen_before or report_has_thunder(raw_metar)
+        # Any report in the day sets a flag for the whole day, so a storm that
+        # left its only trace in one SPECI is not averaged away by the calm
+        # hours either side of it.
+        seen = weather_by_date.get(local_date)
+        precipitating = report_has_precipitation(raw_metar)
 
-    return thunder_by_date or None
+        # Reports arrive in time order, so the first one that precipitates is
+        # the onset and every later one leaves it alone.
+        onset = seen.precipitation_onset if seen is not None else None
+        if precipitating and onset is None:
+            onset = observed_at.astimezone(local_zone).strftime("%H:%M")
+
+        weather_by_date[local_date] = StationWeather(
+            thunder=(seen is not None and seen.thunder) or report_has_thunder(raw_metar),
+            precipitation=(seen is not None and seen.precipitation) or precipitating,
+            precipitation_onset=onset,
+        )
+
+    return weather_by_date or None

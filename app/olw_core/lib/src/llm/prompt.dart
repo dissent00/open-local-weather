@@ -201,6 +201,8 @@ $airQualityGuidance
 
 6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, ${groundAqiChecklistItem}the synoptic ring, ${localBulletinChecklistItem}the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
 
+7. A MISSING BLOCK IS NOT AN ALL-CLEAR. Rule 6 asks you to note an unavailable block; this one governs what you may say next, and it is the opposite failure. When a block says its data was unavailable, state that and STOP. Do not reason from the gap, do not reassure, and do not substitute a different measurement for the missing one - low rainfall totals, dry synoptics, calm winds and modest humidity are not CAPE, stale ground sensors are not clean air, and a forward window that ENDS is not a forecast of nothing happening after it. "Guidance was unavailable this cycle" is a complete and honest sentence; "guidance was unavailable, and no hazards are anticipated" is a claim you have no data for, and it is the more dangerous of the two by far because it reads as reassurance. This is measured, not hypothetical: on 2026-08-29 a run whose CAPE fetch had failed wrote "no thunderstorm or severe weather hazards are anticipated for the basin tonight", in the section a reader checks before going out on the water, and it rained on them that evening. Where the missing block is a hazard block, say what a reader should do about the uncertainty - check the sky, check a later issuance - rather than filling it with confidence you do not have.
+
 Return ONLY valid JSON adhering strictly to the requested schema.
 ''';
 }
@@ -245,6 +247,41 @@ String promptJson(Object? value) =>
 /// Everything in it is computed in `daypart` — the time, the phase, the
 /// minutes to sunset, and which periods matter now. The model is told, never
 /// asked to work it out, exactly as with every other number here.
+/// What the CONVECTIVE INSTABILITY block says when code found no CAPE series.
+///
+/// PORTED VERBATIM from openlocalweather/llm/prompt.py's
+/// INSTABILITY_GAP_NOTICE. The two must stay identical — the shared prompt
+/// vectors fail if either drifts.
+const instabilityGapNotice =
+    'Unavailable — no model supplied a CAPE series this run. THIS IS A GAP IN THE DATA, '
+    'NOT A QUIET SKY: absence of evidence is not evidence of absence. Say plainly that '
+    'convective guidance was unavailable this run, and do NOT go on to conclude anything '
+    'from it — do NOT write that no thunderstorms are expected, that no severe weather is '
+    'anticipated, or that conditions are stable, and do NOT infer calm from low rainfall '
+    'totals, dry synoptics or humidity elsewhere in this prompt. Those are different '
+    'measurements and none of them substitutes for CAPE. A reader was assured of a dry '
+    'evening on 2026-08-29 by exactly that inference and was rained on.';
+
+/// The parenthetical after "HOURS AHEAD", which has to state how far the
+/// window actually reaches.
+///
+/// A narrowed window ends at 23:00 local because the day-0 fetch covers one
+/// day. Left unsaid, a series that stops at midnight reads as a forecast of a
+/// quiet night rather than as the edge of the data — which is precisely how
+/// the 2026-08-29 run turned a missing CAPE series into "no thunderstorm or
+/// severe weather hazards are anticipated". See ROADMAP item 53.
+String _forwardWindowScope(Object? forwardHourly, bool narrowed) {
+  const full = 'hour-by-hour multi-model guidance from the current hour '
+      'forward — reason from THIS for near-term timing';
+  if (forwardHourly == null || !narrowed) return full;
+
+  return 'hour-by-hour multi-model guidance, REST OF TODAY ONLY — the forward '
+      'fetch failed and this came from the day-0 fetch, so it ENDS AT 23:00 '
+      'local. Reason from it for near-term timing, and do NOT read the end of '
+      'the series as a forecast for overnight or tomorrow: say those are '
+      "outside this run's window";
+}
+
 String issuedLine(Object? issuance) {
   if (issuance == null) {
     return 'Time of day unavailable this run — write for the day as a whole.';
@@ -280,6 +317,13 @@ String buildUserPrompt({
   List<Map<String, Object?>>? earlierToday,
   Object? issuance,
   Object? forwardHourly,
+
+  /// True when [forwardHourly] came from the day-0 fetch because the forward
+  /// one failed, so it STOPS AT 23:00 LOCAL. The header says so rather than
+  /// letting a series that simply ends be read as a forecast of nothing
+  /// happening — the same absence-is-not-evidence trap that turned an
+  /// unavailable CAPE series into "no hazards anticipated" on 2026-08-29.
+  bool forwardWindowNarrowed = false,
   Object? reviewContext,
   Object? modelPredictionsContext,
   Object? guidanceRecency,
@@ -359,7 +403,7 @@ Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Publi
 
 ISSUED: ${issuedLine(issuance)}
 
-HOURS AHEAD (hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing):
+HOURS AHEAD (${_forwardWindowScope(forwardHourly, forwardWindowNarrowed)}):
 ${forwardHourly == null ? 'Unavailable this run.' : promptJson(forwardHourly)}
 
 TODAY'S MULTI-MODEL GUIDANCE:
@@ -372,7 +416,7 @@ GUIDANCE RECENCY (pre-computed by code — how old the model data behind everyth
 ${guidanceRecency == null ? 'Unavailable — this run could not establish which model cycle its guidance came from.' : promptJson(guidanceRecency)}
 
 CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE per model, and whether any model crosses the threshold that supports thunderstorms):
-${instability == null ? 'Unavailable — no model supplied a CAPE series this run.' : promptJson(instability)}
+${instability == null ? instabilityGapNotice : promptJson(instability)}
 
 DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — use high_label / wind_label / rain_contrast as given):
 ${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; omit the day-over-day comparison.' : promptJson(yesterdayActual)}$groundAqiBlock$localBulletinBlock

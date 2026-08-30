@@ -56,7 +56,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "12:00",
           "precip_mm": 1.2,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "2026-08-12": {
           "rain": false,
@@ -66,7 +68,9 @@
           "mslp_trend": -1.0,
           "onset_hour": null,
           "precip_mm": 0.1,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         }
       }
     },
@@ -112,7 +116,9 @@
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         }
       }
     },
@@ -154,7 +160,9 @@
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         }
       }
     },

@@ -258,8 +258,15 @@ def compute_day_over_day(
     # Today has no thunder observation — it has not happened yet. Today's
     # convective risk is a forecast, and belongs to the hazard sections.
     today_character = describe_day_rain(today_precip, today_onset, thunder=None)
+    # observed_onset(), not onset_hour: a shower the reanalysis missed
+    # entirely leaves onset_hour None, and the dry band's shower phrases are
+    # reached by TIMING. Without this the description says "dry" for a day
+    # the record scores as wet — the same contradiction, one layer down,
+    # that item 42 was raised to fix.
     yesterday_character = describe_day_rain(
-        yesterday_actual.precip_mm, yesterday_actual.onset_hour, yesterday_actual.thunder
+        yesterday_actual.precip_mm,
+        yesterday_actual.observed_onset(),
+        yesterday_actual.thunder,
     )
 
     if today_character and yesterday_character:

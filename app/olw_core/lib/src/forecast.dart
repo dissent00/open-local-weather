@@ -214,6 +214,7 @@ Future<ForecastRun> generateForecast({
   }
 
   var resolvedForward = forwardHourly;
+  var forwardWindowNarrowed = false;
   if (resolvedForward == null) {
     try {
       resolvedForward = forwardHours(
@@ -225,6 +226,27 @@ Future<ForecastRun> generateForecast({
     } catch (_) {
       // The full calendar day is still supplied; this only costs near-term
       // hour-by-hour detail.
+    }
+
+    if (resolvedForward == null) {
+      // THE DAY-0 FETCH ALREADY HAS THIS DATA. `fetchForecastHourlyToday`
+      // asks the same host and the same endpoint for the same hourly
+      // variables — cape included — differing only in forecast_days=1, and
+      // it is awaited as a REQUIRED fetch above, so reaching this line means
+      // it succeeded.
+      //
+      // Measured on the pipeline 2026-08-29 and 08-30: the forward call
+      // read-timed out on three consecutive runs while the day-0 call
+      // succeeded in every one, and the convective outlook was published as
+      // "unavailable" with a 1830 J/kg UKMO peak sitting in memory. A reader
+      // was rained on that evening. See ROADMAP item 53.
+      //
+      // WHAT IT DOES NOT COVER: forecast_days=1 stops at 23:00 local, so an
+      // evening run sees this evening and nothing past midnight. That is the
+      // peak worth warning about and it is not the whole window, which is why
+      // the narrowing is flagged rather than passed off as a full one.
+      resolvedForward = forwardHours(hourly, now);
+      forwardWindowNarrowed = true;
     }
   }
 
@@ -294,6 +316,7 @@ Future<ForecastRun> generateForecast({
     earlierToday: earlierToday,
     issuance: resolvedIssuance,
     forwardHourly: resolvedForward,
+    forwardWindowNarrowed: forwardWindowNarrowed,
     reviewContext: reviewContext,
     // The same extracted values that get scored, so the narrative and the
     // accuracy record describe one set of numbers rather than two.

@@ -514,27 +514,55 @@ def _run_rebuild_record(args) -> int:
 
     before = {d: a.observed_convection() for d, a in actuals.items()}
 
-    thunder_by_date = metar_fetch.observed_thunder_by_date(
+    weather_by_date = metar_fetch.observed_weather_by_date(
         location.metar_station_icao, min(actuals), max(actuals), location.timezone
     )
-    if thunder_by_date is None:
+    if weather_by_date is None:
         print(
             f"No METAR observations available for {location.metar_station_icao or '(no station configured)'} — "
             "rebuilding from the reanalysis alone.",
             file=sys.stderr,
         )
-        thunder_by_date = {}
+        weather_by_date = {}
 
     for day, actual in actuals.items():
-        if day not in thunder_by_date:
+        if day not in weather_by_date:
             continue
 
-        actual.thunder = thunder_by_date[day]
+        observed = weather_by_date[day]
+        actual.thunder = observed.thunder
+        actual.precipitation = observed.precipitation
+        # All THREE fields, not the two booleans. Storing the flag without the
+        # onset leaves the day-over-day description with no timing to reach
+        # the dry band's shower phrases with, so a corrected day goes on being
+        # called "dry" — see DailyActual.observed_onset and ROADMAP 53.1a.
+        actual.precipitation_onset = observed.precipitation_onset
 
     changed = sorted(d for d, was in before.items() if was != actuals[d].observed_convection())
-    print(f"Days held: {len(actuals)}  observed thunder: {sum(1 for v in thunder_by_date.values() if v)}")
+    print(
+        f"Days held: {len(actuals)}  "
+        f"observed thunder: {sum(1 for v in weather_by_date.values() if v.thunder)}  "
+        f"observed precipitation: {sum(1 for v in weather_by_date.values() if v.precipitation)}"
+    )
     for day in changed:
-        print(f"  {day}: dry -> convective (reanalysis {actuals[day].precip_mm} mm, airport reported thunder)")
+        # Which way the day moved, and on which observation, so the operator
+        # can check the claim against the reports rather than taking the
+        # number on trust.
+        #
+        # THE DIRECTION IS NOT ALWAYS "dry -> convective". A re-fetch that
+        # finds the station reported and saw nothing takes a day back OUT of
+        # the record, and this line was hard-coded to one direction — so it
+        # announced the opposite of what it had just done, and named an
+        # observation that did not exist. Found reading the diff for item 53.
+        observed = weather_by_date[day]
+        saw = " and ".join(
+            w for w, seen in (("thunder", observed.thunder), ("rain", observed.precipitation)) if seen
+        )
+        direction = (
+            "dry -> convective" if actuals[day].observed_convection() else "convective -> dry"
+        )
+        reported = f"airport reported {saw}" if saw else "airport reported neither"
+        print(f"  {day}: {direction} (reanalysis {actuals[day].precip_mm} mm, {reported})")
     print(f"Days whose observed record changed: {len(changed)}")
 
     log_dates = list_log_dates(data_dir)

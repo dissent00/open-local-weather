@@ -111,3 +111,42 @@ def test_no_thunder_observation_behaves_as_before():
 
 def test_gap_when_yesterday_unobserved():
     assert compute_day_over_day(None, preds()) is None
+
+
+# ---------------------------------------------------------------------------
+# Item 53.1a — a day the reanalysis scored 0.0 mm and the airport rained on.
+# ---------------------------------------------------------------------------
+
+
+def test_station_rain_the_reanalysis_missed_is_not_described_as_dry():
+    """2026-08-29, the miss that opened item 53.
+
+    Reanalysis 0.0 mm and therefore no onset, no thunder heard, and the
+    airport reporting -RA at 19:00 local. Scored as a wet day by
+    observed_convection since 53.1, and still handed to the reader as "dry"
+    until the description learned to take the station's onset.
+    """
+    yesterday = actual(
+        rain=False, precip_mm=0.0, onset_hour=None,
+        thunder=False, precipitation=True, precipitation_onset="19:00",
+    )
+    comparison = compute_day_over_day(yesterday, preds())
+
+    assert comparison.rain_contrast == (
+        "dry today; yesterday was dry apart from a brief evening shower"
+    )
+
+
+def test_the_reanalysis_onset_still_wins_when_it_has_one():
+    # The station is a fallback for a missing onset, never an override. A day
+    # the reanalysis resolved is described from the reanalysis.
+    day = actual(
+        rain=True, precip_mm=8.0, onset_hour="13:00",
+        thunder=False, precipitation=True, precipitation_onset="19:00",
+    )
+    assert day.observed_onset() == "13:00"
+
+
+def test_station_onset_fills_in_only_when_the_reanalysis_had_none():
+    assert actual(onset_hour=None, precipitation_onset="19:00").observed_onset() == "19:00"
+    assert actual(onset_hour=None, precipitation_onset=None).observed_onset() is None

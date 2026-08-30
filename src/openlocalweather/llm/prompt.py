@@ -213,12 +213,56 @@ The sun times in ISSUED are computed in code and correct for this location and d
 
 6. BEFORE YOU RETURN, CHECK WHAT YOU LEFT OUT. Go back over the blocks you were given - HOURS AHEAD, CONVECTIVE INSTABILITY, {ground_aqi_checklist_item}the synoptic ring, {local_bulletin_checklist_item}the day-over-day comparison, the review findings. Each one either appears somewhere in the narrative or is explicitly noted as unavailable. Silence about a block that arrived with real data in it is the failure mode that has cost this forecast most: a run once carried an afternoon of 2600 J/kg CAPE and never mentioned thunder in the Overview, and the data had been there all along. This is a check for what is MISSING, which is the one kind of error that reads perfectly on the page.
 
+7. A MISSING BLOCK IS NOT AN ALL-CLEAR. Rule 6 asks you to note an unavailable block; this one governs what you may say next, and it is the opposite failure. When a block says its data was unavailable, state that and STOP. Do not reason from the gap, do not reassure, and do not substitute a different measurement for the missing one - low rainfall totals, dry synoptics, calm winds and modest humidity are not CAPE, stale ground sensors are not clean air, and a forward window that ENDS is not a forecast of nothing happening after it. "Guidance was unavailable this cycle" is a complete and honest sentence; "guidance was unavailable, and no hazards are anticipated" is a claim you have no data for, and it is the more dangerous of the two by far because it reads as reassurance. This is measured, not hypothetical: on 2026-08-29 a run whose CAPE fetch had failed wrote "no thunderstorm or severe weather hazards are anticipated for the basin tonight", in the section a reader checks before going out on the water, and it rained on them that evening. Where the missing block is a hazard block, say what a reader should do about the uncertainty - check the sky, check a later issuance - rather than filling it with confidence you do not have.
+
 Return ONLY valid JSON adhering strictly to the requested schema.
 """
 
 
 def _json(value: Any) -> str:
     return json.dumps(value, indent=2, default=str)
+
+
+# What the CONVECTIVE INSTABILITY block says when code found no CAPE series.
+#
+# PORTED VERBATIM into olw_core/lib/src/llm/prompt.dart as
+# instabilityGapNotice. The two must stay identical — test_prompt.py and
+# the Dart suite both pin the text.
+INSTABILITY_GAP_NOTICE = (
+    "Unavailable — no model supplied a CAPE series this run. THIS IS A GAP IN THE DATA, "
+    "NOT A QUIET SKY: absence of evidence is not evidence of absence. Say plainly that "
+    "convective guidance was unavailable this run, and do NOT go on to conclude anything "
+    "from it — do NOT write that no thunderstorms are expected, that no severe weather is "
+    "anticipated, or that conditions are stable, and do NOT infer calm from low rainfall "
+    "totals, dry synoptics or humidity elsewhere in this prompt. Those are different "
+    "measurements and none of them substitutes for CAPE. A reader was assured of a dry "
+    "evening on 2026-08-29 by exactly that inference and was rained on."
+)
+
+
+def _forward_window_scope(forward_hourly: Any, narrowed: bool) -> str:
+    """The parenthetical after "HOURS AHEAD", which has to state how far the
+    window actually reaches.
+
+    A narrowed window ends at 23:00 local because the day-0 fetch covers one
+    day. Left unsaid, a series that stops at midnight reads as a forecast of
+    a quiet night rather than as the edge of the data — which is precisely
+    how the 2026-08-29 run turned a missing CAPE series into "no thunderstorm
+    or severe weather hazards are anticipated".
+    """
+    if forward_hourly is None:
+        return "hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing"
+
+    if narrowed:
+        return (
+            "hour-by-hour multi-model guidance, REST OF TODAY ONLY — the "
+            "forward fetch failed and this came from the day-0 fetch, so it "
+            "ENDS AT 23:00 local. Reason from it for near-term timing, and do "
+            "NOT read the end of the series as a forecast for overnight or "
+            "tomorrow: say those are outside this run's window"
+        )
+
+    return "hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing"
 
 
 def _issued_line(issuance: Any) -> str:
@@ -256,6 +300,7 @@ def build_user_prompt(
     earlier_today: list[dict] | None = None,
     issuance: Any = None,
     forward_hourly: Any = None,
+    forward_window_narrowed: bool = False,
     review_context: Any = None,
     model_predictions_context: Any = None,
     ground_aqi_last_known: Any = None,
@@ -301,6 +346,12 @@ def build_user_prompt(
     still to come. It is narrative input only and is never scored — per-model
     predictions come from the untrimmed day-0 fetch, and must, or a model
     would be judged on a partial day against a full day's observation.
+
+    `forward_window_narrowed` says that guidance came from the day-0 fetch
+    because the forward one failed, so it STOPS AT 23:00 LOCAL. The header
+    says so rather than letting a series that simply ends be read as a
+    forecast of nothing happening — the same absence-is-not-evidence trap
+    that made an unavailable CAPE series into "no hazards anticipated".
     """
     # Omitted entirely where the location polls no ground stations: the
     # three headers below describe a source this deployment does not have,
@@ -368,7 +419,7 @@ Today's Date: {today.isoformat()} | Yesterday: {yesterday.isoformat()} | Public 
 
 ISSUED: {_issued_line(issuance)}
 
-HOURS AHEAD (hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing):
+HOURS AHEAD ({_forward_window_scope(forward_hourly, forward_window_narrowed)}):
 {_json(forward_hourly) if forward_hourly is not None else "Unavailable this run."}
 
 TODAY'S MULTI-MODEL GUIDANCE:
@@ -381,7 +432,7 @@ GUIDANCE RECENCY (pre-computed by code — how old the model data behind everyth
 {_json(guidance_recency) if guidance_recency is not None else "Unavailable — this run could not establish which model cycle its guidance came from."}
 
 CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE per model, and whether any model crosses the threshold that supports thunderstorms):
-{_json(instability) if instability is not None else "Unavailable — no model supplied a CAPE series this run."}
+{_json(instability) if instability is not None else INSTABILITY_GAP_NOTICE}
 
 DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — use high_label / wind_label / rain_contrast as given):
 {_json(yesterday_actual) if yesterday_actual is not None else "Unavailable — no observed record for yesterday; omit the day-over-day comparison."}{ground_aqi_block}{local_bulletin_block}

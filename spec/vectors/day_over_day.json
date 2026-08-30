@@ -14,7 +14,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -78,7 +80,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -142,7 +146,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -206,7 +212,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -270,7 +278,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -334,7 +344,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -398,7 +410,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -462,7 +476,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -506,7 +522,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -550,7 +568,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -594,7 +614,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -638,7 +660,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "07:00",
           "precip_mm": 19.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -682,7 +706,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "18:00",
           "precip_mm": 2.1,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -726,7 +752,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.2,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -770,7 +798,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -804,6 +834,98 @@
       }
     },
     {
+      "name": "a shower the reanalysis missed is timed from the station",
+      "input": {
+        "yesterday_actual": {
+          "rain": false,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": false,
+          "precipitation": true,
+          "precipitation_onset": "19:00"
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": false,
+        "yesterday_thunder": false,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "calmer",
+        "rain_contrast": "dry today; yesterday was dry apart from a brief evening shower"
+      }
+    },
+    {
+      "name": "the reanalysis onset still wins when it recorded one",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "13:00",
+          "precip_mm": 8.0,
+          "thunder": false,
+          "precipitation": true,
+          "precipitation_onset": "19:00"
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": false,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "calmer",
+        "rain_contrast": "dry today; yesterday was showery from the afternoon"
+      }
+    },
+    {
       "name": "no amount recorded means no comparison, not a guess",
       "input": {
         "yesterday_actual": {
@@ -814,7 +936,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -858,7 +982,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "19:00",
           "precip_mm": 2.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -932,7 +1058,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.5,
-          "thunder": true
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -976,7 +1104,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.5,
-          "thunder": false
+          "thunder": false,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -1020,7 +1150,9 @@
           "mslp_trend": -0.5,
           "onset_hour": null,
           "precip_mm": 0.5,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -1064,7 +1196,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "17:00",
           "precip_mm": 8.0,
-          "thunder": true
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {
@@ -1127,7 +1261,9 @@
           "mslp_trend": -0.5,
           "onset_hour": "08:00",
           "precip_mm": 18.0,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "today_day0_predictions": [
           {

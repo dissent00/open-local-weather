@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openlocalweather import cli
+from openlocalweather.fetch.metar import StationWeather
 from openlocalweather.models import (
     DailyActual,
     DailyLogEntry,
@@ -80,7 +81,9 @@ def args_for(tmp_path, dry_run: bool = False) -> Namespace:
 @pytest.fixture
 def observed_thunder(monkeypatch):
     monkeypatch.setattr(
-        cli.metar_fetch, "observed_thunder_by_date", lambda *a, **k: {THUNDER_DAY: True}
+        cli.metar_fetch,
+        "observed_weather_by_date",
+        lambda *a, **k: {THUNDER_DAY: StationWeather(thunder=True, precipitation=False)},
     )
 
 
@@ -131,7 +134,7 @@ def test_dry_run_writes_nothing(tmp_path, observed_thunder):
 
 def test_rebuild_without_metar_falls_back_to_the_reanalysis(tmp_path, monkeypatch):
     # A fork with no station configured must still be able to rebuild.
-    monkeypatch.setattr(cli.metar_fetch, "observed_thunder_by_date", lambda *a, **k: None)
+    monkeypatch.setattr(cli.metar_fetch, "observed_weather_by_date", lambda *a, **k: None)
     seed(tmp_path, called_rain=True)
     assert cli._run_rebuild_record(args_for(tmp_path)) == 0
 
@@ -147,3 +150,57 @@ def test_rebuild_without_metar_falls_back_to_the_reanalysis(tmp_path, monkeypatc
 
 def test_rebuild_refuses_when_there_are_no_actuals(tmp_path, observed_thunder):
     assert cli._run_rebuild_record(args_for(tmp_path)) == 1
+
+
+def test_rebuild_reports_the_direction_a_day_actually_moved(tmp_path, monkeypatch, capsys):
+    """A correction can also REMOVE a day from the record, and the line has to
+    say so.
+
+    The stored record already believes the airport saw thunder. A re-fetch
+    that finds the station reported and saw nothing flips the day the other
+    way — and the message was hard-coded to "dry -> convective", so it
+    announced the opposite of what it had just done, with a dangling
+    "airport reported " naming no observation at all.
+    """
+    seed(tmp_path, called_rain=True)
+    cache = actuals_cache_store.read_actuals_cache(tmp_path)
+    stored = actuals_cache_store.as_date_dict(cache.primary)
+    stored[THUNDER_DAY].thunder = True
+    actuals_cache_store.upsert_day(cache.primary, THUNDER_DAY, stored[THUNDER_DAY])
+    actuals_cache_store.write_actuals_cache(tmp_path, cache)
+
+    monkeypatch.setattr(
+        cli.metar_fetch,
+        "observed_weather_by_date",
+        lambda *a, **k: {THUNDER_DAY: StationWeather(thunder=False, precipitation=False)},
+    )
+    assert cli._run_rebuild_record(args_for(tmp_path, dry_run=True)) == 0
+
+    line = next(
+        l for l in capsys.readouterr().out.splitlines() if str(THUNDER_DAY) in l
+    )
+    assert "convective -> dry" in line, line
+    assert "reported )" not in line, f"dangling observation clause: {line}"
+    assert "thunder" not in line and "rain" not in line, (
+        f"named an observation the station did not make: {line}"
+    )
+
+
+def test_rebuild_stores_the_precipitation_onset(tmp_path, monkeypatch):
+    """The rebuild path stamps the same three fields the pipeline does."""
+    seed(tmp_path, called_rain=True)
+    monkeypatch.setattr(
+        cli.metar_fetch,
+        "observed_weather_by_date",
+        lambda *a, **k: {
+            THUNDER_DAY: StationWeather(
+                thunder=False, precipitation=True, precipitation_onset="19:00"
+            )
+        },
+    )
+    assert cli._run_rebuild_record(args_for(tmp_path)) == 0
+
+    cache = actuals_cache_store.read_actuals_cache(tmp_path)
+    stored = actuals_cache_store.as_date_dict(cache.primary)
+    assert stored[THUNDER_DAY].precipitation is True
+    assert stored[THUNDER_DAY].precipitation_onset == "19:00"

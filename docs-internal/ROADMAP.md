@@ -4113,3 +4113,282 @@ the window logic belongs on this side. `olw_core`'s `cycle.dart` carries the
 same table (item 50), the two are vector-locked, and a generator here is a
 third reader of a table that must not drift. Worth settling before writing
 it, not after.
+
+---
+
+## 53. A silent fetch failure became an all-clear · **Partly shipped — 3 of 6**
+
+Found 2026-08-30, from a reader who was rained on while holding an email
+that said the evening was dry. The first big convective miss this project
+has had, and it is three separate defects stacked, each of which would
+have been survivable alone.
+
+Kisumu, 2026-08-29. A pop-up convective shower, no thunder, roughly one
+hour from ~18:45 EAT. The day's three issuances:
+
+| Issued (EAT) | Guidance | Headline |
+|---|---|---|
+| 03:06 | 28th 12Z, 12.0 h | **Dry / Elevated Evening Thunder Potential** |
+| 06:04 | 28th 18Z, 9.0 h | Dry / No Rain — CAPE "unavailable" |
+| 18:04 | 29th 06Z, 9.0 h | Dry / No Rain — CAPE "unavailable" |
+
+The 03:06 issuance called it, on the OLDEST guidance of the three:
+*"Thunder is possible this evening, peaking around 18:00 as model
+instability guidance diverges."* The two later issuances erased it. The
+system knew, then unknew, and the reader got the unknowing.
+
+### Defect 1 — one fetch fails, and nothing says so
+
+`fetch_forecast_hourly_forward` timed out on three consecutive runs
+(08-29 03:01Z, 08-29 15:01Z, 08-30 03:01Z):
+
+```
+Forward hourly window unavailable (Request to
+https://api.open-meteo.com/v1/forecast failed: HTTPSConnectionPool(
+host='api.open-meteo.com', port=443): Read timed out. (read timeout=30));
+continuing without it.
+```
+
+`_get` had already spent its 3 attempts × 30 s. **There is no loss of
+data at the source.** Measured 2026-08-30 from a developer machine
+against the same endpoint: `forecast_days=1` and `forecast_days=2` both
+return HTTP 200 in ~1.1 s with a full CAPE series on all five models.
+The archive endpoint is the one that is useless (below); the forecast
+endpoint is fine.
+
+What makes this specific rather than general flakiness:
+`fetch_forecast_hourly_today` — **same host, same endpoint, same
+`HOURLY_FORECAST_VARS` including `cape`, differing only in
+`forecast_days=1` against `=2`** — succeeded in all three runs. It was
+the only failure in each run. Why that one request shape fails from a
+GitHub runner and not from here is NOT established; the payloads are
+9 KB and 15 KB, so size is not an obvious explanation.
+
+The cost is not CAPE alone. The whole HOURS AHEAD block is lost, so the
+evening prompt carried `Unavailable this run.` where the hour-by-hour
+guidance for tonight belongs — which is why that narrative reads like a
+generic day.
+
+**The data was in memory the whole time.** `primary_hourly` is fetched
+successfully in the same run and carries `cape` for all 24 hours of the
+local day. `summarize_instability` is simply never offered it.
+
+### Defect 2 — the prompt turns a gap into a reassurance
+
+`summarize_instability` returned `None`, which is correct and is what
+`instability.py`'s docstring exists to guarantee: absent CAPE must read
+as a gap, not as a calm afternoon. The narrative then wrote:
+
+> "Model convective instability guidance (CAPE) was unavailable for this
+> cycle. **Under stable synoptic conditions and limited atmospheric
+> moisture, no thunderstorm or severe weather hazards are anticipated**
+> for the basin tonight or tomorrow."
+
+The code half of the contract held. The prompt half has no rule
+forbidding the model from filling the hole with an all-clear, so it
+reasoned from absence of evidence to evidence of absence — in the one
+section a reader checks before going out on the water. Both the 06:04
+and 18:04 issuances did this, in near-identical words, so it is the
+model's default behaviour and not a one-off.
+
+**What the reader should have been told.** CAPE forecast for 2026-08-29
+evening, retrieved 2026-08-30 via `past_days`:
+
+| Hour | GFS | ECMWF | ICON | UKMO | Best Match |
+|---|---|---|---|---|---|
+| 18:00 | 110 | 50 | 250 | **1830** | 20 |
+| 19:00 | 90 | 80 | 430 | 560 | 770 |
+| 20:00 | 80 | 120 | 450 | **1430** | 680 |
+
+`convective` would have been true, `peak_hour` 18:00, two models above
+the 1000 J/kg threshold — and the Overview clause is MANDATORY in that
+case. Caveat: `past_days` serves whatever cycle is current now, not
+necessarily the 06Z cycle the 18:04 run held. The corroboration is that
+the 03:06 issuance, on 12-hour-old 12Z guidance, independently named
+18:00 as the peak.
+
+### Defect 3 — the miss is scored as a success
+
+Open-Meteo's archive records **0.0 mm for 2026-08-29** and does not show
+the outflow at all (29.9 °C at 18:00 local, 25.8 °C at 20:00). Kisumu
+Airport, four kilometres away:
+
+| Time (Z) | Report |
+|---|---|
+| 13:00 | `22007KT 9999 FEW029 32/10 Q1015` |
+| 15:00 | `24010KT 9999 FEW027CB SCT028 30/16 Q1015` |
+| 16:00 | `15010KT 9999 **-RA** FEW024CB SCT090 27/18 Q1017` |
+| 17:00 | `34005KT FEW020CB BKN080 22/18 Q1018 **RERA**` |
+| 18:00 | `33006KT FEW020CB BKN080 23/18 Q1018 **RERA**` |
+
+Dewpoint 10 → 16 → 18, temperature 32 → 22, pressure 1015 → 1018, wind
+220° → 240° → 150° → 340°. A full outflow reversal.
+
+**Item 42's backstop does not catch this.** `observed_convection()` is
+`rain or thunder`; `THUNDER_GROUP` matches `TS` only. This event had no
+`TS` — the reader confirmed no thunder was heard, and the reports agree.
+So `rain` is False from the reanalysis, `thunder` is False from the
+station, and the day scores DRY. Item 42 fixed thunderstorms and left
+rain-without-thunder falling through the same hole.
+
+The consequence is worse than a lost data point. This morning's
+issuance told readers:
+
+> "all evaluating models correctly verified dry conditions for their
+> target dates"
+
+Every model that called the day dry banked a win for a day it rained,
+and those rolling figures are the same ones the prompt cites when it
+decides whom to trust ("ECMWF 100% rolling Day+0 rain verification").
+Each convective miss makes the models' dry bias look better evidenced.
+The `-RA` and `RERA` groups are sitting in reports the parser already
+downloads.
+
+### The archive's CAPE is not an escape route
+
+Re-confirmed 2026-08-30, and worse than item 42 recorded. Item 42 says
+the archive "returns the variable and fills it with zeros at this
+location". It now returns the `cape` key with **no values at all** —
+`n=0` over 2026-08-24 to 08-29. Either way it cannot be used for
+verification, and the forecast endpoint remains the only CAPE source.
+
+### What would count as done
+
+Separable, and worth doing in this order — the first three are hours of
+work and the last is weeks.
+
+1. **The METAR archive parser reads precipitation, not just thunder.**
+   **Shipped 2026-08-30.** Extends item 42 rather than waiting on item
+   41. `observed_convection` is now `rain or thunder or precipitation`,
+   three-valued the same way `thunder` is, and the stored record was
+   rescored — the whole point of having chosen an idempotent archive
+   source.
+
+   **What it actually moved, measured rather than predicted.** Over the
+   45 days stored, the station observed precipitation on 9, and 2 of
+   those had been scored dry by BOTH the reanalysis and the thunder
+   check: 2026-07-21 (reanalysis 0.9 mm) and 2026-08-29 (0.0 mm).
+
+   | Model | Was | Now |
+   |---|---|---|
+   | best_match | 89.5% | 84.2% |
+   | ecmwf_ifs025 | 78.9% | 73.7% |
+   | icon_seamless | 78.9% | 73.7% |
+   | kenya_met | 80.0% | 70.0% |
+   | gfs_seamless | 63.2% | 57.9% |
+   | ukmo_seamless | 63.2% | 57.9% |
+   | olw_blend | 100.0% | 50.0% (2 checks) |
+
+   This item predicted before running it that rain-without-thunder would
+   be the commoner event. It is not: 14 thunder days against 9
+   precipitation days here, and only 2 days moved. The fix is still
+   worth having — those two were invisible by construction, and a record
+   five points kinder to itself than the truth is exactly what this
+   project exists not to publish — but the prediction was wrong and is
+   left here rather than quietly edited.
+
+   Also vector-locked in the same change: the scoring truth table across
+   both station observations, which item 42 shipped covered by Python
+   tests alone. Verified by breaking `observedConvection` in Dart and
+   watching `scoring score_prediction` go red.
+
+1a. **The day-over-day phrase still calls those days dry. OUTSTANDING, and
+   introduced by 53.1.** `describe_day_rain` takes `precip_mm`, `onset`
+   and `thunder`, and decides the phrase from the reanalysis amount with
+   thunder as the only override. So 2026-08-29 now scores as a wet day in
+   the record and is still described to readers as "dry" — the two halves
+   disagree where before they were wrong together.
+
+   That disagreement is the exact complaint that opened item 42: a reader
+   told "dry again" about a day they had stood outside in. Leaving it is
+   not an option; it was left out of 53.1 only because the fix picks a
+   USER-FACING PHRASE, and that is the operator's call rather than a
+   mechanical port. `thunder` had "dry but thundery" ready-made; observed
+   rain the reanalysis missed has no phrase yet.
+
+   The plumbing is the same shape as `thunder`'s and crosses the same
+   three surfaces: `describe_day_rain` gains a fourth argument,
+   `day_over_day` passes `yesterday_actual.precipitation`, the
+   `describe_day_rain` and `day_over_day` vectors regenerate, and
+   `comparison.dart` follows. Suggested phrase, to be confirmed rather
+   than assumed: "dry but for a brief shower" where the reanalysis band
+   is dry, leaving the wetter bands alone since they already say rain
+   fell.
+2. **Instability falls back to the day-0 hourly window. Shipped
+   2026-08-30.** When the forward fetch fails, the window is trimmed from
+   `primary_hourly` instead — same host, same endpoint, same
+   `HOURLY_FORECAST_VARS` including `cape`, differing only in
+   `forecast_days=1`, and fetched unguarded, so reaching that line means
+   it succeeded. No new network call and no new dependency.
+
+   The fallback feeds BOTH the convective outlook and the HOURS AHEAD
+   block, which previously read `Unavailable this run.` and cost the
+   narrative its hour-by-hour reasoning for tonight as well as its CAPE.
+
+   **The narrowing is declared, not hidden.** `forecast_days=1` stops at
+   23:00 local, so an evening run sees this evening and nothing past
+   midnight. The HOURS AHEAD header says so — REST OF TODAY ONLY, ENDS
+   AT 23:00 local — because a series that simply stops would otherwise
+   read as a forecast of a quiet night, which is the same
+   absence-is-not-evidence trap as 53.3 one layer down.
+
+   Ported to `olw_core` in the same change: the app's `generateForecast`
+   had the identical hole.
+
+3. **A gap must not be reportable as safety. Shipped 2026-08-30.** The
+   CONVECTIVE INSTABILITY block no longer says only "Unavailable". It
+   says the gap is a gap, and forbids the inference by name — no "no
+   thunderstorms expected", no "no severe weather anticipated", no
+   "conditions are stable", and no substituting rainfall totals, dry
+   synoptics or humidity for a CAPE series that never arrived.
+
+   A standing rule 7, A MISSING BLOCK IS NOT AN ALL-CLEAR, generalises
+   it to every block, because the shape is not specific to CAPE: stale
+   ground sensors are not clean air either. It is deliberately the
+   MIRROR of rule 6 — 6 says do not go silent about a block that
+   arrived, 7 says do not draw conclusions from one that did not.
+
+   Both texts are ported verbatim into `prompt.dart` and pinned by the
+   shared `llm_system_prompt` / `llm_user_prompt` vectors, which is what
+   caught the drift when only the Python half had been changed.
+4. **A degraded run says it is degraded.** Three silent runs in a row,
+   surfaced only because a reader got rained on. A missing HOURS AHEAD
+   block belongs in the issuance record and on the page, not only on
+   stderr in an Actions log nobody reads.
+5. **The current METAR earns a nowcasting role.** Today the prompt's
+   only instruction about METAR is a caveat telling the model to
+   distrust it. At 15:04Z the newest report was 15:00Z and already
+   carried `FEW027CB` overhead with the wind veered 220°→240° and the
+   dewpoint up 4 °C. Rain itself appears at 16:00Z, an hour after
+   publication — so this run could NOT have observed rain, and could
+   have observed convection initiating. Within two hours that outranks a
+   nine-hour-old model cycle.
+6. **Then item 41 (satellite).** It is still the right answer for
+   basin-wide truth. It is not the cheap one.
+
+### Not established
+
+- Why only the `forecast_days=2` request times out from GitHub runners.
+- Whether `fetch_metar` succeeded on the 18:04 run. It returns `None`
+  silently on every failure path and `airport_metar` is passed to the
+  prompt but never persisted, so the record cannot answer it. That is a
+  gap of its own and part of item 53.4.
+- Whether Open-Meteo was degraded at those times.
+- How many stored days flip under a rain-aware parser. Item 53.1 must
+  report the number it actually moves.
+
+### This is live, not historical
+
+Measured 2026-08-30 07:0x EAT, from the `forecast_days=1` call the
+pipeline already makes successfully: Best Match 2180 J/kg at 22:00, UKMO
+1860 at 20:00, ICON 1110 at 19:00 — three models above threshold. This
+morning's 06:04 issuance says "no thunderstorm or severe weather hazards
+are anticipated". The same failure is mis-forecasting today.
+
+(Also noted: ECMWF returns small NEGATIVE CAPE values at some hours
+(−10, −30). `max()` handles it, but anything that sums, averages or
+assumes non-negativity must not.)
+
+Related: item 35 (convective disagreement), item 41 (satellite), item 42
+(the METAR fix this extends), item 45 (which source is "what actually
+happened"), item 25 (detect absent data, don't just survive it).

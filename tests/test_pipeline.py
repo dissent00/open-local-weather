@@ -4,6 +4,7 @@ import pytest
 
 from openlocalweather import pipeline
 from openlocalweather.config import load_location_config
+from openlocalweather.fetch.metar import StationWeather
 from openlocalweather.models import DailyActual, DailyLogEntry, LogEntryMeta, ModelPrediction, ModelPredictionsByLead, TrackRecord, TrackRecordEntry
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
@@ -482,14 +483,17 @@ def two_days() -> dict[date, DailyActual]:
 
 def stub_thunder(monkeypatch, result):
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_thunder_by_date", lambda *a, **k: result
+        pipeline.metar_fetch, "observed_weather_by_date", lambda *a, **k: result
     )
 
 
 def test_apply_observed_thunder_stamps_each_day(monkeypatch):
-    stub_thunder(monkeypatch, {AUG_24: True, AUG_25: False})
+    stub_thunder(monkeypatch, {
+        AUG_24: StationWeather(thunder=True, precipitation=False),
+        AUG_25: StationWeather(thunder=False, precipitation=False),
+    })
     actuals = two_days()
-    pipeline._apply_observed_thunder(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location())
     assert actuals[AUG_24].thunder is True
     assert actuals[AUG_25].thunder is False
 
@@ -497,15 +501,15 @@ def test_apply_observed_thunder_stamps_each_day(monkeypatch):
 def test_apply_observed_thunder_leaves_none_when_archive_unavailable(monkeypatch):
     stub_thunder(monkeypatch, None)
     actuals = two_days()
-    pipeline._apply_observed_thunder(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location())
     assert all(a.thunder is None for a in actuals.values())
 
 
 def test_apply_observed_thunder_leaves_unreported_days_alone(monkeypatch):
     # A day the station filed nothing for stays None, not False.
-    stub_thunder(monkeypatch, {AUG_24: True})
+    stub_thunder(monkeypatch, {AUG_24: StationWeather(thunder=True, precipitation=False)})
     actuals = two_days()
-    pipeline._apply_observed_thunder(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location())
     assert actuals[AUG_25].thunder is None
 
 
@@ -513,17 +517,40 @@ def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch):
     seen = {}
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_thunder_by_date",
+        "observed_weather_by_date",
         lambda icao, start, end, tz: seen.update(icao=icao, start=start, end=end, tz=tz) or None,
     )
-    pipeline._apply_observed_thunder(two_days(), thunder_location())
+    pipeline._apply_station_observations(two_days(), thunder_location())
     assert seen == {"icao": "HKKI", "start": AUG_24, "end": AUG_25, "tz": "Africa/Nairobi"}
 
 
 def test_apply_observed_thunder_empty_actuals_is_a_no_op(monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_thunder_by_date",
+        "observed_weather_by_date",
         lambda *a, **k: pytest.fail("must not fetch for an empty range"),
     )
-    pipeline._apply_observed_thunder({}, thunder_location())
+    pipeline._apply_station_observations({}, thunder_location())
+
+
+def test_apply_station_observations_stamps_the_precipitation_onset(monkeypatch):
+    """The onset has to be STORED, not just parsed.
+
+    Item 53.1a added precipitation_onset to StationWeather and to
+    DailyActual, and the two places that stamp observations onto the record
+    kept copying only the two booleans — so the field was written null on
+    every day and the day-over-day description went on saying "dry".
+
+    Caught by rebuilding the real record and reading the diff, not by the
+    unit tests, which set the field directly and never exercised the copy.
+    """
+    stub_thunder(monkeypatch, {
+        AUG_24: StationWeather(
+            thunder=False, precipitation=True, precipitation_onset="19:00"
+        ),
+    })
+    actuals = two_days()
+    pipeline._apply_station_observations(actuals, thunder_location())
+
+    assert actuals[AUG_24].precipitation_onset == "19:00"
+    assert actuals[AUG_24].observed_onset() == "19:00"

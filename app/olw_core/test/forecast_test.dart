@@ -96,6 +96,37 @@ class _StubProvider implements LlmProvider {
 void main() {
   late List<String> requestedUrls;
 
+  /// A client whose day-0 hourly response carries CAPE, and whose FORWARD
+  /// response can be made to fail. The two differ only by `forecast_days`,
+  /// which is the whole point: the live failure hit one and not the other.
+  OpenMeteoClient _capeClient({required bool forwardFails}) {
+    Map<String, Object?> withCape() {
+      final body = Map<String, Object?>.from(_hourlyBody(defaultModels));
+      final hourly = Map<String, Object?>.from(body['hourly'] as Map);
+      hourly['cape_ukmo_seamless'] = [40.0, 1830.0, 90.0];
+      body['hourly'] = hourly;
+      return body;
+    }
+
+    return OpenMeteoClient(
+      client: MockClient((request) async {
+        if (request.url.queryParameters['daily'] == 'pressure_msl_mean') {
+          return http.Response(jsonEncode([]), 200);
+        }
+        if (request.url.path.contains('air-quality')) {
+          return http.Response(jsonEncode({'hourly': {'pm2_5': [18.0]}}), 200);
+        }
+        if (request.url.queryParameters.containsKey('daily')) {
+          return http.Response(jsonEncode(_dailyBody(defaultModels)), 200);
+        }
+        if (forwardFails && request.url.queryParameters['forecast_days'] == '2') {
+          return http.Response('read timed out', 504);
+        }
+        return http.Response(jsonEncode(withCape()), 200);
+      }),
+    );
+  }
+
   OpenMeteoClient mockClient({bool failAirQuality = false}) {
     requestedUrls = [];
     return OpenMeteoClient(
@@ -410,6 +441,58 @@ void main() {
       },
     );
     expect(llm.seenUserPrompt, contains('no model supplied a CAPE series'));
+  });
+
+  test('a failed forward fetch falls back to the day-0 cape', () async {
+    // The 2026-08-29 and 08-30 runs, in miniature. forecast_days=2 read-timed
+    // out three runs running while forecast_days=1 — same host, same
+    // endpoint, same variable list including cape — succeeded in every one,
+    // and the convective outlook was published "unavailable" with the data
+    // sitting in memory. A reader was rained on that evening. ROADMAP 53.2.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: _capeClient(forwardFails: true),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, isNot(contains('no model supplied a CAPE series')));
+    expect(llm.seenUserPrompt, contains('"convective": true'));
+    expect(llm.seenUserPrompt, contains('"peak_cape_jkg": 1830.0'));
+  });
+
+  test('the fallback window says it is only the rest of today', () async {
+    // forecast_days=1 stops at 23:00 local. Left unsaid, a series that simply
+    // ends reads as a forecast of a quiet night.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: _capeClient(forwardFails: true),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, contains('REST OF TODAY ONLY'));
+    expect(llm.seenUserPrompt, contains('ENDS AT 23:00 local'));
+  });
+
+  test('a working forward window is not labelled as narrowed', () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: _capeClient(forwardFails: false),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, isNot(contains('REST OF TODAY ONLY')));
   });
 
   test('the last known ground reading reaches the prompt with its age', () async {

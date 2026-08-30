@@ -149,6 +149,32 @@ class DailyActual {
   /// against, via [observedConvection].
   final bool? thunder;
 
+  /// Did the airport observe PRECIPITATION on this local day?
+  ///
+  /// THREE-VALUED for the same reason [thunder] is, and read the same way:
+  /// null is "no observation", never "it stayed dry".
+  ///
+  /// Separate from [thunder] because the two fail separately. On 2026-08-29
+  /// the station reported `-RA` and `RERA` under cumulonimbus with no `TS`
+  /// group at all, the reanalysis recorded 0.0 mm, and the day scored DRY —
+  /// crediting every model that had called it dry for a day it rained.
+  /// Thunder alone could not catch that.
+  ///
+  /// Measured over the 45 days then stored: precipitation observed on 9, of
+  /// which 2 had been scored dry by both the reanalysis and the thunder check
+  /// (2026-07-21, 2026-08-29). Every model's all-time Day+0 rain accuracy
+  /// fell about five points once they were counted. See ROADMAP item 53.
+  final bool? precipitation;
+
+  /// LOCAL "HH:MM" the airport first observed precipitation, or null.
+  ///
+  /// Kept SEPARATE from [onsetHour] rather than filling it in, because
+  /// [onsetHour] is SCORED — scoring.dart measures onset error against it —
+  /// and quietly swapping a reanalysis quantity for a station one would
+  /// change what every stored onset error means. This field only ever feeds
+  /// the day-over-day description, via [observedOnset].
+  final String? precipitationOnset;
+
   const DailyActual({
     required this.rain,
     this.highC,
@@ -158,19 +184,37 @@ class DailyActual {
     this.onsetHour,
     this.precipMm,
     this.thunder,
+    this.precipitation,
+    this.precipitationOnset,
   });
+
+  /// The onset a day's CHARACTER should be described from.
+  ///
+  /// The reanalysis onset when there is one, the station's when there is
+  /// not. A day the reanalysis recorded as 0.0 mm has no onset by
+  /// construction, so a shower it missed entirely had no time to be
+  /// described at — which is how 2026-08-29 reached readers as "dry" after
+  /// item 53.1 had already scored it as a wet day.
+  ///
+  /// NOT what onset error is scored against; see [precipitationOnset].
+  String? observedOnset() => onsetHour ?? precipitationOnset;
 
   /// What a rain forecast is actually scored against.
   ///
-  /// Reanalysis precipitation OR observed thunder. A day with a thunderstorm
-  /// over the city and 0.5 mm in a 25 km grid cell is a day the convective
-  /// models called correctly, and scoring it as dry punishes exactly the
-  /// models most worth trusting over a lake basin whose storms global models
-  /// already under-resolve.
+  /// Reanalysis precipitation OR anything the airport actually saw fall or
+  /// heard. A day with a thunderstorm over the city and 0.5 mm in a 25 km
+  /// grid cell is a day the convective models called correctly, and scoring
+  /// it as dry punishes exactly the models most worth trusting over a lake
+  /// basin whose storms global models already under-resolve.
   ///
-  /// Thunder being null leaves this as plain `rain`, so a deployment with no
-  /// METAR station scores exactly as it did before.
-  bool observedConvection() => rain || thunder == true;
+  /// THE NAME IS NARROWER THAN THE BEHAVIOUR, and deliberately kept: drizzle
+  /// from stratus is not convection, but it is still rain the reader stood
+  /// in, and still what a dry call should be scored against.
+  ///
+  /// Both observations being null leaves this as plain `rain`, so a
+  /// deployment with no METAR station scores exactly as it did before.
+  bool observedConvection() =>
+      rain || thunder == true || precipitation == true;
 
   factory DailyActual.fromJson(Map<String, Object?> j) => DailyActual(
         rain: j['rain'] as bool,
@@ -181,6 +225,8 @@ class DailyActual {
         onsetHour: j['onset_hour'] as String?,
         precipMm: _toDouble(j['precip_mm']),
         thunder: j['thunder'] as bool?,
+        precipitation: j['precipitation'] as bool?,
+        precipitationOnset: j['precipitation_onset'] as String?,
       );
 
   Map<String, Object?> toJson() => {
@@ -192,6 +238,8 @@ class DailyActual {
         'onset_hour': onsetHour,
         'precip_mm': precipMm,
         'thunder': thunder,
+        'precipitation': precipitation,
+        'precipitation_onset': precipitationOnset,
       };
 }
 

@@ -15,7 +15,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -60,7 +62,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -87,7 +91,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -121,7 +127,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -155,7 +163,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -189,7 +199,9 @@
           "mslp_trend": 0.5,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -223,7 +235,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "16:30",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -257,7 +271,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "16:30",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 3
       },
@@ -291,7 +307,9 @@
           "mslp_trend": -1.0,
           "onset_hour": null,
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -325,7 +343,9 @@
           "mslp_trend": -1.0,
           "onset_hour": "16:30",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -359,7 +379,9 @@
           "mslp_trend": null,
           "onset_hour": "14:00",
           "precip_mm": null,
-          "thunder": null
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
         },
         "lead_time_days": 0
       },
@@ -370,6 +392,150 @@
         "high_error_c": null,
         "low_error_c": null,
         "mslp_error_hpa": null
+      }
+    },
+    {
+      "name": "a rain call is credited when the station observed thunder",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": null,
+          "precip_mm": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null,
+          "precip_mm": 0.5,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "a rain call is credited when the station observed rain the reanalysis missed",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": null,
+          "precip_mm": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": false,
+          "precipitation": true,
+          "precipitation_onset": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "a dry call is penalised on a day the station observed rain",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": false,
+          "onset": null,
+          "precip_mm": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": false,
+          "precipitation": true,
+          "precipitation_onset": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": false,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
+      }
+    },
+    {
+      "name": "an unobserved station leaves the reanalysis in charge",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": false,
+          "onset": null,
+          "precip_mm": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0
       }
     }
   ]

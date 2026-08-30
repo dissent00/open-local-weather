@@ -207,6 +207,42 @@ def export_scoring() -> None:
             act(peak_wind_kmh=None, high_c=None, low_c=None, mslp_trend=None),
             0,
         ),
+        # What a rain call is scored AGAINST — DailyActual.observed_convection,
+        # not `rain` alone. These four pin the whole truth table across the two
+        # station observations, because a port that reads only `rain` passes
+        # every case above and still scores a convective day backwards.
+        #
+        # Neither observation was vector-locked before item 53; the thunder
+        # path shipped on 2026-08-26 covered by Python tests alone.
+        (
+            "a rain call is credited when the station observed thunder",
+            pred(rain=True, onset=None),
+            act(rain=False, precip_mm=0.5, onset_hour=None, thunder=True),
+            0,
+        ),
+        # The 2026-08-29 miss, as a number: reanalysis 0.0 mm, no thunder
+        # heard, and the airport reporting -RA and RERA for two hours.
+        (
+            "a rain call is credited when the station observed rain the reanalysis missed",
+            pred(rain=True, onset=None),
+            act(rain=False, precip_mm=0.0, onset_hour=None, thunder=False, precipitation=True),
+            0,
+        ),
+        (
+            "a dry call is penalised on a day the station observed rain",
+            pred(rain=False, onset=None),
+            act(rain=False, precip_mm=0.0, onset_hour=None, thunder=False, precipitation=True),
+            0,
+        ),
+        # No station, or a station that filed nothing: null is "not observed",
+        # never "it stayed dry", so the reanalysis stays in charge and the
+        # score is exactly what it was before either observation existed.
+        (
+            "an unobserved station leaves the reanalysis in charge",
+            pred(rain=False, onset=None),
+            act(rain=False, precip_mm=0.0, onset_hour=None, thunder=None, precipitation=None),
+            0,
+        ),
     ]
     cases = [
         {
@@ -1486,6 +1522,19 @@ def export_day_over_day() -> None:
         ("half a millimetre at dusk is a dry day",
          actual(rain=False, precip_mm=0.0, onset_hour=None),
          preds([29.0], rains=[True], mm=[0.4], onsets=["20:00"])),
+        # Item 53.1a — 2026-08-29. The reanalysis recorded 0.0 mm and so
+        # recorded no onset either, while the airport reported -RA at 19:00
+        # local. Without the station's onset the dry band has no timing to
+        # reach its shower phrases with, and the day reaches the reader as
+        # plain "dry" on a day 53.1 already scores as wet.
+        ("a shower the reanalysis missed is timed from the station",
+         actual(rain=False, precip_mm=0.0, onset_hour=None,
+                thunder=False, precipitation=True, precipitation_onset="19:00"),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("the reanalysis onset still wins when it recorded one",
+         actual(rain=True, precip_mm=8.0, onset_hour="13:00",
+                thunder=False, precipitation=True, precipitation_onset="19:00"),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
         ("no amount recorded means no comparison, not a guess",
          actual(rain=True, precip_mm=None),
          preds([29.0], rains=[True], mm=[None], onsets=["19:00"])),

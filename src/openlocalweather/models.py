@@ -133,20 +133,62 @@ class DailyActual(BaseModel):
     # reanalysis recorded as a dry day, and every model that called those days
     # correctly had been marked wrong for it.
     thunder: bool | None = None
+    # Did the airport observe PRECIPITATION on this local day (fetch/metar.py)?
+    #
+    # THREE-VALUED for the same reason `thunder` is, and read the same way:
+    # None is "no observation", never "it stayed dry".
+    #
+    # Separate from `thunder` because the two fail separately. Adding it was
+    # item 53: on 2026-08-29 the station reported -RA and RERA under
+    # cumulonimbus with no TS group at all, the reanalysis recorded 0.0 mm,
+    # and the day scored DRY — so every model that had called it dry was
+    # credited for a day it rained. `thunder` alone could not catch that.
+    #
+    # Measured over the 45 days then stored: precipitation observed on 9, of
+    # which 2 had been scored dry by both the reanalysis and the thunder check
+    # (2026-07-21, 2026-08-29). Every model's all-time Day+0 rain accuracy
+    # fell about five points once they were counted.
+    precipitation: bool | None = None
+    # LOCAL "HH:MM" the airport first observed precipitation, or None. Kept
+    # SEPARATE from `onset_hour` rather than filling it in, because
+    # `onset_hour` is SCORED — verify/scoring.py measures onset error against
+    # it — and quietly swapping a reanalysis quantity for a station one would
+    # change what every stored onset error means. This field only ever feeds
+    # the day-over-day description, via observed_onset().
+    precipitation_onset: str | None = None
+
+    def observed_onset(self) -> str | None:
+        """The onset a day's CHARACTER should be described from.
+
+        The reanalysis onset when there is one, the station's when there is
+        not. A day the reanalysis recorded as 0.0 mm has no onset by
+        construction, so a shower it missed entirely had no time to be
+        described at — which is how 2026-08-29 reached readers as "dry"
+        after 53.1 had already scored it as a wet day.
+
+        NOT what onset error is scored against; see `precipitation_onset`.
+        """
+        return self.onset_hour or self.precipitation_onset
 
     def observed_convection(self) -> bool:
         """What a rain forecast is actually scored against.
 
-        Reanalysis precipitation OR observed thunder. A day with a
-        thunderstorm over the city and 0.5 mm in a 25 km grid cell is a day
-        the convective models called correctly, and scoring it as dry
-        punishes exactly the models most worth trusting here — over a lake
-        basin whose storms global models already under-resolve.
+        Reanalysis precipitation OR anything the airport actually saw fall or
+        heard. A day with a thunderstorm over the city and 0.5 mm in a 25 km
+        grid cell is a day the convective models called correctly, and scoring
+        it as dry punishes exactly the models most worth trusting here — over
+        a lake basin whose storms global models already under-resolve.
 
-        Thunder being None leaves this as plain `rain`, so a deployment with
-        no METAR station scores exactly as it did before.
+        THE NAME IS NARROWER THAN THE BEHAVIOUR, and deliberately kept:
+        drizzle from stratus is not convection, but it is still rain the
+        reader stood in, and it is still what a dry call should be scored
+        against. Renaming would churn scoring.py, cli.py and two ROADMAP items
+        to no benefit — the docstring is the definition, not the identifier.
+
+        Both observations being None leaves this as plain `rain`, so a
+        deployment with no METAR station scores exactly as it did before.
         """
-        return self.rain or bool(self.thunder)
+        return self.rain or bool(self.thunder) or bool(self.precipitation)
 
 
 class VerificationScore(BaseModel):
