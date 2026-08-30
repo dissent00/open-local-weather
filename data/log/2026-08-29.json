@@ -228,8 +228,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: All models correctly verified the dry precipitation call for August 29th. Daytime high temperatures were captured with high precision by ECMWF (+0.1°C error), Best Match (0.0°C error), and OLW blend (0.0°C error), while GFS again significantly over-forecasted surface wind speeds (+20.2 km/h error) compared to ICON (+1.4 km/h error)."
     },
     "day3": {
       "verified": false,
