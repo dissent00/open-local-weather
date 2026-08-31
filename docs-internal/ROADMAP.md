@@ -4903,15 +4903,40 @@ has and an older file lacked appear filled with defaults. Cosmetic — that is
 what the before/after model comparison establishes — but the diff looks far
 larger than the change is.
 
-### Still open
+### The gate, shipped 2026-08-31
 
-- **The gate that actually matters.** `review.py` ranks models against each
-  other and gates on a sampling-noise floor. What it should also refuse to
-  call a finding is a model that does not beat the best trivial baseline by
-  more than that floor. Same machinery, different comparison.
-- **Telling the forecaster.** "Here is the bar" is a different feature from
-  "here is another opinion", and it is a prompt change, so it waits on item
-  27.
+`review.py` now emits a `baseline` finding per lead: which models clear the
+best trivial baseline by more than the same sampling-noise floor the ranking
+uses, or that none do. It also STOPS ranking baselines as though they were
+models — "best_match is the strongest rain caller and climatology the
+weakest" compares guidance against a yardstick, and would have started
+appearing the moment the backfill landed. Bias findings exclude them for the
+same reason: "persistence under-forecasts peak wind" is a statement about
+yesterday's weather.
+
+What it says about the real record, 2026-08-31:
+
+> At Day+0, best_match beats the best trivial baseline. persistence 14/20
+> (70%), the best of 2; a model has to clear it by more than the 15-point
+> noise floor to count. Clearing it: best_match 85%.
+
+**One model out of five.** ECMWF and ICON both sit at 75% — five points above
+persistence, inside the floor — so the record cannot presently say they beat
+repeating yesterday's weather at Day+0. At Day+3 four models clear it and at
+Day+7 three do, which is the more comfortable half of the same story.
+
+No baseline finding reaches the FORECASTER: its review is built from
+`models_visible_to_the_forecaster`, so there are no baseline cells to compare
+against and the block is simply absent. That is deliberate and is the
+remaining half — see below.
+
+### Still open
+- **Telling the forecaster.** The bar is now on the page and not in the
+  prompt. It is arguably the single most useful thing the forecaster could be
+  told — "GFS does not beat persistence at Day+0 here" is more actionable
+  than any rolling percentage — but it is a prompt change and a framing
+  problem ("here is the bar", never "here is another opinion"), so it waits
+  on item 27.
 - **The app.** Its accuracy screen has the same missing yardstick, and its
   record is per-device. Listed in the Ensemble repo's owed table.
 

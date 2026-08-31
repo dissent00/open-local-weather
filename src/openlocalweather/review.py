@@ -32,6 +32,7 @@ from datetime import date
 
 from openlocalweather.dates import add_days
 from openlocalweather.defaults import (
+    BASELINE_MODEL_IDS,
     LEAD_TIMES_DAYS,
     MODELS,
     REVIEW_COMPARISON_MIN_GAP_PCT,
@@ -158,7 +159,18 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
     findings: list[Finding] = []
 
     for k in lead_times_days:
-        at_lead = [c for c in cells if c.lead_time_days == k]
+        every_cell_at_lead = [c for c in cells if c.lead_time_days == k]
+
+        # The yardsticks are scored in the same ledger and must not be
+        # RANKED in it. "best_match is the strongest rain caller and
+        # climatology the weakest" compares guidance against a yardstick as
+        # though they were peers, and on this record climatology sits at the
+        # bottom of Day+0, so that finding would have started appearing the
+        # moment the backfill landed. Same for bias: "persistence
+        # under-forecasts peak wind" is a statement about yesterday's
+        # weather, not about a forecast system.
+        at_lead = [c for c in every_cell_at_lead if c.model not in BASELINE_MODEL_IDS]
+        baseline_cells = [c for c in every_cell_at_lead if c.model in BASELINE_MODEL_IDS]
 
         # --- Comparative ranking, heavily gated ---------------------------
         # Two independent gates. Both models need enough checks to be worth
@@ -221,6 +233,72 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
                     evidence=f"Mean error {value:+.1f}{unit} across {c.checks} checks.",
                     confidence=c.confidence,
                     checks=c.checks,
+                ))
+
+        # --- Does being best mean anything? --------------------------------
+        # ROADMAP item 57. A ranking says which model is best of those
+        # present; it cannot say whether being best is worth having. On this
+        # project's own record at Day+0, repeating yesterday's weather beat
+        # two of the five numerical models and the project's own blend, so
+        # "ECMWF is the strongest rain caller here" was a claim a reader had
+        # no way to weigh.
+        #
+        # Gated on the SAME noise floor as the ranking, and for the same
+        # reason: clearing a yardstick by three points at n=20 is scatter.
+        eligible_baselines = [
+            c for c in baseline_cells
+            if c.checks >= REVIEW_MIN_CHECKS_FOR_COMPARISON and c.rain_pct is not None
+        ]
+        if eligible and eligible_baselines:
+            bar = max(eligible_baselines, key=lambda c: c.rain_pct)
+            clearing = sorted(
+                (c for c in eligible if c.rain_pct - bar.rain_pct >= REVIEW_COMPARISON_MIN_GAP_PCT),
+                key=lambda c: -c.rain_pct,
+            )
+            bar_evidence = (
+                f"{bar.model} {bar.correct}/{bar.checks} ({bar.rain_pct:.0f}%), the best of "
+                f"{len(eligible_baselines)} trivial baseline(s); a model has to clear it by "
+                f"more than the {REVIEW_COMPARISON_MIN_GAP_PCT:.0f}-point noise floor to count."
+            )
+            if clearing:
+                findings.append(Finding(
+                    kind="baseline",
+                    claim=(
+                        f"At Day+{k}, {', '.join(c.model for c in clearing)} "
+                        f"beat{'s' if len(clearing) == 1 else ''} the best trivial baseline."
+                    ),
+                    evidence=(
+                        f"{bar_evidence} Clearing it: "
+                        + ", ".join(f"{c.model} {c.rain_pct:.0f}%" for c in clearing)
+                        + "."
+                    ),
+                    confidence=min(
+                        (c.confidence for c in (*clearing, bar)), key=_confidence_rank
+                    ),
+                    checks=min(c.checks for c in (*clearing, bar)),
+                ))
+            else:
+                # The finding this item exists for. Deliberately phrased as
+                # what the models FAILED to do rather than as praise for the
+                # baseline: nobody should come away thinking persistence is a
+                # forecast worth using, only that the guidance did not earn
+                # its place here at this lead.
+                findings.append(Finding(
+                    kind="baseline",
+                    claim=(
+                        f"At Day+{k}, no model here beats {bar.model} by more than "
+                        "noise — the guidance is not yet earning its place at this "
+                        "lead time."
+                    ),
+                    evidence=(
+                        f"{bar_evidence} Best model: "
+                        f"{max(eligible, key=lambda c: c.rain_pct).model} "
+                        f"{max(c.rain_pct for c in eligible):.0f}%."
+                    ),
+                    confidence=min(
+                        (c.confidence for c in (*eligible, bar)), key=_confidence_rank
+                    ),
+                    checks=min(c.checks for c in (*eligible, bar)),
                 ))
 
         # --- Gaps worth naming ---------------------------------------------

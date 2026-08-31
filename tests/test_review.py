@@ -236,3 +236,110 @@ def test_a_newly_added_model_does_not_erase_the_existing_record():
     assert "brand_new_model" in r.data_sufficiency
     assert "no verified checks at Day+0 yet" in r.data_sufficiency
     assert "not included in the figure above" in r.data_sufficiency
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 57 — the gate that actually matters
+#
+# A ranking says which model is best of those present. It cannot say whether
+# being best is worth anything, and on this project's own record at Day+0 it
+# often is not: repeating yesterday's weather beat two of the five numerical
+# models. Until the review says so, "ECMWF is the strongest rain caller here"
+# is a claim a reader cannot weigh.
+# ---------------------------------------------------------------------------
+
+from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
+
+
+def build_history_with_baseline(days: int, good_hits: int, poor_hits: int, base_hits: int):
+    """As build_history, plus a persistence row hitting `base_hits` times."""
+    logs, actuals = {}, {}
+    for i in range(days):
+        d = TODAY - timedelta(days=i + 1)
+        actuals[d] = DailyActual(
+            rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+        )
+        logs[d] = entry(d, [
+            ModelPrediction(model="good_model", rain=(i < good_hits), high_c=26.0, low_c=18.0),
+            ModelPrediction(model="poor_model", rain=(i < poor_hits), high_c=26.0, low_c=18.0),
+            ModelPrediction(
+                model=PERSISTENCE_MODEL_ID, rain=(i < base_hits), high_c=26.0, low_c=18.0
+            ),
+        ])
+    return logs, actuals
+
+
+def _review_with_baseline(logs, actuals):
+    return build_weekly_review(
+        log_lookup=lambda d: logs.get(d),
+        actuals=actuals,
+        all_log_dates=sorted(logs),
+        today=TODAY,
+        models=[*MODELS, PERSISTENCE_MODEL_ID],
+        lead_times_days=[0],
+    )
+
+
+def test_a_baseline_is_never_ranked_as_though_it_were_a_model():
+    """The nonsense this prevents: "good_model is the strongest rain caller
+    and persistence the weakest" compares guidance against a yardstick as
+    though they were peers. On the real record climatology sits at the bottom
+    of Day+0, so this would have started happening the moment the backfill
+    landed."""
+    logs, actuals = build_history_with_baseline(30, good_hits=27, poor_hits=9, base_hits=5)
+    r = _review_with_baseline(logs, actuals)
+
+    ranking = [f for f in r.findings if f.kind == "ranking"]
+    assert len(ranking) == 1
+    assert PERSISTENCE_MODEL_ID not in ranking[0].claim
+    assert PERSISTENCE_MODEL_ID not in ranking[0].evidence
+
+
+def test_a_baseline_is_not_reported_as_having_a_bias():
+    """"persistence systematically under-forecasts peak wind" is a statement
+    about yesterday's weather, not about a forecast system."""
+    logs, actuals = build_history_with_baseline(30, good_hits=27, poor_hits=9, base_hits=5)
+    r = _review_with_baseline(logs, actuals)
+
+    assert not [f for f in r.findings if f.kind == "bias" and PERSISTENCE_MODEL_ID in f.claim]
+
+
+def test_it_says_when_the_models_clear_the_bar():
+    logs, actuals = build_history_with_baseline(30, good_hits=27, poor_hits=24, base_hits=5)
+    r = _review_with_baseline(logs, actuals)
+
+    baseline = [f for f in r.findings if f.kind == "baseline"]
+    assert len(baseline) == 1
+    assert "good_model" in baseline[0].claim
+    assert "persistence" in baseline[0].evidence
+
+
+def test_it_says_when_no_model_clears_the_bar():
+    """The finding this whole item exists for. Every model at or below the
+    trivial rule, and the ranking alone would still announce a winner."""
+    logs, actuals = build_history_with_baseline(30, good_hits=15, poor_hits=12, base_hits=27)
+    r = _review_with_baseline(logs, actuals)
+
+    baseline = [f for f in r.findings if f.kind == "baseline"]
+    assert len(baseline) == 1
+    assert "no model" in baseline[0].claim.lower()
+    assert "persistence" in baseline[0].claim or "persistence" in baseline[0].evidence
+
+
+def test_beating_the_bar_by_less_than_the_noise_floor_does_not_count():
+    """Same gate as the ranking: at n=30 a few points is scatter, not skill."""
+    logs, actuals = build_history_with_baseline(30, good_hits=22, poor_hits=21, base_hits=20)
+    r = _review_with_baseline(logs, actuals)
+
+    baseline = [f for f in r.findings if f.kind == "baseline"]
+    assert len(baseline) == 1
+    assert "no model" in baseline[0].claim.lower()
+
+
+def test_no_baseline_in_the_record_means_no_finding_rather_than_a_pass():
+    """Absence of a yardstick is not evidence that the bar was cleared — the
+    same rule the rest of this project follows about missing data."""
+    logs, actuals = build_history(days=30, good_hits=27, poor_hits=9)
+    r = review_of(logs, actuals)
+
+    assert not [f for f in r.findings if f.kind == "baseline"]
