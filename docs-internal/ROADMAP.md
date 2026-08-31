@@ -25,12 +25,12 @@ cheap and they gate other work, which is why they sit high.
 1. ~~**53.4 — a degraded run says it is degraded.**~~ **Shipped
    2026-08-31.** Record, page and a weekly red job. The app half is owed in
    the Ensemble repo.
-2. ~~**57 — baselines in the ledger.**~~ **Server side shipped 2026-08-31**,
-   with 58's storage half alongside it as planned. Three things remain: the
-   review gate ("beats the best baseline by more than the noise floor"), the
-   app's own accuracy screen, and a decision on whether to backfill the
-   baselines into historical entries — without which the comparison only
-   becomes legible in about ten days. See item 57.
+2. ~~**57 — baselines in the ledger.**~~ **Done server-side 2026-08-31**,
+   including the backfill and the review gate, with 58's storage half
+   alongside it as planned. Only the app's own accuracy screen is left, and
+   it is wiring rather than arithmetic — see the Ensemble repo's owed table.
+   The headline: at Day+0 only one of five models demonstrably beats
+   repeating yesterday's weather.
 3. **45 — which source is "what actually happened".** A DECISION. An hour of
    thought, gates 47, 11 and 44, and expensive to unwind if it is made
    implicitly by the first source someone adds.
