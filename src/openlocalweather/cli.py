@@ -598,7 +598,22 @@ def _run_rebuild_record(args) -> int:
     replace_all(cache, "primary", actuals)
     write_actuals_cache(data_dir, cache)
     write_track_record(data_dir, result.updated_track_record)
+    # TWO DATA FILES, AND DELIBERATELY NOT THE PAGES. `docs/accuracy.html` is
+    # rendered by a forecast run, so a rebuild leaves the PUBLISHED figures
+    # stale until the next scheduled run republishes them — measured
+    # 2026-08-30, when correcting two days dropped every model's all-time
+    # Day+0 rain accuracy by ~5 points and the public page went on showing
+    # the old ones for several hours.
+    #
+    # Not fixed by rendering here: publishing is the forecast's job, this
+    # command is re-derivation, and a rebuild that also republished would put
+    # a page-write behind an operator command that is safe to run repeatedly.
+    # The operator needs to KNOW, which is what this line is for.
     print("\nWrote actuals_cache/actuals.json and track_record.json.")
+    print(
+        "The published accuracy page is rendered by a forecast run, so it "
+        "keeps the old figures until the next scheduled run."
+    )
     return 0
 
 

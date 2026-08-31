@@ -4351,6 +4351,15 @@ work and the last is weeks.
    Both texts are ported verbatim into `prompt.dart` and pinned by the
    shared `llm_system_prompt` / `llm_user_prompt` vectors, which is what
    caught the drift when only the Python half had been changed.
+   **A rebuild does not republish.** `olw rebuild-record` writes
+   `actuals.json` and `track_record.json` and nothing else, because
+   `docs/accuracy.html` is rendered by a forecast run. So corrected
+   figures are public in the data and stale on the PAGE until the next
+   scheduled run. Measured 2026-08-30: the page showed the
+   pre-correction percentages for several hours after the fix was
+   pushed. The command now says so on stdout; see the comment in
+   `cli._run_rebuild_record` for why it does not render the page itself.
+
 4. **A degraded run says it is degraded.** Three silent runs in a row,
    surfaced only because a reader got rained on. A missing HOURS AHEAD
    block belongs in the issuance record and on the page, not only on
