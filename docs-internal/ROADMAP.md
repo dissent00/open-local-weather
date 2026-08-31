@@ -15,6 +15,55 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-08-31
+
+A snapshot, not a contract, and dated because it will go stale. Numbered
+items keep their own status; this only says what to pick up next and why.
+Where an item is a decision rather than a build, it is marked so — those are
+cheap and they gate other work, which is why they sit high.
+
+1. **53.4 — a degraded run says it is degraded.** Safety, and live. Three
+   consecutive runs lost the hour-by-hour block and said nothing; the gap
+   surfaced only because a reader was rained on. Ahead of everything else
+   here.
+2. **57 — baselines in the ledger.** A day's work, no API cost, and it
+   changes what every number already published MEANS. Measured 2026-08-31:
+   two of five models lose to persistence at Day+0 and the blend sits three
+   checks above it. Ship the storage half of 58 alongside it — recording
+   `precipitation_probability_max` costs a few lines and cannot be
+   backfilled, so the clock should start now whether or not anything scores
+   it yet.
+3. **45 — which source is "what actually happened".** A DECISION. An hour of
+   thought, gates 47, 11 and 44, and expensive to unwind if it is made
+   implicitly by the first source someone adds.
+4. **27 — the harness for judging model changes.** The prerequisite nobody
+   has paid for. Item 48's pass and 53.3's rule 7 are both unvalidated for
+   side effects — not wrong, unmeasured — and items 58 and 59 are larger
+   prompt changes than either.
+5. **58 — score the probability.** Additive to the boolean, so the existing
+   series stays comparable. The incentive argument is the real one: a proper
+   scoring rule pays for the honesty that rule 7 currently has to ask for in
+   English.
+6. **59 — split judgment from prose.** Needs 27 first. Large, and it doubles
+   a surface pinned across two languages, so it is worth doing once.
+7. **53.5, then 47 → 11 → 44.** The METAR nowcasting role, then observing
+   stations everywhere — the biggest accuracy lever a reader controls, and
+   where the product gets better rather than only more correct.
+8. **20, then 60.** Backfill makes the archive queryable; analogues are what
+   query it. Forty days is not enough for either.
+
+**Item 2 still carries the status Next, and this list does not open with
+it.** That marker predates item 53. Severe-weather alerting is the expensive
+version of what 53.4 and 53.5 buy cheaply — a run that admits it is
+degraded, and a METAR with a nowcasting role — so it belongs after them
+rather than before. The status is left as it is rather than quietly
+demoted; it is the operator's word to change.
+
+Deliberately NOT next, listed because they read as though they might be:
+54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
+41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
+---
+
 ## 1. Second daily forecast run — 6 AM + 6 PM · **Done**
 
 Shipped: `olw refresh-forecast` (`pipeline.run_refresh_pipeline`), scheduled
@@ -4432,6 +4481,13 @@ options are:
   project. The shortest path to an endpoint that can write a Sheet, because
   the OAuth authorization and the deployment step already exist for the
   mailer. One project, one place to look when it breaks.
+
+  **And it is already planned.** Item 2's build table has `doPost()` plus a
+  Web App deployment and shared-secret auth in the mailer, with the note to
+  key it by `type` from the start because item 3 reuses it. Signup would be
+  the third consumer of one endpoint rather than a new one — which moves the
+  cost of this item most of the way to zero, provided the keying happens as
+  item 2 says.
 - **An ESP's own hosted form**, which is item 5's territory. If a real
   sending domain lands, subscription management, double opt-in and
   unsubscribe stop being things this repo builds at all. That is the
@@ -4605,3 +4661,250 @@ repo's `ROADMAP.md`, per the note at the top of this file.
 
 Related: item 14 (audience voices), item 24 (published feed), item 44 (a
 sources page — the other "explain the machinery to the reader" surface).
+
+---
+
+## 57. A percentage with no baseline beside it is not a claim · **Planned**
+
+`docs/accuracy.html` publishes "ECMWF 75% rolling Day+0 rain verification"
+and the prompt cites those figures when it decides whom to trust. Nothing on
+the page or in the record says what a number would have to beat to be worth
+anything, so 75% cannot be read as good, bad or noise.
+
+### Measured 2026-08-31, over the 20 scored Day+0 checks
+
+Baselines computed from `data/actuals_cache/actuals.json` against the same
+`observed_convection` truth the ledger already uses. Persistence at lead L
+means the most recent observation available when a forecast at that lead is
+issued — target day minus L minus one.
+
+| Day+0 | rain accuracy |
+|---|---|
+| best_match | 85% |
+| ecmwf_ifs025 / icon_seamless | 75% |
+| kenya_met | 72.7% (11 checks) |
+| **persistence — "like yesterday"** | **65%** |
+| olw_blend | 66.7% (3 checks) |
+| gfs_seamless / ukmo_seamless | 60% |
+| **always-dry** | **55%** |
+
+Two of the five models lose to a rule with no inputs, and the project's own
+blended call sits one day of luck above it on three checks.
+
+**The lead times invert, which a single baseline would have hidden.**
+Persistence scores 35% at Day+3 and 30% at Day+7 — below chance, meaning its
+INVERSE scores 65% and 70%, and GFS's 76.9% at Day+7 beats that by one day.
+So at Day+0 the trivial rule is a real competitor, and at Day+7 the trivial
+rule is a competitor only when flipped. Whether that inversion is a genuine
+3-4 day oscillation in the wet/dry sequence here or an artefact of 20 checks
+is NOT established, and it is exactly the sort of local structure a flat
+scoreboard cannot show.
+
+**Read every number above as provisional.** n=20, and a base rate that moves
+from 45% over the scored window to 57.5% over the 40 days of actuals. Six
+days separate 35% from 65%. The finding is not "GFS is bad" — it is that the
+record cannot presently tell you whether any of this beats a coin, and
+nothing in the system says so.
+
+### What would count as done
+
+Persistence and climatology enter the ledger as scored models, verified by
+the same code path as GFS. The shape already exists: `kenya_met` is carried
+as a non-Open-Meteo model with null fields, and `scored_models` is a list.
+
+- **`persistence`** — the target day equals the last observation available
+  at issuance. Needs no forecast data at all, only the actuals already
+  stored.
+- **`climatology`** — the trailing base rate over the record so far. Honest
+  about being thin, and it improves on its own. Not a fixed 30-year
+  normal, which this deployment does not have.
+
+Both are free: no API call, no LLM call, no new fetch. They then appear on
+the accuracy page and in MODEL TRACK RECORD beside the real models, which
+means the prompt is told what a model has to beat before it is worth citing.
+
+The review module (`review.py`) already gates cross-model rankings on sample
+size and a sampling-noise floor. Extending that gate to "beats the best
+trivial baseline by more than the noise floor" is the same machinery and is
+the finding that actually matters.
+
+### Why this is first
+
+Every other item here proposes changing the system. This one changes what
+the existing numbers MEAN, costs a day, and cannot be wrong in a way that
+damages the record — a baseline is another row, and rows are already
+first-write-wins per date. It also tells you whether the LLM's blended call
+is earning its API spend, which nothing currently does.
+
+App work: listed in the Ensemble repo's owed table.
+
+Related: item 18 (the weekly review this extends), item 58 (which changes
+what a baseline is measured with), item 26 (the spend this justifies).
+
+---
+
+## 58. Score the probability, not the guess · **Planned**
+
+`rain` is a boolean. `extract.py` thresholds `precip_mm` at
+`RAIN_THRESHOLD_MM` and the ledger stores true or false, so a model that
+said "60% chance" and a model that said "certainly" score identically when
+it rains, and identically when it does not.
+
+Open-Meteo already sends `precipitation_probability` — it is in
+`HOURLY_FORECAST_VARS` and `precipitation_probability_max` is in the daily
+vars. **Nothing downstream reads either.** They are fetched every run and
+discarded.
+
+### Three things a proper scoring rule buys that a binary cannot
+
+1. **Discrimination at a base rate near a coin flip.** The scored window is
+   45% wet. A binary in that climate carries very little information per
+   check, which is why item 57's baselines land so close to the models.
+2. **Separating confidently wrong from honestly uncertain.** A Brier score
+   decomposes into calibration and resolution. That distinction is the whole
+   subject of item 53 — an issuance that said "no hazards are anticipated"
+   and an issuance that said "instability guidance is missing, check the sky"
+   are both scored as one dry call today.
+3. **The incentive.** This is the important one. Rule 7 of the system prompt
+   legislates honesty in English because the ledger does not reward it: under
+   a binary, a confident guess and a well-hedged call score the same, so the
+   prompt has to ask for restraint that the scoring actively fails to pay
+   for. A proper scoring rule pays for it arithmetically. **It enforces in
+   the record what the prompt is currently trying to enforce in prose.**
+
+### The comparability hazard, and the way around it
+
+Changing what is scored breaks continuity with every check already stored —
+the exact failure items 32, 33 and 34 were fought over. So this is additive,
+not a replacement:
+
+- `rain` (boolean) stays, scored as it is now, forever. The existing series
+  remains comparable to itself.
+- `rain_probability` is added beside it, for every model that can supply one
+  and for the blended call, scored by Brier alongside.
+
+Two ledgers over the same days, one of which starts empty. The boolean is
+never retired, because a record that cannot be compared with its own past is
+worth less than a cruder one that can.
+
+### Not established
+
+- Whether Open-Meteo's `precipitation_probability_max` is CALIBRATED here.
+  It cannot be checked from the stored record, because the field has never
+  been stored. That is the argument for storing it starting now even before
+  anything scores it — the check needs history, and history only accrues
+  forwards.
+- What a "probability" from the LLM's blended call is actually worth. It may
+  be well-calibrated, it may be a stylistic number. Brier is how that gets
+  answered rather than argued about, and the answer may be that the blend
+  should not emit one.
+
+App work: listed in the Ensemble repo's owed table.
+
+Related: item 57 (baselines, which want a scoring rule to be measured with),
+item 53 (the incident this scores properly), item 27 (how a prompt change
+here gets validated).
+
+---
+
+## 59. One call writes the forecast and writes the prose · **Planned**
+
+`llm/prompt.py` is 451 lines. Single instruction paragraphs run past 400
+words. It is at once a reasoning engine, a style guide and an incident log:
+rule 7 exists because of 2026-08-29, and the day-over-day paragraph exists
+because one issuance said "similar warmth, calmer winds, and dry again".
+
+That is a codebase accreting patches with no regression suite. The Python is
+not allowed to work that way and item 40 exists to hold it to AGENTS.md; the
+prompt is held to nothing, and item 27 — the harness that would judge a
+change — is still Planned.
+
+### The split
+
+- **A judgment call.** Structured output only, no prose: the blended
+  `today_properties`, the confidence, which models to weight today and why.
+  Small enough to read in one screen, and regression-testable against the
+  stored archive, because the inputs and the outcome are both already there.
+- **A rendering call.** Judgment in, narrative out. Roughly 90% of the
+  current prompt's rules belong here — the day-over-day phrasing, the
+  repetition bans, the section order, the register.
+
+The point is what a mistake costs on each side. A bad rule in the renderer
+produces a clumsy sentence. A bad rule in the judgment produces a wrong
+forecast. Today they are edits to the same string, and a change to either
+can silently move the other.
+
+### The hazards, stated before anyone starts
+
+- **Two calls cost more than one.** On the server that is a rounding error.
+  In the app it is spend against the reader's own cap (item 26), and a cap
+  sized for one call a day now refuses at half the forecasts. That is an app
+  decision, not a server one, and it is in the owed table.
+- **A judgment reduced to fields may be worse than a judgment written as
+  prose.** Reasoning that has room to argue with itself sometimes arrives
+  somewhere a schema would not let it go. This is a real risk and the
+  harness is how it gets measured rather than assumed.
+- **The prompt is pinned character-for-character across two languages.**
+  Splitting it doubles that surface. Worth doing once, not twice.
+
+### Order
+
+**Item 27 comes first, and should always have.** Every prompt change made so
+far — item 48's pass, 53.3's rule 7 — is unvalidated for side effects. Not
+wrong; unmeasured. You cannot improve a prompt you cannot measure, and this
+item is a large prompt change.
+
+App work: listed in the Ensemble repo's owed table.
+
+Related: item 27 (the prerequisite), item 14 (voices — the renderer is where
+they would live), item 40, item 48.
+
+---
+
+## 60. The record is a scoreboard and never an input · **Planned**
+
+Forty days of (conditions → prediction → outcome) at one point, and the
+forecast never looks at any of it except as percentages. `review.py` reads
+the record to report on models; nothing reads it to forecast.
+
+The retrieval a machine does well and a human forecaster does badly, from
+memory, and is most admired for: find the days in the archive whose setup
+most resembles today's, and say what actually happened on them. Nearest
+neighbour over a feature vector — synoptic pattern, CAPE profile, MSLP
+trend, wind, month — against the project's own stored days. No API call, no
+LLM call, and the answer improves every day the record grows.
+
+**This is local knowledge in the only form an LLM can hold it.** The model
+cannot accumulate twenty years of afternoons; it can be handed the three
+past days that look like this one, with their outcomes, on every run. Given
+into the prompt as evidence, not as a conclusion — the same way the track
+record is.
+
+### Why it is last, not first
+
+Forty days is not an archive. Most days will have no close neighbour, and
+handing the model a weak match dressed as a precedent is worse than handing
+it nothing — the failure shape of item 53 again, a thin signal read as a
+strong one. So a match needs a distance threshold, and below it the honest
+output is "no comparable day in the record", which the prompt must be
+allowed to say.
+
+Item 20 (historical backfill) is the unlock, and this is a stronger argument
+for it than the cold-start one it is currently filed under: backfill does not
+merely start the scoreboard sooner, it makes the archive queryable as a
+forecast input.
+
+### The asymmetry worth naming now
+
+The server's archive is one place, growing daily, and public. The app's
+record is per device, starts empty on install, and belongs to a reader who
+may have generated forty forecasts or four. Analogues computed on the app's
+own history would be nearly useless for years. If the app is to have them at
+all, they come from the server's archive through item 24's feed — which
+makes this one more reason that item exists.
+
+App work: listed in the Ensemble repo's owed table.
+
+Related: item 20 (backfill, the prerequisite), item 24 (feed), item 18
+(review — the other consumer of the whole record), item 35 (model
+disagreement, a feature this would key on).
