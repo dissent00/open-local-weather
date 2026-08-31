@@ -59,8 +59,15 @@ from openlocalweather.store.actuals_cache import (
     replace_all,
     write_actuals_cache,
 )
+from openlocalweather.backfill import backfill_entry_baselines
+from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
-from openlocalweather.store.log_store import list_log_dates, make_log_lookup, read_log_entry
+from openlocalweather.store.log_store import (
+    list_log_dates,
+    make_log_lookup,
+    read_log_entry,
+    write_log_entry,
+)
 from openlocalweather.store.track_record import read_track_record, write_track_record
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
@@ -523,6 +530,92 @@ def _run_check_health(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _run_backfill_baselines(args) -> int:
+    """Add persistence and climatology to days already stored — ROADMAP 57.
+
+    Baselines are built at forecast time, so only runs from the day they
+    shipped carry them, and `rebuild-record` cannot fill the gap: it
+    re-derives from stored predictions and cannot invent one that was never
+    made. Without this the comparison the item exists for is unreadable for
+    about ten days.
+
+    Not hindsight — see backfill.py. What it writes is exactly what those runs
+    would have produced, because both baselines read only data that existed at
+    each issuance.
+
+    DRY RUN IS THE DEFAULT-ADJACENT HABIT HERE, not a nicety. This is the only
+    command in the project that edits historical entries, so it prints the
+    per-day plan either way and `--dry-run` stops before writing. Run it once
+    to read the plan, then again to apply it.
+
+    Scoring is deliberately NOT done here. `rebuild-record` is the command
+    that turns predictions into verified figures, it already exists, and it is
+    idempotent; doing it inline would duplicate that and hide which step
+    produced which change.
+
+    ONE SIDE EFFECT WORTH KNOWING ABOUT, measured on the 2026-08-31 run over
+    21 entries. Rewriting a file re-serialises the whole entry, so fields the
+    current schema has and an older file lacked appear filled with their
+    defaults — `degradations: null`, `earlier_issuances: []`,
+    `rain_probability_pct: null`. That is cosmetic: absent and default-valued
+    parse to the same thing, and all 21 entries were verified identical as
+    MODELS once the new baseline rows were removed. It is written down
+    because the diff looks much larger than the change is, and someone
+    reviewing it later should not have to work that out from scratch.
+    """
+    data_dir = Path(args.data_dir)
+    actuals = as_date_dict(read_actuals_cache(data_dir).primary)
+    if not actuals:
+        print("No stored observations — nothing to build a baseline from.", file=sys.stderr)
+        return 1
+
+    changed, skipped, impossible = [], [], []
+    for d in sorted(list_log_dates(data_dir)):
+        entry = read_log_entry(data_dir, d)
+        if entry is None:
+            continue
+
+        updated = backfill_entry_baselines(entry, actuals)
+        if updated is None:
+            # Two different reasons, separated because they call for different
+            # actions: one is "already done", the other is "this day can never
+            # have them" — the first day of the record has nothing before it.
+            has_baselines = any(
+                p.model in (PERSISTENCE_MODEL_ID, CLIMATOLOGY_MODEL_ID)
+                for p in entry.model_predictions.day0
+            )
+            (skipped if has_baselines else impossible).append(d)
+            continue
+
+        changed.append(d)
+        if not args.dry_run:
+            write_log_entry(data_dir, updated)
+
+    verb = "would add" if args.dry_run else "added"
+    print(f"{verb} baselines to {len(changed)} day(s).")
+    for d in changed:
+        print(f"  {d}")
+    if skipped:
+        print(f"{len(skipped)} day(s) already had them and were left alone.")
+    if impossible:
+        print(
+            f"{len(impossible)} day(s) have no earlier observation to build from "
+            f"(the start of the record): {', '.join(str(d) for d in impossible)}"
+        )
+
+    if args.dry_run:
+        print("\nDry run — nothing was written. Re-run without --dry-run to apply.")
+    elif changed:
+        # Same caveat rebuild-record carries: predictions are not figures.
+        print(
+            "\nThese are predictions, not scores. Run `olw rebuild-record` to verify "
+            "them against the observations, and note that the published page is "
+            "rendered by a forecast run, so it stays stale until the next one."
+        )
+
+    return 0
+
+
 def _run_rebuild_record(args) -> int:
     """Re-derive the accuracy record from raw stored predictions and freshly
     fetched observations.
@@ -739,6 +832,15 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Show what would change without writing anything."
     )
 
+    backfill = sub.add_parser(
+        "backfill-baselines",
+        help="Add persistence/climatology predictions to days stored before they existed.",
+    )
+    backfill.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    backfill.add_argument(
+        "--dry-run", action="store_true", help="Print the plan without writing anything."
+    )
+
     health = sub.add_parser(
         "check-health",
         help="Weekly health checks: model deprecation, repo staleness, data coverage.",
@@ -764,6 +866,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)
+
+    if args.command == "backfill-baselines":
+        return _run_backfill_baselines(args)
 
     if args.command == "check-health":
         return _run_check_health(args)

@@ -45,6 +45,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 11.9,
         "high_c": 34.0,
         "low_c": 17.4,
@@ -55,6 +56,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 35.3,
         "high_c": 32.5,
         "low_c": 18.4,
@@ -65,6 +67,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 34.9,
         "high_c": 32.9,
         "low_c": 19.9,
@@ -75,6 +78,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 28.1,
         "high_c": 30.8,
         "low_c": 15.9,
@@ -85,6 +89,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 36.4,
         "high_c": 33.2,
         "low_c": 17.3,
@@ -95,6 +100,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": 32.0,
         "low_c": 16.0,
@@ -105,9 +111,32 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": 32.8,
         "low_c": 17.5,
+        "mslp_trend": null
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.4,
+        "high_c": 33.9,
+        "low_c": 17.1,
+        "mslp_trend": 0.6999999999999318
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.4189189189189189,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.78108108108108,
+        "high_c": 29.572972972972973,
+        "low_c": 18.105405405405406,
         "mslp_trend": null
       }
     ],
@@ -117,6 +146,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 22.7,
         "high_c": 33.0,
         "low_c": 18.4,
@@ -127,6 +157,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 42.8,
         "high_c": 33.2,
         "low_c": 19.8,
@@ -137,6 +168,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 31.3,
         "high_c": 32.8,
         "low_c": 20.5,
@@ -147,6 +179,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 20.5,
         "high_c": 30.8,
         "low_c": 15.5,
@@ -157,6 +190,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 47.5,
         "high_c": 32.8,
         "low_c": 19.1,
@@ -167,9 +201,32 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": 32.0,
         "low_c": 17.0,
+        "mslp_trend": null
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.4,
+        "high_c": 33.9,
+        "low_c": 17.1,
+        "mslp_trend": 0.6999999999999318
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.4189189189189189,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.78108108108108,
+        "high_c": 29.572972972972973,
+        "low_c": 18.105405405405406,
         "mslp_trend": null
       }
     ],
@@ -179,6 +236,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 14.8,
         "high_c": 34.8,
         "low_c": 18.6,
@@ -189,6 +247,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 38.5,
         "high_c": 32.2,
         "low_c": 21.3,
@@ -199,6 +258,7 @@
         "rain": null,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -209,6 +269,7 @@
         "rain": null,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -219,10 +280,33 @@
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
+        "rain_probability_pct": null,
         "wind_kmh": 43.9,
         "high_c": 31.5,
         "low_c": 21.2,
         "mslp_trend": 0.09999999999990905
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.4,
+        "high_c": 33.9,
+        "low_c": 17.1,
+        "mslp_trend": 0.6999999999999318
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.4189189189189189,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.78108108108108,
+        "high_c": 29.572972972972973,
+        "low_c": 18.105405405405406,
+        "mslp_trend": null
       }
     ]
   },
@@ -291,7 +375,8 @@
       "generated_at_utc": "2026-08-28T00:27:39.898939Z",
       "guidance_initialised_at": null,
       "guidance_age_hours": null,
-      "guidance_source": null
+      "guidance_source": null,
+      "degradations": null
     }
   ],
   "morning_issuance": {
@@ -336,7 +421,8 @@
     "generated_at_utc": "2026-08-28T00:27:39.898939Z",
     "guidance_initialised_at": null,
     "guidance_age_hours": null,
-    "guidance_source": null
+    "guidance_source": null,
+    "degradations": null
   },
   "guidance_initialised_at": "2026-08-28T06:00:00Z",
   "guidance_age_hours": 9.023063060555556,
@@ -347,6 +433,7 @@
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
     "refreshed_at": "2026-08-28T15:04:16.554377Z",
-    "trigger_source": "schedule"
+    "trigger_source": "schedule",
+    "degradations": null
   }
 }

@@ -45,6 +45,7 @@
         "rain": true,
         "onset": "15:00",
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 18.4,
         "high_c": 30.5,
         "low_c": 19.4,
@@ -55,6 +56,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": 29.9,
         "low_c": 19.4,
@@ -65,6 +67,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 28.8,
         "high_c": 30.1,
         "low_c": 20.9,
@@ -75,6 +78,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 23.4,
         "high_c": 29.5,
         "low_c": 17.4,
@@ -85,10 +89,33 @@
         "rain": true,
         "onset": "19:00",
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 28.8,
         "high_c": 30.2,
         "low_c": 19.1,
         "mslp_trend": -0.2999999999999545
+      },
+      {
+        "model": "persistence",
+        "rain": true,
+        "onset": "14:00",
+        "precip_mm": 1.4,
+        "rain_probability_pct": null,
+        "wind_kmh": 51.1,
+        "high_c": 29.7,
+        "low_c": 19.9,
+        "mslp_trend": 0.8999999999999773
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.3000000000000003,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.28846153846154,
+        "high_c": 29.21923076923077,
+        "low_c": 18.11923076923077,
+        "mslp_trend": null
       }
     ],
     "day3": [
@@ -97,6 +124,7 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 21.2,
         "high_c": 30.7,
         "low_c": 18.3,
@@ -107,6 +135,7 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 36.4,
         "high_c": 30.3,
         "low_c": 19.6,
@@ -117,6 +146,7 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 31.7,
         "high_c": 29.0,
         "low_c": 21.3,
@@ -127,6 +157,7 @@
         "rain": false,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 19.4,
         "high_c": 29.5,
         "low_c": 16.6,
@@ -137,10 +168,33 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 45.0,
         "high_c": 29.1,
         "low_c": 19.1,
         "mslp_trend": -0.10000000000002274
+      },
+      {
+        "model": "persistence",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.4,
+        "rain_probability_pct": null,
+        "wind_kmh": 51.1,
+        "high_c": 29.7,
+        "low_c": 19.9,
+        "mslp_trend": 0.8999999999999773
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.3000000000000003,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.28846153846154,
+        "high_c": 29.21923076923077,
+        "low_c": 18.11923076923077,
+        "mslp_trend": null
       }
     ],
     "day7": [
@@ -149,6 +203,7 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 10.1,
         "high_c": 32.7,
         "low_c": 18.7,
@@ -159,6 +214,7 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 37.4,
         "high_c": 27.6,
         "low_c": 20.4,
@@ -169,6 +225,7 @@
         "rain": null,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -179,6 +236,7 @@
         "rain": null,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
@@ -189,10 +247,33 @@
         "rain": true,
         "onset": null,
         "precip_mm": null,
+        "rain_probability_pct": null,
         "wind_kmh": 41.4,
         "high_c": 30.0,
         "low_c": 20.2,
         "mslp_trend": -0.10000000000002274
+      },
+      {
+        "model": "persistence",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.4,
+        "rain_probability_pct": null,
+        "wind_kmh": 51.1,
+        "high_c": 29.7,
+        "low_c": 19.9,
+        "mslp_trend": 0.8999999999999773
+      },
+      {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 1.3000000000000003,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.28846153846154,
+        "high_c": 29.21923076923077,
+        "low_c": 18.11923076923077,
+        "mslp_trend": null
       }
     ]
   },
@@ -214,6 +295,7 @@
   "yesterday_verification_summary": "On August 16th at Day+0, all models missed the precipitation call as Kisumu remained dry despite predictions for isolated evening showers. Maximum daytime temperatures were accurately forecast by UKMO (+0.1°C error) and ICON (-0.1°C error), while GFS severely overpredicted surface wind speeds by 38.9 km/h.",
   "narrative_markdown": "## Overview\nSince the morning issuance, live METAR reports from Kisumu Airport (HKKI at 17:30 EAT) confirm that convective activity has initiated earlier than expected, with active thunderstorms (TS) and cumulonimbus clouds observed in the vicinity. Daytime highs reached 30°C / 86°F before rainfall onset, and temperatures will cool to a mild 19°C / 66°F overnight.\n\n## Today's Forecast\nWith afternoon heating having reached 30°C / 86°F, conditions for the remainder of the afternoon and evening will be dominated by isolated thunderstorms and scattered showers through 21:00 EAT. Expected precipitation amounts range from 1.5 mm (0.06 in) to 4.3 mm (0.17 in). Winds currently blowing from the N at 9 km/h (5 kt) will transition to an easterly land breeze overnight at 6 km/h (3 kt). The maximum UV index peaked at 8.9 (Very High). Air quality assessment relies on CAMS model guidance showing background US AQI values of 94 to 97 (Moderate), as regional ground monitoring stations are currently offline or stale.\n\n## Extended Outlook\nFresher afternoon model runs show minimal structural changes to the extended pattern. Over the next three days (Tuesday through Thursday), daytime maximum temperatures will remain stable between 29°C / 84°F and 31°C / 88°F, with overnight lows near 18°C / 64°F to 19°C / 66°F. Scattered late-afternoon showers remain possible daily with accumulations between 1.0 mm (0.04 in) and 2.0 mm (0.08 in). For days 4 through 7 (Friday through next Monday), high confidence in near-term model skill gives way to lower confidence as model spread widens; moisture increases slightly toward Sunday and Monday, with daily basin rainfall potential rising to between 5.0 mm (0.20 in) and 9.0 mm (0.35 in).\n\n## Severe Weather / Hazard Potential\nActive thunderstorm cells reported at Kisumu Airport bring a localized threat of cloud-to-ground lightning and brief convective wind gusts up to 32 km/h (17 kt) through 21:00 EAT. While widespread severe weather is not expected, outdoor workers and mariners should seek shelter upon hearing thunder.\n\n## Lake Victoria — Conditions for Boaters\nFor boaters on Lake Victoria, afternoon lake breeze winds from the WSW peak around 27 km/h (15 kt) with gusts up to 36 km/h (19 kt), creating moderate chop across open waters. Isolated thunderstorms developing along the eastern shore may cause localized squalls and sudden wind shifts through early evening. Overnight winds will shift off-shore from the East at 12 km/h (6 kt). Lake surface temperatures remain steady at 24°C / 75°F.\n\n## Detailed Discussion\n### Synoptic Overview\nRegional MSLP monitoring across Nyanza Basin indicates steady pressure baselines between 1013.5 hPa and 1016.6 hPa. Strong solar heating lowered local pressure to a diurnal trough near 1009 hPa this afternoon, interacting with lake breeze convergence to trigger convective storm development confirmed by METAR HKKI (171430Z 35005KT 9999 TS FEW023CB BKN024). CAPE values between 500 J/kg and 1100 J/kg support ongoing isolated convection through early evening. Over the next 24 to 72 hours, regional MSLP will hover near 1013 hPa to 1014 hPa, preserving typical diurnal convective timing. Ground air quality monitoring stations at Kisumu Airport, Ochieng' Avenue, Kisumu Central, and Dunga Beach are all stale (readings 6 hours old) and missing calculated numeric AQI values (reporting raw PM2.5 of 84.0 µg/m³, 98.0 µg/m³, and 68.0 µg/m³ respectively); the air quality assessment therefore relies on CAMS model data (US AQI 94-97, Moderate).\n\n### Forecaster Confidence Notes\nThis refresh run retains the model blending strategy established in the morning issuance. ECMWF and UKMO are given primary weight for precipitation timing and atmospheric thermal profiles, supported by their 100% Day+3 verification record. ICON is utilized for near-surface wind fields due to its high precision in local wind speed guidance. GFS wind predictions continue to be heavily discounted due to persistent overestimation (+22.1 km/h bias at Day+0).",
   "whatsapp_summary": "🌩️ Kisumu Afternoon Weather Update (Aug 17):\nLive METAR at Kisumu Airport confirms active thunderstorms (TS) developing across the area.\n🌡️ High: 30°C / 86°F | Low: 19°C / 66°F\n🌧️ Evening Showers/Thunderstorms expected through 21:00 EAT (1.5 - 4.3 mm / 0.06 - 0.17 in).\n💨 Winds: WSW shifting E overnight at 9 km/h (5 kt), gusts to 32 km/h (17 kt).\n⛵ Lake Victoria: WSW winds 27 km/h (15 kt) with moderate chop & localized squalls.\n😷 Air Quality: Moderate (94-97 US AQI via CAMS).",
+  "earlier_issuances": [],
   "morning_issuance": {
     "rain_expected": "Isolated Evening Showers",
     "onset_window": "17:00 - 21:00 EAT",
@@ -253,14 +335,22 @@
     ],
     "narrative_markdown": "## Overview\nWarm and partly sunny conditions will prevail across Kisumu today, with daytime highs reaching 30°C / 86°F before isolated showers develop during the late afternoon and evening. Temperatures will drop to a mild overnight low of 19°C / 66°F.\n\n## Today's Forecast\nDaytime maximum temperatures will reach 30°C / 86°F under morning sunny intervals, falling to an overnight minimum of 19°C / 66°F. Light to moderate winds will blow at 18 km/h (10 kt) from the SW during the afternoon lake breeze shift, weakening to 6 km/h (3 kt) from the NE overnight. Isolated evening showers are expected between 17:00 and 21:00 EAT, with expected rainfall accumulations around 1.4 mm (0.06 in). Peak UV intensity will reach 8.6 (Very High) around mid-day. Ground air quality across the city ranges from a US AQI of 28 to 158 (Good to Unhealthy), with Dunga Beach currently recording the worst air quality due to elevated PM2.5 levels.\n\n## Extended Outlook\nOver the near-term extended window (Tuesday through Thursday), daytime high temperatures will hold between 29°C / 84°F and 30°C / 86°F with overnight lows near 18°C / 64°F to 19°C / 66°F. Scattered afternoon showers remain possible each day, producing daily totals between 1.0 mm (0.04 in) and 4.0 mm (0.16 in). High confidence is placed in ECMWF and UKMO guidance for days 1 to 3, given their 100% verification accuracy at Day+3 lead times. For days 4 through 7 (Friday through next Monday), forecast confidence decreases as model spread widens; daytime temperatures will cool slightly toward 28°C / 82°F with a potential increase in convective activity bringing basin totals between 5.0 mm (0.20 in) and 13.0 mm (0.51 in) by Sunday.\n\n## Severe Weather / Hazard Potential\nNo severe widespread weather threats are expected today. Localized convective showers in the evening may produce brief lightning activity and sudden wind gusts up to 29 km/h (16 kt). Unprotected skin exposure should be minimized between 11:00 and 15:00 EAT due to a Very High UV Index of 8.6.\n\n## Lake Victoria — Conditions for Boaters\nFor boaters on Lake Victoria, morning winds will blow from the ENE at 20 km/h (11 kt) with gusts reaching 30 km/h (16 kt), generating light choppy water. By mid-afternoon, winds will transition to a WSW lake breeze at 13 km/h (7 kt). Morning showers over open waters will shift toward the eastern shoreline by evening. Lake surface temperatures remain stable near 24°C / 75°F.\n\n## Detailed Discussion\n### Synoptic Overview\nThe Nyanza Basin remains under the influence of a weak equatorial low-pressure trough, with mean sea-level pressure across regional monitoring points ranging from 1013.7 hPa to 1016.1 hPa. A diurnal surface pressure trough will depress local MSLP to near 1009 hPa during peak afternoon heating before recovering to 1015 hPa overnight. Moderate CAPE values between 500 J/kg and 770 J/kg combined with onshore lake breeze convergence will initiate scattered convective cell development along the gulf shore. Over the next 24 to 72 hours, regional MSLP will hold steady between 1013.4 hPa and 1014.5 hPa, maintaining typical diurnal convective cycles.\n\n### Air Quality Assessment\nGround station readings reflect localized particulate variations across Kisumu: Kisumu Airport records a Good US AQI of 28 (PM2.5: 28.0 µg/m³), while Dunga Beach indicates Unhealthy air quality with a US AQI of 158 (PM2.5: 158.0 µg/m³). The ground sensor at Ochieng' Avenue, Kisumu Central is currently stale (11 hours old, recording 51.0 µg/m³ PM2.5). CAMS model predictions indicate broad background US AQI values of 94 to 95 (Moderate), capturing urban background aerosol levels but missing hyper-local shoreline spikes.\n\n### Forecaster Confidence Notes\nModel selection and blending today reflect recent verification performance and lead-time skill profiles. ECMWF receives the highest weight for precipitation probability and thermal structure based on its perfect Day+3 rain verification track record (100%) and minimal Day+0 temperature bias (-0.5°C). UKMO is relied upon for surface pressure trends and precipitation occurrence, though its temperature forecasts are adjusted downward to counteract its known warm bias. ICON is utilized for surface wind guidance due to its superior Day+0 wind speed accuracy (7.9 km/h error), while GFS wind predictions are discounted owing to consistent overestimation (+22 km/h error). Rolling precipitation trend fields for all models are currently null due to limited historical verification checks, which is stated explicitly to avoid over-interpreting short-term drift.",
     "whatsapp_summary": "🌤️ Kisumu Weather Today (Aug 17): Warm & sunny morning with highs near 30°C / 86°F. Isolated showers likely late afternoon/evening (17:00-21:00 EAT), ~1.4 mm (0.06 in) rain. Winds SW at 18 km/h (10 kt). Low 19°C / 66°F. ⛵ Lake Victoria: Morning easterly winds 20 km/h (11 kt), gusts 30 km/h (16 kt); lake breeze shift by afternoon. 😷 AQI: Moderate to Unhealthy locally (Dunga Beach 158 AQI).",
-    "generated_at_utc": "2026-08-17T03:58:38.197947Z"
+    "generated_at_utc": "2026-08-17T03:58:38.197947Z",
+    "guidance_initialised_at": null,
+    "guidance_age_hours": null,
+    "guidance_source": null,
+    "degradations": null
   },
+  "guidance_initialised_at": null,
+  "guidance_age_hours": null,
+  "guidance_source": null,
   "meta": {
     "generated_at_utc": "2026-08-17T03:58:38.197947Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
     "refreshed_at": "2026-08-17T15:02:23.234178Z",
-    "trigger_source": null
+    "trigger_source": null,
+    "degradations": null
   }
 }

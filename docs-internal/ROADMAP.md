@@ -4852,20 +4852,56 @@ Not the ledger's own figures — a different window from the 20 scored checks,
 and computed by a throwaway script rather than by `verify/`. They are here to
 say the implementation produces sane numbers, not as a result.
 
-### The catch: this pays off in about ten days, not today
+### The ledger's own figures, 2026-08-31, after the backfill
+
+Like-for-like: same 20 checks, same `observed_convection` truth, same code
+path as every other row.
+
+| Day+0 | | Day+3 | | Day+7 | |
+|---|---|---|---|---|---|
+| best_match | 85.0% | kenya_met | 100.0% (6) | gfs_seamless | 76.9% |
+| ecmwf_ifs025 | 75.0% | best_match | 88.2% | ecmwf_ifs025 | 69.2% |
+| icon_seamless | 75.0% | gfs_seamless | 76.5% | best_match | 69.2% |
+| kenya_met | 72.7% (11) | ecmwf_ifs025 | 76.5% | **climatology** | **53.8%** |
+| **persistence** | **70.0%** | ukmo_seamless | 70.6% | **persistence** | **30.8%** |
+| olw_blend | 66.7% (3) | icon_seamless | 64.7% | | |
+| gfs_seamless | 60.0% | **persistence** | **52.9%** | | |
+| ukmo_seamless | 60.0% | **climatology** | **52.9%** | | |
+| **climatology** | **45.0%** | | | | |
+
+**At Day+0, "the same as yesterday" beats two of the five numerical models
+and beats this project's own blend.** Only best_match, ECMWF, ICON and the
+met service clear it. That is the number the page has never carried, and it
+is the whole reason for the item.
+
+Read with the caution the record deserves: 20 checks, and the gap from 70%
+to 60% is two days. The point is not that GFS is bad — it is that until now
+nothing on the page could tell you whether 60% meant anything, and the
+answer at Day+0 turns out to be "less than repeating yesterday's weather".
+
+At Day+3 and Day+7 the models clear both baselines comfortably, which is the
+opposite result and worth saying: the guidance earns its keep further out,
+where a reader has no cheap alternative.
+
+### The backfill: done 2026-08-31
 
 Baselines are stored at forecast time, so only runs from now on have them.
 Every stored entry predates the field and cannot be scored retroactively by
 `rebuild-record`, which re-derives from *stored predictions* and cannot
 invent one that was never made.
 
-A backfill is defensible and is NOT a hindsight cheat — both baselines are
-deterministic functions of data that existed at each issuance, so computing
-them retroactively yields exactly what they would have produced. It would
-make the comparison legible immediately instead of in a fortnight. It is
-also writing predictions into historical entries that were never issued,
-which is a decision about the integrity of the archive rather than a
-mechanical step, so it is deliberately NOT done here.
+`olw backfill-baselines` (`backfill.py`), run over the 21 stored entries on
+Conor's say-so. NOT a hindsight cheat: both baselines are deterministic
+functions of data that existed at each issuance, so what was written is
+exactly what those runs would have produced. It adds prediction rows and
+nothing else — verified by parsing every changed file before and after and
+comparing them as models with the new rows removed: 0 of 21 differed.
+
+Idempotent, and `--dry-run` prints the plan. One side effect worth knowing:
+rewriting a file re-serialises the whole entry, so fields the current schema
+has and an older file lacked appear filled with defaults. Cosmetic — that is
+what the before/after model comparison establishes — but the diff looks far
+larger than the change is.
 
 ### Still open
 
