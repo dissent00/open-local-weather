@@ -4401,3 +4401,207 @@ assumes non-negativity must not.)
 Related: item 35 (convective disagreement), item 41 (satellite), item 42
 (the METAR fix this extends), item 45 (which source is "what actually
 happened"), item 25 (detect absent data, don't just survive it).
+
+---
+
+## 54. A signup form, and somewhere for the list to live · **Planned**
+
+Subscribing is currently an act only the operator can perform. The list is
+`SUBSCRIBER_EMAILS`, a comma-separated Script Property, read once in
+`getConfig()` (`mailer/AppsScriptMailer.gs`). Someone who wants the email
+has to ask, and be added by hand.
+
+**This is a regression from the pre-rebuild pipeline, not a gap that was
+always there.** `reference/KisumuForecastPipeline_v2.gs` read a
+`Subscribers` sheet — `sendEmailBroadcast()` takes the sheet, reads column
+A from row 2 down, and filters on `@` — and a Google Form wrote into it.
+The rebuild replaced the sheet-backed list with a Script Property and never
+replaced the form. Worth stating plainly because it means the design
+question was already answered once, and the answer worked.
+
+### The constraint that decides the shape
+
+The public site is GitHub Pages. It is static, so a form on it has nowhere
+to POST. Whatever collects addresses is an endpoint somewhere else, and the
+options are:
+
+- **A Google Form again.** Zero build. Also zero validation, zero double
+  opt-in, and a Google-branded page rather than the site's own — and the
+  form URL is the thing that gets shared, not the site.
+- **An Apps Script Web App** (`doPost`) deployed from the mailer's own
+  project. The shortest path to an endpoint that can write a Sheet, because
+  the OAuth authorization and the deployment step already exist for the
+  mailer. One project, one place to look when it breaks.
+- **An ESP's own hosted form**, which is item 5's territory. If a real
+  sending domain lands, subscription management, double opt-in and
+  unsubscribe stop being things this repo builds at all. That is the
+  strongest argument for doing item 5 first and this second.
+
+### What is missing today besides the form
+
+Both of these are absent right now, and neither is optional once anyone but
+the operator can join:
+
+- **No double opt-in.** An open endpoint means anyone can subscribe anyone
+  else. A confirmation link is the mitigation, and it needs a `doGet` with a
+  token — so the endpoint has to handle two verbs, not one.
+- **No unsubscribe.** Both renderings carry the line "You are receiving this
+  because you subscribed to this experimental forecast service", and neither
+  offers a way out. Adding a way in without a way out is the wrong order.
+
+### Storage
+
+A Sheet, as before. Not the Script Property: it cannot hold per-subscriber
+state, which is what item 55 needs, and a single comma-joined value has a
+size ceiling. **The exact Script Property and `MailApp` daily recipient
+quotas were NOT checked for this write-up** — both are Google figures that
+change, and the numbers matter enough that they should be read from Google's
+current documentation at the time this is built rather than quoted from
+memory here.
+
+Related: item 5 (real sending domain), item 3 (push-based delivery), item 55
+(what a subscriber can choose).
+
+---
+
+## 55. What a subscriber gets to choose · **Planned**
+
+One email, every issuance, all of it. A reader who wants the two-sentence
+version once a day has to take the full multi-section discussion two or
+three times a day instead.
+
+### One half of this is nearly free
+
+The narrative already arrives pre-sectioned. `narrative_markdown` in
+2026-08-31's entry carries `## Overview`, `## Today's Forecast`,
+`## Extended Outlook`, `## Severe Weather / Hazard Potential`,
+`## Lake Victoria — Conditions for Boaters` and `## Detailed Discussion`
+(with `### Synoptic Overview` and `### Forecaster Confidence Notes` under
+it). `whatsapp_summary` is a shorter rendering of the same facts, already
+generated, already paid for.
+
+So "just the Overview" is a filter over headings the LLM already emits. No
+extra call, no prompt change, no pipeline change. Cheaper than item 14's
+trick, which asks the model for several narratives; this one slices the
+narrative already in hand.
+
+### The other half is state, and that is where the work is
+
+"Once a day" is not a filter. It is per-subscriber send state, and the
+mailer has exactly one: `SENT_ISSUANCES`, a single date →
+issuance-timestamp map, global to every recipient. `sendEntryEmail()`
+builds one `body` and one `htmlBody` and loops the addresses.
+
+Per-subscriber frequency means a marker per address, and the send loop
+becomes one body per distinct preference set per issuance. Note what this
+does NOT cost: `MailApp.sendEmail` is already called once per recipient, so
+filtering changes no send counts, and "once a day" reduces them. The cost is
+build time against the consumer account's 90-minute daily runtime quota
+(`mailer/README.md`), and it has NOT been measured — that is the number to
+check a design against, not to assume is comfortable.
+
+### The hazard, which is item 53 one level up
+
+A subscriber on "once a day, Overview only" will not receive a re-issue that
+changes the hazard verdict. That is a preference silently suppressing a
+warning — the same shape as a missing block read as an all-clear, and the
+same reader standing outside in it.
+
+So any preference scheme needs a floor, decided before it is built rather
+than after someone is caught out: either severe-weather content is not
+opt-out-able, or a re-issue whose hazard section changed overrides the
+frequency choice. This is a decision, not code, and it should be made first.
+It also decides how item 2 (severe-weather alerts) reaches these people at
+all.
+
+### Where the logic should live, given the operator's objection
+
+The objection is fair: `AppsScriptMailer.gs` is JavaScript in a browser
+editor, deployed by hand, checked by a harness (`node mailer/test_mailer.js`)
+that is deliberately outside CI. Every rule added there is a rule the
+Python suite does not cover. Three ways out, in increasing order of what they
+solve:
+
+1. **Keep the preferences in the Sheet, keep the rendering in the script.**
+   Cheapest. The untested surface grows.
+2. **Render the variants in the pipeline** and publish them, so the script
+   only picks a field and delivers it. Puts the logic where the tests are.
+   Pairs with item 24 (published data feed) and item 3 (push delivery), and
+   makes the script dumber rather than smarter, which is the direction of
+   travel both of those already imply.
+3. **Move to an ESP** (item 5). Preference centres, double opt-in and
+   unsubscribe are that product's job, not this repo's.
+
+Option 2 is the one consistent with everything else here. Worth settling
+before writing any of it.
+
+Related: item 14 (audience voices — the same rendering trick, chosen by
+audience rather than by subscriber), items 2, 3, 5, 24, 54.
+
+---
+
+## 56. A glossary for the forecast's vocabulary · **Planned, both sides**
+
+The forecast is written to be technical where it needs to be, and nothing
+explains its vocabulary. Counted case-insensitively over the single
+entry for 2026-08-31 (`narrative_markdown`, 5060 characters, headings
+included): hPa 6, ` kt` 6, gust 6, J/kg 5, CAPE 4, `Day+` 4, "instability"
+4, AQI 3, "synoptic" 2, "convective" 2, UV 1. That is one ordinary day, not
+a bad one.
+
+### Static data, not an LLM call
+
+The project's first design principle is that arithmetic lives in code and
+never in the LLM. A definition is the same kind of thing as arithmetic: it
+has one right answer that does not depend on today's weather. A glossary
+generated per issuance would cost a call, and would define CAPE slightly
+differently on Tuesday than on Monday — drift in the one part of the page
+whose whole job is to be a fixed reference.
+
+So: a static table in this repo, written once, reviewed like prose.
+
+### Ship the cheap version first
+
+Two designs, and only one of them is a day's work:
+
+- **A glossary page or email section listing the terms in play.** Needs no
+  text matching, cannot corrupt the narrative, and is done when the table is
+  written.
+- **Inline linking of terms inside the narrative.** Wants matching a term
+  list against LLM-written free text at render time, in three places and
+  three languages: `publish/pages.py`, the mailer's two email bodies, and
+  the app. The failure modes are concrete: `kt` matching inside a word,
+  a term inside a code span or heading, and the model having already written
+  "CAPE (Convective Available Potential Energy)" so the tooltip repeats the
+  sentence it is attached to.
+
+Do the first. Treat the second as a separate decision made after seeing the
+first in use.
+
+### One copy, read by both surfaces
+
+The app has the stronger claim — someone who installed an app has no repo to
+read — and the site and email have the readers today. Two hand-maintained
+copies is the thing that goes stale and then lies, so the term list is
+written once. Two routes:
+
+- **In `olw_core`**, alongside the other shared material, reaching the app
+  through `spec/README.md`. Updating a definition then needs an app release.
+- **In the published feed** (item 24), so terms can be corrected without one.
+  Item 24 has to land first, and it is the item that decides how much the app
+  may be told remotely at all.
+
+### The thing a glossary does not fix
+
+If the Overview needs a glossary, the Overview is wrong. It is the section a
+reader checks before going outside, and it should be readable without one —
+the Detailed Discussion is where the vocabulary belongs and where it is
+deliberately kept. A glossary is the cheap fix for the whole page; making the
+top of it plainer is the real one, and that is item 14's ground (voices) or a
+prompt change, not this item's. Both are wanted. Only this one is cheap.
+
+App work: listed in the "Owed from open-local-weather" table in the Ensemble
+repo's `ROADMAP.md`, per the note at the top of this file.
+
+Related: item 14 (audience voices), item 24 (published feed), item 44 (a
+sources page — the other "explain the machinery to the reader" surface).
