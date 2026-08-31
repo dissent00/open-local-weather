@@ -27,6 +27,31 @@ import 'synoptic.dart';
 /// first run passes empty ones, and that is not an error state — it is what
 /// every new user's first forecast looks like, and the prompt has explicit
 /// "Unavailable" handling for exactly it.
+/// Stable identifiers for the degradations a run can record. Must match
+/// `models.py`'s DEGRADATION_* constants — the app and the server publish
+/// into the same vocabulary, and a code that differs by a character would
+/// silently stop matching rather than fail.
+const String degradationHoursAheadNarrowed = 'hours_ahead_narrowed';
+
+/// One block the prompt expects that arrived absent or narrower than usual.
+///
+/// Port of `models.RunDegradation`; see that class for the full reasoning and
+/// ROADMAP item 53.4 for the incident. The short version: a run that lost a
+/// block used to look exactly like a run that did not, in the committed
+/// record and on every surface a reader sees, and the gap was found because
+/// someone was rained on.
+///
+/// [code] is matched on; [detail] is written for a person and may be reworded
+/// freely.
+class RunDegradation {
+  const RunDegradation({required this.code, required this.detail});
+
+  final String code;
+  final String detail;
+
+  Map<String, dynamic> toJson() => {'code': code, 'detail': detail};
+}
+
 class ForecastRun {
   const ForecastRun({
     required this.response,
@@ -35,12 +60,22 @@ class ForecastRun {
     required this.day7Predictions,
     required this.systemPrompt,
     required this.userPrompt,
+    required this.degradations,
   });
 
   final ForecastResponse response;
   final List<ModelPrediction> day0Predictions;
   final List<ModelPrediction> day3Predictions;
   final List<ModelPrediction> day7Predictions;
+
+  /// What this run did not have. Empty means it looked and found nothing
+  /// missing, which is a different answer from a stored record that never
+  /// asked — see `models.LogEntryMeta.degradations` for why the persisted
+  /// form on the server side is three-valued. Nothing is null here because
+  /// this object is only ever produced BY a run, so the question was always
+  /// asked; it is whatever stores it that has to keep "not recorded"
+  /// distinguishable.
+  final List<RunDegradation> degradations;
 
   /// Retained so a run can be inspected or replayed. On a metered device this
   /// is also what makes "why did it say that?" answerable without a re-run.
@@ -215,6 +250,7 @@ Future<ForecastRun> generateForecast({
 
   var resolvedForward = forwardHourly;
   var forwardWindowNarrowed = false;
+  final degradations = <RunDegradation>[];
   if (resolvedForward == null) {
     try {
       resolvedForward = forwardHours(
@@ -247,6 +283,13 @@ Future<ForecastRun> generateForecast({
       // the narrowing is flagged rather than passed off as a full one.
       resolvedForward = forwardHours(hourly, now);
       forwardWindowNarrowed = true;
+      degradations.add(const RunDegradation(
+        code: degradationHoursAheadNarrowed,
+        detail: 'The forward hourly window did not arrive; the hours-ahead '
+            'guidance and the convective outlook came from the day-0 fetch '
+            'instead, which stops at 23:00 local and sees nothing past '
+            'midnight.',
+      ));
     }
   }
 
@@ -330,6 +373,7 @@ Future<ForecastRun> generateForecast({
 
   final response = await llm.generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
   return ForecastRun(
+    degradations: degradations,
     response: response,
     // The blend joins Day+0 as a peer of the models it synthesizes, so what
     // gets scored tomorrow includes the forecast this run actually produced

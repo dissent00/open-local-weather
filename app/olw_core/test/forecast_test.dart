@@ -495,6 +495,41 @@ void main() {
     expect(llm.seenUserPrompt, isNot(contains('REST OF TODAY ONLY')));
   });
 
+  // ROADMAP item 53.4. The server half records a degraded run in the
+  // committed entry and shows it on the page; this side computed the same
+  // narrowing and told only the prompt, so an app forecast built on the
+  // fallback was indistinguishable from a complete one everywhere the reader
+  // or the stored record could see it.
+  test('a narrowed run reports the degradation to its caller', () async {
+    final run = await generateForecast(
+      client: _capeClient(forwardFails: true),
+      llm: _StubProvider(),
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(run.degradations.map((d) => d.code), ['hours_ahead_narrowed']);
+    expect(run.degradations.single.detail, contains('did not arrive'));
+  });
+
+  test('a complete run reports no degradations', () async {
+    final run = await generateForecast(
+      client: _capeClient(forwardFails: false),
+      llm: _StubProvider(),
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    // Empty, not null. The distinction the Python side had to learn the hard
+    // way: a run that looked and found nothing is not the same answer as a
+    // run that was never asked, and this one looked.
+    expect(run.degradations, isEmpty);
+  });
+
   test('the last known ground reading reaches the prompt with its age', () async {
     final llm = _StubProvider();
     final readings = [

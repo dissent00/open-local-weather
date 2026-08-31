@@ -261,6 +261,42 @@ class GroundAQIReading(BaseModel):
     measured_at: datetime | None = None
 
 
+# Stable identifiers for the degradations a run can record. Constants rather
+# than literals at each site because three surfaces read them — the record,
+# the page and check-health — and a typo in any one of them would silently
+# stop matching rather than fail.
+DEGRADATION_HOURS_AHEAD_NARROWED = "hours_ahead_narrowed"
+DEGRADATION_SUN_TIMES = "sun_times_unavailable"
+DEGRADATION_METAR = "metar_unavailable"
+
+
+class RunDegradation(BaseModel):
+    """One block the prompt expects that arrived absent, narrowed or unread.
+
+    ROADMAP item 53.4. On 2026-08-29 the forward hourly fetch timed out on
+    three consecutive runs, and the only trace was a line on stderr inside a
+    GitHub Actions log. The committed entry for a degraded run was
+    byte-for-byte the same SHAPE as a clean one, so nothing downstream — the
+    page, the reader, or an investigation opened a day later — could tell
+    that the day's hazard block had been built on less than usual. The gap
+    surfaced because a reader was rained on.
+
+    WHAT COUNTS. A block the prompt normally receives that did not arrive, or
+    arrived narrower than usual. Not: a source this deployment never
+    configured. A location with no METAR station is running as configured,
+    not running degraded, and recording that as a degradation would make the
+    field mean nothing within a week — the same reasoning that keeps
+    "no met service configured" separate from "the met service did not
+    answer" in the bulletin block.
+
+    `code` is matched on; `detail` is written for a person and may change
+    wording freely.
+    """
+
+    code: str
+    detail: str
+
+
 class LogEntryMeta(BaseModel):
     generated_at_utc: datetime
     llm_provider: str
@@ -289,6 +325,23 @@ class LogEntryMeta(BaseModel):
     # against the committed record instead of an investigation. Optional, so
     # entries written before it existed still load.
     trigger_source: str | None = None
+
+    # What this run did NOT have.
+    #
+    # THREE-VALUED, and the middle value is the whole point. `[]` means this
+    # run looked and found nothing missing. `None` means the run was never
+    # asked — every entry committed before item 53.4 loads that way, and
+    # collapsing the two would make the check announce that the 2026-08-29
+    # incident runs "had the data they expect". Caught by running the health
+    # check against the real record rather than by a test: absence of a
+    # record is not a record of absence, which is the same rule the CONVECTIVE
+    # INSTABILITY block and `thunder` already follow.
+    #
+    # On the ISSUANCE this describes, not the day. A re-issue whose fetches
+    # all succeeded is a clean issuance even when the morning's were not, so
+    # the outgoing issuance's own list is snapshotted into
+    # IssuanceSnapshot.degradations rather than merged into this one.
+    degradations: list[RunDegradation] | None = None
 
 
 class IssuanceSnapshot(BaseModel):
@@ -335,6 +388,14 @@ class IssuanceSnapshot(BaseModel):
     guidance_initialised_at: datetime | None = None
     guidance_age_hours: float | None = None
     guidance_source: str | None = None
+
+    # What the run that produced THIS issuance did not have — see
+    # RunDegradation, and LogEntryMeta.degradations for why None and [] are
+    # different answers. Snapshotted for the same reason the guidance fields
+    # above are: a re-issue overwrites the narrative in place, and a reader
+    # asking why the morning's hazard block was thin needs the morning's own
+    # answer, not the evening's.
+    degradations: list[RunDegradation] | None = None
 
 
 class LocalBulletinRecord(BaseModel):
@@ -500,6 +561,7 @@ class DailyLogEntry(BaseModel):
             guidance_initialised_at=self.guidance_initialised_at,
             guidance_age_hours=self.guidance_age_hours,
             guidance_source=self.guidance_source,
+            degradations=self.meta.degradations,
         )
 
     def issuance_log(self) -> list[IssuanceSnapshot]:

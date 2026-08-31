@@ -2151,3 +2151,153 @@ def test_a_present_cape_series_carries_no_gap_warning(tmp_path, monkeypatch):
 
     assert "no model supplied a CAPE series" not in user_prompt
     assert "absence of evidence" not in user_prompt.lower()
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 53.4 — a degraded run says it is degraded
+#
+# The 2026-08-29 incident ran three times with the forward hourly window
+# missing and said so only on stderr, inside an Actions log nobody reads. The
+# record it committed was indistinguishable from a clean run's, so neither
+# the page, the reader, nor a later investigation could tell that the day's
+# hazard block had been built on less than usual.
+# ---------------------------------------------------------------------------
+
+
+def _raises(exc: Exception):
+    def _f(*args, **kwargs):
+        raise exc
+
+    return _f
+
+
+def test_a_run_that_lost_the_forward_window_records_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        _raises(RuntimeError("Read timed out. (read timeout=30)")),
+    )
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    codes = [d.code for d in result.log_entry.meta.degradations]
+    assert "hours_ahead_narrowed" in codes
+
+    # And it survives the round trip to disk, because the committed record is
+    # the thing an investigation actually reads.
+    written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert [d.code for d in written.meta.degradations] == codes
+
+
+def test_a_clean_run_records_no_degradations(tmp_path):
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert result.log_entry.meta.degradations == []
+
+
+def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypatch):
+    """Named in item 53's "Not established": fetch_metar returns None on every
+    failure path and airport_metar is never persisted, so the record could not
+    say whether the station was consulted."""
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_weather_by_date", lambda icao, start, end, tz: {}
+    )
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
+
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    assert "metar_unavailable" in [d.code for d in result.log_entry.meta.degradations]
+
+
+def test_no_station_configured_is_a_state_not_a_degradation(tmp_path):
+    """LOCATION has metar_station_icao="". A deployment with no station is not
+    running degraded; it is running as configured, and saying otherwise would
+    make the flag mean nothing."""
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert "metar_unavailable" not in [d.code for d in result.log_entry.meta.degradations]
+
+
+def test_a_station_that_answered_is_not_a_degradation(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_weather_by_date", lambda icao, start, end, tz: {}
+    )
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: [{"rawOb": "HKKI 111200Z"}])
+
+    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    assert "metar_unavailable" not in [d.code for d in result.log_entry.meta.degradations]
+
+
+def test_a_re_issue_keeps_the_earlier_issuance_s_own_degradation(tmp_path, monkeypatch):
+    """A degraded morning followed by a clean evening. The day is not
+    "degraded" — the MORNING was, and the evening was not, so each issuance
+    has to carry its own answer. Merging them would either accuse a clean
+    re-issue of a gap it did not have, or erase the morning's."""
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        _raises(RuntimeError("Read timed out. (read timeout=30)")),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    # The evening run's forward fetch works.
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
+    )
+    result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    entry = result.log_entry
+    assert entry.meta.degradations == [], "the re-issue was clean and must say so"
+    assert [d.code for d in entry.earlier_issuances[0].degradations] == [
+        "hours_ahead_narrowed"
+    ], "the morning's own gap must survive being overwritten"
+
+
+def test_a_degraded_re_issue_records_its_own_gap(tmp_path, monkeypatch):
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        _raises(RuntimeError("Read timed out. (read timeout=30)")),
+    )
+    result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    assert [d.code for d in result.log_entry.meta.degradations] == ["hours_ahead_narrowed"]
+    assert result.log_entry.earlier_issuances[0].degradations == []
+
+
+def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch):
+    """The third path into an existing day, and the one with previous form:
+    items 8 and 34 both came from run_daily_pipeline rebuilding an entry and
+    quietly losing what the earlier issuance held. A degraded morning
+    followed by a forced clean re-run must keep both answers separate."""
+    monkeypatch.setattr(
+        open_meteo,
+        "fetch_forecast_hourly_forward",
+        _raises(RuntimeError("Read timed out. (read timeout=30)")),
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
+    )
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    assert result.log_entry.meta.degradations == []
+    assert [d.code for d in result.log_entry.earlier_issuances[0].degradations] == [
+        "hours_ahead_narrowed"
+    ]
+
+
+def test_an_entry_written_before_this_existed_loads_as_unrecorded(tmp_path):
+    """Not [] — see LogEntryMeta.degradations. The health check reads this
+    back and must not report those runs as having had everything they need."""
+    from openlocalweather.models import LogEntryMeta
+
+    meta = LogEntryMeta(
+        generated_at_utc=datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc),
+        llm_provider="gemini",
+        llm_model="gemini-3.6-flash",
+        pipeline_version="0.1.0",
+    )
+    assert meta.degradations is None

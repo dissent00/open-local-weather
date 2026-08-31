@@ -2,7 +2,12 @@ import re
 from datetime import date, datetime, timedelta, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.models import IssuanceSnapshot, LogEntryMeta, ModelPredictionsByLead
+from openlocalweather.models import (
+    IssuanceSnapshot,
+    LogEntryMeta,
+    ModelPredictionsByLead,
+    RunDegradation,
+)
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.publish.pages import (
     ArchiveItem,
@@ -656,3 +661,79 @@ def test_accuracy_page_explains_a_blank_row_is_not_a_missed_call():
         build_nav_links("https://example.com/", "owner/repo"),
     )
     assert "never a missed call" in html
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 53.4 — a degraded run says it is degraded, on the page
+# ---------------------------------------------------------------------------
+
+
+def _degraded_meta(**overrides):
+    defaults = dict(
+        generated_at_utc=datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc),
+        llm_provider="gemini",
+        llm_model="gemini-3.6-flash",
+        pipeline_version="0.1.0",
+        degradations=[
+            RunDegradation(
+                code="hours_ahead_narrowed",
+                detail="The forward hourly window did not arrive; the hours-ahead "
+                "guidance and the convective outlook came from the day-0 fetch instead.",
+            )
+        ],
+    )
+    defaults.update(overrides)
+    return LogEntryMeta(**defaults)
+
+
+def test_a_degraded_run_says_so_on_the_page():
+    entry = make_entry(date(2026, 8, 11), meta=_degraded_meta())
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "forward hourly window did not arrive" in html
+    # And it is framed as a gap rather than as reassurance — the whole point
+    # of item 53. A reader must not read "we checked everything" out of it.
+    assert "less than usual" in html.lower() or "incomplete" in html.lower()
+
+
+def test_a_clean_run_carries_no_degradation_notice():
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "did not arrive" not in html
+    assert "run-degraded" not in html
+
+
+def test_the_morning_view_shows_the_morning_s_own_degradation():
+    """A degraded morning refreshed by a clean evening. The evening's page
+    must be clean and the morning's archived page must still show the gap —
+    the same split the record keeps, carried through to what a reader sees."""
+    entry = _refreshed_entry(
+        morning_issuance=IssuanceSnapshot(
+            rain_expected="Dry all day",
+            temp_high_c=26.0,
+            temp_low_c=18.0,
+            temp_high_low_display="26°C / 79°F",
+            mslp_trend_24h="falling",
+            synoptic_pattern="trough",
+            narrative_markdown="## Overview\nMorning: dry and warm expected.",
+            generated_at_utc=datetime(2026, 8, 11, 6, 7, tzinfo=timezone.utc),
+            degradations=[
+                RunDegradation(
+                    code="hours_ahead_narrowed",
+                    detail="The forward hourly window did not arrive.",
+                )
+            ],
+        ),
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+
+    current = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+    assert "did not arrive" not in current
+
+    morning = render_forecast_page(
+        _entry_as_morning_view(entry), LOCATION, nav, is_latest=False
+    )
+    assert "did not arrive" in morning

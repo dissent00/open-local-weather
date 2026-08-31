@@ -180,3 +180,83 @@ def test_drift_shortly_before_a_window_opens_says_so():
 
     assert result.status is AlignedWindowStatus.DRIFTED
     assert "window boundary" in result.message
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 53.4 — the third surface: somebody is told
+# ---------------------------------------------------------------------------
+
+from openlocalweather.health_check import (
+    DegradationCheck,
+    DegradationStatus,
+    check_recent_degradations,
+)
+from openlocalweather.models import RunDegradation
+
+
+def _deg(code: str) -> RunDegradation:
+    return RunDegradation(code=code, detail=f"{code} happened")
+
+
+def test_no_degradations_is_clean():
+    result = check_recent_degradations([[], [], []])
+    assert result.status is DegradationStatus.CLEAN
+
+
+def test_one_isolated_degradation_is_reported_but_does_not_fail():
+    """A single transient gap is now visible in the record and on the page.
+    Failing the weekly job for it would make a red job routine, and a red job
+    that is routine is a green job."""
+    result = check_recent_degradations([[], [_deg("metar_unavailable")], []])
+    assert result.status is DegradationStatus.ISOLATED
+    assert "metar_unavailable" in result.message
+
+
+def test_the_same_gap_twice_is_a_pattern_and_fails():
+    """The 2026-08-29 incident: three consecutive runs lost the same block.
+    A repeat is not bad luck, it is something broken that nobody was told
+    about."""
+    result = check_recent_degradations(
+        [[_deg("hours_ahead_narrowed")], [], [_deg("hours_ahead_narrowed")]]
+    )
+    assert result.status is DegradationStatus.REPEATED
+    assert "hours_ahead_narrowed" in result.message
+
+
+def test_two_different_gaps_once_each_is_not_a_pattern():
+    """Two unrelated one-off failures are two one-off failures. Counting them
+    together would fire on exactly the noise this is meant to see past."""
+    result = check_recent_degradations([[_deg("metar_unavailable")], [_deg("sun_times_unavailable")]])
+    assert result.status is DegradationStatus.ISOLATED
+
+
+def test_no_issuances_at_all_is_not_checked():
+    """Distinct from clean, for the same reason check_aligned_window separates
+    NOT CHECKED from AGREES: nothing to read is not evidence of health."""
+    result = check_recent_degradations([])
+    assert result.status is DegradationStatus.NOT_CHECKED
+
+
+def test_an_entry_that_predates_recording_is_not_reported_as_clean():
+    """The bug this exists to prevent, caught by running the check against
+    the real committed record: every entry written before item 53.4 loads
+    with no degradation list, and an empty list read as "nothing was missing"
+    made the check announce that the last 20 issuances "had the data they
+    expect" — including the three 2026-08-29 runs that did not, which are the
+    reason this item exists.
+
+    None means the run was never asked. It is not evidence of health, and
+    this project's whole complaint about the incident is a gap being read as
+    an all-clear."""
+    result = check_recent_degradations([None, None])
+    assert result.status is DegradationStatus.NOT_CHECKED
+    # The wording is free to change; what must not is the claim. Nothing here
+    # may read as "those runs were fine".
+    assert "recorded" in result.message
+
+
+def test_a_mix_of_recorded_and_unrecorded_says_how_many_it_could_read():
+    result = check_recent_degradations([[], [], None])
+    assert result.status is DegradationStatus.CLEAN
+    assert "2" in result.message
+    assert "1" in result.message

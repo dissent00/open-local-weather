@@ -33,6 +33,7 @@ that day's forecast run.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -43,6 +44,7 @@ from pydantic import BaseModel
 from openlocalweather.cycle import AlignedCycle, aligned_cycle_at
 from openlocalweather.fetch.model_run import RUN_SETTLE_MINUTES, ModelRun
 from openlocalweather.llm.provider import LLMProvider
+from openlocalweather.models import RunDegradation
 
 DEPRECATIONS_PAGE_URL = "https://ai.google.dev/gemini-api/docs/deprecations"
 REQUEST_TIMEOUT_S = 30
@@ -230,4 +232,118 @@ def check_aligned_window(now: datetime, observed: ModelRun | None) -> AlignedWin
     return AlignedWindowCheck(
         status=AlignedWindowStatus.DRIFTED,
         message=_drift_message(now, derived, observed),
+    )
+
+
+# How many issuances back this looks. Seven days of runs at two or three a
+# day is enough to tell a repeat from a coincidence, and short enough that a
+# fault fixed a month ago has stopped being reported.
+DEGRADATION_LOOKBACK_ISSUANCES = 20
+
+# How many appearances of ONE code make a pattern. Two, not three, even
+# though the incident that prompted this ran three times: by the third the
+# reader had already been rained on, and the whole point is to arrive before
+# that.
+DEGRADATION_REPEAT_THRESHOLD = 2
+
+
+class DegradationStatus(Enum):
+    """Four outcomes. CLEAN and NOT_CHECKED are separated for the same reason
+    check_aligned_window separates them — having nothing to read is not
+    evidence that anything is healthy.
+
+    ISOLATED and REPEATED are separated because only one of them should turn
+    a job red. A single lost fetch is now visible in the committed record and
+    on the published page (ROADMAP item 53.4), so failing the weekly job for
+    it would make red the normal colour, and a red job that is normal is a
+    green job. A code that comes back is different in kind: it is not bad
+    luck, it is something broken that nobody has been told about.
+    """
+
+    CLEAN = "clean"
+    ISOLATED = "isolated"
+    REPEATED = "repeated"
+    NOT_CHECKED = "not_checked"
+
+
+@dataclass
+class DegradationCheck:
+    status: DegradationStatus
+    message: str
+
+
+def check_recent_degradations(
+    recent: list[list[RunDegradation] | None],
+    repeat_threshold: int = DEGRADATION_REPEAT_THRESHOLD,
+) -> DegradationCheck:
+    """Have recent issuances been running on less data than usual, and has
+    the same block gone missing more than once?
+
+    Pure — the caller reads the entries, the same way check_repo_staleness
+    does not shell out to git and check_aligned_window does not fetch.
+    `recent` is one list per issuance, in any order; only counts matter.
+
+    WHY THIS IS A HEALTH CHECK AND NOT JUST A RECORD FIELD. On 2026-08-29 the
+    forward hourly fetch timed out on three consecutive runs. Every one of
+    them printed a line to stderr, inside a GitHub Actions log, and every one
+    of them committed an entry that looked structurally identical to a clean
+    run's. The failure was found when a reader was rained on while holding a
+    forecast that said the evening was dry. Item 53.4's point is that the
+    record and the page make a degraded run visible TO SOMEONE LOOKING AT IT,
+    and nobody was looking. A weekly red job is the part that goes and finds
+    someone.
+    """
+    # None is "this issuance predates degradation recording", not "this
+    # issuance was fine" — see LogEntryMeta.degradations. Counting the two
+    # together is the bug this signature exists to make impossible.
+    recorded = [issuance for issuance in recent if issuance is not None]
+    unrecorded = len(recent) - len(recorded)
+    unread = (
+        f" ({unrecorded} older issuance(s) predate this check and are not recorded)"
+        if unrecorded
+        else ""
+    )
+
+    if not recorded:
+        return DegradationCheck(
+            status=DegradationStatus.NOT_CHECKED,
+            message=(
+                f"Nothing to check: {len(recent)} issuance(s) in the window, none with "
+                "degradations recorded. Not the same as nothing being wrong — a pipeline "
+                "that has stopped committing shows up here as silence too, and repo "
+                "staleness is the check for that."
+            ),
+        )
+
+    counts = Counter(d.code for issuance in recorded for d in issuance)
+
+    if not counts:
+        return DegradationCheck(
+            status=DegradationStatus.CLEAN,
+            message=(
+                f"every one of the last {len(recorded)} recorded issuance(s) had the data "
+                f"it expects{unread}."
+            ),
+        )
+
+    repeated = sorted(c for c, n in counts.items() if n >= repeat_threshold)
+    summary = ", ".join(f"{code} ×{counts[code]}" for code in sorted(counts))
+
+    if repeated:
+        return DegradationCheck(
+            status=DegradationStatus.REPEATED,
+            message=(
+                f"{', '.join(repeated)} recurred across the last {len(recorded)} recorded "
+                f"issuance(s) ({summary}){unread}. A block that goes missing twice is not "
+                "bad luck — find out why before a forecast is built on it again."
+            ),
+        )
+
+    return DegradationCheck(
+        status=DegradationStatus.ISOLATED,
+        message=(
+            f"one-off gaps in the last {len(recorded)} recorded issuance(s): {summary}"
+            f"{unread}. Recorded and shown on the affected forecast; not failing the check "
+            "on a single occurrence."
+        ),
     )

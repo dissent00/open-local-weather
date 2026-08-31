@@ -74,7 +74,17 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
             "narrative_markdown": m.narrative_markdown,
             "whatsapp_summary": m.whatsapp_summary,
             "morning_issuance": None,
-            "meta": entry.meta.model_copy(update={"generated_at_utc": m.generated_at_utc, "refreshed_at": None}),
+            # This issuance's own gaps, not the current one's — see
+            # RunDegradation. Without the override an archived morning page
+            # would report whatever the EVENING run happened to be missing,
+            # which is the same class of lie the snapshot exists to prevent.
+            "meta": entry.meta.model_copy(
+                update={
+                    "generated_at_utc": m.generated_at_utc,
+                    "refreshed_at": None,
+                    "degradations": m.degradations,
+                }
+            ),
         }
     )
 

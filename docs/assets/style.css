@@ -181,6 +181,21 @@ p {
   color: var(--accent);
 }
 
+.run-degraded {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-fg);
+}
+
+.run-degraded ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.run-degraded p {
+  margin: 0;
+}
+
 .disclaimer-banner {
   background: var(--warn-bg);
   border: 1px solid var(--warn-border);

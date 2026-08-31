@@ -29,7 +29,10 @@ from openlocalweather.fetch.bulletin.kenya_kmd_daily import KenyaKMDDailyFetcher
 from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import (
     AlignedWindowStatus,
+    DEGRADATION_LOOKBACK_ISSUANCES,
+    DegradationStatus,
     check_aligned_window,
+    check_recent_degradations,
     check_model_deprecation,
     check_repo_staleness,
 )
@@ -56,7 +59,8 @@ from openlocalweather.store.actuals_cache import (
     replace_all,
     write_actuals_cache,
 )
-from openlocalweather.store.log_store import list_log_dates, make_log_lookup
+from openlocalweather.models import RunDegradation
+from openlocalweather.store.log_store import list_log_dates, make_log_lookup, read_log_entry
 from openlocalweather.store.track_record import read_track_record, write_track_record
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
@@ -371,6 +375,29 @@ def _run_forecast(args: argparse.Namespace) -> int:
     return 0
 
 
+def _recent_issuance_degradations(data_dir: str) -> list[list[RunDegradation]]:
+    """Every issuance of the most recent stored days, newest day first, as
+    the degradation lists check_recent_degradations wants.
+
+    Per ISSUANCE, not per day. A day holding a degraded morning and a clean
+    evening is one of each, and collapsing it to "that day was degraded"
+    would both overstate the fault and hide a repeat that happened twice
+    inside one day — which is exactly the shape the 2026-08-29 incident had
+    (three runs, two of them on the same date).
+    """
+    path = Path(data_dir)
+    out: list[list[RunDegradation]] = []
+    for d in sorted(list_log_dates(path), reverse=True):
+        entry = read_log_entry(path, d)
+        if entry is None:
+            continue
+        for issuance in entry.issuance_log():
+            out.append(issuance.degradations)
+            if len(out) >= DEGRADATION_LOOKBACK_ISSUANCES:
+                return out
+    return out
+
+
 def _days_since_last_commit() -> int:
     result = subprocess.run(
         ["git", "log", "-1", "--format=%ct"],
@@ -466,6 +493,20 @@ def _run_check_health(args: argparse.Namespace) -> int:
         # fetch/model_run.py), and a silent endpoint says nothing about
         # whether the table is still right.
         print(f"  {window.message}")
+
+    # ROADMAP item 53.4. The record and the page now say when a run was
+    # degraded, but both of those only reach a person who goes and looks, and
+    # the incident this comes from ran degraded three times with nobody
+    # looking. This is the surface that goes and finds someone.
+    print("Checking recent issuances for missing data...")
+    degradation = check_recent_degradations(_recent_issuance_degradations(args.data_dir))
+    if degradation.status is DegradationStatus.REPEATED:
+        print(f"  WARNING: {degradation.message}")
+        ok = False
+    elif degradation.status is DegradationStatus.CLEAN:
+        print(f"  OK — {degradation.message}")
+    else:
+        print(f"  {degradation.message}")
 
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")

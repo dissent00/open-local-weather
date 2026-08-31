@@ -106,6 +106,9 @@ from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
+    DEGRADATION_HOURS_AHEAD_NARROWED,
+    DEGRADATION_METAR,
+    DEGRADATION_SUN_TIMES,
     LocalBulletinRecord,
     DailyActual,
     DailyLogEntry,
@@ -113,6 +116,7 @@ from openlocalweather.models import (
     LogEntryMeta,
     ModelPrediction,
     ModelPredictionsByLead,
+    RunDegradation,
     TrackRecord,
     format_temp_high_low,
 )
@@ -236,6 +240,12 @@ class ForwardGuidance:
     # True when the forward fetch failed and the window came from the day-0
     # fetch instead — the rest of today, with nothing past midnight.
     forward_window_narrowed: bool
+
+    # What this run did not have, in the form the record stores. See
+    # models.RunDegradation and ROADMAP item 53.4: the stderr lines each of
+    # these mirrors were the ONLY trace of three degraded runs, and stderr is
+    # not somewhere anyone looks until after a reader has been rained on.
+    degradations: list[RunDegradation]
 
     aqi_fetch_time: datetime
     bulletin_text: str
@@ -488,7 +498,31 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
             location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
         )
 
+    degradations: list[RunDegradation] = []
+
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
+    # fetch_metar returns None for every failure path and airport_metar is
+    # passed to the prompt but never persisted, so until now the record could
+    # not answer "was the station consulted on that run?" — a question item 53
+    # had to leave under "Not established" about its own incident.
+    #
+    # Only when a station IS configured. No station is a configuration, not a
+    # degradation.
+    if location.metar_station_icao and airport_metar is None:
+        print(
+            f"METAR unavailable for {location.metar_station_icao}; continuing without it.",
+            file=sys.stderr,
+        )
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_METAR,
+                detail=(
+                    f"No current METAR from {location.metar_station_icao} this run — "
+                    "the nearest surface observation was not available to the forecast."
+                ),
+            )
+        )
+
     aqi_fetch_time = datetime.now(timezone.utc)
     # Reuses aqi_fetch_time as "now" rather than a second datetime.now()
     # call, for the same reason ground_aqi_summary/ground_aqi_last_known do
@@ -553,6 +587,15 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     except Exception as e:  # noqa: BLE001 - never fatal; the time still stands
         print(f"Sun times unavailable ({e}); using the clock alone.", file=sys.stderr)
         issuance = daypart_without_sun(now_local)
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_SUN_TIMES,
+                detail=(
+                    "Sunrise and sunset could not be computed this run — the forecast "
+                    "knew the clock but not where the sun was in the day."
+                ),
+            )
+        )
 
     forward_hourly = None
     forward_window_narrowed = False
@@ -590,6 +633,16 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         print("Falling back to the day-0 hourly window (rest of today only).", file=sys.stderr)
         forward_hourly = forward_hours(primary_hourly, now_local)
         forward_window_narrowed = True
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_HOURS_AHEAD_NARROWED,
+                detail=(
+                    "The forward hourly window did not arrive; the hours-ahead guidance "
+                    "and the convective outlook came from the day-0 fetch instead, which "
+                    "stops at 23:00 local and sees nothing past midnight."
+                ),
+            )
+        )
 
     # From the trimmed forward window, never the calendar day: a CAPE peak
     # that already passed this morning is not a reason to warn about tonight.
@@ -599,6 +652,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         issuance=issuance,
         forward_hourly=forward_hourly,
         forward_window_narrowed=forward_window_narrowed,
+        degradations=degradations,
         ground_aqi_last_known=ground_aqi_last_known,
         instability=instability,
         primary_hourly=primary_hourly,
@@ -1119,6 +1173,7 @@ def run_daily_pipeline(
             llm_model=getattr(deps.llm_provider, "model", "unknown"),
             pipeline_version=deps.pipeline_version,
             trigger_source=deps.trigger_source or None,
+            degradations=guidance.degradations,
         ),
     )
 
@@ -1478,7 +1533,18 @@ def run_refresh_pipeline(
             "guidance_source": guidance.guidance_cycle.source,
             "morning_issuance": morning_snapshot,
             "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
-            "meta": existing_entry.meta.model_copy(update={"refreshed_at": datetime.now(timezone.utc)}),
+            # THIS issuance's gaps, not the morning's — the same split as
+            # guidance_* above. current_snapshot was built from
+            # existing_entry before this overwrite, so the morning's own list
+            # has already been carried into earlier_issuances; leaving the
+            # morning's here as well would report a clean evening as degraded
+            # for ever.
+            "meta": existing_entry.meta.model_copy(
+                update={
+                    "refreshed_at": datetime.now(timezone.utc),
+                    "degradations": guidance.degradations,
+                }
+            ),
         }
     )
 

@@ -21,6 +21,20 @@
 <main class="wrap">
   <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions.{% if location.local_bulletin_source_name %} For official warnings and advisories, consult {% if location.local_bulletin_url %}<a href="{{ location.local_bulletin_url }}">{{ location.local_bulletin_source_name }}</a>{% else %}{{ location.local_bulletin_source_name }}{% endif %}.{% endif %}</p>
 
+  {# ROADMAP item 53.4. A run that lost a block used to look exactly like a
+     run that did not, everywhere a reader could see. Worded as a gap and
+     nothing more: it says what was missing and stops, because the failure
+     this whole item comes from was a run reasoning onward from an absence
+     and publishing the conclusion as reassurance. #}
+  {% if entry.meta.degradations %}
+  <div class="banner run-degraded">
+    <p><strong>This forecast was built on less than usual.</strong> Some of the data it normally uses did not arrive, so treat the sections below as thinner than a complete run &mdash; not as an all-clear.</p>
+    <ul>
+      {% for d in entry.meta.degradations %}<li>{{ d.detail }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
   {% if not is_latest %}
   <p class="banner">This is an archived forecast for {{ entry.date.isoformat() }}. <a href="{{ nav.home }}">See today's forecast</a>.</p>
   {% endif %}

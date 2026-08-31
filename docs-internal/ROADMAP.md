@@ -22,10 +22,9 @@ items keep their own status; this only says what to pick up next and why.
 Where an item is a decision rather than a build, it is marked so — those are
 cheap and they gate other work, which is why they sit high.
 
-1. **53.4 — a degraded run says it is degraded.** Safety, and live. Three
-   consecutive runs lost the hour-by-hour block and said nothing; the gap
-   surfaced only because a reader was rained on. Ahead of everything else
-   here.
+1. ~~**53.4 — a degraded run says it is degraded.**~~ **Shipped
+   2026-08-31.** Record, page and a weekly red job. The app half is owed in
+   the Ensemble repo.
 2. **57 — baselines in the ledger.** A day's work, no API cost, and it
    changes what every number already published MEANS. Measured 2026-08-31:
    two of five models lose to persistence at Day+0 and the blend sits three
@@ -4165,7 +4164,7 @@ it, not after.
 
 ---
 
-## 53. A silent fetch failure became an all-clear · **Partly shipped — 3 of 6**
+## 53. A silent fetch failure became an all-clear · **Partly shipped — 4 of 6**
 
 Found 2026-08-30, from a reader who was rained on while holding an email
 that said the evening was dry. The first big convective miss this project
@@ -4409,10 +4408,57 @@ work and the last is weeks.
    pushed. The command now says so on stdout; see the comment in
    `cli._run_rebuild_record` for why it does not render the page itself.
 
-4. **A degraded run says it is degraded.** Three silent runs in a row,
-   surfaced only because a reader got rained on. A missing HOURS AHEAD
-   block belongs in the issuance record and on the page, not only on
-   stderr in an Actions log nobody reads.
+4. **A degraded run says it is degraded. Shipped 2026-08-31.** Three
+   silent runs in a row, surfaced only because a reader got rained on. A
+   missing HOURS AHEAD block now reaches three surfaces instead of stderr:
+   the committed record (`LogEntryMeta.degradations`, and each issuance's
+   own copy in `IssuanceSnapshot`), the published page, and `check-health`.
+
+   **Per issuance, not per day.** A degraded morning followed by a clean
+   evening is one of each. The outgoing issuance's list is snapshotted the
+   same way its `guidance_*` values are, so a re-issue never inherits the
+   morning's gaps and never erases them. All three paths into an existing
+   day are covered — refresh, forced re-run, and first run — because the
+   forced re-run is the one that quietly lost earlier issuances in items 8
+   and 34.
+
+   **`fetch_metar` no longer fails silently.** Item 53 had to leave "did
+   the 18:04 run reach the station?" under Not established because
+   `fetch_metar` returns `None` on every failure path and `airport_metar`
+   was never persisted. A configured station that does not answer is now
+   recorded. A location with NO station is not — that is a configuration,
+   not a degradation, and recording it would empty the field of meaning
+   within a week.
+
+   **The field is three-valued, and that was a defect caught late.** `[]`
+   means the run looked and found nothing missing; `None` means it was
+   never asked. The first version defaulted to `[]`, and running
+   `check-health` against the real committed record — rather than against
+   its tests, which all passed — had it announce that the last 20
+   issuances "had the data they expect", the 2026-08-29 runs among them.
+   Absence of a record is not a record of absence; the same rule the
+   CONVECTIVE INSTABILITY block and `thunder` already follow.
+
+   **check-health fails on a REPEAT, not on a single gap.** One lost fetch
+   is now visible in the record and on the page, and failing the weekly job
+   for it would make red the normal colour. A code that comes back twice is
+   not bad luck. The threshold is two rather than three, because by the
+   third run of the original incident the reader had already been rained
+   on.
+
+   Ported to `olw_core` in the same change, per item 53.2's precedent: the
+   app computed the identical narrowing and told only the prompt, so
+   `ForecastRun` now carries `degradations` for the app to store and show.
+   Verified: 699 Python tests, 103 Dart, analyzer clean; each new assertion
+   watched failing with its fix removed; and the page and the health check
+   both driven against the real committed record rather than fixtures.
+
+   **Not done here:** the app's own storage and Today-screen notice, which
+   are Ensemble work and sit in that repo's owed table. Ground AQI
+   staleness and a bulletin that did not answer are NOT recorded as
+   degradations yet — both already have their own handling in the prompt,
+   and folding them in without deciding what "stale enough to count" means
+   would be guessing.
 5. **The current METAR earns a nowcasting role.** Today the prompt's
    only instruction about METAR is a caveat telling the model to
    distrust it. At 15:04Z the newest report was 15:00Z and already
