@@ -149,3 +149,57 @@ def test_non_utc_aware_datetime_is_rejected():
     east_africa = timezone(timedelta(hours=3))
     with pytest.raises(ValueError):
         aligned_cycle_at(datetime(2026, 8, 11, 8, 0, 0, tzinfo=east_africa))
+
+
+# ---------------------------------------------------------------------------
+# next_aligned_window — ROADMAP item 10's shared half, used by 53.4's notice
+# ---------------------------------------------------------------------------
+
+from openlocalweather.cycle import next_aligned_window
+
+
+def test_the_next_window_is_the_one_after_the_current_cycle():
+    # 03:00Z sits in the window that opened at 02:00 carrying 18z. The next
+    # one opens at 08:00 and brings 00z.
+    nxt = next_aligned_window(datetime(2026, 8, 28, 3, 0, tzinfo=timezone.utc))
+    assert nxt.opens_at == datetime(2026, 8, 28, 8, 0, tzinfo=timezone.utc)
+    assert nxt.initialised_at == datetime(2026, 8, 28, 0, 0, tzinfo=timezone.utc)
+
+
+def test_the_last_window_of_the_day_rolls_to_tomorrow():
+    nxt = next_aligned_window(datetime(2026, 8, 28, 21, 30, tzinfo=timezone.utc))
+    assert nxt.opens_at == datetime(2026, 8, 29, 2, 0, tzinfo=timezone.utc)
+    assert nxt.initialised_at == datetime(2026, 8, 28, 18, 0, tzinfo=timezone.utc)
+
+
+def test_before_the_first_window_of_the_day():
+    nxt = next_aligned_window(datetime(2026, 8, 28, 0, 30, tzinfo=timezone.utc))
+    assert nxt.opens_at == datetime(2026, 8, 28, 2, 0, tzinfo=timezone.utc)
+
+
+def test_exactly_on_a_boundary_looks_forward_not_at_itself():
+    """08:00Z has just opened its own window. The NEXT one is 14:00, not the
+    one standing open — otherwise a notice would tell a reader to wait for
+    guidance they already have."""
+    nxt = next_aligned_window(datetime(2026, 8, 28, 8, 0, tzinfo=timezone.utc))
+    assert nxt.opens_at == datetime(2026, 8, 28, 14, 0, tzinfo=timezone.utc)
+
+
+def test_it_agrees_with_aligned_cycle_at_across_a_full_day():
+    """Swept rather than sampled: the next window's cycle must be exactly what
+    aligned_cycle_at reports one minute after it opens. Two encodings of one
+    table is how they drift."""
+    from openlocalweather.cycle import aligned_cycle_at
+
+    now = datetime(2026, 8, 28, 0, 0, tzinfo=timezone.utc)
+    for _ in range(24 * 60):
+        nxt = next_aligned_window(now)
+        just_after = aligned_cycle_at(nxt.opens_at + timedelta(minutes=1))
+        assert just_after.initialised_at == nxt.initialised_at, now
+        assert just_after.window_opened_at == nxt.opens_at, now
+        now += timedelta(minutes=1)
+
+
+def test_next_window_rejects_a_naive_datetime():
+    with pytest.raises(ValueError):
+        next_aligned_window(datetime(2026, 8, 28, 8, 0))

@@ -58,6 +58,11 @@ class AlignedCycle:
     age_hours: float  # now - initialised_at, in hours
 
 
+# Windows open every six hours, which is the model cycle interval itself —
+# 00/06/12/18z. Named because next_aligned_window steps by it.
+WINDOW_INTERVAL_HOURS = 6
+
+
 def _at(d: date, hour: int) -> datetime:
     return datetime(d.year, d.month, d.day, hour, tzinfo=timezone.utc)
 
@@ -105,6 +110,52 @@ def aligned_cycle_at(now: datetime) -> AlignedCycle:
 
     age_hours = (now - initialised_at).total_seconds() / 3600
     return AlignedCycle(initialised_at=initialised_at, window_opened_at=window_opened_at, age_hours=age_hours)
+
+
+@dataclass
+class NextAlignedWindow:
+    opens_at: datetime  # when the next window opens, UTC
+    initialised_at: datetime  # the cycle that window will carry, UTC
+
+
+def next_aligned_window(now: datetime) -> NextAlignedWindow:
+    """When the next aligned window opens, and which cycle it will bring.
+
+    The forward-looking half of `aligned_cycle_at`, and the shared piece
+    ROADMAP item 10 needs: a reader who has just been told their forecast was
+    built on a narrowed window wants to know when waiting would help.
+
+    SAME INFERENCE, SAME CAVEAT. This reads the same hand-measured table, so
+    it is an estimate of when guidance USUALLY lands, never a promise. Item 50
+    measured ECMWF's availability varying from ~7.1 h to 8h25m — more than the
+    whole hour the windows are rounded to — so anything showing this to a
+    person must say "usually by about X", never "at X". A notice that names a
+    time and is wrong twice teaches the reader to ignore it, which costs more
+    than saying nothing.
+
+    STRICTLY AFTER `now`, including exactly on a boundary. At 08:00 the 08:00
+    window has just opened, and pointing a reader at it would tell them to
+    wait for guidance they already hold.
+    """
+    if now.tzinfo is None or now.utcoffset() != timedelta(0):
+        raise ValueError(f"next_aligned_window requires a timezone-aware UTC datetime, got {now!r}")
+
+    # Derived from aligned_cycle_at rather than restating its table: two
+    # encodings of one measurement is exactly how the two drift apart, and the
+    # sweep in test_cycle.py exists to prove they have not.
+    current = aligned_cycle_at(now)
+    opens_at = current.window_opened_at + timedelta(hours=WINDOW_INTERVAL_HOURS)
+
+    # A window that has already opened but not yet been reached by the clock
+    # cannot be "next". Only possible on the branch that spans midnight, where
+    # window_opened_at belongs to yesterday.
+    while opens_at <= now:
+        opens_at += timedelta(hours=WINDOW_INTERVAL_HOURS)
+
+    return NextAlignedWindow(
+        opens_at=opens_at,
+        initialised_at=aligned_cycle_at(opens_at + timedelta(minutes=1)).initialised_at,
+    )
 
 
 def round_hours_to_tenths(hours: float) -> float:

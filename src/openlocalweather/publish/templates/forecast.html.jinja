@@ -28,10 +28,11 @@
      and publishing the conclusion as reassurance. #}
   {% if entry.meta.degradations %}
   <div class="banner run-degraded">
-    <p><strong>This forecast was built on less than usual.</strong> Some of the data it normally uses did not arrive, so treat the sections below as thinner than a complete run &mdash; not as an all-clear.</p>
+    <p><strong>This forecast was built on less than usual.</strong></p>
     <ul>
-      {% for d in entry.meta.degradations %}<li>{{ d.detail }}</li>{% endfor %}
+      {% for d in entry.meta.degradations %}<li>{{ d.summary }}</li>{% endfor %}
     </ul>
+    <p class="summary">The technical detail is in <a href="#run-notes">Notes on this forecast</a>, at the end.</p>
   </div>
   {% endif %}
 
@@ -72,6 +73,20 @@
   </div>
 
   {{ narrative_html | safe }}
+
+  {# The technical half of the degradation notice. Kept away from the banner
+     at the top deliberately: that is where somebody decides whether to go
+     outside, and "the forward hourly window did not arrive" tells that person
+     nothing they can act on. Here it is worth having, because this is where a
+     reader who wants to know WHY comes looking. #}
+  {% if entry.meta.degradations %}
+  <h2 id="run-notes">Notes on this forecast</h2>
+  <ul class="archive-list">
+    {% for d in entry.meta.degradations %}
+    <li><strong>{{ d.summary }}</strong><span class="summary">{{ d.detail }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 
   {% if entry.ground_aqi %}
   <h2>Ground AQI Stations</h2>

@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
-from openlocalweather.cycle import aligned_cycle_at
+from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 from openlocalweather.cycle import round_hours_to_tenths
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.extract import (
@@ -505,6 +505,21 @@ def test_vectors_temp_high_low():
         )
 
 
+def test_vectors_next_aligned_window():
+    """Pinned separately from aligned_cycle even though it is derived from it.
+    The derivation is the thing that could break: a change to either the table
+    or the step would move this without moving aligned_cycle_at at all."""
+    for case in load("next_aligned_window.json")["cases"]:
+        now = datetime.fromisoformat(case["input"]["now"])
+        got = next_aligned_window(now)
+        assert got.opens_at.isoformat() == case["expected"]["opens_at"], (
+            f"vector case failed: {case['name']}"
+        )
+        assert got.initialised_at.isoformat() == case["expected"]["initialised_at"], (
+            f"vector case failed: {case['name']}"
+        )
+
+
 def test_vectors_aligned_cycle():
     """Datetime fields, not stringified ones — as_json()'s dataclass branch
     is asdict(), which leaves nested datetime objects unconverted, so this
@@ -582,6 +597,7 @@ def test_every_vector_file_is_exercised():
         "daypart_forward_hours.json",
         "solar.json",
         "aligned_cycle.json",
+        "next_aligned_window.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

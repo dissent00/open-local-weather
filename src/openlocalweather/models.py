@@ -289,11 +289,20 @@ class RunDegradation(BaseModel):
     "no met service configured" separate from "the met service did not
     answer" in the bulletin block.
 
-    `code` is matched on; `detail` is written for a person and may change
-    wording freely.
+    TWO TEXTS, FOR TWO PLACES. `summary` is what a reader is shown at the top
+    of the forecast: plain, no jargon, and it says what the gap MEANS rather
+    than which fetch failed. `detail` is the technical account and belongs in
+    the notes at the end, with whatever timing or identifiers are worth having
+    there. Splitting them is not decoration — the top of a forecast is where
+    somebody decides whether to go outside, and "the forward hourly window
+    (forecast_days=2) did not arrive" tells that person nothing they can use.
+
+    `code` is matched on; both texts are written for people and may be
+    reworded freely.
     """
 
     code: str
+    summary: str
     detail: str
 
 

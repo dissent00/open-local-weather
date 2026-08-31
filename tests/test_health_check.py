@@ -195,7 +195,7 @@ from openlocalweather.models import RunDegradation
 
 
 def _deg(code: str) -> RunDegradation:
-    return RunDegradation(code=code, detail=f"{code} happened")
+    return RunDegradation(code=code, summary=f"{code} in plain words", detail=f"{code} happened")
 
 
 def test_no_degradations_is_clean():

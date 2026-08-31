@@ -124,3 +124,108 @@ double roundHoursToTenths(double hours) {
 
   return tenths / 10;
 }
+
+/// Windows open every six hours, which is the model cycle interval itself —
+/// 00/06/12/18z. Named because [nextAlignedWindow] steps by it.
+const int windowIntervalHours = 6;
+
+/// When the next aligned window opens, and which cycle it will bring.
+class NextAlignedWindow {
+  const NextAlignedWindow({
+    required this.opensAt,
+    required this.initialisedAt,
+  });
+
+  /// When the next window opens, UTC.
+  final DateTime opensAt;
+
+  /// The cycle that window will carry, UTC.
+  final DateTime initialisedAt;
+}
+
+/// The forward-looking half of [alignedCycleAt]. Port of
+/// `cycle.next_aligned_window`; pinned by `spec/vectors/next_aligned_window.json`.
+///
+/// SAME INFERENCE, SAME CAVEAT. This reads the same hand-measured table, so it
+/// estimates when guidance USUALLY lands and never promises it. Item 50
+/// measured ECMWF's availability varying from ~7.1 h to 8h25m — more than the
+/// whole hour the windows are rounded to — so anything showing this to a
+/// person must say "usually by about X", never "at X". A notice that names an
+/// exact time and is wrong twice teaches the reader to ignore every notice.
+///
+/// STRICTLY AFTER [now], including exactly on a boundary: at 08:00 the 08:00
+/// window has just opened, and pointing a reader at it would tell them to wait
+/// for guidance they already hold.
+NextAlignedWindow nextAlignedWindow(DateTime now) {
+  if (!now.isUtc) {
+    throw ArgumentError.value(
+      now,
+      'now',
+      'nextAlignedWindow requires a UTC DateTime',
+    );
+  }
+
+  // Derived from alignedCycleAt rather than restating its table: two encodings
+  // of one measurement is exactly how the two drift apart.
+  var opensAt = alignedCycleAt(now)
+      .windowOpenedAt
+      .add(const Duration(hours: windowIntervalHours));
+
+  // A window already open but not yet reached by the clock cannot be "next".
+  // Only possible on the branch that spans midnight, where windowOpenedAt
+  // belongs to yesterday.
+  while (!opensAt.isAfter(now)) {
+    opensAt = opensAt.add(const Duration(hours: windowIntervalHours));
+  }
+
+  return NextAlignedWindow(
+    opensAt: opensAt,
+    initialisedAt:
+        alignedCycleAt(opensAt.add(const Duration(minutes: 1))).initialisedAt,
+  );
+}
+
+/// "New model guidance is usually in by about HH:MM local" — or an empty
+/// string when the location's offset is unknown.
+///
+/// Port of `pipeline._next_guidance_sentence`. The two take different
+/// arguments and must produce the same sentence: Python has a timezone
+/// database and is handed a zone name, this package deliberately has neither
+/// (see pubspec.yaml) and is handed the offset the hourly response already
+/// carries.
+///
+/// [nowLocal] is a wall clock at the LOCATION, which is what generateForecast
+/// works in — its field values are the place's local time and its isUtc flag
+/// means nothing. `nowLocal.toUtc()` would convert using the DEVICE's offset,
+/// which is a guess about where the reader is standing relative to the place
+/// they asked about, so the instant is reconstructed from the fields and the
+/// location's own offset instead. Same reasoning as sunTimes taking the
+/// offset rather than deriving one.
+///
+/// AN EMPTY STRING WHEN THE OFFSET IS UNKNOWN, never a guessed time. A notice
+/// that names the wrong hour is worse than one that names none: it is checked
+/// against reality by the reader, and it teaches them to ignore the next one.
+String nextGuidanceSentence({
+  required DateTime nowLocal,
+  required int? utcOffsetSeconds,
+}) {
+  if (utcOffsetSeconds == null) {
+    return '';
+  }
+
+  final offset = Duration(seconds: utcOffsetSeconds);
+  final nowUtc = DateTime.utc(
+    nowLocal.year,
+    nowLocal.month,
+    nowLocal.day,
+    nowLocal.hour,
+    nowLocal.minute,
+    nowLocal.second,
+  ).subtract(offset);
+
+  final opensLocal = nextAlignedWindow(nowUtc).opensAt.add(offset);
+  final hh = opensLocal.hour.toString().padLeft(2, '0');
+  final mm = opensLocal.minute.toString().padLeft(2, '0');
+  return 'New model guidance is usually in by about $hh:$mm local; '
+      'a forecast made after that would normally have the full window.';
+}

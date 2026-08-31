@@ -4446,9 +4446,37 @@ work and the last is weeks.
    third run of the original incident the reader had already been rained
    on.
 
+   **Plain at the top, technical at the end (2026-08-31).** A degradation
+   carries two texts, not one. `summary` is what a reader meets above the
+   forecast: no jargon, and it says what the gap MEANS. `detail` is the
+   technical account and sits in a "Notes on this forecast" section at the
+   end. The top of a forecast is where somebody decides whether to go
+   outside, and "the forward hourly window did not arrive" tells that person
+   nothing they can act on.
+
+   The narrowed-window detail also says WHEN waiting would help, which
+   needed item 10's shared half: `cycle.next_aligned_window` and its Dart
+   port, vector-locked, plus a 24-hour minute-by-minute sweep proving it
+   agrees with `aligned_cycle_at` rather than restating the table a second
+   time. Hedged as "usually in by about HH:MM local", never a promise —
+   item 50 measured ECMWF's availability varying by more than the hour the
+   windows are rounded to, and a notice that names an exact time and is
+   wrong twice teaches the reader to ignore every notice.
+
+   All three surfaces carry the split: the page, and both bodies of the
+   email (`mailer/AppsScriptMailer.gs`, with harness cases). **The mailer is
+   a manual deployment** — the change is committed but does not reach
+   subscribers until it is pasted into the Apps Script editor.
+
    Ported to `olw_core` in the same change, per item 53.2's precedent: the
    app computed the identical narrowing and told only the prompt, so
    `ForecastRun` now carries `degradations` for the app to store and show.
+   A bug caught in the port and worth recording: `generateForecast` works in
+   the LOCATION's wall clock, so `now.toUtc()` there would have converted
+   using the DEVICE's offset — a guess about where the reader is standing
+   relative to the place they asked about. `nextGuidanceSentence` takes the
+   offset the hourly response already carries, and returns an empty string
+   rather than a guessed hour when it is absent.
    Verified: 699 Python tests, 103 Dart, analyzer clean; each new assertion
    watched failing with its fix removed; and the page and the health check
    both driven against the real committed record rather than fixtures.

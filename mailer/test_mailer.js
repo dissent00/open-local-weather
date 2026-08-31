@@ -455,4 +455,88 @@ assert.ok(
 );
 console.log('PASS: a renamed discussion heading does not lose the re-issue note');
 
+// --- ROADMAP item 53.4: a degraded run says so in the email too. Plain
+// summary above the forecast, technical detail in the notes at the end. An
+// email that stays silent while the page warns is the inconsistency the two
+// renderings exist to avoid. ---
+reset();
+servedEntry = {
+  ...sampleEntryRaw,
+  meta: {
+    ...(sampleEntryRaw.meta || {}),
+    degradations: [
+      {
+        code: 'hours_ahead_narrowed',
+        summary: "Part of tonight's data did not arrive. This forecast covers the rest of today only.",
+        detail: 'The forward hourly window did not arrive, so the hours-ahead guidance was trimmed from the day-0 fetch instead. New model guidance is usually in by about 17:00 local.',
+      },
+    ],
+  },
+};
+sendForecastEmail();
+{
+  const text = sentEmails[0].body;
+  const html = sentEmails[0].htmlBody;
+
+  assert.ok(text.includes('THIS FORECAST WAS BUILT ON LESS THAN USUAL'), 'plain-text banner missing');
+  assert.ok(text.includes("Part of tonight's data did not arrive"), 'plain-text summary missing');
+  assert.ok(text.includes('NOTES ON THIS FORECAST'), 'plain-text notes section missing');
+
+  // The whole point of the split: jargon must not be what greets the reader.
+  const textBanner = text.slice(0, text.indexOf('NOTES ON THIS FORECAST'));
+  assert.ok(!textBanner.includes('forward hourly window'), 'jargon leaked into the plain-text banner');
+  assert.ok(
+    text.indexOf('forward hourly window') > text.indexOf('NOTES ON THIS FORECAST'),
+    'the technical detail must sit in the notes section, not above it'
+  );
+
+  // The wrapper is what keeps the AFD body readable in a fixed-width client.
+  for (const line of text.split('\n')) {
+    assert.ok(line.length <= 78, `degradation text broke the 78-column wrap: "${line}"`);
+  }
+
+  assert.ok(html.includes('built on less than usual'), 'HTML banner missing');
+  // The heading, not the phrase: the banner also mentions "Notes on this
+  // forecast" when pointing the reader at it, and indexOf would find that one.
+  assert.ok(html.includes('>Notes on this forecast<'), 'HTML notes heading missing');
+  assert.ok(
+    html.indexOf("Part of tonight&#39;s data") < html.indexOf('<table') ||
+      html.indexOf("Part of tonight's data") < html.indexOf('<table'),
+    'the HTML banner must sit above the stat grid, where it is read before the forecast'
+  );
+  assert.ok(
+    html.indexOf('>Notes on this forecast<') > html.indexOf('<table'),
+    'the HTML notes must sit after the forecast'
+  );
+}
+console.log('PASS: a degraded run says so in both email bodies');
+
+// --- ...and a clean run says nothing at all. A banner that appears on every
+// email is a banner nobody reads. ---
+reset();
+servedEntry = sampleEntryRaw;
+sendForecastEmail();
+assert.ok(
+  !sentEmails[0].body.includes('LESS THAN USUAL'),
+  'a clean run must not carry a degradation banner'
+);
+assert.ok(
+  !sentEmails[0].htmlBody.includes('>Notes on this forecast<'),
+  'a clean run must not carry a notes section'
+);
+console.log('PASS: a clean run carries no degradation notice');
+
+// --- An entry from before item 53.4 has no degradations key at all. Absent
+// must behave exactly like empty here, not throw. ---
+reset();
+servedEntry = { ...sampleEntryRaw, meta: { ...(sampleEntryRaw.meta || {}) } };
+delete servedEntry.meta.degradations;
+sendForecastEmail();
+// The count depends on how many subscribers this reset() configured; what
+// matters here is only that an absent key does not throw and does not stop
+// the mail.
+assert.ok(sentEmails.length >= 1, 'an entry with no degradations key must still send');
+assert.ok(!sentEmails[0].body.includes('LESS THAN USUAL'), 'absent must render as nothing');
+console.log('PASS: an entry predating the field still sends');
+
 console.log('\nALL MAILER HARNESS CHECKS PASSED');

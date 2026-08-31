@@ -115,7 +115,8 @@ absent values are `null`, never omitted keys.
 | `daypart_without_sun.json` | `daypart_without_sun` | The issuance moment when sunrise/sunset could not be fetched — phase `unknown` rather than guessed, horizon still precise because midnight is midnight everywhere. |
 | `daypart_clock.json` | `reconcile_now` | A second opinion on the system clock from the API's `Date` header. Past five minutes the server is believed; a missing header stops the check rather than triggering it. |
 | `daypart_forward_hours.json` | `forward_hours` | Hourly guidance trimmed to the hours still ahead. Narrative only — nothing scored passes through it. |
-| `aligned_cycle.json` | `aligned_cycle_at` | Which model run this project INFERS is aligned across all five models right now — a table lookup, not an observation, since nothing in an Open-Meteo response says which cycle produced it. Not yet wired into anything. |
+| `aligned_cycle.json` | `aligned_cycle_at` | Which model run this project INFERS is aligned across all five models right now — a table lookup, not an observation, since nothing in an Open-Meteo response says which cycle produced it. |
+| `next_aligned_window.json` | `next_aligned_window` | When the next window opens and which cycle it will carry — the forward-looking half of the same table. Strictly after the given moment, so a reader on a boundary is pointed at the next window rather than the one they already have. Used to tell someone whose forecast was built on a narrowed window when waiting would help. |
 
 ### The cases that matter most
 

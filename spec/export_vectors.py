@@ -51,7 +51,7 @@ from openlocalweather.aqi import (
 from openlocalweather.comparison import describe_day_rain
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import add_days, prediction_row_date_for_target
-from openlocalweather.cycle import aligned_cycle_at
+from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 
 
 def _iso(d):
@@ -1995,6 +1995,39 @@ def export_cycle() -> None:
         }
         for name, now in scenarios
     ]
+    next_scenarios = [
+        ("mid-window, the next one is later today", at(2026, 8, 11, 3, 0, 0)),
+        ("exactly on a boundary looks forward, not at the window just opened",
+         at(2026, 8, 11, 8, 0, 0)),
+        ("one second after a boundary", at(2026, 8, 11, 8, 0, 1)),
+        ("one second before a boundary is that same boundary", at(2026, 8, 11, 7, 59, 59)),
+        ("the last window of the day rolls to tomorrow", at(2026, 8, 11, 21, 30, 0)),
+        ("before the day's first window", at(2026, 8, 11, 0, 30, 0)),
+        ("23:59:59 points at tomorrow's 02:00", at(2026, 8, 11, 23, 59, 59)),
+        ("00:00:00 still points at today's 02:00", at(2026, 8, 12, 0, 0, 0)),
+    ]
+    write(
+        "next_aligned_window.json",
+        "next_aligned_window",
+        "When the next aligned window opens and which cycle it will carry — "
+        "the forward-looking half of aligned_cycle_at, reading the same "
+        "measured table. STRICTLY AFTER the given moment, including exactly "
+        "on a boundary: at 08:00 the 08:00 window has just opened, and "
+        "pointing a reader at it would tell them to wait for guidance they "
+        "already hold. Like aligned_cycle_at it is an inference about when "
+        "guidance USUALLY lands, never a promise.",
+        [
+            {
+                "name": name,
+                "input": {"now": now.isoformat()},
+                "expected": {
+                    "opens_at": next_aligned_window(now).opens_at.isoformat(),
+                    "initialised_at": next_aligned_window(now).initialised_at.isoformat(),
+                },
+            }
+            for name, now in next_scenarios
+        ],
+    )
     write(
         "aligned_cycle.json",
         "aligned_cycle_at",

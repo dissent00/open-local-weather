@@ -677,6 +677,8 @@ def _degraded_meta(**overrides):
         degradations=[
             RunDegradation(
                 code="hours_ahead_narrowed",
+                summary="Part of tonight's data did not arrive. This forecast covers "
+                "the rest of today only.",
                 detail="The forward hourly window did not arrive; the hours-ahead "
                 "guidance and the convective outlook came from the day-0 fetch instead.",
             )
@@ -691,10 +693,31 @@ def test_a_degraded_run_says_so_on_the_page():
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
-    assert "forward hourly window did not arrive" in html
-    # And it is framed as a gap rather than as reassurance — the whole point
-    # of item 53. A reader must not read "we checked everything" out of it.
-    assert "less than usual" in html.lower() or "incomplete" in html.lower()
+    # Framed as a gap rather than as reassurance — the whole point of item 53.
+    assert "less than usual" in html.lower()
+    assert "Part of tonight's data did not arrive" in html
+
+
+def test_the_banner_is_plain_and_the_jargon_is_at_the_end():
+    """The top of a forecast is where somebody decides whether to go outside.
+    "The forward hourly window did not arrive" tells that person nothing they
+    can act on, so it belongs in the notes and not in the banner."""
+    entry = make_entry(date(2026, 8, 11), meta=_degraded_meta())
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    banner = html[html.index("run-degraded") : html.index("<h1>")]
+    assert "Part of tonight's data did not arrive" in banner
+    assert "forward hourly window" not in banner
+
+    notes = html[html.index('id="run-notes"') :]
+    assert "forward hourly window" in notes
+
+
+def test_the_notes_section_is_absent_on_a_clean_run():
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    assert 'id="run-notes"' not in render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
 
 def test_a_clean_run_carries_no_degradation_notice():
@@ -723,6 +746,7 @@ def test_the_morning_view_shows_the_morning_s_own_degradation():
             degradations=[
                 RunDegradation(
                     code="hours_ahead_narrowed",
+                    summary="Part of tonight's data did not arrive.",
                     detail="The forward hourly window did not arrive.",
                 )
             ],

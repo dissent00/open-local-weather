@@ -511,7 +511,20 @@ void main() {
     );
 
     expect(run.degradations.map((d) => d.code), ['hours_ahead_narrowed']);
-    expect(run.degradations.single.detail, contains('did not arrive'));
+
+    // Plain up top, jargon at the end. The summary must be usable by someone
+    // deciding whether to go outside; "forward hourly window" is not.
+    final d = run.degradations.single;
+    expect(d.summary, contains("Part of tonight's data did not arrive"));
+    expect(d.summary, isNot(contains('forward hourly')));
+    expect(d.detail, contains('forward hourly window'));
+
+    // And the detail says when waiting would help, in the LOCATION's local
+    // time. The fixture is Africa/Nairobi (UTC+3), so the windows that open
+    // at 02/08/14/20 UTC land at 05/11/17/23 local.
+    expect(d.detail, contains('usually in by about'));
+    expect(d.detail, anyOf(contains('05:00'), contains('11:00'),
+        contains('17:00'), contains('23:00')));
   });
 
   test('a complete run reports no degradations', () async {

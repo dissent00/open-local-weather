@@ -370,6 +370,20 @@ const AFD_DIVIDER = '&&';
  * not an NWS product, and a convincing-looking official header would cut
  * against the disclaimer this function exists partly to carry.
  */
+/** The run's recorded degradations, or [] — ROADMAP item 53.4.
+ *
+ * THREE-VALUED ON THE SERVER, and that distinction has to survive the trip
+ * here. `null`/absent means the run predates degradation recording and was
+ * never asked; `[]` means it looked and found nothing missing. Neither is
+ * something to announce, so both collapse to "print nothing" — but they
+ * collapse HERE rather than in the entry, so a future reader of this function
+ * is not left thinking an old entry was verified clean.
+ */
+function degradationsOf(entry) {
+  const list = entry && entry.meta && entry.meta.degradations;
+  return Array.isArray(list) ? list : [];
+}
+
 function buildEmailPlainText(config, entry, dateStr, runLabel) {
   const issuedStr = Utilities.formatDate(new Date(), config.timezone, 'yyyy-MM-dd HH:mm');
   const discussion = convertMarkdownToAfdText(entry.narrative_markdown || '');
@@ -400,6 +414,8 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
     ? discussion.replace(discussionMarker, `${discussionMarker}\n\n${refreshNote}`)
     : discussion;
 
+  const degradations = degradationsOf(entry);
+
   const lines = [];
   lines.push('Open Local Weather — Experimental Forecast Discussion');
   lines.push(locationLine);
@@ -407,7 +423,36 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   lines.push('');
   lines.push(AFD_DIVIDER);
   lines.push('');
+  // Plain summaries ABOVE the forecast, technical detail in a notes section
+  // at the end — item 53.4. Unlike the two disclaimers, which deliberately
+  // sit below the forecast, this one belongs on top: it changes how the
+  // sections beneath it should be read, and a reader who stops after the
+  // Overview is exactly the reader it exists for.
+  if (degradations.length) {
+    lines.push('.THIS FORECAST WAS BUILT ON LESS THAN USUAL...');
+    degradations.forEach(d => {
+      lines.push(wrapText(`* ${d.summary}`, AFD_WRAP_WIDTH));
+    });
+    lines.push('');
+    lines.push(wrapText(
+      'The technical detail is under NOTES ON THIS FORECAST, below.',
+      AFD_WRAP_WIDTH
+    ));
+    lines.push('');
+    lines.push(AFD_DIVIDER);
+    lines.push('');
+  }
   lines.push(discussionText);
+  if (degradations.length) {
+    lines.push('');
+    lines.push(AFD_DIVIDER);
+    lines.push('');
+    lines.push('.NOTES ON THIS FORECAST...');
+    degradations.forEach(d => {
+      lines.push(wrapText(d.detail, AFD_WRAP_WIDTH));
+      lines.push('');
+    });
+  }
   if (refreshNote && !noteFitsInDiscussion) {
     lines.push('');
     lines.push(refreshNote);
@@ -519,6 +564,18 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
   const trailingNoteHtml =
     refreshNoteHtml && narrativeWithNote === narrativeHtml ? refreshNoteHtml : '';
 
+  // Item 53.4, same split as the plain-text body and the web page: plain
+  // summaries above the forecast because they change how it should be read,
+  // technical detail in a notes block at the end. Reuses the warn palette the
+  // disclaimer already uses rather than introducing a third colour.
+  const degradations = degradationsOf(entry);
+  const degradedBannerHtml = degradations.length
+    ? `<div style="background: ${SITE_WARN_BG}; border: 1px solid ${SITE_WARN_BORDER}; color: ${SITE_WARN_FG}; border-radius: 8px; padding: 0.75em 1em; margin: 0 0 1.2em; font-size: 0.9em; line-height: 1.5;"><strong>This forecast was built on less than usual.</strong><ul style="margin: 0.5em 0 0.5em; padding-left: 1.2em;">${degradations.map(d => `<li>${escapeHtml(d.summary)}</li>`).join('')}</ul><div style="font-size: 0.9em;">The technical detail is under &ldquo;Notes on this forecast&rdquo;, below.</div></div>`
+    : '';
+  const degradedNotesHtml = degradations.length
+    ? `<h2 style="font-size: 1.05em; margin: 1.5em 0 0.4em;">Notes on this forecast</h2><ul style="margin: 0; padding-left: 1.2em; font-size: 0.9em; color: ${SITE_MUTED};">${degradations.map(d => `<li style="margin-bottom: 0.5em;"><strong style="color: ${SITE_FG};">${escapeHtml(d.summary)}</strong><br>${escapeHtml(d.detail)}</li>`).join('')}</ul>`
+    : '';
+
   const linksHtml = config.publicUrl
     ? `<p style="font-size: 0.9em; margin: 1.2em 0 0.3em;"><a href="${escapeHtml(config.publicUrl)}" style="color: ${SITE_ACCENT};">View on the web</a> &middot; <a href="${escapeHtml(config.publicUrl)}archive/" style="color: ${SITE_ACCENT};">Archive</a></p>`
     : '';
@@ -527,9 +584,11 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${SITE_FG}; background: ${SITE_BG}; max-width: 640px; margin: 0 auto; line-height: 1.5;">
   <h1 style="font-size: 1.4em; margin: 0 0 0.1em;">${escapeHtml(locationLine)}</h1>
   <p style="font-size: 0.85em; color: ${SITE_MUTED}; margin: 0 0 1em;">Forecast for ${escapeHtml(dateStr)} &middot; issued ${escapeHtml(issuedStr)} (${escapeHtml(config.timezone)}) &middot; multi-model synthesis via Open Local Weather</p>
+  ${degradedBannerHtml}
   ${statGridHtml}
   <div>${narrativeWithNote}</div>
   ${trailingNoteHtml}
+  ${degradedNotesHtml}
   ${linksHtml}
   <p style="font-size: 0.8em; color: ${SITE_MUTED}; margin: 1.5em 0 0;">You are receiving this because you subscribed to this experimental forecast service.</p>
   <div style="background: ${SITE_WARN_BG}; border: 1px solid ${SITE_WARN_BORDER}; color: ${SITE_WARN_FG}; border-radius: 8px; padding: 0.75em 1em; margin: 1.2em 0 0; font-size: 0.85em; line-height: 1.5;">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult your national meteorological service (in Kenya: the Kenya Meteorological Department, meteo.go.ke).</div>

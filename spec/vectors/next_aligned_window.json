@@ -1,0 +1,87 @@
+{
+  "vector_format_version": 1,
+  "function": "next_aligned_window",
+  "description": "When the next aligned window opens and which cycle it will carry \u2014 the forward-looking half of aligned_cycle_at, reading the same measured table. STRICTLY AFTER the given moment, including exactly on a boundary: at 08:00 the 08:00 window has just opened, and pointing a reader at it would tell them to wait for guidance they already hold. Like aligned_cycle_at it is an inference about when guidance USUALLY lands, never a promise.",
+  "cases": [
+    {
+      "name": "mid-window, the next one is later today",
+      "input": {
+        "now": "2026-08-11T03:00:00+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-11T08:00:00+00:00",
+        "initialised_at": "2026-08-11T00:00:00+00:00"
+      }
+    },
+    {
+      "name": "exactly on a boundary looks forward, not at the window just opened",
+      "input": {
+        "now": "2026-08-11T08:00:00+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-11T14:00:00+00:00",
+        "initialised_at": "2026-08-11T06:00:00+00:00"
+      }
+    },
+    {
+      "name": "one second after a boundary",
+      "input": {
+        "now": "2026-08-11T08:00:01+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-11T14:00:00+00:00",
+        "initialised_at": "2026-08-11T06:00:00+00:00"
+      }
+    },
+    {
+      "name": "one second before a boundary is that same boundary",
+      "input": {
+        "now": "2026-08-11T07:59:59+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-11T08:00:00+00:00",
+        "initialised_at": "2026-08-11T00:00:00+00:00"
+      }
+    },
+    {
+      "name": "the last window of the day rolls to tomorrow",
+      "input": {
+        "now": "2026-08-11T21:30:00+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-12T02:00:00+00:00",
+        "initialised_at": "2026-08-11T18:00:00+00:00"
+      }
+    },
+    {
+      "name": "before the day's first window",
+      "input": {
+        "now": "2026-08-11T00:30:00+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-11T02:00:00+00:00",
+        "initialised_at": "2026-08-10T18:00:00+00:00"
+      }
+    },
+    {
+      "name": "23:59:59 points at tomorrow's 02:00",
+      "input": {
+        "now": "2026-08-11T23:59:59+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-12T02:00:00+00:00",
+        "initialised_at": "2026-08-11T18:00:00+00:00"
+      }
+    },
+    {
+      "name": "00:00:00 still points at today's 02:00",
+      "input": {
+        "now": "2026-08-12T00:00:00+00:00"
+      },
+      "expected": {
+        "opens_at": "2026-08-12T02:00:00+00:00",
+        "initialised_at": "2026-08-11T18:00:00+00:00"
+      }
+    }
+  ]
+}

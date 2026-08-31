@@ -41,15 +41,34 @@ const String degradationHoursAheadNarrowed = 'hours_ahead_narrowed';
 /// record and on every surface a reader sees, and the gap was found because
 /// someone was rained on.
 ///
-/// [code] is matched on; [detail] is written for a person and may be reworded
-/// freely.
+/// TWO TEXTS, FOR TWO PLACES. [summary] is what a reader is shown at the top
+/// of the forecast: plain, no jargon, and it says what the gap MEANS rather
+/// than which fetch failed. [detail] is the technical account and belongs in
+/// the notes at the end. The top of a forecast is where somebody decides
+/// whether to go outside, and "the forward hourly window did not arrive"
+/// tells that person nothing they can use.
+///
+/// [code] is matched on; both texts are written for people and may be
+/// reworded freely.
 class RunDegradation {
-  const RunDegradation({required this.code, required this.detail});
+  const RunDegradation({
+    required this.code,
+    required this.summary,
+    required this.detail,
+  });
 
   final String code;
+  final String summary;
   final String detail;
 
-  Map<String, dynamic> toJson() => {'code': code, 'detail': detail};
+  Map<String, dynamic> toJson() =>
+      {'code': code, 'summary': summary, 'detail': detail};
+
+  factory RunDegradation.fromJson(Map<String, Object?> j) => RunDegradation(
+        code: (j['code'] ?? '') as String,
+        summary: (j['summary'] ?? '') as String,
+        detail: (j['detail'] ?? '') as String,
+      );
 }
 
 class ForecastRun {
@@ -283,12 +302,15 @@ Future<ForecastRun> generateForecast({
       // the narrowing is flagged rather than passed off as a full one.
       resolvedForward = forwardHours(hourly, now);
       forwardWindowNarrowed = true;
-      degradations.add(const RunDegradation(
+      degradations.add(RunDegradation(
         code: degradationHoursAheadNarrowed,
-        detail: 'The forward hourly window did not arrive; the hours-ahead '
-            'guidance and the convective outlook came from the day-0 fetch '
-            'instead, which stops at 23:00 local and sees nothing past '
-            'midnight.',
+        summary: "Part of tonight's data did not arrive. This forecast covers "
+            'the rest of today only — where it says nothing about later '
+            'tonight, that is missing information, not a quiet night.',
+        detail: 'The forward hourly window did not arrive, so the hours-ahead '
+            'guidance and the convective outlook were trimmed from the day-0 '
+            'fetch instead, which stops at 23:00 local. '
+            '${nextGuidanceSentence(nowLocal: now, utcOffsetSeconds: (hourly['utc_offset_seconds'] as num?)?.toInt())}',
       ));
     }
   }

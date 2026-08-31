@@ -72,7 +72,13 @@ from openlocalweather.daypart import (
     summarize_daypart,
 )
 from openlocalweather.config import LocationConfig
-from openlocalweather.cycle import aligned_cycle_at, round_hours_to_tenths
+from zoneinfo import ZoneInfo
+
+from openlocalweather.cycle import (
+    aligned_cycle_at,
+    next_aligned_window,
+    round_hours_to_tenths,
+)
 from openlocalweather.dates import (
     add_days,
     format_date,
@@ -472,6 +478,30 @@ def _resolve_guidance_cycle(now: datetime) -> ResolvedGuidanceCycle:
     return ResolvedGuidanceCycle(initialised_at=initialised_at, age_hours=age_hours, source=source)
 
 
+def _next_guidance_sentence(tz_name: str, now: datetime | None = None) -> str:
+    """When new model guidance is next due, in the reader's own local time.
+
+    HEDGED ON PURPOSE. The aligned-window table is a hand measurement, and
+    item 50 measured ECMWF's availability varying from ~7.1 h to 8h25m — more
+    than the whole hour the windows are rounded to. So "usually in by about
+    17:00" is what the table supports and "at 17:00" is not. A notice that
+    names an exact time and is wrong twice teaches the reader to ignore every
+    notice, which costs more than saying nothing at all.
+
+    Written as advice about WAITING, never as an instruction to regenerate:
+    on the app a regeneration spends the reader's own cap (item 26), and this
+    text is shared with the surface that has no way to know what that would
+    cost them.
+    """
+    moment = now or datetime.now(timezone.utc)
+    window = next_aligned_window(moment)
+    local = window.opens_at.replace(tzinfo=timezone.utc).astimezone(ZoneInfo(tz_name))
+    return (
+        f"New model guidance is usually in by about {local.strftime('%H:%M')} local; "
+        "a forecast made after that would normally have the full window."
+    )
+
+
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     location = deps.location
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
@@ -516,9 +546,15 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         degradations.append(
             RunDegradation(
                 code=DEGRADATION_METAR,
+                summary=(
+                    "The nearest airport weather report was not available, so this "
+                    "forecast had no live local observation to check the models against."
+                ),
                 detail=(
-                    f"No current METAR from {location.metar_station_icao} this run — "
-                    "the nearest surface observation was not available to the forecast."
+                    f"No current METAR from {location.metar_station_icao} this run. "
+                    "fetch_metar returns None on every failure path, so the cause — "
+                    "network, upstream outage, or a station that stopped reporting — "
+                    "is not distinguished here."
                 ),
             )
         )
@@ -590,9 +626,13 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         degradations.append(
             RunDegradation(
                 code=DEGRADATION_SUN_TIMES,
+                summary=(
+                    "Sunrise and sunset could not be worked out for today, so this "
+                    "forecast knows the time but not where the sun is in the day."
+                ),
                 detail=(
-                    "Sunrise and sunset could not be computed this run — the forecast "
-                    "knew the clock but not where the sun was in the day."
+                    f"Sun times could not be computed ({e}); the part-of-day context "
+                    "was derived from the clock alone."
                 ),
             )
         )
@@ -636,10 +676,16 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         degradations.append(
             RunDegradation(
                 code=DEGRADATION_HOURS_AHEAD_NARROWED,
+                summary=(
+                    "Part of tonight's data did not arrive. This forecast covers the "
+                    "rest of today only — where it says nothing about later tonight, "
+                    "that is missing information, not a quiet night."
+                ),
                 detail=(
-                    "The forward hourly window did not arrive; the hours-ahead guidance "
-                    "and the convective outlook came from the day-0 fetch instead, which "
-                    "stops at 23:00 local and sees nothing past midnight."
+                    "The forward hourly window did not arrive, so the hours-ahead "
+                    "guidance and the convective outlook were trimmed from the day-0 "
+                    "fetch instead, which stops at 23:00 local. "
+                    + _next_guidance_sentence(location.timezone)
                 ),
             )
         )

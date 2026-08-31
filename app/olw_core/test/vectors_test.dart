@@ -823,11 +823,35 @@ void main() {
       }
     });
 
+    test('next_aligned_window', () {
+      for (final c in casesOf('next_aligned_window.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final expected = c['expected'] as Map<String, Object?>;
+        final got = nextAlignedWindow(DateTime.parse(i['now'] as String).toUtc());
+        expectMatches(
+          {
+            'opens_at': got.opensAt.microsecondsSinceEpoch,
+            'initialised_at': got.initialisedAt.microsecondsSinceEpoch,
+          },
+          {
+            'opens_at': DateTime.parse(expected['opens_at'] as String)
+                .toUtc()
+                .microsecondsSinceEpoch,
+            'initialised_at': DateTime.parse(expected['initialised_at'] as String)
+                .toUtc()
+                .microsecondsSinceEpoch,
+          },
+          c['name'] as String,
+        );
+      }
+    });
+
     test('rejects a non-UTC DateTime', () {
       // Dart has no naive/aware distinction like Python's — only isUtc — so
       // this is the equivalent of test_naive_datetime_is_rejected on the
       // Python side.
       expect(() => alignedCycleAt(DateTime(2026, 8, 11, 8, 0, 0)), throwsArgumentError);
+      expect(() => nextAlignedWindow(DateTime(2026, 8, 11, 8, 0, 0)), throwsArgumentError);
     });
   });
 
@@ -963,6 +987,7 @@ void main() {
       'daypart_forward_hours.json',
       'solar.json',
       'aligned_cycle.json',
+      'next_aligned_window.json',
     };
     final onDisk = vectorsDir
         .listSync()
