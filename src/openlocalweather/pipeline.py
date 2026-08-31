@@ -74,6 +74,10 @@ from openlocalweather.daypart import (
 from openlocalweather.config import LocationConfig
 from zoneinfo import ZoneInfo
 
+from openlocalweather.baselines import (
+    climatology_prediction,
+    persistence_prediction,
+)
 from openlocalweather.cycle import (
     aligned_cycle_at,
     next_aligned_window,
@@ -88,6 +92,7 @@ from openlocalweather.dates import (
 )
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
+    BASELINE_MODEL_IDS,
     BLEND_MODEL_ID,
     HISTORICAL_LOOKBACK_DAYS,
     MODELS,
@@ -854,19 +859,25 @@ def _model_predictions_prompt_payload(
     day0: list[ModelPrediction], day3: list[ModelPrediction], day7: list[ModelPrediction]
 ) -> dict:
     """The extracted predictions as the forecaster is allowed to see them —
-    its own blend removed from Day+0.
+    its own blend and the two baselines removed, at every lead.
 
-    The blend is stored, scored and published as a peer model, and withheld
-    from the prompt permanently: see models_visible_to_the_forecaster. This
-    is the third block it can leak through, after the track record and the
-    review findings, and the only one carrying predictions rather than
-    scores. It leaks here only on a re-issue, which is handed the day's
-    STORED predictions — and the stored Day+0 list has the blend in it.
+    All three are stored, scored and published as peer models, and withheld
+    from the prompt permanently: see models_visible_to_the_forecaster for the
+    blend's reasoning and the baselines' adjacent one. This is the third block
+    they can leak through, after the track record and the review findings, and
+    the only one carrying predictions rather than scores.
+
+    The blend leaks here only on a re-issue, which is handed the day's STORED
+    predictions — and the stored Day+0 list has the blend in it. The baselines
+    leak on EVERY run and at every lead, because unlike the blend they are
+    built before the prompt rather than after it, so the filter cannot be
+    Day+0 only.
     """
+    hidden = {BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
     return {
-        "day0": [p.model_dump() for p in day0 if p.model != BLEND_MODEL_ID],
-        "day3": [p.model_dump() for p in day3],
-        "day7": [p.model_dump() for p in day7],
+        "day0": [p.model_dump() for p in day0 if p.model not in hidden],
+        "day3": [p.model_dump() for p in day3 if p.model not in hidden],
+        "day7": [p.model_dump() for p in day7 if p.model not in hidden],
     }
 
 
@@ -1027,6 +1038,34 @@ def run_daily_pipeline(
         day3_predictions = [*day3_predictions, met_day3]
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
+    # The yardsticks — ROADMAP item 57. Built from the stored record rather
+    # than fetched, so they cost nothing and cannot fail a run.
+    #
+    # BOTH READ ONLY WHAT THE FORECAST COULD SEE. Persistence repeats the last
+    # observation available at issuance, which for a run on day D is D-1 at
+    # EVERY lead time — the lead is a property of the target, not of what the
+    # forecaster could see when it issued. Climatology reads the record
+    # strictly before D. A baseline that could read the day it is forecasting
+    # would score near-perfectly and make every real model look hopeless, and
+    # nothing about the page would look broken.
+    baselines = [
+        p
+        for p in (
+            persistence_prediction(actuals_primary.get(yesterday), include_onset=True),
+            climatology_prediction(actuals_primary, before=today),
+        )
+        if p is not None
+    ]
+    day0_predictions = [*day0_predictions, *baselines]
+
+    # Onset is dropped beyond Day+0 because the real models have none there —
+    # extract_day_n_predictions_from_daily cannot produce one — and scoring a
+    # baseline on a field its competitors cannot answer is not measuring the
+    # same thing they are.
+    baselines_no_onset = [p.model_copy(update={"onset": None}) for p in baselines]
+    day3_predictions = [*day3_predictions, *baselines_no_onset]
+    day7_predictions = [*day7_predictions, *baselines_no_onset]
+
     # The day's predictions are written once, and the first write wins.
     #
     # A second full run re-extracts them from a later model cycle, and
@@ -1053,6 +1092,12 @@ def run_daily_pipeline(
     existing_entry = log_lookup(today)
     recorded_predictions = _predictions_already_recorded(existing_entry)
     if recorded_predictions is not None:
+        # ONLY the blend is stripped here, and deliberately not the baselines,
+        # even though both are hidden from the forecaster. This list is
+        # re-stored below with `_blend_prediction(tp)` appended, so dropping
+        # the blend prevents a duplicate; dropping the baselines would delete
+        # them from the day's record on every re-run. The prompt's own copy is
+        # filtered separately, in _model_predictions_prompt_payload.
         day0_predictions = [p for p in recorded_predictions.day0 if p.model != BLEND_MODEL_ID]
         day3_predictions = recorded_predictions.day3
         day7_predictions = recorded_predictions.day7
@@ -1083,14 +1128,21 @@ def run_daily_pipeline(
         }
         for r in verification_result.lead_time_results
     ]
-    # The forecaster's own blend is scored and published, and withheld from
-    # its own context — see models_visible_to_the_forecaster for why this is a
-    # standing rule and not a temporary omission.
+    # The forecaster's own blend and the two baselines are scored and
+    # published, and withheld from its context — see
+    # models_visible_to_the_forecaster for why each is a standing rule rather
+    # than a temporary omission.
+    #
+    # Tested against that list rather than against a hand-written exclusion.
+    # This filter and the two others like it each used to name BLEND_MODEL_ID
+    # directly, so adding a second hidden model meant remembering three
+    # places; the baselines leaked through exactly this block on the first
+    # attempt, in a prompt nobody would have read closely.
     forecaster_models = models_visible_to_the_forecaster(location.local_bulletin_model_id)
     track_record_context = [
         e.model_dump()
         for e in verification_result.updated_track_record.entries
-        if e.model != BLEND_MODEL_ID
+        if e.model in forecaster_models
     ]
     # Long-run review findings, recomputed from the raw record every run
     # rather than stored — same reasoning as every other statistic here: a
@@ -1430,12 +1482,15 @@ def run_refresh_pipeline(
     )
     refresh_yesterday_actual = asdict(_refresh_comparison) if _refresh_comparison is not None else None
     # Same filter as the morning run, for the same standing reason: the blend
-    # is scored and published, and never shown to the forecaster that makes
-    # it — see models_visible_to_the_forecaster.
+    # and the baselines are scored and published, and never shown to the
+    # forecaster — see models_visible_to_the_forecaster.
+    _refresh_forecaster_models = models_visible_to_the_forecaster(
+        deps.location.local_bulletin_model_id
+    )
     track_record_context = [
         e.model_dump()
         for e in track_record_store.read_track_record(deps.data_dir).entries
-        if e.model != BLEND_MODEL_ID
+        if e.model in _refresh_forecaster_models
     ]
 
     # The refresh does no verification, but the long-run findings still

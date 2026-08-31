@@ -18,6 +18,7 @@ library;
 export 'src/daypart.dart';
 export 'src/aqi.dart';
 export 'src/coverage.dart';
+export 'src/baselines.dart';
 export 'src/cycle.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';

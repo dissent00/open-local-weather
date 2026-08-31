@@ -87,6 +87,23 @@ class ModelPrediction {
   /// and the day-over-day summary was calling both "another wet day".
   final double? precipMm;
 
+  /// The model's own chance-of-rain, percent — upstream ROADMAP item 58,
+  /// storage half.
+  ///
+  /// RECORDED BUT NOT YET SCORED, and stored ahead of anything reading it on
+  /// purpose. `rain` is a boolean, so a model that said "60% chance" and one
+  /// that said "certainly" score identically whichever way the day goes, and
+  /// the ledger cannot tell a confidently wrong forecast from an honestly
+  /// uncertain one. Fixing that needs a proper scoring rule, and a proper
+  /// scoring rule needs history: it cannot be computed backwards over days
+  /// whose probabilities were fetched and thrown away, which is what has
+  /// happened on every run until now. So the clock starts here.
+  ///
+  /// `null` means the model gave no probability, NEVER zero — zero is a
+  /// confident claim that it will not rain, the same distinction `rain`
+  /// keeps for the same reason.
+  final int? rainProbabilityPct;
+
   const ModelPrediction({
     required this.model,
     this.rain,
@@ -96,6 +113,7 @@ class ModelPrediction {
     this.lowC,
     this.mslpTrend,
     this.precipMm,
+    this.rainProbabilityPct,
   });
 
   factory ModelPrediction.fromJson(Map<String, Object?> j) => ModelPrediction(
@@ -107,6 +125,7 @@ class ModelPrediction {
         lowC: _toDouble(j['low_c']),
         mslpTrend: _toDouble(j['mslp_trend']),
         precipMm: _toDouble(j['precip_mm']),
+        rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
       );
 
   Map<String, Object?> toJson() => {
@@ -118,6 +137,7 @@ class ModelPrediction {
         'low_c': lowC,
         'mslp_trend': mslpTrend,
         'precip_mm': precipMm,
+        'rain_probability_pct': rainProbabilityPct,
       };
 }
 

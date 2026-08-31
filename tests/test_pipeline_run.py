@@ -4,7 +4,7 @@ import pytest
 
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
-from openlocalweather.defaults import MODELS, BLEND_MODEL_ID
+from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
 from openlocalweather.fetch.metar import StationWeather
 from openlocalweather.fetch import metar as metar_fetch
 import requests
@@ -233,10 +233,21 @@ def test_today_entry_carries_extracted_model_predictions(tmp_path):
     day0 = result.log_entry.model_predictions.day0
 
     # Every extracted model, PLUS our own blended call — the forecast the
-    # reader actually gets, scored as a peer of the guidance that fed it.
-    assert {p.model for p in day0} == {*MODELS, BLEND_MODEL_ID}
-    assert len(result.log_entry.model_predictions.day3) == len(MODELS)
-    assert len(result.log_entry.model_predictions.day7) == len(MODELS)
+    # reader actually gets, scored as a peer of the guidance that fed it —
+    # PLUS the two baselines a real model has to beat (item 57).
+    assert {p.model for p in day0} == {*MODELS, BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
+    # No blend at the extended range: today_properties is a call about today
+    # and there is no structured equivalent to score further out. The
+    # baselines reach every lead, because a yardstick that stops at Day+0
+    # cannot say whether the extended outlook is worth anything.
+    assert {p.model for p in result.log_entry.model_predictions.day3} == {
+        *MODELS,
+        *BASELINE_MODEL_IDS,
+    }
+    assert {p.model for p in result.log_entry.model_predictions.day7} == {
+        *MODELS,
+        *BASELINE_MODEL_IDS,
+    }
 
 
 def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
@@ -2301,3 +2312,108 @@ def test_an_entry_written_before_this_existed_loads_as_unrecorded(tmp_path):
         pipeline_version="0.1.0",
     )
     assert meta.degradations is None
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 57 — what a real model has to beat
+# ---------------------------------------------------------------------------
+
+
+def test_the_baselines_are_predicted_and_stored(tmp_path):
+    """Persistence and climatology enter the ledger through the same path as
+    GFS, so the published figures have something to be read against."""
+    _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    day0 = {p.model for p in result.log_entry.model_predictions.day0}
+    assert "persistence" in day0
+    assert "climatology" in day0
+
+    # At every lead, because a real model is scored at every lead and a
+    # yardstick that only exists at Day+0 cannot say whether the extended
+    # outlook is worth anything.
+    assert "persistence" in {p.model for p in result.log_entry.model_predictions.day3}
+    assert "climatology" in {p.model for p in result.log_entry.model_predictions.day7}
+
+
+def test_persistence_repeats_yesterday_not_today(tmp_path):
+    """The failure that would not look like one: a baseline reading the day it
+    is forecasting would score near-perfectly and make every real model look
+    hopeless, and nothing about the page would appear broken."""
+    _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    cache = actuals_cache_store.read_actuals_cache(tmp_path)
+    stored = actuals_cache_store.as_date_dict(cache.primary)
+    yesterday = stored.get(date(2026, 8, 10))
+    assert yesterday is not None, "the fixture must supply yesterday's actual"
+
+    persistence = next(
+        p for p in result.log_entry.model_predictions.day0 if p.model == "persistence"
+    )
+    assert persistence.rain == yesterday.rain
+
+
+def test_the_forecaster_is_never_shown_a_baseline(tmp_path):
+    """Same standing rule as the blend, adjacent reason: a yardstick handed to
+    the forecaster reads as a sixth opinion, and persistence's only input is
+    an observation the forecaster already holds."""
+    llm = FakeLLMProvider()
+    _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    assert "persistence" not in predictions_block(user_prompt)
+    assert "climatology" not in predictions_block(user_prompt)
+
+
+def test_a_baseline_with_nothing_to_stand_on_makes_no_prediction(tmp_path, monkeypatch):
+    """Day one, with no archive to read. Neither baseline may invent a dry
+    call out of an empty record — ModelPrediction.rain's docstring explains
+    why that accrues a flattering fake score, and these two are what
+    everything else is measured against, so the distortion would move every
+    comparison on the page rather than one row of it.
+
+    The actuals come from the reanalysis fetch, NOT from a stored log entry,
+    which is why this patches the archive rather than simply skipping the
+    seed — worth stating because getting that backwards is what made the
+    first version of this test pass for the wrong reason."""
+    empty = {"daily": {"time": []}}
+    monkeypatch.setattr(open_meteo, "fetch_archive_single_day", lambda *a, **k: empty)
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: empty)
+
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    day0 = {p.model for p in result.log_entry.model_predictions.day0}
+    assert "persistence" not in day0
+    assert "climatology" not in day0
+
+
+def test_no_baseline_reaches_the_prompt_through_any_block(tmp_path):
+    """Four blocks can leak a hidden model — the predictions, MODEL TRACK
+    RECORD, the review findings, and the day-over-day comparison. The blend
+    has been leaked through one of them before (see the note in
+    _model_predictions_prompt_payload), so this asserts against the WHOLE
+    prompt rather than any single section."""
+    _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    system_prompt, user_prompt = llm.calls[0]
+    for baseline in BASELINE_MODEL_IDS:
+        assert baseline not in user_prompt, f"{baseline} leaked into the user prompt"
+        assert baseline not in system_prompt, f"{baseline} leaked into the system prompt"
+
+
+def test_a_re_issue_is_not_shown_a_baseline_either(tmp_path):
+    """The re-issue path reads the day's STORED predictions, which DO contain
+    the baselines. That is exactly how the blend leaked once."""
+    _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    llm = FakeLLMProvider()
+    run_refresh_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    _, user_prompt = llm.calls[0]
+    for baseline in BASELINE_MODEL_IDS:
+        assert baseline not in user_prompt

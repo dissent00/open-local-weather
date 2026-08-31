@@ -51,6 +51,7 @@ from openlocalweather.aqi import (
 from openlocalweather.comparison import describe_day_rain
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 
 
@@ -2006,6 +2007,102 @@ def export_cycle() -> None:
         ("23:59:59 points at tomorrow's 02:00", at(2026, 8, 11, 23, 59, 59)),
         ("00:00:00 still points at today's 02:00", at(2026, 8, 12, 0, 0, 0)),
     ]
+    def _a(rain, high=None, low=None, wind=None, onset=None, precip=None):
+        return DailyActual(
+            rain=rain, high_c=high, low_c=low, peak_wind_kmh=wind,
+            onset_hour=onset, precip_mm=precip,
+        )
+
+    record = {
+        date(2026, 8, 1): _a(False, high=20.0, low=10.0, wind=10.0),
+        date(2026, 8, 2): _a(True, high=30.0, low=20.0, wind=30.0, onset="15:00"),
+        date(2026, 8, 3): _a(True, high=28.0, low=None, wind=20.0),
+    }
+
+    write(
+        "baselines.json",
+        "persistence_prediction / climatology_prediction",
+        "The two trivial rules a real model has to beat (ROADMAP item 57). "
+        "Persistence repeats the last observation available at issuance; "
+        "climatology is the trailing base rate over the record STRICTLY "
+        "BEFORE the issuance date. Neither may ever see the day it is "
+        "forecasting — a baseline that could peek would score near-perfectly "
+        "and make every real model look hopeless, and nothing about the page "
+        "would look broken. A climatology tie breaks DRY, because that is the "
+        "direction that does not manufacture a rain expectation out of a coin "
+        "flip. Averages skip missing values rather than counting them as zero.",
+        [
+            {
+                "name": "persistence repeats a wet day, onset included at Day+0",
+                "input": {
+                    "fn": "persistence",
+                    "last_observed": record[date(2026, 8, 2)].model_dump(mode="json"),
+                    "include_onset": True,
+                },
+                "expected": persistence_prediction(
+                    record[date(2026, 8, 2)], include_onset=True
+                ).model_dump(mode="json"),
+            },
+            {
+                "name": "persistence drops onset beyond Day+0",
+                "input": {
+                    "fn": "persistence",
+                    "last_observed": record[date(2026, 8, 2)].model_dump(mode="json"),
+                    "include_onset": False,
+                },
+                "expected": persistence_prediction(
+                    record[date(2026, 8, 2)], include_onset=False
+                ).model_dump(mode="json"),
+            },
+            {
+                "name": "persistence has nothing to say with no observation",
+                "input": {"fn": "persistence", "last_observed": None, "include_onset": False},
+                "expected": None,
+            },
+            {
+                "name": "climatology over a mostly-wet record calls rain",
+                "input": {
+                    "fn": "climatology",
+                    "actuals": {d.isoformat(): a.model_dump(mode="json") for d, a in record.items()},
+                    "before": "2026-08-04",
+                },
+                "expected": climatology_prediction(
+                    record, before=date(2026, 8, 4)
+                ).model_dump(mode="json"),
+            },
+            {
+                "name": "climatology cannot see the day it forecasts, nor later",
+                "input": {
+                    "fn": "climatology",
+                    "actuals": {d.isoformat(): a.model_dump(mode="json") for d, a in record.items()},
+                    "before": "2026-08-02",
+                },
+                "expected": climatology_prediction(
+                    record, before=date(2026, 8, 2)
+                ).model_dump(mode="json"),
+            },
+            {
+                "name": "an exact half breaks dry",
+                "input": {
+                    "fn": "climatology",
+                    "actuals": {
+                        d.isoformat(): a.model_dump(mode="json")
+                        for d, a in list(record.items())[:2]
+                    },
+                    "before": "2026-08-03",
+                },
+                "expected": climatology_prediction(
+                    dict(list(record.items())[:2]), before=date(2026, 8, 3)
+                ).model_dump(mode="json"),
+            },
+            {
+                "name": "climatology on an empty record says nothing",
+                "input": {"fn": "climatology", "actuals": {}, "before": "2026-08-03"},
+                "expected": None,
+            },
+        ],
+    )
+
     write(
         "next_aligned_window.json",
         "next_aligned_window",

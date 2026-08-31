@@ -1,0 +1,241 @@
+{
+  "vector_format_version": 1,
+  "function": "persistence_prediction / climatology_prediction",
+  "description": "The two trivial rules a real model has to beat (ROADMAP item 57). Persistence repeats the last observation available at issuance; climatology is the trailing base rate over the record STRICTLY BEFORE the issuance date. Neither may ever see the day it is forecasting \u2014 a baseline that could peek would score near-perfectly and make every real model look hopeless, and nothing about the page would look broken. A climatology tie breaks DRY, because that is the direction that does not manufacture a rain expectation out of a coin flip. Averages skip missing values rather than counting them as zero.",
+  "cases": [
+    {
+      "name": "persistence repeats a wet day, onset included at Day+0",
+      "input": {
+        "fn": "persistence",
+        "last_observed": {
+          "rain": true,
+          "high_c": 30.0,
+          "low_c": 20.0,
+          "peak_wind_kmh": 30.0,
+          "mslp_trend": null,
+          "onset_hour": "15:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
+        },
+        "include_onset": true
+      },
+      "expected": {
+        "model": "persistence",
+        "rain": true,
+        "onset": "15:00",
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": 30.0,
+        "high_c": 30.0,
+        "low_c": 20.0,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "persistence drops onset beyond Day+0",
+      "input": {
+        "fn": "persistence",
+        "last_observed": {
+          "rain": true,
+          "high_c": 30.0,
+          "low_c": 20.0,
+          "peak_wind_kmh": 30.0,
+          "mslp_trend": null,
+          "onset_hour": "15:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null
+        },
+        "include_onset": false
+      },
+      "expected": {
+        "model": "persistence",
+        "rain": true,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": 30.0,
+        "high_c": 30.0,
+        "low_c": 20.0,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "persistence has nothing to say with no observation",
+      "input": {
+        "fn": "persistence",
+        "last_observed": null,
+        "include_onset": false
+      },
+      "expected": null
+    },
+    {
+      "name": "climatology over a mostly-wet record calls rain",
+      "input": {
+        "fn": "climatology",
+        "actuals": {
+          "2026-08-01": {
+            "rain": false,
+            "high_c": 20.0,
+            "low_c": 10.0,
+            "peak_wind_kmh": 10.0,
+            "mslp_trend": null,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 30.0,
+            "low_c": 20.0,
+            "peak_wind_kmh": 30.0,
+            "mslp_trend": null,
+            "onset_hour": "15:00",
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 28.0,
+            "low_c": null,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": null,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          }
+        },
+        "before": "2026-08-04"
+      },
+      "expected": {
+        "model": "climatology",
+        "rain": true,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": 20.0,
+        "high_c": 26.0,
+        "low_c": 15.0,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "climatology cannot see the day it forecasts, nor later",
+      "input": {
+        "fn": "climatology",
+        "actuals": {
+          "2026-08-01": {
+            "rain": false,
+            "high_c": 20.0,
+            "low_c": 10.0,
+            "peak_wind_kmh": 10.0,
+            "mslp_trend": null,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 30.0,
+            "low_c": 20.0,
+            "peak_wind_kmh": 30.0,
+            "mslp_trend": null,
+            "onset_hour": "15:00",
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 28.0,
+            "low_c": null,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": null,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          }
+        },
+        "before": "2026-08-02"
+      },
+      "expected": {
+        "model": "climatology",
+        "rain": false,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": 10.0,
+        "high_c": 20.0,
+        "low_c": 10.0,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "an exact half breaks dry",
+      "input": {
+        "fn": "climatology",
+        "actuals": {
+          "2026-08-01": {
+            "rain": false,
+            "high_c": 20.0,
+            "low_c": 10.0,
+            "peak_wind_kmh": 10.0,
+            "mslp_trend": null,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 30.0,
+            "low_c": 20.0,
+            "peak_wind_kmh": 30.0,
+            "mslp_trend": null,
+            "onset_hour": "15:00",
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null
+          }
+        },
+        "before": "2026-08-03"
+      },
+      "expected": {
+        "model": "climatology",
+        "rain": false,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": 20.0,
+        "high_c": 25.0,
+        "low_c": 15.0,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "climatology on an empty record says nothing",
+      "input": {
+        "fn": "climatology",
+        "actuals": {},
+        "before": "2026-08-03"
+      },
+      "expected": null
+    }
+  ]
+}

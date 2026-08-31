@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
+from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 from openlocalweather.cycle import round_hours_to_tenths
 from openlocalweather.dates import add_days, prediction_row_date_for_target
@@ -505,6 +506,31 @@ def test_vectors_temp_high_low():
         )
 
 
+def test_vectors_baselines():
+    """The two yardsticks. A divergence here would not look like a bug — it
+    would look like the models being better or worse than they are."""
+    for case in load("baselines.json")["cases"]:
+        i = case["input"]
+        if i["fn"] == "persistence":
+            observed = (
+                DailyActual(**i["last_observed"]) if i["last_observed"] else None
+            )
+            got = persistence_prediction(observed, include_onset=i["include_onset"])
+        else:
+            actuals = {
+                date.fromisoformat(d): DailyActual(**a) for d, a in i["actuals"].items()
+            }
+            got = climatology_prediction(actuals, before=date.fromisoformat(i["before"]))
+
+        expected = case["expected"]
+        if expected is None:
+            assert got is None, f"vector case failed: {case['name']}"
+            continue
+
+        assert got is not None, f"vector case failed: {case['name']}"
+        assert got.model_dump(mode="json") == expected, f"vector case failed: {case['name']}"
+
+
 def test_vectors_next_aligned_window():
     """Pinned separately from aligned_cycle even though it is derived from it.
     The derivation is the thing that could break: a change to either the table
@@ -598,6 +624,7 @@ def test_every_vector_file_is_exercised():
         "solar.json",
         "aligned_cycle.json",
         "next_aligned_window.json",
+        "baselines.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

@@ -823,6 +823,41 @@ void main() {
       }
     });
 
+    test('baselines', () {
+      // A divergence here would not look like a bug — it would look like the
+      // models being better or worse than they are.
+      for (final c in casesOf('baselines.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final expected = c['expected'] as Map<String, Object?>?;
+
+        ModelPrediction? got;
+        if (i['fn'] == 'persistence') {
+          final raw = i['last_observed'] as Map<String, Object?>?;
+          got = persistencePrediction(
+            raw == null ? null : DailyActual.fromJson(raw),
+            includeOnset: i['include_onset'] as bool,
+          );
+        } else {
+          final raw = (i['actuals'] as Map).cast<String, Object?>();
+          got = climatologyPrediction(
+            {
+              for (final e in raw.entries)
+                DateTime.parse(e.key):
+                    DailyActual.fromJson((e.value as Map).cast<String, Object?>())
+            },
+            before: DateTime.parse(i['before'] as String),
+          );
+        }
+
+        if (expected == null) {
+          expect(got, isNull, reason: c['name'] as String);
+          continue;
+        }
+        expect(got, isNotNull, reason: c['name'] as String);
+        expectMatches(got!.toJson(), expected, c['name'] as String);
+      }
+    });
+
     test('next_aligned_window', () {
       for (final c in casesOf('next_aligned_window.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -988,6 +1023,7 @@ void main() {
       'solar.json',
       'aligned_cycle.json',
       'next_aligned_window.json',
+      'baselines.json',
     };
     final onDisk = vectorsDir
         .listSync()

@@ -85,6 +85,12 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final wind = _windSeries(hourly, model, 'windgusts_10m', 'wind_gusts_10m');
     final temp = _series(hourly, 'temperature_2m', model);
     final press = _series(hourly, 'pressure_msl', model);
+    // No daily maximum exists at hourly resolution, so Day+0's is the highest
+    // hour — the same quantity precipitation_probability_max serves at
+    // Day+3/+7, derived here rather than served. See
+    // ModelPrediction.rainProbabilityPct for why it is recorded before
+    // anything scores it.
+    final prob = _series(hourly, 'precipitation_probability', model);
 
     final hasPrecipData = precip.any((v) => v != null);
     final bool? rain =
@@ -96,6 +102,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final windVals = wind.whereType<double>().toList();
     final tempVals = temp.whereType<double>().toList();
     final pressVals = press.whereType<double>().toList();
+    final probVals = prob.whereType<double>().toList();
 
     return ModelPrediction(
       model: model,
@@ -106,6 +113,11 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       lowC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a < b ? a : b),
       mslpTrend:
           pressVals.length >= 2 ? pressVals.last - pressVals.first : null,
+      // Absent, not 0 — an all-null series is no data, and 0% is a confident
+      // claim that it will not rain.
+      rainProbabilityPct: probVals.isEmpty
+          ? null
+          : probVals.reduce((a, b) => a > b ? a : b).toInt(),
       // Summed over hours that reported a value. An all-null day gives
       // null rather than 0.0 — "no data" and "no rain" are different
       // answers and the summary must not conflate them.
@@ -143,8 +155,12 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
     final highArr = _series(daily, 'temperature_2m_max', model);
     final lowArr = _series(daily, 'temperature_2m_min', model);
     final pressArr = _series(daily, 'pressure_msl_mean', model);
+    // Fetched on every daily request since before this project scored
+    // anything, and read by nothing until item 58.
+    final probArr = _series(daily, 'precipitation_probability_max', model);
 
     final precip = at(precipArr, dayIndex);
+    final prob = at(probArr, dayIndex);
 
     double? mslpTrend;
     if (dayIndex > 0 && dayIndex < pressArr.length) {
@@ -164,6 +180,8 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
       // The daily endpoint already gives a total, so this IS the same
       // quantity the Day+0 path sums by hand.
       precipMm: precip,
+      // None, never 0 — see ModelPrediction.rainProbabilityPct.
+      rainProbabilityPct: prob?.toInt(),
     );
   }).toList();
 }

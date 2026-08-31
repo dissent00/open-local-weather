@@ -89,6 +89,22 @@ class ModelPrediction(BaseModel):
     # day, and the day-over-day summary was calling both "another wet day".
     # None on entries written before it was stored.
     precip_mm: float | None = None
+    # The model's own chance-of-rain, percent — ROADMAP item 58, storage half.
+    #
+    # RECORDED BUT NOT YET SCORED, and stored ahead of anything reading it on
+    # purpose. `rain` is a boolean, so a model that said "60% chance" and one
+    # that said "certainly" score identically whichever way the day goes, and
+    # the ledger cannot tell a confidently wrong forecast from an honestly
+    # uncertain one — which is the distinction item 53's whole incident turns
+    # on. Fixing that needs a proper scoring rule, and a proper scoring rule
+    # needs history: it cannot be computed backwards over days whose
+    # probabilities were fetched and thrown away, which is what has happened
+    # on every run until now. So the clock starts here.
+    #
+    # None means the model gave no probability, NEVER zero — zero is a
+    # confident claim that it will not rain, and the same distinction `rain`
+    # above keeps for the same reason.
+    rain_probability_pct: int | None = None
     wind_kmh: float | None = None
     high_c: float | None = None
     low_c: float | None = None

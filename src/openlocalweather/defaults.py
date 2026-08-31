@@ -38,19 +38,28 @@ MODELS: list[str] = [
 BLEND_MODEL_ID = "olw_blend"
 
 
+# The trivial rules every real model has to beat — see baselines.py for what
+# they are and for the measurement that prompted them. Kept here rather than
+# imported from baselines.py so this module keeps no dependencies; a test in
+# tests/test_baselines.py asserts the two lists agree.
+BASELINE_MODEL_IDS = ("persistence", "climatology")
+
+
 def scored_models(local_bulletin_model_id: str = "") -> list[str]:
     """Every model with a tracked skill record: the numerical models, the met
-    service where one is configured, and our own blended call.
+    service where one is configured, our own blended call, and the two
+    trivial baselines.
 
     Kept a function rather than a second constant because whether a local
     met service participates is per-location config, not a global fact.
     """
-    models = [*MODELS, BLEND_MODEL_ID]
+    models = [*MODELS, BLEND_MODEL_ID, *BASELINE_MODEL_IDS]
     return [*models, local_bulletin_model_id] if local_bulletin_model_id else models
 
 
 def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[str]:
-    """[scored_models] minus our own blend — what the LLM is shown.
+    """[scored_models] minus our own blend and the baselines — what the LLM
+    is shown.
 
     THE BLEND IS SCORED, STORED AND PUBLISHED. It is withheld from the
     forecaster's own context, and this is a deliberate standing rule rather
@@ -72,8 +81,21 @@ def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[
     left to compare against, which is why the default has to be off everywhere
     it ships, including a fork and an app on someone's phone. It is not a
     per-user setting for the same reason.
+
+    THE BASELINES ARE WITHHELD FOR AN ADJACENT REASON. They are scored, stored
+    and published beside the models, and they are not opinions about the
+    weather — persistence and climatology are the floor the real guidance has
+    to clear. A forecaster handed "persistence: 65% at Day+0" in MODEL TRACK
+    RECORD would reasonably read it as a sixth model's view of tomorrow and
+    weigh it as one, which is both wrong and circular: persistence's only
+    input is an observation the forecaster already has.
+
+    Telling the forecaster what the baselines score is a genuinely different
+    feature — "here is the bar" rather than "here is another opinion" — and it
+    is a prompt change, so it waits on item 27's harness.
     """
-    return [m for m in scored_models(local_bulletin_model_id) if m != BLEND_MODEL_ID]
+    hidden = {BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
+    return [m for m in scored_models(local_bulletin_model_id) if m not in hidden]
 
 
 # Which lead times get independently tracked and scored. Day+0 is verified

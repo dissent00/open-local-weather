@@ -196,3 +196,79 @@ def test_a_genuinely_absent_variable_still_reads_as_absent():
     }
     (pred,) = extract_day0_predictions_from_hourly(hourly, ["ukmo_seamless"])
     assert pred.wind_kmh is None
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 58, storage half — start recording the probability now
+# ---------------------------------------------------------------------------
+
+
+def test_day_n_carries_the_models_own_rain_probability():
+    """Open-Meteo has been sending precipitation_probability_max on every
+    daily request since before this project scored anything, and nothing read
+    it. Stored from now on because a calibration check needs history and
+    history only accrues forwards — see ROADMAP item 58."""
+    daily = {
+        "daily": {
+            "time": ["2026-08-11", "2026-08-12"],
+            "precipitation_sum_gfs_seamless": [0.0, 5.0],
+            "precipitation_probability_max_gfs_seamless": [10, 80],
+        }
+    }
+    preds = extract_day_n_predictions_from_daily(daily, 1, ["gfs_seamless"])
+    assert preds[0].rain_probability_pct == 80
+
+
+def test_a_model_with_no_probability_records_none_not_zero():
+    """Zero is a confident claim of no rain. Absent is not — the same
+    distinction ModelPrediction.rain already keeps, and the reason a
+    boolean-only ledger could not tell them apart."""
+    daily = {
+        "daily": {
+            "time": ["2026-08-11"],
+            "precipitation_sum_gfs_seamless": [0.0],
+        }
+    }
+    preds = extract_day_n_predictions_from_daily(daily, 0, ["gfs_seamless"])
+    assert preds[0].rain_probability_pct is None
+
+
+def test_day0_derives_the_probability_from_the_hourly_series():
+    """The hourly endpoint has no daily maximum, so Day+0's is the highest
+    hour of the day — the same quantity precipitation_probability_max serves
+    at Day+3/+7, derived rather than served. Stated because a difference in
+    how the two leads are computed would be invisible in the ledger."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00", "2026-08-11T02:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "precipitation_probability_gfs_seamless": [10, 65, 30],
+        }
+    }
+    preds = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])
+    assert preds[0].rain_probability_pct == 65
+
+
+def test_day0_records_no_probability_rather_than_zero():
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00"],
+            "precipitation_gfs_seamless": [0.0],
+        }
+    }
+    preds = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])
+    assert preds[0].rain_probability_pct is None
+
+
+def test_an_all_null_probability_series_is_absent_not_zero():
+    """pick_series' own hazard: a series present but entirely null is no
+    data, and max() over it must not become a confident 0%."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0],
+            "precipitation_probability_gfs_seamless": [None, None],
+        }
+    }
+    preds = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])
+    assert preds[0].rain_probability_pct is None

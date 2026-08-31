@@ -35,6 +35,14 @@ def extract_day0_predictions_from_hourly(
         )
         temp = pick_series(h, f"temperature_2m_{model}", "temperature_2m")
         press = pick_series(h, f"pressure_msl_{model}", "pressure_msl")
+        # No daily maximum exists at hourly resolution, so Day+0's is the
+        # highest hour — the same quantity precipitation_probability_max
+        # serves at Day+3/+7, derived here rather than served. See
+        # ModelPrediction.rain_probability_pct for why it is recorded at all
+        # before anything scores it.
+        prob = pick_series(
+            h, f"precipitation_probability_{model}", "precipitation_probability"
+        )
 
         # An entirely absent/all-null precip series means no data for this
         # model, which is not the same as a confident dry forecast — see
@@ -47,12 +55,16 @@ def extract_day0_predictions_from_hourly(
         wind_vals = [v for v in wind if v is not None]
         temp_vals = [v for v in temp if v is not None]
         press_vals = [v for v in press if v is not None]
+        prob_vals = [v for v in prob if v is not None]
 
         predictions.append(
             ModelPrediction(
                 model=model,
                 rain=rain,
                 onset=onset,
+                # Absent, not 0 — an all-null series is no data, and 0% is a
+                # confident claim that it will not rain.
+                rain_probability_pct=int(max(prob_vals)) if prob_vals else None,
                 wind_kmh=max(wind_vals) if wind_vals else None,
                 high_c=max(temp_vals) if temp_vals else None,
                 low_c=min(temp_vals) if temp_vals else None,
@@ -86,8 +98,17 @@ def extract_day_n_predictions_from_daily(
         high_arr = d.get(f"temperature_2m_max_{model}") or d.get("temperature_2m_max") or []
         low_arr = d.get(f"temperature_2m_min_{model}") or d.get("temperature_2m_min") or []
         press_arr = d.get(f"pressure_msl_mean_{model}") or d.get("pressure_msl_mean") or []
+        # Fetched on every daily request since before this project scored
+        # anything, and read by nothing until item 58. Recorded now because a
+        # calibration check needs history and history only accrues forwards.
+        prob_arr = (
+            d.get(f"precipitation_probability_max_{model}")
+            or d.get("precipitation_probability_max")
+            or []
+        )
 
         precip = precip_arr[day_index] if day_index < len(precip_arr) else None
+        prob = prob_arr[day_index] if day_index < len(prob_arr) else None
         wind = wind_arr[day_index] if day_index < len(wind_arr) else None
         high = high_arr[day_index] if day_index < len(high_arr) else None
         low = low_arr[day_index] if day_index < len(low_arr) else None
@@ -109,6 +130,8 @@ def extract_day_n_predictions_from_daily(
                 model=model,
                 rain=None if precip is None else precip >= threshold,
                 onset=None,
+                # None, never 0 — see ModelPrediction.rain_probability_pct.
+                rain_probability_pct=None if prob is None else int(prob),
                 wind_kmh=wind,
                 high_c=high,
                 low_c=low,

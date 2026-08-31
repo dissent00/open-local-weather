@@ -25,13 +25,12 @@ cheap and they gate other work, which is why they sit high.
 1. ~~**53.4 — a degraded run says it is degraded.**~~ **Shipped
    2026-08-31.** Record, page and a weekly red job. The app half is owed in
    the Ensemble repo.
-2. **57 — baselines in the ledger.** A day's work, no API cost, and it
-   changes what every number already published MEANS. Measured 2026-08-31:
-   two of five models lose to persistence at Day+0 and the blend sits three
-   checks above it. Ship the storage half of 58 alongside it — recording
-   `precipitation_probability_max` costs a few lines and cannot be
-   backfilled, so the clock should start now whether or not anything scores
-   it yet.
+2. ~~**57 — baselines in the ledger.**~~ **Server side shipped 2026-08-31**,
+   with 58's storage half alongside it as planned. Three things remain: the
+   review gate ("beats the best baseline by more than the noise floor"), the
+   app's own accuracy screen, and a decision on whether to backfill the
+   baselines into historical entries — without which the comparison only
+   becomes legible in about ten days. See item 57.
 3. **45 — which source is "what actually happened".** A DECISION. An hour of
    thought, gates 47, 11 and 44, and expensive to unwind if it is made
    implicitly by the first source someone adds.
@@ -4738,7 +4737,7 @@ sources page — the other "explain the machinery to the reader" surface).
 
 ---
 
-## 57. A percentage with no baseline beside it is not a claim · **Planned**
+## 57. A percentage with no baseline beside it is not a claim · **Partly shipped — server side, 2026-08-31**
 
 `docs/accuracy.html` publishes "ECMWF 75% rolling Day+0 rain verification"
 and the prompt cites those figures when it decides whom to trust. Nothing on
@@ -4810,14 +4809,82 @@ damages the record — a baseline is another row, and rows are already
 first-write-wins per date. It also tells you whether the LLM's blended call
 is earning its API spend, which nothing currently does.
 
-App work: listed in the Ensemble repo's owed table.
+### What shipped 2026-08-31
+
+`baselines.py` and its Dart port, vector-locked, plus a 2,000-case random
+sweep across the language boundary with zero disagreements — the vectors pin
+the cases chosen, and the float means here are exactly the kind of arithmetic
+AGENTS.md says to sweep rather than trust.
+
+Both baselines enter `scored_models`, are predicted at every lead time, and
+are withheld from the forecaster by `models_visible_to_the_forecaster` — the
+same standing rule as the blend, for an adjacent reason: a yardstick handed
+to the forecaster reads as a sixth opinion, and persistence's only input is
+an observation the forecaster already holds.
+
+**They leaked on the first attempt, through MODEL TRACK RECORD.** Three
+separate filters each named `BLEND_MODEL_ID` by hand, so a second hidden
+model meant remembering three places. Two of them now test membership of
+`forecaster_models` instead. The third deliberately still names the blend:
+that list is re-stored with `_blend_prediction` appended, so dropping the
+blend prevents a duplicate while dropping the baselines would delete them
+from the record on every re-run — an asymmetry now written beside the code.
+
+**The page's own summary survived a hazard it had met before.** Two models at
+zero checks would have turned "11 checks per model" into "0 — not enough to
+say anything", which is exactly what happened once when the met service was
+added. `_describe_sufficiency` already excludes unscored models from the
+headline and names them separately, so the page now reads "climatology,
+persistence have no verified checks at Day+0 yet".
+
+### Measured offline against the stored record, 2026-08-31
+
+Over the 40 days of actuals, scored against the same `observed_convection`
+truth the ledger uses:
+
+| | persistence | climatology |
+|---|---|---|
+| Day+0 | 66.7% (26/39) | 51.3% (20/39) |
+| Day+3 | 50.0% (18/36) | 47.2% (17/36) |
+| Day+7 | 37.5% (12/32) | 37.5% (12/32) |
+
+Not the ledger's own figures — a different window from the 20 scored checks,
+and computed by a throwaway script rather than by `verify/`. They are here to
+say the implementation produces sane numbers, not as a result.
+
+### The catch: this pays off in about ten days, not today
+
+Baselines are stored at forecast time, so only runs from now on have them.
+Every stored entry predates the field and cannot be scored retroactively by
+`rebuild-record`, which re-derives from *stored predictions* and cannot
+invent one that was never made.
+
+A backfill is defensible and is NOT a hindsight cheat — both baselines are
+deterministic functions of data that existed at each issuance, so computing
+them retroactively yields exactly what they would have produced. It would
+make the comparison legible immediately instead of in a fortnight. It is
+also writing predictions into historical entries that were never issued,
+which is a decision about the integrity of the archive rather than a
+mechanical step, so it is deliberately NOT done here.
+
+### Still open
+
+- **The gate that actually matters.** `review.py` ranks models against each
+  other and gates on a sampling-noise floor. What it should also refuse to
+  call a finding is a model that does not beat the best trivial baseline by
+  more than that floor. Same machinery, different comparison.
+- **Telling the forecaster.** "Here is the bar" is a different feature from
+  "here is another opinion", and it is a prompt change, so it waits on item
+  27.
+- **The app.** Its accuracy screen has the same missing yardstick, and its
+  record is per-device. Listed in the Ensemble repo's owed table.
 
 Related: item 18 (the weekly review this extends), item 58 (which changes
 what a baseline is measured with), item 26 (the spend this justifies).
 
 ---
 
-## 58. Score the probability, not the guess · **Planned**
+## 58. Score the probability, not the guess · **Partly shipped — the clock started 2026-08-31**
 
 `rain` is a boolean. `extract.py` thresholds `precip_mm` at
 `RAIN_THRESHOLD_MM` and the ledger stores true or false, so a model that
@@ -4864,10 +4931,13 @@ worth less than a cruder one that can.
 ### Not established
 
 - Whether Open-Meteo's `precipitation_probability_max` is CALIBRATED here.
-  It cannot be checked from the stored record, because the field has never
-  been stored. That is the argument for storing it starting now even before
-  anything scores it — the check needs history, and history only accrues
-  forwards.
+  **The storage half shipped 2026-08-31**, in both languages and at every
+  lead: `ModelPrediction.rain_probability_pct`, recorded before anything
+  scores it, because the check needs history and history only accrues
+  forwards. Day+3/+7 take the served daily maximum; Day+0 derives it as the
+  highest hour, since no daily maximum exists at hourly resolution. Absent is
+  `None` and never `0` — zero is a confident claim that it will not rain.
+  The question itself stays open until enough stored days exist to answer it.
 - What a "probability" from the LLM's blended call is actually worth. It may
   be well-calibrated, it may be a stylistic number. Brier is how that gets
   answered rather than argued about, and the answer may be that the blend
