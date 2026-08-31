@@ -64,6 +64,11 @@
       <span class="confidence confidence-usable">usable &middot; 20 checks</span>
     </li>
     <li>
+      <span class="claim">At Day+0, best_match beats the best trivial baseline.</span>
+      <span class="evidence">persistence 14/20 (70%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: best_match 85%.</span>
+      <span class="confidence confidence-usable">usable &middot; 20 checks</span>
+    </li>
+    <li>
       <span class="claim">At Day+3, best_match is the strongest rain caller here and icon_seamless the weakest.</span>
       <span class="evidence">best_match 15/17 (88%) vs icon_seamless 11/17 (65%); a 24-point gap, above the 15-point noise floor.</span>
       <span class="confidence confidence-usable">usable &middot; 17 checks</span>
@@ -104,6 +109,11 @@
       <span class="confidence confidence-usable">usable &middot; 17 checks</span>
     </li>
     <li>
+      <span class="claim">At Day+3, best_match, gfs_seamless, ecmwf_ifs025, ukmo_seamless beat the best trivial baseline.</span>
+      <span class="evidence">persistence 9/17 (53%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: best_match 88%, gfs_seamless 76%, ecmwf_ifs025 76%, ukmo_seamless 71%.</span>
+      <span class="confidence confidence-usable">usable &middot; 17 checks</span>
+    </li>
+    <li>
       <span class="claim">At Day+7, no model is meaningfully better than the others here yet.</span>
       <span class="evidence">Best-to-worst spread is only 8 points across 3 models with enough checks to compare, within the 15-point noise floor.</span>
       <span class="confidence confidence-usable">usable &middot; 13 checks</span>
@@ -131,6 +141,11 @@
     <li>
       <span class="claim">At Day+7, best_match systematically over-forecasts overnight lows here.</span>
       <span class="evidence">Mean error -1.6°C across 13 checks.</span>
+      <span class="confidence confidence-usable">usable &middot; 13 checks</span>
+    </li>
+    <li>
+      <span class="claim">At Day+7, gfs_seamless, ecmwf_ifs025, best_match beat the best trivial baseline.</span>
+      <span class="evidence">climatology 7/13 (54%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: gfs_seamless 77%, ecmwf_ifs025 69%, best_match 69%.</span>
       <span class="confidence confidence-usable">usable &middot; 13 checks</span>
     </li>
   </ul>
@@ -208,6 +223,28 @@
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
+      </tr>
+      <tr>
+        <td>persistence</td>
+        <td>14/20</td>
+        <td>70%</td>
+        <td>+0.1&deg;C</td>
+        <td>+0.0&deg;C</td>
+        <td>+0.5 km/h</td>
+        <td>+0.0 hPa</td>
+        <td>-4.3 h</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
+        <td>climatology</td>
+        <td>9/20</td>
+        <td>45%</td>
+        <td>+1.4&deg;C</td>
+        <td>-0.1&deg;C</td>
+        <td>+2.1 km/h</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>kenya_met</td>
@@ -295,6 +332,28 @@
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
       </tr>
       <tr>
+        <td>persistence</td>
+        <td>9/17</td>
+        <td>53%</td>
+        <td>+0.7&deg;C</td>
+        <td>+0.0&deg;C</td>
+        <td>+1.1 km/h</td>
+        <td>-0.1 hPa</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
+        <td>climatology</td>
+        <td>9/17</td>
+        <td>53%</td>
+        <td>+1.6&deg;C</td>
+        <td>-0.1&deg;C</td>
+        <td>+2.9 km/h</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
         <td>kenya_met</td>
         <td>6/6</td>
         <td>100%</td>
@@ -378,6 +437,28 @@
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td><span class="confidence confidence-insufficient">insufficient</span></td>
+      </tr>
+      <tr>
+        <td>persistence</td>
+        <td>4/13</td>
+        <td>31%</td>
+        <td>+1.1&deg;C</td>
+        <td>-0.1&deg;C</td>
+        <td>-1.4 km/h</td>
+        <td>-0.1 hPa</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
+        <td>climatology</td>
+        <td>7/13</td>
+        <td>54%</td>
+        <td>+1.7&deg;C</td>
+        <td>-0.2&deg;C</td>
+        <td>+1.4 km/h</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
         <td>kenya_met</td>
