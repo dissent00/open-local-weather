@@ -123,11 +123,14 @@ fi
 
 # A token readable by other users on this machine is a token to rotate, not
 # a reason to stop — the run is what matters, the warning is what gets read.
-if [ "$(uname)" = "Darwin" ]; then
-  TOKEN_MODE=$(stat -f "%Lp" "$TOKEN_FILE" 2>/dev/null || echo "")
-else
-  TOKEN_MODE=$(stat -c "%a" "$TOKEN_FILE" 2>/dev/null || echo "")
-fi
+case "$(uname)" in
+  Darwin|FreeBSD)
+    TOKEN_MODE=$(stat -f "%Lp" "$TOKEN_FILE" 2>/dev/null || echo "")
+    ;;
+  *)
+    TOKEN_MODE=$(stat -c "%a" "$TOKEN_FILE" 2>/dev/null || echo "")
+    ;;
+esac
 case "$TOKEN_MODE" in
   ""|600|400) ;;
   *) log "WARNING: ${TOKEN_FILE} is mode ${TOKEN_MODE}; chmod 600 it." >&2 ;;
