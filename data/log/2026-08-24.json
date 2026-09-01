@@ -309,8 +309,8 @@
       "note": "Day+3: All models correctly verified the dry precipitation call for the August 24th target date, with ECMWF and GFS keeping high temperature errors within 0.8°C."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7 (August 24 target) verified dry across GFS, ECMWF, and Best Match, while persistence and climatology baselines failed. ECMWF captured wind speeds within 0.8 km/h of actuals."
     }
   },
   "local_bulletin": {
