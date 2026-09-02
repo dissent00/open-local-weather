@@ -4499,7 +4499,9 @@ work and the last is weeks.
 
 ### Not established
 
-- Why only the `forecast_days=2` request times out from GitHub runners.
+- ~~Why only the `forecast_days=2` request times out from GitHub runners.~~
+  **The question was probably wrong. Investigated 2026-09-01; see "It is the
+  seventh request, not the second day" below.**
 - Whether `fetch_metar` succeeded on the 18:04 run. It returns `None`
   silently on every failure path and `airport_metar` is passed to the
   prompt but never persisted, so the record cannot answer it. That is a
@@ -4507,6 +4509,74 @@ work and the last is weeks.
 - Whether Open-Meteo was degraded at those times.
 - How many stored days flip under a rain-aware parser. Item 53.1 must
   report the number it actually moves.
+
+### It is the seventh request, not the second day
+
+Investigated 2026-09-01 across the workflow logs, which reach further back
+than the degradation field does.
+
+**It is not intermittent.** The forward fetch failed on **8 of the last 9
+real runs**. Zero failures in the 13 real runs before 2026-08-29 03:01Z; the
+last clean run was 2026-08-30 15:01Z. The degradation record shows only the
+recent handful because the field started being written on 2026-08-31 —
+`check-health` was reading a true but badly incomplete picture.
+
+**The onset is a step change with no code behind it.** Clean at 2026-08-29
+00:06Z, failing at 03:01Z, and no forecast-code commit sits in that window.
+
+**No correlation with anything obvious.** Not time of day (both the 03:0x and
+15:0x slots fail), not day of week (failures span Sat–Wed), not runner image
+(a clean run and a failing run share `ubuntu-24.04` / `20260823.283`), not
+workflow event type.
+
+**The correlation that IS there.** This is the second call to show exactly
+this signature, and the two are adjacent in the request sequence:
+
+- `fetch_sun_times` — same host, same `/v1/forecast` endpoint — read-timed
+  out on EVERY GitHub run from 2026-08-23 to 08-28 (item 39 recorded it), and
+  in those same runs the forward fetch succeeded.
+- `55fc556` (2026-08-28 18:32Z) deleted `fetch_sun_times`. The forward fetch
+  began failing on the second run afterwards.
+- In the old order, sun-times was the **7th** request to
+  `api.open-meteo.com/v1/forecast` in a run and the forward call was the 8th.
+  With sun-times gone, the forward call is now the 7th. **The failure stayed
+  at position 7.** It did not follow the request shape.
+- Timing agrees, in both eras. The error is printed 114-122 s after the
+  `olw forecast` step begins, and `_get` burns 94.5 s on three timed-out
+  attempts, so the doomed request is the one issued ~20-28 s in — position
+  7, before and after.
+
+**The confound, stated because it is real.** `fetch_sun_times` also used
+`forecast_days=2`, so "position 7" and "`forecast_days=2`" both fit most of
+the data. What separates them is one case: in the old era a
+`forecast_days=2` request at position 8 SUCCEEDED immediately after a
+`forecast_days=2` request at position 7 FAILED. Position explains that;
+shape does not.
+
+**What this makes it look like** — a hypothesis, not a finding — is
+something that trips on the Nth request to that host inside a short
+window: a rate limit that drops rather than answering, or connection
+behaviour. Worth noting that the pipeline uses a bare `requests.get` per
+call with no `Session` and therefore no connection reuse, and makes seven
+`/v1/forecast` requests plus air-quality within about half a minute.
+
+**The cheap decisive experiment.** Move the forward fetch to a different
+position in the sequence and let one run answer it. If the failure follows
+POSITION, the request shape is exonerated and the fix is pacing, session
+reuse, or fewer calls. If it follows the FORWARD CALL, the shape is the
+cause after all and `forecast_days=2` needs replacing with two `=1` requests
+or a `=3`. Either way it is one line and one scheduled run, and no API cost.
+
+**Nothing failed loudly, by design.** All nine recent runs report success:
+the pipeline catches, logs to stderr, falls back and publishes. That is item
+53.4 working — and the reason it took a reader getting rained on to notice
+the first time.
+
+**Not established:** why, in either direction. There is no evidence about
+Open-Meteo's state at those times, no response headers (nothing is logged
+beyond the exception string), and the synoptic fetch at position 6 swallows
+its exceptions silently so the record cannot say in general whether it fails
+too — the timing rules it out for the runs examined, not for all runs.
 
 ### This is live, not historical
 
