@@ -301,8 +301,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 verified dry across all models for Sept 1 target, matching expectations. High temperatures were captured with extreme precision by Best Match and GFS (-0.1°C error), while GFS overestimated peak surface winds by 15.5 km/h."
     },
     "day3": {
       "verified": false,

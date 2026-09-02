@@ -1,0 +1,344 @@
+{
+  "date": "2026-09-02",
+  "rain_expected": "Dry / Elevated Evening Thunder Potential",
+  "onset_window": null,
+  "peak_wind_kmh": 30.5,
+  "temp_high_c": 32.2,
+  "temp_low_c": 18.8,
+  "temp_high_low_display": "32°C / 90°F high, 19°C / 66°F low",
+  "mslp_trend_24h": "-0.3 hPa",
+  "synoptic_pattern": "Strong large-scale pressure gradient with deepening lower pressure to the northeast.",
+  "uv_index_max": "9.2",
+  "air_quality_aqi": "72",
+  "ground_aqi": [
+    {
+      "name": "Kisumu Airport",
+      "station_id": "A418534",
+      "aqi": 86,
+      "pm25": 86.0,
+      "pm10": 15.0,
+      "measured_at": "2026-09-02T00:00:00Z"
+    },
+    {
+      "name": "Ochieng' Avenue, Kisumu Central",
+      "station_id": "A418300",
+      "aqi": 87,
+      "pm25": 87.0,
+      "pm10": 18.0,
+      "measured_at": "2026-09-02T00:00:00Z"
+    },
+    {
+      "name": "Dunga Beach",
+      "station_id": "A418504",
+      "aqi": 55,
+      "pm25": 55.0,
+      "pm10": 37.0,
+      "measured_at": "2026-09-02T00:00:00Z"
+    }
+  ],
+  "sunrise": "06:37",
+  "sunset": "18:43",
+  "model_predictions": {
+    "day0": [
+      {
+        "model": "gfs_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 0,
+        "wind_kmh": 14.8,
+        "high_c": 33.7,
+        "low_c": 17.8,
+        "mslp_trend": -0.6000000000000227
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 37,
+        "wind_kmh": 23.4,
+        "high_c": 32.7,
+        "low_c": 18.7,
+        "mslp_trend": -0.7999999999999545
+      },
+      {
+        "model": "icon_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 5,
+        "wind_kmh": 34.9,
+        "high_c": 32.0,
+        "low_c": 21.9,
+        "mslp_trend": 0.10000000000002274
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 27.0,
+        "high_c": 31.2,
+        "low_c": 16.1,
+        "mslp_trend": -0.20000000000004547
+      },
+      {
+        "model": "best_match",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 37,
+        "wind_kmh": 36.0,
+        "high_c": 32.1,
+        "low_c": 19.2,
+        "mslp_trend": -0.20000000000004547
+      },
+      {
+        "model": "kenya_met",
+        "rain": false,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null,
+        "high_c": 32.0,
+        "low_c": 19.0,
+        "mslp_trend": null
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 35.3,
+        "high_c": 32.7,
+        "low_c": 19.0,
+        "mslp_trend": -0.5
+      },
+      {
+        "model": "climatology",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 1.25,
+        "rain_probability_pct": null,
+        "wind_kmh": 38.08571428571428,
+        "high_c": 29.895238095238092,
+        "low_c": 18.104761904761904,
+        "mslp_trend": null
+      },
+      {
+        "model": "olw_blend",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": null,
+        "high_c": 32.2,
+        "low_c": 18.8,
+        "mslp_trend": null
+      }
+    ],
+    "day3": [
+      {
+        "model": "gfs_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 0,
+        "wind_kmh": 18.7,
+        "high_c": 35.7,
+        "low_c": 19.5,
+        "mslp_trend": 0.900000000000091
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.1,
+        "rain_probability_pct": 47,
+        "wind_kmh": 42.1,
+        "high_c": 34.5,
+        "low_c": 21.2,
+        "mslp_trend": 0.0
+      },
+      {
+        "model": "icon_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 13,
+        "wind_kmh": 27.0,
+        "high_c": 33.7,
+        "low_c": 21.6,
+        "mslp_trend": -0.20000000000004547
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 29.2,
+        "high_c": 33.7,
+        "low_c": 16.2,
+        "mslp_trend": 0.20000000000004547
+      },
+      {
+        "model": "best_match",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 47,
+        "wind_kmh": 45.7,
+        "high_c": 33.9,
+        "low_c": 20.4,
+        "mslp_trend": -0.10000000000002274
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 35.3,
+        "high_c": 32.7,
+        "low_c": 19.0,
+        "mslp_trend": -0.5
+      },
+      {
+        "model": "climatology",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 1.25,
+        "rain_probability_pct": null,
+        "wind_kmh": 38.08571428571428,
+        "high_c": 29.895238095238092,
+        "low_c": 18.104761904761904,
+        "mslp_trend": null
+      }
+    ],
+    "day7": [
+      {
+        "model": "gfs_seamless",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": 24,
+        "wind_kmh": 15.8,
+        "high_c": 35.0,
+        "low_c": 18.8,
+        "mslp_trend": -0.7000000000000455
+      },
+      {
+        "model": "ecmwf_ifs025",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 2.4,
+        "rain_probability_pct": 64,
+        "wind_kmh": 31.7,
+        "high_c": 32.5,
+        "low_c": 21.4,
+        "mslp_trend": -0.8000000000000682
+      },
+      {
+        "model": "icon_seamless",
+        "rain": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null,
+        "high_c": null,
+        "low_c": null,
+        "mslp_trend": null
+      },
+      {
+        "model": "ukmo_seamless",
+        "rain": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null,
+        "high_c": null,
+        "low_c": null,
+        "mslp_trend": null
+      },
+      {
+        "model": "best_match",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 0.6,
+        "rain_probability_pct": 64,
+        "wind_kmh": 37.4,
+        "high_c": 31.8,
+        "low_c": 21.8,
+        "mslp_trend": -0.8000000000000682
+      },
+      {
+        "model": "persistence",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain_probability_pct": null,
+        "wind_kmh": 35.3,
+        "high_c": 32.7,
+        "low_c": 19.0,
+        "mslp_trend": -0.5
+      },
+      {
+        "model": "climatology",
+        "rain": false,
+        "onset": null,
+        "precip_mm": 1.25,
+        "rain_probability_pct": null,
+        "wind_kmh": 38.08571428571428,
+        "high_c": 29.895238095238092,
+        "low_c": 18.104761904761904,
+        "mslp_trend": null
+      }
+    ]
+  },
+  "verification": {
+    "day0": {
+      "verified": false,
+      "note": null
+    },
+    "day3": {
+      "verified": false,
+      "note": null
+    },
+    "day7": {
+      "verified": false,
+      "note": null
+    }
+  },
+  "local_bulletin": {
+    "source_name": "Kenya Meteorological Department (KMD)",
+    "text": "Kenya Meteorological Department (KMD) — forecast for Kisumu\nValid for 2026-09-02.\nMax 32.0C / Min 19.0C.\nTonight: Partly cloudy.\nMorning: Sunny intervals\nAfternoon: Sunny intervals",
+    "fetched_at_utc": "2026-09-02T03:04:17.024094Z"
+  },
+  "yesterday_verification_summary": "Across yesterday's verified target dates, dry conditions verified accurately across all evaluated lead times: Day+0 (Sept 1), Day+3 (Aug 29), and Day+7 (Aug 25). Daytime high temperatures remained high-precision across models, though GFS continued its systematic surface wind overestimation.",
+  "narrative_markdown": "## Overview\nWarm and sunny today, much like yesterday, though calmer and dry again. While dry conditions prevail through the daytime hours, convective instability builds into the evening, peaking around 19:00 EAT, though models sharply disagree on thunderstorm potential.\n\n## Today's Forecast\nWhat you are walking into for the remainder of today is predominantly warm and clear weather. High temperatures will reach 32°C / 90°F with overnight lows near 19°C / 66°F. Southeasterly winds this morning will shift southwesterly by early afternoon, averaging 15 km/h (8 kt) with local peak gusts reaching 27 km/h (15 kt). Solar radiation peaks around midday at an intense UV index of 9.2, requiring sun protection. Note that hourly model guidance for this run ends at 23:00 local time, so conditions late overnight and into tomorrow morning sit outside this near-term window.\n\nNo fresh ground air quality sensor measurements are available this morning; the last known actual reading was a US AQI of 87 at Ochieng' Avenue, Kisumu Central, recorded 3 hours ago. CAMS atmospheric modeling estimates current air quality across the city to sit between US AQI 69 and 76 (Moderate).\n\n## Extended Outlook\nDays 1 to 3 (Thursday through Saturday): High confidence in continued warm, mostly dry weather across the basin. Highs will range from 32°C / 90°F to 34°C / 93°F, with overnight lows between 19°C / 66°F and 21°C / 70°F. ECMWF indicates a marginal shower potential (0.1 mm) on Thursday and Saturday afternoons, but consensus favors dry conditions.\n\nDays 4 to 7 (Sunday through Wednesday): Lower confidence extended range. A transition toward wetter conditions develops early next week. On Monday (Sept 7), ECMWF projects an increased rain probability of 70% with up to 6.3 mm (0.25 in) of precipitation, accompanied by slight daytime cooling to 30°C / 86°F–32°C / 90°F.\n\n## Severe Weather / Hazard Potential\nNo daytime severe weather hazards are expected. However, convective available potential energy (CAPE) rises significantly after dusk. UKMO models extreme instability peaking at 2940 J/kg around 19:00 EAT and Best Match indicates 1270 J/kg, whereas GFS (110 J/kg) and ECMWF (260 J/kg) remain virtually flat. Should isolated thunderstorms trigger along lake-breeze convergence boundaries tonight, localized lightning and sudden wind gusts exceeding 35 km/h (19 kt) are possible.\n\n## Lake Victoria — Conditions for Boaters\nBoaters on open waters face fresh south-southeasterly winds this morning, blowing at 29–35 km/h (16–19 kt) with gusts up to 41 km/h (22 kt), creating choppy surface conditions before veering southwesterly and relaxing in the afternoon. With elevated evening CAPE over the basin, mariners should monitor the night sky for sudden convective development and localized squalls after dusk.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the southeast (1019 hPa) — a 13 hPa spread, reflecting a strong large-scale pressure gradient. The lower pressure to the northeast is deepening over the next three days, with falling pressure tendencies observed across all surrounding quadrants and overhead. Locally across the Nyanza Basin, mean sea level pressure ranges from 1013.6 hPa to 1014.1 hPa, with a steady to slightly falling trend (-0.3 hPa) expected over the next 24 hours.\n\n### Forecaster Confidence Notes\nThe model guidance behind this issuance is at least 9 hours old (models were last aligned on the 18:00Z cycle). The Kenya Meteorological Department (KMD) forecast calls for a high of 32.0°C / 90°F and a low of 19.0°C / 66°F with sunny intervals today and partly cloudy skies tonight. KMD's call agrees fully with the numerical consensus for dry daytime conditions; at Day+0, KMD maintains a 90% rolling rain verification rate.\n\nLong-run review findings establish that Best Match is the strongest rain caller at Day+0 (86% accuracy vs GFS 64%). Verification findings also confirm systematic model biases: GFS consistently over-forecasts surface wind speeds (+21 km/h mean error), while UKMO displays a warm nocturnal bias (+1.4°C error on lows). Because UKMO and Best Match simulate high CAPE tonight while GFS and ECMWF remain low, confidence on night-time thunder timing is hedged, favoring dry explicit rainfall totals while acknowledging convective risk.\n\nIndividual ground air quality station readings from midnight UTC (currently stale) were recorded as follows: Kisumu Airport (US AQI 86, PM2.5 86 µg/m³), Ochieng' Avenue, Kisumu Central (US AQI 87, PM2.5 87 µg/m³), and Dunga Beach (US AQI 55, PM2.5 55 µg/m³).",
+  "whatsapp_summary": "🌤️ Kisumu Weather (Wed Sep 2): Warm & sunny today, high 32°C (90°F), low 19°C (66°F). Calmer winds & dry conditions continue daytime. ⛈️ Elevated evening storm potential over the basin/lake. Boaters: Morning lake winds 30-35 km/h from SE. Peak UV 9.2.",
+  "earlier_issuances": [],
+  "morning_issuance": null,
+  "guidance_initialised_at": "2026-09-01T18:00:00Z",
+  "guidance_age_hours": 9.022425469722222,
+  "guidance_source": "observed",
+  "meta": {
+    "generated_at_utc": "2026-09-02T03:04:17.024108Z",
+    "llm_provider": "GeminiProvider",
+    "llm_model": "gemini-3.6-flash",
+    "pipeline_version": "0.1.0",
+    "refreshed_at": null,
+    "trigger_source": "workflow_dispatch",
+    "degradations": [
+      {
+        "code": "hours_ahead_narrowed",
+        "summary": "Part of tonight's data did not arrive. This forecast covers the rest of today only — where it says nothing about later tonight, that is missing information, not a quiet night.",
+        "detail": "The forward hourly window did not arrive, so the hours-ahead guidance and the convective outlook were trimmed from the day-0 fetch instead, which stops at 23:00 local. New model guidance is usually in by about 11:00 local; a forecast made after that would normally have the full window."
+      }
+    ]
+  }
+}

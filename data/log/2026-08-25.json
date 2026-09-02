@@ -298,8 +298,8 @@
       "note": "Day+3 (2026-08-25): All models verified the dry precipitation call correctly, though UKMO exhibited a +24.9 km/h wind error and GFS underestimated high temperatures by 2.3°C."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7 verified dry conditions across GFS and ECMWF for Aug 25 target, though Best Match incorrectly forecast precipitation. High temperature guidance remained within 0.6°C across models, while GFS overpredicted peak wind by 19.8 km/h."
     }
   },
   "local_bulletin": {
