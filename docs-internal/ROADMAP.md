@@ -5113,3 +5113,159 @@ App work: listed in the Ensemble repo's owed table.
 Related: item 20 (backfill, the prerequisite), item 24 (feed), item 18
 (review — the other consumer of the whole record), item 35 (model
 disagreement, a feature this would key on).
+
+---
+
+## 61. The Overview stops at today · **Planned**
+
+Requested 2026-09-01. The Overview says what today is like and nothing about
+what is coming, so a reader who wants to know whether to move a plan to
+Thursday has to get through the Extended Outlook section to find out. The
+shape asked for, verbatim:
+
+> "Warm and sunny today (Tuesday), much like yesterday, though calmer;
+> isolated evening thunder is possible around 20:00 as models show strong
+> disagreement on atmospheric instability. Wednesday through Friday show a
+> (warming/cooling/consistent) trend with slightly increasing chances of
+> precipitation and thunderstorm activity.""
+
+### The parenthesis in that example is the whole design
+
+`(warming/cooling/consistent)` is a comparison of numbers, and this project's
+first principle is that arithmetic lives in code and never in the LLM. The
+measured reason is item 23: a live run asked to compare 29.6 °C against
+29.5 °C described it as "about 1 °C cooler", a ten-fold overstatement in the
+one sentence most readers act on. That fix produced pre-computed labels —
+`high_label`, `wind_label`, `rain_contrast` — which the prompt is told to
+use VERBATIM. An extended-range trend needs the same treatment for the same
+reason, or the model will call a 0.3 °C drift a cooling trend.
+
+So what is actually being built is a `describe_extended_trend` beside
+`comparison.py`'s day-over-day: over days 1-3, a temperature direction, a
+precipitation direction, and a confidence, each banded in code with
+thresholds that clear real day-to-day noise before anything is named.
+Handed to the prompt ready-made, so the prompt change is one clause rather
+than a paragraph about how to compare numbers.
+
+**Day names are arithmetic too.** "Wednesday through Friday" is a date
+computation in the LOCATION's timezone, not the reader's or the server's, and
+it is the kind of thing that silently reads a day early. `dates.py` already
+owns this and should produce the phrase.
+
+### The budget is two sentences, and that is a real constraint
+
+The Overview is already the most rule-laden paragraph in the prompt. Item 48
+found it saying the same thing four ways ("much like yesterday, with similar
+warmth, similar winds, and dry again"), and item 23's fix is a long
+instruction about NOT enumerating labels that agree. A third clause is
+exactly where that regresses.
+
+Two rules that follow, and should be written into the prompt with the change
+rather than discovered later:
+
+- The extended clause never restates the day-over-day clause. "Much like
+  yesterday, and tomorrow similar too" is one fact twice.
+- **A steady spell is worth saying, and saying plainly.** An earlier draft of
+  this item had the clause go quiet when nothing was changing; the operator
+  pushed back, correctly. "It'll be about the same for the next few days" is
+  one of the most useful things this forecast can tell someone deciding when
+  to do a job — the absence of change IS the planning answer, and a reader
+  who is told nothing has to go and check.
+
+  What is banned is the empty formulation, not the content. "Wednesday
+  through Friday show a consistent trend" is bureaucratic and says less than
+  "much the same through Friday" while taking longer. The labels handed over
+  must therefore include a real steady band with real words in it, not a null
+  that the prompt is left to phrase or skip. Same discipline as
+  `rain_contrast`, which ships "dry again" as a finished phrase rather than a
+  flag meaning nothing-to-report.
+
+### What it depends on
+
+- **Item 27**, the harness. This is a change to the single most-read paragraph
+  in the product, and neither the operator nor a session can currently
+  measure whether a change to it made the rest worse. The CODE half —
+  the trend computation and its vectors — is testable today and can ship
+  first; the prompt half should not.
+- **Item 35** for the example's own middle clause. "Models show strong
+  disagreement on atmospheric instability" is item 35's output, and it does
+  not exist yet. The request presumes it.
+- Item 37 is adjacent but different: that one is day-CHARACTER within a day
+  (when the wind peaks, how the cloud evolves), this one is direction ACROSS
+  days. They share the discipline — bands in code, phrases handed over,
+  scored values untouched — and neither blocks the other.
+
+**The scored values stay exactly as they are.** Item 37's closing rule
+applies here without change: a trend label is a description, and nothing it
+does may touch what `verify/` measures.
+
+---
+
+## 62. A hazard that crosses a line, and what silence means · **Planned**
+
+Requested 2026-09-01, alongside item 61: air quality, weather alerts and
+regional alerts should reach the Overview when they are bad enough to matter,
+and stay out of it when they are not.
+
+### The pattern already exists and works — generalise it, do not invent it
+
+`prompt.py` already carries exactly this for one hazard:
+
+> INSTABILITY BELONGS IN THE OVERVIEW WHEN CODE SAYS IT DOES. "CONVECTIVE
+> INSTABILITY" in the user message carries a pre-computed "convective" flag.
+> When it is true, the Overview MUST carry a short clause... The flag
+> decides; you phrase it.
+
+That rule exists because a real forecast opened "similar warmth, calmer
+winds, and dry again" on a day whose afternoon CAPE reached 2600 J/kg, and
+discussed the instability twice further down where a reader who stopped at
+the Overview never saw it. So the work here is a small set of
+code-computed "the Overview must mention this" flags with the same contract,
+not a new mechanism.
+
+### The trap, stated before anyone builds it
+
+**A rule that adds a line above a threshold is a rule that stays silent below
+it, and silence is not self-explaining.** No AQI clause can mean "the air is
+fine" or "no station reported" — and the second is common here, because
+ground sensors go stale (item 4). A reader cannot tell those apart, and
+reading the second as the first is precisely the shape of item 53: a gap
+consumed as reassurance.
+
+So each flag needs three states, not two: above the line, below the line, and
+NOT KNOWN. The third must be able to produce a clause of its own — the same
+discipline standing rule 7 already applies to whole blocks, pushed up into
+the Overview.
+
+### Thresholds belong in config, not in code
+
+An AQI of 100 is an unusual day in Kisumu and an ordinary Tuesday in Delhi. A
+number compiled into the pipeline is a number that is wrong for every fork,
+and this project already keeps location-dependent judgements in
+`config/location.yaml` — `waqi_stations`, `secondary_point`,
+`local_bulletin_*`. Overview thresholds belong there with them, absent by
+default so a fork that configures nothing behaves exactly as today.
+
+### Where it overlaps, and what has to settle first
+
+- **Item 2** already owns the alert side and already contains a severity-floor
+  decision: "advisories below a threshold go to the site, not to email". That
+  floor and this one are the same question asked about two surfaces, and
+  answering them separately would produce a forecast whose Overview and whose
+  alert email disagree about what counts as serious. Item 2 should settle it.
+- **Item 4** owns AQI staleness and is partly shipped. The "not known" state
+  above is its output, not new work.
+- **Item 35** is the instability half, already flagged.
+
+Which makes the honest order: 2 and 4 settle their own thresholds, then this
+item generalises the flag mechanism over all of them. Building it first would
+mean guessing two numbers that other items are already going to decide.
+
+**App work, unlike item 61's.** The flag mechanism itself is shared logic and
+reaches the app through the pin with nothing to do on that side. The
+thresholds do not: there is no `location.yaml` on a phone, so a configurable
+floor needs a settings surface and a default there. Listed in the Ensemble
+repo's owed table.
+
+Related: items 2, 4, 35, 53 (rule 7), 61 (the other half of the same
+Overview change).
