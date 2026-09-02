@@ -119,6 +119,7 @@ from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
+    DEGRADATION_SYNOPTIC,
     DEGRADATION_SUN_TIMES,
     LocalBulletinRecord,
     DailyActual,
@@ -509,102 +510,27 @@ def _next_guidance_sentence(tz_name: str, now: datetime | None = None) -> str:
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     location = deps.location
+
+    degradations: list[RunDegradation] = []
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
         location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
     )
-    primary_daily = open_meteo.fetch_forecast_daily_extended(
-        location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
-    )
-    region_points = [(p.lat, p.lon) for p in location.region_points]
-    regional_pressure = open_meteo.fetch_regional_pressure(
-        (location.primary_point.lat, location.primary_point.lon), region_points, location.timezone
-    )
-    air_quality = open_meteo.fetch_air_quality(
-        location.primary_point.lat, location.primary_point.lon, location.timezone
-    )
-
-    secondary_hourly = None
-    secondary_daily = None
-    if location.secondary_point.enabled:
-        secondary_hourly = open_meteo.fetch_forecast_hourly_today(
-            location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
-        )
-        secondary_daily = open_meteo.fetch_forecast_daily_extended(
-            location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
-        )
-
-    degradations: list[RunDegradation] = []
-
-    airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
-    # fetch_metar returns None for every failure path and airport_metar is
-    # passed to the prompt but never persisted, so until now the record could
-    # not answer "was the station consulted on that run?" — a question item 53
-    # had to leave under "Not established" about its own incident.
+    # THE FORWARD WINDOW IS FETCHED HERE, EARLY, AND THAT IS AN EXPERIMENT.
     #
-    # Only when a station IS configured. No station is a configuration, not a
-    # degradation.
-    if location.metar_station_icao and airport_metar is None:
-        print(
-            f"METAR unavailable for {location.metar_station_icao}; continuing without it.",
-            file=sys.stderr,
-        )
-        degradations.append(
-            RunDegradation(
-                code=DEGRADATION_METAR,
-                summary=(
-                    "The nearest airport weather report was not available, so this "
-                    "forecast had no live local observation to check the models against."
-                ),
-                detail=(
-                    f"No current METAR from {location.metar_station_icao} this run. "
-                    "fetch_metar returns None on every failure path, so the cause — "
-                    "network, upstream outage, or a station that stopped reporting — "
-                    "is not distinguished here."
-                ),
-            )
-        )
-
-    aqi_fetch_time = datetime.now(timezone.utc)
-    # Reuses aqi_fetch_time as "now" rather than a second datetime.now()
-    # call, for the same reason ground_aqi_summary/ground_aqi_last_known do
-    # below: one clock read per run, so every "how old" figure this run
-    # produces agrees with every other.
-    guidance_cycle = _resolve_guidance_cycle(aqi_fetch_time)
-    # Synoptic-scale pressure ring. One request, ~3 KB — see synoptic.py for
-    # why the near-field region_points cannot answer this. Optional: losing it
-    # costs a paragraph of context, not the forecast.
-    try:
-        synoptic = summarize_synoptic(
-            open_meteo.fetch_synoptic_pressure(
-                location.primary_point.lat, location.primary_point.lon, location.timezone
-            )
-        )
-    except Exception:
-        synoptic = None
-
-    ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
-    ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
-    ground_aqi_last_known = last_known_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
-    # A fetcher that can also yield a structured prediction exposes
-    # fetch_forecast(); the plain BulletinFetcher protocol does not. Duck-typed
-    # rather than added to the Protocol so existing fork implementations keep
-    # working untouched — a met service whose bulletin can't be decoded simply
-    # contributes narrative text, exactly as before.
-    met_prediction = None
-    met_valid_for = None
-    met_day3 = None
-    met_day3_valid_for = None
-    fetch_forecast = getattr(deps.bulletin_fetcher, "fetch_forecast", None)
-    if callable(fetch_forecast):
-        met_forecast = fetch_forecast()
-        bulletin_text = met_forecast.text
-        met_prediction = met_forecast.prediction
-        met_valid_for = met_forecast.valid_for
-        met_day3 = getattr(met_forecast, "prediction_day3", None)
-        met_day3_valid_for = getattr(met_forecast, "five_day_valid_for", None)
-    else:
-        bulletin_text = deps.bulletin_fetcher.fetch()
-
+    # It failed on 8 of the last 9 real runs while sitting 7th in this
+    # function's sequence of /v1/forecast requests, and the call that used to
+    # sit 7th (fetch_sun_times) failed identically until it was deleted — the
+    # failure stayed at the POSITION rather than following the request shape.
+    # See ROADMAP item 53, "It is the seventh request, not the second day".
+    #
+    # Moving it early is what separates the two explanations. If it succeeds
+    # here, the request shape is exonerated and the fix is pacing, session
+    # reuse or fewer calls; if it still fails, forecast_days=2 is the cause
+    # after all. RECORD THE ANSWER IN ITEM 53 AND REVISIT THIS PLACEMENT —
+    # an experiment left in place and forgotten reads as a design decision.
+    #
+    # It has to follow the day-0 fetch either way: the reconciled clock that
+    # trims the window comes from that response.
     # Where this run sits in the day, and the hours still ahead of it.
     #
     # The clock, the sun, and the hours ahead are three separate things, and
@@ -694,6 +620,118 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
                 ),
             )
         )
+
+    primary_daily = open_meteo.fetch_forecast_daily_extended(
+        location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
+    )
+    region_points = [(p.lat, p.lon) for p in location.region_points]
+    regional_pressure = open_meteo.fetch_regional_pressure(
+        (location.primary_point.lat, location.primary_point.lon), region_points, location.timezone
+    )
+    air_quality = open_meteo.fetch_air_quality(
+        location.primary_point.lat, location.primary_point.lon, location.timezone
+    )
+
+    secondary_hourly = None
+    secondary_daily = None
+    if location.secondary_point.enabled:
+        secondary_hourly = open_meteo.fetch_forecast_hourly_today(
+            location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
+        )
+        secondary_daily = open_meteo.fetch_forecast_daily_extended(
+            location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
+        )
+
+    airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
+    # fetch_metar returns None for every failure path and airport_metar is
+    # passed to the prompt but never persisted, so until now the record could
+    # not answer "was the station consulted on that run?" — a question item 53
+    # had to leave under "Not established" about its own incident.
+    #
+    # Only when a station IS configured. No station is a configuration, not a
+    # degradation.
+    if location.metar_station_icao and airport_metar is None:
+        print(
+            f"METAR unavailable for {location.metar_station_icao}; continuing without it.",
+            file=sys.stderr,
+        )
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_METAR,
+                summary=(
+                    "The nearest airport weather report was not available, so this "
+                    "forecast had no live local observation to check the models against."
+                ),
+                detail=(
+                    f"No current METAR from {location.metar_station_icao} this run. "
+                    "fetch_metar returns None on every failure path, so the cause — "
+                    "network, upstream outage, or a station that stopped reporting — "
+                    "is not distinguished here."
+                ),
+            )
+        )
+
+    aqi_fetch_time = datetime.now(timezone.utc)
+    # Reuses aqi_fetch_time as "now" rather than a second datetime.now()
+    # call, for the same reason ground_aqi_summary/ground_aqi_last_known do
+    # below: one clock read per run, so every "how old" figure this run
+    # produces agrees with every other.
+    guidance_cycle = _resolve_guidance_cycle(aqi_fetch_time)
+    # Synoptic-scale pressure ring. One request, ~3 KB — see synoptic.py for
+    # why the near-field region_points cannot answer this. Optional: losing it
+    # costs a paragraph of context, not the forecast.
+    try:
+        synoptic = summarize_synoptic(
+            open_meteo.fetch_synoptic_pressure(
+                location.primary_point.lat, location.primary_point.lon, location.timezone
+            )
+        )
+    except Exception as e:  # noqa: BLE001 - optional; costs context, not the run
+        # It used to be `except Exception: synoptic = None` with no log at
+        # all, so a failure here was invisible in every surface — the exact
+        # shape of this project's 2026-08-29 incident, one layer along. It
+        # also sits where the read timeouts have been landing (ROADMAP item
+        # 53), so a silent failure here would waste the run that is meant to
+        # answer them.
+        print(f"Synoptic pressure ring unavailable ({e}); continuing without it.", file=sys.stderr)
+        synoptic = None
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_SYNOPTIC,
+                summary=(
+                    "The wider pressure picture did not arrive, so this forecast "
+                    "describes the local pattern without the regional one around it."
+                ),
+                detail=(
+                    f"The synoptic-scale pressure ring did not arrive ({e}). The "
+                    "narrative's large-scale paragraph falls back to local gradients, "
+                    "which cannot locate a system's direction."
+                ),
+            )
+        )
+
+    ground_aqi_readings = waqi_fetch.fetch_ground_aqi_stations(location.waqi_stations, deps.waqi_token)
+    ground_aqi_summary = summarize_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
+    ground_aqi_last_known = last_known_ground_aqi(ground_aqi_readings, now=aqi_fetch_time)
+    # A fetcher that can also yield a structured prediction exposes
+    # fetch_forecast(); the plain BulletinFetcher protocol does not. Duck-typed
+    # rather than added to the Protocol so existing fork implementations keep
+    # working untouched — a met service whose bulletin can't be decoded simply
+    # contributes narrative text, exactly as before.
+    met_prediction = None
+    met_valid_for = None
+    met_day3 = None
+    met_day3_valid_for = None
+    fetch_forecast = getattr(deps.bulletin_fetcher, "fetch_forecast", None)
+    if callable(fetch_forecast):
+        met_forecast = fetch_forecast()
+        bulletin_text = met_forecast.text
+        met_prediction = met_forecast.prediction
+        met_valid_for = met_forecast.valid_for
+        met_day3 = getattr(met_forecast, "prediction_day3", None)
+        met_day3_valid_for = getattr(met_forecast, "five_day_valid_for", None)
+    else:
+        bulletin_text = deps.bulletin_fetcher.fetch()
 
     # From the trimmed forward window, never the calendar day: a CAPE peak
     # that already passed this morning is not a reason to warn about tonight.

@@ -2417,3 +2417,66 @@ def test_a_re_issue_is_not_shown_a_baseline_either(tmp_path):
     _, user_prompt = llm.calls[0]
     for baseline in BASELINE_MODEL_IDS:
         assert baseline not in user_prompt
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 53 — the position experiment, and making it readable
+# ---------------------------------------------------------------------------
+
+
+def test_the_forward_window_is_fetched_before_the_optional_extras(tmp_path, monkeypatch):
+    """The experiment. The forward fetch failed on 8 of the last 9 runs while
+    sitting 7th in the run's sequence of /v1/forecast requests, and the call
+    that previously sat 7th failed the same way until it was deleted. Moving
+    this one early is what distinguishes "the 7th request fails" from "this
+    request fails"; one scheduled run answers it.
+
+    Asserted as an ORDER rather than a comment, because a later refactor that
+    quietly moves it back would silently invalidate the result and nobody
+    would notice until the fallback started firing again."""
+    seen: list[str] = []
+
+    def _record(name, result):
+        def _f(*a, **k):
+            seen.append(name)
+            return result
+        return _f
+
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today",
+                        _record("today", hourly_fixture()))
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward",
+                        _record("forward", forward_hourly_fixture()))
+    monkeypatch.setattr(open_meteo, "fetch_forecast_daily_extended",
+                        _record("daily", daily_fixture()))
+    monkeypatch.setattr(open_meteo, "fetch_synoptic_pressure",
+                        _record("synoptic", {"points": []}))
+
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+
+    assert seen.index("forward") < seen.index("daily")
+    assert seen.index("forward") < seen.index("synoptic")
+    # Still after the day-0 fetch, which it depends on: the reconciled clock
+    # that trims the forward window comes from that response.
+    assert seen.index("today") < seen.index("forward")
+
+
+def test_a_failed_synoptic_fetch_is_recorded_rather_than_swallowed(tmp_path, monkeypatch):
+    """It used to be `except Exception: synoptic = None` with no log at all,
+    so a failure there was invisible in every surface — which is the exact
+    shape of item 53's original incident. It also matters for the experiment
+    above: moving the forward fetch early puts this call where the failures
+    have been landing, and a silent failure there would waste the run."""
+    monkeypatch.setattr(
+        open_meteo, "fetch_synoptic_pressure", _raises(RuntimeError("Read timed out"))
+    )
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    codes = [d.code for d in result.log_entry.meta.degradations]
+    assert "synoptic_unavailable" in codes
+
+
+def test_a_working_synoptic_fetch_records_nothing(tmp_path):
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert "synoptic_unavailable" not in [
+        d.code for d in result.log_entry.meta.degradations
+    ]

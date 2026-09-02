@@ -284,6 +284,7 @@ class GroundAQIReading(BaseModel):
 DEGRADATION_HOURS_AHEAD_NARROWED = "hours_ahead_narrowed"
 DEGRADATION_SUN_TIMES = "sun_times_unavailable"
 DEGRADATION_METAR = "metar_unavailable"
+DEGRADATION_SYNOPTIC = "synoptic_unavailable"
 
 
 class RunDegradation(BaseModel):

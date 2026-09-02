@@ -4560,12 +4560,44 @@ behaviour. Worth noting that the pipeline uses a bare `requests.get` per
 call with no `Session` and therefore no connection reuse, and makes seven
 `/v1/forecast` requests plus air-quality within about half a minute.
 
-**The cheap decisive experiment.** Move the forward fetch to a different
-position in the sequence and let one run answer it. If the failure follows
-POSITION, the request shape is exonerated and the fix is pacing, session
-reuse, or fewer calls. If it follows the FORWARD CALL, the shape is the
-cause after all and `forecast_days=2` needs replacing with two `=1` requests
-or a `=3`. Either way it is one line and one scheduled run, and no API cost.
+### The experiment, running from 2026-09-01
+
+The forward fetch has been moved to **second** in `_fetch_forward_guidance`,
+directly after the day-0 hourly call it depends on for the reconciled clock.
+Driven for real against Open-Meteo from a developer machine: 8 requests, all
+200, 8.8 s total, `forward_window_narrowed: False`.
+
+Counting only `/v1/forecast` requests, the sequence is now:
+
+1. primary hourly (`forecast_days=1`)
+2. **forward (`forecast_days=2`)** — was 7th
+3. primary daily (`=8`)
+4. regional pressure (`=7`)
+5. secondary hourly (`=1`)
+6. secondary daily (`=8`)
+7. **synoptic ring** — was 6th
+
+**The prediction, stated before the answer arrives so it cannot be
+rationalised afterwards.** On the next scheduled run:
+
+- **If POSITION is the cause**, the run records `synoptic_unavailable` and
+  NOT `hours_ahead_narrowed`. The failure follows the 7th slot to whatever
+  is standing in it.
+- **If REQUEST SHAPE is the cause**, the run records `hours_ahead_narrowed`
+  as it has for the last eight, and the synoptic ring is fine.
+- **If neither appears**, the fault was in the sequence LENGTH or timing
+  rather than an absolute position, and reordering merely moved the doomed
+  request out of whatever window it was landing in. That is a third answer,
+  not a null result, and it is the one that points hardest at pacing.
+
+The synoptic call was made to say when it fails as part of the same change.
+It used to be `except Exception: synoptic = None` with no log — invisible on
+every surface, the same shape as the incident this whole item is about — and
+leaving it silent would have wasted the run that is supposed to answer this.
+
+**This placement is an experiment, not a decision**, and the comment in
+`_fetch_forward_guidance` says so. Whoever reads the answer should record it
+here and then decide deliberately where the call belongs.
 
 **Nothing failed loudly, by design.** All nine recent runs report success:
 the pipeline catches, logs to stderr, falls back and publishes. That is item
