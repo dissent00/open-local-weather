@@ -17,6 +17,15 @@ follows `spec/README.md`.
 
 ## Working order, as of 2026-08-31
 
+**Before anything else, from 2026-09-02: read the answer to item 53's
+experiment.** The forward fetch was moved from 7th to 2nd in the request
+sequence on 2026-09-01, with a falsifiable prediction written down before the
+run. Check the newest `data/log/*.json` for `meta.degradations`:
+`synoptic_unavailable` means position was the cause, `hours_ahead_narrowed`
+means the request shape was, and neither means it was sequence length or
+timing. Record the answer in item 53 and then decide deliberately where that
+call belongs — the placement is an experiment and the code says so.
+
 A snapshot, not a contract, and dated because it will go stale. Numbered
 items keep their own status; this only says what to pick up next and why.
 Where an item is a decision rather than a build, it is marked so — those are
