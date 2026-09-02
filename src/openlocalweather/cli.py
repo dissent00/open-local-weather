@@ -59,6 +59,7 @@ from openlocalweather.store.actuals_cache import (
     replace_all,
     write_actuals_cache,
 )
+from openlocalweather import replay
 from openlocalweather.backfill import backfill_entry_baselines
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
@@ -530,6 +531,73 @@ def _run_check_health(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _run_replay(args) -> int:
+    """Send a fixed set of inputs through the LLM and keep the outputs.
+
+    ROADMAP item 27. Run it once before a prompt change and once after, then
+    `olw replay-diff` the two directories: that turns "did this edit move
+    anything I did not intend" from an impression into a list. Items 48 and
+    53.3 both changed the prompt with no way to answer it.
+
+    IT SPENDS REAL MONEY, one call per case, on the operator's own key and
+    counted by the same spend cap the forecast uses (item 26) — which means a
+    careless replay can exhaust the day's budget and refuse the morning
+    forecast. So the cost is printed and confirmation is required. There is
+    no dry-run alternative: a replay that does not call the model is not a
+    replay of anything.
+    """
+    cases = replay.frozen_cases()
+    print(f"{len(cases)} frozen case(s) from the committed prompt vectors:")
+    for c in cases:
+        print(f"  {c.name}")
+    print(f"\nThis makes {len(cases)} LLM call(s) on your key, counted against the spend cap.")
+
+    if not args.yes:
+        print("Nothing was sent. Re-run with --yes to spend.")
+        return 0
+
+    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
+    results = replay.run_replay(deps.llm_provider, cases)
+    out = Path(args.out)
+    replay.write_replay(out, results)
+
+    print(f"\nWrote {len(results)} result(s) to {out}/replay.json")
+    for r in results:
+        print(f"  {r.case[:52]:54s} {r.latency_s:5.1f}s")
+    return 0
+
+
+def _run_replay_diff(args) -> int:
+    """What moved between two replays, and whether it reached the scored half.
+
+    The prose changing is a judgement call. `today_properties` changing means
+    the blended call this project SCORES and publishes has moved, which is a
+    different event and the one worth stopping for.
+    """
+    before = replay.read_replay(Path(args.before))
+    after = replay.read_replay(Path(args.after))
+    diffs = replay.diff_replays(before, after)
+
+    if not diffs:
+        print(f"No differences across {len(before)} case(s).")
+        return 0
+
+    scored = [d for d in diffs if d.scored_changed]
+    print(f"{len(diffs)} of {len(before)} case(s) differ; {len(scored)} touched the scored call.\n")
+    for d in diffs:
+        mark = "SCORED" if d.scored_changed else "prose "
+        print(f"  [{mark}] {d.case}")
+        for f in d.changed_fields:
+            print(f"             {f}")
+    if scored:
+        print(
+            "\nA change to today_properties is a change to the forecast, not the "
+            "wording — it is scored against tomorrow's observations and published "
+            "on the accuracy page."
+        )
+    return 0
+
+
 def _run_backfill_baselines(args) -> int:
     """Add persistence and climatology to days already stored — ROADMAP 57.
 
@@ -841,6 +909,23 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Print the plan without writing anything."
     )
 
+    rp = sub.add_parser(
+        "replay",
+        help="Send the frozen prompt vectors through the LLM and keep the outputs.",
+    )
+    rp.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    rp.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    rp.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ directory")
+    rp.add_argument("--public-url", default="", help="Public site URL, for the prompt")
+    rp.add_argument("--out", required=True, help="Directory to write replay.json into")
+    rp.add_argument("--yes", action="store_true", help="Actually spend; without it, only the plan is printed.")
+
+    rpd = sub.add_parser(
+        "replay-diff", help="Compare two replay directories and report what moved."
+    )
+    rpd.add_argument("before")
+    rpd.add_argument("after")
+
     health = sub.add_parser(
         "check-health",
         help="Weekly health checks: model deprecation, repo staleness, data coverage.",
@@ -866,6 +951,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)
+
+    if args.command == "replay":
+        return _run_replay(args)
+
+    if args.command == "replay-diff":
+        return _run_replay_diff(args)
 
     if args.command == "backfill-baselines":
         return _run_backfill_baselines(args)

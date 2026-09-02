@@ -43,12 +43,10 @@ cheap and they gate other work, which is why they sit high.
 3. **45 — which source is "what actually happened".** A DECISION. An hour of
    thought, gates 47, 11 and 44, and expensive to unwind if it is made
    implicitly by the first source someone adds.
-4. **27 — the harness for judging model changes.** The prerequisite nobody
-   has paid for, and its queue keeps growing: as of 2026-09-01 items 58, 59,
-   61 and 57's "tell the forecaster" half all name it as their blocker. That
-   is four things waiting on one unbuilt harness, up from two a week ago. It
-   stays behind 45 only because 45 is an hour of thinking that unblocks three
-   items of its own; if 45 slips, this should overtake it.
+4. ~~**27 — the harness for judging model changes.**~~ **The blocking half
+   shipped 2026-09-01** — `olw replay` / `olw replay-diff`, which is what
+   items 58, 59, 61 and 57's remaining half were actually waiting on. The
+   A/B-by-alternating-days half is still open and blocks nothing.
 
    Item 48's pass and 53.3's rule 7 are both unvalidated for
    side effects — not wrong, unmeasured — and items 58 and 59 are larger
@@ -2111,7 +2109,7 @@ to `force: true`, since that is the path with no ceiling today.
 
 ---
 
-## 27. A harness for judging model changes · **Planned**
+## 27. A harness for judging model changes · **Partly shipped — replay, 2026-09-01**
 
 Prompted by a concrete question: `gemini-3.7-flash` now exists, and the
 pipeline is tuned on `gemini-3.6-flash`. Is the newer one better *for this*?
@@ -2157,6 +2155,55 @@ partitioned by weather model and lead time.
   day's exact inputs to two models and diff the outputs. Cheap, immediate,
   and the right tool for "did this prompt edit help", as distinct from "is
   this model better", which only time can answer.
+
+### The two halves are separable, and only one gates anything
+
+Written down 2026-09-01, because it halves the work that four other items
+were waiting on. "Is this MODEL better" needs weeks of scored forecasts
+partitioned by `meta.llm_model`, and nothing can hurry it. "Did this PROMPT
+EDIT move something I did not intend" is answerable in minutes. Items 58, 59,
+61 and 57's remaining half all need the second and none needs the first.
+
+**The replay half shipped 2026-09-01.** `replay.py`, `olw replay --out DIR`
+and `olw replay-diff BEFORE AFTER`. Run it either side of a prompt change and
+read the list.
+
+**The frozen inputs are the committed prompt vectors**, deliberately rather
+than a new corpus: `llm_user_prompt.json` and `llm_system_prompt.json`
+already hold six complete input sets — fully populated, two evening
+refreshes, cold start, no ground stations, no met service — and are already
+updated by anyone who touches the prompt. A second corpus would be a second
+thing to keep in step, and the one that rots is always the one nobody's test
+suite reads.
+
+**A diff separates the prose from the scored call**, which is item 27's
+"separate what the LLM controls" note made concrete. `today_narrative`
+changing is a judgement; `today_properties` changing means the blended call
+this project scores and publishes has moved, and the command says so.
+Latency travels with each result and is deliberately NOT diffed — it varies
+run to run for reasons unrelated to the change, and a diff that reports noise
+is a diff nobody reads.
+
+**It spends real money** — one call per case, on the operator's key, counted
+by the same cap as the forecast — so it prints the cost and does nothing
+without `--yes`. There is no dry-run: a replay that does not call the model
+is not a replay of anything.
+
+**Two bugs of one shape were caught building it, both of which produced a
+harness that looked fine.** Pairing the two vector files BY NAME never
+matched, so every case silently got the first system prompt; then reading
+`historical_logs` as the re-issue marker was wrong, because that is the
+multi-day history and is present on ordinary runs too. Either way the two
+refresh cases would have been replayed against a first-run system prompt.
+A mismatched pair does not fail — it reports differences that are artefacts
+of the harness rather than of the change under test, which is worse than a
+harness that does not run. The first was caught by noticing every system
+prompt came out the same length. Both are now guarded by a test that asserts
+the pairings differ where the configuration differs.
+
+**Still open here:** the A/B-by-alternating-days half, which is what answers
+"is gemini-3.7-flash better for this". That one is analysis over
+`meta.llm_model` and reuses `review.py`'s gates; it is not blocking anything.
 
 ### Why not just eyeball it
 
