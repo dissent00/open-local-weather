@@ -48,7 +48,9 @@ cheap and they gate other work, which is why they sit high.
    61 and 57's "tell the forecaster" half all name it as their blocker. That
    is four things waiting on one unbuilt harness, up from two a week ago. It
    stays behind 45 only because 45 is an hour of thinking that unblocks three
-   items of its own; if 45 slips, this should overtake it. Item 48's pass and 53.3's rule 7 are both unvalidated for
+   items of its own; if 45 slips, this should overtake it.
+
+   Item 48's pass and 53.3's rule 7 are both unvalidated for
    side effects — not wrong, unmeasured — and items 58 and 59 are larger
    prompt changes than either.
 5. **58 — score the probability.** Additive to the boolean, so the existing
