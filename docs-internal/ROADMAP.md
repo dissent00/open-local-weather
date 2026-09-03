@@ -3548,8 +3548,67 @@ Concretely, the extra readings are cheaper than they look:
 `fetch_metar_archive` requests `data=metar`, the raw report text only. Iowa
 State's ASOS service exposes structured fields alongside it, so temperature
 and wind from the airport are a parameter change on an existing fetch, not
-a new source. **Check live whether HKKI actually files hourly precipitation
-before designing around it** — many non-US stations do not.
+a new source.
+
+### Checked live 2026-09-03: HKKI files no precipitation amount at all
+
+The item told whoever got here to check before designing around it. The
+answer is worse than "no data", and it is trap 1 in its most dangerous form.
+
+Queried 932 hourly rows, 2026-07-20 to 09-03, `data=p01i,wxcodes`:
+
+- **`p01i` is `0.00` on every single row.** Not missing — zero. Including
+  16:00Z on 2026-08-29, the hour whose own report carries `-RA`. The station
+  says "light rain is falling" and "0.00 inches" in the same breath.
+- `gust` is missing on all 932 rows, matching item 44's finding that METAR
+  files a gust group only when a gust occurs.
+- `wxcodes` is the signal that IS real, and it is sparse: 17 rows in 932,
+  `TS` ×7, `VCSH` ×3, `-RA` ×2, `TSSH` ×2, `-TSRA`, `TSRA`, `SHRA`.
+
+**So `p01i` from this station is a constant zero dressed as a measurement.**
+Put it in a precedence chain as an observation and it becomes a confident
+"no rain" on every day of the record, including the days it rained — which
+is exactly trap 1's warning about reading a missing gust group as 0 km/h,
+except that here the API supplies the wrong number rather than an absence,
+so nothing downstream could even detect it.
+
+The existing parser is already doing the right thing by reading present
+weather out of the raw report text and ignoring the amount. **Any per-
+variable chain for precipitation at this location gets the reanalysis for
+AMOUNT and the station for OCCURRENCE, and never the station for amount.**
+Worth generalising for forks: a station that reports a variable as a
+constant is indistinguishable from one that measures it, unless somebody
+looks — so the "add a source" flow needs a sanity pass, not just a fetch.
+
+### Trust the positive — yes for rain, and here is what it costs
+
+The operator's instinct, 2026-09-03: if the airport says it rained, it
+rained; if the airport says dry and the archive says wet, it may have rained
+elsewhere in the region.
+
+That is already what ships. `observed_convection()` is exactly this OR, and
+trap 4 above already fences it to rain for the right reason: a station
+reporting `TS` is strong positive evidence, a grid cell reporting dry is weak
+negative evidence, and for temperature the same rule would be nonsense.
+
+**The cost, which is not obvious and matters more as sources are added.** An
+OR is MONOTONIC: every source you add can only ever create wet days, never
+remove them. So the observed rain rate drifts upward with the size of the
+source set, and every model's dry call looks worse over time — a change in
+the record's instrumentation that would read exactly like the models getting
+worse. Item 53.1 measured this in miniature: adding station precipitation
+moved the all-time figures down by about five points in a day.
+
+Two consequences, both cheap if done now and expensive later:
+
+1. **The source set must be stamped per day**, which is trap 2's provenance
+   field arriving for a second independent reason. Accuracy figures are only
+   comparable across days that were scored against the same instruments.
+2. **"Trust the positive" quietly answers a different question than the
+   forecast asks.** The forecast is about a point; "did any source see rain"
+   is about a region, and it gets broader with every station added. Where
+   that is the intent, say so on the accuracy page. Where it is not, the
+   chain needs distance to enter it.
 
 Related: item 11 (source discovery in the app), item 35 (convective
 disagreement), item 36 (user feedback), item 41 (satellite as a candidate
@@ -5473,3 +5532,66 @@ repo's owed table.
 
 Related: items 2, 4, 35, 53 (rule 7), 61 (the other half of the same
 Overview change).
+
+---
+
+## 63. Encourage more than one reporting station · **Planned**
+
+Requested 2026-09-03, out of item 45's precedence discussion: setup for both
+OLW and the app should push whoever is configuring it toward SEVERAL local
+observing stations rather than one.
+
+The case is item 47's, one level up. A nearby station is the biggest accuracy
+lever a reader controls, and one station is a single point that can be down,
+can be four kilometres from the weather, and can report a variable as a
+constant (item 45 measured exactly that at HKKI: `p01i` zero on all 932 rows
+including an hour whose own report says `-RA`). Two stations disagreeing is
+information; one station is a claim.
+
+### It sharpens a problem before it solves one
+
+**More sources make the OR bias worse, and the OR is already how rain is
+scored.** `observed_convection()` is true if ANY source saw rain, so each
+station added can only create wet days, never remove them, and the observed
+rain rate climbs with the size of the set. Adding one station's
+precipitation moved the all-time figures about five points in item 53.1.
+Adding four would move them further, and nothing on the accuracy page would
+say why.
+
+So this item cannot ship before item 45's provenance stamp. The order is:
+provenance per day per variable, then more stations, then a rule for
+combining them. Doing it the other way round produces a record whose numbers
+drift for reasons nobody can reconstruct.
+
+**And it changes the question being answered.** One station at the reader's
+point answers "did it rain here". Five stations across a basin answer "did it
+rain somewhere in the basin", which is a different and broader question that
+gets broader with each addition. Whichever is intended has to be stated on
+the accuracy page rather than emerging from how many stations someone
+happened to configure.
+
+### What it probably looks like
+
+- **Onboarding asks for more than one** and says why, rather than accepting
+  the first ICAO and moving on. Item 47 already owns the app-side onboarding
+  moment; this is a change to what that moment asks for.
+- **Distance enters the record.** With several stations, "nearest that
+  reported" is a better rule than "any", and it needs each station's
+  distance from the primary point — computable from config, which already
+  carries both.
+- **Disagreement is surfaced, not resolved.** Item 45's finding holds: with
+  no held-out truth, disagreement between observation sources is a flag for
+  a human, never a weight to fit. Two stations differing on rain is
+  precisely the case item 46 exists to ask the reader about.
+
+### Not established
+
+Whether Kisumu has a second usable station at all. HKKI was chosen because it
+is four kilometres away; the next nearest ASOS may be far enough that its
+observations answer a different question. **Check before designing around
+it** — the same instruction item 45 issued about `p01i`, which turned out to
+matter.
+
+Related: item 45 (precedence and provenance, the prerequisite), item 47 (the
+onboarding moment this changes), item 11 (source discovery), item 44 (the
+sources page), item 46 (asking the reader when sources disagree).
