@@ -301,8 +301,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 (2026-09-02): All models and Kenya Met accurately verified the dry precipitation call. Daytime high temperatures were captured within 0.7°C across the OLW blend, ECMWF, ICON, and Kenya Met, though GFS overestimated surface wind speeds by 26.2 km/h."
     },
     "day3": {
       "verified": false,

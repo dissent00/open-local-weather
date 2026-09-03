@@ -504,6 +504,18 @@
       "thunder": false,
       "precipitation": false,
       "precipitation_onset": null
+    },
+    "2026-09-02": {
+      "rain": false,
+      "high_c": 31.5,
+      "low_c": 18.5,
+      "peak_wind_kmh": 41.0,
+      "mslp_trend": -0.10000000000002274,
+      "onset_hour": null,
+      "precip_mm": 0.0,
+      "thunder": false,
+      "precipitation": false,
+      "precipitation_onset": null
     }
   },
   "secondary": {
@@ -1005,6 +1017,18 @@
       "low_c": 15.6,
       "peak_wind_kmh": 46.4,
       "mslp_trend": -0.39999999999997726,
+      "onset_hour": null,
+      "precip_mm": 0.0,
+      "thunder": null,
+      "precipitation": null,
+      "precipitation_onset": null
+    },
+    "2026-09-02": {
+      "rain": false,
+      "high_c": 18.6,
+      "low_c": 15.7,
+      "peak_wind_kmh": 42.5,
+      "mslp_trend": -1.0,
       "onset_hour": null,
       "precip_mm": 0.0,
       "thunder": null,

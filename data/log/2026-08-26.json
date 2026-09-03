@@ -298,8 +298,8 @@
       "note": "Day+3: All models accurately verified the dry precipitation call for the August 26th target date. High temperatures verified well across ECMWF (-0.9°C) and ICON (-0.4°C), though UKMO showed a warm high bias (+1.9°C) and GFS overpredicted surface wind speeds (+21.6 km/h)."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7 (2026-08-26 target): All models successfully verified the dry precipitation call. Best Match delivered perfect high temperature accuracy (0.0°C error) and captured wind within 0.3 km/h, while GFS overpredicted surface wind by 18.3 km/h."
     }
   },
   "local_bulletin": {
