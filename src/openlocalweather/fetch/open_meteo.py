@@ -23,6 +23,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import sys
 import time
 
 import requests
@@ -80,13 +81,64 @@ class OpenMeteoFetchError(RuntimeError):
 MAX_ATTEMPTS = 3
 RETRY_BASE_DELAY_S = 1.5
 
+# ONE CONNECTION FOR THE WHOLE RUN, rather than a fresh TCP+TLS handshake per
+# call. A run makes seven /v1/forecast requests plus air quality inside about
+# half a minute, and every one of them used to open its own connection.
+#
+# Added 2026-09-03 for ROADMAP item 53, whose read timeouts have no
+# established cause. Connection churn is a plausible mechanism and this is the
+# cheap half of testing it; if it is not the cause, a saved handshake per
+# request is still worth having. It is NOT a claimed fix — see item 53's
+# confound before treating it as one.
+_SESSION = requests.Session()
+
+# How many requests this run has made, and to what. Item 53 cost a full
+# investigation because the logs said only that something timed out: not which
+# request, not its position in the sequence, not how long the run had been
+# going. Every one of those turned out to matter.
+_request_count = 0
+
+
+def reset_request_counter() -> None:
+    """Zeroes the position counter so numbers are per-run, not per-process."""
+    global _request_count
+    _request_count = 0
+
+
+def requests_made() -> int:
+    return _request_count
+
+
+def _describe(url: str, params: dict[str, Any]) -> str:
+    """Enough to identify a request in a log without dumping a whole query.
+
+    `forecast_days` is named explicitly because it is the parameter that
+    distinguished the failing call from its successful twin for two weeks of
+    item 53, and a log omitting it would send the next reader back to the
+    source to work out which call this was.
+    """
+    days = params.get("forecast_days")
+    tail = f" forecast_days={days}" if days is not None else ""
+    return f"{url.rsplit('/', 1)[-1]}{tail}"
+
 
 def _get(url: str, params: dict[str, Any]) -> dict:
+    global _request_count
+    _request_count += 1
+    position = _request_count
+    started = time.monotonic()
+
     last_error: Exception | None = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            resp = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
+            resp = _SESSION.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
         except requests.RequestException as e:
+            print(
+                f"request #{position} ({_describe(url, params)}) failed on "
+                f"attempt {attempt}/{MAX_ATTEMPTS}, {time.monotonic() - started:.1f}s "
+                f"into this request: {e}",
+                file=sys.stderr,
+            )
             last_error = OpenMeteoFetchError(f"Request to {url} failed: {e}")
         else:
             if resp.status_code == 200:

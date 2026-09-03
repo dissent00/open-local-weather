@@ -230,3 +230,89 @@ def test_persistent_failure_still_raises_after_exhausting_attempts(requests_mock
     with pytest.raises(open_meteo.OpenMeteoFetchError):
         open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
     assert requests_mock.call_count == open_meteo.MAX_ATTEMPTS
+
+
+def _resp(payload, status=200):
+    """Minimal stand-in for a requests.Response, for the session-level tests
+    below which bypass requests_mock deliberately — the point of those is that
+    the SESSION is used, and requests_mock patches the transport underneath it."""
+
+    class _R:
+        status_code = status
+        headers: dict = {}
+
+        def json(self):
+            return payload
+
+        @property
+        def text(self):
+            return str(payload)
+
+    return _R()
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 53 — redundancy that does not require knowing the cause
+# ---------------------------------------------------------------------------
+
+
+def test_requests_share_one_connection(monkeypatch):
+    """A run makes seven /v1/forecast calls plus air quality inside about half
+    a minute, and until now opened a fresh TCP+TLS connection for every one.
+    Connection reuse is a plausible mechanism for the read timeouts item 53
+    could not explain, costs nothing if it is not, and saves a handshake
+    either way."""
+    from openlocalweather.fetch import open_meteo
+
+    used = []
+
+    class _FakeSession:
+        def get(self, url, params=None, timeout=None):
+            used.append(url)
+            return _resp({"ok": True})
+
+    monkeypatch.setattr(open_meteo, "_SESSION", _FakeSession())
+    open_meteo._get("https://example.test/v1/forecast", {"a": 1})
+    open_meteo._get("https://example.test/v1/forecast", {"a": 2})
+
+    assert len(used) == 2, "both calls must go through the shared session"
+
+
+def test_a_timed_out_request_says_which_one_and_how_far_in(monkeypatch, capsys):
+    """Item 53 cost a full investigation because the logs said nothing beyond
+    the exception string — not which request, not its position in the run, not
+    how long it had been running. A recurrence should identify itself on the
+    first run."""
+    from openlocalweather.fetch import open_meteo
+
+    class _Boom:
+        def get(self, url, params=None, timeout=None):
+            raise requests.ReadTimeout("Read timed out. (read timeout=30)")
+
+    monkeypatch.setattr(open_meteo, "_SESSION", _Boom())
+    monkeypatch.setattr(open_meteo, "RETRY_BASE_DELAY_S", 0)
+    open_meteo.reset_request_counter()
+
+    with pytest.raises(open_meteo.OpenMeteoFetchError):
+        open_meteo._get("https://example.test/v1/forecast", {"forecast_days": 2})
+
+    err = capsys.readouterr().err
+    assert "request #1" in err
+    assert "forecast_days=2" in err
+    assert "attempt 3/3" in err
+
+
+def test_the_counter_numbers_requests_within_a_run(monkeypatch):
+    from openlocalweather.fetch import open_meteo
+
+    class _Ok:
+        def get(self, url, params=None, timeout=None):
+            return _resp({"ok": True})
+
+    monkeypatch.setattr(open_meteo, "_SESSION", _Ok())
+    open_meteo.reset_request_counter()
+    open_meteo._get("https://example.test/a", {})
+    open_meteo._get("https://example.test/b", {})
+    assert open_meteo.requests_made() == 2
+
+    open_meteo.reset_request_counter()
+    assert open_meteo.requests_made() == 0

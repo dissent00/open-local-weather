@@ -510,6 +510,9 @@ def _next_guidance_sentence(tz_name: str, now: datetime | None = None) -> str:
 
 def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     location = deps.location
+    # Positions in the run's request sequence are what item 53's diagnostics
+    # report, so they have to be per-run rather than per-process.
+    open_meteo.reset_request_counter()
 
     degradations: list[RunDegradation] = []
     primary_hourly = open_meteo.fetch_forecast_hourly_today(
@@ -732,6 +735,39 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         met_day3_valid_for = getattr(met_forecast, "five_day_valid_for", None)
     else:
         bulletin_text = deps.bulletin_fetcher.fetch()
+
+    # A SECOND, SPACED ATTEMPT — ROADMAP item 53.
+    #
+    # `_get` already retries three times, and on all eight failing runs all
+    # three timed out inside one 94.5-second burst. More of the same shape
+    # buys nothing; what has never been tried is waiting for the rest of the
+    # run to happen and asking again. That is the only variable the surviving
+    # "something trips inside a short burst" hypothesis says matters.
+    #
+    # The day-0 fallback above stays the floor, so this can only improve on
+    # it: a second failure lands exactly where one used to. The degradation is
+    # recorded only if BOTH attempts fail, because a run that got its full
+    # window in the end was not degraded and the record must not say it was.
+    if forward_window_narrowed:
+        try:
+            retried = forward_hours(
+                open_meteo.fetch_forecast_hourly_forward(
+                    location.primary_point.lat,
+                    location.primary_point.lon,
+                    MODELS,
+                    location.timezone,
+                ),
+                now_local,
+            )
+        except Exception as e:  # noqa: BLE001 - the fallback already stands
+            print(f"Second forward attempt also failed ({e}); keeping the day-0 window.", file=sys.stderr)
+        else:
+            print("Second forward attempt succeeded; full window restored.", file=sys.stderr)
+            forward_hourly = retried
+            forward_window_narrowed = False
+            degradations = [
+                d for d in degradations if d.code != DEGRADATION_HOURS_AHEAD_NARROWED
+            ]
 
     # From the trimmed forward window, never the calendar day: a CAPE peak
     # that already passed this morning is not a reason to warn about tonight.

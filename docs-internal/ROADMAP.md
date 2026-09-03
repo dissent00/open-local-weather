@@ -4732,12 +4732,30 @@ recurrence convicts the sequence, continued health exonerates it. That costs
 one degraded forecast, which is a real cost to a reader, and it is the
 operator's call whether the knowledge is worth it.
 
-**The cheaper alternative, and probably the right one:** leave the order
-alone, and add the diagnostic that was missing all along — log which request
-is in flight, its position, and its elapsed time. Then if this recurs it
-identifies itself on the first run instead of costing another investigation.
-Nothing in the logs today says anything beyond the exception string, which is
-why this took a full agent's worth of reading to characterise.
+**The cheaper alternative was taken, 2026-09-03.** Three changes, none of
+which requires knowing the cause, chosen after establishing what was already
+there — `_get` ALREADY retries three times with backoff, and all three
+attempts timed out on every one of the eight failing runs, so more retries of
+the same shape buy nothing.
+
+1. **One connection for the whole run.** `_SESSION` replaces a fresh
+   TCP+TLS handshake per call across ~8 calls in half a minute. Connection
+   churn is a plausible mechanism, this is the cheap half of testing it, and
+   a measured side benefit either way: the real fetch sequence went from
+   8.8 s to 5.6 s, a third faster.
+2. **A second, SPACED attempt at the forward window.** Not more retries in
+   the same burst — one more try after the rest of the run has happened,
+   which is the only variable the surviving hypothesis says matters. The
+   day-0 fallback stays the floor, so a second failure lands exactly where
+   one used to, and the degradation is recorded only if both attempts fail.
+3. **The diagnostic that was missing all along**: which request, its position
+   in the run, and how long it had been going. A recurrence now identifies
+   itself on the first run instead of costing another investigation.
+
+**None of these is a claimed fix.** The confound above stands: the fault
+began without a code change and could end without one. They are redundancy
+and instrumentation, which are worth having whatever the cause turns out to
+be.
 
 **The original prediction, for the record.** On the next scheduled run:
 

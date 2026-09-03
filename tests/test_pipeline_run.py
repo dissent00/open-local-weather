@@ -2480,3 +2480,51 @@ def test_a_working_synoptic_fetch_records_nothing(tmp_path):
     assert "synoptic_unavailable" not in [
         d.code for d in result.log_entry.meta.degradations
     ]
+
+
+def test_a_lost_forward_window_is_tried_once_more_later_in_the_run(tmp_path, monkeypatch):
+    """Redundancy that does not require knowing the cause — ROADMAP item 53.
+
+    The three retries inside `_get` all happen within one 94.5-second burst
+    and all three timed out on every one of the eight failing runs, so more of
+    the same shape buys nothing. This is a SPACED attempt instead: the rest of
+    the run happens in between, which is the only variable the burst
+    hypothesis says matters. The day-0 fallback stays the floor, so this can
+    only ever improve on it."""
+    calls = {"n": 0}
+
+    def _flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("Read timed out. (read timeout=30)")
+        return forward_hourly_fixture()
+
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", _flaky)
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    assert calls["n"] == 2, "the second attempt must actually be made"
+    # And having succeeded, the run is NOT degraded: the reader gets the full
+    # window and the record must not claim otherwise.
+    assert [d.code for d in result.log_entry.meta.degradations] == []
+
+
+def test_the_retry_is_not_attempted_when_the_first_one_worked(tmp_path, monkeypatch):
+    calls = {"n": 0}
+
+    def _ok(*a, **k):
+        calls["n"] += 1
+        return forward_hourly_fixture()
+
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", _ok)
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert calls["n"] == 1
+
+
+def test_both_attempts_failing_still_falls_back_and_says_so(tmp_path, monkeypatch):
+    """The floor. Two failures must land exactly where one used to."""
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", _raises(RuntimeError("Read timed out"))
+    )
+    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    assert "hours_ahead_narrowed" in [d.code for d in result.log_entry.meta.degradations]
