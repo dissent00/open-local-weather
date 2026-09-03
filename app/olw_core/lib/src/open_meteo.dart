@@ -416,22 +416,47 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
     final temps = day.temps.whereType<double>().toList();
     final wind = day.wind.whereType<double>().toList();
     final pressure = day.pressure.whereType<double>().toList();
+
+    final highC = temps.isEmpty ? null : temps.reduce((a, b) => a > b ? a : b);
+    final lowC = temps.isEmpty ? null : temps.reduce((a, b) => a < b ? a : b);
+    final peakWind = wind.isEmpty ? null : wind.reduce((a, b) => a > b ? a : b);
+    final mslpTrend =
+        pressure.length >= 2 ? pressure.last - pressure.first : null;
+    final onsetHour = getOnsetHour(day.times, day.precip, threshold: threshold);
+    // Summed over hours that reported a value. An all-null day gives null
+    // rather than 0.0 — "no data" and "no rain" are different answers and the
+    // summary must not conflate them.
+    final precipMm = day.precip.any((v) => v != null)
+        ? (((day.precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
+                .roundToDouble() /
+            100)
+        : null;
+
+    // Upstream ROADMAP item 45, trap 2. A key per field this source actually
+    // supplied — a field that came back null is left unstamped, because a
+    // stamp asserts an observation was made and stamping an absence would
+    // record one that never happened.
+    final provenance = <String, String>{'rain': sourceReanalysis};
+    for (final e in <String, Object?>{
+      'high_c': highC,
+      'low_c': lowC,
+      'peak_wind_kmh': peakWind,
+      'mslp_trend': mslpTrend,
+      'onset_hour': onsetHour,
+      'precip_mm': precipMm,
+    }.entries) {
+      if (e.value != null) provenance[e.key] = sourceReanalysis;
+    }
+
     result[parseDate(dStr)] = DailyActual(
       rain: day.precip.any((v) => (v ?? 0) >= threshold),
-      highC: temps.isEmpty ? null : temps.reduce((a, b) => a > b ? a : b),
-      lowC: temps.isEmpty ? null : temps.reduce((a, b) => a < b ? a : b),
-      peakWindKmh: wind.isEmpty ? null : wind.reduce((a, b) => a > b ? a : b),
-      mslpTrend:
-          pressure.length >= 2 ? pressure.last - pressure.first : null,
-      onsetHour: getOnsetHour(day.times, day.precip, threshold: threshold),
-      // Summed over hours that reported a value. An all-null day gives
-      // null rather than 0.0 — "no data" and "no rain" are different
-      // answers and the summary must not conflate them.
-      precipMm: day.precip.any((v) => v != null)
-          ? (((day.precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
-                  .roundToDouble() /
-              100)
-          : null,
+      highC: highC,
+      lowC: lowC,
+      peakWindKmh: peakWind,
+      mslpTrend: mslpTrend,
+      onsetHour: onsetHour,
+      precipMm: precipMm,
+      provenance: provenance,
     );
   });
   return result;

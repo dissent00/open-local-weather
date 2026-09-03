@@ -17,7 +17,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -66,7 +67,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -96,7 +98,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -133,7 +136,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -170,7 +174,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -207,7 +212,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -244,7 +250,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -281,7 +288,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 3
       },
@@ -318,7 +326,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -355,7 +364,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -392,7 +402,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -429,7 +440,8 @@
           "precip_mm": 0.5,
           "thunder": true,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -466,7 +478,8 @@
           "precip_mm": 0.0,
           "thunder": false,
           "precipitation": true,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -503,7 +516,8 @@
           "precip_mm": 0.0,
           "thunder": false,
           "precipitation": true,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },
@@ -540,7 +554,8 @@
           "precip_mm": 0.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "lead_time_days": 0
       },

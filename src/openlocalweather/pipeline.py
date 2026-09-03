@@ -120,6 +120,7 @@ from openlocalweather.models import (
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
     DEGRADATION_SYNOPTIC,
+    SOURCE_STATION,
     DEGRADATION_SUN_TIMES,
     LocalBulletinRecord,
     DailyActual,
@@ -439,6 +440,22 @@ def _apply_station_observations(
         observed = weather_by_date[day]
         actual.thunder = observed.thunder
         actual.precipitation = observed.precipitation
+        # ROADMAP item 45, trap 2: stamp the station's fields on the days it
+        # actually covered, and only those. The `continue` above means an
+        # uncovered day keeps whatever the archive stamped and gains nothing,
+        # which is the distinction the whole trap is about — the station is
+        # truth for most days and down for a few, and those few have to be
+        # identifiable afterwards rather than guessed at.
+        #
+        # Merged into the existing dict rather than replacing it: the archive
+        # supplied this day's temperature and wind and still did.
+        actual.provenance = {
+            **(actual.provenance or {}),
+            "thunder": SOURCE_STATION,
+            "precipitation": SOURCE_STATION,
+        }
+        if observed.precipitation_onset is not None:
+            actual.provenance["precipitation_onset"] = SOURCE_STATION
         # All THREE fields, not the two booleans. Storing the flag without the
         # onset leaves the day-over-day description with no timing to reach
         # the dry band's shower phrases with, so a corrected day goes on being

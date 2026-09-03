@@ -17,7 +17,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "include_onset": true
       },
@@ -47,7 +48,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "include_onset": false
       },
@@ -87,7 +89,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           },
           "2026-08-02": {
             "rain": true,
@@ -99,7 +102,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           },
           "2026-08-03": {
             "rain": true,
@@ -111,7 +115,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           }
         },
         "before": "2026-08-04"
@@ -143,7 +148,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           },
           "2026-08-02": {
             "rain": true,
@@ -155,7 +161,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           },
           "2026-08-03": {
             "rain": true,
@@ -167,7 +174,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           }
         },
         "before": "2026-08-02"
@@ -199,7 +207,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           },
           "2026-08-02": {
             "rain": true,
@@ -211,7 +220,8 @@
             "precip_mm": null,
             "thunder": null,
             "precipitation": null,
-            "precipitation_onset": null
+            "precipitation_onset": null,
+            "provenance": null
           }
         },
         "before": "2026-08-03"

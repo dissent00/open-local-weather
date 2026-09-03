@@ -16,7 +16,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -85,7 +86,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -154,7 +156,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -223,7 +226,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -292,7 +296,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -361,7 +366,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -430,7 +436,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -499,7 +506,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -546,7 +554,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -593,7 +602,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -640,7 +650,8 @@
           "precip_mm": 0.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -687,7 +698,8 @@
           "precip_mm": 19.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -734,7 +746,8 @@
           "precip_mm": 2.1,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -781,7 +794,8 @@
           "precip_mm": 0.2,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -828,7 +842,8 @@
           "precip_mm": 0.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -875,7 +890,8 @@
           "precip_mm": 0.0,
           "thunder": false,
           "precipitation": true,
-          "precipitation_onset": "19:00"
+          "precipitation_onset": "19:00",
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -922,7 +938,8 @@
           "precip_mm": 8.0,
           "thunder": false,
           "precipitation": true,
-          "precipitation_onset": "19:00"
+          "precipitation_onset": "19:00",
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -969,7 +986,8 @@
           "precip_mm": null,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1016,7 +1034,8 @@
           "precip_mm": 2.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1096,7 +1115,8 @@
           "precip_mm": 0.5,
           "thunder": true,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1143,7 +1163,8 @@
           "precip_mm": 0.5,
           "thunder": false,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1190,7 +1211,8 @@
           "precip_mm": 0.5,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1237,7 +1259,8 @@
           "precip_mm": 8.0,
           "thunder": true,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {
@@ -1304,7 +1327,8 @@
           "precip_mm": 18.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": null
         },
         "today_day0_predictions": [
           {

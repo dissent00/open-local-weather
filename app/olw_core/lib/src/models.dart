@@ -142,6 +142,13 @@ class ModelPrediction {
 }
 
 /// One day's actual observation, bucketed from hourly data.
+/// Source identifiers for [DailyActual.provenance] — upstream ROADMAP item
+/// 45, trap 2. Must match `models.py`'s SOURCE_* constants: they are written
+/// into every stored day, and a rename on one side would make the two records
+/// incomparable.
+const String sourceReanalysis = 'era5_archive';
+const String sourceStation = 'metar_station';
+
 class DailyActual {
   final bool rain;
   final double? highC;
@@ -195,6 +202,25 @@ class DailyActual {
   /// the day-over-day description, via [observedOnset].
   final String? precipitationOnset;
 
+  /// Which source supplied which value, for THIS day — upstream ROADMAP item
+  /// 45, trap 2. Keys are field names, values are source ids.
+  ///
+  /// THREE-VALUED, like [thunder] before it. `null` means the day predates
+  /// provenance recording and was never asked; an empty map would claim we
+  /// looked and found no sources, which is never true of a stored day.
+  ///
+  /// WHY IT MATTERS. The station is truth for most days and down for a few,
+  /// and those few are scored against a coarser instrument. Acceptable only
+  /// if visible: without this, a dip in the accuracy record cannot be told
+  /// apart from the models getting worse. Item 53.1 moved every model about
+  /// five points in a day purely by adding a source.
+  ///
+  /// Carried here so the app's own record can answer the same question. The
+  /// app does not yet WRITE it — it has no station of its own to attribute —
+  /// but a value read back from storage must survive the round trip rather
+  /// than being silently dropped.
+  final Map<String, String>? provenance;
+
   const DailyActual({
     required this.rain,
     this.highC,
@@ -206,6 +232,7 @@ class DailyActual {
     this.thunder,
     this.precipitation,
     this.precipitationOnset,
+    this.provenance,
   });
 
   /// The onset a day's CHARACTER should be described from.
@@ -247,6 +274,8 @@ class DailyActual {
         thunder: j['thunder'] as bool?,
         precipitation: j['precipitation'] as bool?,
         precipitationOnset: j['precipitation_onset'] as String?,
+        provenance: (j['provenance'] as Map?)?.map(
+            (k, v) => MapEntry(k as String, v as String)),
       );
 
   Map<String, Object?> toJson() => {
@@ -260,6 +289,7 @@ class DailyActual {
         'thunder': thunder,
         'precipitation': precipitation,
         'precipitation_onset': precipitationOnset,
+        'provenance': provenance,
       };
 }
 

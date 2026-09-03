@@ -30,7 +30,7 @@ import requests
 
 from openlocalweather.dates import format_date, parse_date
 from openlocalweather.defaults import RAIN_THRESHOLD_MM
-from openlocalweather.models import DailyActual
+from openlocalweather.models import SOURCE_REANALYSIS, DailyActual
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -412,20 +412,44 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
         temps = [v for v in day["temps"] if v is not None]
         wind = [v for v in day["wind"] if v is not None]
         pressure = [v for v in day["pressure"] if v is not None]
+        precip_mm = (
+            round(sum(v for v in day["precip"] if v is not None), 2)
+            if any(v is not None for v in day["precip"])
+            else None
+        )
+        onset_hour = get_onset_hour(day["times"], day["precip"], threshold)
+        high_c = max(temps) if temps else None
+        low_c = min(temps) if temps else None
+        peak_wind = max(wind) if wind else None
+        mslp_trend = (pressure[-1] - pressure[0]) if len(pressure) >= 2 else None
+
+        # ROADMAP item 45, trap 2. A key per field this source actually
+        # supplied — a field that came back None is left unstamped, because a
+        # stamp asserts that an observation was made and stamping an absence
+        # would record one that never happened.
+        provenance = {"rain": SOURCE_REANALYSIS}
+        for field, value in (
+            ("high_c", high_c),
+            ("low_c", low_c),
+            ("peak_wind_kmh", peak_wind),
+            ("mslp_trend", mslp_trend),
+            ("onset_hour", onset_hour),
+            ("precip_mm", precip_mm),
+        ):
+            if value is not None:
+                provenance[field] = SOURCE_REANALYSIS
+
         result[parse_date(d_str)] = DailyActual(
             rain=any((v or 0) >= threshold for v in day["precip"]),
-            high_c=max(temps) if temps else None,
-            low_c=min(temps) if temps else None,
-            peak_wind_kmh=max(wind) if wind else None,
-            mslp_trend=(pressure[-1] - pressure[0]) if len(pressure) >= 2 else None,
-            onset_hour=get_onset_hour(day["times"], day["precip"], threshold),
+            high_c=high_c,
+            low_c=low_c,
+            peak_wind_kmh=peak_wind,
+            mslp_trend=mslp_trend,
+            onset_hour=onset_hour,
+            provenance=provenance,
             # Summed over hours that reported a value. An all-null day gives
             # None rather than 0.0 — "no data" and "no rain" are different
             # answers and the summary must not conflate them.
-            precip_mm=(
-                round(sum(v for v in day["precip"] if v is not None), 2)
-                if any(v is not None for v in day["precip"])
-                else None
-            ),
+            precip_mm=precip_mm,
         )
     return result

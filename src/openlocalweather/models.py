@@ -111,6 +111,45 @@ class ModelPrediction(BaseModel):
     mslp_trend: float | None = None
 
 
+# WHICH INSTRUMENT SUPPLIED A VALUE — ROADMAP item 45, trap 2.
+#
+# Source identifiers, not display names: they are written into every stored
+# day and a rename would make the archive incomparable with itself.
+SOURCE_REANALYSIS = "era5_archive"
+SOURCE_STATION = "metar_station"
+
+# Item 45's confidence ladder. Declared, never learned — where a source sits
+# follows from what the instrument physically is, which is knowable before any
+# data arrives, and with no held-out truth there is nothing to fit against
+# anyway.
+#
+# DERIVED FROM THE SOURCE, NOT STORED PER DAY. Confidence is a property of the
+# instrument rather than of the weather, so storing it alongside every value
+# would duplicate one fact across thousands of rows and invite the copies to
+# disagree. The record stores which source answered; this says what that is
+# worth.
+#
+# A station reporting an AMOUNT it measured would be "gold". Nothing here
+# earns that yet: HKKI files 0.00 inches on every row of a 45-day sample,
+# including an hour whose own report says -RA, so its amounts are a constant
+# dressed as a measurement and only its present-weather groups are evidence.
+_SOURCE_CONFIDENCE = {
+    SOURCE_STATION: "reliable",
+    SOURCE_REANALYSIS: "possible",
+}
+
+
+def confidence_of(source: str) -> str:
+    """How much weight a value from `source` can carry.
+
+    Unknown sources are "unknown" rather than defaulting to anything
+    trustworthy: a fork adding its own sensor must not have it silently
+    outrank the reanalysis, and an unrecognised id is more likely a typo than
+    a gold-standard instrument.
+    """
+    return _SOURCE_CONFIDENCE.get(source, "unknown")
+
+
 class DailyActual(BaseModel):
     """One day's actual/reanalysis observation, bucketed from hourly data.
 
@@ -172,6 +211,27 @@ class DailyActual(BaseModel):
     # change what every stored onset error means. This field only ever feeds
     # the day-over-day description, via observed_onset().
     precipitation_onset: str | None = None
+
+    # Which source supplied which value, for THIS day — ROADMAP item 45,
+    # trap 2. Keys are DailyActual field names, values are SOURCE_* ids.
+    #
+    # THREE-VALUED, like `thunder` and `degradations` before it. `None` means
+    # the day predates provenance recording and was never asked. An empty dict
+    # would claim we looked and found no sources, which is never true of a
+    # stored day — every one has at least a reanalysis `rain`.
+    #
+    # WHY IT IS THE PREREQUISITE for the rest of item 45. The station is truth
+    # for most days and down for a few, and those few are scored against a
+    # coarser instrument. That is acceptable only if it is visible: without
+    # this, an unexplained dip in the accuracy record cannot be told apart
+    # from the models getting worse. Item 53.1 moved every model about five
+    # points in a day purely by adding a source, which is exactly the kind of
+    # movement this exists to explain.
+    #
+    # Not every field appears. A key is present when something supplied a
+    # value; a field the day has no observation for is simply absent, rather
+    # than being stamped with a source that reported nothing.
+    provenance: dict[str, str] | None = None
 
     def observed_onset(self) -> str | None:
         """The onset a day's CHARACTER should be described from.

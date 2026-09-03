@@ -58,7 +58,16 @@
           "precip_mm": 1.2,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": {
+            "rain": "era5_archive",
+            "high_c": "era5_archive",
+            "low_c": "era5_archive",
+            "peak_wind_kmh": "era5_archive",
+            "mslp_trend": "era5_archive",
+            "onset_hour": "era5_archive",
+            "precip_mm": "era5_archive"
+          }
         },
         "2026-08-12": {
           "rain": false,
@@ -70,7 +79,15 @@
           "precip_mm": 0.1,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": {
+            "rain": "era5_archive",
+            "high_c": "era5_archive",
+            "low_c": "era5_archive",
+            "peak_wind_kmh": "era5_archive",
+            "mslp_trend": "era5_archive",
+            "precip_mm": "era5_archive"
+          }
         }
       }
     },
@@ -118,7 +135,15 @@
           "precip_mm": 0.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": {
+            "rain": "era5_archive",
+            "high_c": "era5_archive",
+            "low_c": "era5_archive",
+            "peak_wind_kmh": "era5_archive",
+            "mslp_trend": "era5_archive",
+            "precip_mm": "era5_archive"
+          }
         }
       }
     },
@@ -162,7 +187,15 @@
           "precip_mm": 0.0,
           "thunder": null,
           "precipitation": null,
-          "precipitation_onset": null
+          "precipitation_onset": null,
+          "provenance": {
+            "rain": "era5_archive",
+            "high_c": "era5_archive",
+            "low_c": "era5_archive",
+            "peak_wind_kmh": "era5_archive",
+            "mslp_trend": "era5_archive",
+            "precip_mm": "era5_archive"
+          }
         }
       }
     },

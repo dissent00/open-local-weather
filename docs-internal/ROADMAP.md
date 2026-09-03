@@ -3445,7 +3445,7 @@ machines), item 41 (satellite), item 42 (why this item exists), item 43
 
 ---
 
-## 45. Which source is "what actually happened" · **Designed 2026-09-03, not built**
+## 45. Which source is "what actually happened" · **Designed and stamped 2026-09-03**
 
 Raised by the operator on 2026-08-26, immediately after item 42 and item 44.
 
@@ -3500,6 +3500,18 @@ when a gust occurs — 2 of 42 days, per item 44. Read "no gust group" as
 "0 km/h" and it is wrong every day. `DailyActual.thunder` already encodes
 this distinction for one field. Generalising it means per-variable absence
 semantics, never a naive "first not None".
+
+**2. Fall-through changes the yardstick mid-record. THE STAMP SHIPPED
+2026-09-03** — `DailyActual.provenance`, a `{field: source_id}` map written
+where the values are produced, in both languages and vector-locked. Three-
+valued like `thunder` before it: `None` means the day predates recording, and
+an empty map would claim we looked and found no sources, which is never true
+of a stored day. A field the source had no value for is left UNSTAMPED, since
+a stamp asserts an observation was made. `confidence_of()` derives item 45's
+ladder from the source id rather than storing it per day, because confidence
+is a property of the instrument and not of the weather — and an unrecognised
+source is `"unknown"`, never something trustworthy by default. The original
+note follows.
 
 **2. Fall-through changes the yardstick mid-record.** The airport is truth
 for 300 days, down for 5, and those 5 are scored against a coarser
