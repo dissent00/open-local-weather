@@ -408,6 +408,32 @@ def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[
     return summarize_daypart(now_local, sun.sunrise, sun.sunset, next_sun.sunrise), now_local
 
 
+def apply_station_readings(actual: DailyActual, measured) -> None:
+    """Store what the station MEASURED on one day, beside the reanalysis.
+
+    Shared by the daily pipeline and `rebuild-record` so the two cannot drift:
+    a rebuild that dropped these would silently erase weeks of the
+    accumulation item 45's sequencing depends on, and it would look like the
+    station having said nothing.
+
+    STORED, NOT SCORED. Nothing downstream reads these yet, and that is the
+    point — cross-check before replacement. `None` values are skipped rather
+    than written, because a stamp asserts an observation was made.
+    """
+    if measured is None:
+        return
+
+    for field, value in (
+        ("station_high_c", measured.high_c),
+        ("station_low_c", measured.low_c),
+        ("station_peak_wind_kmh", measured.peak_wind_kmh),
+    ):
+        if value is None:
+            continue
+        setattr(actual, field, value)
+        actual.provenance = {**(actual.provenance or {}), field: SOURCE_STATION}
+
+
 def _apply_station_observations(
     actuals: dict[date, DailyActual], location: LocationConfig
 ) -> None:
@@ -427,7 +453,9 @@ def _apply_station_observations(
     if not actuals:
         return
 
-    weather_by_date = metar_fetch.observed_weather_by_date(
+    # ONE FETCH for both what the station SAW and what it MEASURED — the
+    # archive request is the slowest call in the verification pass.
+    weather_by_date, readings_by_date = metar_fetch.observed_station_data(
         location.metar_station_icao, min(actuals), max(actuals), location.timezone
     )
     if weather_by_date is None:
@@ -456,6 +484,8 @@ def _apply_station_observations(
         }
         if observed.precipitation_onset is not None:
             actual.provenance["precipitation_onset"] = SOURCE_STATION
+
+        apply_station_readings(actual, (readings_by_date or {}).get(day))
         # All THREE fields, not the two booleans. Storing the flag without the
         # onset leaves the day-over-day description with no timing to reach
         # the dry band's shower phrases with, so a corrected day goes on being

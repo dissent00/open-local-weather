@@ -18,6 +18,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "include_onset": true
@@ -49,6 +52,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "include_onset": false
@@ -90,6 +96,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           },
           "2026-08-02": {
@@ -103,6 +112,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           },
           "2026-08-03": {
@@ -116,6 +128,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           }
         },
@@ -149,6 +164,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           },
           "2026-08-02": {
@@ -162,6 +180,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           },
           "2026-08-03": {
@@ -175,6 +196,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           }
         },
@@ -208,6 +232,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           },
           "2026-08-02": {
@@ -221,6 +248,9 @@
             "thunder": null,
             "precipitation": null,
             "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
             "provenance": null
           }
         },

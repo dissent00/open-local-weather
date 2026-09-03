@@ -202,6 +202,20 @@ class DailyActual {
   /// the day-over-day description, via [observedOnset].
   final String? precipitationOnset;
 
+  /// What the STATION measured, stored beside the reanalysis values and not
+  /// scored against anything — upstream ROADMAP item 45's sequencing, which
+  /// is cross-check before replacement.
+  ///
+  /// Carried here so the shared record shape stays identical across the two
+  /// languages; this app writes none of them, having no station of its own.
+  /// There is deliberately no station precipitation field: the reference
+  /// deployment's station files 0.00 inches on every row including hours its
+  /// own report says -RA, so an amount from it is a constant dressed as a
+  /// measurement.
+  final double? stationHighC;
+  final double? stationLowC;
+  final double? stationPeakWindKmh;
+
   /// Which source supplied which value, for THIS day — upstream ROADMAP item
   /// 45, trap 2. Keys are field names, values are source ids.
   ///
@@ -232,6 +246,9 @@ class DailyActual {
     this.thunder,
     this.precipitation,
     this.precipitationOnset,
+    this.stationHighC,
+    this.stationLowC,
+    this.stationPeakWindKmh,
     this.provenance,
   });
 
@@ -274,6 +291,9 @@ class DailyActual {
         thunder: j['thunder'] as bool?,
         precipitation: j['precipitation'] as bool?,
         precipitationOnset: j['precipitation_onset'] as String?,
+        stationHighC: _toDouble(j['station_high_c']),
+        stationLowC: _toDouble(j['station_low_c']),
+        stationPeakWindKmh: _toDouble(j['station_peak_wind_kmh']),
         provenance: (j['provenance'] as Map?)?.map(
             (k, v) => MapEntry(k as String, v as String)),
       );
@@ -289,6 +309,9 @@ class DailyActual {
         'thunder': thunder,
         'precipitation': precipitation,
         'precipitation_onset': precipitationOnset,
+        'station_high_c': stationHighC,
+        'station_low_c': stationLowC,
+        'station_peak_wind_kmh': stationPeakWindKmh,
         'provenance': provenance,
       };
 }

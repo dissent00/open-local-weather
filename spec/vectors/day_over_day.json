@@ -17,6 +17,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -87,6 +90,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -157,6 +163,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -227,6 +236,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -297,6 +309,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -367,6 +382,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -437,6 +455,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -507,6 +528,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -555,6 +579,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -603,6 +630,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -651,6 +681,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -699,6 +732,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -747,6 +783,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -795,6 +834,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -843,6 +885,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -891,6 +936,9 @@
           "thunder": false,
           "precipitation": true,
           "precipitation_onset": "19:00",
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -939,6 +987,9 @@
           "thunder": false,
           "precipitation": true,
           "precipitation_onset": "19:00",
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -987,6 +1038,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1035,6 +1089,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1116,6 +1173,9 @@
           "thunder": true,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1164,6 +1224,9 @@
           "thunder": false,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1212,6 +1275,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1260,6 +1326,9 @@
           "thunder": true,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [
@@ -1328,6 +1397,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "today_day0_predictions": [

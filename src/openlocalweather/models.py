@@ -212,6 +212,31 @@ class DailyActual(BaseModel):
     # the day-over-day description, via observed_onset().
     precipitation_onset: str | None = None
 
+    # WHAT THE STATION MEASURED, stored beside the reanalysis values and NOT
+    # scored against anything — ROADMAP item 45's sequencing, which is
+    # cross-check before replacement: stamp provenance, store the extra
+    # readings, change nothing that is scored, and let divergence accumulate
+    # for a few weeks before deciding what precedence would earn.
+    #
+    # SEPARATE FIELDS, never overwriting `high_c` and friends. The rule from
+    # `precipitation_onset`: those are SCORED, and quietly swapping a
+    # reanalysis quantity for a station one changes what every stored error
+    # in the record means. Item 44 measured the two agreeing on temperature to
+    # +0.43 °C mean, so for that variable precedence may well earn nothing —
+    # which is exactly the kind of thing worth knowing before building it.
+    #
+    # None means the station filed nothing usable that day, never zero.
+    #
+    # NO STATION PRECIPITATION FIELD, deliberately. HKKI files p01i as 0.00 on
+    # every row of a 45-day sample including an hour whose own report says
+    # -RA. Storing that would put a confident "no rain" beside days it rained,
+    # and a later precedence rule would have no way to tell it from a real
+    # measurement. Occurrence comes from the present-weather groups instead —
+    # see `precipitation` above.
+    station_high_c: float | None = None
+    station_low_c: float | None = None
+    station_peak_wind_kmh: float | None = None
+
     # Which source supplied which value, for THIS day — ROADMAP item 45,
     # trap 2. Keys are DailyActual field names, values are SOURCE_* ids.
     #

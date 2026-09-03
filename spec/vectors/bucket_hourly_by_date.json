@@ -59,6 +59,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": {
             "rain": "era5_archive",
             "high_c": "era5_archive",
@@ -80,6 +83,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": {
             "rain": "era5_archive",
             "high_c": "era5_archive",
@@ -136,6 +142,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": {
             "rain": "era5_archive",
             "high_c": "era5_archive",
@@ -188,6 +197,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": {
             "rain": "era5_archive",
             "high_c": "era5_archive",

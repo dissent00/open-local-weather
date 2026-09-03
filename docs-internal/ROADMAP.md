@@ -3561,6 +3561,28 @@ and item 44 measured mean +0.43 °C, so they do — the precedence machinery
 earns nothing for that variable, and that is worth knowing before building
 it.
 
+**The readings shipped 2026-09-03**, stored and unscored, as this sequencing
+asks. One fetch serves both what the station SAW and what it MEASURED —
+`observed_station_data`, since the archive request is the slowest call in the
+verification pass and asking it twice for two views of the same rows would
+double that for nothing. `station_high_c`, `station_low_c` and
+`station_peak_wind_kmh` sit beside the reanalysis values and are stamped
+`metar_station` in the provenance map. Nothing reads them, which is the
+point.
+
+Applied by one shared helper from BOTH the daily pipeline and
+`rebuild-record`: a rebuild that dropped them would silently erase weeks of
+accumulation and look exactly like the station having said nothing.
+
+`p01i` and `gust` are deliberately not requested — the first is a constant
+0.00 here, the second missing on all 932 rows of the sample. Fahrenheit and
+knots are converted on the way in so a later comparison is a subtraction
+rather than a conversion someone has to remember, and `M`/`T` markers become
+`None` rather than numbers.
+
+Driven live 2026-09-03 over 2026-08-28 to 09-01: five days, highs 31-33 °C,
+lows 16-18 °C, peak winds 18.5-32.4 km/h. Sensible, and now accumulating.
+
 Concretely, the extra readings are cheaper than they look:
 `fetch_metar_archive` requests `data=metar`, the raw report text only. Iowa
 State's ASOS service exposes structured fields alongside it, so temperature

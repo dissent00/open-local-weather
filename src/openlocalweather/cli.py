@@ -61,6 +61,7 @@ from openlocalweather.store.actuals_cache import (
 )
 from openlocalweather import replay
 from openlocalweather.backfill import backfill_entry_baselines
+from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
 from openlocalweather.store.log_store import (
@@ -716,7 +717,10 @@ def _run_rebuild_record(args) -> int:
 
     before = {d: a.observed_convection() for d, a in actuals.items()}
 
-    weather_by_date = metar_fetch.observed_weather_by_date(
+    # ONE fetch for both, and the readings matter here as much as in the
+    # daily pipeline: a rebuild that dropped them would silently erase weeks
+    # of the accumulation item 45's sequencing depends on.
+    weather_by_date, readings_by_date = metar_fetch.observed_station_data(
         location.metar_station_icao, min(actuals), max(actuals), location.timezone
     )
     if weather_by_date is None:
@@ -739,6 +743,7 @@ def _run_rebuild_record(args) -> int:
         # the dry band's shower phrases with, so a corrected day goes on being
         # called "dry" — see DailyActual.observed_onset and ROADMAP 53.1a.
         actual.precipitation_onset = observed.precipitation_onset
+        apply_station_readings(actual, (readings_by_date or {}).get(day))
 
     changed = sorted(d for d, was in before.items() if was != actuals[d].observed_convection())
     print(

@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import csv
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -235,6 +236,193 @@ def fetch_metar_archive(
     return reports or None
 
 
+# One knot in km/h. Spelled out because the conversion happens on the way
+# INTO the record, and a wrong constant here would be invisible: every
+# stored wind would simply be consistently wrong.
+KM_PER_KNOT = 1.852
+
+
+@dataclass
+class StationReadings:
+    """Quantities the airport MEASURED on one local calendar day.
+
+    Kept apart from StationWeather, which carries what the station SAW —
+    thunder, precipitation — because these are numbers the reanalysis also
+    supplies and those are observations only the station can make. Mixing them
+    would blur which of the two the record is falling back on.
+
+    STORED, NOT SCORED. Item 45's sequencing: cross-check before replacement.
+    Nothing here feeds verification; it accumulates beside the reanalysis so
+    that a precedence decision can later be made with numbers instead of an
+    assumption. Item 44 already measured temperature agreement at +0.43 °C
+    mean, which is the sort of answer that decides whether the precedence
+    machinery earns anything for a variable at all.
+
+    NO PRECIPITATION FIELD, and that is the important omission. HKKI files
+    p01i as 0.00 on every row of a 45-day sample, including an hour whose own
+    report carries -RA — a constant dressed as a measurement. Reading it would
+    put a confident "no rain" into the record on days it rained. See ROADMAP
+    item 45. Precipitation from this station comes only from the present
+    weather groups, via StationWeather.
+    """
+
+    high_c: float | None = None
+    low_c: float | None = None
+    peak_wind_kmh: float | None = None
+
+
+def _number(raw: str) -> float | None:
+    """A reading, or None for the service's absence markers.
+
+    `M` is missing and `T` is trace. Parsed as numbers they become confident
+    values, which is exactly how a station that measures nothing ends up
+    asserting zero.
+    """
+    value = raw.strip()
+    if value in ("", "M", "T"):
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def station_readings_by_date(
+    rows: Iterable[Sequence[str]], start: date, end: date, timezone_name: str
+) -> dict[date, StationReadings]:
+    """Bucket structured ASOS rows into LOCAL calendar days.
+
+    Units are converted on the way in — Fahrenheit to Celsius, knots to km/h —
+    so a later comparison against the reanalysis is a subtraction rather than
+    a conversion someone has to remember. The record's units are the record's
+    units everywhere.
+
+    Local, not UTC, matching observed_weather_by_date: a 21:30Z report belongs
+    to tomorrow in Nairobi, and the two halves of one station's output must
+    not describe different days.
+
+    A day appears only when something usable was read. A day of nothing but
+    `M` markers is absent rather than present-and-empty, for the same reason
+    a missing flag is None rather than False.
+    """
+    local_zone = ZoneInfo(timezone_name)
+    temps: dict[date, list[float]] = {}
+    winds: dict[date, list[float]] = {}
+
+    for row in rows:
+        if len(row) < 4 or row[0] == "station":
+            continue
+        try:
+            observed_at = datetime.strptime(row[1], "%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
+
+        local_date = observed_at.replace(tzinfo=timezone.utc).astimezone(local_zone).date()
+        if local_date < start or local_date > end:
+            continue
+
+        tmpf = _number(row[2])
+        if tmpf is not None:
+            temps.setdefault(local_date, []).append(round((tmpf - 32) * 5 / 9, 2))
+
+        sknt = _number(row[3])
+        if sknt is not None:
+            winds.setdefault(local_date, []).append(round(sknt * KM_PER_KNOT, 2))
+
+    readings: dict[date, StationReadings] = {}
+    for day in sorted(set(temps) | set(winds)):
+        t, w = temps.get(day, []), winds.get(day, [])
+        readings[day] = StationReadings(
+            high_c=max(t) if t else None,
+            low_c=min(t) if t else None,
+            peak_wind_kmh=max(w) if w else None,
+        )
+    return readings
+
+
+# The structured columns worth asking for alongside the raw report, and the
+# order they arrive in. `p01i` is DELIBERATELY ABSENT: HKKI files it as 0.00
+# on every row of a 45-day sample, including an hour whose own report carries
+# -RA, so it is a constant dressed as a measurement and reading it would put a
+# confident "no rain" into the record on days it rained. `gust` is absent for
+# the opposite reason — missing on all 932 rows of that sample, because METAR
+# files a gust group only when a gust occurs. See ROADMAP item 45.
+ARCHIVE_DATA_COLUMNS = ("metar", "tmpf", "sknt")
+
+
+def fetch_metar_archive_rows(
+    icao: str, start: date, end: date
+) -> list[Sequence[str]] | None:
+    """Raw CSV rows from the ASOS archive: station, valid, then
+    ARCHIVE_DATA_COLUMNS.
+
+    Split out from fetch_metar_archive so one request can serve both the raw
+    reports and the structured readings. The request carries a 90-second
+    timeout and is the slowest call in the verification pass; asking it twice
+    for two views of the same rows would double that for nothing.
+    """
+    if not icao:
+        return None
+
+    params = {
+        "station": icao,
+        "data": ",".join(ARCHIVE_DATA_COLUMNS),
+        "year1": start.year, "month1": start.month, "day1": start.day,
+        "year2": end.year, "month2": end.month, "day2": end.day,
+        "tz": "UTC",
+        "format": "onlycomma",
+        "latlon": "no",
+        "missing": "M",
+        "trace": "T",
+        "direct": "no",
+        "report_type": list(ARCHIVE_REPORT_TYPES),
+    }
+    try:
+        resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
+    except requests.RequestException:
+        return None
+    if resp.status_code != 200:
+        return None
+
+    rows = [r for r in csv.reader(resp.text.splitlines()) if len(r) >= 3 and r[0] != "station"]
+    return rows or None
+
+
+def observed_station_data(
+    icao: str, start: date, end: date, timezone_name: str
+) -> tuple[dict[date, StationWeather] | None, dict[date, StationReadings] | None]:
+    """Everything one station has to say about a range, from ONE fetch.
+
+    Returns (what it SAW, what it MEASURED) — see StationWeather and
+    StationReadings for why those are separate. Both None when the station
+    said nothing at all, so a caller can tell that apart from a station that
+    reported and observed a quiet day.
+    """
+    rows = fetch_metar_archive_rows(
+        icao,
+        start - timedelta(days=ARCHIVE_PADDING_DAYS),
+        end + timedelta(days=ARCHIVE_PADDING_DAYS),
+    )
+    if rows is None:
+        return None, None
+
+    reports: list[tuple[datetime, str]] = []
+    for row in rows:
+        try:
+            observed_at = datetime.strptime(row[1], "%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
+        reports.append((observed_at.replace(tzinfo=timezone.utc), row[2]))
+
+    weather = _weather_from_reports(reports, start, end, timezone_name)
+    # Columns after the raw report: station, valid, metar, tmpf, sknt. The
+    # bucketing wants (station, valid, tmpf, sknt), so the report is dropped.
+    readings = station_readings_by_date(
+        [(r[0], r[1], *r[3:]) for r in rows if len(r) >= 5], start, end, timezone_name
+    )
+    return weather, (readings or None)
+
+
 def observed_weather_by_date(
     icao: str, start: date, end: date, timezone_name: str
 ) -> dict[date, StationWeather] | None:
@@ -262,6 +450,14 @@ def observed_weather_by_date(
     if reports is None:
         return None
 
+    return _weather_from_reports(reports, start, end, timezone_name)
+
+
+def _weather_from_reports(
+    reports: list[tuple[datetime, str]], start: date, end: date, timezone_name: str
+) -> dict[date, StationWeather] | None:
+    """The bucketing half of observed_weather_by_date, split out so
+    observed_station_data can reuse it without a second fetch."""
     local_zone = ZoneInfo(timezone_name)
     weather_by_date: dict[date, StationWeather] = {}
     for observed_at, raw_metar in reports:

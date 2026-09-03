@@ -18,6 +18,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -68,6 +71,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -99,6 +105,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -137,6 +146,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -175,6 +187,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -213,6 +228,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -251,6 +269,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -289,6 +310,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 3
@@ -327,6 +351,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -365,6 +392,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -403,6 +433,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -441,6 +474,9 @@
           "thunder": true,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -479,6 +515,9 @@
           "thunder": false,
           "precipitation": true,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -517,6 +556,9 @@
           "thunder": false,
           "precipitation": true,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0
@@ -555,6 +597,9 @@
           "thunder": null,
           "precipitation": null,
           "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
           "provenance": null
         },
         "lead_time_days": 0

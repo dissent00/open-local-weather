@@ -82,8 +82,8 @@ def args_for(tmp_path, dry_run: bool = False) -> Namespace:
 def observed_thunder(monkeypatch):
     monkeypatch.setattr(
         cli.metar_fetch,
-        "observed_weather_by_date",
-        lambda *a, **k: {THUNDER_DAY: StationWeather(thunder=True, precipitation=False)},
+        "observed_station_data",
+        lambda *a, **k: ({THUNDER_DAY: StationWeather(thunder=True, precipitation=False)}, None)
     )
 
 
@@ -134,7 +134,7 @@ def test_dry_run_writes_nothing(tmp_path, observed_thunder):
 
 def test_rebuild_without_metar_falls_back_to_the_reanalysis(tmp_path, monkeypatch):
     # A fork with no station configured must still be able to rebuild.
-    monkeypatch.setattr(cli.metar_fetch, "observed_weather_by_date", lambda *a, **k: None)
+    monkeypatch.setattr(cli.metar_fetch, "observed_station_data", lambda *a, **k: (None, None))
     seed(tmp_path, called_rain=True)
     assert cli._run_rebuild_record(args_for(tmp_path)) == 0
 
@@ -171,8 +171,8 @@ def test_rebuild_reports_the_direction_a_day_actually_moved(tmp_path, monkeypatc
 
     monkeypatch.setattr(
         cli.metar_fetch,
-        "observed_weather_by_date",
-        lambda *a, **k: {THUNDER_DAY: StationWeather(thunder=False, precipitation=False)},
+        "observed_station_data",
+        lambda *a, **k: ({THUNDER_DAY: StationWeather(thunder=False, precipitation=False)}, None)
     )
     assert cli._run_rebuild_record(args_for(tmp_path, dry_run=True)) == 0
 
@@ -191,12 +191,15 @@ def test_rebuild_stores_the_precipitation_onset(tmp_path, monkeypatch):
     seed(tmp_path, called_rain=True)
     monkeypatch.setattr(
         cli.metar_fetch,
-        "observed_weather_by_date",
-        lambda *a, **k: {
-            THUNDER_DAY: StationWeather(
-                thunder=False, precipitation=True, precipitation_onset="19:00"
-            )
-        },
+        "observed_station_data",
+        lambda *a, **k: (
+            {
+                THUNDER_DAY: StationWeather(
+                    thunder=False, precipitation=True, precipitation_onset="19:00"
+                )
+            },
+            None,
+        ),
     )
     assert cli._run_rebuild_record(args_for(tmp_path)) == 0
 

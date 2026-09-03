@@ -1655,10 +1655,11 @@ def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypa
 def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_weather_by_date",
-        lambda icao, start, end, tz: {
-            d: StationWeather(thunder=True, precipitation=False) for d in (start, end)
-        },
+        "observed_station_data",
+        lambda icao, start, end, tz: (
+            {d: StationWeather(thunder=True, precipitation=False) for d in (start, end)},
+            None,
+        ),
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -2209,7 +2210,7 @@ def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypa
     failure path and airport_metar is never persisted, so the record could not
     say whether the station was consulted."""
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_weather_by_date", lambda icao, start, end, tz: {}
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -2229,7 +2230,7 @@ def test_no_station_configured_is_a_state_not_a_degradation(tmp_path):
 
 def test_a_station_that_answered_is_not_a_degradation(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_weather_by_date", lambda icao, start, end, tz: {}
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})

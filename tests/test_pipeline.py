@@ -483,7 +483,7 @@ def two_days() -> dict[date, DailyActual]:
 
 def stub_thunder(monkeypatch, result):
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_weather_by_date", lambda *a, **k: result
+        pipeline.metar_fetch, "observed_station_data", lambda *a, **k: (result, None)
     )
 
 
@@ -517,8 +517,8 @@ def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch):
     seen = {}
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_weather_by_date",
-        lambda icao, start, end, tz: seen.update(icao=icao, start=start, end=end, tz=tz) or None,
+        "observed_station_data",
+        lambda icao, start, end, tz: (seen.update(icao=icao, start=start, end=end, tz=tz) or None, None)
     )
     pipeline._apply_station_observations(two_days(), thunder_location())
     assert seen == {"icao": "HKKI", "start": AUG_24, "end": AUG_25, "tz": "Africa/Nairobi"}
@@ -527,8 +527,8 @@ def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch):
 def test_apply_observed_thunder_empty_actuals_is_a_no_op(monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
-        "observed_weather_by_date",
-        lambda *a, **k: pytest.fail("must not fetch for an empty range"),
+        "observed_station_data",
+        lambda *a, **k: (pytest.fail("must not fetch for an empty range"), None)
     )
     pipeline._apply_station_observations({}, thunder_location())
 
