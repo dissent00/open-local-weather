@@ -296,6 +296,14 @@ class VerificationScore(BaseModel):
     """The result of scoring one ModelPrediction against one DailyActual."""
 
     rain_correct: bool
+    # The squared error of the model's own probability — ROADMAP item 58, and
+    # LOWER IS BETTER unlike every other figure here. None when the model
+    # supplied no probability, which is most stored days: the field started
+    # being recorded 2026-09-03. Never a default of 0.5, which would invent a
+    # hedge nobody made. Scored against the same observed_convection() truth
+    # as `rain_correct`, because two columns scored against two truths would
+    # not be comparable.
+    rain_brier: float | None = None
     onset_error_hrs: float | None = None  # Day+0 only, only when both predicted and actual rain
     wind_error_kmh: float | None = None  # actual - predicted
     high_error_c: float | None = None  # actual - predicted

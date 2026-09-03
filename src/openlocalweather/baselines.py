@@ -110,6 +110,22 @@ def climatology_prediction(
         model=CLIMATOLOGY_MODEL_ID,
         # Strictly greater than half: see the tie rule above.
         rain=wet * 2 > len(in_scope),
+        # THE BASE RATE AS A PROBABILITY — ROADMAP item 58. The boolean above
+        # throws away exactly the information a proper scoring rule needs, and
+        # as a probability this becomes the canonical REFERENCE forecast: "the
+        # usual chance of rain here", which is what a Brier skill score is
+        # measured against.
+        #
+        # The two can disagree and that is correct. At a 40% base rate the
+        # boolean says dry and this says 40 — two honest answers to two
+        # different questions.
+        #
+        # Persistence deliberately has no equivalent. It repeats an
+        # observation, and an observation is certain about the day it
+        # describes while saying nothing about the chance of another one;
+        # inventing 100 or 0 there would claim a confidence it never expressed
+        # and would score badly under Brier for a reason that is an artefact.
+        rain_probability_pct=round(100 * wet / len(in_scope)),
         # No view about WHEN, ever. Scoring it on onset would compare it
         # against the models on a question it does not answer.
         onset=None,

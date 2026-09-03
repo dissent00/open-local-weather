@@ -114,6 +114,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": 0.0,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -155,6 +156,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -196,6 +198,7 @@
       },
       "expected": {
         "rain_correct": false,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -237,6 +240,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": 0.0,
         "wind_error_kmh": 5.0,
         "high_error_c": -2.0,
@@ -278,6 +282,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": 2.5,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -319,6 +324,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -360,6 +366,7 @@
       },
       "expected": {
         "rain_correct": false,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -401,6 +408,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -442,6 +450,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": 0.0,
         "wind_error_kmh": null,
         "high_error_c": null,
@@ -483,6 +492,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -524,6 +534,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -565,6 +576,7 @@
       },
       "expected": {
         "rain_correct": false,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,
@@ -606,6 +618,7 @@
       },
       "expected": {
         "rain_correct": true,
+        "rain_brier": null,
         "onset_error_hrs": null,
         "wind_error_kmh": 0.0,
         "high_error_c": 0.0,

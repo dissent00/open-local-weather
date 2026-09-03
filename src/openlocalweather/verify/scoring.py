@@ -17,6 +17,7 @@ from datetime import date
 from typing import Callable
 
 from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.verify.brier import brier_score, mean_brier
 from openlocalweather.models import DailyActual, DailyLogEntry, ModelPrediction, VerificationScore
 
 # `date -> DailyLogEntry | None`. Injected rather than reading files directly
@@ -62,8 +63,20 @@ def score_prediction(
             return None
         return actual_val - pred_val
 
+    # The percentage-to-probability conversion happens HERE and only here, so
+    # it is one visible line rather than a thing every caller must remember.
+    # brier_score() raises on a value outside [0, 1] precisely to catch a
+    # missed conversion, which would otherwise score 6241 and pass silently
+    # into every mean it touched.
+    rain_brier = (
+        brier_score(predicted.rain_probability_pct / 100, observed_rain)
+        if predicted.rain_probability_pct is not None
+        else None
+    )
+
     return VerificationScore(
         rain_correct=rain_correct,
+        rain_brier=rain_brier,
         onset_error_hrs=onset_error_hrs,
         wind_error_kmh=_diff(predicted.wind_kmh, actual.peak_wind_kmh),
         high_error_c=_diff(predicted.high_c, actual.high_c),
@@ -98,6 +111,19 @@ class RollingWindowResult:
     high_err: float | None
     low_err: float | None
     mslp_err: float | None
+    # Mean Brier over the checks in this window that carried a probability —
+    # ROADMAP item 58. LOWER IS BETTER. None until enough days have one; see
+    # brier.mean_brier for why absent days are skipped rather than defaulted.
+    #
+    # brier_checks is reported SEPARATELY from checks_found because the two
+    # genuinely differ and will for weeks: a window can hold 30 scored days
+    # of which 3 have a probability, and presenting one count for both would
+    # imply the Brier figure rests on evidence it does not have.
+    #
+    # Last in the dataclass because they carry defaults, not because they
+    # matter least.
+    rain_brier: float | None = None
+    brier_checks: int = 0
 
 
 def rescore_rolling_window(
@@ -133,9 +159,12 @@ def rescore_rolling_window(
         cursor = add_days(cursor, -1)
         days_searched += 1
 
+    briers = [s.rain_brier for s in scores if s.rain_brier is not None]
     return RollingWindowResult(
         checks_found=len(scores),
         rain_pct=(100 * sum(1 for s in scores if s.rain_correct) / len(scores)) if scores else None,
+        rain_brier=mean_brier([s.rain_brier for s in scores]),
+        brier_checks=len(briers),
         onset_err=mean([s.onset_error_hrs for s in scores]),
         wind_err=mean([s.wind_error_kmh for s in scores]),
         high_err=mean([s.high_error_c for s in scores]),

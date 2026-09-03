@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'dates.dart';
+import 'brier.dart';
 import 'models.dart';
 
 /// Scores one model's stored prediction against one day's actual.
@@ -40,8 +41,17 @@ VerificationScore? scorePrediction(
   double? diff(double? pred, double? act) =>
       (pred == null || act == null) ? null : act - pred;
 
+  // The percentage-to-probability conversion happens HERE and only here, so
+  // it is one visible line rather than a thing every caller must remember.
+  // brierScore throws on a value outside [0, 1] precisely to catch a missed
+  // conversion, which would otherwise score 6241 and pass silently into every
+  // mean it touched.
+  final prob = predicted.rainProbabilityPct;
+  final rainBrier = prob == null ? null : brierScore(prob / 100, observedRain);
+
   return VerificationScore(
     rainCorrect: rainCorrect,
+    rainBrier: rainBrier,
     onsetErrorHrs: onsetErrorHrs,
     windErrorKmh: diff(predicted.windKmh, actual.peakWindKmh),
     highErrorC: diff(predicted.highC, actual.highC),

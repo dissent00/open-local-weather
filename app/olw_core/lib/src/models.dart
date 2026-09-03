@@ -324,6 +324,14 @@ class DailyActual {
 class VerificationScore {
   final bool rainCorrect;
 
+  /// The squared error of the model's own probability — upstream ROADMAP item
+  /// 58, and LOWER IS BETTER unlike every other figure here. Null when the
+  /// model supplied no probability, which is most stored days; never a
+  /// default of 0.5, which would invent a hedge nobody made. Scored against
+  /// the same observedConvection() truth as [rainCorrect], because two
+  /// columns scored against two truths would not be comparable.
+  final double? rainBrier;
+
   /// Day+0 only, and only when both predicted and actual saw rain.
   final double? onsetErrorHrs;
   final double? windErrorKmh;
@@ -333,6 +341,7 @@ class VerificationScore {
 
   const VerificationScore({
     required this.rainCorrect,
+    this.rainBrier,
     this.onsetErrorHrs,
     this.windErrorKmh,
     this.highErrorC,
@@ -342,6 +351,7 @@ class VerificationScore {
 
   Map<String, Object?> toJson() => {
         'rain_correct': rainCorrect,
+        'rain_brier': rainBrier,
         'onset_error_hrs': onsetErrorHrs,
         'wind_error_kmh': windErrorKmh,
         'high_error_c': highErrorC,

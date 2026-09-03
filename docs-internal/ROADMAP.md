@@ -5635,7 +5635,7 @@ what a baseline is measured with), item 26 (the spend this justifies).
 
 ---
 
-## 58. Score the probability, not the guess · **Partly shipped — the clock started 2026-08-31**
+## 58. Score the probability, not the guess · **Partly shipped — scoring 2026-09-03**
 
 `rain` is a boolean. `extract.py` thresholds `precip_mm` at
 `RAIN_THRESHOLD_MM` and the ledger stores true or false, so a model that
@@ -5663,6 +5663,67 @@ discarded.
    prompt has to ask for restraint that the scoring actively fails to pay
    for. A proper scoring rule pays for it arithmetically. **It enforces in
    the record what the prompt is currently trying to enforce in prose.**
+
+### The scoring shipped 2026-09-03
+
+`verify/brier.py` and its Dart port, vector-locked, plus a 3,000-case random
+sweep across the language boundary with zero disagreements. Float arithmetic
+crossing languages is what AGENTS.md says to sweep rather than trust.
+
+`VerificationScore.rain_brier` is `(p - outcome)**2`, scored against the same
+`observed_convection()` truth as the boolean, because two columns scored
+against two different truths would not be comparable. `None` when the model
+supplied no probability — never a default of 0.5, which would invent a hedge
+nobody made.
+
+**LOWER IS BETTER, and that inversion is the thing most likely to be rendered
+backwards.** Every other figure this project publishes is a percentage where
+higher is better. Anything displaying Brier has to say so in words.
+
+**The percentage-to-probability conversion happens in exactly one place**, in
+`score_prediction`, and `brier_score` raises on anything outside [0, 1]
+precisely to catch a missed one. A 70 read as a probability scores 4761,
+which would pass silently into every mean it touched.
+
+### Climatology became the reference forecast
+
+Raw Brier is not interpretable on its own — 0.2 is good or bad depending
+entirely on the base rate — which is item 57's lesson arriving in a second
+place. The standard answer is a skill score against a reference, and the
+reference is climatology, which item 57 already put in the ledger.
+
+So `climatology` now emits the trailing base rate as
+`rain_probability_pct`. Its boolean call was discarding exactly the
+information a proper scoring rule needs. **The probability and the boolean can
+disagree and that is correct**: at a 40% base rate the boolean says dry and
+the probability says 40, two honest answers to two different questions.
+
+`persistence` deliberately gets no probability. It repeats an observation, and
+an observation is certain about the day it describes while saying nothing
+about the chance of another one; inventing 100 or 0 would claim a confidence
+it never expressed and score badly for a reason that is an artefact.
+
+**`brier_skill_score` is not clamped at zero.** Item 57 measured two of five
+models losing to persistence on the boolean; a negative skill score states
+that same result in a form that cannot be read as merely "less good".
+
+### What it cannot say yet
+
+**3 of 24 stored days carry a probability.** The field started being recorded
+2026-09-03 and cannot be backfilled — unlike the baselines, a model's own
+stated probability is not derivable after the fact from anything stored. So
+`brier_checks` is reported SEPARATELY from `checks_found` in the rolling
+window, because a window holding 30 scored days of which 3 have a probability
+would otherwise imply the Brier figure rests on evidence it does not have.
+
+### Still open
+
+- **The blend does not emit a probability.** That is where the incentive
+  argument actually lands — the whole point is paying the forecaster for
+  honest uncertainty — and it needs a schema and prompt change. Item 27's
+  replay harness now exists, so this is unblocked rather than waiting.
+- **Nothing displays Brier yet.** The accuracy page and the track record
+  carry the boolean figures only.
 
 ### The comparability hazard, and the way around it
 

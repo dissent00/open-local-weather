@@ -162,3 +162,47 @@ def test_baselines_are_hidden_from_the_forecaster():
     assert CLIMATOLOGY_MODEL_ID not in visible
     assert "kenya_met" in visible, "a real peer model must still be visible"
     assert "ecmwf_ifs025" in visible
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 58 — climatology as the Brier reference forecast
+# ---------------------------------------------------------------------------
+
+
+def test_climatology_emits_the_base_rate_as_a_probability():
+    """Its boolean call throws away exactly the information a proper scoring
+    rule needs. As a probability it becomes the canonical reference forecast —
+    "the usual chance of rain here" — which is what a Brier skill score is
+    measured against."""
+    actuals = {
+        date(2026, 8, 1): _a(True),
+        date(2026, 8, 2): _a(True),
+        date(2026, 8, 3): _a(False),
+        date(2026, 8, 4): _a(False),
+    }
+    p = climatology_prediction(actuals, before=date(2026, 8, 5))
+    assert p.rain_probability_pct == 50
+
+
+def test_the_probability_and_the_boolean_can_disagree_and_that_is_correct():
+    """At a 40% base rate the boolean says dry and the probability says 40 —
+    two honest answers to two different questions. Forcing them to agree
+    would throw away the distinction the item exists to capture."""
+    actuals = {
+        date(2026, 8, 1): _a(True),
+        date(2026, 8, 2): _a(True),
+        date(2026, 8, 3): _a(False),
+        date(2026, 8, 4): _a(False),
+        date(2026, 8, 5): _a(False),
+    }
+    p = climatology_prediction(actuals, before=date(2026, 8, 6))
+    assert p.rain is False
+    assert p.rain_probability_pct == 40
+
+
+def test_persistence_has_no_probability_and_should_not_pretend_to():
+    """It repeats an observation. An observation is certain about the day it
+    describes and says nothing about the chance of another one, so inventing
+    100 or 0 here would claim a confidence it never expressed — and would
+    score terribly under Brier for a reason that is an artefact."""
+    assert persistence_prediction(_a(True)).rain_probability_pct is None

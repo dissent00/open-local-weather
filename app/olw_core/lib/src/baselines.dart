@@ -91,6 +91,12 @@ ModelPrediction? climatologyPrediction(
     model: climatologyModelId,
     // Strictly greater than half: see the tie rule above.
     rain: wet * 2 > inScope.length,
+    // THE BASE RATE AS A PROBABILITY — upstream ROADMAP item 58. The boolean
+    // above discards exactly what a proper scoring rule needs, and as a
+    // probability this becomes the canonical REFERENCE forecast that a Brier
+    // skill score is measured against. The two can disagree and that is
+    // correct: at a 40% base rate the boolean says dry and this says 40.
+    rainProbabilityPct: (100 * wet / inScope.length).round(),
     // No view about WHEN, ever.
     onset: null,
     precipMm: _mean([for (final a in inScope) a.precipMm]),
