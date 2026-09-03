@@ -1054,6 +1054,47 @@ maintenance and saying so rather than presenting stale data as current.
 
 ---
 
+
+### The discovery mechanism, named 2026-09-03
+
+This item asked how someone in an arbitrary place finds their sources
+without editing YAML, and had no answer for where the catalogue comes from.
+The source research supplies it, and `docs-internal/GLOBAL_SOURCE_REGISTRY_
+REFERENCE.md` plus `OPEN_LOCAL_WEATHER_GLOBAL_SOURCE_MATRIX_v1.0.xlsx` are
+the first pass at it.
+
+- **Surface stations**: WMO **OSCAR/Surface** for discovery, **WIS2** as the
+  delivery mechanism behind it, METAR and national adapters where they
+  exist. Identity reconciliation matters: WIGOS ID, WMO number and ICAO can
+  all name the same asset, and treating them as three would manufacture
+  corroboration that does not exist.
+- **Radar**: the WMO **Weather Radar Database** for discovery, regional
+  providers (OPERA in Europe, NEXRAD in the US) for actual data. Optional by
+  geography — see item 63, where Kisumu turns out to have none.
+- **Satellite**: selection is derivable from coordinates alone, since which
+  geostationary operator covers a point is a geometry problem. See item 41.
+- **Warnings**: **CAP** where a national service publishes it, which item 2
+  now shows Kenya does.
+
+**Three registries, not one**, per the reference: a COUNTRY registry (what a
+member state publishes), an ASSET registry (individual stations, radars,
+satellites) and a PROVIDER registry (who serves the data, and under what
+terms). Collapsing them is what makes "add a source" ambiguous — the same
+asset can reach you through several providers, and the same provider serves
+many countries.
+
+**The matrix is a reference, not a work item.** 193 members, Kenya scored P1
+at 87.3 with a "very high" native adapter value. It is incomplete by its own
+account and it will go stale. Its value is not the scores; it is that the
+fork-portability question — how someone in Peru configures this — now has
+a document to answer from rather than a shrug.
+
+**What it does NOT license: ingesting broadly.** Item 45's OR is monotonic
+and its divergence numbers are days old. Adding sources before those numbers
+mean something would move every published figure for instrumentation
+reasons, invisibly. Discovery is the cheap half; deciding what a source is
+worth is the half this project exists to do carefully.
+
 ## 12. LLM-guided setup as a parallel path to scripted automation · **Planned**
 
 ### Not hypothetical — this project already proves the concept once
@@ -3297,6 +3338,47 @@ truth), item 42 (METAR observations).
 
 ---
 
+
+### Named targets, 2026-09-03
+
+From `RADAR_SATELLITE_REGIONAL_OBSERVATIONS_HANDOFF.md`. This item was an
+aspiration with no endpoint; it now has operators, platforms and channels.
+
+**Kisumu sits under EUMETSAT's Meteosat service, and satellite coverage here
+is dramatically better than radar coverage** — which is not a general truth
+but a local one, and the reason satellite rather than radar is this
+deployment's remote-sensing route (item 45, item 63).
+
+- **Meteosat-12 / MTG-I1**, instrument FCI, operational near 0° — the modern
+  production platform to target through EUMETSAT.
+- **Meteosat-11**, SEVIRI, still operational at 9.5°E, and the one with a
+  ready prototyping path.
+
+**RealEarth exposes Meteosat-11 SEVIRI full-disk products by ID**, which
+makes a cross-check cheap before committing to an EUMETSAT data-store
+integration. `Met11-SEVIRI-FD-BAND09` is IR 10.8 µm, the channel most
+relevant to verification because it carries cloud-top brightness
+temperature and reads cirrus.
+
+**MTG's Lightning Imager is the interesting one for this location.** The
+events this project observes worst are exactly the convective ones (item
+45), and lightning is a direct observation of convection rather than an
+inference from it — the one instrument that could see what the reanalysis
+misses and the airport only catches when it is overhead.
+
+**Physical semantics are not negotiable, and this is where they bite.**
+Brightness temperature is not air temperature; reflectivity is not rainfall
+accumulation; a satellite pixel, a point station and a 25 km model cell do
+not observe the same spatial object. A satellite product joins item 45's
+ladder as reliable-for-OCCURRENCE, never as gold: it sees cloud and inferred
+rate, not a gauge.
+
+**One trap recorded from the research.** A global product frame timestamp
+does not prove the swath covered this point at that instant. Polar-orbiting
+products in particular must be queried for extent or point value, with
+"outside swath" treated as no observation rather than as no cloud — the
+same absence-is-not-evidence rule everything else here follows.
+
 ## 42. The reanalysis does not see thunderstorms · **Shipped**
 
 Found 2026-08-26, from a reader's own observation that a forecast had called
@@ -3872,6 +3954,58 @@ could check afterwards against the source? Lifting "RMK RAB35" into a
 structured field, yes — the report is right there. Choosing which of two
 disagreeing sources was correct, no — there is nothing to check it against,
 which is the whole reason this item exists.
+
+
+### Adopted from the source research, 2026-09-03
+
+Three things from `OBSERVED_REALITY_SOURCE_HANDOFF.md` that this item needed
+and did not have. That document's own principles are close enough to this
+one's to be worth noting — missing is not zero, source identity matters,
+preserve the audit trail — which is some evidence the design here is not
+merely locally convincing.
+
+**A source has six states, not two.** "Configured" and "not configured" is
+too coarse, and every one of these has been hit already:
+
+```text
+EXISTS         a catalogue lists it
+OPERATIONAL    the operator says it runs
+ACCESSIBLE     a public endpoint answers
+FRESH          that endpoint returned something recent
+CAPABLE        it measures the variable in question
+REPRESENTATIVE it measures it where the forecast applies
+```
+
+HKKI is EXISTS through CAPABLE for present weather and fails CAPABLE for
+precipitation amount. Kericho is ACCESSIBLE and FRESH and fails
+REPRESENTATIVE for temperature, being 820 m higher. The nearest catalogue
+station is not automatically the best truth source, and a resolver that
+returns one without these states will pick wrongly and look right.
+
+**`METADATA_CONFLICT` is a legitimate stored state.** Aggregate metadata
+status, national authoritative status and successful live retrieval are three
+different claims, and forcing them into one field destroys the disagreement
+rather than recording it. Kenya's radars are the worked example: the WMO
+radar database lists two as active while KMD's own metadata reports both
+closed since 2021.
+
+**The radar question is closed for this deployment.** Nearest are Nairobi
+(~276 km) and Malindi (~688 km). At that range beam height and terrain make
+Nairobi a poor low-level precipitation truth for Kisumu even if it were
+running, and KMD says it is not. **No dependable local ground-radar truth
+source exists here**, and that is a result rather than a gap — item 63's
+"unchecked" note is answered, and radar stays geographically optional.
+
+**Satellite is the realistic remote-sensing route here**, not radar. Kisumu
+sits under EUMETSAT's Meteosat service: Meteosat-12 / MTG-I1 (FCI)
+operational near 0°, Meteosat-11 SEVIRI still running at 9.5°E. See item 41,
+which now has named targets rather than an aspiration.
+
+**One caution the research states and this item should inherit: do not
+manufacture corroboration.** The same physical station delivered through
+METAR and through WIS2 is one observing asset, not two independent
+witnesses. Given the OR above is already monotonic, counting one station
+twice would inflate the wet-day rate for no reason at all.
 
 
 Related: item 11 (source discovery in the app), item 35 (convective
@@ -5866,14 +6000,110 @@ happened to configure.
   a human, never a weight to fit. Two stations differing on rain is
   precisely the case item 46 exists to ask the reader about.
 
+### The candidates, named 2026-09-03
+
+`OBSERVED_REALITY_SOURCE_HANDOFF.md` answers this item's "not established"
+question. Kisumu does have neighbours, and none of them is a drop-in:
+
+| Station | WIGOS | Distance | The catch |
+|---|---|---|---|
+| Kisumu Airport (HKKI) | `0-20000-0-63708` | ~4 km | already used; no usable precipitation amount |
+| Kakamega MET AWS | `0-404-300-372021012AS63681` | ~40 km | closest candidate; public data availability unconfirmed |
+| Kericho (HKKR) | `0-20000-0-63710` | ~64 km | **820 m higher** — cannot substitute for surface temperature |
+| Kisii (HKKS) | `0-20000-0-63709` | ~66 km | metadata exists; no fresh public observation established |
+
+**So the answer to "is there a second station" is yes, with conditions —
+which is worse than a clean no, because a clean no would stop someone
+adding one.** Kericho is the sharp case: it is ACCESSIBLE and FRESH and
+would look like a perfectly good source in any resolver that ranked by
+distance. At 820 m of elevation difference its temperature is a different
+climate, and a precedence chain that took it for `high_c` would corrupt the
+record while every status check stayed green.
+
+That is the case for item 45's six-state ladder rather than a distance sort:
+REPRESENTATIVE is a separate question from FRESH, and it is the one that
+bites silently.
+
+**Per-variable, not per-station.** Kericho may be perfectly good evidence
+for rain OCCURRENCE — convection over the basin is a regional event — while
+being useless for temperature. A station is not admitted or rejected whole;
+it joins a chain for the variables it can actually speak to, which is what
+item 45's per-variable precedence was already designed for.
+
+**And the OR problem compounds with each addition.** `observed_convection()`
+is monotonic, so every station added can only create wet days. Measured
+2026-09-03 by `olw divergence`: the reanalysis alone already claims wet on
+10 of 43 days the airport reported and saw nothing. Adding three more
+sources on an OR would move the published rain accuracy substantially, for
+instrumentation reasons, and nothing on the page would say so. The
+provenance stamp shipped, so the *ability* to say so now exists — using it
+is the work this item cannot skip.
+
 ### Not established
 
-Whether Kisumu has a second usable station at all. HKKI was chosen because it
-is four kilometres away; the next nearest ASOS may be far enough that its
-observations answer a different question. **Check before designing around
-it** — the same instruction item 45 issued about `p01i`, which turned out to
-matter.
+~~Whether Kisumu has a second usable station at all.~~ **Answered above,
+2026-09-03.** What remains unestablished is narrower and more practical:
+whether Kakamega AWS and Kisii actually serve fresh public observations, as
+distinct from appearing in a catalogue. Same instruction item 45 issued about
+`p01i`, which turned out to matter — EXISTS is not ACCESSIBLE, and neither
+is FRESH.
 
 Related: item 45 (precedence and provenance, the prerequisite), item 47 (the
 onboarding moment this changes), item 11 (source discovery), item 44 (the
 sources page), item 46 (asking the reader when sources disagree).
+
+---
+
+## 64. Source research, September 2026 — what these documents are · **Reference**
+
+Five documents landed in `docs-internal/` on 2026-09-03 from a separate
+research effort. They are REFERENCE, not a work item, and this entry exists
+so nobody mistakes them for a plan.
+
+| Document | What it is | Read it when |
+|---|---|---|
+| `OBSERVED_REALITY_SOURCE_HANDOFF.md` | The synthesis. Roles for an observational source, WIGOS/WIS2/METAR/radar/satellite, and a set of principles | Before adding any truth source |
+| `GLOBAL_SOURCE_REGISTRY_REFERENCE.md` | Registry design: three registries, richness dimensions, coordinate-based selection | Building item 11 |
+| `OPEN_LOCAL_WEATHER_GLOBAL_SOURCE_MATRIX_v1.0.xlsx` | 193 WMO members scored for adapter priority | Answering "how does a fork elsewhere configure this" |
+| `RADAR_SATELLITE_REGIONAL_OBSERVATIONS_HANDOFF.md` | Earlier, superseded in part. Kept for the Kisumu radar and Meteosat findings | Item 41 |
+| `WEATHER_STATION_DISCOVERY_HANDOFF.md` | Earlier, superseded in part. Kept for the station discovery test | Item 63 |
+
+### What was taken from them, and where it went
+
+- Item 2 — the KMD CAP feed, which replaced a scraping plan.
+- Item 41 — Meteosat-12/MTG-I1, Meteosat-11 SEVIRI, RealEarth band IDs.
+- Item 45 — the six-state source ladder, `METADATA_CONFLICT`, radar closed.
+- Item 63 — the named station candidates and Kericho's elevation problem.
+- Item 11 — OSCAR/WIGOS/WIS2 as the discovery mechanism, three registries.
+
+### What was deliberately NOT taken
+
+The recommended build sequence in the handoff's §43 — WIGOS discovery, WIS2
+paths, EUMETSAT MTG access, cloud truth products, Lightning Imager,
+RealEarth, OPERA — is a research programme, and this project's binding
+constraint is not source count.
+
+`observed_convection()` is an OR and therefore monotonic: every source added
+can only create wet days. `olw divergence` measured on 2026-09-03 that the
+reanalysis alone already claims wet on 10 of 43 days the airport reported
+and saw nothing. Adding six sources before those numbers mean anything would
+move every published accuracy figure for instrumentation reasons, and the
+page would show models getting worse.
+
+The handoff's own §43 agrees, at point 9: *do not change deterministic
+scoring precedence until those measurements exist*. Item 45's sequencing is
+the same instruction. So the order stands — provenance stamped, readings
+stored, divergence accumulating — and sources join afterwards, one at a
+time, each with its own divergence measured before it counts.
+
+### One correction the research needs applied to itself
+
+The matrix marks Kenya's CAP feed **verified**, and the endpoint is: HTTP
+200, valid CAP 1.2. Its newest alert is four months old. The same document
+insists that "an operational catalogue entry with stale observations is not
+a usable current source" and that "discovery metadata is not data" — which
+applies to its own verification column. **`last_live_observation` belongs in
+the registry schema as a required field**, not an optional one, or the
+matrix will accumulate exactly the false confidence it warns against.
+
+Related: items 2, 11, 41, 44, 45, 63.
