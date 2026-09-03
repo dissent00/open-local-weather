@@ -19,7 +19,11 @@ from pathlib import Path
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
 from openlocalweather.coverage import actionable, detect_coverage, detect_trigger_regression
-from openlocalweather.defaults import LEAD_TIMES_DAYS, scored_models
+from openlocalweather.defaults import (
+    LEAD_TIMES_DAYS,
+    REVIEW_MIN_CHECKS_FOR_COMPARISON,
+    scored_models,
+)
 from openlocalweather.dates import add_days, today_in_tz
 from openlocalweather.fetch import metar as metar_fetch
 from openlocalweather.fetch import model_run as model_run_fetch
@@ -61,6 +65,7 @@ from openlocalweather.store.actuals_cache import (
 )
 from openlocalweather import replay
 from openlocalweather.backfill import backfill_entry_baselines
+from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
@@ -532,6 +537,69 @@ def _run_check_health(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _run_divergence(args) -> int:
+    """Where the station and the reanalysis disagree — ROADMAP item 45.
+
+    Reads the stored record and prints. Decides nothing: the sources are the
+    truth candidates, so there is no yardstick that could say which is right,
+    and this exists to put a number in front of the person who has to choose.
+
+    Free and offline — no fetch, no LLM. Safe to run as often as you like
+    while the record accumulates.
+    """
+    actuals = as_date_dict(read_actuals_cache(Path(args.data_dir)).primary)
+    if not actuals:
+        print("No stored observations.", file=sys.stderr)
+        return 1
+
+    d = compare_sources(actuals)
+    days = sorted(actuals)
+    print(f"Record: {days[0]} to {days[-1]}, {len(days)} day(s) stored.\n")
+
+    print("Continuous variables — station MINUS reanalysis, over days both reported:")
+    for v in d.variables:
+        if v.days == 0:
+            print(f"  {v.variable:16s} no overlap yet")
+            continue
+        print(
+            f"  {v.variable:16s} n={v.days:<4d} mean {v.mean_signed:+.2f}  "
+            f"mean|err| {v.mean_absolute:.2f}  worst {v.max_absolute:.2f}"
+        )
+
+    o = d.occurrence
+    print(f"\nRain occurrence, over the {o.days} day(s) the station reported:")
+    print(f"  both saw rain        {o.both_wet}")
+    print(f"  both saw none        {o.both_dry}")
+    print(f"  station only         {o.station_only}   <- the reanalysis missed it")
+    print(f"  reanalysis only      {o.archive_only}   <- rain elsewhere in the cell, probably")
+
+    # Thinness is reported PER SECTION, not once for the whole report. The
+    # two halves fill up at completely different rates: occurrence has been
+    # accumulating since the station was first read, while the continuous
+    # variables only started on 2026-09-03. A single verdict covering both
+    # announced "too thin to conclude anything" over a 43-day occurrence
+    # table, which is exactly the kind of true-but-useless summary that
+    # teaches people to skip the last line.
+    variable_days = max((v.days for v in d.variables), default=0)
+    if variable_days < REVIEW_MIN_CHECKS_FOR_COMPARISON:
+        print(
+            f"\n  (thin: fewer than {REVIEW_MIN_CHECKS_FOR_COMPARISON} overlapping "
+            "days on any variable — let it accumulate.)"
+        )
+    if o.days < REVIEW_MIN_CHECKS_FOR_COMPARISON:
+        print(
+            f"  (thin: fewer than {REVIEW_MIN_CHECKS_FOR_COMPARISON} reported days.)"
+        )
+
+    print(
+        "\nThis says where they disagree, never which is right — there is no "
+        "held-out truth to decide that, and a point observation misses rain "
+        "a few kilometres away just as a 25 km mean invents it. See ROADMAP "
+        "item 45."
+    )
+    return 0
+
+
 def _run_replay(args) -> int:
     """Send a fixed set of inputs through the LLM and keep the outputs.
 
@@ -914,6 +982,12 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Print the plan without writing anything."
     )
 
+    div = sub.add_parser(
+        "divergence",
+        help="Where the station and the reanalysis disagree, and by how much.",
+    )
+    div.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+
     rp = sub.add_parser(
         "replay",
         help="Send the frozen prompt vectors through the LLM and keep the outputs.",
@@ -956,6 +1030,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)
+
+    if args.command == "divergence":
+        return _run_divergence(args)
 
     if args.command == "replay":
         return _run_replay(args)

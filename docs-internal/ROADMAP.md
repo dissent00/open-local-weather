@@ -3583,6 +3583,51 @@ rather than a conversion someone has to remember, and `M`/`T` markers become
 Driven live 2026-09-03 over 2026-08-28 to 09-01: five days, highs 31-33 °C,
 lows 16-18 °C, peak winds 18.5-32.4 km/h. Sensible, and now accumulating.
 
+### `olw divergence`, and what it already says
+
+Written 2026-09-03, before there was continuous data to point it at,
+deliberately: the decision it feeds is weeks away and the reasoning about
+what to measure is freshest now. Written later, under the pressure of wanting
+an answer, it would be tempting to measure whatever made the choice look
+obvious.
+
+It reports signed AND absolute error per variable — a systematic offset is a
+calibration difference somebody could correct for, the same magnitude
+scattered either way is noise, and a signed mean near zero hides the second
+completely. Rain is a contingency table rather than a mean, because averaging
+booleans produces a number that reads like an error magnitude and is not one.
+It adjudicates nothing.
+
+**The continuous variables have no overlap yet** — the readings started
+today. But occurrence has been accumulating since the station was first read,
+and over 43 days it already says something uncomfortable:
+
+| | days |
+|---|---|
+| both saw rain | 9 |
+| both saw none | 20 |
+| **station only** — the reanalysis missed it | **4** |
+| **reanalysis only** — wet cell, dry airport | **10** |
+
+**They disagree on 14 of 43 days, and the disagreement runs mostly the
+opposite way to the one this project has been telling itself about.** Items
+42 and 53 are both stories about the station catching rain the reanalysis
+scored as dry, and that is real — it happened 4 times. But the reanalysis
+claims wet on 10 days the airport reported and saw nothing, two and a half
+times as often.
+
+That matters for `observed_convection()`, which ORs the two. The OR is not
+mostly the station rescuing missed convection; it is mostly the reanalysis
+adding wet days the point observation did not see. Whether those are real
+rain the airport missed four kilometres away, or a 25 km mean smearing rain
+from elsewhere in the cell, **this report cannot say and neither can anything
+else** — which is item 45's thesis arriving as a measurement rather than an
+argument.
+
+Nothing should be changed on the strength of it yet. It is one location, one
+station, 43 days, and the direction of the error is not the same question as
+which source is right.
+
 Concretely, the extra readings are cheaper than they look:
 `fetch_metar_archive` requests `data=metar`, the raw report text only. Iowa
 State's ASOS service exposes structured fields alongside it, so temperature
