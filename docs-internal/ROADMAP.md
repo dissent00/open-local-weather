@@ -38,9 +38,14 @@ cheap and they gate other work, which is why they sit high.
    it is wiring rather than arithmetic — see the Ensemble repo's owed table.
    The headline: at Day+0 only one of five models demonstrably beats
    repeating yesterday's weather.
-3. **45 — which source is "what actually happened".** A DECISION. An hour of
-   thought, gates 47, 11 and 44, and expensive to unwind if it is made
-   implicitly by the first source someone adds.
+3. **45 — which source is "what actually happened".** **The decision is
+   made** (2026-09-03): declared confidence bands rather than a learned
+   weighting, graded rather than a strict chain, and the LLM reads sources
+   but never adjudicates them. What remains is a BUILD, and its first step is
+   trap 2's provenance stamp — which item 44 needs too, and which item 63
+   cannot ship without. Do not start the precedence machinery: the item's own
+   sequencing says stamp provenance, store the extra readings unscored, and
+   let divergence accumulate before deciding what it earns.
 4. ~~**27 — the harness for judging model changes.**~~ **The blocking half
    shipped 2026-09-01** — `olw replay` / `olw replay-diff`, which is what
    items 58, 59, 61 and 57's remaining half were actually waiting on. The
@@ -3440,7 +3445,7 @@ machines), item 41 (satellite), item 42 (why this item exists), item 43
 
 ---
 
-## 45. Which source is "what actually happened" · **Planned**
+## 45. Which source is "what actually happened" · **Designed 2026-09-03, not built**
 
 Raised by the operator on 2026-08-26, immediately after item 42 and item 44.
 
@@ -3609,6 +3614,106 @@ Two consequences, both cheap if done now and expensive later:
    is about a region, and it gets broader with every station added. Where
    that is the intent, say so on the accuracy page. Where it is not, the
    chain needs distance to enter it.
+
+### Confidence is not truth, and the record can carry both
+
+The operator's framing, 2026-09-03, and it supersedes the strict chain above
+rather than contradicting it. Sources are not equally good and the record
+should say so:
+
+| Evidence | Confidence |
+|---|---|
+| A ground station that MEASURED an amount | gold |
+| An airport reporting rain — measured, or a `wxcodes` group | reliable |
+| Reanalysis precipitation over a 25 km cell | possible |
+
+**Still declared, not learned.** Where a value sits on that ladder follows
+from what the instrument physically is, which is knowable before any data
+arrives. The section above still holds: with no held-out truth there is
+nothing to fit against, and that is as true of an LLM as of a formula.
+
+**Why a grade beats a chain.** A precedence chain picks a winner and throws
+the rest away, which loses the one thing worth keeping: how sure we are. A
+day whose only evidence is a grid cell saying "wet" is not the same
+observation as a day a station measured 12 mm, and scoring both as an
+unqualified `rain: true` discards that difference before anything can use it.
+
+**What carrying it buys, concretely.** Accuracy can then be reported per
+confidence band, which turns one number into an honest pair: *"ECMWF 75%
+over all scored days, 82% over the days the record is confident about."* The
+gap between those two is itself a measurement — of how much the published
+figure depends on the weakest instrument in the set. Today that gap is
+invisible and unbounded.
+
+**This is item 58's dual.** That item makes the FORECAST probabilistic
+because a boolean cannot tell a confident wrong call from an honest hedge.
+This makes the OBSERVATION graded for the same reason on the other side. A
+proper scoring rule handles both; a boolean ledger handles neither. They
+should be designed together, and neither needs the other to ship first.
+
+### Why this matters here specifically, and the asymmetry it exposes
+
+At this location the events being missed are pop-up thunderstorms and other
+localised convection, not regional systems. A 25 km grid mean is structurally
+the wrong instrument for a 2 km storm — not inaccurate, but answering a
+different question — and HKKI reporting `0.00` inches in the same report as
+`-RA` is the same failure from the other direction.
+
+**Which produces an asymmetry worth stating plainly: this project forecasts
+convection better than it observes it.** CAPE gives real skill at predicting
+exactly the events the truth sources are worst at seeing. The observation
+problem is therefore hardest precisely where the forecast is most
+interesting, and every accuracy figure for rain is limited by the weaker
+half.
+
+Two consequences for priority. Item 63 (more reporting stations) is worth
+more than it looks, because it attacks the binding constraint rather than the
+visible one. And item 46 (asking the reader about yesterday) is the cheapest
+high-confidence source available — a person who stood in it outranks a grid
+cell, and costs nothing to fetch.
+
+### Where satellite and radar arrive
+
+The ladder is graded rather than fixed precisely so new instruments can join
+without restructuring anything, which is the point of choosing this shape now:
+
+- **Radar**, if reachable here, sits between the station and the reanalysis:
+  regional like the archive but at roughly 1 km and 5 minutes rather than
+  25 km and an hour, so it can see a cell the archive averages away. Not
+  currently a roadmap item, and **whether usable coverage exists over Kisumu
+  is unchecked** — the same question `p01i` turned out to answer badly.
+- **Satellite** is item 41, and is the right answer for basin-scale truth
+  rather than point truth. It joins the ladder as reliable-for-occurrence,
+  not gold: it sees cloud and inferred rain rate, not a gauge.
+
+Neither changes the design. That is the test this shape had to pass.
+
+### The LLM reads sources; it must never adjudicate them
+
+Raised by the operator as a case where an LLM beats a formula. Half right,
+and the halves need separating because one of them is dangerous.
+
+**Where it genuinely wins, and a formula cannot.** Unstructured local signal:
+a METAR `RMK` section carrying precipitation notes outside the coded groups,
+a met service bulletin's prose, a satellite product's description. That is
+this project's real comparative advantage over the numerical models — it can
+ingest what they cannot read — and it is exactly the kind of source that
+would otherwise need a bespoke parser per format.
+
+**Where it must not go: deciding what happened.** If the forecaster sets the
+truth its own blended call is scored against, it grades its own homework.
+That is the closed loop `models_visible_to_the_forecaster` exists to prevent,
+one level deeper and considerably worse — because a forecaster that can move
+the truth improves every number on the accuracy page while none of them
+continues to mean anything. It would not present as a bug. It would present
+as the project succeeding.
+
+**The test to apply to any proposed use.** Does it produce something a human
+could check afterwards against the source? Lifting "RMK RAB35" into a
+structured field, yes — the report is right there. Choosing which of two
+disagreeing sources was correct, no — there is nothing to check it against,
+which is the whole reason this item exists.
+
 
 Related: item 11 (source discovery in the app), item 35 (convective
 disagreement), item 36 (user feedback), item 41 (satellite as a candidate
