@@ -245,9 +245,88 @@ morning one.
 
 ## 2. Severe-weather alerts — hourly monitoring · **Next**
 
-### First, a correction worth stating plainly
+### First, a correction to the correction — KMD publishes CAP, 2026-09-03
 
-**Kenya Met publishes no RSS feed.** Verified directly:
+The section below concluded that KMD has no feed and the plan must be HTML
+scraping. **It tested the wrong namespace.** Every probe was for a WordPress
+feed — `/feed/`, `/?feed=rss2`, `/wp-json/` — while the feed is an API
+endpoint following the CAP convention instead:
+
+```text
+https://meteo.go.ke/api/cap/rss.xml
+```
+
+Verified live 2026-09-03: HTTP 200, `application/xml`, 4 KB,
+`<copyright>public domain</copyright>`, five alert items each linking a full
+CAP document. The documents are **CAP 1.2** (`urn:oasis:names:tc:emergency:
+cap:1.2`), and they carry everything this item was going to have to infer:
+
+| CAP field | What this item planned to do instead |
+|---|---|
+| `identifier` (`urn:oid:2.49.0.1.404...`) | invent an ID from a page slug |
+| `severity` / `urgency` / `certainty` | judge severity with an LLM call |
+| `onset` / `expires` | guess when an alert stopped applying |
+| `area` polygons | bounding-box the Nyanza basin by hand |
+| `status` / `msgType` / `scope` | tell a real alert from a test or a drill |
+
+**The geo-filter is exact, and that was checked rather than assumed.** The
+2026-05-07 Heavy Rainfall Advisory carries 34 county areas with real
+polygons — Bungoma's alone has 2,297 points. A point-in-polygon test for the
+configured primary point (-0.0917, 34.7680) returns `Kisumu` and nothing
+else. So relevance becomes geometry rather than a text match on a place
+name, which is the difference between "advisory mentions western Kenya" and
+"this advisory covers the point we forecast for".
+
+**Severity floors stop being a judgement call.** This item's open design
+question — which advisories reach email and which stay on the site — is
+answerable against `severity`, a standard enumeration, instead of an LLM's
+opinion. That also removes the triage call from the common path: `severity`
+and a polygon test are free, and the LLM is then only needed to write prose
+for an alert already known to be relevant.
+
+### The dormancy question, which is not answered
+
+All five items in the feed are from April and May 2026. Nothing since, and
+today is 2026-09-03 — roughly four months of silence.
+
+Two readings, and the record cannot yet distinguish them:
+
+1. KMD issues alerts episodically and has had nothing to warn about. The
+   April-May clustering matches Kenya's long rains (March-May), which makes
+   this entirely plausible.
+2. The feed was populated once and abandoned.
+
+**This is exactly the trap the source research warns about** — "an
+operational catalogue entry with stale observations is not a usable current
+source", and "discovery metadata is not data". The global source matrix
+calls this feed *verified*, and the endpoint is; its contents are four
+months old. Any registry this project adopts needs `last_live_observation`
+as a required field rather than an optional one.
+
+**A cheap test that answers itself.** Kisumu's short rains run roughly
+October to December. If the feed is alive, alerts reappear then. Probing
+freshness costs one 4 KB request and can sit in `check-health` now, so the
+answer arrives without anyone remembering to look.
+
+**Do not build the alert path on the assumption that it is live.** Build the
+freshness probe first, let October decide, and keep GDACS below as the
+independent cross-check either way — a single national feed going quiet is
+precisely the failure a second source exists to cover.
+
+### What this does NOT change
+
+- **GDACS stays.** Two independent sources, so one going quiet does not
+  blind the alert path.
+- **Deduplication is still the whole ballgame**, and CAP makes it easier
+  rather than unnecessary: `identifier` is a real key, and `msgType` of
+  `Update` or `Cancel` distinguishes a genuine revision from a re-listing.
+- **The push-vs-poll delivery design below is untouched.** CAP changes what
+  is fetched and how relevance is decided; it says nothing about how an
+  alert reaches a person.
+
+### The original finding, kept because it was right about what it tested
+
+**Kenya Met publishes no WordPress RSS feed.** Verified directly:
 
 | Probe | Result |
 |---|---|
@@ -256,11 +335,12 @@ morning one.
 | `/wp-json/wp/v2/posts` | 404 (REST API disabled) |
 | `<link rel="alternate" type="application/rss+xml">` | absent from page head |
 
-So the plan can't be "poll the RSS feed" — it has to be **HTML scraping with
-change detection**. The good news: `https://meteo.go.ke/weather-warnings/`
-lists warning posts newest-first in page order, the same structure the
-existing KMD bulletin scraper already handles, so
-`fetch/bulletin/kenya_kmd.py` gives us a proven pattern to mirror.
+So the plan cannot be "poll the WordPress feed". It was concluded here that
+the alternative was **HTML scraping with change detection**, mirroring
+`fetch/bulletin/kenya_kmd.py` — superseded by the CAP feed above, and kept
+as the fallback if that feed proves dormant. `https://meteo.go.ke/weather-
+warnings/` lists warning posts newest-first in page order, so the scraper
+remains a known-viable plan B rather than the plan.
 
 Sample of what's there today: `heavy-rainfall-advisory-752026`,
 `large-waves-24042026`, `strong-winds-24042026` — slugs carry the hazard
