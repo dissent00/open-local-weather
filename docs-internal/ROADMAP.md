@@ -6118,3 +6118,108 @@ the registry schema as a required field**, not an optional one, or the
 matrix will accumulate exactly the false confidence it warns against.
 
 Related: items 2, 11, 41, 44, 45, 63.
+
+---
+
+## 65. Lightning and cloud as their own truth, not as rain · **Planned**
+
+Raised 2026-09-03: lightning happens with or without precipitation, and is
+worth knowing either way. Cloud cover is the same shape — the forecast
+predicts it and nothing observes it.
+
+### The conflation this fixes already exists in the record
+
+`observed_convection()` is `rain OR thunder OR precipitation`, so a station
+reporting `TS` already scores the day WET. Measured over the 43 days with a
+station thunder observation:
+
+| | days |
+|---|---|
+| thunder observed | 11 |
+| thunder with precipitation from either source | 8 |
+| **scored wet on thunder alone** | **3** |
+
+Three of 23 wet days — 13% — rest on thunder with no precipitation seen at
+the station. **But read the detail before concluding anything**: all three
+had reanalysis totals of 0.2, 1.1 and 0.5 mm, spread thin enough that no
+single hour crossed `RAIN_THRESHOLD_MM` of 0.5. So they are not bone-dry
+thunderstorms; they are light convective rain the hourly threshold missed,
+which is precisely what item 42 added the thunder term to catch.
+
+The conflation is therefore real, modest, and the cases are borderline rather
+than clear-cut. That is an argument for separating the variables rather than
+for removing the OR term, because the current arrangement forces a choice
+that the data does not support making.
+
+### Separate variables end the argument instead of settling it
+
+"Did it storm" and "did it rain" are different questions with different
+answers, and the ledger currently has one column for both. Scored
+separately, a model that predicted thunder and got a dry storm is right about
+thunder and wrong about rain, which is more information than either verdict
+alone — and nobody has to decide whether a dry thunderstorm is "a wet day".
+
+**And this is the reason to start with lightning.** It adds vision without
+touching comparability: a new variable is not an OR term, so it cannot move
+the rain rate, cannot make the models look worse for instrumentation
+reasons, and needs no waiting for divergence numbers. Every other source
+discussed so far fails that test.
+
+### Lightning first
+
+MTG's Lightning Imager (item 41) observes convection DIRECTLY rather than
+inferring it from cloud or from rainfall. For a deployment whose worst
+failures are pop-up convection the reanalysis averages away and a point
+station catches only when it is overhead, that is the sharpest instrument
+available.
+
+What it needs:
+
+- A `lightning` observation on `DailyActual`, three-valued like `thunder`,
+  stamped with its own source id. **Not folded into
+  `observed_convection()`** — see above, and see item 45's OR problem.
+- A prediction to score it against. Nothing currently forecasts lightning as
+  a committed value; CAPE is the closest, and it is an instability index
+  rather than a call. So this ships as an OBSERVATION first, scored against
+  nothing, exactly as the station readings did.
+- The station's `TS` group as a cross-check. Two independent witnesses to
+  the same physical event, one satellite and one surface, is a rare luxury
+  here — and a disagreement between them is informative rather than a
+  problem to resolve.
+
+### Cloud second
+
+The forecast predicts `cloud_cover`; nothing observes it. A satellite is the
+only instrument that can, and FCI's IR channels are the standard way.
+
+Harder than lightning for a reason worth recording now: **brightness
+temperature is not cloud cover.** Deriving one from the other is a
+retrieval, with assumptions, and it would be this project's first observation
+that is a MODEL of an observation rather than a reading. That is not
+disqualifying — the reanalysis is already a model — but it must be stamped
+as such, and it argues for taking an existing published cloud product rather
+than deriving one here.
+
+Also worth stating: cloud is where item 37's "a mean over a day is almost
+never the right summary" bites hardest. "Sunny until midday then clouding
+over" and "overcast all day" have similar averages and are different days.
+Whatever is observed has to keep the shape, or it will verify a number
+nobody experienced.
+
+### Not established
+
+- Whether MTG Lightning Imager data is reachable for this point at a
+  cadence and cost that make sense. Item 41 names the platform; nobody has
+  fetched anything.
+- Which published cloud product to prefer, and whether any of them is free
+  at this location.
+- Whether a lightning observation adds anything the station's `TS` group does
+  not already provide. Kisumu Airport is four kilometres away and reports
+  hourly; the satellite's advantage is basin-wide coverage, which matters
+  only if storms are being missed OUTSIDE the airport's view. That is
+  measurable once both exist, and it should be measured before the satellite
+  path is treated as load-bearing.
+
+Related: item 41 (the platform), item 45 (why this must not join the OR),
+item 37 (day-character, which cloud needs), item 63 (the other vision
+source), item 58 (what scoring a new variable properly would require).
