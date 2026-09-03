@@ -17,14 +17,12 @@ follows `spec/README.md`.
 
 ## Working order, as of 2026-08-31
 
-**Before anything else, from 2026-09-02: read the answer to item 53's
-experiment.** The forward fetch was moved from 7th to 2nd in the request
-sequence on 2026-09-01, with a falsifiable prediction written down before the
-run. Check the newest `data/log/*.json` for `meta.degradations`:
-`synoptic_unavailable` means position was the cause, `hours_ahead_narrowed`
-means the request shape was, and neither means it was sequence length or
-timing. Record the answer in item 53 and then decide deliberately where that
-call belongs — the placement is an experiment and the code says so.
+**The forward-fetch experiment was answered 2026-09-03 — neither hypothesis,
+and the confound is unresolved.** Two clean runs after the reorder, two
+failures before it, and no synoptic failure to take the old one's place. See
+item 53, "THE ANSWER". An open decision sits there: whether to spend one
+degraded forecast reverting the order to prove causation, or to leave it and
+add the per-request diagnostic instead.
 
 A snapshot, not a contract, and dated because it will go stale. Numbered
 items keep their own status; this only says what to pick up next and why.
@@ -4622,7 +4620,7 @@ behaviour. Worth noting that the pipeline uses a bare `requests.get` per
 call with no `Session` and therefore no connection reuse, and makes seven
 `/v1/forecast` requests plus air-quality within about half a minute.
 
-### The experiment, running from 2026-09-01
+### The experiment, run 2026-09-01 to 09-03
 
 The forward fetch has been moved to **second** in `_fetch_forward_guidance`,
 directly after the day-0 hourly call it depends on for the reconciled clock.
@@ -4639,8 +4637,50 @@ Counting only `/v1/forecast` requests, the sequence is now:
 6. secondary daily (`=8`)
 7. **synoptic ring** — was 6th
 
-**The prediction, stated before the answer arrives so it cannot be
-rationalised afterwards.** On the next scheduled run:
+### THE ANSWER, 2026-09-03: neither. Read the caveat before acting on it.
+
+Four consecutive runs, established from the workflow logs rather than the
+record (the record only shows what the pipeline chose to write):
+
+| Run (UTC) | Reorder present | Forward fetch | Synoptic |
+|---|---|---|---|
+| 2026-09-01 15:15 | no | **FAILED** | — |
+| 2026-09-02 03:01 | no | **FAILED** | — |
+| 2026-09-02 15:01 | **yes** | ok | ok |
+| 2026-09-03 03:01 | **yes** | ok | ok |
+
+**Neither predicted code appeared.** `hours_ahead_narrowed` did not recur, so
+the request shape is not sufficient on its own. `synoptic_unavailable` did
+not appear either, so the fault did not follow the 7th slot — synoptic now
+sits there, is issued ~20-28 s into the run exactly as the forward call used
+to be, and is fine.
+
+So both hypotheses in their simple forms are dead. What is left is some
+combination — the surviving guess is a LARGE request late in a burst, since
+the forward call is ~15 KB against synoptic's ~3 KB — but that is a guess
+with no evidence behind it yet.
+
+**THE CONFOUND, AND IT IS SERIOUS.** This fault BEGAN on 2026-08-29 with no
+code change of ours in the window. Something that starts by itself can stop
+by itself, and two clean runs immediately after our change is exactly what
+an unrelated upstream fix would also look like. Under the prior failure rate
+(8 of 9) two consecutive clean runs is about a 1 in 80 coincidence, which is
+suggestive and is not proof, and this project does not call 1-in-80 a finding
+anywhere else.
+
+**What would actually settle it** is reverting the order for one run: a
+recurrence convicts the sequence, continued health exonerates it. That costs
+one degraded forecast, which is a real cost to a reader, and it is the
+operator's call whether the knowledge is worth it.
+
+**The cheaper alternative, and probably the right one:** leave the order
+alone, and add the diagnostic that was missing all along — log which request
+is in flight, its position, and its elapsed time. Then if this recurs it
+identifies itself on the first run instead of costing another investigation.
+Nothing in the logs today says anything beyond the exception string, which is
+why this took a full agent's worth of reading to characterise.
+
+**The original prediction, for the record.** On the next scheduled run:
 
 - **If POSITION is the cause**, the run records `synoptic_unavailable` and
   NOT `hours_ahead_narrowed`. The failure follows the 7th slot to whatever
