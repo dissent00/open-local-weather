@@ -54,6 +54,21 @@ class TodayProperties(BaseModel):
     # without resolvable timing — never midnight.
     onset_hour: str | None = None
     precip_mm: float | None = None
+    # The forecaster's OWN chance of rain, percent — ROADMAP item 58, and the
+    # field where that item's argument actually lands.
+    #
+    # `rain` above is a boolean, so a confident wrong call and an honest hedge
+    # score identically. System-prompt rule 7 therefore has to ask for
+    # restraint in English that the ledger does not pay for. This is scored
+    # with a proper scoring rule, under which claiming certainty you do not
+    # have is the most expensive thing available — so the honesty rule 7 asks
+    # for becomes the strategy that wins.
+    #
+    # OPTIONAL, deliberately. A stored response from before this field
+    # existed, or a model that omits it, must not fail a run; it simply is not
+    # Brier-scored, exactly like a numerical model that supplies no
+    # probability. Absent is not 50.
+    rain_probability_pct: int | None = None
     mslp_trend_24h: str | None = None
     synoptic_pattern: str | None = None
     uv_index_max: str | None = None

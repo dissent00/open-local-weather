@@ -172,3 +172,60 @@ def test_the_rolling_window_reports_brier_checks_separately(tmp_path):
     )
     assert r.checks_found == 30
     assert r.brier_checks == 3
+
+
+# ---------------------------------------------------------------------------
+# The blend's own probability — where the incentive argument lands
+# ---------------------------------------------------------------------------
+
+
+def test_the_blend_carries_its_probability_into_the_scored_prediction():
+    """The whole point of the item. Rule 7 asks the forecaster in English for
+    restraint the ledger does not pay for; a proper scoring rule pays for it,
+    but only if the forecaster's own probability is actually scored."""
+    from openlocalweather.llm.schema import TodayProperties
+    from openlocalweather.pipeline import _blend_prediction
+
+    tp = TodayProperties(
+        rain_expected="Likely by evening",
+        temp_high_c=28.0,
+        temp_low_c=18.0,
+        rain=True,
+        rain_probability_pct=65,
+    )
+    p = _blend_prediction(tp)
+    assert p.rain_probability_pct == 65
+
+
+def test_a_blend_that_gives_no_probability_still_produces_a_prediction():
+    """Optional in the schema, so an older stored response or a model that
+    omits it does not fail the run — it simply is not Brier-scored, exactly
+    like a numerical model with no probability."""
+    from openlocalweather.llm.schema import TodayProperties
+    from openlocalweather.pipeline import _blend_prediction
+
+    tp = TodayProperties(
+        rain_expected="Unlikely", temp_high_c=28.0, temp_low_c=18.0, rain=False
+    )
+    p = _blend_prediction(tp)
+    assert p.rain_probability_pct is None
+
+
+def test_the_prompt_asks_for_a_probability_and_says_what_it_is_for():
+    """A field the prompt does not explain is a field the model fills in
+    arbitrarily. It has to say that honest uncertainty is REWARDED, because
+    under a proper scoring rule that is true and the model has no way to know
+    it otherwise."""
+    from openlocalweather.config import LocationConfig, Point, SecondaryPoint
+    from openlocalweather.llm.prompt import build_system_prompt
+
+    sp = build_system_prompt(
+        LocationConfig(
+            region_name="R", primary_place_name="P", timezone="UTC",
+            primary_point=Point(lat=0.0, lon=0.0),
+            secondary_point=SecondaryPoint(),
+        )
+    )
+    assert "rain_probability_pct" in sp
+    low = sp.lower()
+    assert "calibrat" in low or "honest" in low

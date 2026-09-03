@@ -866,6 +866,11 @@ def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
         high_c=tp.temp_high_c,
         low_c=tp.temp_low_c,
         precip_mm=tp.precip_mm,
+        # The forecaster's own probability, carried into the scored prediction
+        # so it is Brier-scored as a peer of the models it synthesizes —
+        # ROADMAP item 58. Without this line the field would be collected and
+        # never checked, which is the one outcome worse than not asking.
+        rain_probability_pct=tp.rain_probability_pct,
         # Deliberately absent, not zero. peak_wind_kmh in today_properties is
         # the SECONDARY point's, and mslp_trend_24h is prose; scoring either
         # against the primary point's observations would be comparing two

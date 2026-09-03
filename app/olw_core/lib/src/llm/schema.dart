@@ -87,6 +87,7 @@ Map<String, Object?> _geminiTodayProperties() => {
         'rain': {'type': 'BOOLEAN'},
         'onset_hour': {'type': 'STRING', 'nullable': true},
         'precip_mm': {'type': 'NUMBER', 'nullable': true},
+        'rain_probability_pct': {'type': 'INTEGER', 'nullable': true},
         'mslp_trend_24h': {'type': 'STRING', 'nullable': true},
         'synoptic_pattern': {'type': 'STRING', 'nullable': true},
         'uv_index_max': {'type': 'STRING', 'nullable': true},
@@ -170,6 +171,7 @@ Map<String, Object?> _strictTodayProperties() => {
         'rain': {'type': 'boolean'},
         'onset_hour': {'type': ['string', 'null']},
         'precip_mm': {'type': ['number', 'null']},
+        'rain_probability_pct': {'type': ['integer', 'null']},
         'mslp_trend_24h': {
           'type': ['string', 'null']
         },
@@ -192,6 +194,7 @@ Map<String, Object?> _strictTodayProperties() => {
         'rain',
         'onset_hour',
         'precip_mm',
+        'rain_probability_pct',
         'mslp_trend_24h',
         'synoptic_pattern',
         'uv_index_max',
@@ -252,6 +255,14 @@ class TodayProperties {
   final String? onsetHour;
   final double? precipMm;
 
+  /// The forecaster's OWN chance of rain, percent — upstream ROADMAP item 58.
+  ///
+  /// A separate commitment from [rain], not a restatement: `rain` is checked
+  /// for being right, this is checked for CALIBRATION. Optional, so a stored
+  /// response from before the field existed does not fail a run — it simply
+  /// is not Brier-scored. Absent is not 50.
+  final int? rainProbabilityPct;
+
   final String? mslpTrend24h;
   final String? synopticPattern;
   final String? uvIndexMax;
@@ -266,6 +277,7 @@ class TodayProperties {
     required this.rain,
     this.onsetHour,
     this.precipMm,
+    this.rainProbabilityPct,
     this.mslpTrend24h,
     this.synopticPattern,
     this.uvIndexMax,
@@ -281,6 +293,7 @@ class TodayProperties {
         rain: j['rain'] as bool,
         onsetHour: j['onset_hour'] as String?,
         precipMm: _toDouble(j['precip_mm']),
+        rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
         mslpTrend24h: j['mslp_trend_24h'] as String?,
         synopticPattern: j['synoptic_pattern'] as String?,
         uvIndexMax: j['uv_index_max'] as String?,
@@ -303,6 +316,7 @@ class TodayProperties {
         'rain': rain,
         'onset_hour': onsetHour,
         'precip_mm': precipMm,
+        'rain_probability_pct': rainProbabilityPct,
         'temp_high_low': tempHighLow,
         'mslp_trend_24h': mslpTrend24h,
         'synoptic_pattern': synopticPattern,

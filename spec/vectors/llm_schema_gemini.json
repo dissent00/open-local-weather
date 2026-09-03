@@ -85,6 +85,10 @@
                 "type": "NUMBER",
                 "nullable": true
               },
+              "rain_probability_pct": {
+                "type": "INTEGER",
+                "nullable": true
+              },
               "mslp_trend_24h": {
                 "type": "STRING",
                 "nullable": true

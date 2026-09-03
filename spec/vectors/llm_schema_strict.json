@@ -95,6 +95,12 @@
                   "null"
                 ]
               },
+              "rain_probability_pct": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "mslp_trend_24h": {
                 "type": [
                   "string",
@@ -129,6 +135,7 @@
               "rain",
               "onset_hour",
               "precip_mm",
+              "rain_probability_pct",
               "mslp_trend_24h",
               "synoptic_pattern",
               "uv_index_max",

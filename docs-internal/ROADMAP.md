@@ -5716,14 +5716,39 @@ stated probability is not derivable after the fact from anything stored. So
 window, because a window holding 30 scored days of which 3 have a probability
 would otherwise imply the Brier figure rests on evidence it does not have.
 
+### The blend now states its own probability, 2026-09-03
+
+Which is where this item's argument actually lands. `TodayProperties`
+carries `rain_probability_pct`, `_blend_prediction` passes it into the scored
+prediction, and the prompt asks for it in both languages — the paragraph is
+lifted verbatim from the Python so the two cannot diverge, and it is
+byte-identical apart from Dart's `$` escaping.
+
+**The prompt says why honesty pays, because the model has no way to know
+otherwise.** It states that this is checked for CALIBRATION rather than for
+being right, that claiming 95% when you mean 60% is the most expensive
+mistake available, and that hedging to 50% on a day with strong evidence is
+nearly as costly in the other direction. Under a proper scoring rule all of
+that is true, which is the point: rule 7 asks for restraint in English and
+this makes restraint the winning strategy.
+
+**Telling the forecaster HOW it is scored is not showing it its own record.**
+The standing rule in `models_visible_to_the_forecaster` withholds the
+blend's track record, and that is untouched. This is instruction, not
+feedback — no closed loop.
+
+**Optional in the schema**, so a stored response from before the field
+existed does not fail a run; it simply is not Brier-scored, exactly like a
+numerical model with no probability. Absent is not 50.
+
 ### Still open
 
-- **The blend does not emit a probability.** That is where the incentive
-  argument actually lands — the whole point is paying the forecaster for
-  honest uncertainty — and it needs a schema and prompt change. Item 27's
-  replay harness now exists, so this is unblocked rather than waiting.
 - **Nothing displays Brier yet.** The accuracy page and the track record
   carry the boolean figures only.
+- **The prompt change has not been replayed.** `olw replay` exists (item 27)
+  and this is precisely what it is for, but it spends real money on the
+  operator's key — so the before/after comparison is a deliberate act, not
+  something to slip into a build.
 
 ### The comparability hazard, and the way around it
 
