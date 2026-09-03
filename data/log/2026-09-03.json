@@ -1,39 +1,39 @@
 {
   "date": "2026-09-03",
-  "rain_expected": "Dry / Elevated Nighttime Thunder Potential",
+  "rain_expected": "Dry / Elevated Evening Thunder Potential",
   "onset_window": null,
-  "peak_wind_kmh": 37.0,
-  "temp_high_c": 31.4,
-  "temp_low_c": 18.5,
-  "temp_high_low_display": "31°C / 89°F high, 18°C / 65°F low",
-  "mslp_trend_24h": "-1.3 hPa",
-  "synoptic_pattern": "Falling overhead pressure with strong NE-SE regional gradient",
+  "peak_wind_kmh": 27.8,
+  "temp_high_c": 31.3,
+  "temp_low_c": 18.7,
+  "temp_high_low_display": "31°C / 88°F high, 19°C / 66°F low",
+  "mslp_trend_24h": "-1.4 hPa",
+  "synoptic_pattern": "Strong regional gradient with lowest pressure to the northeast and falling pressure overhead.",
   "uv_index_max": "9.2",
-  "air_quality_aqi": "86",
+  "air_quality_aqi": "88",
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
       "station_id": "A418534",
-      "aqi": 13,
-      "pm25": 13.0,
+      "aqi": 38,
+      "pm25": 38.0,
       "pm10": 15.0,
-      "measured_at": "2026-09-03T00:00:00Z"
+      "measured_at": "2026-09-03T12:00:00Z"
     },
     {
       "name": "Ochieng' Avenue, Kisumu Central",
       "station_id": "A418300",
-      "aqi": 43,
-      "pm25": 43.0,
+      "aqi": 56,
+      "pm25": 56.0,
       "pm10": 18.0,
-      "measured_at": "2026-09-03T00:00:00Z"
+      "measured_at": "2026-09-03T12:00:00Z"
     },
     {
       "name": "Dunga Beach",
       "station_id": "A418504",
-      "aqi": 32,
-      "pm25": 32.0,
+      "aqi": 78,
+      "pm25": 78.0,
       "pm10": 37.0,
-      "measured_at": "2026-09-03T00:00:00Z"
+      "measured_at": "2026-09-03T12:00:00Z"
     }
   ],
   "sunrise": "06:37",
@@ -319,19 +319,109 @@
     "fetched_at_utc": "2026-09-03T03:05:57.649790Z"
   },
   "yesterday_verification_summary": "Yesterday's Day+0 forecast verified dry as predicted across all numerical models and Kenya Met. Daytime maximum temperatures were tracked with high precision (errors within 0.7°C for ECMWF, ICON, and the OLW blend), while GFS continued its systematic wind speed over-prediction (+26.2 km/h error).",
-  "narrative_markdown": "## Overview\nWarm and sunny today, much like yesterday. With convective instability rising significantly in evening models, isolated thunder is possible tonight, peaking around 20:00 local time, though models disagree sharply on convective strength.\n\n## Today's Forecast\nThe morning starts with sunny intervals as temperatures quickly rise from dawn lows near 19°C / 66°F to an afternoon high around 31°C / 88°F. Winds will pick up from the southwest by afternoon, reaching 20–25 km/h (11–13 kt) with gusts up to 37 km/h (20 kt). Peak UV index will reach 9.2 around midday, requiring sun protection. Although measurable rainfall is not expected today—a call shared across all numerical models and the Kenya Meteorological Department—convective instability surges after dusk. UKMO and ICON project CAPE building to 1100–1430 J/kg between 19:00 and 22:00, creating potential for nocturnal thunder despite dry surface projections, while GFS and ECMWF show much lower instability (<300 J/kg). Nighttime lows will settle near 18°C / 64°F under partly cloudy skies. Air quality assessment relies on CAMS model data as all local ground sensors are currently stale; CAMS predictions show moderate US AQI levels peaking near 86.\n\n## Extended Outlook\nDays 1–3 (Friday to Sunday) will remain warm and predominantly dry across Nyanza Basin, with daytime highs ranging between 32°C / 90°F and 34°C / 93°F and overnight lows around 19°C–20°C (66°F–68°F). Afternoon southwesterly winds will remain brisk, with peak gusts reaching 35–45 km/h (19–24 kt). Looking out to Days 4–7 (Monday through Thursday), precipitation probabilities increase by Monday and Tuesday as atmospheric moisture returns to the basin, with ECMWF and ICON indicating scattered afternoon and evening showers (1–4 mm total) and a slight drop in daytime highs back toward 30°C / 86°F.\n\n## Severe Weather / Hazard Potential\nNo widespread severe weather or heavy rainfall hazards are anticipated during daylight hours. However, elevated convective instability (CAPE exceeding 1400 J/kg on UKMO and 1100 J/kg on ICON) develops after dusk, peaking around 20:00. While measurable surface rain accumulation is not expected, lightning hazards and localized convective wind gusts remain a secondary possibility overnight.\n\n## Lake Victoria — Conditions for Boaters\nOffshore conditions over open waters will see moderate southwesterly winds developing by mid-afternoon at 12–18 km/h (6–10 kt) with gusts to 23 km/h (12 kt), producing light chop. Overnight, boater vigilance is strongly advised: instability over the lake surges dramatically, with UKMO projecting extreme CAPE values above 2500–3100 J/kg and ECMWF above 1800–2100 J/kg between midnight and dawn. This supports nighttime convective development over open water, bringing risks of sudden thunderstorm squalls, erratic wind shifts, and localized rough lake conditions despite dry shore forecasts.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1004 hPa) and highest toward the southeast (1017 hPa) — a 14 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north, northwest, and south — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is falling, with mean MSLP dropping roughly 1.3 hPa over 24 hours to 1012.4 hPa. Across the Nyanza Basin sub-points, mean surface pressure ranges from 1012.4 hPa at Kisumu to 1014.8 hPa at Kisii, maintaining a typical weak basin gradient during the day before nocturnal lake-breeze convergence develops.\n\n### Forecaster Confidence Notes\nAt Day+0, Best Match (87% all-time rain accuracy) and ECMWF (90% rolling 10-check) lead rain accuracy rankings. The Kenya Meteorological Department (KMD) bulletin calls for sunny intervals during the day and partly cloudy conditions tonight with a maximum of 32.0°C / 90°F and minimum of 17.0°C / 63°F, aligning closely with numerical consensus for a dry day. Confidence in dry surface conditions is high given universal model agreement on <0.6 mm rainfall. However, confidence regarding nighttime convection is moderate due to a prominent CAPE divergence: UKMO (1430 J/kg) and ICON (1130 J/kg) indicate significant nocturnal instability, whereas GFS (100 J/kg) remains largely stable. As noted in historical verification notes from similar synoptic setups (e.g. August 28 and 30), elevated nighttime CAPE frequently yields lightning without measurable surface rainfall. Additionally, long-run review findings show GFS systematically under-forecasts peak wind (mean error +21.2 km/h at Day+0), so peak wind gusts are weighted toward ECMWF/ICON guidance (~37 km/h).\n\nGround AQI sensors at Kisumu Airport (AQI 13), Ochieng' Avenue (AQI 43), and Dunga Beach (AQI 32) last reported 3 hours ago and are flagged as stale; the last known ground reading was AQI 43 at Ochieng' Avenue. Therefore, live air quality relies on CAMS reanalysis.",
-  "whatsapp_summary": "🌤️ Kisumu Weather Today (Sep 3): Sunny intervals, warm reaching 31°C/88°F. S/SW winds 20-37 km/h. Dry during the day, but thunder potential increases tonight (peak ~20:00). UV Index high at 9.2.",
-  "earlier_issuances": [],
-  "morning_issuance": null,
-  "guidance_initialised_at": "2026-09-02T18:00:00Z",
-  "guidance_age_hours": 9.0226140575,
+  "narrative_markdown": "## Overview\nWith evening underway, conditions across Kisumu remain dry as forecast earlier today, with the primary focus shifting to elevated convective instability tonight. Isolated thunder remains possible overnight, peaking around 20:00 local time, though models disagree sharply on convective strength (UKMO projecting peak CAPE of 3280 J/kg while GFS stays under 200 J/kg).\n\n## Today's Forecast\nAs dusk falls and sunset approaches at 18:43 local time, daytime highs near 31°C / 88°F and solar UV exposure are in the past. For tonight, temperatures will cool through the evening to overnight lows around 19°C / 66°F under partly cloudy skies. Winds will back from southwesterly to easterly at 5–12 km/h (3–6 kt). Measurable surface rainfall is not expected overnight, though high convective instability creates a potential for isolated lightning. For tomorrow (Friday, September 4), expect morning sunny intervals transitioning to partly cloudy skies in the afternoon, with daytime high temperatures reaching 32°C / 90°F. Afternoon southwesterly winds will build to 15–20 km/h (8–11 kt) with gusts up to 38 km/h (21 kt), and peak UV index will reach 9.2 around midday. Ground air quality sensors at Kisumu Airport, Ochieng' Avenue, and Dunga Beach are currently stale (last reported 3 hours ago, with the last known reading at Dunga Beach of AQI 78); CAMS model guidance indicates moderate air quality overnight with US AQI levels around 87–88.\n\n## Extended Outlook\nDays 1–3 (Friday through Sunday) will bring warm and largely dry conditions across Nyanza Basin, with daytime high temperatures ranging from 32°C / 90°F to 35°C / 95°F and overnight lows near 18°C / 64°F to 21°C / 70°F. Moderate afternoon southwesterly winds will prevail, gusting between 30 km/h (16 kt) and 42 km/h (23 kt). Out to Days 4–7 (Monday through Thursday), guidance indicates increasing atmospheric moisture with precipitation chances rising by Monday and Tuesday. ECMWF and ICON forecast scattered afternoon and evening showers (1.0 mm to 6.2 mm / 0.04 in to 0.24 in) with daytime high temperatures easing back toward 31°C / 88°F.\n\n## Severe Weather / Hazard Potential\nNo daytime severe weather hazards occurred today, and no widespread rain hazards are expected overnight. However, convective instability surges after dusk—peaking around 20:00 local time with UKMO showing peak CAPE of 3280 J/kg, ICON at 1430 J/kg, and ECMWF at 710 J/kg—supporting a risk of nocturnal thunder, lightning strikes, and localized gusty wind shifts despite dry surface rainfall forecasts.\n\n## Lake Victoria — Conditions for Boaters\nFor boaters on Lake Victoria tonight, winds will back from southwesterly to easterly at 7–15 km/h (4–8 kt) with gusts to 22 km/h (12 kt), producing light lake chop. Nighttime vigilance is strongly advised over open water: convective instability builds significantly overnight, with UKMO projecting CAPE exceeding 2000–3200 J/kg and ECMWF maintaining 1300–1550 J/kg across the lake basin. This supports the potential for sudden overnight convective squalls, localized rough water, and lightning over open lake waters despite dry shore forecasts.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1004 hPa) and highest toward the southeast (1017 hPa) — a 14 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north, northwest, and south — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is falling, with mean sea-level pressure across Nyanza Basin declining by 1.1 to 1.8 hPa over the past 24 hours to around 1012.6 hPa at Kisumu. Regional pressure sub-points range from 1013.1 hPa at Busia and 1012.9 hPa at Homa Bay to 1015.0 hPa at Kisii and 1013.8 hPa at Migori, maintaining a modest regional pressure gradient across the basin.\n\n### Forecaster Confidence Notes\nNew model guidance landed this cycle (aligned at 06:00Z, 9 hours old), confirming dry surface conditions while preserving the overnight instability signature. At Day+0, long-run review findings establish that Best Match (87% all-time rain accuracy) is the strongest rain caller and GFS (65%) the weakest. GFS systematically under-forecasts peak surface winds (mean error +21.2 km/h at Day+0), so peak gust calls favor ECMWF and ICON guidance. The Kenya Meteorological Department (KMD) bulletin for tomorrow calls for daytime maximum temperatures of 32.0°C / 90°F and minimums of 20.0°C / 68°F with sunny intervals morning and afternoon, aligning closely with numerical model consensus. Confidence in dry surface conditions tonight remains high due to cross-model agreement on minimal precip (<0.6 mm / 0.02 in), though confidence in convective activity remains moderate due to model divergence in CAPE magnitude (UKMO 3280 J/kg vs GFS 160 J/kg). Ground AQI sensors at Kisumu Airport (AQI 38), Ochieng' Avenue (AQI 56), and Dunga Beach (AQI 78) are stale (last reported 3 hours ago), requiring air quality estimates to lean on CAMS model guidance.",
+  "whatsapp_summary": "🌆 Evening Update for Kisumu:\nConditions remain dry tonight, but convective instability surges overnight! Peak thunder risk around 20:00 local time 🌩️ (UKMO CAPE 3280 J/kg). Lows ~19°C. Tomorrow sunny & warm (High 32°C). ⛵ Boaters on Lake Victoria: Watch for sudden overnight squalls & lightning!",
+  "earlier_issuances": [
+    {
+      "rain_expected": "Dry / Elevated Nighttime Thunder Potential",
+      "onset_window": null,
+      "peak_wind_kmh": 37.0,
+      "temp_high_c": 31.4,
+      "temp_low_c": 18.5,
+      "temp_high_low_display": "31°C / 89°F high, 18°C / 65°F low",
+      "mslp_trend_24h": "-1.3 hPa",
+      "synoptic_pattern": "Falling overhead pressure with strong NE-SE regional gradient",
+      "uv_index_max": "9.2",
+      "air_quality_aqi": "86",
+      "ground_aqi": [
+        {
+          "name": "Kisumu Airport",
+          "station_id": "A418534",
+          "aqi": 13,
+          "pm25": 13.0,
+          "pm10": 15.0,
+          "measured_at": "2026-09-03T00:00:00Z"
+        },
+        {
+          "name": "Ochieng' Avenue, Kisumu Central",
+          "station_id": "A418300",
+          "aqi": 43,
+          "pm25": 43.0,
+          "pm10": 18.0,
+          "measured_at": "2026-09-03T00:00:00Z"
+        },
+        {
+          "name": "Dunga Beach",
+          "station_id": "A418504",
+          "aqi": 32,
+          "pm25": 32.0,
+          "pm10": 37.0,
+          "measured_at": "2026-09-03T00:00:00Z"
+        }
+      ],
+      "narrative_markdown": "## Overview\nWarm and sunny today, much like yesterday. With convective instability rising significantly in evening models, isolated thunder is possible tonight, peaking around 20:00 local time, though models disagree sharply on convective strength.\n\n## Today's Forecast\nThe morning starts with sunny intervals as temperatures quickly rise from dawn lows near 19°C / 66°F to an afternoon high around 31°C / 88°F. Winds will pick up from the southwest by afternoon, reaching 20–25 km/h (11–13 kt) with gusts up to 37 km/h (20 kt). Peak UV index will reach 9.2 around midday, requiring sun protection. Although measurable rainfall is not expected today—a call shared across all numerical models and the Kenya Meteorological Department—convective instability surges after dusk. UKMO and ICON project CAPE building to 1100–1430 J/kg between 19:00 and 22:00, creating potential for nocturnal thunder despite dry surface projections, while GFS and ECMWF show much lower instability (<300 J/kg). Nighttime lows will settle near 18°C / 64°F under partly cloudy skies. Air quality assessment relies on CAMS model data as all local ground sensors are currently stale; CAMS predictions show moderate US AQI levels peaking near 86.\n\n## Extended Outlook\nDays 1–3 (Friday to Sunday) will remain warm and predominantly dry across Nyanza Basin, with daytime highs ranging between 32°C / 90°F and 34°C / 93°F and overnight lows around 19°C–20°C (66°F–68°F). Afternoon southwesterly winds will remain brisk, with peak gusts reaching 35–45 km/h (19–24 kt). Looking out to Days 4–7 (Monday through Thursday), precipitation probabilities increase by Monday and Tuesday as atmospheric moisture returns to the basin, with ECMWF and ICON indicating scattered afternoon and evening showers (1–4 mm total) and a slight drop in daytime highs back toward 30°C / 86°F.\n\n## Severe Weather / Hazard Potential\nNo widespread severe weather or heavy rainfall hazards are anticipated during daylight hours. However, elevated convective instability (CAPE exceeding 1400 J/kg on UKMO and 1100 J/kg on ICON) develops after dusk, peaking around 20:00. While measurable surface rain accumulation is not expected, lightning hazards and localized convective wind gusts remain a secondary possibility overnight.\n\n## Lake Victoria — Conditions for Boaters\nOffshore conditions over open waters will see moderate southwesterly winds developing by mid-afternoon at 12–18 km/h (6–10 kt) with gusts to 23 km/h (12 kt), producing light chop. Overnight, boater vigilance is strongly advised: instability over the lake surges dramatically, with UKMO projecting extreme CAPE values above 2500–3100 J/kg and ECMWF above 1800–2100 J/kg between midnight and dawn. This supports nighttime convective development over open water, bringing risks of sudden thunderstorm squalls, erratic wind shifts, and localized rough lake conditions despite dry shore forecasts.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1004 hPa) and highest toward the southeast (1017 hPa) — a 14 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north, northwest, and south — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is falling, with mean MSLP dropping roughly 1.3 hPa over 24 hours to 1012.4 hPa. Across the Nyanza Basin sub-points, mean surface pressure ranges from 1012.4 hPa at Kisumu to 1014.8 hPa at Kisii, maintaining a typical weak basin gradient during the day before nocturnal lake-breeze convergence develops.\n\n### Forecaster Confidence Notes\nAt Day+0, Best Match (87% all-time rain accuracy) and ECMWF (90% rolling 10-check) lead rain accuracy rankings. The Kenya Meteorological Department (KMD) bulletin calls for sunny intervals during the day and partly cloudy conditions tonight with a maximum of 32.0°C / 90°F and minimum of 17.0°C / 63°F, aligning closely with numerical consensus for a dry day. Confidence in dry surface conditions is high given universal model agreement on <0.6 mm rainfall. However, confidence regarding nighttime convection is moderate due to a prominent CAPE divergence: UKMO (1430 J/kg) and ICON (1130 J/kg) indicate significant nocturnal instability, whereas GFS (100 J/kg) remains largely stable. As noted in historical verification notes from similar synoptic setups (e.g. August 28 and 30), elevated nighttime CAPE frequently yields lightning without measurable surface rainfall. Additionally, long-run review findings show GFS systematically under-forecasts peak wind (mean error +21.2 km/h at Day+0), so peak wind gusts are weighted toward ECMWF/ICON guidance (~37 km/h).\n\nGround AQI sensors at Kisumu Airport (AQI 13), Ochieng' Avenue (AQI 43), and Dunga Beach (AQI 32) last reported 3 hours ago and are flagged as stale; the last known ground reading was AQI 43 at Ochieng' Avenue. Therefore, live air quality relies on CAMS reanalysis.",
+      "whatsapp_summary": "🌤️ Kisumu Weather Today (Sep 3): Sunny intervals, warm reaching 31°C/88°F. S/SW winds 20-37 km/h. Dry during the day, but thunder potential increases tonight (peak ~20:00). UV Index high at 9.2.",
+      "generated_at_utc": "2026-09-03T03:05:57.649803Z",
+      "guidance_initialised_at": "2026-09-02T18:00:00Z",
+      "guidance_age_hours": 9.0226140575,
+      "guidance_source": "observed",
+      "degradations": []
+    }
+  ],
+  "morning_issuance": {
+    "rain_expected": "Dry / Elevated Nighttime Thunder Potential",
+    "onset_window": null,
+    "peak_wind_kmh": 37.0,
+    "temp_high_c": 31.4,
+    "temp_low_c": 18.5,
+    "temp_high_low_display": "31°C / 89°F high, 18°C / 65°F low",
+    "mslp_trend_24h": "-1.3 hPa",
+    "synoptic_pattern": "Falling overhead pressure with strong NE-SE regional gradient",
+    "uv_index_max": "9.2",
+    "air_quality_aqi": "86",
+    "ground_aqi": [
+      {
+        "name": "Kisumu Airport",
+        "station_id": "A418534",
+        "aqi": 13,
+        "pm25": 13.0,
+        "pm10": 15.0,
+        "measured_at": "2026-09-03T00:00:00Z"
+      },
+      {
+        "name": "Ochieng' Avenue, Kisumu Central",
+        "station_id": "A418300",
+        "aqi": 43,
+        "pm25": 43.0,
+        "pm10": 18.0,
+        "measured_at": "2026-09-03T00:00:00Z"
+      },
+      {
+        "name": "Dunga Beach",
+        "station_id": "A418504",
+        "aqi": 32,
+        "pm25": 32.0,
+        "pm10": 37.0,
+        "measured_at": "2026-09-03T00:00:00Z"
+      }
+    ],
+    "narrative_markdown": "## Overview\nWarm and sunny today, much like yesterday. With convective instability rising significantly in evening models, isolated thunder is possible tonight, peaking around 20:00 local time, though models disagree sharply on convective strength.\n\n## Today's Forecast\nThe morning starts with sunny intervals as temperatures quickly rise from dawn lows near 19°C / 66°F to an afternoon high around 31°C / 88°F. Winds will pick up from the southwest by afternoon, reaching 20–25 km/h (11–13 kt) with gusts up to 37 km/h (20 kt). Peak UV index will reach 9.2 around midday, requiring sun protection. Although measurable rainfall is not expected today—a call shared across all numerical models and the Kenya Meteorological Department—convective instability surges after dusk. UKMO and ICON project CAPE building to 1100–1430 J/kg between 19:00 and 22:00, creating potential for nocturnal thunder despite dry surface projections, while GFS and ECMWF show much lower instability (<300 J/kg). Nighttime lows will settle near 18°C / 64°F under partly cloudy skies. Air quality assessment relies on CAMS model data as all local ground sensors are currently stale; CAMS predictions show moderate US AQI levels peaking near 86.\n\n## Extended Outlook\nDays 1–3 (Friday to Sunday) will remain warm and predominantly dry across Nyanza Basin, with daytime highs ranging between 32°C / 90°F and 34°C / 93°F and overnight lows around 19°C–20°C (66°F–68°F). Afternoon southwesterly winds will remain brisk, with peak gusts reaching 35–45 km/h (19–24 kt). Looking out to Days 4–7 (Monday through Thursday), precipitation probabilities increase by Monday and Tuesday as atmospheric moisture returns to the basin, with ECMWF and ICON indicating scattered afternoon and evening showers (1–4 mm total) and a slight drop in daytime highs back toward 30°C / 86°F.\n\n## Severe Weather / Hazard Potential\nNo widespread severe weather or heavy rainfall hazards are anticipated during daylight hours. However, elevated convective instability (CAPE exceeding 1400 J/kg on UKMO and 1100 J/kg on ICON) develops after dusk, peaking around 20:00. While measurable surface rain accumulation is not expected, lightning hazards and localized convective wind gusts remain a secondary possibility overnight.\n\n## Lake Victoria — Conditions for Boaters\nOffshore conditions over open waters will see moderate southwesterly winds developing by mid-afternoon at 12–18 km/h (6–10 kt) with gusts to 23 km/h (12 kt), producing light chop. Overnight, boater vigilance is strongly advised: instability over the lake surges dramatically, with UKMO projecting extreme CAPE values above 2500–3100 J/kg and ECMWF above 1800–2100 J/kg between midnight and dawn. This supports nighttime convective development over open water, bringing risks of sudden thunderstorm squalls, erratic wind shifts, and localized rough lake conditions despite dry shore forecasts.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1004 hPa) and highest toward the southeast (1017 hPa) — a 14 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north, northwest, and south — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is falling, with mean MSLP dropping roughly 1.3 hPa over 24 hours to 1012.4 hPa. Across the Nyanza Basin sub-points, mean surface pressure ranges from 1012.4 hPa at Kisumu to 1014.8 hPa at Kisii, maintaining a typical weak basin gradient during the day before nocturnal lake-breeze convergence develops.\n\n### Forecaster Confidence Notes\nAt Day+0, Best Match (87% all-time rain accuracy) and ECMWF (90% rolling 10-check) lead rain accuracy rankings. The Kenya Meteorological Department (KMD) bulletin calls for sunny intervals during the day and partly cloudy conditions tonight with a maximum of 32.0°C / 90°F and minimum of 17.0°C / 63°F, aligning closely with numerical consensus for a dry day. Confidence in dry surface conditions is high given universal model agreement on <0.6 mm rainfall. However, confidence regarding nighttime convection is moderate due to a prominent CAPE divergence: UKMO (1430 J/kg) and ICON (1130 J/kg) indicate significant nocturnal instability, whereas GFS (100 J/kg) remains largely stable. As noted in historical verification notes from similar synoptic setups (e.g. August 28 and 30), elevated nighttime CAPE frequently yields lightning without measurable surface rainfall. Additionally, long-run review findings show GFS systematically under-forecasts peak wind (mean error +21.2 km/h at Day+0), so peak wind gusts are weighted toward ECMWF/ICON guidance (~37 km/h).\n\nGround AQI sensors at Kisumu Airport (AQI 13), Ochieng' Avenue (AQI 43), and Dunga Beach (AQI 32) last reported 3 hours ago and are flagged as stale; the last known ground reading was AQI 43 at Ochieng' Avenue. Therefore, live air quality relies on CAMS reanalysis.",
+    "whatsapp_summary": "🌤️ Kisumu Weather Today (Sep 3): Sunny intervals, warm reaching 31°C/88°F. S/SW winds 20-37 km/h. Dry during the day, but thunder potential increases tonight (peak ~20:00). UV Index high at 9.2.",
+    "generated_at_utc": "2026-09-03T03:05:57.649803Z",
+    "guidance_initialised_at": "2026-09-02T18:00:00Z",
+    "guidance_age_hours": 9.0226140575,
+    "guidance_source": "observed",
+    "degradations": []
+  },
+  "guidance_initialised_at": "2026-09-03T06:00:00Z",
+  "guidance_age_hours": 9.027750835277779,
   "guidance_source": "observed",
   "meta": {
     "generated_at_utc": "2026-09-03T03:05:57.649803Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "refreshed_at": null,
+    "refreshed_at": "2026-09-03T15:02:35.237664Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []
   }
