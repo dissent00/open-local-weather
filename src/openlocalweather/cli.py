@@ -14,6 +14,8 @@ import os
 import subprocess
 import sys
 from datetime import datetime, timezone
+
+import requests
 from pathlib import Path
 
 from openlocalweather import __version__
@@ -34,8 +36,10 @@ from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
 from openlocalweather.health_check import (
     AlignedWindowStatus,
     DEGRADATION_LOOKBACK_ISSUANCES,
+    CapFeedStatus,
     DegradationStatus,
     check_aligned_window,
+    check_cap_feed,
     check_recent_degradations,
     check_model_deprecation,
     check_repo_staleness,
@@ -82,6 +86,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = REPO_ROOT / "config" / "location.yaml"
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
 DEFAULT_DOCS_DIR = REPO_ROOT / "docs"
+
+# The CAP feed is 4 KB and this check must not hold up the rest of the run.
+CAP_FEED_TIMEOUT_S = 20
 
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 # "high" by default for the actual forecast pipeline (run-daily,
@@ -521,6 +528,31 @@ def _run_check_health(args: argparse.Namespace) -> int:
         print(f"  OK — {degradation.message}")
     else:
         print(f"  {degradation.message}")
+
+    # ROADMAP item 2. Two questions, and only one of them is a failure: is the
+    # warning feed still answering, and has it said anything lately?
+    if location.cap_feed_url:
+        print("Checking the CAP warning feed...")
+        try:
+            resp = requests.get(
+                location.cap_feed_url, timeout=CAP_FEED_TIMEOUT_S,
+                headers={"User-Agent": "open-local-weather/check-health"},
+            )
+            body = resp.text if resp.status_code == 200 else None
+        except requests.RequestException:
+            body = None
+
+        cap = check_cap_feed(body, now=datetime.now(timezone.utc))
+        if cap.status is CapFeedStatus.UNREACHABLE:
+            # The one failing case. A quiet feed may be correct; a feed that
+            # stopped answering has moved or died, and nothing else here would
+            # notice until an alert was missed.
+            print(f"  WARNING: {cap.message}")
+            ok = False
+        elif cap.status is CapFeedStatus.FRESH:
+            print(f"  OK — {cap.message}")
+        else:
+            print(f"  {cap.message}")
 
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")

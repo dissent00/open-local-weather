@@ -260,3 +260,83 @@ def test_a_mix_of_recorded_and_unrecorded_says_how_many_it_could_read():
     assert result.status is DegradationStatus.CLEAN
     assert "2" in result.message
     assert "1" in result.message
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 2 — is the CAP warning feed alive?
+# ---------------------------------------------------------------------------
+
+from openlocalweather.health_check import (
+    CapFeedStatus,
+    check_cap_feed,
+    newest_cap_item_age,
+)
+
+
+def _feed(dates: list[str]) -> str:
+    items = "".join(f"<item><title>x</title><pubDate>{d}</pubDate></item>" for d in dates)
+    return f"<rss version='2.0'><channel><title>t</title>{items}</channel></rss>"
+
+
+def test_a_recent_alert_is_fresh():
+    now = datetime(2026, 5, 10, tzinfo=timezone.utc)
+    r = check_cap_feed(_feed(["Thu, 07 May 2026 14:45:00 +0000"]), now=now)
+    assert r.status is CapFeedStatus.FRESH
+    # 07 May 14:45 to 10 May 00:00 is two whole days, not three. Whole days
+    # elapsed, never calendar days crossed — the first draft of this test got
+    # it the other way and the code was right.
+    assert r.days_since_newest == 2
+
+
+def test_a_long_quiet_spell_is_reported_but_does_not_fail():
+    """Silence is not failure. Alerts are episodic — Kenya's feed carried
+    nothing between May and September 2026, and the long rains had ended.
+    A check that went red on a quiet season would be red most of the year and
+    would teach everyone to ignore it."""
+    now = datetime(2026, 9, 3, tzinfo=timezone.utc)
+    r = check_cap_feed(_feed(["Thu, 07 May 2026 14:45:00 +0000"]), now=now)
+    assert r.status is CapFeedStatus.QUIET
+    assert r.days_since_newest == 118
+    assert "118" in r.message
+
+
+def test_an_unreachable_feed_IS_a_failure():
+    """The distinction that makes this check worth having. A quiet feed may be
+    correct; a feed that stopped answering has moved or died, and that is
+    actionable — the endpoint was only found because somebody probed a
+    namespace nobody had thought to try."""
+    r = check_cap_feed(None, now=datetime(2026, 9, 3, tzinfo=timezone.utc))
+    assert r.status is CapFeedStatus.UNREACHABLE
+
+
+def test_a_feed_with_no_items_is_not_the_same_as_no_feed():
+    """An empty channel means the service is up and has published nothing.
+    Reading it as unreachable would send someone to debug a working URL."""
+    r = check_cap_feed(_feed([]), now=datetime(2026, 9, 3, tzinfo=timezone.utc))
+    assert r.status is CapFeedStatus.EMPTY
+
+
+def test_the_newest_item_wins_regardless_of_feed_order():
+    """RSS order is a convention, not a guarantee, and the age of the feed is
+    the age of its newest item."""
+    now = datetime(2026, 5, 10, tzinfo=timezone.utc)
+    age = newest_cap_item_age(
+        _feed([
+            "Tue, 21 Apr 2026 14:13:00 +0000",
+            "Thu, 07 May 2026 14:45:00 +0000",
+            "Fri, 24 Apr 2026 16:27:00 +0000",
+        ]),
+        now=now,
+    )
+    assert age == 2
+
+
+def test_an_unparseable_date_is_skipped_not_guessed():
+    now = datetime(2026, 5, 10, tzinfo=timezone.utc)
+    assert newest_cap_item_age(_feed(["not a date"]), now=now) is None
+
+
+def test_no_feed_configured_is_a_state_not_a_problem():
+    """A fork whose met service publishes no CAP is not broken."""
+    r = check_cap_feed("", now=datetime(2026, 9, 3, tzinfo=timezone.utc), configured=False)
+    assert r.status is CapFeedStatus.NOT_CONFIGURED

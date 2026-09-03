@@ -79,6 +79,14 @@ class LocationConfig(BaseModel):
     waqi_stations: list[WaqiStation] = Field(default_factory=list)
     local_bulletin_url: str = ""
     local_bulletin_source_name: str = ""
+    # The national met service's CAP warning feed, where one exists — ROADMAP
+    # item 2. Empty means this location has none, which is a configuration and
+    # not a fault: most of the world's services publish no CAP at all.
+    #
+    # Kenya's was found at /api/cap/rss.xml only because somebody probed an
+    # API namespace after the WordPress feed paths all 404'd, so do not assume
+    # a service has none because the obvious paths are empty.
+    cap_feed_url: str = ""
 
     # The met service's own name for the administrative area this location
     # sits in — the key its bulletin is indexed by ("Kisumu" county for

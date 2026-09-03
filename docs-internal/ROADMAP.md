@@ -303,10 +303,21 @@ calls this feed *verified*, and the endpoint is; its contents are four
 months old. Any registry this project adopts needs `last_live_observation`
 as a required field rather than an optional one.
 
-**A cheap test that answers itself.** Kisumu's short rains run roughly
-October to December. If the feed is alive, alerts reappear then. Probing
-freshness costs one 4 KB request and can sit in `check-health` now, so the
-answer arrives without anyone remembering to look.
+**A cheap test that answers itself. Shipped 2026-09-03.**
+`check_cap_feed` runs in `check-health` weekly, against `cap_feed_url` in
+`location.yaml`. Kisumu's short rains run roughly October to December; if the
+feed is alive, alerts reappear then and the check says FRESH without anyone
+remembering to look.
+
+Five outcomes, and the line that matters is between QUIET and UNREACHABLE.
+**A quiet feed does not fail the check** — warnings are episodic, a red job
+through every dry season is a job nobody reads, and the honest report is the
+age. **An unreachable feed does fail**, because this endpoint was found only
+by probing a namespace nobody had tried, so a move would otherwise go
+unnoticed until an alert was missed. EMPTY is kept separate from UNREACHABLE
+so a working URL is never debugged by mistake.
+
+First live run, 2026-09-03: `quiet`, newest alert 118 days old.
 
 **Do not build the alert path on the assumption that it is live.** Build the
 freshness probe first, let October decide, and keep GDACS below as the

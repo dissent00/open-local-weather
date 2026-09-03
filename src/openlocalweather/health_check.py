@@ -33,7 +33,9 @@ that day's forecast run.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
+from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -346,4 +348,124 @@ def check_recent_degradations(
             f"{unread}. Recorded and shown on the affected forecast; not failing the check "
             "on a single occurrence."
         ),
+    )
+
+
+# How long a CAP feed may go quiet before the check says so out loud. Not a
+# failure threshold — see CapFeedStatus.QUIET. Ninety days is chosen to span
+# a dry season without comment and to notice a feed that slept through a wet
+# one: Kisumu's rains run roughly March-May and October-December.
+CAP_QUIET_DAYS = 90
+
+
+class CapFeedStatus(Enum):
+    """Five outcomes, and the important line is between QUIET and UNREACHABLE.
+
+    A CAP feed carries warnings, which are episodic. Months of silence may be
+    entirely correct — Kenya's feed published nothing between 2026-05-07 and
+    at least 2026-09-03, and the long rains had ended. A check that went red
+    on a quiet season would be red most of the year, and a check that is
+    usually red is a check nobody reads.
+
+    A feed that stops ANSWERING is different, and is worth failing on. This
+    endpoint was found only because somebody probed a namespace nobody had
+    thought to try (ROADMAP item 2), so it moving again would otherwise go
+    unnoticed until an alert was missed.
+    """
+
+    FRESH = "fresh"
+    QUIET = "quiet"
+    EMPTY = "empty"
+    UNREACHABLE = "unreachable"
+    NOT_CONFIGURED = "not_configured"
+
+
+@dataclass
+class CapFeedCheck:
+    status: CapFeedStatus
+    message: str
+    days_since_newest: int | None = None
+
+
+def newest_cap_item_age(feed_xml: str, *, now: datetime) -> int | None:
+    """Whole days since the newest item's pubDate, or None if none parses.
+
+    The NEWEST item, not the first: RSS ordering is a convention rather than a
+    guarantee, and the age of a feed is the age of the most recent thing in
+    it. An unparseable date is skipped rather than guessed at — a feed whose
+    dates cannot be read is a feed whose age is unknown, and "unknown" must
+    not quietly become "old" or "new".
+    """
+    newest: datetime | None = None
+    for raw in re.findall(r"<pubDate>(.*?)</pubDate>", feed_xml, re.S):
+        try:
+            when = parsedate_to_datetime(raw.strip())
+        except (TypeError, ValueError):
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        if newest is None or when > newest:
+            newest = when
+
+    if newest is None:
+        return None
+
+    return (now - newest).days
+
+
+def check_cap_feed(
+    feed_xml: str | None, *, now: datetime, configured: bool = True
+) -> CapFeedCheck:
+    """Is the national warning feed answering, and has it said anything lately?
+
+    Pure — the caller fetches, as with every other check here.
+
+    `feed_xml` is None when the fetch failed, and an empty or item-less body
+    when the service answered with nothing. Those are different: the first is
+    a broken endpoint, the second is a working service in a quiet spell, and
+    collapsing them would send somebody to debug a URL that is fine.
+    """
+    if not configured:
+        return CapFeedCheck(
+            status=CapFeedStatus.NOT_CONFIGURED,
+            message="No CAP warning feed configured for this location.",
+        )
+
+    if feed_xml is None:
+        return CapFeedCheck(
+            status=CapFeedStatus.UNREACHABLE,
+            message=(
+                "The CAP warning feed did not answer. This endpoint was found by "
+                "probing a namespace nobody had tried, so a move would otherwise "
+                "go unnoticed until an alert was missed — check the URL before "
+                "assuming the service is down."
+            ),
+        )
+
+    age = newest_cap_item_age(feed_xml, now=now)
+    if age is None:
+        return CapFeedCheck(
+            status=CapFeedStatus.EMPTY,
+            message=(
+                "The CAP feed answered but carries no readable item dates. The "
+                "service is up and has published nothing this check can date."
+            ),
+        )
+
+    if age > CAP_QUIET_DAYS:
+        return CapFeedCheck(
+            status=CapFeedStatus.QUIET,
+            message=(
+                f"The CAP feed is up, and its newest alert is {age} days old. "
+                "Silence is not failure — warnings are episodic — but a feed that "
+                "sleeps through a wet season is a feed to stop relying on. See "
+                "ROADMAP item 2."
+            ),
+            days_since_newest=age,
+        )
+
+    return CapFeedCheck(
+        status=CapFeedStatus.FRESH,
+        message=f"newest CAP alert is {age} day(s) old.",
+        days_since_newest=age,
     )

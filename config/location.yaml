@@ -63,6 +63,10 @@ location:
   max_llm_calls_per_24h: 10
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
+  # The national CAP warning feed — ROADMAP item 2. Verified live
+  # 2026-09-03; its newest alert was four months old, which is why
+  # check-health watches it rather than the pipeline depending on it.
+  cap_feed_url: "https://meteo.go.ke/api/cap/rss.xml"
   local_bulletin_source_name: "Kenya Meteorological Department (KMD)"
   # The county KMD indexes this location under, and the name its skill is
   # tracked under on the accuracy page.
