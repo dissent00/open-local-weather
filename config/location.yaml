@@ -60,7 +60,20 @@ location:
   #
   # Two runs a day nominally, up to eight if every attempt retries to the
   # limit, so 10 leaves headroom while making a runaway loop impossible.
-  max_llm_calls_per_24h: 10
+  # Raised from 10 to 16 on 2026-09-03, and the reason it STAYS raised is not
+  # the reason it was raised. The hypothesis was that a 60-second request
+  # timeout fired part-way through generation, so retries were consuming the
+  # cap. That was tested and is FALSE: the same prompt that had just failed
+  # four times succeeded in 32.9s with the ceiling lifted to 180s. Generation
+  # is comfortably inside 60s and the timeout is not marginal.
+  #
+  # What the retries actually are is Gemini being intermittently unavailable
+  # — 503s and connections that never answer. Those are real, they recur, and
+  # each one is a billable request the cap must count. A bad day is therefore
+  # 2 runs x 4 attempts = 8, and 10 left no room for a manual run or a replay.
+  # 16 absorbs a bad day and still sits under the account's real 20/day quota.
+  # See ROADMAP item 66.
+  max_llm_calls_per_24h: 16
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   # The national CAP warning feed — ROADMAP item 2. Verified live

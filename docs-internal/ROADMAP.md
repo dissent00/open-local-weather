@@ -6427,6 +6427,54 @@ in the cap; it is the cap being sized for a good day. Related: item 26 (the
 cap), item 58 (whose replay this blocked), item 59 (which would double the
 per-run cost).
 
+### The timeout hypothesis was tested and is FALSE, 2026-09-03
+
+Worth recording at length because it was a good hypothesis, it was wrong, and
+the wrongness is the useful part.
+
+**The reasoning that produced it.** Runs were burning 3-4 calls each. Every
+failure was a 60-second read timeout. `REQUEST_TIMEOUT_S` is 60 and item 27
+records that generation takes "roughly a minute" under `thinking_level:
+high`. If generation sat on the boundary, every attempt would be a coin flip
+and the retries would be self-inflicted — a client misconfiguration wearing
+the costume of a provider outage.
+
+**The test.** One request, production's exact configuration, the same prompt
+pair that had failed four times an hour earlier, with the ceiling lifted to
+180s and retries disabled so the duration would be the measurement rather
+than the ceiling.
+
+```text
+case:   evening refresh carries the morning narrative
+input:  33,777 char system + 4,590 char user
+model:  gemini-3.6-flash, thinking_level=high, timeout 180s
+result: SUCCEEDED in 32.9s
+```
+
+**Generation takes about 33 seconds. The 60-second ceiling is not marginal,
+and raising it would fix nothing.** The failures are Gemini being
+intermittently unavailable — HTTP 503s and connections that never answer —
+which is also what the 09-02 logs show directly.
+
+**What this changes.** The cap pressure is real but it is not a bug on this
+side. A bad day genuinely costs 2 runs x 4 attempts = 8 billable requests,
+and 10 left no room for anything else. The cap is now 16, which absorbs a bad
+day and stays under the account's real 20/day quota — raised for a different
+reason than the one that prompted raising it.
+
+**What is still worth considering, and is NOT being changed blind.** The
+backoff is 5s, 10s, 20s — four attempts inside about two minutes. If the
+provider is having a bad minute, all four land inside it. A longer schedule
+would span more of the outage for the same number of billable requests, at
+the cost of a slower run. That is a real trade and it should be decided with
+more than one bad day of evidence.
+
+**One thing the probe established for free.** The response carried
+`rain=True` with `rain_probability_pct=60` — the first real evidence that
+item 58's new field produces a sensible, self-consistent value on a live
+call, rather than merely passing a schema. The replay would have shown this
+properly; a single successful call shows it partially.
+
 ### And a second, quieter leak found in the same reconciliation
 
 `check-health`'s weekly model-deprecation call was **spending and recording
@@ -6474,7 +6522,42 @@ to the model already gets it right". The narrative half of that assumption is
 false, and item 31 should be read with this beside it. Item 31's fix is still
 wanted; it is not this one.
 
-### The likely cause is a tension the prompt creates and does not resolve
+### The cause is not a tension. The prompt asks for it explicitly.
+
+Found 2026-09-03, and it supersedes the guess below. `prompt.py` says, in the
+section governing the narrative:
+
+> "Anything already past is past tense, **or left out**. Issued at 16:45,
+> 'peak UV index will reach 9.0 around noon' is wrong twice: noon has gone,
+> and nothing can be done about it now. **Say the day's peak UV was 9 around
+> midday** and what is left of it before sunset."
+
+The rule offers two options and then demonstrates only one. The worked
+example — the part a model actually copies — instructs it to state the spent
+value in the past tense. So the 09-03 output is not the model resolving a
+tension badly; it is the model doing precisely what it was told, and doing it
+in the opening sentence because that is where the example puts it.
+
+That rule was right about the error it was written for: a forecast at 16:45
+must not say UV "will reach" 9 at noon. It over-corrected. "Do not describe a
+past event in the future tense" became "narrate past events in the past
+tense", and the second is a much larger instruction than the first.
+
+**The fix is therefore a rewrite of an existing rule, not a new prohibition
+bolted beside it** — which matters, because a contradicting rule added
+further down is how a 451-line prompt becomes unpredictable. The distinction
+to encode:
+
+- A spent value that changes what a reader should DO is worth a clause. "The
+  heat is behind you" is a fact someone can act on.
+- A spent value that merely completes an inventory is left out. The day's
+  high, the UV peak, and the phase are already in the stat block, and
+  repeating them as history spends the first sentence of the section a
+  reader opened to find out what happens NEXT.
+- Never the future tense for something past. That was the original point and
+  it stays.
+
+### The earlier guess, kept because it was wrong in a useful way
 
 `prompt.py` tells the model both of these, correctly and in the same
 paragraph:

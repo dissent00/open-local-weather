@@ -198,6 +198,12 @@
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
       "purpose": "replay"
+    },
+    {
+      "at": "2026-09-04T08:09:31.719827+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "timeout-probe"
     }
   ]
 }
