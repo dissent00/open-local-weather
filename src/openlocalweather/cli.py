@@ -700,14 +700,35 @@ def _run_replay(args) -> int:
         print("Nothing was sent. Re-run with --yes to spend.")
         return 0
 
+    # _build_pipeline_deps, NOT a bare provider — so the replay runs with the
+    # SAME thinking_level the forecast uses. Measured 2026-09-03: a hand-rolled
+    # replay passed thinking_level=None, which is a different model
+    # configuration and therefore a different thing being measured. A harness
+    # whose conditions differ from production answers a question nobody asked.
     deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
-    results = replay.run_replay(deps.llm_provider, cases)
+    results, failures = replay.run_replay(deps.llm_provider, cases)
+
     out = Path(args.out)
+    # Written even when some cases failed: every case is a paid call, and
+    # discarding what succeeded because a later one did not is the one thing
+    # this must never do.
     replay.write_replay(out, results)
 
     print(f"\nWrote {len(results)} result(s) to {out}/replay.json")
     for r in results:
         print(f"  {r.case[:52]:54s} {r.latency_s:5.1f}s")
+
+    if failures:
+        print(f"\n{len(failures)} case(s) FAILED and are not in the file:")
+        for f in failures:
+            print(f"  {f.case[:52]:54s} {f.error[:90]}")
+        print(
+            "\nA diff against this run covers only the cases above that "
+            "succeeded. Treat it as partial, or it becomes a claim about "
+            "comparisons that never happened."
+        )
+        return 1
+
     return 0
 
 

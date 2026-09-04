@@ -157,19 +157,43 @@ def frozen_cases() -> list[ReplayCase]:
     return cases
 
 
-def run_replay(provider: LLMProvider, cases: list[ReplayCase]) -> list[ReplayResult]:
+@dataclass
+class ReplayFailure:
+    case: str
+    error: str
+
+
+def run_replay(
+    provider: LLMProvider, cases: list[ReplayCase]
+) -> tuple[list[ReplayResult], list[ReplayFailure]]:
     """One generate() per case, in order, recording how long each took.
+
+    Returns (what succeeded, what did not) rather than raising. EVERY CASE IS
+    A PAID CALL, and an exception partway through would discard work already
+    bought — measured 2026-09-03, when a real replay completed the first case,
+    failed four times on the second, and returned nothing at all. A six-case
+    run dying on the fifth would otherwise cost everything and yield nothing.
+
+    A failure is recorded rather than swallowed: a diff computed over a
+    partial run must be readable as partial, or it silently becomes a claim
+    about cases that were never compared.
 
     Latency is recorded because "slightly better and three times slower" is a
     real outcome and a legitimate reason to decline a change — item 27 says so
     explicitly, and without a number that trade is made on impression too.
     """
-    results = []
+    results: list[ReplayResult] = []
+    failures: list[ReplayFailure] = []
     for case in cases:
         started = time.monotonic()
-        response = provider.generate(
-            case.system_prompt, case.user_prompt, GeminiForecastResponse
-        )
+        try:
+            response = provider.generate(
+                case.system_prompt, case.user_prompt, GeminiForecastResponse
+            )
+        except Exception as e:  # noqa: BLE001 - a failed case must not cost the others
+            failures.append(ReplayFailure(case=case.name, error=str(e)))
+            continue
+
         results.append(
             ReplayResult(
                 case=case.name,
@@ -178,7 +202,7 @@ def run_replay(provider: LLMProvider, cases: list[ReplayCase]) -> list[ReplayRes
                 response=response,
             )
         )
-    return results
+    return results, failures
 
 
 def _flatten(value: Any, prefix: str = "") -> dict[str, Any]:

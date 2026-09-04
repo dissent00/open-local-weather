@@ -168,6 +168,36 @@
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
       "purpose": "forecast"
+    },
+    {
+      "at": "2026-09-04T08:00:19.951503+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "replay"
+    },
+    {
+      "at": "2026-09-04T08:00:56.981554+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "replay"
+    },
+    {
+      "at": "2026-09-04T08:01:03.955266+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "replay"
+    },
+    {
+      "at": "2026-09-04T08:01:16.098607+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "replay"
+    },
+    {
+      "at": "2026-09-04T08:02:36.363258+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "replay"
     }
   ]
 }

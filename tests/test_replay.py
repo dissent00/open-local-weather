@@ -68,7 +68,7 @@ def test_the_frozen_cases_come_from_the_committed_vectors():
 def test_a_replay_calls_once_per_case_and_keeps_the_output():
     provider = _FakeProvider()
     cases = frozen_cases()[:2]
-    results = run_replay(provider, cases)
+    results, _ = run_replay(provider, cases)
 
     assert len(provider.calls) == 2
     assert [r.case for r in results] == [c.name for c in cases]
@@ -79,21 +79,21 @@ def test_it_records_what_the_change_might_be_traded_against():
     """"Slightly better and three times slower" is a real outcome and a
     legitimate reason to decline a change, so latency and the model that
     produced it travel with the output."""
-    results = run_replay(_FakeProvider(), frozen_cases()[:1])
+    results, _ = run_replay(_FakeProvider(), frozen_cases()[:1])
     r = results[0]
     assert r.latency_s >= 0
     assert r.model == "fake-1.0"
 
 
 def test_a_diff_of_identical_runs_is_empty():
-    a = run_replay(_FakeProvider(), frozen_cases()[:2])
-    b = run_replay(_FakeProvider(), frozen_cases()[:2])
+    a, _ = run_replay(_FakeProvider(), frozen_cases()[:2])
+    b, _ = run_replay(_FakeProvider(), frozen_cases()[:2])
     assert diff_replays(a, b) == []
 
 
 def test_a_changed_narrative_shows_up_as_a_difference():
-    a = run_replay(_FakeProvider("## Overview\n\nWarm."), frozen_cases()[:1])
-    b = run_replay(_FakeProvider("## Overview\n\nWarm, and rain later."), frozen_cases()[:1])
+    a, _ = run_replay(_FakeProvider("## Overview\n\nWarm."), frozen_cases()[:1])
+    b, _ = run_replay(_FakeProvider("## Overview\n\nWarm, and rain later."), frozen_cases()[:1])
 
     d = diff_replays(a, b)
     assert len(d) == 1
@@ -106,8 +106,8 @@ def test_a_diff_names_the_scored_fields_separately():
     edit that only reworded the prose is a different event from one that moved
     the blended call, and the second is the one that changes the accuracy
     record."""
-    a = run_replay(_FakeProvider(), frozen_cases()[:1])
-    b = run_replay(_FakeProvider(), frozen_cases()[:1])
+    a, _ = run_replay(_FakeProvider(), frozen_cases()[:1])
+    b, _ = run_replay(_FakeProvider(), frozen_cases()[:1])
     b[0] = ReplayResult(
         case=b[0].case,
         model=b[0].model,
@@ -121,8 +121,8 @@ def test_a_diff_names_the_scored_fields_separately():
 
 
 def test_prose_only_changes_are_marked_as_such():
-    a = run_replay(_FakeProvider("one"), frozen_cases()[:1])
-    b = run_replay(_FakeProvider("two"), frozen_cases()[:1])
+    a, _ = run_replay(_FakeProvider("one"), frozen_cases()[:1])
+    b, _ = run_replay(_FakeProvider("two"), frozen_cases()[:1])
     assert diff_replays(a, b)[0].scored_changed is False
 
 
@@ -131,7 +131,7 @@ def test_results_round_trip_through_disk(tmp_path):
     be compared against the after."""
     from openlocalweather.replay import read_replay, write_replay
 
-    results = run_replay(_FakeProvider(), frozen_cases()[:2])
+    results, _ = run_replay(_FakeProvider(), frozen_cases()[:2])
     write_replay(tmp_path / "before", results)
     assert diff_replays(results, read_replay(tmp_path / "before")) == []
 
@@ -164,3 +164,37 @@ def test_each_case_is_paired_with_its_own_system_prompt():
     assert refresh != first
     assert "LATER ISSUANCE" in refresh
     assert "LATER ISSUANCE" not in first
+
+
+def test_a_failure_partway_through_does_not_discard_what_succeeded():
+    """Measured 2026-09-03: a real replay completed case 1, failed four times
+    on case 2, raised, and lost the completed one. Each case is a paid call —
+    throwing away work that was already bought is the one thing this must not
+    do, and a six-case run that dies on the fifth would otherwise cost
+    everything and return nothing."""
+    calls = {"n": 0}
+
+    class _FlakyProvider:
+        model = "fake-1.0"
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("Gemini request failed after 4 attempts")
+            return _response("ok")
+
+    results, failures = run_replay(_FlakyProvider(), frozen_cases()[:3])
+
+    assert [r.case for r in results] == [
+        frozen_cases()[0].name,
+        frozen_cases()[2].name,
+    ], "the cases that succeeded must survive"
+    assert len(failures) == 1
+    assert failures[0].case == frozen_cases()[1].name
+    assert "4 attempts" in failures[0].error
+
+
+def test_a_clean_run_reports_no_failures():
+    results, failures = run_replay(_FakeProvider(), frozen_cases()[:2])
+    assert len(results) == 2
+    assert failures == []

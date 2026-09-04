@@ -5741,6 +5741,37 @@ feedback — no closed loop.
 existed does not fail a run; it simply is not Brier-scored, exactly like a
 numerical model with no probability. Absent is not 50.
 
+### The replay was attempted 2026-09-03 and did not produce a comparison
+
+Worth recording because the attempt found more than the comparison would
+have.
+
+**Two cases, current prompt. Case 1 succeeded in ~37 s. Case 2 failed four
+times, every attempt a 60-second read timeout, and the run raised.**
+
+**The timeouts now reproduce from a developer machine.** Item 53 measured, on
+2026-08-30, that `forecast_days=2` failed only from GitHub runners while both
+calls returned 200 in ~1.1 s locally — and that framing has been load-bearing
+ever since. The Gemini timeouts are a different endpoint, but the same
+assumption ("it works locally") no longer holds for the LLM path either. That
+is a change in the world since 08-30, not a difference of opinion about it.
+
+**Two defects in the harness itself, both now fixed and both mine.**
+
+- `run_replay` raised on the first failing case and discarded the one that
+  had already succeeded. Every case is a paid call; a six-case run dying on
+  the fifth would have cost everything and returned nothing. It now returns
+  `(results, failures)`, writes what succeeded, and says plainly that a diff
+  over a partial run is partial.
+- The replay was run with `thinking_level=None` while production uses
+  `high`. A harness whose conditions differ from production answers a
+  question nobody asked. `olw replay` now builds its provider through
+  `_build_pipeline_deps`, so it cannot drift from the forecast's own
+  configuration again.
+
+**Cost: 5 calls for no comparison**, against a configured cap of 10. That is
+item 66's arithmetic arriving in practice rather than in theory.
+
 ### Still open
 
 - **Nothing displays Brier yet.** The accuracy page and the track record
