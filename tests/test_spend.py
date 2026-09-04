@@ -152,3 +152,42 @@ def test_records_carry_enough_to_audit_a_bill(tmp_path):
     r = read_ledger(tmp_path)[0]
     assert isinstance(r, SpendRecord)
     assert r.provider and r.model and r.purpose
+
+
+def test_the_health_check_records_its_llm_call(monkeypatch, tmp_path):
+    """Found 2026-09-03 while reconciling our ledger against the provider's
+    own request count. The pipeline attaches a spend hook to the provider it
+    is handed; `check-health` built one and attached nothing, so the weekly
+    model-deprecation call — up to MAX_ATTEMPTS billable requests — was spent
+    and never recorded.
+
+    The cap cannot bound what it cannot see, and an unlogged call is worse
+    than an uncapped one: it also makes the ledger disagree with the bill for
+    reasons nobody can reconstruct.
+
+    Asserts the BEHAVIOUR rather than a constructor signature — the hook is
+    deliberately set after construction, because cli.py builds the provider
+    and pipeline.py owns the ledger.
+    """
+    from openlocalweather import cli
+
+    class _Spy:
+        model = "gemini-3.6-flash"
+        before_attempt = None
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            # A real provider calls this before every HTTP request.
+            if self.before_attempt is not None:
+                self.before_attempt()
+            raise RuntimeError("stop here; the hook is what is under test")
+
+    spy = _Spy()
+    cli._attach_spend_hook(spy, tmp_path, purpose="health-check", max_calls=10)
+    assert spy.before_attempt is not None, "check-health must record what it spends"
+
+    spy.before_attempt()
+    from datetime import datetime, timezone
+
+    from openlocalweather.spend import calls_in_window, read_ledger
+
+    assert calls_in_window(read_ledger(tmp_path), datetime.now(timezone.utc)) == 1

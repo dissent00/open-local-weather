@@ -5296,7 +5296,7 @@ The narrative already arrives pre-sectioned. `narrative_markdown` in
 `## Extended Outlook`, `## Severe Weather / Hazard Potential`,
 `## Lake Victoria — Conditions for Boaters` and `## Detailed Discussion`
 (with `### Synoptic Overview` and `### Forecaster Confidence Notes` under
-it). `whatsapp_summary` is a shorter rendering of the same facts, already
+it). `whatsapp_d` is a shorter rendering of the same facts, already
 generated, already paid for.
 
 So "just the Overview" is a filter over headings the LLM already emits. No
@@ -6396,4 +6396,140 @@ in the cap; it is the cap being sized for a good day. Related: item 26 (the
 cap), item 58 (whose replay this blocked), item 59 (which would double the
 per-run cost).
 
+### And a second, quieter leak found in the same reconciliation
+
+`check-health`'s weekly model-deprecation call was **spending and recording
+nothing.** The spend hook is deliberately attached after construction —
+cli.py builds the provider, pipeline.py owns the ledger — and `check-health`
+built one and attached nothing. Up to `MAX_ATTEMPTS` billable requests a
+week, invisible to the cap and absent from the ledger.
+
+Worse than uncapped: it also makes this project's own count disagree with the
+provider's for reasons nobody can reconstruct, which is exactly the
+reconciliation that found it. Fixed by lifting the attachment into
+`_attach_spend_hook`, used by both paths, with a test that asserts the
+behaviour rather than a constructor signature.
+
+A cap refusal there is caught by the existing handler and reported as a
+skipped check, which is the right outcome — being out of budget is a real
+answer, not a reason to spend anyway.
+
 Related: items 26, 53, 53.4, 58, 59.
+
+---
+
+## 67. A later issuance opens by narrating what is already over · **Planned**
+
+Reported 2026-09-03 as still happening every day. Measured on the 09-03
+evening re-issue, first sentence of **Today's Forecast**:
+
+> "As dusk falls and sunset approaches at 18:43 local time, daytime highs
+> near 31°C / 88°F and solar UV exposure are in the past."
+
+Three things a reader cannot use: the phase (already in the stat block), the
+day's high (over), and UV (over). The forecast only starts on the second
+sentence. Compare the same section on a morning run, 09-04:
+
+> "Conditions across Kisumu will stay dry and warm through the day..."
+
+Which leads with what is coming. **The defect is specific to the later
+issuance**, which is the run a reader opens precisely because they want to
+know what is left of the day.
+
+### Item 31 assumed this was already handled
+
+That item says the stat block is the problem and that "the statement handed
+to the model already gets it right". The narrative half of that assumption is
+false, and item 31 should be read with this beside it. Item 31's fix is still
+wanted; it is not this one.
+
+### The likely cause is a tension the prompt creates and does not resolve
+
+`prompt.py` tells the model both of these, correctly and in the same
+paragraph:
+
+- write the prose for the hours AHEAD; and
+- `today_properties.temp_high_c` stays the whole calendar day's high whether
+  or not it has already happened, because narrowing it would break the scored
+  comparison.
+
+The model resolves the tension by SAYING which values no longer apply. That
+is compliant, accurate and useless — the same shape as item 48's finding
+(one fact stated four ways) and item 23's (a comparison applied where it
+adds nothing). Technically right, and it costs the reader the first sentence
+of the section they came for.
+
+### The fix is a prohibition with the example attached
+
+The rule that works in this prompt is the one that names the real output it
+is banning — that is what items 23, 48 and 53.3 all converged on. Something
+of the form: the prose covers the hours ahead, and does NOT enumerate which
+of the day's values are already spent. A high that has passed is simply not
+mentioned; it does not need a sentence explaining its absence.
+
+Worth stating in the same breath: this must not push the model into the
+opposite error of implying a past high is still coming. "Not mentioning" and
+"misrepresenting" are different, and rule 7's discipline applies — silence
+about a spent value is correct, a false future tense is not.
+
+### Validation
+
+This is a prompt change, and `olw replay` (item 27) now exists specifically
+so one can be checked for what else it moved. The evening-refresh cases in
+the frozen set are the ones that matter here; the morning cases are the
+control, and should not move at all.
+
+Related: item 31 (the stat-block half, and the assumption this corrects),
+item 23, item 48, item 27 (the harness), item 61 (the other Overview change).
+
+---
+
+## 68. The forecaster is two model versions behind · **Planned**
+
+Raised 2026-09-03. `DEFAULT_GEMINI_MODEL` is `gemini-3.6-flash`; the current
+Flash is 3.8. Nothing here is broken — the pipeline pins a model on purpose,
+and drifting to whatever is newest would make the accuracy record
+incomparable with its own past. But "pinned" and "two versions behind and
+nobody decided" are different states, and this has been the second one.
+
+### What already exists, and what does not
+
+**Item 27 already owns the mechanism** and its unshipped half is exactly
+this: A/B by alternating days, partitioned on `meta.llm_model`, reusing
+`review.py`'s existing sample-size and noise-floor gates so an LLM comparison
+is held to the same standard as GFS against ECMWF. That does not need
+rebuilding.
+
+**What is new is that half of it is now cheap.** Item 27 distinguishes "is
+this model better", which only weeks of scored forecasts can answer, from
+"did this change the output", which `olw replay` answers in minutes. A model
+swap is replayable today: same frozen inputs, two models, diff the results.
+That will not say which forecasts better. It will say whether 3.8 writes
+materially different prose, whether it still obeys the structural rules the
+prompt spends 451 lines establishing, and whether its `today_properties`
+land in the same place — and a model that quietly stops honouring rule 7 is
+something to find before it ships, not after.
+
+### What the decision actually needs
+
+1. **A replay diff, 3.6 against 3.8.** Cheap, immediate, and it answers the
+   only question that can be answered immediately.
+2. **Then alternating days**, if the replay shows nothing alarming. Weeks,
+   and gated by item 27's existing statistics rather than an impression.
+3. **Latency and cost recorded alongside**, per item 27 — "slightly better
+   and three times slower" is a real outcome and a legitimate reason to
+   decline.
+
+### The trap worth naming before anyone starts
+
+**A model change is not additive to the accuracy record the way a new source
+is.** Every stored check was produced by 3.6. If 3.8 becomes the default,
+the record's `olw_blend` column silently becomes a blend of two different
+forecasters, and its all-time figure describes neither. `meta.llm_model` is
+already stored on every entry, so the record CAN be partitioned — but the
+partition has to actually be used, or the published number becomes an
+average over a change nobody can see.
+
+Related: item 27 (the mechanism and the harness), item 28 (the watcher that
+would have flagged the version gap), item 58 (whose scoring makes a model
+comparison sharper than a boolean one).

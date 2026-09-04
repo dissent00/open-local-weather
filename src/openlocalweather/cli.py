@@ -73,6 +73,7 @@ from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
+from openlocalweather.spend import record_attempt
 from openlocalweather.store.log_store import (
     list_log_dates,
     make_log_lookup,
@@ -431,10 +432,52 @@ def _days_since_last_commit() -> int:
     return (datetime.now(timezone.utc) - last_commit).days
 
 
+def _attach_spend_hook(provider, data_dir, *, purpose: str, max_calls: int) -> None:
+    """Make a provider report every HTTP request it makes to the ledger.
+
+    Set after construction rather than passed in, matching the pipeline: the
+    provider is built here and the ledger belongs to the data directory, and a
+    constructor knowing about both would couple them for no reason.
+
+    WHY THIS IS A FUNCTION RATHER THAN A LINE. It used to be a line, in
+    pipeline.py only — so `check-health` built a provider, called the model,
+    and recorded nothing. Its weekly deprecation check spends up to
+    MAX_ATTEMPTS billable requests, and the cap cannot bound what it cannot
+    see. Worse than uncapped: it also makes the ledger disagree with the
+    provider's own request count for reasons nobody can reconstruct, which is
+    the reconciliation that found it.
+    """
+
+    def _record() -> None:
+        used = record_attempt(
+            data_dir,
+            provider=type(provider).__name__,
+            model=getattr(provider, "model", "unknown"),
+            purpose=purpose,
+            max_calls=max_calls,
+        )
+        print(f"LLM call {used}/{max_calls} in the last 24h")
+
+    provider.before_attempt = _record
+
+
 def _run_check_health(args: argparse.Namespace) -> int:
     # No thinking_level: the deprecation check is a factual lookup, not the
     # multi-step reasoning the forecast pipeline asks for.
     llm = _build_llm_provider(thinking_level=None)
+    # Counted like any other call — see _attach_spend_hook for the gap this
+    # closes. The config is loaded here rather than further down because the
+    # cap's size lives in it, and a hook attached after the call would be no
+    # hook at all.
+    #
+    # A refusal is caught below and reported as a skipped check, which is the
+    # right outcome: being out of budget is a real answer, not a reason to
+    # spend anyway.
+    location = load_location_config(args.config)
+    _attach_spend_hook(
+        llm, Path(args.data_dir), purpose="health-check",
+        max_calls=location.max_llm_calls_per_24h,
+    )
     model_name = llm.model
 
     ok = True
@@ -454,8 +497,8 @@ def _run_check_health(args: argparse.Namespace) -> int:
             print(f"  OK — {result.notes}")
 
     # Data coverage. Runs offline off the committed record, so it costs
-    # nothing and works even when the LLM check above failed.
-    location = load_location_config(args.config)
+    # nothing and works even when the LLM check above failed. `location` is
+    # already loaded above, for the spend cap.
     data_path = Path(args.data_dir)
     # Operational coverage: the reliable trigger can die while the unreliable
     # fallback keeps producing forecasts, which is invisible to every other
