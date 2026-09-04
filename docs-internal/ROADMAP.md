@@ -18,11 +18,10 @@ follows `spec/README.md`.
 ## Working order, as of 2026-08-31
 
 **The forward-fetch experiment was answered 2026-09-03 — neither hypothesis,
-and the confound is unresolved.** Two clean runs after the reorder, two
-failures before it, and no synoptic failure to take the old one's place. See
-item 53, "THE ANSWER". An open decision sits there: whether to spend one
-degraded forecast reverting the order to prove causation, or to leave it and
-add the per-request diagnostic instead.
+and the confound is unresolved.** See item 53, "THE ANSWER". One open
+decision sits there: whether to spend a degraded forecast reverting the order
+to prove causation, or leave it and add the per-request diagnostic instead.
+Nothing is running in production awaiting an answer.
 
 A snapshot, not a contract, and dated because it will go stale. Numbered
 items keep their own status; this only says what to pick up next and why.
