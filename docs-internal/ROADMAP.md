@@ -76,6 +76,28 @@ demoted; it is the operator's word to change.
 Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
+
+### Added 2026-09-04: 69 jumps this queue
+
+Items 68, 69, 70 and 71 came out of one question — how to handle model
+updates over years rather than weeks — and 69 is small, cheap, and blocks the
+other three.
+
+**69 stores the rendered user prompt per issuance.** Roughly 3.4 MB a year
+against a `data/` directory currently totalling 652 KB. Without it, every
+model question is a month-long forward experiment confounded by the weather;
+with it, the same question is a paired backtest answered in an afternoon, for
+any candidate, including one that does not exist yet.
+
+The reason it jumps: **its cost grows the longer it waits.** Every day
+without it is a day that can never be backtested, and the days already lost
+cannot be recovered. Nothing else on this list has that property — item 45's
+provenance stamp and item 65's lightning are as cheap to build in November as
+today. This one is not.
+
+70 (a prompt hash in `meta`) is one line and pairs with it. 68 and 71 are the
+work 69 unblocks and can wait for a decision.
+
 ---
 
 ## 1. Second daily forecast run — 6 AM + 6 PM · **Done**
@@ -6768,9 +6790,23 @@ something to find before it ships, not after.
 
 1. **A replay diff, 3.6 against 3.8.** Cheap, immediate, and it answers the
    only question that can be answered immediately.
-2. **Then alternating days**, if the replay shows nothing alarming. Weeks,
-   and gated by item 27's existing statistics rather than an impression.
-3. **Latency and cost recorded alongside**, per item 27 — "slightly better
+2. **Then a backtest, not alternating days** — revised 2026-09-04, and the
+   reversal is item 69's. Alternating days confounds the model with the
+   weather: a month of alternating gives two samples of DIFFERENT weather,
+   not two forecasters, and days differ enormously in how predictable they
+   are. Replaying both models over the same stored days gives a PAIRED
+   comparison — same inputs, same outcomes, two probabilities — and delivers
+   it in an afternoon instead of a month.
+
+   This is blocked on item 69. The inputs are not stored today, which is the
+   only reason a forward experiment ever looked like the sole option.
+3. **Shadow mode only if the backtest is ambiguous.** Running the challenger
+   alongside the incumbent on the same live run is statistically the same
+   paired comparison, arriving a month later — worth paying for only when a
+   burst could not resolve it. If it is used, the challenger call takes
+   `attempts: 1`: a lost data point is cheap, and only the incumbent's
+   failure costs a forecast.
+4. **Latency and cost recorded alongside**, per item 27 — "slightly better
    and three times slower" is a real outcome and a legitimate reason to
    decline.
 
@@ -6784,6 +6820,199 @@ already stored on every entry, so the record CAN be partitioned — but the
 partition has to actually be used, or the published number becomes an
 average over a change nobody can see.
 
+### And the trap is smaller than it looks
+
+Worth putting beside the paragraph above, because that paragraph on its own
+reads as a reason to never change models. Nine columns are scored every day:
+
+```text
+gfs_seamless  ecmwf_ifs025  icon_seamless  ukmo_seamless
+best_match    kenya_met     persistence    climatology    olw_blend
+```
+
+**One of the nine involves the LLM.** The other eight are NWP output, a
+parsed bulletin, and two arithmetic baselines, and a model swap does not
+touch any of them. "ECMWF runs warm at Day+3" and "persistence beats two of
+five at Day+0" do not care what wrote the prose.
+
+And `olw_blend`'s value measured against a FIXED reference survives even its
+own column's discontinuity. Raw accuracy is not comparable across a model
+change; Brier skill against climatology is, because climatology does not move
+when the forecaster does. That is the argument for reporting skill rather
+than hit-rate as the headline number, and item 58 shipped the machinery.
+
+One contamination path that is NOT clean, and should be said out loud: the
+LLM authors the verification notes and skill summaries that feed FORWARD into
+later prompts. The numeric record is model-independent; the qualitative
+memory is model-written and accumulates across a swap. Nothing currently
+marks where the authorship changed — see item 70.
+
 Related: item 27 (the mechanism and the harness), item 28 (the watcher that
 would have flagged the version gap), item 58 (whose scoring makes a model
-comparison sharper than a boolean one).
+comparison sharper than a boolean one), item 69 (which unblocks the
+backtest), item 70 (forecaster identity), item 71 (the ceiling probe).
+
+---
+
+## 69. The past is not replayable, because the inputs are not stored · **Planned**
+
+Found 2026-09-04 while answering "how do we handle model updates long term".
+The answer turned out to depend on a storage gap rather than on a schedule.
+
+### What is stored, and what is missing
+
+`data/log/YYYY-MM-DD.json` keeps the day's OUTPUTS in full — the narrative,
+`today_properties`, all nine `model_predictions`, the verification, and
+`meta`. What it does not keep is the prompt that produced them.
+
+```text
+stored:   guidance_source, guidance_initialised_at, guidance_age_hours
+missing:  the guidance itself
+```
+
+Also missing: the hourly arrays, the synoptic pressure ring, per-model CAPE,
+the Day+1..Day+7 blocks, the ground-station readings as they stood, and the
+MODEL TRACK RECORD block as it was rendered that day. The user prompt is
+built and thrown away.
+
+### Why this is the item everything else waits on
+
+**A model cannot be evaluated against a day whose inputs are gone.** That
+single fact forces every model question into a forward experiment — run the
+candidate live for a month and see — which is slow, costs a call a day, and
+confounds the model with the weather.
+
+With the inputs stored, the same question is a burst: 30 days x 1 call,
+answered in an afternoon, paired by construction because both models see
+byte-identical input and are scored against the same recorded outcome.
+
+It also removes retirement as a category of problem. **You never needed the
+dead model — you needed its inputs and the outcomes,** and both would be on
+disk. A model that vanishes tomorrow can still be compared against its
+replacement over every day it ever ran.
+
+### Cost, measured rather than estimated
+
+```text
+user prompt              ~4.6 KB per run
+runs                      2 per day
+                        = ~3.4 MB per year
+
+whole data/ directory      652 KB  (2026-08-11 to 2026-09-04)
+```
+
+The record is currently smaller than a photograph. This would make the inputs
+the dominant term in it, and that is the correct outcome: the inputs ARE the
+asset, and they are the half currently being discarded.
+
+### Shape
+
+Store the rendered user prompt per issuance, not a reconstruction recipe. A
+recipe re-derives through code that will have changed by the time anyone
+replays it, which reintroduces exactly the drift being avoided. The system
+prompt does not need storing per run — it is vector-pinned and recoverable
+from git, given item 70's hash to identify WHICH one.
+
+Open question worth deciding before building: whether to store the raw
+provider responses too. Larger, and it would allow re-deriving inputs under a
+changed parser, which is a different and also useful capability. Not
+obviously worth it; noted rather than assumed either way.
+
+Related: item 68 (blocked on this), item 70, item 71, item 27.
+
+---
+
+## 70. The record cannot say which forecaster produced an entry · **Planned**
+
+`meta` stores `llm_provider`, `llm_model` and `pipeline_version`. The first
+two are real. The third is the string `"0.1.0"` and has never changed.
+
+The prompt was edited twice on 2026-09-04 alone — item 67's rewrite and item
+58's probability field — and **the record cannot tell those entries from the
+ones before them.**
+
+### The forecaster is not the model
+
+It is (model + prompt + input set), and all three drift. Versioning only the
+model gives the appearance of rigour without it, because prompt changes are
+far more frequent than model changes and at least as capable of moving the
+output. Item 67's rewrite changed what the opening sentence of every evening
+forecast is allowed to contain; that is not a smaller intervention than a
+minor version bump.
+
+### Shape
+
+A hash of the rendered system prompt in `meta`, alongside `llm_model`. One
+line to compute, and it makes "which forecaster produced this entry" a
+question the record can answer instead of one requiring `git log` and a guess
+about deploy timing.
+
+The published number should then partition on the pair, not on the model
+alone — the same discipline item 68 asks for, applied to the axis that
+actually moves week to week.
+
+Related: item 68, item 69, item 27.
+
+---
+
+## 71. How much headroom is in the LLM layer at all? · **Planned**
+
+Proposed by the operator 2026-09-04, and it answers a question none of the
+other model items ask.
+
+### The question
+
+68 asks "is 3.8 better than 3.6" — a candidate trial between two things that
+could plausibly run in production. **71 asks whether the LLM layer is the
+bottleneck at all.** Run a frontier model over the same stored days as a
+reference point, and compare skill.
+
+The value is in the answer either way:
+
+- **If a frontier model is barely better than free-tier Flash**, the LLM is
+  not the constraint, and every hour spent on model selection is an hour not
+  spent on sources. That matches the operator's stated position — the binding
+  constraint is source quality, not count — and would turn it from a belief
+  into a measurement.
+- **If it is substantially better**, there is real headroom, and the
+  interesting question becomes which part of the prompt the smaller model is
+  failing to execute. That is diagnosable by diffing the two outputs on the
+  same input, which is what item 27's replay already does.
+
+### It is a reference measurement, not a candidate
+
+The frontier model is not a production candidate here — the entire point of
+this project is a free or near-free API. Recording it as a dated ceiling is
+the use:
+
+> Opus 5, 2026-09-04, scored X over these N days.
+
+The operator's expectation is that free-tier Flash reaches roughly today's
+frontier capability inside a year. That is a testable claim, and it needs a
+fixed dated marker to test against. Re-running whatever is free in a year
+against the SAME stored days and the SAME recorded outcomes answers it.
+
+### Three limits, none fatal, all of them design constraints
+
+1. **The scorer must not be able to see the answer.** The outcomes sit in
+   `data/actuals_cache/` on the same filesystem as everything else. A model
+   asked to forecast a stored day, with repo access, can simply look it up —
+   and would not even be cheating on purpose. **The probe has to run in a
+   subprocess given the prompt and nothing else.** Not a detail; it is the
+   difference between a measurement and a number.
+2. **A session that helped write the prompt is not a clean subject.** It
+   knows the failure modes, the roadmap, and what each rule was written to
+   prevent. The subprocess handles this too, as long as it is handed the
+   prompt rather than the conversation.
+3. **Wide error bars.** Twenty or thirty days of rain Brier is a small
+   sample, and two forecasters separated by 0.03 are separated by noise.
+   `review.py`'s existing noise-floor gates apply here exactly as they do to
+   GFS against ECMWF, and the honest answer may well be "indistinguishable at
+   this sample size" — which is itself informative, and is the first outcome
+   above.
+
+Blocked on item 69, same as 68: there is nothing to replay until the inputs
+are kept.
+
+Related: item 69, item 68, item 27, item 58 (whose Brier makes this a number
+rather than an impression).
