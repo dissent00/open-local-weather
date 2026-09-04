@@ -305,8 +305,8 @@
       "note": "Day+0 verified dry conditions accurately across all models. High temperatures were captured within 1.6°C (ECMWF -0.9°C, ICON -1.2°C, GFS -0.3°C, Kenya Met -0.6°C), though GFS overpredicted surface wind by 24.9 km/h."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3 verified dry for August 31st across all models. High temperature errors were small across GFS (-2.5°C) and ICON (-0.7°C), while wind speed overestimation persisted on GFS (+24.1 km/h) and UKMO (+21.2 km/h)."
     },
     "day7": {
       "verified": false,

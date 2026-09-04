@@ -301,8 +301,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 verified dry as all models and Kenya Met accurately predicted zero precipitation. High temperatures were captured exceptionally well by Best Match (+0.1°C error) and OLW blend (-0.7°C error), though GFS over-forecasted peak wind speed by 27.7 km/h."
     },
     "day3": {
       "verified": false,

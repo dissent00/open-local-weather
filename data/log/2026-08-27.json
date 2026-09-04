@@ -309,8 +309,8 @@
       "note": "Day+3: All models correctly verified the dry precipitation call for the August 27th target date. ECMWF (+6.9 km/h) and Best Match (-1.4 km/h) delivered strong wind speed accuracy, while GFS overpredicted peak wind by 33.9 km/h."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7 verified dry for August 27th. GFS successfully verified the dry call, whereas ECMWF and Best Match incorrectly predicted rainfall. Wind speed overestimation remained high for GFS (+34.2 km/h)."
     }
   },
   "local_bulletin": {
