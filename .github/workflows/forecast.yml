@@ -148,6 +148,21 @@ jobs:
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
           WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
         run: |
+          # PIPEFAIL IS LOAD-BEARING HERE, and its absence lost a forecast.
+          #
+          # `olw forecast | tee` exits with TEE's status, not the pipeline's.
+          # GitHub's default shell is `bash -e {0}` — `-e` but NOT
+          # `-o pipefail` — so on 2026-09-02 the 15:01 refresh aborted after
+          # four failed Gemini attempts, printed "Critical Error: forecast
+          # aborted", produced no forecast, and the job reported SUCCESS.
+          # Nothing else would ever have said so: no commit, no email, no red
+          # job, and the only trace a line in an Actions log nobody reads.
+          # Exactly the shape of ROADMAP item 53.
+          #
+          # The tee itself is wanted — the commit subject is derived from the
+          # run's own output further down — so the fix is the flag, not the
+          # removal.
+          set -o pipefail
           FLAGS=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             FLAGS="$FLAGS --dry-run"

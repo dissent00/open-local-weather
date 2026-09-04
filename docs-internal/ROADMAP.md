@@ -6309,3 +6309,91 @@ nobody experienced.
 Related: item 41 (the platform), item 45 (why this must not join the OR),
 item 37 (day-character, which cloud needs), item 63 (the other vision
 source), item 58 (what scoring a new variable properly would require).
+
+---
+
+## 66. A lost forecast reported success · **Fixed 2026-09-03**
+
+Found while investigating why the LLM spend cap had no headroom. The
+investigation's own question turned out to be the smaller half.
+
+### What happened
+
+On 2026-09-02 the 15:01 evening refresh made four Gemini attempts — two
+HTTP 503s and two 60-second read timeouts — printed `Critical Error:
+forecast aborted, the LLM call failed`, and produced nothing. `data/log/
+2026-09-02.json` still carries `refreshed_at: null`.
+
+**GitHub reported the run as `success`.**
+
+### Why
+
+```yaml
+olw forecast --public-url "..." $FLAGS \
+  | tee "$RUNNER_TEMP/forecast.log"
+```
+
+A pipeline's exit status is its LAST command's, and `tee` always succeeds.
+GitHub's default shell is `bash -e {0}` — `-e` but **not** `-o pipefail` —
+so `olw forecast`'s exit code 1 was discarded. Demonstrated rather than
+assumed:
+
+```text
+bash -e   -c 'false | tee /dev/null; echo $?'   ->  0
+bash -eo pipefail -c 'false | tee /dev/null'    ->  step fails
+```
+
+The CLI was innocent throughout: `_run_forecast` returns 1 on
+`LLMResponseError`, and always has.
+
+### Why it is item 53's shape, one layer up
+
+No commit, no email, no red job, and the only trace a line in an Actions log
+nobody reads. A forecast simply did not exist that evening and every surface
+this project has said nothing. That is the same failure mode as the silent
+fetch degradation, moved from inside the pipeline to the thing that runs it.
+
+### The fix, and the guard
+
+`set -o pipefail` in the run block, with the reasoning beside it. The `tee`
+is wanted (the commit subject is derived from the run's own output), so the
+flag is the fix rather than the removal.
+
+`tests/test_workflows.py` asserts that any workflow run block containing a
+pipe also sets `pipefail`, and was watched failing with the line removed. A
+future step that pipes without it would re-open exactly this hole, silently,
+which is the definition of a thing worth a guard rather than a comment.
+
+### What is still not recorded, and is deliberately not being built
+
+**A run that aborts leaves no trace in the record.** Item 53.4's degradations
+describe a run that COMPLETED with something missing; an aborted run writes
+no issuance at all, so `check_recent_degradations` cannot see it either. The
+record cannot distinguish "no evening re-issue because none was scheduled"
+from "no evening re-issue because it died".
+
+A red job is now the notification, and that is proportionate. Closing the gap
+properly would need an expected-schedule model — something that knows a run
+was DUE — and that is a real design, not a patch. Written down rather than
+half-built.
+
+### The thing that started this: the cap has no room for a bad day
+
+`MAX_ATTEMPTS` is 4 and the spend cap counts each HTTP request, which is
+correct: a flaky provider issuing four billable requests against one
+recorded "call" is the bug that put the counter there. But with two
+scheduled runs a day:
+
+```text
+worst case   2 runs x 4 attempts  =  8
+cap                                = 10
+left for anything else             =  2
+```
+
+So one bad day leaves no room for a manual run, and none at all for `olw
+replay`, which needs 12 calls for a six-case before/after. That is not a bug
+in the cap; it is the cap being sized for a good day. Related: item 26 (the
+cap), item 58 (whose replay this blocked), item 59 (which would double the
+per-run cost).
+
+Related: items 26, 53, 53.4, 58, 59.
