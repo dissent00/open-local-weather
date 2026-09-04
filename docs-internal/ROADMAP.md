@@ -6797,8 +6797,10 @@ something to find before it ships, not after.
    comparison — same inputs, same outcomes, two probabilities — and delivers
    it in an afternoon instead of a month.
 
-   This is blocked on item 69. The inputs are not stored today, which is the
-   only reason a forward experiment ever looked like the sole option.
+   Item 69 shipped 2026-09-04, so this is no longer blocked — but the
+   archive starts EMPTY. Every day before that date is permanently
+   un-backtestable, so the sample grows from zero at two issuances a day.
+   A month of accumulation is the earliest this is worth running.
 3. **Shadow mode only if the backtest is ambiguous.** Running the challenger
    alongside the incumbent on the same live run is statistically the same
    paired comparison, arriving a month later — worth paying for only when a
@@ -6853,7 +6855,7 @@ backtest), item 70 (forecaster identity), item 71 (the ceiling probe).
 
 ---
 
-## 69. The past is not replayable, because the inputs are not stored · **Planned**
+## 69. The past is not replayable, because the inputs are not stored · **Shipped 2026-09-04**
 
 Found 2026-09-04 while answering "how do we handle model updates long term".
 The answer turned out to depend on a storage gap rather than on a schedule.
@@ -6917,11 +6919,46 @@ provider responses too. Larger, and it would allow re-deriving inputs under a
 changed parser, which is a different and also useful capability. Not
 obviously worth it; noted rather than assumed either way.
 
-Related: item 68 (blocked on this), item 70, item 71, item 27.
+### What shipped
+
+`store/prompt_archive.py`, written to `data/prompts/YYYY-MM-DD.json`, one
+file per date matching `log_store`'s convention and for the same reason.
+Issuances accumulate within a file — a morning run and an evening refresh are
+separate forecasts from separate inputs, and keeping only the last would make
+the day's first issuance permanently un-backtestable while the log still
+showed it happened.
+
+The user prompt is stored verbatim. The system prompt is stored as a SHA-256
+only: ~34 KB against ~4.6 KB, already vector-pinned and recoverable from git —
+but only if you know WHICH one ran, which is item 70's field and the reason
+these shipped together.
+
+Written beside the log entry rather than before the LLM call, deliberately.
+An archived issuance with no log entry is a dangling input, backtestable
+against nothing, because the pairing this exists to enable needs the
+incumbent's own scored prediction on the other side.
+
+`.github/workflows/forecast.yml` already does `git add data/`, so the archive
+commits with everything else and needed no workflow change.
+
+Guarded by `tests/test_prompt_archive.py` — nine tests, driven through the
+REAL pipeline rather than the store, because the failure worth catching is
+not "the writer is broken" but "the writer is never called" or "the refresh
+archived the morning's prompt". Both paths build local `system_prompt` and
+`user_prompt` variables and archiving the wrong one produces an archive that
+looks complete, replays cleanly, and answers about the wrong run.
+
+**Note for whoever implements log retention.** `LOG_RETENTION_DAYS` is 180 and
+documented as deliberately unimplemented, so nothing deletes anything today.
+When it is implemented, prompts must not be pruned ahead of logs: inputs
+without outcomes are unscoreable, and outcomes without inputs are exactly the
+state this item existed to end.
+
+Related: item 68 (which this unblocks), item 70, item 71, item 72, item 27.
 
 ---
 
-## 70. The record cannot say which forecaster produced an entry · **Planned**
+## 70. The record cannot say which forecaster produced an entry · **Shipped 2026-09-04**
 
 `meta` stores `llm_provider`, `llm_model` and `pipeline_version`. The first
 two are real. The third is the string `"0.1.0"` and has never changed.
@@ -6949,6 +6986,23 @@ about deploy timing.
 The published number should then partition on the pair, not on the model
 alone — the same discipline item 68 asks for, applied to the axis that
 actually moves week to week.
+
+### What shipped
+
+`meta.system_prompt_sha256`, alongside `llm_model`. Three-valued like
+`degradations`: `None` means the entry predates the field and its prompt is
+genuinely unrecoverable — only deploy timing in git says which one ran. A
+default of `""` would claim an identity those runs never had, and a backtest
+harness would then try to resolve a hash matching nothing.
+
+An evening refresh overwrites it with its own, rather than carrying the
+morning's forward. `is_reissue=True` alone makes them different documents,
+and this field names the forecaster that wrote the narrative currently in the
+entry.
+
+`pipeline_version` is left as it is. It is not load-bearing, and repurposing
+a field that has read `"0.1.0"` since the first commit would make old entries
+mean something new.
 
 Related: item 68, item 69, item 27.
 
@@ -7014,8 +7068,8 @@ against the SAME stored days and the SAME recorded outcomes answers it.
    this sample size" — which is itself informative, and is the first outcome
    above.
 
-Blocked on item 69, same as 68: there is nothing to replay until the inputs
-are kept.
+Unblocked 2026-09-04 by item 69, and gated by the same thing 68 is: the
+archive begins empty and fills at two issuances a day.
 
 Related: item 69, item 68, item 27, item 58 (whose Brier makes this a number
 rather than an impression).

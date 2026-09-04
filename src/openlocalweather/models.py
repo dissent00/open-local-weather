@@ -421,6 +421,20 @@ class LogEntryMeta(BaseModel):
     llm_provider: str
     llm_model: str
     pipeline_version: str
+    # WHICH system prompt produced this entry — ROADMAP item 70.
+    #
+    # The forecaster is (model + prompt + input set), and until this field
+    # existed only the model was recorded. `pipeline_version` is the string
+    # "0.1.0" and has never changed, while the prompt was edited twice on
+    # 2026-09-04 alone; prompt changes are more frequent than model changes
+    # and at least as capable of moving the output, so a record partitioned on
+    # `llm_model` alone partitions on the slower axis.
+    #
+    # Three-valued on purpose, like `degradations`: None means the entry was
+    # written before the field existed, and its prompt is NOT recoverable —
+    # only the deploy timing in git says which one ran. A default of "" would
+    # claim an identity those runs never had.
+    system_prompt_sha256: str | None = None
     # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
     # — generated_at_utc stays the ORIGINAL morning creation time even after
     # a refresh, so the audit trail keeps showing when this entry first

@@ -110,6 +110,7 @@ from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.store import prompt_archive
 from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
 from openlocalweather.spend import assert_capacity, record_attempt
@@ -1396,6 +1397,7 @@ def run_daily_pipeline(
             llm_provider=type(deps.llm_provider).__name__,
             llm_model=getattr(deps.llm_provider, "model", "unknown"),
             pipeline_version=deps.pipeline_version,
+            system_prompt_sha256=prompt_archive.prompt_sha256(system_prompt),
             trigger_source=deps.trigger_source or None,
             degradations=guidance.degradations,
         ),
@@ -1441,6 +1443,20 @@ def run_daily_pipeline(
     if not dry_run:
         log_store.write_log_entry(deps.data_dir, log_entry)
         actuals_cache_store.write_actuals_cache(deps.data_dir, cache)
+
+        # The inputs this forecast was built from — ROADMAP item 69. Written
+        # beside the log entry rather than before the LLM call, deliberately:
+        # an archived issuance with no entry in the log is a dangling input,
+        # backtestable against nothing, because the pairing this exists to
+        # enable needs the incumbent's own scored prediction on the other side.
+        prompt_archive.write_prompt_archive(
+            deps.data_dir,
+            today,
+            issued_at=log_entry.meta.generated_at_utc,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            llm_model=log_entry.meta.llm_model,
+        )
 
         # A later issuance does no verification, and returns a placeholder for
         # these fields by design. The row it would land on was scored by the
@@ -1770,6 +1786,11 @@ def run_refresh_pipeline(
                 update={
                     "refreshed_at": datetime.now(timezone.utc),
                     "degradations": guidance.degradations,
+                    # The refresh's own prompt, not the morning's. The
+                    # is_reissue branch alone makes them different documents,
+                    # and this field names the forecaster that wrote the
+                    # narrative currently in the entry.
+                    "system_prompt_sha256": prompt_archive.prompt_sha256(system_prompt),
                 }
             ),
         }
@@ -1778,6 +1799,18 @@ def run_refresh_pipeline(
     published = False
     if not dry_run:
         log_store.write_log_entry(deps.data_dir, updated_entry)
+
+        # A refresh is a separate forecast from separate inputs, so it is a
+        # separate archive entry rather than an overwrite of the morning's —
+        # keyed on refreshed_at, which is this issuance's own clock.
+        prompt_archive.write_prompt_archive(
+            deps.data_dir,
+            today,
+            issued_at=updated_entry.meta.refreshed_at,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            llm_model=updated_entry.meta.llm_model,
+        )
         if deps.publisher is not None:
             deps.publisher.publish(updated_entry)
             published = True
