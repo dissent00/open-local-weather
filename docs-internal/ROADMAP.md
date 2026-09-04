@@ -7004,8 +7004,12 @@ against the SAME stored days and the SAME recorded outcomes answers it.
    knows the failure modes, the roadmap, and what each rule was written to
    prevent. The subprocess handles this too, as long as it is handed the
    prompt rather than the conversation.
-3. **Wide error bars.** Twenty or thirty days of rain Brier is a small
-   sample, and two forecasters separated by 0.03 are separated by noise.
+3. **Wide error bars, and a narrower target than expected.** Twenty or
+   thirty days of rain Brier is a small sample, and two forecasters separated
+   by 0.03 are separated by noise. Worse, item 72: `olw_blend` is scored at
+   Day+0 only, which is exactly where the free NWP is already near its
+   ceiling. Expect "indistinguishable", and do not read it as "models do not
+   matter".
    `review.py`'s existing noise-floor gates apply here exactly as they do to
    GFS against ECMWF, and the honest answer may well be "indistinguishable at
    this sample size" — which is itself informative, and is the first outcome
@@ -7016,3 +7020,75 @@ are kept.
 
 Related: item 69, item 68, item 27, item 58 (whose Brier makes this a number
 rather than an impression).
+
+---
+
+## 72. The forecaster is only ever scored where the NWP is already near its ceiling · **Planned**
+
+Found 2026-09-04 while asking how much a model change could be expected to
+move anything. The record answers it, and the answer is uncomfortable.
+
+### What the record says today
+
+Rain hit-rate, all-time, by lead time:
+
+```text
+Day+0   best_match  87.5% (n=24)    olw_blend  85.7% (n=7)
+        persistence 75.0% (n=24)    climatology 54.2% (n=24)
+
+Day+3   best_match  90.5% (n=21)    olw_blend    n/a (n=0)
+Day+7   gfs         82.4% (n=17)    olw_blend    n/a (n=0)
+```
+
+**`olw_blend` has no Day+3 or Day+7 entries, and never will.** This is not a
+sample that will fill in with time. `_blend_prediction` in `pipeline.py`
+builds from `today_properties`, which is by definition today, so the blend is
+structurally a Day+0-only forecaster. The Extended Outlook covers days 1-7
+and is prose — nothing in it is scored, or scoreable.
+
+### Why that is the wrong place to be measured
+
+Day+0 is where the free NWP is already strongest. `best_match` alone gets
+87.5%, and the honest reading of `olw_blend`'s 85.7% is **"indistinguishable
+at n=7"** — six of seven, where one more miss makes it 75%. The interesting
+claim is not that the blend is behind; it is that at Day+0 there is almost no
+room above `best_match` for it to demonstrate anything.
+
+Meanwhile the LLM's most defensible job — reconciling models that disagree —
+is hardest and most valuable at Day+3 and Day+7, where the spread is widest.
+At Day+7 the gap between GFS (82.4%) and best_match (64.7%) is 17.7 points,
+and there is no scored blend to compare against either.
+
+So the forecaster is measured exclusively where it can least distinguish
+itself, and is unmeasured everywhere it might.
+
+### What this means for items 68 and 71
+
+**It bounds them.** A model comparison run against today's record can only
+compare Day+0 rain booleans on a handful of checks. Both items should expect
+"indistinguishable at this sample size", and should NOT read that as "models
+do not matter" — it is at least as likely to mean the measurement cannot see
+what it is looking for.
+
+Item 58's Brier helps (a probability carries more information per check than
+a boolean) and does not fix it, because the lead-time gap is structural
+rather than statistical.
+
+### Shape
+
+Structured, scoreable fields for Day+1..Day+7 in the response schema, mirrored
+into the prediction record so the blend is checked at the lead times the
+existing models are already checked at. Then `olw_blend` appears in all three
+tables and the comparison becomes a real one.
+
+Not small: it widens the schema, the storage and the two-language surface, and
+it makes every forecast a larger structured commitment. It is also the change
+that makes "is the forecaster any good" answerable, so it is worth doing
+properly rather than as a fourth column bolted onto Day+0.
+
+Sequencing note: **69 still comes first.** Days not stored cannot be
+backtested, and this item changes what future days record without recovering
+any past ones.
+
+Related: item 68, item 69, item 71, item 57 (which established the baselines
+this is read against), item 58, item 27.
