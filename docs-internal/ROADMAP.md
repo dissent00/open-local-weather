@@ -6497,7 +6497,7 @@ Related: items 26, 53, 53.4, 58, 59.
 
 ---
 
-## 67. A later issuance opens by narrating what is already over · **Planned**
+## 67. A later issuance opens by narrating what is already over · **Shipped — unverified in production**
 
 Reported 2026-09-03 as still happening every day. Measured on the 09-03
 evening re-issue, first sentence of **Today's Forecast**:
@@ -6585,6 +6585,46 @@ Worth stating in the same breath: this must not push the model into the
 opposite error of implying a past high is still coming. "Not mentioning" and
 "misrepresenting" are different, and rule 7's discipline applies — silence
 about a spent value is correct, a false future tense is not.
+
+### What shipped, 2026-09-04
+
+The rule was rewritten in place, in both `prompt.py` and its Dart mirror, and
+split into the two instructions it had been conflating. Where it read
+
+> "Anything already past is past tense, or left out. [...] Say the day's peak
+> UV was 9 around midday and what is left of it before sunset."
+
+it now reads, as two separately-headed rules:
+
+> **OPEN ON WHAT IS STILL AHEAD.** [...] **LEAVE A SPENT VALUE OUT** unless
+> it changes what the reader should DO [...] Where a spent value does still
+> matter, it goes in a subordinate clause AFTER what is coming, never ahead
+> of it.
+>
+> **NEVER THE FUTURE TENSE FOR SOMETHING PAST.** Issued at 16:45, "peak UV
+> index will reach 9.0 around noon" is wrong twice [...] Omitting it is the
+> first choice; if it does earn a mention, it reached 9 around midday - it is
+> not going to.
+
+The 09-03 sentence is now quoted in the prompt as the counter-example, which
+is the only part of a worked example a model reliably copies.
+
+**A contradiction closed as a side effect.** Rule 3 already carried "no 'peak
+temperature already occurred' unless the number itself still matters for what
+comes next" — the correct rule, thirty lines below a worked example telling
+the model the opposite. The two now agree. This is worth noting because the
+old state is the failure mode this prompt is most exposed to at 451 lines:
+not a missing rule, but two rules that disagree, where the nearer one wins.
+
+Guarded by `test_a_spent_value_is_omitted_rather_than_narrated_in_past_tense`,
+which pins both halves — the old phrasing and its example must stay gone, and
+the future-tense prohibition must survive. Watched failing against the old
+prompt before the fix. 835 Python and 120 Dart tests pass; the regenerated
+`llm_system_prompt.json` vector is what proves the two languages still emit
+the same bytes.
+
+**Not yet verified where it counts.** No replay has been run against this,
+and no live evening issuance has been produced with it. Both are below.
 
 ### Validation
 

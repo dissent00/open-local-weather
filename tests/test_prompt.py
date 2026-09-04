@@ -204,7 +204,36 @@ def test_todays_forecast_covers_the_hours_ahead_not_the_calendar_day():
     prompt = build_system_prompt(KISUMU)
     assert "next 12-18 hours" in prompt
     assert "HOURS AHEAD" in prompt
-    assert "past tense, or left out" in prompt
+    assert "NEVER THE FUTURE TENSE FOR SOMETHING PAST" in prompt
+
+
+def test_a_spent_value_is_omitted_rather_than_narrated_in_past_tense():
+    """Item 67. The rule above was written to stop the future tense being used
+    for a past event, and it over-corrected into instructing the past tense
+    instead. Its worked example — the part a model copies — said to state the
+    spent UV peak, and the model duly opened Today's Forecast with it:
+
+        "As dusk falls and sunset approaches at 18:43 local time, daytime
+        highs near 31°C / 88°F and solar UV exposure are in the past."
+
+    Three facts nobody can act on, two of them already in the published stat
+    block, spending the first sentence of the section a reader opened to find
+    out what happens next.
+
+    So both halves are pinned here: the old two-branch phrasing and its
+    example must stay gone, and omission must be the stated default — while
+    the original point, no future tense for something past, survives intact.
+    """
+    prompt = build_system_prompt(KISUMU)
+
+    assert "past tense, or left out" not in prompt
+    assert "Say the day's peak UV was 9 around midday" not in prompt
+
+    assert "LEAVE A SPENT VALUE OUT" in prompt
+    assert "OPEN ON WHAT IS STILL AHEAD" in prompt
+
+    # The error the old rule existed to prevent. Still prevented.
+    assert 'peak UV index will reach 9.0 around noon" is wrong twice' in prompt
 
 
 def test_the_time_aware_section_must_not_change_what_gets_scored():
