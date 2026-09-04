@@ -30,7 +30,34 @@ from openlocalweather.llm.schema import to_gemini_schema
 T = TypeVar("T", bound=BaseModel)
 
 GEMINI_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-REQUEST_TIMEOUT_S = 60
+# 90s, raised from 60s on 2026-09-04, and the evidence is the spend ledger.
+#
+# Every attempt is timestamped there before it is sent, so subtracting the
+# known backoff from consecutive timestamps recovers how long each FAILED
+# attempt ran. Across the scheduled runs on record (13 failed attempts;
+# replay bursts excluded because consecutive entries there are separate
+# cases, not retries) the distribution is bimodal and has no middle:
+#
+#     8 of 13 ran 60.1s   — exactly the ceiling
+#     5 of 13 ran 1.6s to 29.5s
+#
+# Nothing has ever failed at 35s, or 45s. A cluster sitting precisely on the
+# client's own deadline is the client giving up, not the server refusing.
+#
+# This corrects an earlier reading. A single probe on 2026-09-04 returned the
+# real production prompt (33,777 char system, 4,590 char user) at
+# thinking_level="high" in 32.9s, and that was written up as "generation is
+# comfortably inside 60s, so the ceiling is not what fails". One success
+# shows generation CAN finish in 33s. It says nothing about the tail, and the
+# ledger's 8 hits on the deadline are the tail.
+#
+# What 90s does NOT settle: whether those attempts were slow generations that
+# would have completed, or connections already hung. The two are
+# indistinguishable from this side, and they predict different things —
+# slow generations turn into successes at 90s, hung connections just fail 30s
+# later for the same cost. Check the ledger again in a week: if 90.1s
+# replaces 60.1s as the cluster, it was hangs and the timeout is not the fix.
+REQUEST_TIMEOUT_S = 90
 
 # Transient, retryable HTTP statuses: 429 rate-limited, 500/502/503/504
 # server-side or capacity errors. Observed in practice — a "This model is
@@ -40,7 +67,22 @@ REQUEST_TIMEOUT_S = 60
 # verification check), so a few cheap retries are well worth it.
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 MAX_ATTEMPTS = 4
-RETRY_BASE_DELAY_S = 5  # exponential: 5s, 10s, 20s — ~35s worst case
+# 30s base: 30s, 60s, 120s — ~3.5 min of waiting across the four attempts.
+#
+# The old 5/10/20 schedule spent its whole budget inside ~35 seconds, which
+# is the wrong shape for what actually goes wrong here. A 503 from this API
+# means capacity, and capacity comes back on the scale of minutes, not
+# seconds: four attempts crammed into half a minute all land inside the same
+# bad minute and all fail together. The 09-03 forecast run is the clean
+# example: four attempts, three of them dying on the 60s ceiling, the
+# whole burst over in 215 seconds.
+#
+# Widening the schedule costs no extra billable requests — the count is
+# still MAX_ATTEMPTS — and no time at all on a run that succeeds first try.
+# It only spends wall-clock on runs that were failing anyway, and it is the
+# one knob that turns "this minute is bad" into "these four minutes are bad"
+# before giving up.
+RETRY_BASE_DELAY_S = 30
 
 # gemini-3.x's reasoning-effort control. REST field is nested and camelCase
 # — generationConfig.thinkingConfig.thinkingLevel — confirmed empirically

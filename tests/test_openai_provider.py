@@ -277,4 +277,27 @@ def test_implausibly_long_retry_after_is_ignored(monkeypatch):
         )
         provider().generate("system", "user", GeminiForecastResponse)
 
-    assert slept == [5.0], "should fall back to the normal backoff, not wait 600s"
+    assert slept == [mod.RETRY_BASE_DELAY_S], "should fall back to the normal backoff, not wait 600s"
+
+
+def test_the_retry_after_ceiling_tracks_our_own_longest_wait():
+    """Never sleep longer on a provider's say-so than we would sleep on our
+    own guess.
+
+    The two numbers were independent until 2026-09-04, when the backoff was
+    widened from 5/10/20 to 30/60/120 and the 60s ceiling was left behind.
+    That combination refuses an authoritative 90s Retry-After and then waits
+    120s on a guess instead — strictly worse, and invisible, because both
+    halves look reasonable read on their own.
+
+    Pinned in both providers that honor the header at all.
+    """
+    import openlocalweather.llm.anthropic as anthropic_mod
+    import openlocalweather.llm.openai_compat as openai_mod
+
+    for mod in (openai_mod, anthropic_mod):
+        longest_self_imposed = max(
+            mod.RETRY_BASE_DELAY_S * 2 ** (attempt - 1)
+            for attempt in range(1, mod.MAX_ATTEMPTS)
+        )
+        assert mod.RETRY_AFTER_MAX_S == longest_self_imposed, mod.__name__

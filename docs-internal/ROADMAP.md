@@ -6456,6 +6456,10 @@ and raising it would fix nothing.** The failures are Gemini being
 intermittently unavailable — HTTP 503s and connections that never answer —
 which is also what the 09-02 logs show directly.
 
+> **The second sentence above is wrong.** Corrected the next day against the
+> spend ledger — see "The correction: one sample against thirteen" below.
+> The first sentence stands; the inference drawn from it does not.
+
 **What this changes.** The cap pressure is real but it is not a bug on this
 side. A bad day genuinely costs 2 runs x 4 attempts = 8 billable requests,
 and 10 left no room for anything else. The cap is now 16, which absorbs a bad
@@ -6469,11 +6473,107 @@ would span more of the outage for the same number of billable requests, at
 the cost of a slower run. That is a real trade and it should be decided with
 more than one bad day of evidence.
 
+> Decided 2026-09-04, on the evidence below: 30s, 60s, 120s.
+
+### The correction: one sample against thirteen, 2026-09-04
+
+The probe above was a single successful call, and it was read as evidence
+about a distribution. It is not. It shows generation CAN finish in 33
+seconds; it says nothing about the tail, and the tail is the whole question.
+
+**The spend ledger had the answer the whole time and was not consulted.**
+Every attempt is timestamped there before it is sent — that is what item 26
+built it for — so subtracting the known 5/10/20 backoff from consecutive
+timestamps recovers how long each failed attempt actually ran. Across the
+scheduled runs on record, 13 failed attempts with a recoverable duration
+(replay bursts excluded: consecutive entries there are separate cases, not
+retries of one another):
+
+```text
+8 of 13   60.1s                     — exactly the client's own ceiling
+5 of 13   1.6, 16.5, 19.0, 21.6, 29.5s
+```
+
+Bimodal, with nothing in between. **Nothing has ever failed at 35s, or at
+45s.** A cluster sitting precisely on our own deadline is this side giving
+up, not the provider refusing — and 8 of 13 is not a corner case, it is the
+majority failure mode. The 09-03 forecast run is the clean example: four
+attempts, three of them dying at 60.1s, the whole burst over in 215 seconds.
+
+So the correct statement is narrower than either version before it: **the
+60s ceiling was being hit constantly; whether lifting it helps is unknown.**
+
+**What 90s settles, and what it does not.** Two hypotheses remain and this
+side cannot distinguish them:
+
+- *Slow generations.* Requests that would have completed at 70-80s. Raising
+  to 90s converts them into successes.
+- *Hung connections.* Requests that were never going to answer. Raising to
+  90s makes them fail 30 seconds later, for the same billable cost, and
+  changes nothing else.
+
+**The prediction, recorded before the fact.** Re-run this same ledger
+analysis in a week. If `90.1s` has simply replaced `60.1s` as the cluster,
+it was hangs, the timeout was not the fix, and the right response is a
+SHORTER ceiling — failing at 40s and retrying costs less than failing at 90s
+and retrying. If the cluster disperses, it was slow generations and the
+raise did its job.
+
+**The method is the durable part.** The ledger was built to enforce a cap,
+and it turns out to be a latency record too, because it timestamps before
+the call. Any question of the form "how long was this provider taking on the
+day it broke" is answerable from it retrospectively, without instrumenting
+anything. That is worth more than this particular answer.
+
 **One thing the probe established for free.** The response carried
 `rain=True` with `rain_probability_pct=60` — the first real evidence that
 item 58's new field produces a sensible, self-consistent value on a live
 call, rather than merely passing a schema. The replay would have shown this
 properly; a single successful call shows it partially.
+
+### The app must not inherit the pipeline's patience
+
+Widening the backoff to 30/60/120 exposed something the old numbers hid.
+`olw_core`'s retry loop is shared by both callers, and until now both got the
+same answer — which was tolerable at 5/10/20 and absurd at 30/60/120, where
+a transient 503 would have held the app's UI for eight and a half minutes
+before saying anything.
+
+The two callers fail in opposite directions:
+
+- `alarm_scheduler.dart` runs with **nobody watching**. Losing the run costs
+  a forecast and the next chance is hours away, so it should sit out a bad
+  minute rather than give up inside one.
+- `app_state.dart` runs because **someone pressed a button and is holding
+  the phone**. In the app the user IS the retry loop: the error screen has a
+  retry button and they can see whether pressing it is worth their time. The
+  pipeline has no such person, which is precisely why its loop lives in code.
+
+So `RetryPolicy` now carries attempts, backoff and timeout as one decision,
+with two named answers — `interactive` (2 attempts, 3s, 75s ceiling: ~2.5
+min worst case) and `batch` (4 / 30s / 90s, matching the Python constants
+deliberately, so one incident explains both implementations). The timeout
+stays generous in both: cutting it is how a working forecast becomes a
+failed one to save nothing.
+
+Bundling the three into one type rather than leaving three knobs is the
+point. They are only correct in combination, and the next section is what
+happens when they drift apart.
+
+### A clamp that silently stopped matching its own schedule
+
+`retryAfter` (and Python's `_retry_after_seconds`) ignored any `Retry-After`
+over 60 seconds. That was right when our own longest sleep was 20s. At
+30/60/120 it became incoherent: a provider sending an authoritative
+`Retry-After: 90` would have been **overruled in favour of sleeping 120
+seconds on a guess.**
+
+Both halves read as reasonable on their own, which is why this kind of defect
+survives review. The ceiling is now derived — `RETRY_AFTER_MAX_S`, and
+`RetryPolicy.retryAfterMax` — from one rule: *never sleep longer on a
+provider's say-so than we would sleep on our own.* Tests in both languages
+pin the derivation rather than the number, so the next schedule change cannot
+re-open it.
 
 ### And a second, quieter leak found in the same reconciliation
 

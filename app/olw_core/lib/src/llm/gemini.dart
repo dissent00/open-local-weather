@@ -32,8 +32,10 @@ class GeminiProvider implements LlmProvider {
   final String? thinkingLevel;
   final http.Client _client;
 
-  /// Base backoff between retries; tests pass Duration.zero.
-  final Duration retryDelay;
+  /// Attempts, backoff and timeout as one decision. Defaults to the
+  /// interactive answer because this package's caller is an app; the
+  /// alarm-scheduled run passes [RetryPolicy.batch] explicitly.
+  final RetryPolicy retryPolicy;
 
   /// Called before every request this provider sends, retries included.
   /// Used by the app to count spend against the user's own cap.
@@ -44,7 +46,7 @@ class GeminiProvider implements LlmProvider {
     required this.model,
     this.thinkingLevel,
     http.Client? client,
-    this.retryDelay = retryBaseDelay,
+    this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
   })  : _client = client ?? http.Client() {
     if (apiKey.isEmpty) throw ArgumentError('GeminiProvider requires an api_key.');
@@ -94,7 +96,7 @@ class GeminiProvider implements LlmProvider {
       headers: const {'Content-Type': 'application/json'},
       payload: payload,
       label: 'Gemini',
-      baseDelay: retryDelay,
+      policy: retryPolicy,
       beforeAttempt: beforeAttempt,
     );
 

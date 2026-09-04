@@ -53,7 +53,13 @@ REQUEST_TIMEOUT_S = 120
 # GeminiProvider grew retries, so it belongs here from the start.
 RETRYABLE_STATUS_CODES = frozenset({408, 409, 429, 500, 502, 503, 504, 529})
 MAX_ATTEMPTS = 4
-RETRY_BASE_DELAY_S = 5  # exponential: 5s, 10s, 20s
+# 30s, 60s, 120s. Widened with Gemini's on 2026-09-04 — see gemini.py for
+# the reasoning and the measurement. No evidence from THIS provider drove
+# it; the argument is about how provider capacity recovers, which is not
+# a Gemini trait, and leaving two of the three on a schedule already
+# shown to be too tight would only hide the next occurrence.
+RETRY_BASE_DELAY_S = 30
+RETRY_AFTER_MAX_S = RETRY_BASE_DELAY_S * 2 ** (MAX_ATTEMPTS - 2)  # the longest we impose ourselves
 
 # Generous but bounded. The real production forecast measured ~2,350
 # output tokens, and roadmap item 14 (multiple audience voices) will grow
@@ -206,7 +212,15 @@ def _retry_after_seconds(resp: requests.Response) -> float | None:
     """Honors Retry-After when Anthropic sends one on a 429. Ignores the
     HTTP-date form and anything implausibly long — better to fail the run
     and let the next scheduled attempt pick it up than block a CI job for
-    minutes."""
+    minutes.
+
+    The ceiling is RETRY_AFTER_MAX_S, and the rule setting it is: never sleep
+    longer on a provider's say-so than we would sleep on our own. It tracks
+    the longest delay this module imposes by itself, which the 2026-09-04
+    widening moved from 20s to 120s. Left at its old 60s while our own
+    schedule grew past it, the clamp would have refused a 90s Retry-After --
+    an explicit, authoritative instruction from the provider -- and then
+    waited 120 seconds anyway on a guess. That is strictly worse."""
     raw = resp.headers.get("Retry-After") or resp.headers.get("retry-after")
     if not raw:
         return None
@@ -214,4 +228,4 @@ def _retry_after_seconds(resp: requests.Response) -> float | None:
         seconds = float(raw)
     except ValueError:
         return None
-    return seconds if 0 < seconds <= 60 else None
+    return seconds if 0 < seconds <= RETRY_AFTER_MAX_S else None

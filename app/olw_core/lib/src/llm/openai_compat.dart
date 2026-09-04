@@ -28,8 +28,10 @@ class OpenAiCompatProvider implements LlmProvider {
   final String jsonMode;
   final http.Client _client;
 
-  /// Base backoff between retries; tests pass Duration.zero.
-  final Duration retryDelay;
+  /// Attempts, backoff and timeout as one decision. Defaults to the
+  /// interactive answer because this package's caller is an app; the
+  /// alarm-scheduled run passes [RetryPolicy.batch] explicitly.
+  final RetryPolicy retryPolicy;
 
   /// Called before every request this provider sends, retries included.
   /// Used by the app to count spend against the user's own cap.
@@ -41,7 +43,7 @@ class OpenAiCompatProvider implements LlmProvider {
     required this.baseUrl,
     this.jsonMode = 'json_schema',
     http.Client? client,
-    this.retryDelay = retryBaseDelay,
+    this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
   }) : _client = client ?? http.Client() {
     // apiKey may legitimately be empty: Ollama and LM Studio need no key,
@@ -97,7 +99,7 @@ class OpenAiCompatProvider implements LlmProvider {
         'response_format': responseFormat,
       },
       label: 'LLM',
-      baseDelay: retryDelay,
+      policy: retryPolicy,
       beforeAttempt: beforeAttempt,
     );
 

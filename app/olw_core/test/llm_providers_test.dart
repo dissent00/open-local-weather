@@ -16,6 +16,16 @@ import 'package:http/testing.dart';
 import 'package:olw_core/olw_core.dart';
 import 'package:test/test.dart';
 
+/// The real interactive policy with the sleeping taken out. Attempt count
+/// and timeout are the production ones, because those are what the retry
+/// tests below are actually asserting; only the backoff is faked, since
+/// waiting three real seconds to prove a retry happened proves nothing.
+final instantInteractive = RetryPolicy(
+  attempts: RetryPolicy.interactive.attempts,
+  baseDelay: Duration.zero,
+  timeout: RetryPolicy.interactive.timeout,
+);
+
 const validPayload = {
   'yesterday_verification': 'Rain call was accurate.',
   'verification_notes': [
@@ -280,7 +290,7 @@ void main() {
         model: 'm',
         baseUrl: 'https://x.test/v1',
         client: client,
-        retryDelay: Duration.zero,
+        retryPolicy: instantInteractive,
       ).generate(systemPrompt: 's', userPrompt: 'u');
       expect(got.todayProperties.tempLowC, 18.0);
       expect(calls, 2);
@@ -298,7 +308,7 @@ void main() {
           model: 'm',
           baseUrl: 'https://x.test/v1',
           client: client,
-          retryDelay: Duration.zero,
+          retryPolicy: instantInteractive,
         ).generate(systemPrompt: 's', userPrompt: 'u'),
         throwsA(isA<LlmResponseError>()),
       );
@@ -307,16 +317,40 @@ void main() {
   });
 
   group('retryAfter helper', () {
+    final max = RetryPolicy.batch.retryAfterMax;
+
     test('honors a plausible value', () {
-      expect(retryAfter({'retry-after': '3'}), const Duration(seconds: 3));
+      expect(retryAfter({'retry-after': '3'}, max), const Duration(seconds: 3));
     });
     test('ignores an implausibly long wait', () {
       // Better to fail and let the next scheduled attempt pick it up than to
       // block — especially inside a mobile background task the OS will kill.
-      expect(retryAfter({'retry-after': '600'}), isNull);
+      expect(retryAfter({'retry-after': '600'}, max), isNull);
     });
     test('ignores the HTTP-date form', () {
-      expect(retryAfter({'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT'}), isNull);
+      expect(retryAfter({'retry-after': 'Wed, 21 Oct 2026 07:28:00 GMT'}, max), isNull);
+    });
+
+    test('the ceiling is the policy, not a fixed number', () {
+      // The rule: never sleep longer on a provider's say-so than we would
+      // sleep on our own guess. 90s is well inside what the batch policy
+      // would impose by itself (120s) and far outside the interactive one
+      // (3s), so the SAME header must be honoured in one and refused in the
+      // other. A flat 60s ceiling, which is what this was until 2026-09-04,
+      // gets both of those wrong in opposite directions.
+      const header = {'retry-after': '90'};
+      expect(retryAfter(header, RetryPolicy.batch.retryAfterMax),
+          const Duration(seconds: 90));
+      expect(retryAfter(header, RetryPolicy.interactive.retryAfterMax), isNull);
+    });
+
+    test('each policy will not honour more than it would impose itself', () {
+      for (final policy in [RetryPolicy.interactive, RetryPolicy.batch]) {
+        final longestOwnSleep = [
+          for (var a = 1; a < policy.attempts; a++) policy.baseDelay * (1 << (a - 1))
+        ].reduce((x, y) => x > y ? x : y);
+        expect(policy.retryAfterMax, longestOwnSleep);
+      }
     });
   });
 

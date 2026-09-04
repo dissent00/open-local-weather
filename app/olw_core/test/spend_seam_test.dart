@@ -13,6 +13,16 @@ import 'package:test/test.dart';
 /// gap is where a real bug lived: counting once per generate() while the
 /// provider sent up to maxAttempts requests, so a cap of 10 permitted 40.
 ///
+/// These tests are about COUNTING, so they need a policy that actually
+/// retries — the interactive default stops at two attempts, which would hide
+/// the very undercount described above. Real backoff is dropped to zero
+/// because sleeping 30 seconds to prove an increment is not a test.
+const instantBatch = RetryPolicy(
+  attempts: 4,
+  baseDelay: Duration.zero,
+  timeout: Duration(seconds: 90),
+);
+///
 /// See `spec/README.md`, "Spend cap invariants", for the shared list these
 /// assert on both sides.
 void main() {
@@ -77,7 +87,7 @@ void main() {
       apiKey: 'k',
       model: 'm',
       client: flaky(2, log: log),
-      retryDelay: Duration.zero,
+      retryPolicy: instantBatch,
       beforeAttempt: () async => hookCalls++,
     );
 
@@ -99,7 +109,7 @@ void main() {
       apiKey: 'k',
       model: 'm',
       client: flaky(99, log: log),
-      retryDelay: Duration.zero,
+      retryPolicy: instantBatch,
       beforeAttempt: () async {
         hookCalls++;
         if (hookCalls > 2) throw StateError('budget exhausted');
@@ -126,7 +136,7 @@ void main() {
         order.add('request');
         throw const SocketExceptionLike();
       }),
-      retryDelay: Duration.zero,
+      retryPolicy: instantBatch,
       beforeAttempt: () async => order.add('hook'),
     );
 
@@ -135,7 +145,7 @@ void main() {
       throwsA(isA<LlmResponseError>()),
     );
     expect(order.first, 'hook');
-    expect(order.where((e) => e == 'hook'), hasLength(maxAttempts),
+    expect(order.where((e) => e == 'hook'), hasLength(instantBatch.attempts),
         reason: 'every attempt that left the process was counted first');
   });
 
@@ -147,7 +157,7 @@ void main() {
       apiKey: 'k',
       model: 'm',
       client: flaky(0, log: log),
-      retryDelay: Duration.zero,
+      retryPolicy: instantBatch,
     );
     await provider.generate(systemPrompt: 'sys', userPrompt: 'user');
     expect(log, hasLength(1));
