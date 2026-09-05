@@ -267,6 +267,20 @@ def _stub_the_other_health_checks(monkeypatch):
     monkeypatch.setattr(cli, "detect_coverage", lambda *args: [])
     monkeypatch.setattr(cli, "_days_since_last_commit", lambda: 0)
 
+    # The CAP probe is a live HTTP request to Kenya's met service whenever
+    # config/location.yaml sets cap_feed_url, which it does. Left unstubbed it
+    # made every caller of this helper depend on that host being up: on
+    # 2026-09-05 the probe timed out mid-suite, check_cap_feed returned
+    # UNREACHABLE, and the passes-when-it-matches test exited 1 — then passed
+    # on a rerun and in isolation. A feed date fixed in the past reads QUIET
+    # forever, which is what production has seen since May 2026 and leaves
+    # `ok` true, so the exit code stays the check-under-test's alone.
+    class QuietFeed:
+        status_code = 200
+        text = "<rss><channel><item><pubDate>Mon, 04 May 2026 09:00:00 +0000</pubDate></item></channel></rss>"
+
+    monkeypatch.setattr(cli.requests, "get", lambda *args, **kwargs: QuietFeed())
+
 
 def _observed_at(offset_hours):
     """A settled observation `offset_hours` from whatever cycle the table
