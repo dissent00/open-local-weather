@@ -3,7 +3,7 @@
 WHY THIS IS A CORRECTNESS REQUIREMENT, NOT A SETTING.
 
 Nothing in this project counted API calls until now. The only limiter was
-daily.yml's `already_done` skip check, which `force: true` deliberately
+forecast.yml's `already_done` skip check, which `force: true` deliberately
 bypasses — so a mistake in a crontab on a machine nobody is watching could
 run up an unbounded bill against someone's key, and the first signal would
 be the bill. A fork running this on their own key is exposed the same way,

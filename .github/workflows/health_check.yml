@@ -22,11 +22,27 @@ on:
     - cron: "17 4 * * 1" # ~04:17 UTC every Monday
   workflow_dispatch:
 
+# The check WRITES now, which it did not before. data/health/status.json is
+# what the previous run saw, and without it the check has no memory — every
+# run reads the world, prints it and forgets, which is fine for a state and
+# wrong for an EVENT. ROADMAP item 2 is gated on one such event (the CAP feed
+# waking up) and nothing was going to report it. See store/health_status.py.
+permissions:
+  contents: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Required now that this job PUSHES. With no `ref:`, checkout leaves
+          # a detached HEAD at `github.sha` and the commit below would have
+          # nowhere to go — the status file would be written, committed to
+          # nothing, and the wake-up alarm would re-fire every Monday for the
+          # whole season. forecast.yml pins the same way for a related reason
+          # (see its checkout comment).
+          ref: main
 
       - uses: actions/setup-python@v7
         with:
@@ -49,4 +65,27 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
-        run: olw check-health
+        # PIPEFAIL IS LOAD-BEARING, and its absence lost a forecast once
+        # already — see ROADMAP item 66 and tests/test_workflows.py.
+        run: |
+          set -o pipefail
+          olw check-health 2>&1 | tee "$RUNNER_TEMP/health.log"
+
+      # ALWAYS, including after a failing check. The wake-up alarm fires on a
+      # TRANSITION, so the new status has to be recorded even on the run that
+      # just went red — otherwise the same transition is re-detected every
+      # week and a signal meant to be seen once becomes a weekly red job
+      # nobody reads.
+      - name: Commit the health status
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/health/
+          if git diff --cached --quiet; then
+            echo "No status change to commit."
+          else
+            git commit -m "health: $(date -u +%Y-%m-%d)"
+            git pull --rebase --autostash
+            git push
+          fi

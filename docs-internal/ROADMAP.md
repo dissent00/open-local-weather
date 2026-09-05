@@ -65,12 +65,10 @@ cheap and they gate other work, which is why they sit high.
 8. **20, then 60.** Backfill makes the archive queryable; analogues are what
    query it. Forty days is not enough for either.
 
-**Item 2 still carries the status Next, and this list does not open with
-it.** That marker predates item 53. Severe-weather alerting is the expensive
-version of what 53.4 and 53.5 buy cheaply — a run that admits it is
-degraded, and a METAR with a nowcasting role — so it belongs after them
-rather than before. The status is left as it is rather than quietly
-demoted; it is the operator's word to change.
+**Item 2 was demoted from `Next` on 2026-09-05, on the operator's word.**
+Not a priority call: the item gated itself on October, and the freshness
+probe it asked for now rings once when the gate opens. Severe-weather
+alerting is still the expensive version of what 53.4 and 53.5 buy cheaply.
 
 Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
@@ -264,7 +262,38 @@ morning one.
 
 ---
 
-## 2. Severe-weather alerts — hourly monitoring · **Next**
+## 2. Severe-weather alerts — hourly monitoring · **Planned — gated on October 2026**
+
+> **Demoted from `Next` on 2026-09-05, and not on priority.** This item gated
+> itself: its own conclusion below is "do not build the alert path on the
+> assumption that it is live — build the freshness probe first, let October
+> decide". The probe shipped 2026-09-03 and reported `quiet`, newest alert 118
+> days old. So this is waiting on a calendar event it named, not on attention,
+> and `Next` read as "someone could pick this up".
+>
+> **The gate now has a doorbell.** Found while demoting it: `QUIET` was green
+> and `FRESH` was green, so the one transition this item waits for produced a
+> line in a weekly Actions log and nothing else — a real event, correctly
+> detected, announced where nobody looks. Item 66's shape one layer along.
+> `cap_feed_woke_up` now fails the health check exactly once, on the run where
+> a sleeping feed starts carrying alerts. A red job carrying good news, which
+> is the point: a failing job is the only channel this deployment has that
+> reaches a person.
+>
+> Two things that made it work and are easy to get wrong. The check had no
+> memory, so `data/health/status.json` and a write step in `health_check.yml`
+> exist now — the status is recorded on EVERY path including the failing one,
+> or the same transition is re-detected every Monday and a signal meant to be
+> seen once becomes a weekly red job nobody reads. And the first run ever
+> records without reporting: a transition nobody was present for is not a
+> transition anyone can report, and firing on it would open any fork whose
+> national feed happens to be live with an alarm about news that is not new.
+>
+> **GDACS does not wait for October.** It is below as the independent
+> cross-check, it does not depend on KMD waking up, and if the answer in
+> October is "the feed was populated once and abandoned", it is the half of
+> this item that was always buildable — a single national feed going quiet
+> being precisely the failure a second source exists to cover.
 
 ### First, a correction to the correction — KMD publishes CAP, 2026-09-03
 

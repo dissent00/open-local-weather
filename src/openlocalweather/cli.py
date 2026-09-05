@@ -1,6 +1,6 @@
 """Command-line entrypoint.
 
-`olw run-daily` is what .github/workflows/daily.yml invokes. It reads
+`olw run-daily` is what .github/workflows/forecast.yml invokes. It reads
 secrets from the environment (never from CLI args, so they don't end up in
 shell history or process listings) and leaves git commit/push and any
 required approvals to the caller — see pipeline.py's module docstring for
@@ -39,6 +39,8 @@ from openlocalweather.health_check import (
     CapFeedStatus,
     DegradationStatus,
     check_aligned_window,
+    CAP_STATUS_KEY,
+    cap_feed_woke_up,
     check_cap_feed,
     check_recent_degradations,
     check_model_deprecation,
@@ -81,6 +83,7 @@ from openlocalweather.store.log_store import (
     write_log_entry,
 )
 from openlocalweather.store.track_record import read_track_record, write_track_record
+from openlocalweather.store.health_status import read_health_status, write_health_status
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -586,23 +589,51 @@ def _run_check_health(args: argparse.Namespace) -> int:
             body = None
 
         cap = check_cap_feed(body, now=datetime.now(timezone.utc))
+
+        # What the last run saw, so a CHANGE can be reported and not just a
+        # state. See store/health_status.py for why this check needed memory.
+        previous = read_health_status(args.data_dir).get(CAP_STATUS_KEY)
+        woke_up = cap_feed_woke_up(previous, cap.status)
+
         if cap.status is CapFeedStatus.UNREACHABLE:
-            # The one failing case. A quiet feed may be correct; a feed that
-            # stopped answering has moved or died, and nothing else here would
-            # notice until an alert was missed.
+            # A quiet feed may be correct; a feed that stopped answering has
+            # moved or died, and nothing else here would notice until an alert
+            # was missed.
             print(f"  WARNING: {cap.message}")
+            ok = False
+        elif woke_up:
+            # A red job carrying good news, which is unusual and is the point.
+            # This deployment has exactly one channel that reaches a person —
+            # a failing job — and ROADMAP item 2 is gated on precisely this
+            # event: the feed that has been silent since May is issuing again,
+            # so the alerting work it was holding can start.
+            print(f"  WAKE-UP: {cap.message}")
+            print(
+                "  The CAP feed was last seen "
+                f"{previous} and is now carrying current alerts. ROADMAP item 2 "
+                "is gated on this — the alert path can be built against a feed "
+                "that is demonstrably live. This failure is the notification, "
+                "and it will not repeat: the new status is recorded below."
+            )
             ok = False
         elif cap.status is CapFeedStatus.FRESH:
             print(f"  OK — {cap.message}")
         else:
             print(f"  {cap.message}")
 
+        # Recorded on EVERY path, including the two that just failed the run.
+        # An alarm that fires on a transition must record the new state, or the
+        # same transition is re-detected every week and a signal meant to be
+        # seen once becomes a weekly red job nobody reads.
+        write_health_status(args.data_dir, {CAP_STATUS_KEY: cap.status.value})
+
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")
     if check_repo_staleness(days):
         print(
             f"  WARNING: last commit was {days} days ago. GitHub auto-disables scheduled "
-            "workflows after 60 days of repo inactivity — investigate why daily.yml isn't "
+            "workflows after 60 days of repo inactivity — investigate why forecast.yml "
+            "isn't "
             "running or isn't pushing."
         )
         ok = False

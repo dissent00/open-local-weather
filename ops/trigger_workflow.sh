@@ -29,16 +29,25 @@
 # scheduling failure domain at all — this doesn't fix GitHub's scheduler,
 # it routes around it.
 #
-# GitHub's own `schedule:` triggers are deliberately left in daily.yml /
-# evening_refresh.yml as a backstop, not removed — if this script's cron
-# job, this server, or its stored token ever breaks, the workflows still
-# have their own (imperfect, but non-zero) chance of firing on their own.
+# THIS SCRIPT IS NOW THE ONLY TRIGGER. There is no GitHub `schedule:`
+# backstop anywhere — the eight backup slots were removed from forecast.yml
+# on 2026-08-29, and daily.yml / evening_refresh.yml were deleted on
+# 2026-09-05 once this script had been running both slots for a week.
 #
-# The two are not the same redundancy twice. This script routes around
-# GitHub's scheduler; the schedule routes around this server. Dropping
-# either leaves a single point of failure whose failure mode is silence —
-# a run that never happens produces no error, and health_check.yml only
-# looks weekly.
+# That is a decision with a measurement behind it rather than a tidy-up, and
+# the measurement is in forecast.yml's own header: the backstop slots were
+# never punctual, and a slot late enough does not run late, it runs as a
+# DIFFERENT KIND OF RUN — a 00:0x arrival crossing UTC midnight becomes the
+# next day's first run, which owns the write-once predictions the accuracy
+# record scores. Twice, that cost a day its guidance freshness.
+#
+# What was given up is real and worth stating plainly: if this server, its
+# cron, its network or its stored token breaks, NOTHING runs and nothing
+# says so. A run that never happens produces no error. The only thing that
+# eventually notices is health_check.yml's days-since-last-commit warning at
+# 50 days, which is slow by design — GitHub auto-disables scheduled
+# workflows at 60 days of repo inactivity, so that number is sized to that
+# deadline and not to this failure.
 # Both paths are safe to overlap: the `check` job in each workflow skips
 # real work (no wasted Gemini call) if the day's result already exists,
 # regardless of which trigger produced it — this covers workflow_dispatch
@@ -47,7 +56,7 @@
 # when that meant "an occasional manual click" but caused a real wasted
 # double-run once THIS script started calling workflow_dispatch routinely
 # every day; fixed via the `force` input, default false, which this
-# script deliberately never sets — see daily.yml's `check`/`run` job docs).
+# script deliberately never sets — see forecast.yml's `check`/`run` job docs).
 #
 # ============================== SETUP ==============================
 # 1. Create a GitHub fine-grained PAT scoped to this repo only, with
@@ -91,9 +100,9 @@ set -euo pipefail
 
 # forecast.yml is the only workflow to schedule: one verb, and the day
 # decides whether this is its first run or an update (see
-# pipeline.run_forecast). An argument is still accepted for the transition
-# off daily.yml / evening_refresh.yml, and for anyone dispatching something
-# else by hand.
+# pipeline.run_forecast). The transition off daily.yml / evening_refresh.yml
+# completed 2026-09-05 and both files are gone; the argument stays for
+# anyone dispatching something else by hand.
 WORKFLOW_FILE="${1:-forecast.yml}"
 REPO="${GH_REPO:-dissent00/open-local-weather}"
 BRANCH="${GH_BRANCH:-main}"

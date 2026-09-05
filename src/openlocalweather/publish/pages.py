@@ -3,7 +3,7 @@ an append-only per-day archive.
 
 GitHub Pages serves directly from the committed docs/ folder (Settings ->
 Pages -> Deploy from branch -> /docs) — no separate deploy action or build
-step needed; this module's output IS the site. daily.yml already commits
+step needed; this module's output IS the site. forecast.yml already commits
 docs/ alongside data/ each run (see that workflow's "Commit and push" step).
 
 All internal links are built as ABSOLUTE URLs off `base_url` rather than

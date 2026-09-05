@@ -2,7 +2,7 @@
 KisumuForecastPipeline_v2.gs step-for-step, adapted to git-as-database.
 
 git commit/push is deliberately NOT done here — that's the GitHub Actions
-workflow's job (see .github/workflows/daily.yml and evening_refresh.yml)
+workflow's job (see .github/workflows/forecast.yml)
 after these functions return, keeping this module free of any git
 dependency and testable purely as "run this, inspect the files/return
 value."
@@ -1199,7 +1199,7 @@ def run_daily_pipeline(
     # tomorrow scores those as though they had been issued at 06:00 —
     # every model's Day+0 accuracy improves and nothing in the record shows
     # why. The guards that used to prevent it both live OUTSIDE this
-    # pipeline: daily.yml's already_done condition, and a crontab on a
+    # pipeline: forecast.yml's already_done condition, and a crontab on a
     # machine this repo cannot see or test. Neither survives someone ticking
     # `force` on a manual dispatch.
     #
@@ -1731,7 +1731,7 @@ def run_refresh_pipeline(
     # silently replace it with an already-refreshed version — hence the
     # `or`, which only reaches current_snapshot the first time. (A second
     # same-day refresh finding morning_issuance already set shouldn't
-    # normally happen — evening_refresh.yml's `check` job gates on
+    # normally happen — forecast.yml's `check` job gates on
     # meta.refreshed_at already being set — but the guard costs nothing and
     # matches this project's existing belt-and-suspenders idempotency
     # style, e.g. last_verified_target_date in verify/pipeline.py.)

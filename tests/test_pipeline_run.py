@@ -814,7 +814,7 @@ def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
 
 
 def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
-    """Defensive case, shouldn't normally happen (evening_refresh.yml's
+    """Defensive case, shouldn't normally happen (forecast.yml's
     check job gates on meta.refreshed_at already being set) but must be
     correct if it ever does: a second refresh the same day must not
     replace the true morning snapshot with an already-refreshed version."""

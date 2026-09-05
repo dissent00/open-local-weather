@@ -387,6 +387,37 @@ class CapFeedCheck:
     days_since_newest: int | None = None
 
 
+# The key this check stores itself under in data/health/status.json.
+CAP_STATUS_KEY = "cap_feed"
+
+# A feed carrying nothing yet and a feed that has gone silent are both
+# "asleep" for the purpose of noticing it wake up. EMPTY is kept a separate
+# STATUS so a working URL is never debugged by mistake, but as a starting
+# point for a transition the two are the same thing.
+_CAP_ASLEEP = frozenset({CapFeedStatus.QUIET, CapFeedStatus.EMPTY})
+
+
+def cap_feed_woke_up(previous: str | None, current: CapFeedStatus) -> bool:
+    """True on the one run where a sleeping feed starts carrying alerts.
+
+    ROADMAP item 2 is gated on this exact event and nothing else was going to
+    report it. QUIET is green and FRESH is green, so a feed coming back to
+    life produced one line in a weekly Actions log — a real event, correctly
+    detected, announced where nobody looks.
+
+    THREE-VALUED, and the None case is the interesting one. `previous` is None
+    when no run has recorded a status yet, and that must NOT fire even when
+    the feed is FRESH today. A transition nobody was present for is not a
+    transition anyone can report, and firing on it would mean a fresh clone —
+    or any fork whose national feed happens to be live — opens with an alarm
+    about news that is not new. The first run records; the second can compare.
+    """
+    if previous is None:
+        return False
+
+    return current is CapFeedStatus.FRESH and previous in {s.value for s in _CAP_ASLEEP}
+
+
 def newest_cap_item_age(feed_xml: str, *, now: datetime) -> int | None:
     """Whole days since the newest item's pubDate, or None if none parses.
 
