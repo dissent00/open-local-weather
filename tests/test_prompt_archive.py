@@ -13,7 +13,13 @@ import pytest
 from openlocalweather.store import log_store, prompt_archive
 from openlocalweather.store.prompt_archive import prompt_sha256
 
-from tests.test_pipeline_run import make_deps
+# patch_fetches is autouse, but only in the module that DEFINES it — an
+# autouse fixture does not reach a module that merely imports its neighbour's
+# helpers. Without it the three tests here that drive the real pipeline sent
+# live requests to api.open-meteo.com, including the backstop that is supposed
+# to make exactly that impossible. Importing the fixture binds it into this
+# module's namespace, which is what makes it apply.
+from tests.test_pipeline_run import make_deps, patch_fetches  # noqa: F401
 from openlocalweather.pipeline import run_daily_pipeline
 
 TODAY = date(2026, 8, 11)

@@ -7194,7 +7194,7 @@ rather than an impression).
 
 ---
 
-## 72. The forecaster is only ever scored where the NWP is already near its ceiling · **Planned**
+## 72. The forecaster is only ever scored where the NWP is already near its ceiling · **Planned — deferred to ~October 2026**
 
 Found 2026-09-04 while asking how much a model change could be expected to
 move anything. The record answers it, and the answer is uncomfortable.
@@ -7260,6 +7260,26 @@ properly rather than as a fourth column bolted onto Day+0.
 Sequencing note: **69 still comes first.** Days not stored cannot be
 backtested, and this item changes what future days record without recovering
 any past ones.
+
+### Deferred to roughly October 2026, decided 2026-09-05
+
+Not on effort, and the tension is worth stating because it cuts both ways.
+
+**Against waiting:** this item shares 69's property — it changes what future
+days record and recovers nothing. Every day it waits is a Day+3 and Day+7
+blend call that is permanently lost. Deferring is not free.
+
+**For waiting, and it wins:** the point of scoring the blend at longer leads
+is to find out whether it is any good there, and that judgement needs a
+sample. The archive held 2 issuances on 2026-09-05. At two a day a month
+gives ~60, which is the first point a backtest can say anything. Shipping
+today buys Day+3 blend predictions that cannot be scored for three days and
+cannot be COMPARED for weeks, at the cost of the largest schema change on
+this list — schema, storage, and a two-language surface.
+
+**What would flip it:** if the Day+3/Day+7 blend record is judged the asset
+in itself rather than the means to an evaluation, this goes sooner. The
+operator was offered that reading explicitly and took the wait.
 
 Related: item 68, item 69, item 71, item 57 (which established the baselines
 this is read against), item 58, item 27.
@@ -7355,3 +7375,97 @@ Do not do this while another prompt change is in flight. Item 61 shipped
 Related: item 27 (replay, the other half of the harness), item 69 (which
 makes the archived inputs available), item 67 (the failure mode this item
 generalises), item 48, item 23, item 61.
+
+---
+
+## 74. Show the reader what the record thinks happened yesterday · **Planned**
+
+Proposed by the operator 2026-09-05, immediately after the change that made
+it matter.
+
+### Why now
+
+That day the Overview stopped carrying yesterday's rain when there was
+nothing to report. The justification was that silence makes no false claim
+where "dry again" would, and that **the shower is still where a reader looks
+it up**. Half of that is verified: the app renders `narrativeMarkdown` in
+full, so the Detailed Discussion reaches app readers as well as the website.
+
+The other half is not. **The narrative may DISCUSS yesterday; nothing
+anywhere DISPLAYS the stored observation** — the `DailyActual` the accuracy
+record actually scores against. A reader cannot see that the record holds
+`precipitation: true, precipitation_onset: "19:00"` for a day whose forecast
+now says nothing about it.
+
+So a claim made while shipping one change turns out to name a gap. Worth
+recording that way round rather than as a feature request.
+
+### What it is, and what it is not
+
+**Read-only, optional, off by default.** One view: what was observed
+yesterday, variable by variable, with the source beside each value.
+
+```text
+Yesterday, 4 September
+  High           31.2 C     airport station
+  Low            19.6 C     airport station
+  Rain           none       reanalysis
+  Shower         19:00      airport station
+  Thunder        not heard  airport station
+  Wind (peak)    41 km/h    reanalysis
+```
+
+**Provenance is not decoration here.** Item 45 stamped which source supplied
+which value precisely so a reader — and a future session — can tell a
+station reading from a reanalysis one, and `_SOURCE_CONFIDENCE` already
+grades them. A display that omits it invites "the app says it did not rain
+and it did", when the honest statement is "the reanalysis grid cell recorded
+nothing and the airport recorded a shower at 19:00", which is a different
+and far more interesting sentence.
+
+**Three-valued fields must read as three-valued.** `thunder: None` is "never
+asked", not "no thunder", and a blank cell would be read as the second. The
+distinction is the whole reason those fields are shaped that way.
+
+### It comes BEFORE items 36 and 46, and improves both
+
+Both of those ASK the reader something. 36 puts a standing "was this right?"
+under the forecast; 46 asks a specific closed question on the days the record
+is genuinely uncertain.
+
+**A reader asked "did it rain here yesterday?" with no idea what the record
+believes cannot tell whether their answer is news.** Someone who can see that
+the archive says dry and the airport says a shower at 19:00 is being asked a
+much better question, and knows why they are being asked it. Showing first
+makes asking worth doing.
+
+It also gives 46 its natural surface: the doubt cases it fires on are
+exactly the rows where two sources disagree, and this is the view that shows
+a disagreement.
+
+### The hazards
+
+- **Read-only, and it must stay that way.** The moment a reader can correct
+  a value, the automated record stops being reproducible from stored data,
+  which is the property every published accuracy figure rests on. Item 36's
+  own hazard section says the same thing about feedback, and this is a
+  surface where the temptation is stronger because the number is right there.
+- **Divergence is not error.** A reanalysis grid cell and a person's street
+  can honestly disagree — that is item 36's founding observation and item 63's
+  reason for existing. The wording must not present the record as wrong
+  merely because it differs from memory.
+- **Off by default.** Most readers want a forecast, not an audit trail. This
+  is for the person who wants to check, and item 46's question is the path
+  that reaches everyone else.
+
+### Where it goes
+
+App-first, and probably app-only. Someone reading the website has `data/` and
+the archive pages; someone who installed an app has neither. The data is
+already on the device — `HistoryStore.loadActuals()` — so this is a screen
+and no fetch.
+
+Related: item 36 (feedback, which this precedes), item 46 (the closed
+question, which this makes answerable), item 45 (provenance, which this
+displays), item 63 (why sources disagree), item 31 (the other stat-block
+question), and the 2026-09-05 rain-silence change in `comparison.py`.
