@@ -70,10 +70,28 @@ const List<String> defaultModels = [
 /// Python implementation.
 const String blendModelId = 'olw_blend';
 
-/// Every model with a tracked skill record, our own blend included.
+/// The trivial rules every real model has to beat.
+///
+/// Kept here rather than imported from baselines.dart so this file keeps no
+/// dependencies, mirroring `BASELINE_MODEL_IDS` in defaults.py. A test
+/// asserts the two lists agree.
+const List<String> baselineModelIds = ['persistence', 'climatology'];
+
+/// Every model with a tracked skill record: the numerical models, the met
+/// service where one is configured, our own blended call, and the two trivial
+/// baselines.
+///
+/// THE BASELINES WERE MISSING HERE UNTIL 2026-09-05, and Python's
+/// `scored_models` had carried them since item 57 shipped server-side. The
+/// divergence was silent in the worst way: the app stored baseline
+/// predictions and then verified against a list that did not name them, so
+/// they were written every day, scored never, and absent from the accuracy
+/// screen — which is the one surface whose entire purpose is to say what a
+/// percentage is worth. Nothing failed; a column simply did not exist.
 List<String> scoredModels({String localBulletinModelId = ''}) => [
       ...defaultModels,
       blendModelId,
+      ...baselineModelIds,
       if (localBulletinModelId.isNotEmpty) localBulletinModelId,
     ];
 
