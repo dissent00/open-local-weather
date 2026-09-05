@@ -270,9 +270,10 @@ def _stub_the_other_health_checks(monkeypatch):
     # The CAP probe is a live HTTP request to Kenya's met service whenever
     # config/location.yaml sets cap_feed_url, which it does. Left unstubbed it
     # made every caller of this helper depend on that host being up: on
-    # 2026-09-05 the probe timed out mid-suite, check_cap_feed returned
-    # UNREACHABLE, and the passes-when-it-matches test exited 1 — then passed
-    # on a rerun and in isolation. A feed date fixed in the past reads QUIET
+    # 2026-09-05 the passes-when-it-matches test exited 1 mid-suite and then
+    # passed both in isolation and on a rerun, which is the shape of a feed
+    # that did not answer — UNREACHABLE sets `ok` false — and not of anything
+    # the test is about. A feed date fixed in the past reads QUIET
     # forever, which is what production has seen since May 2026 and leaves
     # `ok` true, so the exit code stays the check-under-test's alone.
     class QuietFeed:
