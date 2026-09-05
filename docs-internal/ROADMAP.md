@@ -5448,7 +5448,17 @@ sources page — the other "explain the machinery to the reader" surface).
 
 ---
 
-## 57. A percentage with no baseline beside it is not a claim · **Partly shipped — server side, 2026-08-31**
+## 57. A percentage with no baseline beside it is not a claim · **Shipped 2026-09-05**
+
+> **App half closed 2026-09-05, and it found a parity bug on the way.**
+> `ForecastRunner` now stores both baselines at every lead. The display
+> needed nothing — the app's table renders whatever the review holds — but
+> `scoredModels` in `olw_core` had never included the baselines that
+> `scored_models` in `defaults.py` has carried since this shipped
+> server-side. The app verifies against that list, so it would have written
+> baseline predictions every day and scored them never: no throw, no failing
+> vector, just a column that did not exist. Nothing covered `scoredModels`
+> in the Dart suite at all, which is how it stayed wrong. It does now.
 
 `docs/accuracy.html` publishes "ECMWF 75% rolling Day+0 rain verification"
 and the prompt cites those figures when it decides whom to trust. Nothing on
@@ -5656,7 +5666,17 @@ what a baseline is measured with), item 26 (the spend this justifies).
 
 ---
 
-## 58. Score the probability, not the guess · **Partly shipped — scoring 2026-09-03**
+## 58. Score the probability, not the guess · **Partly shipped — per-check scoring 2026-09-03**
+
+> **The aggregation half is not built, on either side — found 2026-09-05.**
+> `verify/scoring.py` rolls `rain_brier` and `brier_checks` into
+> `RollingWindowResult`, and that is as far as it goes: **no `SkillCell` in
+> either language carries a Brier field**, so nothing that renders a skill
+> table can show one. Dart is a step further back and scores per check
+> without aggregating at all. The app's owed entry claimed "what is owed
+> here is display", which was wrong and is corrected there. Order: Dart
+> aggregation to parity, the field through `SkillCell` and the track record
+> both sides, vectors, then display.
 
 `rain` is a boolean. `extract.py` thresholds `precip_mm` at
 `RAIN_THRESHOLD_MM` and the ledger stores true or false, so a model that
