@@ -98,14 +98,30 @@ def test_the_2026_08_24_regression():
     assert result.yesterday_thunder is True
 
 
-def test_two_quiet_days_still_collapse_to_again():
+def test_two_quiet_days_say_nothing_about_rain_at_all():
+    """Changed 2026-09-05, on the operator's call, and the direction matters.
+
+    Two dry days running is the commonest case here, and it was producing an
+    Overview clause every single day about weather that had not changed. Not
+    "dry again" either: silence. The Overview's job is what a reader is
+    walking into, and "the rain did not do anything, same as yesterday" is
+    not news, it is the absence of news wearing a sentence.
+
+    Rain then re-enters the Overview only when there IS something — a band
+    change, thunder, a wet day — and "again" is freed for whatever is
+    genuinely recurring, which on a pair of dry days is usually the
+    instability rather than the rain.
+    """
     result = compute_day_over_day(actual(thunder=False), preds())
-    assert result.rain_contrast == "dry again"
+    assert result.rain_contrast is None
 
 
-def test_no_thunder_observation_behaves_as_before():
+def test_a_day_never_asked_about_thunder_is_not_a_day_that_thundered():
+    """thunder=None is "never observed", not False. It must not be read as a
+    reason to keep the rain clause — the three-valued field decides whether
+    the record KNOWS, and an unknown is not an event."""
     result = compute_day_over_day(actual(thunder=None), preds())
-    assert result.rain_contrast == "dry again"
+    assert result.rain_contrast is None
     assert result.yesterday_thunder is None
 
 
@@ -132,9 +148,17 @@ def test_station_rain_the_reanalysis_missed_is_not_described_as_dry():
     )
     comparison = compute_day_over_day(yesterday, preds())
 
-    assert comparison.rain_contrast == (
-        "dry today; yesterday was dry apart from a brief evening shower"
-    )
+    # NOT in the Overview any more, and not as "dry again" either — see
+    # compute_day_over_day. "dry again" would tell someone who stood in that
+    # 19:00 shower that yesterday was dry, which is the false claim item
+    # 53.1a was raised to stop. Silence makes no claim, and the shower stays
+    # where a reader looks it up: the verification notes and the detailed
+    # discussion, both of which read the same DailyActual.
+    assert comparison.rain_contrast is None
+    assert comparison.yesterday_rain is False
+    assert describe_day_rain(
+        yesterday.precip_mm, yesterday.observed_onset(), yesterday.thunder
+    ) == "dry apart from a brief evening shower", "the description itself is unchanged"
 
 
 def test_the_reanalysis_onset_still_wins_when_it_has_one():

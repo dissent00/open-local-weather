@@ -112,12 +112,29 @@ String? _bandLabel(double? delta, String warmer, String cooler) {
 /// must not change. It is a poor description of a DAY: half a millimetre at
 /// 20:00 and forty millimetres from dawn were both "rain", so the summary
 /// called both "another wet day".
+const String dryDayLabel = 'dry';
+
 const List<(double, String)> dayRainBandsMm = [
-  (1.0, 'dry'),
+  (1.0, dryDayLabel),
   (5.0, 'largely dry'),
   (15.0, 'showery'),
 ];
 const String wetDayLabel = 'wet';
+
+/// The amount band alone — "dry", "largely dry", "showery", "wet".
+///
+/// Separated from [describeDayRain] because the two answer different
+/// questions. The PHRASE also carries timing and thunder, and only ever
+/// carries them for a day that has already happened.
+String? dayRainBand(double? precipMm) {
+  if (precipMm == null) return null;
+
+  for (final (threshold, word) in dayRainBandsMm) {
+    if (precipMm < threshold) return word;
+  }
+
+  return wetDayLabel;
+}
 
 /// When rain arriving stops being a feature OF the day and becomes a feature
 /// AT THE END of it.
@@ -140,14 +157,7 @@ String? _onsetPhrase(String? onset) {
 String? describeDayRain(double? precipMm, String? onset, [bool? thunder]) {
   if (precipMm == null) return null;
 
-  var band = wetDayLabel;
-  for (final (threshold, word) in dayRainBandsMm) {
-    if (precipMm < threshold) {
-      band = word;
-      break;
-    }
-  }
-
+  final band = dayRainBand(precipMm)!;
   final when = _onsetPhrase(onset);
 
   // Thunder outranks the amount. A storm that passes over the city and drops
@@ -260,12 +270,34 @@ DayOverDayComparison? computeDayOverDay(
     // GIVEN — so the wording is a user-facing decision, not an internal
     // label. Keep the two implementations in step; the shared vectors
     // enforce it.
-    rainContrast = todayCharacter == yesterdayCharacter
-        // "again" alone carries it — the sentence this lands in already
-        // opens with a day-over-day comparison, so appending ", like
-        // yesterday" said it twice.
-        ? '$todayCharacter again'
-        : '$todayCharacter today; yesterday was $yesterdayCharacter';
+    // NO RAIN NEWS IS NOT A SENTENCE. Two dry days running is the commonest
+    // case here, and it was producing an Overview clause every single day
+    // about weather that had not changed.
+    //
+    // SILENCE RATHER THAN "dry again", and the difference is not stylistic.
+    // On 2026-08-29 the reanalysis recorded 0.0 mm, the airport reported -RA
+    // at 19:00, and the forecast called the day dry to someone who had stood
+    // in it — item 53.1a. "dry again" makes that same false claim; saying
+    // nothing makes no claim at all, and the shower is still in the
+    // verification notes and the detailed discussion where a reader looks it
+    // up. "again" is then free for whatever genuinely recurs, which on a
+    // pair of dry days is usually the instability rather than the rain.
+    final todayBand = dayRainBand(todayPrecip);
+    final bothDry = todayBand == dryDayLabel &&
+        dayRainBand(yesterdayActual.precipMm) == dryDayLabel;
+
+    if (bothDry &&
+        todayCharacter == todayBand &&
+        yesterdayActual.thunder != true) {
+      // Null is already the prompt's "omit the comparison" signal.
+      rainContrast = null;
+    } else if (todayCharacter == yesterdayCharacter) {
+      // The sentence this lands in already opens with a day-over-day
+      // comparison, so appending ", like yesterday" said it twice.
+      rainContrast = '$todayCharacter again';
+    } else {
+      rainContrast = '$todayCharacter today; yesterday was $yesterdayCharacter';
+    }
   }
 
   return DayOverDayComparison(

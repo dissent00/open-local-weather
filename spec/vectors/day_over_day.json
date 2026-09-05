@@ -970,7 +970,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry today; yesterday was dry apart from a brief evening shower"
+        "rain_contrast": null
       }
     },
     {
@@ -1258,7 +1258,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry again"
+        "rain_contrast": null
       }
     },
     {
@@ -1309,7 +1309,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "calmer",
-        "rain_contrast": "dry again"
+        "rain_contrast": null
       }
     },
     {

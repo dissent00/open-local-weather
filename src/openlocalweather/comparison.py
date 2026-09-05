@@ -86,8 +86,10 @@ def _band_label(delta: float | None, warmer: str, cooler: str) -> str | None:
 # forty millimetres from dawn were both "rain", so the summary called both
 # "another wet day". Kisumu on 2026-08-22 was clear and dry until evening
 # convection, and read as a wet day.
+DRY_DAY_LABEL = "dry"
+
 DAY_RAIN_BANDS_MM = (
-    (1.0, "dry"),
+    (1.0, DRY_DAY_LABEL),
     (5.0, "largely dry"),
     (15.0, "showery"),
 )
@@ -120,6 +122,27 @@ def _onset_phrase(onset: str | None) -> str | None:
     return "from the morning"
 
 
+def day_rain_band(precip_mm: float | None) -> str | None:
+    """The amount band alone — "dry", "largely dry", "showery", "wet".
+
+    Separated from describe_day_rain because the two answer different
+    questions and one of them was being used for the other. The PHRASE
+    carries timing and thunder as well, and only ever carries them for a day
+    that has already happened: today's side of a comparison is a forecast, so
+    it has no observed onset and no thunder. Comparing two phrases therefore
+    compared a bare forecast against a rich observation, and they matched
+    almost never — see compute_day_over_day.
+    """
+    if precip_mm is None:
+        return None
+
+    for threshold, word in DAY_RAIN_BANDS_MM:
+        if precip_mm < threshold:
+            return word
+
+    return WET_DAY_LABEL
+
+
 def describe_day_rain(
     precip_mm: float | None, onset: str | None, thunder: bool | None = None
 ) -> str | None:
@@ -136,12 +159,7 @@ def describe_day_rain(
     if precip_mm is None:
         return None
 
-    band = WET_DAY_LABEL
-    for threshold, word in DAY_RAIN_BANDS_MM:
-        if precip_mm < threshold:
-            band = word
-            break
-
+    band = day_rain_band(precip_mm)
     when = _onset_phrase(onset)
 
     # Thunder outranks the amount. A storm that passes over the city and
@@ -276,11 +294,40 @@ def compute_day_over_day(
         # user-facing decision, not an internal label — and the unchanged
         # cases need the most restraint, because there is genuinely no news
         # in them.
-        if today_character == yesterday_character:
-            # "again" alone carries it. The sentence this lands in is
-            # already a day-over-day comparison that opens with "much like
-            # yesterday", so appending ", like yesterday" produced "much like
-            # yesterday - ... until evening showers again, like yesterday".
+        # NO RAIN NEWS IS NOT A SENTENCE. Two dry days in a row is the
+        # commonest case here and it was producing the Overview's opening
+        # clause every single day — "with dry today; yesterday was dry apart
+        # from a brief evening shower", which is ungrammatical where it lands
+        # and, worse, spends the first thing a reader sees on weather that
+        # has already happened. Item 67's complaint, arriving by a different
+        # route.
+        #
+        # SILENCE RATHER THAN "dry again", and the difference is not stylistic.
+        # Item 53.1a exists because on 2026-08-29 the reanalysis recorded
+        # 0.0 mm, the airport reported -RA at 19:00, and the forecast called
+        # the day dry to someone who had stood in it. "dry again" makes that
+        # false claim about yesterday. Saying nothing makes no claim at all —
+        # and the shower is still in the verification notes and the detailed
+        # discussion, which is where a reader goes to look it up. That is how
+        # both wants are satisfied instead of traded.
+        #
+        # "again" then belongs to whatever is genuinely RECURRING, which on a
+        # pair of dry days is usually the instability rather than the rain:
+        # "convective instability spikes sharply again tonight" is the clause
+        # that earns the word.
+        today_band = day_rain_band(today_precip)
+        both_dry = today_band == DRY_DAY_LABEL and (
+            day_rain_band(yesterday_actual.precip_mm) == DRY_DAY_LABEL
+        )
+
+        if both_dry and today_character == today_band and not yesterday_actual.thunder:
+            # None is already the prompt's "omit the comparison" signal, so
+            # this needs no new rule on that side.
+            rain_contrast = None
+        elif today_character == yesterday_character:
+            # The sentence this lands in already opens with a day-over-day
+            # comparison, so ", like yesterday" produced "much like yesterday
+            # - ... until evening showers again, like yesterday".
             rain_contrast = f"{today_character} again"
         else:
             # "X today; yesterday was Y" rather than "X after a Y day",
