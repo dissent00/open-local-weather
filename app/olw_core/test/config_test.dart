@@ -60,4 +60,42 @@ void main() {
       expect(modelsVisibleToTheForecaster(), containsAll(baselineModelIds));
     });
   });
+
+  group('lightning is its own variable', () {
+    // ROADMAP item 65. "Did it storm" and "did it rain" are different
+    // questions with different answers, and the ledger has had one column for
+    // both. Pinned here because the field reads as an obvious omission from
+    // observedConvection() to anyone who finds it without the reasoning.
+
+    test('three-valued, and starts unasked', () {
+      expect(const DailyActual(rain: false).lightning, isNull);
+      expect(const DailyActual(rain: false, lightning: false).lightning, isFalse);
+      expect(const DailyActual(rain: false, lightning: true).lightning, isTrue);
+    });
+
+    test('does not make a day wet', () {
+      // observedConvection is an OR, so every term added to it can only
+      // CREATE wet days and can only move the rain rate.
+      const dryStorm = DailyActual(rain: false, lightning: true);
+
+      expect(dryStorm.lightning, isTrue);
+      expect(dryStorm.observedConvection(), isFalse,
+          reason: 'lightning must not join the OR — ROADMAP item 65');
+    });
+
+    test('the existing convection terms are untouched', () {
+      expect(const DailyActual(rain: true).observedConvection(), isTrue);
+      expect(const DailyActual(rain: false, thunder: true).observedConvection(), isTrue);
+      expect(
+          const DailyActual(rain: false, precipitation: true).observedConvection(), isTrue);
+      expect(const DailyActual(rain: false).observedConvection(), isFalse);
+    });
+
+    test('survives a round trip', () {
+      final stored = const DailyActual(rain: false, lightning: true).toJson();
+
+      expect(stored['lightning'], isTrue);
+      expect(DailyActual.fromJson(stored).lightning, isTrue);
+    });
+  });
 }

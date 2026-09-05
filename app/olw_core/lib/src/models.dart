@@ -233,6 +233,24 @@ class DailyActual {
   /// app does not yet WRITE it — it has no station of its own to attribute —
   /// but a value read back from storage must survive the round trip rather
   /// than being silently dropped.
+  /// Did anything DETECT lightning on this local day — ROADMAP item 65.
+  ///
+  /// THREE-VALUED, like [thunder] and [precipitation] before it: null means
+  /// nothing was asked, false means something looked and detected none. Every
+  /// stored day is null today and stays null until a detection source exists,
+  /// which is the honest state rather than a gap to fill with false.
+  ///
+  /// DELIBERATELY NOT IN [observedConvection]. That method is an OR, so every
+  /// term added to it can only create wet days and can only move the rain
+  /// rate. Lightning is a DIFFERENT QUESTION: "did it storm" and "did it
+  /// rain" have different answers and the ledger has had one column for both.
+  /// Scored separately, a model that predicted thunder and got a dry storm is
+  /// right about thunder and wrong about rain — more information than either
+  /// verdict alone, and nobody has to rule on whether a dry thunderstorm is
+  /// "a wet day". A test asserts the omission, because it reads as an obvious
+  /// completion to anyone who finds the field and not the reasoning.
+  final bool? lightning;
+
   final Map<String, String>? provenance;
 
   const DailyActual({
@@ -249,6 +267,7 @@ class DailyActual {
     this.stationHighC,
     this.stationLowC,
     this.stationPeakWindKmh,
+    this.lightning,
     this.provenance,
   });
 
@@ -289,6 +308,7 @@ class DailyActual {
         onsetHour: j['onset_hour'] as String?,
         precipMm: _toDouble(j['precip_mm']),
         thunder: j['thunder'] as bool?,
+        lightning: j['lightning'] as bool?,
         precipitation: j['precipitation'] as bool?,
         precipitationOnset: j['precipitation_onset'] as String?,
         stationHighC: _toDouble(j['station_high_c']),
@@ -307,6 +327,7 @@ class DailyActual {
         'onset_hour': onsetHour,
         'precip_mm': precipMm,
         'thunder': thunder,
+        'lightning': lightning,
         'precipitation': precipitation,
         'precipitation_onset': precipitationOnset,
         'station_high_c': stationHighC,

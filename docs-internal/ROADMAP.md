@@ -5993,7 +5993,44 @@ disagreement, a feature this would key on).
 
 ---
 
-## 61. The Overview stops at today · **Planned**
+## 61. The Overview stops at today · **Shipped 2026-09-05 — unverified in production**
+
+> **Both halves shipped**, against the item's own sequencing note (the code
+> half could ship first, the prompt half wanted item 27). Item 27's replay is
+> still the right tool for a broad prompt regression sweep, but the change was
+> validated a different way: six generation passes through a worker model on
+> the real archived inputs from 2026-09-05, which item 69 made possible two
+> days earlier. That is cheaper than replay and costs no Gemini call.
+>
+> `describe_extended_trend` bands the next three days in code and hands the
+> prompt ONE FINISHED PHRASE — "much the same through Friday", "warming
+> through Friday, with rain becoming more likely". Not a label: the prompt
+> uses it verbatim, so anything left for the model to word is something the
+> model can word wrong, and "Wednesday through Friday show a consistent
+> trend" is exactly what a flag produces.
+>
+> Threshold 2.0 C across the span, sized by item 23. The END of the span
+> against today rather than the mean, because a warm-cool-warm sequence
+> averages into a steadiness none of its three days has. Day names from
+> `dates.weekday_name` against the LOCATION's date. Rain earns a clause only
+> when it ARRIVES — a dry spell continuing is already carried by "much the
+> same", and saying it twice is what item 48 was raised to stop.
+>
+> The steady band carries real words rather than a null, which was the
+> operator's correction and is the part most likely to be "tidied" later by
+> someone reading it as a missing case.
+>
+> 11 vector cases, exercised from both languages. Observed output on the real
+> 09-05 inputs: **"Much the same through Monday."** as the Overview's closing
+> clause, in a two-sentence Overview.
+>
+> **Not verified in production.** Deliberately left to run for a few days
+> before anything else touches this paragraph.
+>
+> Still owed: **item 35's middle clause**. The request's example includes
+> "models show strong disagreement on atmospheric instability", which is item
+> 35's output and does not exist. The instability clause currently in the
+> Overview is the convective flag's, which is a different and cruder thing.
 
 Requested 2026-09-01. The Overview says what today is like and nothing about
 what is coming, so a reader who wants to know whether to move a plan to
@@ -6308,7 +6345,39 @@ Related: items 2, 11, 41, 44, 45, 63.
 
 ---
 
-## 65. Lightning and cloud as their own truth, not as rain · **Planned**
+## 65. Lightning and cloud as their own truth, not as rain · **Partly shipped — the lightning variable, 2026-09-05**
+
+> **`DailyActual.lightning` exists, in both languages, and is scored against
+> nothing.** Exactly the sequencing this item asks for: it ships as an
+> OBSERVATION first, because nothing forecasts lightning as a committed value
+> — CAPE is an instability index, not a call.
+>
+> Three-valued like `thunder` and `precipitation`. Every stored day is `None`
+> today and stays `None` until a detection source exists, which is the honest
+> state rather than a gap to fill with `False`.
+>
+> **Deliberately absent from `observed_convection()`**, and both languages
+> carry a test asserting the omission. That guard is the point of the change:
+> the field reads as an obvious completion of the OR to anyone who finds it
+> without the reasoning, and adding it there would make lightning able to
+> create wet days and move the rain rate — item 53.1 moved every model about
+> five points in a day by adding one source.
+>
+> What this buys immediately: a dry storm and a quiet day are now
+> distinguishable in the record, where before both were "not wet".
+>
+> Still not established, and unchanged by this: whether MTG Lightning Imager
+> data is reachable for this point at a sane cadence and cost, and whether it
+> adds anything the station's `TS` group does not. Kisumu Airport is four
+> kilometres away and reports hourly; the satellite's advantage is basin-wide
+> coverage, which matters only if storms are being missed OUTSIDE the
+> airport's view. Measurable once both exist, and worth measuring before the
+> satellite path is treated as load-bearing.
+>
+> **Cloud is untouched**, and remains the harder half for the reason recorded
+> below: brightness temperature is not cloud cover, and deriving one from the
+> other would be this project's first observation that is a MODEL of an
+> observation.
 
 Raised 2026-09-03: lightning happens with or without precipitation, and is
 worth knowing either way. Cloud cover is the same shape — the forecast
@@ -7194,3 +7263,95 @@ any past ones.
 
 Related: item 68, item 69, item 71, item 57 (which established the baselines
 this is read against), item 58, item 27.
+
+---
+
+## 73. Pare the prompt, by category rather than by length · **Planned**
+
+Raised 2026-09-05, after six generation passes against the real archived
+inputs found three different reasons a rule was in the prompt — only one of
+which is fixed by cutting text.
+
+The system prompt is ~34,000 characters. It grew one measured incident at a
+time and every line of it was earned, which is exactly why it cannot be
+shortened by judgement: the parts that look most redundant are often the ones
+holding a bug down.
+
+### The three categories, and only one of them is "delete text"
+
+**1. Rules that exist because the payload invites the error.** The largest
+category and the cheapest win. Measured 2026-09-05: `STATE NO NUMBER FROM
+YESTERDAY HERE AT ALL` was a 488-character rule, and the DAY-OVER-DAY block
+handed the model `yesterday_high_c: 30.4` and `wind_delta_kmh: -11.0` three
+lines above the label it was told to use instead. The run produced "against
+yesterday's 30.4C" and "a drop of 11 km/h". **Moving the rule to the front of
+its section made it worse**, not better. Deleting the fields fixed it, and
+the rule went with them.
+
+The general form: **the cheapest way to delete a rule is to delete the
+temptation.** Anywhere the payload carries both a raw number and a
+pre-computed judgement about that number, the rule policing the boundary is
+a candidate for retirement by narrowing the payload instead.
+
+Known candidates: `today_consensus_high_c` / `_low_c` / `_peak_wind_kmh` are
+still in the comparison block, and the Overview is still told not to use
+them. The blend's own record is already withheld this way and it works.
+
+**2. Rules that are in the wrong place.** No text is lost; only order
+changes. Measured the same day: `THE FIRST WORDS OF THIS SECTION NAME A
+WEATHER CONDITION` sat fourth in Today's Forecast and was evaded three passes
+running — "Stepping into the day at dawn,", "After sunrise at 06:36,", then
+"Sunrise is at 06:36." as its own sentence, which satisfies a rule about
+first WORDS by making the clock a sentence. Moved to the front of the
+section, wording untouched, it bound on the next run.
+
+The Overview is one parenthetical of roughly 4,000 characters carrying at
+least nine distinct rules. The ones at the end are the ones ignored.
+
+**3. Rules that are load-bearing scar tissue.** These are long BECAUSE they
+carry a measurement, and cutting them is how the bug returns. Item 67's
+rewrite, thunder-outranks-amount, the precision-must-match-agreement
+paragraph. **This category is not pared at all.** Naming it explicitly is
+half the point of the item: a pass that treats length as the enemy will
+start here, because these are the longest passages in the file.
+
+### The method, which is the durable part
+
+`olw replay` (item 27) answers "did this change move anything" across the
+frozen cases. It does not answer "does the model now obey the rule", which
+needs a generation. The loop used on 2026-09-05:
+
+```text
+1. rebuild the system prompt from build_system_prompt()
+2. take a REAL archived user prompt (item 69) for a day
+3. hand both to a worker model, ask for the sections under test
+4. read what comes back; change ONE thing; repeat
+```
+
+Six passes cost no Gemini calls and no spend against the cap. Item 69 is what
+makes step 2 possible, two days after it shipped.
+
+**Change one thing per pass.** The placement test was only interpretable
+because it moved a rule without editing a word — 34,431 characters against
+34,430, one whitespace. A pass that edits and moves at once answers neither
+question.
+
+**A worker model is not the production model**, and the difference matters
+for what this can conclude. It is a sharp instrument for "is this rule
+followed at all" and a blunt one for "is the output better". Nothing here
+should be promoted to a finding about forecast QUALITY without a replay diff
+and, for anything scored, live days.
+
+### Sequencing
+
+1. **Category 1 first**, because it shortens the prompt AND removes a failure
+   mode, and because narrowing a payload is testable in one pass.
+2. **Category 2 second**, once there is less text to reorder.
+3. **Category 3 never**, except to move it.
+
+Do not do this while another prompt change is in flight. Item 61 shipped
+2026-09-05 and is deliberately being left to run for a few days first.
+
+Related: item 27 (replay, the other half of the harness), item 69 (which
+makes the archived inputs available), item 67 (the failure mode this item
+generalises), item 48, item 23, item 61.

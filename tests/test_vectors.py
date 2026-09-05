@@ -44,7 +44,7 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.aqi import last_known_ground_aqi
-from openlocalweather.comparison import compute_day_over_day, describe_day_rain
+from openlocalweather.comparison import compute_day_over_day, describe_extended_trend, describe_day_rain
 from openlocalweather.instability import summarize_instability
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
@@ -486,6 +486,21 @@ def test_vectors_day_over_day():
         )
 
 
+def test_vectors_extended_trend():
+    """ROADMAP item 61 — the Overview's closing clause.
+
+    A finished phrase and not a label, so these cases pin the exact WORDS a
+    reader sees. Changing one is a product decision, not a refactor, and the
+    Dart side reads the same file.
+    """
+    for case in load("extended_trend.json")["cases"]:
+        i = case["input"]
+        got = describe_extended_trend(
+            i["today_high_c"], i["day_highs_c"], i["day_precip_mm"], i["last_day_name"]
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_describe_day_rain():
     """The phrase that reaches the reader almost verbatim, including the
     thunder override that stops an observed storm reading as "dry"."""
@@ -613,6 +628,7 @@ def test_every_vector_file_is_exercised():
         "spend.json",
         "verification.json",
         "day_over_day.json",
+        "extended_trend.json",
         "describe_day_rain.json",
         "temp_high_low.json",
         "aqi_last_known.json",

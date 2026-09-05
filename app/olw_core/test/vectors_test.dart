@@ -730,6 +730,31 @@ void main() {
     });
   });
 
+  group('extended trend', () {
+    test('describe_extended_trend', () {
+      // ROADMAP item 61. The vector pins the exact WORDS a reader sees,
+      // because this phrase reaches them verbatim — changing one is a
+      // product decision, not a refactor.
+      for (final c in casesOf('extended_trend.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        List<double?> nums(String key) => (i[key] as List)
+            .map((v) => (v as num?)?.toDouble())
+            .toList();
+
+        expectMatches(
+          describeExtendedTrend(
+            (i['today_high_c'] as num?)?.toDouble(),
+            nums('day_highs_c'),
+            nums('day_precip_mm'),
+            i['last_day_name'] as String,
+          ),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+  });
+
   group('day over day', () {
     test('compute_day_over_day', () {
       for (final c in casesOf('day_over_day.json')) {
@@ -1012,6 +1037,7 @@ void main() {
       'spend.json',
       'verification.json',
       'day_over_day.json',
+      'extended_trend.json',
       'describe_day_rain.json',
       'temp_high_low.json',
       'aqi_last_known.json',

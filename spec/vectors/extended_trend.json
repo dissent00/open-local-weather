@@ -1,0 +1,205 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_extended_trend",
+  "description": "ROADMAP item 61. One FINISHED phrase for the next three days, handed to the prompt to use verbatim -- a label would leave the wording to the model, which is the thing that goes wrong. The threshold is 2.0 C across the span because item 23 measured a run calling 29.6 C against 29.5 C 'about 1 C cooler'. A steady spell gets real words rather than a null: the absence of change is the planning answer.",
+  "cases": [
+    {
+      "name": "steady - the commonest case, and it still gets a phrase",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "much the same through Friday"
+    },
+    {
+      "name": "warming past the threshold",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          31.0,
+          32.0,
+          33.5
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "warming through Friday"
+    },
+    {
+      "name": "cooling past the threshold",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          29.0,
+          28.0,
+          27.5
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "cooling through Friday"
+    },
+    {
+      "name": "just under the threshold is steady, not warming",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.5,
+          31.0,
+          31.9
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Saturday"
+      },
+      "expected": "much the same through Saturday"
+    },
+    {
+      "name": "exactly at the threshold names the trend",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.5,
+          31.0,
+          32.0
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Saturday"
+      },
+      "expected": "warming through Saturday"
+    },
+    {
+      "name": "rain arriving earns its own clause",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          29.0,
+          28.0,
+          27.5
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          8.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "cooling through Friday, with rain becoming more likely"
+    },
+    {
+      "name": "a dry spell continuing does not - much the same already says it",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.1,
+          30.0,
+          29.9
+        ],
+        "day_precip_mm": [
+          0.2,
+          0.0,
+          0.9
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "much the same through Friday"
+    },
+    {
+      "name": "the END of the span decides, not the mean",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          34.0,
+          34.0,
+          30.1
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": "much the same through Friday"
+    },
+    {
+      "name": "no today high - nothing to compare against",
+      "input": {
+        "today_high_c": null,
+        "day_highs_c": [
+          31.0,
+          32.0,
+          33.0
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": null
+    },
+    {
+      "name": "no extended highs at all",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          null,
+          null,
+          null
+        ],
+        "day_precip_mm": [
+          null,
+          null,
+          null
+        ],
+        "last_day_name": "Friday"
+      },
+      "expected": null
+    },
+    {
+      "name": "a gap mid-span still answers from what is there",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          null,
+          33.0,
+          null
+        ],
+        "day_precip_mm": [
+          0.0,
+          null,
+          0.0
+        ],
+        "last_day_name": "Sunday"
+      },
+      "expected": "warming through Sunday"
+    }
+  ]
+}

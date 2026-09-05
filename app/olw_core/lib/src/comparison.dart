@@ -318,3 +318,62 @@ DayOverDayComparison? computeDayOverDay(
     rainContrast: rainContrast,
   );
 }
+
+
+/// How far the three-day high has to move before "warming" is honest.
+///
+/// 2.0 C across the span, not a per-day drift. Item 23 is the measurement
+/// behind the size: a live run asked to compare 29.6 C against 29.5 C called
+/// it "about 1 C cooler", a ten-fold overstatement in the one sentence most
+/// readers act on. The threshold has to clear ordinary day-to-day noise
+/// outright — a false "warming trend" has a reader planning around a change
+/// that is not there.
+const double extendedTrendThresholdC = 2.0;
+
+/// One finished phrase for the next three days, or null when the data is too
+/// thin to say anything. ROADMAP item 61.
+///
+/// A FINISHED PHRASE, not a label, for the same reason [describeDayRain]
+/// ships "dry again": the prompt uses it verbatim, so anything left for the
+/// model to word is something the model can word wrong. "Wednesday through
+/// Friday show a consistent trend" is what a flag produces — bureaucratic,
+/// longer than the thing it replaces, and it says less than "much the same
+/// through Friday".
+///
+/// A STEADY SPELL IS SAID, NOT SKIPPED. The absence of change is the planning
+/// answer for someone choosing when to do a job, and a reader told nothing
+/// has to go and check.
+String? describeExtendedTrend(
+  double? todayHighC,
+  List<double?> dayHighsC,
+  List<double?> dayPrecipMm,
+  String lastDayName,
+) {
+  final highs = [
+    for (final h in dayHighsC)
+      if (h != null) h
+  ];
+  if (todayHighC == null || highs.isEmpty) return null;
+
+  // The END of the span against today, not the mean. A reader planning three
+  // days out wants to know where it ends up, and a warm-cool-warm sequence
+  // averages into a steadiness none of the three days has.
+  final delta = highs.last - todayHighC;
+
+  final String trend;
+  if (delta >= extendedTrendThresholdC) {
+    trend = 'warming through $lastDayName';
+  } else if (delta <= -extendedTrendThresholdC) {
+    trend = 'cooling through $lastDayName';
+  } else {
+    trend = 'much the same through $lastDayName';
+  }
+
+  // Rain is reported only when it ARRIVES. A dry spell continuing is already
+  // carried by "much the same", and a second clause saying so is the
+  // enumeration item 48 was raised to stop.
+  final anyWet = dayPrecipMm.any((p) => p != null && dayRainBand(p) != dryDayLabel);
+
+  return anyWet ? '$trend, with rain becoming more likely' : trend;
+}
+

@@ -74,7 +74,7 @@ from openlocalweather.models import (
     ModelPrediction,
     format_temp_high_low,
 )
-from openlocalweather.comparison import compute_day_over_day
+from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.llm.schema import (
@@ -1589,6 +1589,59 @@ def export_day_over_day() -> None:
 
 
 
+def export_extended_trend() -> None:
+    """ROADMAP item 61 — the Overview's closing clause."""
+    scenarios = [
+        # name, today_high, day_highs, day_precip, last_day_name
+        ("steady - the commonest case, and it still gets a phrase",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday"),
+        ("warming past the threshold",
+         30.0, [31.0, 32.0, 33.5], [0.0, 0.0, 0.0], "Friday"),
+        ("cooling past the threshold",
+         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 0.0], "Friday"),
+        ("just under the threshold is steady, not warming",
+         30.0, [30.5, 31.0, 31.9], [0.0, 0.0, 0.0], "Saturday"),
+        ("exactly at the threshold names the trend",
+         30.0, [30.5, 31.0, 32.0], [0.0, 0.0, 0.0], "Saturday"),
+        ("rain arriving earns its own clause",
+         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 8.0], "Friday"),
+        ("a dry spell continuing does not - much the same already says it",
+         30.0, [30.1, 30.0, 29.9], [0.2, 0.0, 0.9], "Friday"),
+        ("the END of the span decides, not the mean",
+         30.0, [34.0, 34.0, 30.1], [0.0, 0.0, 0.0], "Friday"),
+        ("no today high - nothing to compare against",
+         None, [31.0, 32.0, 33.0], [0.0, 0.0, 0.0], "Friday"),
+        ("no extended highs at all",
+         30.0, [None, None, None], [None, None, None], "Friday"),
+        ("a gap mid-span still answers from what is there",
+         30.0, [None, 33.0, None], [0.0, None, 0.0], "Sunday"),
+    ]
+
+    cases = []
+    for name, today, highs, precip, day_name in scenarios:
+        cases.append({
+            "name": name,
+            "input": {
+                "today_high_c": today,
+                "day_highs_c": highs,
+                "day_precip_mm": precip,
+                "last_day_name": day_name,
+            },
+            "expected": describe_extended_trend(today, highs, precip, day_name),
+        })
+    write(
+        "extended_trend.json",
+        "describe_extended_trend",
+        "ROADMAP item 61. One FINISHED phrase for the next three days, handed "
+        "to the prompt to use verbatim -- a label would leave the wording to "
+        "the model, which is the thing that goes wrong. The threshold is 2.0 C "
+        "across the span because item 23 measured a run calling 29.6 C against "
+        "29.5 C 'about 1 C cooler'. A steady spell gets real words rather than "
+        "a null: the absence of change is the planning answer.",
+        cases,
+    )
+
+
 def export_daypart() -> None:
     from datetime import datetime as _dt
 
@@ -2236,6 +2289,7 @@ def main() -> None:
     export_spend()
     export_verification()
     export_day_over_day()
+    export_extended_trend()
     export_describe_day_rain()
     export_temp_high_low()
     export_instability()

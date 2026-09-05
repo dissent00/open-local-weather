@@ -256,6 +256,35 @@ class DailyActual(BaseModel):
     # Not every field appears. A key is present when something supplied a
     # value; a field the day has no observation for is simply absent, rather
     # than being stamped with a source that reported nothing.
+    # Did anything DETECT lightning on this local day — ROADMAP item 65.
+    #
+    # THREE-VALUED, like `thunder` and `precipitation` before it, and read the
+    # same way: None means nothing was asked, False means something looked and
+    # detected none. Every stored day is None today and will stay None until a
+    # detection source exists, which is the honest state rather than a gap to
+    # be filled with False.
+    #
+    # DELIBERATELY NOT IN observed_convection(). That method is an OR, so
+    # every term added to it can only create wet days and can only move the
+    # rain rate — item 53.1 moved every model about five points in a day by
+    # adding one source. Lightning is a DIFFERENT QUESTION: "did it storm" and
+    # "did it rain" have different answers, and the ledger has had one column
+    # for both. Scored separately, a model that predicted thunder and got a
+    # dry storm is right about thunder and wrong about rain, which is more
+    # information than either verdict alone, and nobody has to rule on whether
+    # a dry thunderstorm is "a wet day".
+    #
+    # This is also why lightning is the right variable to add first: a new
+    # variable is not an OR term, so it cannot make the models look worse for
+    # instrumentation reasons and needs no divergence numbers first. Every
+    # other source discussed so far fails that test.
+    #
+    # SCORED AGAINST NOTHING, for now. Nothing forecasts lightning as a
+    # committed value — CAPE is an instability index, not a call — so this
+    # ships as an observation exactly as the station readings did, and earns
+    # a prediction to be scored against later or never.
+    lightning: bool | None = None
+
     provenance: dict[str, str] | None = None
 
     def observed_onset(self) -> str | None:
@@ -288,6 +317,11 @@ class DailyActual(BaseModel):
 
         Both observations being None leaves this as plain `rain`, so a
         deployment with no METAR station scores exactly as it did before.
+
+        `lightning` IS DELIBERATELY ABSENT from this OR — see its field
+        comment, and ROADMAP item 65. A test asserts the omission, because
+        adding it here would read as an obvious completion to anyone who
+        found the field and not the reasoning.
         """
         return self.rain or bool(self.thunder) or bool(self.precipitation)
 
