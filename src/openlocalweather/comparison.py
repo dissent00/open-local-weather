@@ -352,3 +352,71 @@ def compute_day_over_day(
         wind_label=wind_label,
         rain_contrast=rain_contrast,
     )
+
+# ROADMAP item 61. How far the three-day high has to move before the word
+# "warming" is honest.
+#
+# 2.0 C across the span, not a per-day drift. Item 23 is the measurement
+# behind the size: a live run asked to compare 29.6 C against 29.5 C called
+# it "about 1 C cooler" — a ten-fold overstatement in the one sentence most
+# readers act on. The threshold has to clear ordinary day-to-day noise
+# outright, because the cost of a false "warming trend" is a reader planning
+# around a change that is not there, and the cost of a missed one is a
+# sentence saying things are steady, which is also useful.
+EXTENDED_TREND_THRESHOLD_C = 2.0
+
+
+def describe_extended_trend(
+    today_high_c: float | None,
+    day_highs_c: list[float | None],
+    day_precip_mm: list[float | None],
+    last_day_name: str,
+) -> str | None:
+    """One finished phrase for the next three days, or None when the data is
+    too thin to say anything.
+
+    ROADMAP item 61: the Overview stopped at today, so a reader deciding
+    whether to move a job to Thursday had to get through the Extended Outlook
+    to find out. This is the clause that answers it in the paragraph they
+    already read.
+
+    A FINISHED PHRASE, not a label or a flag, for the same reason
+    `rain_contrast` ships "dry again" rather than a boolean: the prompt is
+    told to use it verbatim, so anything left for the model to phrase is
+    something the model can get wrong. "Wednesday through Friday show a
+    consistent trend" is what a flag produces — bureaucratic, longer than the
+    thing it replaces, and it says less than "much the same through Friday".
+
+    A STEADY SPELL IS SAID, NOT SKIPPED. An earlier design had this go quiet
+    when nothing was changing and the operator pushed back, correctly: "it
+    will be about the same for the next few days" is one of the most useful
+    things a forecast can tell someone choosing when to do a job. The absence
+    of change IS the planning answer, and a reader told nothing has to go and
+    check. So the steady band carries real words rather than a null.
+    """
+    highs = [h for h in day_highs_c if h is not None]
+    if today_high_c is None or not highs:
+        return None
+
+    # The END of the span against today, not the mean. A reader planning
+    # three days out wants to know where it ends up, and a warm-cool-warm
+    # sequence averages into a steadiness none of the three days has.
+    delta = highs[-1] - today_high_c
+
+    if delta >= EXTENDED_TREND_THRESHOLD_C:
+        trend = f"warming through {last_day_name}"
+    elif delta <= -EXTENDED_TREND_THRESHOLD_C:
+        trend = f"cooling through {last_day_name}"
+    else:
+        trend = f"much the same through {last_day_name}"
+
+    # Rain is reported only when it ARRIVES. A dry spell continuing is
+    # already carried by "much the same", and a second clause saying so is
+    # the enumeration item 48 was raised to stop.
+    wet_days = [
+        p for p in day_precip_mm if p is not None and day_rain_band(p) != DRY_DAY_LABEL
+    ]
+    if wet_days:
+        return f"{trend}, with rain becoming more likely"
+
+    return trend

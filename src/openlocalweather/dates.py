@@ -73,3 +73,14 @@ def prediction_row_date_for_target(target_date: date, lead_time_days: int) -> da
     seem too early/late, this function is the first place to check.
     """
     return add_days(target_date, -lead_time_days)
+
+
+def weekday_name(d: date) -> str:
+    """"Friday". Computed from a date already resolved in the LOCATION's
+    timezone by the caller — never from a server clock or a reader's.
+
+    A day name is arithmetic, and this is the kind that silently reads a day
+    early: a run at 03:00 UTC is already the next day in Kisumu, so a name
+    derived from `datetime.now()` on the runner would be yesterday's.
+    """
+    return d.strftime("%A")

@@ -63,7 +63,8 @@ from openlocalweather.aqi import (
     summarize_ground_aqi,
 )
 from openlocalweather.instability import InstabilityOutlook, summarize_instability
-from openlocalweather.comparison import compute_day_over_day
+from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
+from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.daypart import (
     DayPart,
     daypart_without_sun,
@@ -89,6 +90,7 @@ from openlocalweather.dates import (
     now_in_tz,
     today_in_tz,
     utc_offset_seconds,
+    weekday_name,
 )
 from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
@@ -1165,6 +1167,23 @@ def run_daily_pipeline(
         day3_predictions = [*day3_predictions, met_day3]
     day7_predictions = extract_day_n_predictions_from_daily(primary_daily, 7, MODELS)
 
+    # ROADMAP item 61 — where the Overview learns to look past today.
+    #
+    # Days 1-3 from the SAME daily source and the SAME model list as the
+    # scored Day+3 row above, so the clause a reader acts on and the number
+    # the record scores cannot describe different weather. Consensus across
+    # models per day, then banded in comparison.py: the arithmetic lives in
+    # code, and the prompt is handed a finished phrase.
+    extended_days = [
+        extract_day_n_predictions_from_daily(primary_daily, n, MODELS) for n in (1, 2, 3)
+    ]
+    extended_trend = describe_extended_trend(
+        today_high_c=_mean_of([p.high_c for p in day0_predictions]),
+        day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
+        day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
+        last_day_name=weekday_name(add_days(today, 3)),
+    )
+
     # The yardsticks — ROADMAP item 57. Built from the stored record rather
     # than fetched, so they cost nothing and cannot fail a run.
     #
@@ -1312,6 +1331,7 @@ def run_daily_pipeline(
         # which is how yesterday's predictions SCORED. Free: this is the same
         # cache the verification pass already read.
         yesterday_actual=asdict(day_over_day) if day_over_day is not None else None,
+        extended_trend=extended_trend,
         review_context=review_context,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
