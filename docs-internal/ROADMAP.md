@@ -7194,7 +7194,37 @@ rather than an impression).
 
 ---
 
-## 72. The forecaster is only ever scored where the NWP is already near its ceiling · **Planned — deferred to ~October 2026**
+## 72. The forecaster is only ever scored where the NWP is already near its ceiling · **Partly shipped — the rain call, 2026-09-05**
+
+> **Split on 2026-09-05, on the operator's challenge to the deferral.** The
+> question was "is there a reason we can't do both", and there was not: the
+> argument for waiting conflated RECORDING with EVALUATING. Nothing about
+> starting to record extended blend calls needs the sample; the sample is only
+> needed to judge them. The cost cited — the largest schema change on the list
+> — is paid whenever it is paid, not reduced by waiting.
+>
+> **What shipped is the minimum that starts the clock.**
+> `ExtendedDayProperties` carries `rain` and `rain_probability_pct` at
+> lead_time_days 3 and 7 — the leads the record already scores, and the one
+> variable item 58's Brier can score today. `olw_blend` now has a row at
+> Day+3 and Day+7 where it had none, ever, by construction.
+>
+> Omitting a lead is a legitimate answer and stores no row, because a guessed
+> boolean is scored wrong exactly as confidently as a real one. Every other
+> field stays absent rather than zero: the forecaster was not asked for a
+> Day+7 temperature and must not enter the record as though it gave one.
+>
+> **What waits, and now has a reason to.** The remaining fields — temperature,
+> wind, onset at each lead — are a design question, and designing them against
+> real extended-blend data beats designing them against none. That data starts
+> accumulating today rather than in October.
+>
+> **Found while porting it:** `to_gemini_schema` lifts a pydantic docstring
+> into the response schema's `description`, so a docstring on any of these
+> models is billed on every request and read by the forecaster. The first
+> draft shipped ~700 characters of roadmap reasoning to the provider. It is a
+> product surface, not a comment — reasoning moved above the class, docstring
+> cut to what the model needs. Worth auditing the others (item 73).
 
 Found 2026-09-04 while asking how much a model change could be expected to
 move anything. The record answers it, and the answer is uncomfortable.

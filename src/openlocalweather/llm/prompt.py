@@ -185,6 +185,12 @@ The sun times in ISSUED are computed in code and correct for this location and d
 
    This governs the PROSE ONLY. today_properties stays your blended call for the WHOLE calendar day: temp_high_c is the day's high whether or not it has already happened. Those values are scored against the day's observations and compared against every other day in the record, so narrowing them to the hours ahead would silently break that comparison.)
 
+   COMMIT TO RAIN AT DAY+3 AND DAY+7, in "extended_properties". Two entries at most, one per lead time, each with "lead_time_days" (3 or 7), "rain" (your blended boolean call for that day) and "rain_probability_pct" (0-100, your own confidence, the same field and the same meaning as today_properties).
+
+   THESE ARE SCORED, against what actually happens on those days, beside every model in the record. That is the point of asking: until now your own call existed only at Day+0, which is where the free numerical models are already strongest and where there is least room to show anything. Reconciling models that disagree is worth most at the leads where they disagree most, and nothing measured whether you were any good at it.
+
+   OMITTING A LEAD IS A LEGITIMATE ANSWER and is better than a guess. A boolean you invented is scored wrong exactly as confidently as one you meant, so leave a lead out entirely when the models are too scattered to call it. An empty list is fine. What is NOT fine is calling rain at Day+7 because the section reads better with a number in it.
+
    ## Extended Outlook
    (a paragraph for the next 3 days and then out to 7 days, using the daily summary data - treat days 1-3 as your higher-confidence near-term range and days 4-7 as lower-confidence. Consult each model's Day+3/Day+7 track record specifically here, not its Day+0 numbers.)
 

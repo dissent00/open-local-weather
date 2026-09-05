@@ -144,6 +144,33 @@
             "additionalProperties": false,
             "description": "The LLM's synthesized, BLENDED call across all models \u2014 genuine\nreasoning, not any one model's raw number. Only rain_expected, rain,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code."
           },
+          "extended_properties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lead_time_days": {
+                  "type": "integer"
+                },
+                "rain": {
+                  "type": "boolean"
+                },
+                "rain_probability_pct": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "lead_time_days",
+                "rain",
+                "rain_probability_pct"
+              ],
+              "additionalProperties": false,
+              "description": "Your own rain call for one day beyond today. Scored against what\nhappens. Omit a lead rather than guess at it."
+            }
+          },
           "today_narrative": {
             "type": "string"
           },
@@ -159,6 +186,7 @@
           "verification_notes",
           "skill_profile_summaries",
           "today_properties",
+          "extended_properties",
           "today_narrative",
           "whatsapp_summary"
         ],

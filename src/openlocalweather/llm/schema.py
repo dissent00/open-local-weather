@@ -75,11 +75,43 @@ class TodayProperties(BaseModel):
     air_quality_aqi: str | None = None
 
 
+# ROADMAP item 72, minimal shape.
+#
+# THIS DOCSTRING IS SHIPPED TO THE PROVIDER. to_gemini_schema lifts a model's
+# docstring into the response schema's `description`, so it is billed on every
+# request and read by the forecaster. Reasoning for a future maintainer goes
+# in comments like this one; the docstring says only what the model needs.
+#
+# RAIN ONLY, deliberately. The full item widens the schema to carry a forecast
+# at every lead the record scores; this carries the one variable Brier can
+# score and item 58 already built the machinery for. Shipped small and early
+# because item 72 shares item 69's property — it changes what FUTURE days
+# record and recovers nothing — so every day it waits is a Day+3 call
+# permanently lost, while the design question about the remaining fields wants
+# real data to answer.
+#
+# lead_time_days is 3 or 7 because those are the leads the record already
+# scores. Days 1 and 2 have no row to land in, and inventing one to hold two
+# fields would be the schema change this version exists to postpone.
+class ExtendedDayProperties(BaseModel):
+    """Your own rain call for one day beyond today. Scored against what
+    happens. Omit a lead rather than guess at it."""
+
+    lead_time_days: int
+    rain: bool
+    rain_probability_pct: int | None = None
+
+
 class GeminiForecastResponse(BaseModel):
     yesterday_verification: str
     verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
     today_properties: TodayProperties
+    # ROADMAP item 72. Empty is a legitimate answer and the default:
+    # a run that declines to commit at a lead scores nothing there,
+    # which is honest, where a guessed boolean is scored wrong exactly
+    # as confidently as a real one.
+    extended_properties: list[ExtendedDayProperties] = Field(default_factory=list)
     today_narrative: str
     whatsapp_summary: str | None = None
 

@@ -854,6 +854,49 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     )
 
 
+def _extended_blend_predictions(
+    extended: list[ExtendedDayProperties], lead_time_days: int
+) -> list[ModelPrediction]:
+    """The forecaster's own call at a lead beyond today — ROADMAP item 72.
+
+    RAIN ONLY. The full item widens the schema at every lead the record
+    scores; this carries the one variable item 58's Brier can already score.
+    Shipped small and early because item 72 shares item 69's property — it
+    changes what FUTURE days record and recovers nothing — so a day spent
+    designing the rest is a Day+3 call permanently lost.
+
+    Returns [] when the run committed to nothing at this lead, and that is a
+    legitimate answer rather than a gap: a guessed boolean is scored wrong
+    exactly as confidently as a real one, so declining to call is the honest
+    move and the record should carry no row for it.
+
+    WHY THE BLEND WAS UNSCORED HERE UNTIL NOW. `_blend_prediction` builds from
+    `today_properties`, which is by definition today, so `olw_blend` had rows
+    at Day+0 and nowhere else — and Day+0 is where the free NWP is already
+    near its ceiling. The forecaster's most defensible job, reconciling models
+    that disagree, happens at the leads where the spread is widest and nothing
+    scored it there. See item 72 for the numbers.
+    """
+    return [
+        ModelPrediction(
+            model=BLEND_MODEL_ID,
+            rain=e.rain,
+            rain_probability_pct=e.rain_probability_pct,
+            # Everything else absent rather than zero, exactly as the Day+0
+            # blend treats peak wind: a field the forecaster was not asked to
+            # commit to must not enter the record as a value it never gave.
+            onset=None,
+            precip_mm=None,
+            wind_kmh=None,
+            high_c=None,
+            low_c=None,
+            mslp_trend=None,
+        )
+        for e in extended
+        if e.lead_time_days == lead_time_days
+    ]
+
+
 def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
     """The forecaster's own Day+0 call, in the form the record can score.
 
@@ -1392,12 +1435,19 @@ def run_daily_pipeline(
         or ModelPredictionsByLead(
             # The blend joins Day+0 as a peer of the models it synthesizes, so
             # tomorrow scores the forecast this run actually published and not
-            # only the guidance that fed it. Day+0 only: today_properties is a
-            # call about today, and there is no extended-range equivalent to
-            # score until the outlook carries structured numbers too.
+            # only the guidance that fed it. Day+3 and Day+7 carry the blend's
+            # own rain call too since ROADMAP item 72's minimal shape — rain
+            # and its probability, which is what Brier scores; the rest of the
+            # extended schema waits for real data to design against.
             day0=[*day0_predictions, _blend_prediction(tp)],
-            day3=day3_predictions,
-            day7=day7_predictions,
+            day3=[
+                *day3_predictions,
+                *_extended_blend_predictions(llm_response.extended_properties, 3),
+            ],
+            day7=[
+                *day7_predictions,
+                *_extended_blend_predictions(llm_response.extended_properties, 7),
+            ],
         ),
         # Stored verbatim, and stored even when it says "unavailable" — see
         # LocalBulletinRecord. A met service's forecast cannot be re-fetched

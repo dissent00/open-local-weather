@@ -66,6 +66,21 @@ Map<String, Object?> geminiForecastSchema() => {
           },
         },
         'today_properties': _geminiTodayProperties(),
+        'extended_properties': {
+          'type': 'ARRAY',
+          'items': {
+            'type': 'OBJECT',
+            'properties': {
+              'lead_time_days': {'type': 'INTEGER'},
+              'rain': {'type': 'BOOLEAN'},
+              'rain_probability_pct': {'type': 'INTEGER', 'nullable': true},
+            },
+            'required': ['lead_time_days', 'rain'],
+            'description':
+                'Your own rain call for one day beyond today. Scored against what\n'
+                'happens. Omit a lead rather than guess at it.',
+          },
+        },
         'today_narrative': {'type': 'STRING'},
         'whatsapp_summary': {'type': 'STRING', 'nullable': true},
       },
@@ -140,6 +155,24 @@ Map<String, Object?> strictForecastSchema() => {
           },
         },
         'today_properties': _strictTodayProperties(),
+        'extended_properties': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'lead_time_days': {'type': 'integer'},
+              'rain': {'type': 'boolean'},
+              'rain_probability_pct': {
+                'type': ['integer', 'null']
+              },
+            },
+            'required': ['lead_time_days', 'rain', 'rain_probability_pct'],
+            'additionalProperties': false,
+            'description':
+                'Your own rain call for one day beyond today. Scored against what\n'
+                'happens. Omit a lead rather than guess at it.',
+          },
+        },
         'today_narrative': {'type': 'string'},
         'whatsapp_summary': {
           'type': ['string', 'null']
@@ -150,6 +183,7 @@ Map<String, Object?> strictForecastSchema() => {
         'verification_notes',
         'skill_profile_summaries',
         'today_properties',
+        'extended_properties',
         'today_narrative',
         'whatsapp_summary',
       ],
@@ -327,11 +361,54 @@ class TodayProperties {
 
 /// What a provider must return. Validated on parse — a malformed response
 /// throws rather than yielding a half-built forecast.
+/// The blend's committed call for one lead time beyond today — ROADMAP item
+/// 72, minimal shape.
+///
+/// RAIN ONLY, deliberately. The full item widens the schema at every lead the
+/// record scores; this carries the one variable item 58's Brier can already
+/// score. Shipped small and early because item 72 changes what FUTURE days
+/// record and recovers nothing, so a day spent designing the rest is a Day+3
+/// call permanently lost.
+class ExtendedDayProperties {
+  /// 3 or 7 — the leads the record already scores. Days 1 and 2 have no row
+  /// to land in.
+  final int leadTimeDays;
+  final bool rain;
+
+  /// Null means no confidence stated, which leaves the Brier column empty for
+  /// that row rather than filling it with a guess.
+  final int? rainProbabilityPct;
+
+  const ExtendedDayProperties({
+    required this.leadTimeDays,
+    required this.rain,
+    this.rainProbabilityPct,
+  });
+
+  factory ExtendedDayProperties.fromJson(Map<String, Object?> j) =>
+      ExtendedDayProperties(
+        leadTimeDays: (j['lead_time_days'] as num).toInt(),
+        rain: j['rain'] as bool,
+        rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
+      );
+
+  Map<String, Object?> toJson() => {
+        'lead_time_days': leadTimeDays,
+        'rain': rain,
+        'rain_probability_pct': rainProbabilityPct,
+      };
+}
+
 class ForecastResponse {
   final String yesterdayVerification;
   final List<VerificationNote> verificationNotes;
   final List<SkillProfileSummaryItem> skillProfileSummaries;
   final TodayProperties todayProperties;
+
+  /// ROADMAP item 72. Empty is a legitimate answer and the default: a run
+  /// that declines to commit at a lead scores nothing there, where a guessed
+  /// boolean is scored wrong exactly as confidently as a real one.
+  final List<ExtendedDayProperties> extendedProperties;
   final String todayNarrative;
   final String? whatsappSummary;
 
@@ -340,6 +417,7 @@ class ForecastResponse {
     required this.verificationNotes,
     required this.skillProfileSummaries,
     required this.todayProperties,
+    this.extendedProperties = const [],
     required this.todayNarrative,
     this.whatsappSummary,
   });
@@ -356,6 +434,10 @@ class ForecastResponse {
                 .toList(),
         todayProperties: TodayProperties.fromJson(
             j['today_properties'] as Map<String, Object?>),
+        extendedProperties: ((j['extended_properties'] as List?) ?? const [])
+            .map((e) =>
+                ExtendedDayProperties.fromJson(e as Map<String, Object?>))
+            .toList(),
         todayNarrative: j['today_narrative'] as String,
         whatsappSummary: j['whatsapp_summary'] as String?,
       );
