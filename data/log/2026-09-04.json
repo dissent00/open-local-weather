@@ -301,8 +301,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0: All models failed the rain call after a brief evening shower occurred despite dry forecasts. Daytime high temperatures were reasonably captured (within 0.6–2.8°C error), while GFS over-forecasted surface wind speed by 20.9 km/h."
     },
     "day3": {
       "verified": false,

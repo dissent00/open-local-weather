@@ -305,8 +305,8 @@
       "note": "Day+0 verified dry across all models for Sept 1 target, matching expectations. High temperatures were captured with extreme precision by Best Match and GFS (-0.1°C error), while GFS overestimated peak surface winds by 15.5 km/h."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: Models failed to verify the dry target for September 1st, falsely predicting rain. High temperature errors ranged from -1.4°C on UKMO to -4.8°C on GFS."
     },
     "day7": {
       "verified": false,
@@ -433,6 +433,7 @@
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
+    "system_prompt_sha256": null,
     "refreshed_at": "2026-09-01T15:18:37.580518Z",
     "trigger_source": "workflow_dispatch",
     "degradations": [
