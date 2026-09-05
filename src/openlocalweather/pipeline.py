@@ -63,7 +63,11 @@ from openlocalweather.aqi import (
     summarize_ground_aqi,
 )
 from openlocalweather.instability import InstabilityOutlook, summarize_instability
-from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
+from openlocalweather.comparison import (
+    comparison_for_prompt,
+    compute_day_over_day,
+    describe_extended_trend,
+)
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.daypart import (
     DayPart,
@@ -1330,7 +1334,7 @@ def run_daily_pipeline(
         # real day-over-day comparison. Distinct from verification_context,
         # which is how yesterday's predictions SCORED. Free: this is the same
         # cache the verification pass already read.
-        yesterday_actual=asdict(day_over_day) if day_over_day is not None else None,
+        yesterday_actual=comparison_for_prompt(asdict(day_over_day) if day_over_day is not None else None),
         extended_trend=extended_trend,
         review_context=review_context,
         today_weather_data={
@@ -1642,7 +1646,9 @@ def run_refresh_pipeline(
     _refresh_comparison = compute_day_over_day(
         _refresh_actuals.get(_refresh_yesterday), existing_entry.model_predictions.day0
     )
-    refresh_yesterday_actual = asdict(_refresh_comparison) if _refresh_comparison is not None else None
+    refresh_yesterday_actual = comparison_for_prompt(
+        asdict(_refresh_comparison) if _refresh_comparison is not None else None
+    )
     # Same filter as the morning run, for the same standing reason: the blend
     # and the baselines are scored and published, and never shown to the
     # forecaster — see models_visible_to_the_forecaster.

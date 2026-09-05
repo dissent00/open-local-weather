@@ -420,3 +420,39 @@ def describe_extended_trend(
         return f"{trend}, with rain becoming more likely"
 
     return trend
+
+
+# What the PROMPT is shown, which is deliberately less than what is STORED.
+#
+# Everything below is arithmetic the model is told not to redo, and it was
+# being handed the operands anyway. Measured 2026-09-05: with
+# "yesterday_high_c": 30.4 and "wind_delta_kmh": -11.0 in the payload, a run
+# produced "against yesterday's 30.4C" and "a drop of 11 km/h" — the two
+# things an explicit STATE NO NUMBER FROM YESTERDAY rule had just forbidden,
+# in the sentence right after the label it was supposed to use instead.
+#
+# Moving that rule to the front of the section did not fix it. Deleting the
+# fields did. A rule cannot win against a payload that supplies its own
+# counter-example, and the cheapest way to delete a rule is to delete the
+# temptation.
+#
+# The full comparison is unchanged in the RECORD — asdict(day_over_day) is
+# still what gets stored and scored. This narrows only the view handed to the
+# forecaster.
+PROMPT_COMPARISON_FIELDS = (
+    "yesterday_rain",
+    "yesterday_thunder",
+    "today_rain_expected",
+    "high_label",
+    "wind_label",
+    "rain_contrast",
+)
+
+
+def comparison_for_prompt(comparison: dict | None) -> dict | None:
+    """The labels and the booleans, never the numbers behind them."""
+    if comparison is None:
+        return None
+
+    return {k: comparison[k] for k in PROMPT_COMPARISON_FIELDS if k in comparison}
+
