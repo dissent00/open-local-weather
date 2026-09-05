@@ -34,3 +34,15 @@ packages = ["src/openlocalweather"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The repo root on sys.path, so `from tests.test_pipeline_run import ...`
+# resolves. Some test modules share fixtures and helpers with their
+# neighbours and there is no other way to name one.
+#
+# WITHOUT THIS, `pytest` AND `python -m pytest` DISAGREE, and the disagreement
+# is silent in the direction that matters. `python -m pytest` inserts the
+# current directory into sys.path and the bare `pytest` console script does
+# not, so a cross-module import passes locally for anyone using the module
+# form and fails in CI, which runs `pytest -q`. Measured 2026-09-05: twelve
+# consecutive red CI runs over two days while the suite was green on the
+# machine that pushed them.
+pythonpath = ["."]
