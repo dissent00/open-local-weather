@@ -7749,6 +7749,65 @@ What is left when this is done as far as it goes is the part that cannot move:
 model, where the rule-following scaffolding is the part that has to be
 re-earned every time.
 
+### Two designs the operator asked about, and what is wrong with each
+
+**"If you are gemini-3.6-flash, do this."** No, for two reasons and the
+second is decisive.
+
+A model is an unreliable narrator about its own identity — self-reported
+names are confabulated readily, and are not stable across aliases and point
+releases anyway, so the condition cannot be evaluated where it is written.
+
+**But the condition never needed evaluating there. The pipeline already knows
+which model it is calling.** `llm_model` is in config and stamped into
+`meta`. So a model-conditional rule belongs at BUILD time, in code, not at
+INFERENCE time, in the model's head.
+
+And this project has already learned the deeper half, in a comment beside
+`build_system_prompt`, written for the ground-station case:
+
+> "Absent instructions beat instructions that say 'ignore this': the model
+> cannot mention what it was never told about."
+
+A model told *"if you are 3.6, avoid opening with the clock"* has just been
+taught the concept of opening with the clock. That is strictly worse than
+never raising it — the same finding as a fork with no WAQI stations being
+told to note when none report, and then reporting an absence that was not a
+failure.
+
+**Separate prompts per model.** Also no, and the reason is measurement rather
+than effort.
+
+Two full prompts are two things to keep in step across two languages, and the
+divergence would be silent, because the vectors pin one rendering. Worse:
+with separate prompts **you cannot measure how much of the prompt is
+model-specific** — the number is spread across two files with no marker
+saying which parts differ deliberately. Item 76 exists because nobody has
+measured it, and per-model prompts would make it permanently unmeasurable.
+
+### The shape that follows
+
+One prompt, with model-tagged conditional blocks, assembled in code —
+`build_system_prompt(location, ..., model=...)`, extending a mechanism that
+already carries three such conditions.
+
+**The tag from the table above becomes executable rather than a comment.** A
+rule that only 3.6 needs is included only when 3.6 is the model, so it leaves
+with the model automatically, and the model-specific share of the prompt is a
+number anyone can print.
+
+Three costs worth naming before this is built:
+
+- `system_prompt_sha256` will differ per model. That is CORRECT and item 70
+  already handles it — the hash identifies the forecaster, and the forecaster
+  is (model + prompt), so two models must not share a hash.
+- The vectors need a case per variant, in both languages. Real work, and the
+  thing most likely to be skipped.
+- **A tagged block nobody ever removes is the same dead weight in a new
+  shape.** The tag needs an owner and a trigger — "removed when 3.6 leaves
+  production" — or this item's whole argument gets re-run in two years about
+  conditionals instead of paragraphs.
+
 ### Cost, and why this is affordable
 
 The worker-model harness costs nothing against the spend cap. A pass against
