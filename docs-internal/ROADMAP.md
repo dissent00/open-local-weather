@@ -88,6 +88,13 @@ project differed across languages because CPython 3.12's `sum()` compensates
 and Dart's `reduce` does not. Both fixed, both swept. The item records the
 numbers.
 
+**Two open questions moved rather than closed.** Putting a Brier in the
+forecaster's prompt is item 57's "Telling the forecaster" decision, not
+item 58's remainder, because a skill score's reference is the baseline that
+item withholds — folded in there 2026-09-06. And the prompt's raw float
+precision (`-0.059999999999979535`, 8% of MODEL TRACK RECORD in trailing
+digits) is now item 73's fourth category.
+
 ### Added 2026-09-06: measure before building the model machinery
 
 Items 76, 77 and 78 came out of one question — what the accumulated prompt is
@@ -5716,8 +5723,63 @@ remaining half — see below.
 - **The app.** Its accuracy screen has the same missing yardstick, and its
   record is per-device. Listed in the Ensemble repo's owed table.
 
+#### Folded in 2026-09-06: item 58's Brier belongs to this decision
+
+Item 58 gave `SkillCell` a Brier and a Brier skill score on both sides, and
+stopped short of `TrackRecordEntry` — which is the object that reaches the
+prompt, because `pipeline.py` hands the forecaster `e.model_dump()` whole.
+Adding the fields there is not an extension of item 58. **It is this
+decision, arriving through a side door**, and it is recorded here so it gets
+made once rather than twice.
+
+**Size is not the argument, and was the first one reached for.** Measured
+against the real 2026-09-06 prompt: MODEL TRACK RECORD is 15,207 characters
+of 152,237 — 10% of the prompt already. Two more fields across the 15 rows
+adds roughly 900, about 0.6%. That settles nothing either way.
+
+**The argument for** is that the prompt already tells the forecaster a proper
+scoring rule is used and spells out the incentive — *"claiming 95% when you
+mean 60% is the single most expensive mistake available"* — and then never
+shows it the result. It is told the rules of a game whose score it never
+sees.
+
+**The argument against is structural, and it is this item's own.** A skill
+score is measured AGAINST CLIMATOLOGY, and climatology is withheld by
+`models_visible_to_the_forecaster` for the reason quoted there: a baseline
+handed over in MODEL TRACK RECORD reads as a sixth opinion, "which is both
+wrong and circular". So:
+
+- **The skill score cannot ship to the prompt without deciding baseline
+  visibility.** `rain_brier_skill: +0.592` names a reference the forecaster
+  cannot see. Showing the reference IS the withheld feature above.
+- **Raw Brier alone is not the escape it looks like.** `verify/brier.py` says
+  in its own header that raw Brier "is not interpretable on its own" — 0.2 is
+  good or bad entirely depending on the base rate. Handing over the bare
+  number is handing over the one figure the module says means nothing
+  unaccompanied.
+- **A smaller asymmetry, worth stating.** The blend never sees its own record
+  (standing rule), so it would read five NWP models' calibration and not its
+  own — which invites mimicking the best-looking number rather than assessing
+  its own honesty.
+
+**So the order is: decide the framing here, then the fields follow.** If the
+bar is shown at all it should be shown as a bar — one line per lead saying
+what the guidance has to clear — and the Brier is a second column of that
+same block, not a pair of extra keys on fifteen JSON objects.
+
+**Timing, which is the least of it.** The operator began a readability
+evaluation on 2026-09-06 (item 75), and thirty new numbers in the
+forecaster's context mid-evaluation is a confound. That argues for *not this
+week*. The two points above argue for *not without deciding this first*,
+which is the binding constraint.
+
+Prompt changes wait on the harness, and item 77 is now the harness that would
+answer "did adding this block change the prose".
+
 Related: item 18 (the weekly review this extends), item 58 (which changes
-what a baseline is measured with), item 26 (the spend this justifies).
+what a baseline is measured with, and whose prompt half lives here), item 26
+(the spend this justifies), item 27 and item 77 (the harnesses this waits
+on), item 75 (the evaluation in progress).
 
 ---
 
@@ -5735,14 +5797,19 @@ what a baseline is measured with), item 26 (the spend this justifies).
 > was Brier, and only Brier. The claim was written from Python's file without
 > opening Dart's.
 >
-> **Still owed: the track record and the display.** `TrackRecordEntry` has no
-> Brier field in either language, and it is deliberately not being given one
-> yet — `model_dump()` puts that whole object into the user prompt, so two new
-> numbers per model per lead would land in the forecaster's context in the
-> middle of the readability evaluation the operator started on 2026-09-06.
-> `SkillCell` has no such problem: `_review_prompt_payload` omits the cell
-> table on purpose, so this change is invisible to the prompt. Display is the
-> app's, and is in its owed table.
+> **The display shipped the same day**, as a separate "Calibration — lower is
+> better" table on the app's accuracy screen rather than more columns on the
+> hit-rate one. See the Ensemble repo's owed table.
+>
+> **`TrackRecordEntry` is NOT owed here. It moved to item 57.** That object is
+> what reaches the prompt — `pipeline.py` hands the forecaster
+> `e.model_dump()` whole — so giving it a Brier is a prompt change, and a
+> skill score's reference is climatology, which item 57 withholds from the
+> forecaster on purpose. It is item 57's open "Telling the forecaster"
+> decision wearing different clothes, and it is recorded there so it gets made
+> once. `SkillCell` had no such problem: `_review_prompt_payload` omits the
+> cell table deliberately, which is why this shipped without touching the
+> prompt at all.
 
 ### What the skill score had to be, and nearly was not
 
@@ -7450,7 +7517,10 @@ time and every line of it was earned, which is exactly why it cannot be
 shortened by judgement: the parts that look most redundant are often the ones
 holding a bug down.
 
-### The three categories, and only one of them is "delete text"
+### The categories, and only one of them is "delete text"
+
+Three were found in the system prompt on 2026-09-05; a fourth, in the USER
+prompt, was added 2026-09-06 and is at the end.
 
 **1. Rules that exist because the payload invites the error.** The largest
 category and the cheapest win. Measured 2026-09-05: `STATE NO NUMBER FROM
@@ -7499,6 +7569,53 @@ start here, because these are the longest passages in the file.
 > leaves when 3.6 does instead of surviving as text nobody can justify
 > removing. Same provenance discipline as item 45's sources and item 70's
 > prompt hash, one layer up.
+
+### A fourth category, added 2026-09-06: the payload's own precision
+
+Not a rule at all, which is why it did not surface in the six generation
+passes — the audit was reading the SYSTEM prompt, and this is in the USER
+prompt every run.
+
+**The record hands the forecaster raw float precision.** Measured against the
+real 2026-09-06 prompt:
+
+```text
+"rolling_30_rain_pct":       65.38461538461539
+"avg_mslp_trend_error_hpa_10": 0.34000000000002045
+"avg_temp_high_error_c_10":   -0.059999999999979535
+```
+
+212 literals carry three or more decimal places, 2,745 characters of which
+are trailing digits — 1.8% of a 152,237-character prompt. Inside MODEL TRACK
+RECORD, **8% of the block is trailing digits.**
+
+**Size is the least interesting part of this.** The prompt's central rule is
+that the LLM never computes anything, and the reason is that a model doing
+arithmetic drifts silently. Handing it `-0.059999999999979535` does something
+adjacent and worse: it states a mean temperature error to twenty significant
+figures when the underlying observation is recorded to 0.1 °C. That is a
+precision claim the measurement cannot support, in a project whose entire
+discipline is not claiming evidence it does not have — the same principle as
+`brier_checks` being reported separately from `checks`.
+
+It also invites the failure category 1 is about. A model shown
+`65.38461538461539` and asked for prose has been handed a number it can only
+use by rounding, which is arithmetic, which is the thing the prompt forbids.
+
+The fix is a rounding pass at the payload boundary, not a rule telling the
+model to round. Same shape as `comparison_for_prompt`: narrow what is handed
+over and the rule polices nothing.
+
+**Open, and to be decided with the numbers rather than now**: what each field
+deserves. Temperatures and errors in °C are measured to 0.1; percentages
+probably want one decimal or none; `rain_pct_trend_delta` is a difference of
+two percentages and inherits their precision. A blanket `round(x, 2)` is the
+obvious first move and is probably too coarse for some fields and too fine
+for others.
+
+**Not urgent, and not free either.** Every rounded value changes the prompt
+hash (item 70) and every vector that pins a prompt, so it is one pass done
+once rather than field by field.
 
 ### The method, which is the durable part
 
