@@ -7375,6 +7375,18 @@ paragraph. **This category is not pared at all.** Naming it explicitly is
 half the point of the item: a pass that treats length as the enemy will
 start here, because these are the longest passages in the file.
 
+> **But protecting this category is not sufficient — see item 76.** A rule
+> can be genuinely load-bearing for gemini-3.6-flash and worthless for its
+> successor, and reading cannot tell the two apart. Since this is the longest
+> text in the prompt, an audit that protects it wholesale may be carefully
+> preserving the most expensive dead weight in the file, on principle.
+>
+> **The fourth axis is a second model in the harness.** A rule both models
+> need is general; one only 3.6 needs is a workaround and gets TAGGED, so it
+> leaves when 3.6 does instead of surviving as text nobody can justify
+> removing. Same provenance discipline as item 45's sources and item 70's
+> prompt hash, one layer up.
+
 ### The method, which is the durable part
 
 `olw replay` (item 27) answers "did this change move anything" across the
@@ -7648,3 +7660,114 @@ something, whatever else it bought.
 
 Related: item 61, item 67, item 72, item 73 (which this exists to serve),
 item 69 (which makes the inputs re-runnable), item 23, item 48.
+
+---
+
+## 76. The prompt is the only asset that decays · **Planned**
+
+Raised by the operator 2026-09-06, from the probe in item 75: *"if we get
+everything tuned perfectly for gemini-3.6-flash, that's actually a net loss
+in functionality unless that same work carries forward."*
+
+That is the sharpest framing of the model question yet, and sharper than item
+68's. 68 asks how to CHANGE models safely. This asks what the accumulated
+prompt is WORTH after a change — and the honest answer is that nobody knows,
+because nothing distinguishes a rule the next model will also need from a
+workaround for this one's habits.
+
+### Rank the assets by what a model change costs them
+
+- **The record** — conditions, outcomes, and eight of nine scored columns —
+  is model-independent by construction. A swap costs it nothing (item 68).
+- **The code** — bands, baselines, scoring, provenance, `describe_day_rain`,
+  `describe_extended_trend` — is model-independent. A swap costs it nothing.
+- **The prompt is the only model-coupled asset in the project, and the only
+  one that decays.** ~34,000 characters, accumulated one measured incident at
+  a time, every one of them against a single model's failure modes.
+
+### The trap this puts item 73 in
+
+Item 73 sorts rules into three categories and protects category 3 —
+load-bearing scar tissue — from paring, on the grounds that those passages
+are long *because* they carry a measurement.
+
+**That protection is correct and incomplete.** A rule can be genuinely
+load-bearing for gemini-3.6-flash and worthless for its successor, and
+category 3 is the LONGEST text in the file. If a meaningful share of it is
+model-specific, the audit is carefully preserving the most expensive dead
+weight in the prompt, and doing so on principle.
+
+Item 73 cannot tell the difference, and neither can reading.
+
+### What makes it testable
+
+A second model in the harness. Run the same prompt and the same archived
+inputs (item 69) through both, and every rule sorts:
+
+| needed by | what it is | what to do |
+|---|---|---|
+| both | a general instruction | keep, unqualified |
+| 3.6 only | a workaround for one model's habits | keep, TAGGED |
+| neither | dead | delete |
+
+**Rules get provenance, exactly as sources did in item 45 and the forecaster
+did in item 70.** A tagged rule leaves when the model it serves leaves,
+instead of surviving as text nobody can justify removing. Same discipline,
+one layer up.
+
+The conflict rule has to be stated before anyone starts, or it will be
+decided case by case: **keep a rule if ANY supported model needs it, and
+record which.** The tag is the whole value — an untagged kept rule is
+indistinguishable from a general one, which is the state this item exists to
+end.
+
+### The strategic answer, which the project half-holds already
+
+Item 23 established that arithmetic lives in code and never in the LLM. The
+extension this item argues for: **any judgement that CAN be computed should
+be, because a computed judgement survives a model change and a prompted one
+does not.**
+
+Two things shipped on 2026-09-05 are the pattern, and both DELETED prompt
+text rather than adding it:
+
+- `comparison_for_prompt` narrowed the payload, and a 488-character rule went
+  with the fields it was policing.
+- `describe_extended_trend` hands over a finished phrase, so there is no
+  wording for a model to get wrong and no rule needed to stop it.
+
+Neither is model-specific. Both would work identically under any successor.
+
+**So a shrinking prompt is a migration plan, not housekeeping.** That is the
+reframe worth carrying: every rule moved into code is one less thing to
+re-validate on the next model, and item 73's real value is not a shorter file
+but a smaller migration surface.
+
+What is left when this is done as far as it goes is the part that cannot move:
+**prose.** Synthesis into readable English is what the LLM is irreducibly for
+— and it is also the part most likely to IMPROVE on its own with a better
+model, where the rule-following scaffolding is the part that has to be
+re-earned every time.
+
+### Cost, and why this is affordable
+
+The worker-model harness costs nothing against the spend cap. A pass against
+`gemini-current` costs real calls, but it is a BURST and not a subscription:
+one classification pass over the frozen cases, spent once per candidate
+model, in an afternoon. Compare item 68's original alternating-days design,
+which spent a call a day for a month.
+
+### Not established
+
+- How much of the prompt is actually model-specific. It could be 5% or 50%,
+  and the guess matters less than that nobody has measured it.
+- Whether a rule that gemini-3.8 does not need is safe to drop for 3.6 while
+  3.6 is still in production. Probably not, which is what the TAG is for.
+- Whether this generalises past Gemini. Two models from one family agreeing
+  is weaker evidence than two families agreeing, and the app supports three
+  providers, so the eventual test set is wider than the pipeline's own needs.
+
+Related: item 73 (which this adds an axis to and reframes), item 68 (safe
+model change), item 71 (the ceiling probe, which shares the harness), item 69
+(the archived inputs both depend on), item 45 and item 70 (the provenance
+discipline this borrows), item 23, item 28.
