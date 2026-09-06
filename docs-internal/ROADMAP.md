@@ -5764,6 +5764,27 @@ Caught by running the review against the real record rather than by any test.
 The vectors all had climatology speaking every day, so paired and unpaired
 agreed on every one of them; a case where they disagree was added afterwards.
 
+**It was not a rounding difference. It reversed two verdicts.** The same
+record, Day+0, scored both ways on 2026-09-06:
+
+| model | unpaired | paired (2 shared days) |
+|---|---|---|
+| gfs_seamless | **+0.202** | **-0.995** |
+| ecmwf_ifs025 | +0.403 | +0.592 |
+| icon_seamless | **+0.336** | **-0.530** |
+| best_match | +0.403 | +0.592 |
+| olw_blend | -0.297 | -0.297 |
+
+Unpaired, GFS and ICON beat climatology. Paired, they lose to it. That is the
+opposite claim about the same forecasts, and it would have gone onto the
+accuracy screen. Nothing here means anything yet at two shared days — but the
+METHOD would have been wrong permanently, and the figure it produced looked
+perfectly reasonable.
+
+Note also `olw_blend` at **-0.297** on its first Brier reading ever: the
+project's own blend is, so far, worse calibrated than knowing the usual chance
+of rain. Two checks. Not a finding, recorded so it is not a surprise later.
+
 ### Two parity defects this turned up, neither of them item 58's
 
 **Dart never had the baseline finding at all, and ranked the yardsticks as
