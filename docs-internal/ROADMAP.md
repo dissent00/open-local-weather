@@ -7391,6 +7391,14 @@ needs a generation. The loop used on 2026-09-05:
 Six passes cost no Gemini calls and no spend against the cap. Item 69 is what
 makes step 2 possible, two days after it shipped.
 
+**Hand a value that could not have come from the prompt.** Most real days
+agree with the examples written into the prompt, so a run that matches them
+proves nothing about whether the instruction is obeyed — see item 75, where
+this was asked about item 61 and settled by handing "cooling through
+Thursday" against examples that both said "Friday". Any "use this verbatim"
+rule audited under this item needs the same treatment before it can be called
+followed or unfollowed.
+
 **Change one thing per pass.** The placement test was only interpretable
 because it moved a rule without editing a word — 34,431 characters against
 34,430, one whitespace. A pass that edits and moves at once answers neither
@@ -7592,6 +7600,43 @@ thing.
 wrapper in it, and tightening a clause nobody complained about is how a
 prompt grows a rule that earns nothing. Recorded so that if the wrapper later
 drifts into something worse, the origin is known.
+
+### Is it reading the data, or copying the example?
+
+Raised by the operator on seeing the run: the phrase resembles the examples
+written into the prompt, so a run that matches them is *consistent with*
+reading the handed value and equally consistent with pattern-matching. The
+concern generalises — **every "use this verbatim" instruction has it**, and
+`rain_contrast` has it worse, since the prompt's example "dry again" is also
+the exact string code produces on a dry-after-dry day.
+
+**Production already answers it for item 61, and the day name is the tell.**
+Both prompt examples say "Friday". The published run says "Wednesday", which
+appears nowhere in the prompt and can only come from the handed value.
+
+**Confirmed against a value that shares no words with either example**, via
+the worker harness on the same archived inputs:
+
+```text
+prompt examples   "much the same through Friday"
+                  "warming through Friday, with rain becoming more likely"
+handed instead    "cooling through Thursday"
+produced          "... Cooling through Thursday."
+```
+
+**The technique is the durable part, and item 73 should reuse it: to test
+whether an instruction is obeyed, hand a value that could not have come from
+the prompt.** A probe that agrees with the examples proves nothing, and most
+real days agree with the examples — that is what makes this class of question
+hard to answer by watching.
+
+Two limits worth stating. The probe ran on a worker model rather than
+`gemini-3.6-flash`, so it is evidence about instruction-following in general
+and not about the production model specifically; the day-name argument above
+is the part that is about production. And the phrase arrived here as a bare
+sentence ("Cooling through Thursday.") where the live run wrapped it
+("Expect conditions to remain..."), so the wrapper is occasional rather than
+systematic.
 
 ### How to use this item
 
