@@ -74,6 +74,18 @@ Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
 
+### Added 2026-09-06: measure before building the model machinery
+
+Items 76, 77 and 78 came out of one question — what the accumulated prompt is
+worth after a model change. **Do 77 first and possibly only.** It measures
+how much of the prompt is model-specific, using worker models that cost
+nothing against the cap, and the operator's expectation is that the answer is
+"not much". If that holds, 76's tagging and 78's conditional assembly are
+never built, and a measurement will have stopped two mechanisms.
+
+That ordering is the point. 78 is explicitly marked do-not-build until 77
+reports.
+
 ### Added 2026-09-04: 69 jumps this queue
 
 Items 68, 69, 70 and 71 came out of one question — how to handle model
@@ -7785,6 +7797,17 @@ model-specific** — the number is spread across two files with no marker
 saying which parts differ deliberately. Item 76 exists because nobody has
 measured it, and per-model prompts would make it permanently unmeasurable.
 
+### The shape that follows — now item 78, and gated on item 77
+
+Split out so this item stays an argument and the mechanism has its own place.
+**Item 77 measures the model-specific share first; item 78 builds the
+conditional assembly only if that number justifies it.**
+
+The operator's own expectation is that model differences are minimal. If that
+holds, the cheapest outcome of this whole line of thinking is a measurement
+that stops two items being built — which is a better result than any
+mechanism.
+
 ### The shape that follows
 
 One prompt, with model-tagged conditional blocks, assembled in code —
@@ -7830,3 +7853,177 @@ Related: item 73 (which this adds an axis to and reframes), item 68 (safe
 model change), item 71 (the ceiling probe, which shares the harness), item 69
 (the archived inputs both depend on), item 45 and item 70 (the provenance
 discipline this borrows), item 23, item 28.
+
+---
+
+## 77. A prompt harness that asks which models to test against · **Planned**
+
+Requested by the operator 2026-09-06. The harness used through items 73, 75
+and 76 was assembled by hand each time — render the system prompt, copy an
+archived user prompt, hand both to a worker model, read the prose. It works,
+it has already produced findings, and it is not repeatable by anyone who was
+not in the session that built it.
+
+### What it has to do that reading three outputs does not
+
+A wide run produces three or five narratives. Reading them side by side is
+how the last two days went and it does not scale past about three, because
+the differences that matter are small and specific:
+
+- Did each **"use this verbatim"** value survive? Item 75 settled this for
+  item 61 by handing a phrase that could not have come from the prompt's
+  examples. That check should be automatic, per rule, per model.
+- Did a **banned shape** reappear? Opening on the clock was evaded three
+  times in fresh wording before placement fixed it; a substring check for
+  the four known openers is worthless, but "does the first sentence begin
+  with a time or the sun" is checkable.
+- Did an **invented variable** appear? Humidity, dew point, feels-like — the
+  prompt names the ones that do not exist, so a scan for them is exact.
+- Which **sections differ across models at all**, and which are identical.
+
+**The output is a table, not three essays.** A wide run answers "which rules
+held for which models"; the prose is there to read when a cell disagrees.
+
+### Two tiers, because they cost differently
+
+- **Free tier: Anthropic worker models in-session** — haiku, sonnet, opus.
+  These cost nothing against the spend cap and are what the operator asked to
+  compare first. They are invoked by a session, not by a CLI, which shapes
+  the design below.
+- **Paid tier: the configured provider** — gemini-3.6-flash, gemini-current.
+  Real API calls against `max_llm_calls_per_24h`. A wide run over N models
+  and M cases costs N x M and must say so before it starts.
+
+**The harness ASKS.** Small by default — one model, one case. Wide on
+request, with the call count and the remaining cap stated up front, because a
+run that silently spends eight calls is the thing the cap exists to prevent.
+
+### The split that makes it reproducible
+
+The model invocation is not the reproducible part and cannot be: worker
+models are reachable from a session and the provider is reachable from a CLI,
+and no single entry point has both.
+
+So split it:
+
+1. **Render** — a CLI verb that writes the exact prompt pair for a chosen
+   date and issuance out of the archive (item 69), plus any deliberate
+   substitutions like item 75's probe value. Fully reproducible, no model, no
+   cost.
+2. **Run** — whoever has the model runs it. A session for the worker tier, a
+   CLI flag for the paid tier.
+3. **Check** — a CLI verb that takes the rendered pair and one or more
+   outputs and produces the table above. Deterministic, no model, no cost.
+
+Steps 1 and 3 are the durable half and hold their value whatever the model
+landscape does. Step 2 is a thin wrapper either way.
+
+### On scheduling
+
+The worker tier is free, so running it on a schedule costs nothing but noise.
+The honest trigger is an EVENT, not a calendar: a material prompt change, a
+new candidate model, or a run the operator flags as good or bad (item 75).
+
+The paid tier should never be scheduled. It answers a question somebody
+asked, and a weekly wide run spends real calls answering nothing.
+
+### What it is expected to find, stated before it runs
+
+The operator's own expectation, recorded so the result can disagree with it:
+**that model differences are minimal.** If that holds, item 76's tagging
+machinery and item 78's conditional assembly are never needed, and the
+cheapest possible outcome of this item is a measurement that stops two other
+items being built.
+
+That is the strongest argument for doing this FIRST. It is also the reason
+the checks must be sharp: a harness that reports "all three read fine" when
+one quietly dropped a verbatim value would license exactly the wrong
+conclusion.
+
+Related: item 69 (the archived inputs this renders), item 73 (the audit that
+consumes it), item 75 (the readability baseline and the probe technique),
+item 76 (which this measures), item 78 (which this may make unnecessary),
+item 71 (the ceiling probe, same harness), item 27 (replay, which answers
+"did anything move" and not "was the rule obeyed").
+
+---
+
+## 78. Assemble the prompt from the model in config · **Planned — do not build until item 77 says it is needed**
+
+The mechanism item 76 argues for, separated into its own item because it is a
+BUILD and 76 is an argument. Requested by the operator 2026-09-06.
+
+### The shape
+
+`build_system_prompt` already assembles conditionally — `is_reissue`,
+`ground_stations_configured`, `local_bulletin_configured` each include or omit
+blocks today. This adds one more parameter of the same kind:
+
+```python
+build_system_prompt(location, ..., model=location.llm_model)
+```
+
+A block tagged for a model is included when that model is configured and
+absent otherwise. **Absent, not suppressed** — the principle already written
+beside that function for the ground-station case:
+
+> "Absent instructions beat instructions that say 'ignore this': the model
+> cannot mention what it was never told about."
+
+Which is also why the alternative the operator asked about — *"if you are
+gemini-3.6-flash, do this"* — is not the design. A model told to avoid
+opening with the clock under a condition has been taught the concept of
+opening with the clock, and a model is an unreliable narrator about its own
+identity anyway. The pipeline knows which model it is calling; the model does
+not need to.
+
+### Why this is gated on item 77 rather than scheduled
+
+**The operator's expectation is that model differences are minimal, and if
+that is right this item should never be built.** Conditional assembly buys
+nothing when there is nothing to condition on, and it costs a real amount:
+
+- The prompt gains a dimension. Every rule becomes "for whom", and a reader
+  has to hold the model in mind to know what the forecaster was told.
+- The vectors need a case per variant, in both languages. This is the part
+  most likely to be skipped, and skipping it means the two implementations
+  can diverge silently on a variant nobody exercises.
+- `system_prompt_sha256` legitimately differs per model. That is correct —
+  the forecaster IS (model + prompt), and item 70's hash should distinguish
+  them — but it means the record gains variants and any partition over it has
+  to expect them.
+
+So: **item 77 measures first.** If the model-specific share of the prompt is
+small enough to state in a sentence, the right answer is a sentence in a
+comment, not a mechanism.
+
+### If it is built, the tag needs a trigger
+
+A conditional block nobody ever removes is the same dead weight in a new
+shape, and this item's own argument would then run again in two years about
+conditionals instead of paragraphs.
+
+Each tagged block carries the model it serves and the condition for its
+removal — "when gemini-3.6-flash leaves production" — and something has to
+check that. Item 28's deprecation watcher already looks at provider model
+lists weekly and is the natural place: a model leaving should surface the
+blocks that go with it.
+
+### Open, and worth deciding before any code
+
+- **Does a tagged block belong in the prompt file at all**, or in a separate
+  per-model overlay that the builder merges? One file keeps the single source
+  of truth the vectors depend on; an overlay makes the model-specific share
+  trivially countable, which is item 76's number. Probably one file with
+  explicit markers, but this is not decided.
+- **What happens on an unknown model.** A fork running something neither
+  tagged nor tested should get the untagged base prompt and a degradation
+  noting it, rather than silently receiving another model's workarounds.
+- **Whether the app needs it.** The app lets a user pick any of three
+  providers, so its exposure is wider than the pipeline's — but it also has
+  no `config/` and no operator. That may argue for the base prompt only on
+  the app side, which would be a real divergence and needs stating rather
+  than discovering.
+
+Related: item 76 (the argument), item 77 (which gates this), item 70 (the
+hash that will vary), item 28 (the removal trigger), item 68.
