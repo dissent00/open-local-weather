@@ -3,6 +3,7 @@
 import 'dates.dart';
 import 'brier.dart';
 import 'models.dart';
+import 'sums.dart';
 
 /// Scores one model's stored prediction against one day's actual.
 ///
@@ -72,10 +73,13 @@ double _hourDiff(String predictedHhmm, String actualHhmm) {
 }
 
 /// Arithmetic mean ignoring nulls; `null` when nothing is present.
+///
+/// Summed with [compensatedSum] rather than `reduce`, to match Python's
+/// `sum()` exactly — see sums.dart for the measurement that forced it.
 double? mean(List<double?> values) {
   final present = values.whereType<double>().toList();
   if (present.isEmpty) return null;
-  return present.reduce((a, b) => a + b) / present.length;
+  return compensatedSum(present) / present.length;
 }
 
 /// Outcome of comparing recent skill against the longer-term baseline.

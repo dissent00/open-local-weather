@@ -229,3 +229,24 @@ def test_the_prompt_asks_for_a_probability_and_says_what_it_is_for():
     assert "rain_probability_pct" in sp
     low = sp.lower()
     assert "calibrat" in low or "honest" in low
+
+
+def test_every_reachable_probability_is_bit_identical_to_the_dart_form():
+    """The whole real domain, swept rather than sampled.
+
+    `rain_probability_pct` is an integer 0-100 and the one conversion site
+    divides it by 100, so the reachable inputs are 101 values times two
+    outcomes — small enough to check exhaustively instead of trusting a few
+    chosen vector cases. Vectors pin the cases somebody thought of; this pins
+    the function.
+
+    The form being matched is Dart's `error * error`. `x ** 2` goes through C
+    pow() and differs in the last bit on ~0.13% of arbitrary reals, none of
+    them reachable from a percentage — which is exactly the kind of gap that
+    stays invisible until an input arrives from somewhere new.
+    """
+    for pct in range(101):
+        probability = pct / 100
+        for occurred in (True, False):
+            error = probability - (1.0 if occurred else 0.0)
+            assert brier_score(probability, occurred) == error * error

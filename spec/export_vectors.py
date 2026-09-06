@@ -922,16 +922,10 @@ def export_weekly_review() -> None:
             )
         return logs, actuals
 
-    def case(name: str, days: int, a: int, b: int, bias: float = 0.0):
-        logs, actuals = build(days, a, b, bias)
-        review = build_weekly_review(
-            log_lookup=lambda d: logs.get(d),
-            actuals=actuals,
-            all_log_dates=sorted(logs),
-            today=today,
-            models=models,
-            lead_times_days=[0],
-        )
+    def _review_vector_case(name, logs, actuals, models_here, review):
+        """One case's JSON, shared by every builder below so the shape cannot
+        drift between them — a case missing a field would silently stop
+        testing that field while the suite stayed green."""
         return {
             "name": name,
             "input": {
@@ -946,7 +940,7 @@ def export_weekly_review() -> None:
                 },
                 "actuals": {_iso(d): a.model_dump() for d, a in sorted(actuals.items())},
                 "today": _iso(today),
-                "models": models,
+                "models": models_here,
                 "lead_times_days": [0],
             },
             "expected": {
@@ -967,6 +961,10 @@ def export_weekly_review() -> None:
                         "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
                         "earliest": _iso(c.earliest) if c.earliest else None,
                         "latest": _iso(c.latest) if c.latest else None,
+                        "mean_rain_brier": c.mean_rain_brier,
+                        "brier_checks": c.brier_checks,
+                        "rain_brier_skill": c.rain_brier_skill,
+                        "brier_skill_checks": c.brier_skill_checks,
                     }
                     for c in review.cells
                 ],
@@ -977,6 +975,202 @@ def export_weekly_review() -> None:
                 ],
             },
         }
+
+    def brier_case(name: str, with_reference: bool):
+        """Ten wet days at fixed probabilities, so every expected figure is a
+        hand-checkable square rather than something only the code can produce.
+
+        alpha says 90 every day       -> (0.9-1)^2 = 0.01 on 10 checks
+        beta says 10 on 5 days only   -> (0.1-1)^2 = 0.81 on 5 of 10 checks
+        climatology says 50 every day -> 0.25, and IS the reference
+
+        beta carrying a probability on half its days is the point of the
+        `brier_checks` column: 10 checks and 5 Brier checks on one row, which
+        is what the real record looks like for weeks after 2026-09-03.
+        """
+        models_here = ["alpha", "beta"] + (["climatology"] if with_reference else [])
+        logs, actuals = {}, {}
+        for i in range(10):
+            d = today - timedelta(days=i + 1)
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            day0 = [
+                ModelPrediction(model="alpha", rain=True, rain_probability_pct=90,
+                                high_c=26.0, low_c=18.0),
+                ModelPrediction(model="beta", rain=True,
+                                rain_probability_pct=10 if i < 5 else None,
+                                high_c=26.0, low_c=18.0),
+            ]
+            if with_reference:
+                day0.append(ModelPrediction(model="climatology", rain=True,
+                                            rain_probability_pct=50,
+                                            high_c=26.0, low_c=18.0))
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=day0),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
+    def case(name: str, days: int, a: int, b: int, bias: float = 0.0):
+        logs, actuals = build(days, a, b, bias)
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models, review)
+
+    def contamination_case(name: str):
+        """A baseline that would WIN the ranking if it were not excluded.
+
+        20 days. alpha calls rain right 10 times (50%), beta 9 (45%), and
+        climatology 19 (95%) — so an implementation that ranked the yardstick
+        as a peer would publish "climatology is the strongest rain caller
+        here", and one that let it into the bias sweep would name its 3 °C
+        offset as a forecasting flaw. Both are claims about a yardstick, and
+        neither is a claim about a forecast system.
+
+        What SHOULD come out: a ranking over alpha and beta alone (a 5-point
+        spread, under the 15-point floor, so no winner), and a baseline
+        finding saying the guidance has not earned its place.
+        """
+        models_here = ["alpha", "beta", "climatology"]
+        logs, actuals = {}, {}
+        for i in range(20):
+            d = today - timedelta(days=i + 1)
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=(i < 10),
+                                    high_c=26.0, low_c=18.0),
+                    ModelPrediction(model="beta", rain=(i < 9),
+                                    high_c=26.0, low_c=18.0),
+                    # A large offset on purpose: it must NOT be reported.
+                    ModelPrediction(model="climatology", rain=(i < 19),
+                                    high_c=23.0, low_c=18.0),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
+    def tie_case(name: str):
+        """Two models clearing the baseline on the SAME percentage.
+
+        The claim string joins their names, so their ORDER is published prose.
+        Python sorts that list with `sorted`, which is stable; Dart's
+        List.sort is not, so without an explicit tie-break the two surfaces
+        would name the same two models in different orders. Nothing else in
+        this vector file produces a tie, which is why this case exists.
+        """
+        models_here = ["alpha", "beta", "climatology"]
+        logs, actuals = {}, {}
+        for i in range(20):
+            d = today - timedelta(days=i + 1)
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=(i < 18), high_c=26.0, low_c=18.0),
+                    ModelPrediction(model="beta", rain=(i < 18), high_c=26.0, low_c=18.0),
+                    ModelPrediction(model="climatology", rain=(i < 10),
+                                    high_c=26.0, low_c=18.0),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
+    def pairing_case(name: str):
+        """The reference speaks on only half the days, and the weather differs
+        between the halves — so a paired skill score and an unpaired one give
+        materially different answers.
+
+        alpha states 90 on all 10 days. climatology states 50 on the 5 most
+        recent only, which are DRY where the older 5 are wet. alpha therefore
+        scores 0.81 on the shared days and 0.01 on the rest.
+
+        Paired:   1 - 0.81/0.25 = -2.24 over 5 days.
+        Unpaired: 1 - 0.41/0.25 = -0.64, comparing alpha's ten days against
+                  climatology's five. Nothing in the older cases separates
+                  these two, which is why this one exists.
+        """
+        models_here = ["alpha", "climatology"]
+        logs, actuals = {}, {}
+        for i in range(10):
+            d = today - timedelta(days=i + 1)
+            wet = i >= 5
+            actuals[d] = DailyActual(
+                rain=wet, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=wet, rain_probability_pct=90,
+                                    high_c=26.0, low_c=18.0),
+                    ModelPrediction(model="climatology", rain=wet,
+                                    rain_probability_pct=50 if i < 5 else None,
+                                    high_c=26.0, low_c=18.0),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
 
     write(
         "weekly_review.json",
@@ -991,6 +1185,19 @@ def export_weekly_review() -> None:
             case("30 checks — a narrow gap is explicitly declined", 30, 20, 18),
             case("30 checks — a systematic temperature bias is named", 30, 15, 15, 2.0),
             case("4 checks — insufficient for anything", 4, 4, 1),
+            brier_case(
+                "Brier against climatology — a winner, a loser, and a partial column",
+                with_reference=True,
+            ),
+            brier_case(
+                "no climatology among the models — Brier present, skill absent",
+                with_reference=False,
+            ),
+            contamination_case(
+                "a baseline must not be ranked or bias-checked as a peer",
+            ),
+            tie_case("two models clear the baseline on equal footing — order is prose"),
+            pairing_case("skill is scored on shared days only, and it changes the answer"),
         ],
     )
 

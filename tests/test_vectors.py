@@ -421,6 +421,25 @@ def test_vectors_weekly_review():
             assert got.evidence == want["evidence"], name
             assert got.confidence == want["confidence"], name
 
+        # The cells were unasserted here until 2026-09-06 — only the Dart side
+        # checked them. That left the generator unpinned by its own output: a
+        # change to the cell arithmetic would have regenerated a new vector and
+        # agreed with itself, and the divergence would only have surfaced in
+        # Dart, which is the wrong end to find it.
+        assert len(review.cells) == len(expected["cells"]), name
+        for got_cell, want_cell in zip(review.cells, expected["cells"]):
+            assert got_cell.model == want_cell["model"], name
+            assert got_cell.checks == want_cell["checks"], name
+            assert got_cell.correct == want_cell["correct"], name
+            assert got_cell.rain_pct == want_cell["rain_pct"], name
+            assert got_cell.confidence == want_cell["confidence"], name
+            # Exact, not approximate: the vectors carry full double precision
+            # so that a mean accumulated in a different order is caught.
+            assert got_cell.mean_rain_brier == want_cell["mean_rain_brier"], name
+            assert got_cell.brier_checks == want_cell["brier_checks"], name
+            assert got_cell.rain_brier_skill == want_cell["rain_brier_skill"], name
+            assert got_cell.brier_skill_checks == want_cell["brier_skill_checks"], name
+
 
 def test_vectors_user_prompt():
     """The per-run message, pinned verbatim.

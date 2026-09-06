@@ -687,6 +687,19 @@ void main() {
           expect(got.rainPct, equals(want['rain_pct']), reason: reason);
           expect(got.meanHighErrorC, equals(want['mean_high_error_c']), reason: reason);
           expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
+          // Compared exactly, not approximately. The vectors carry full
+          // double precision on purpose: an approximate comparison here would
+          // pass a port that accumulated the mean in a different order, and
+          // the whole point of a vector is to catch that.
+          expect(got.meanRainBrier, equals(want['mean_rain_brier']), reason: reason);
+          expect(got.brierChecks, equals(want['brier_checks']),
+              reason: '$reason — the Brier count is separate from `checks` '
+                  'precisely because the two differ, and a port that reused '
+                  'one for both would overstate the evidence');
+          expect(got.rainBrierSkill, equals(want['rain_brier_skill']), reason: reason);
+          expect(got.brierSkillChecks, equals(want['brier_skill_checks']),
+              reason: '$reason — the skill score rests on the days the model '
+                  'and the reference SHARE, and that count is smaller again');
         }
       }
     });

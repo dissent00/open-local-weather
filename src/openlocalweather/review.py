@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
+from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID
 from openlocalweather.dates import add_days
 from openlocalweather.defaults import (
     BASELINE_MODEL_IDS,
@@ -41,7 +42,8 @@ from openlocalweather.defaults import (
     REVIEW_TEMP_BIAS_THRESHOLD_C,
     REVIEW_WIND_BIAS_THRESHOLD_KMH,
 )
-from openlocalweather.models import DailyActual
+from openlocalweather.models import DailyActual, VerificationScore
+from openlocalweather.verify.brier import brier_skill_score, mean_brier
 from openlocalweather.verify.scoring import LogLookup, collect_scores, mean
 
 
@@ -74,6 +76,31 @@ class SkillCell:
     mean_mslp_error_hpa: float | None
     earliest: date | None
     latest: date | None
+    # ROADMAP item 58. LOWER IS BETTER, alone among the figures on this row —
+    # every other one is a percentage or a signed error, and this is a squared
+    # error where zero is perfect. Anything rendering it has to say so.
+    mean_rain_brier: float | None = None
+    # Counted separately from `checks` because the two genuinely differ and
+    # will for weeks: probabilities began being recorded 2026-09-03, so a cell
+    # can hold thirty scored days of which three carry one. Presenting `checks`
+    # beside the Brier would claim evidence that does not exist.
+    brier_checks: int = 0
+    # 1 - brier/climatology_brier: 1.0 is perfect, 0.0 is exactly climatology,
+    # NEGATIVE is worse than simply knowing the usual chance of rain here.
+    #
+    # None when this cell has no Brier, when climatology is not among the
+    # models being reviewed (the prompt path reviews only the forecaster's
+    # models, so no reference exists there), or when the reference is a
+    # perfect 0.0. Raw Brier is not interpretable without it — 0.2 is good or
+    # bad entirely depending on the base rate — which is item 57's lesson
+    # arriving in a second place.
+    rain_brier_skill: float | None = None
+    # How many days the skill score above actually rests on: those where this
+    # model AND climatology both stated a probability. Smaller than
+    # `brier_checks`, which is itself smaller than `checks`. Three counts on
+    # one row looks like over-reporting until they diverge, and on the real
+    # record at 2026-09-06 they were 26, 5 and 2.
+    brier_skill_checks: int = 0
 
 
 @dataclass
@@ -106,6 +133,39 @@ class WeeklyReview:
     data_sufficiency: str = ""
 
 
+def _paired_skill(
+    scored: list[tuple[date, VerificationScore]],
+    reference_by_date: dict[date, float],
+) -> dict[str, float | int | None]:
+    """The Brier skill score over the days this model and the reference SHARE.
+
+    Both means are taken over the same dates, so the ratio compares two
+    forecasts of the same weather rather than two samples of different
+    weather. That is the whole content of a skill score; computed over
+    unpaired days it is a plausible-looking number that answers nothing.
+
+    `brier_skill_checks` is how many days survived the intersection, and it is
+    reported for the same reason `brier_checks` is: it is smaller than either
+    input count, and a skill score resting on two shared days should not look
+    like one resting on thirty.
+    """
+    paired = [
+        (s.rain_brier, reference_by_date[d])
+        for d, s in scored
+        if s.rain_brier is not None and d in reference_by_date
+    ]
+    if not paired:
+        return {"rain_brier_skill": None, "brier_skill_checks": 0}
+
+    return {
+        "rain_brier_skill": brier_skill_score(
+            mean_brier([b for b, _ in paired]),
+            mean_brier([r for _, r in paired]),
+        ),
+        "brier_skill_checks": len(paired),
+    }
+
+
 def build_weekly_review(
     log_lookup: LogLookup,
     actuals: dict[date, DailyActual],
@@ -120,8 +180,38 @@ def build_weekly_review(
 
     cells: list[SkillCell] = []
     for k in lead_times_days:
+        # Scored for every model at this lead BEFORE any cell is built,
+        # because the Brier skill score is the one figure on a row that is not
+        # a property of that row: it needs climatology's Brier at the same
+        # lead, and climatology is just another model in this loop.
+        scored_by_model = {
+            model: collect_scores(model, k, yesterday, earliest, log_lookup, actuals)
+            for model in models
+        }
+        briers = {
+            model: mean_brier([s.rain_brier for _, s in scored])
+            for model, scored in scored_by_model.items()
+        }
+        # The reference's Brier PER DAY, not as one mean.
+        #
+        # A skill score is a ratio of two means, and it only means anything if
+        # both are taken over the SAME days. On the real record at 2026-09-06
+        # they were not: the NWP models had probabilities on 5 days at Day+0
+        # and climatology on 2, because backfilled baselines predate the
+        # field. Dividing one mean by the other compares a model's five days
+        # against the reference's two, and if those two happened to be easy
+        # days the model is flattered — or damned — by nothing it did.
+        #
+        # Empty when climatology is not being reviewed at all, which is the
+        # prompt path.
+        reference_by_date = {
+            d: s.rain_brier
+            for d, s in scored_by_model.get(CLIMATOLOGY_MODEL_ID, [])
+            if s.rain_brier is not None
+        }
+
         for model in models:
-            scored = collect_scores(model, k, yesterday, earliest, log_lookup, actuals)
+            scored = scored_by_model[model]
             checks = len(scored)
             correct = sum(1 for _, s in scored if s.rain_correct)
             cells.append(
@@ -139,6 +229,9 @@ def build_weekly_review(
                     mean_mslp_error_hpa=mean([s.mslp_error_hpa for _, s in scored]),
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
+                    mean_rain_brier=briers[model],
+                    brier_checks=sum(1 for _, s in scored if s.rain_brier is not None),
+                    **_paired_skill(scored, reference_by_date),
                 )
             )
 

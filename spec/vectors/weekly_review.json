@@ -383,7 +383,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-08-13",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           },
           {
             "model": "beta",
@@ -398,7 +402,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-08-13",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           }
         ],
         "findings": []
@@ -1730,7 +1738,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           },
           {
             "model": "beta",
@@ -1745,7 +1757,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           }
         ],
         "findings": [
@@ -3085,7 +3101,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           },
           {
             "model": "beta",
@@ -3100,7 +3120,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           }
         ],
         "findings": [
@@ -4440,7 +4464,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           },
           {
             "model": "beta",
@@ -4455,7 +4483,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-07-22",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           }
         ],
         "findings": [
@@ -4684,7 +4716,11 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-08-17",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           },
           {
             "model": "beta",
@@ -4699,10 +4735,4020 @@
             "mean_onset_error_hrs": null,
             "mean_mslp_error_hpa": null,
             "earliest": "2026-08-17",
-            "latest": "2026-08-20"
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
           }
         ],
         "findings": []
+      }
+    },
+    {
+      "name": "Brier against climatology \u2014 a winner, a loser, and a partial column",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta",
+          "climatology"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-11",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 10,
+        "days_verified": 10,
+        "data_sufficiency": "Reviewed 10 day(s) of stored forecasts (2026-08-11 to 2026-08-20), of which 10 have observations to score against. Day+0: 10 check(s) per model \u2014 enough to compare models, though differences smaller than about 15 points remain noise.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.009999999999999995,
+            "brier_checks": 10,
+            "rain_brier_skill": 0.96,
+            "brier_skill_checks": 10
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.8100000000000002,
+            "brier_checks": 5,
+            "rain_brier_skill": -2.2400000000000007,
+            "brier_skill_checks": 5
+          },
+          {
+            "model": "climatology",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.25,
+            "brier_checks": 10,
+            "rain_brier_skill": 0.0,
+            "brier_skill_checks": 10
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 0 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "usable",
+            "checks": 10
+          },
+          {
+            "kind": "baseline",
+            "claim": "At Day+0, no model here beats climatology by more than noise \u2014 the guidance is not yet earning its place at this lead time.",
+            "evidence": "climatology 10/10 (100%), the best of 1 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Best model: alpha 100%.",
+            "confidence": "usable",
+            "checks": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "no climatology among the models \u2014 Brier present, skill absent",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 10,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-11",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 10,
+        "days_verified": 10,
+        "data_sufficiency": "Reviewed 10 day(s) of stored forecasts (2026-08-11 to 2026-08-20), of which 10 have observations to score against. Day+0: 10 check(s) per model \u2014 enough to compare models, though differences smaller than about 15 points remain noise.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.009999999999999995,
+            "brier_checks": 10,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.8100000000000002,
+            "brier_checks": 5,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 0 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "usable",
+            "checks": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "a baseline must not be ranked or bias-checked as a peer",
+      "input": {
+        "predictions": {
+          "2026-08-01": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-02": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-03": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-04": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-05": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-06": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-07": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-08": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 23.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-01": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-04": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-05": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-06": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-07": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-08": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-09": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-10": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta",
+          "climatology"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-01",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 20,
+        "days_verified": 20,
+        "data_sufficiency": "Reviewed 20 day(s) of stored forecasts (2026-08-01 to 2026-08-20), of which 20 have observations to score against. Day+0: 20 check(s) per model \u2014 enough to compare models, though differences smaller than about 15 points remain noise.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 10,
+            "rain_pct": 50.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 9,
+            "rain_pct": 45.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          },
+          {
+            "model": "climatology",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 19,
+            "rain_pct": 95.0,
+            "confidence": "usable",
+            "mean_high_error_c": 3.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 5 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "usable",
+            "checks": 20
+          },
+          {
+            "kind": "baseline",
+            "claim": "At Day+0, no model here beats climatology by more than noise \u2014 the guidance is not yet earning its place at this lead time.",
+            "evidence": "climatology 19/20 (95%), the best of 1 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Best model: alpha 50%.",
+            "confidence": "usable",
+            "checks": 20
+          }
+        ]
+      }
+    },
+    {
+      "name": "two models clear the baseline on equal footing \u2014 order is prose",
+      "input": {
+        "predictions": {
+          "2026-08-01": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-02": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-03": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-04": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-05": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-06": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-07": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-08": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-09": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-10": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "beta",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-01": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-02": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-03": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-04": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-05": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-06": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-07": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-08": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-09": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-10": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-16": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-17": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-18": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-19": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-20": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "beta",
+          "climatology"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-01",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 20,
+        "days_verified": 20,
+        "data_sufficiency": "Reviewed 20 day(s) of stored forecasts (2026-08-01 to 2026-08-20), of which 20 have observations to score against. Day+0: 20 check(s) per model \u2014 enough to compare models, though differences smaller than about 15 points remain noise.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 18,
+            "rain_pct": 90.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          },
+          {
+            "model": "beta",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 18,
+            "rain_pct": 90.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          },
+          {
+            "model": "climatology",
+            "lead_time_days": 0,
+            "checks": 20,
+            "correct": 10,
+            "rain_pct": 50.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-01",
+            "latest": "2026-08-20",
+            "mean_rain_brier": null,
+            "brier_checks": 0,
+            "rain_brier_skill": null,
+            "brier_skill_checks": 0
+          }
+        ],
+        "findings": [
+          {
+            "kind": "ranking",
+            "claim": "At Day+0, no model is meaningfully better than the others here yet.",
+            "evidence": "Best-to-worst spread is only 0 points across 2 models with enough checks to compare, within the 15-point noise floor.",
+            "confidence": "usable",
+            "checks": 20
+          },
+          {
+            "kind": "baseline",
+            "claim": "At Day+0, alpha, beta beat the best trivial baseline.",
+            "evidence": "climatology 10/20 (50%), the best of 1 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: alpha 90%, beta 90%.",
+            "confidence": "usable",
+            "checks": 20
+          }
+        ]
+      }
+    },
+    {
+      "name": "skill is scored on shared days only, and it changes the answer",
+      "input": {
+        "predictions": {
+          "2026-08-11": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-12": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-13": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-14": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-15": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": true,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": null,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-16": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-17": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-18": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-19": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          },
+          "2026-08-20": {
+            "0": [
+              {
+                "model": "alpha",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 90,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              },
+              {
+                "model": "climatology",
+                "rain": false,
+                "onset": null,
+                "precip_mm": null,
+                "rain_probability_pct": 50,
+                "wind_kmh": null,
+                "high_c": 26.0,
+                "low_c": 18.0,
+                "mslp_trend": null
+              }
+            ]
+          }
+        },
+        "actuals": {
+          "2026-08-11": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-12": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-13": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-14": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-15": {
+            "rain": true,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-16": {
+            "rain": false,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-17": {
+            "rain": false,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-18": {
+            "rain": false,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-19": {
+            "rain": false,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          },
+          "2026-08-20": {
+            "rain": false,
+            "high_c": 26.0,
+            "low_c": 18.0,
+            "peak_wind_kmh": 20.0,
+            "mslp_trend": -1.0,
+            "onset_hour": null,
+            "precip_mm": null,
+            "thunder": null,
+            "precipitation": null,
+            "precipitation_onset": null,
+            "station_high_c": null,
+            "station_low_c": null,
+            "station_peak_wind_kmh": null,
+            "lightning": null,
+            "provenance": null
+          }
+        },
+        "today": "2026-08-21",
+        "models": [
+          "alpha",
+          "climatology"
+        ],
+        "lead_times_days": [
+          0
+        ]
+      },
+      "expected": {
+        "period_start": "2026-08-11",
+        "period_end": "2026-08-20",
+        "days_with_predictions": 10,
+        "days_verified": 10,
+        "data_sufficiency": "Reviewed 10 day(s) of stored forecasts (2026-08-11 to 2026-08-20), of which 10 have observations to score against. Day+0: 10 check(s) per model \u2014 enough to compare models, though differences smaller than about 15 points remain noise.",
+        "cells": [
+          {
+            "model": "alpha",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.41000000000000003,
+            "brier_checks": 10,
+            "rain_brier_skill": -2.2400000000000007,
+            "brier_skill_checks": 5
+          },
+          {
+            "model": "climatology",
+            "lead_time_days": 0,
+            "checks": 10,
+            "correct": 10,
+            "rain_pct": 100.0,
+            "confidence": "usable",
+            "mean_high_error_c": 0.0,
+            "mean_low_error_c": 0.0,
+            "mean_wind_error_kmh": null,
+            "mean_onset_error_hrs": null,
+            "mean_mslp_error_hpa": null,
+            "earliest": "2026-08-11",
+            "latest": "2026-08-20",
+            "mean_rain_brier": 0.25,
+            "brier_checks": 5,
+            "rain_brier_skill": 0.0,
+            "brier_skill_checks": 5
+          }
+        ],
+        "findings": [
+          {
+            "kind": "baseline",
+            "claim": "At Day+0, no model here beats climatology by more than noise \u2014 the guidance is not yet earning its place at this lead time.",
+            "evidence": "climatology 10/10 (100%), the best of 1 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Best model: alpha 100%.",
+            "confidence": "usable",
+            "checks": 10
+          }
+        ]
       }
     }
   ]

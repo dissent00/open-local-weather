@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'baselines.dart';
+import 'brier.dart';
 import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
@@ -50,6 +52,10 @@ class SkillCell {
     required this.meanMslpErrorHpa,
     required this.earliest,
     required this.latest,
+    this.meanRainBrier,
+    this.brierChecks = 0,
+    this.rainBrierSkill,
+    this.brierSkillChecks = 0,
   });
 
   final String model;
@@ -65,6 +71,61 @@ class SkillCell {
   final double? meanMslpErrorHpa;
   final DateTime? earliest;
   final DateTime? latest;
+
+  /// Mean Brier over the checks in this cell that carried a probability —
+  /// upstream ROADMAP item 58. LOWER IS BETTER, alone among the figures on
+  /// this row: every other one is a percentage or a signed error, and this is
+  /// a squared error where zero is perfect. Anything rendering it has to say
+  /// so in words.
+  final double? meanRainBrier;
+
+  /// Counted separately from [checks] because the two genuinely differ and
+  /// will for weeks: probabilities began being recorded 2026-09-03, so a cell
+  /// can hold thirty scored days of which three carry one. Showing [checks]
+  /// beside the Brier would claim evidence that does not exist.
+  final int brierChecks;
+
+  /// `1 - brier/climatologyBrier`: 1.0 is perfect, 0.0 is exactly
+  /// climatology, NEGATIVE is worse than simply knowing the usual chance of
+  /// rain here.
+  ///
+  /// Null when this cell has no Brier, when climatology is not among the
+  /// models being reviewed, or when the reference is a perfect 0.0. Raw Brier
+  /// is not interpretable without it — 0.2 is good or bad entirely depending
+  /// on the base rate.
+  final double? rainBrierSkill;
+
+  /// How many days [rainBrierSkill] actually rests on: those where this model
+  /// AND climatology both stated a probability. Smaller than [brierChecks],
+  /// which is itself smaller than [checks]. Three counts on one row looks like
+  /// over-reporting until they diverge, and on the real record at 2026-09-06
+  /// they were 26, 5 and 2.
+  final int brierSkillChecks;
+}
+
+/// The Brier skill score over the days a model and the reference SHARE, with
+/// the size of that intersection.
+///
+/// Both means are taken over the same dates, so the ratio compares two
+/// forecasts of the same weather rather than two samples of different
+/// weather. That is the whole content of a skill score; computed over
+/// unpaired days it is a plausible-looking number that answers nothing — and
+/// on the real record the two sides differed 5 days to 2.
+(double?, int) _pairedSkill(
+  List<MapEntry<DateTime, VerificationScore>> scored,
+  Map<String, double> referenceByDate,
+) {
+  final own = <double?>[];
+  final reference = <double?>[];
+  for (final e in scored) {
+    final ref = referenceByDate[formatDate(e.key)];
+    if (e.value.rainBrier == null || ref == null) continue;
+    own.add(e.value.rainBrier);
+    reference.add(ref);
+  }
+  if (own.isEmpty) return (null, 0);
+
+  return (brierSkillScore(meanBrier(own), meanBrier(reference)), own.length);
 }
 
 /// A single reviewed observation.
@@ -126,15 +187,40 @@ WeeklyReview buildWeeklyReview({
 
   final cells = <SkillCell>[];
   for (final k in leadTimesDays) {
+    // Scored for every model at this lead BEFORE any cell is built, because
+    // the Brier skill score is the one figure on a row that is not a property
+    // of that row: it needs climatology's Brier at the same lead, and
+    // climatology is just another model in this loop.
+    final scoredByModel = {
+      for (final model in models)
+        model: collectScores(
+          model: model,
+          leadTimeDays: k,
+          yesterday: yesterday,
+          earliestTargetDate: earliest,
+          predictionsFor: predictionsFor,
+          actualFor: actualFor,
+        ),
+    };
+    final briers = {
+      for (final entry in scoredByModel.entries)
+        entry.key: meanBrier([for (final e in entry.value) e.value.rainBrier]),
+    };
+    // The reference's Brier PER DAY, not as one mean. A skill score is a ratio
+    // of two means and only means anything if both are taken over the SAME
+    // days — see _pairedSkill. Keyed by formatted date because DateTime does
+    // not compare by value as a Map key.
+    //
+    // Empty when climatology is not among the models being reviewed, which is
+    // the prompt path.
+    final referenceByDate = <String, double>{
+      for (final e in scoredByModel[climatologyModelId] ?? const [])
+        if (e.value.rainBrier != null) formatDate(e.key): e.value.rainBrier!,
+    };
+
     for (final model in models) {
-      final scored = collectScores(
-        model: model,
-        leadTimeDays: k,
-        yesterday: yesterday,
-        earliestTargetDate: earliest,
-        predictionsFor: predictionsFor,
-        actualFor: actualFor,
-      );
+      final scored = scoredByModel[model]!;
+      final (skill, skillChecks) = _pairedSkill(scored, referenceByDate);
       final checks = scored.length;
       final correct = scored.where((e) => e.value.rainCorrect).length;
       cells.add(SkillCell(
@@ -151,6 +237,11 @@ WeeklyReview buildWeeklyReview({
         meanMslpErrorHpa: mean([for (final e in scored) e.value.mslpErrorHpa]),
         earliest: scored.isEmpty ? null : scored.last.key,
         latest: scored.isEmpty ? null : scored.first.key,
+        meanRainBrier: briers[model],
+        brierChecks:
+            scored.where((e) => e.value.rainBrier != null).length,
+        rainBrierSkill: skill,
+        brierSkillChecks: skillChecks,
       ));
     }
   }
@@ -182,11 +273,46 @@ String _fmtSigned(double v) {
   return '${rounded >= 0 ? '+' : ''}${rounded.toStringAsFixed(1)}';
 }
 
+/// The weakest confidence among [cells] — a claim is only as strong as the
+/// thinnest evidence behind it.
+String _lowestConfidence(List<SkillCell> cells) {
+  var lowest = cells.first.confidence;
+  for (final c in cells) {
+    if (_confidenceRank(c.confidence) < _confidenceRank(lowest)) {
+      lowest = c.confidence;
+    }
+  }
+  return lowest;
+}
+
+int _fewestChecks(List<SkillCell> cells) {
+  var fewest = cells.first.checks;
+  for (final c in cells) {
+    if (c.checks < fewest) fewest = c.checks;
+  }
+  return fewest;
+}
+
 List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
   final findings = <Finding>[];
 
   for (final k in leadTimesDays) {
-    final atLead = cells.where((c) => c.leadTimeDays == k).toList();
+    final everyCellAtLead = cells.where((c) => c.leadTimeDays == k).toList();
+
+    // The yardsticks are scored in the same ledger and must NOT be ranked in
+    // it. "climatology is the strongest rain caller here" compares guidance
+    // against a yardstick as though they were peers, and "persistence
+    // under-forecasts peak wind" is a statement about yesterday's weather
+    // rather than about a forecast system. Both were reachable here until
+    // 2026-09-06, when the first vector case carrying a baseline model found
+    // that this port had neither the exclusion nor the finding below.
+    //
+    // _describeSufficiency deliberately does NOT make this split — coverage
+    // is a statement about the record, and the baselines are in it.
+    final atLead =
+        everyCellAtLead.where((c) => !baselineModelIds.contains(c.model)).toList();
+    final baselineCells =
+        everyCellAtLead.where((c) => baselineModelIds.contains(c.model)).toList();
 
     // --- Comparative ranking, heavily gated -------------------------------
     // Two independent gates. Both models need enough checks to be worth
@@ -259,6 +385,79 @@ List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
           evidence: 'Mean error ${_fmtSigned(value)}$unit across ${c.checks} checks.',
           confidence: c.confidence,
           checks: c.checks,
+        ));
+      }
+    }
+
+    // --- Does being best mean anything? -----------------------------------
+    // Upstream ROADMAP item 57. A ranking says which model is best of those
+    // present; it cannot say whether being best is worth having. On this
+    // project's own record at Day+0, repeating yesterday's weather beat two of
+    // the five numerical models and the project's own blend, so "ECMWF is the
+    // strongest rain caller here" was a claim a reader had no way to weigh.
+    //
+    // Gated on the SAME noise floor as the ranking, and for the same reason:
+    // clearing a yardstick by three points at n=20 is scatter.
+    final eligibleBaselines = baselineCells
+        .where((c) => c.checks >= reviewMinChecksForComparison && c.rainPct != null)
+        .toList();
+    if (eligible.isNotEmpty && eligibleBaselines.isNotEmpty) {
+      var bar = eligibleBaselines.first;
+      for (final c in eligibleBaselines) {
+        if (c.rainPct! > bar.rainPct!) bar = c;
+      }
+      // Sorted best-first, with ties broken by position in `eligible`.
+      // Python sorts this list with `sorted`, which is STABLE, and Dart's
+      // List.sort is not — so two models on the same percentage would be
+      // named in either order here and in a fixed order there. The claim
+      // string joins these names, so that is a different published sentence,
+      // not an internal detail.
+      final clearing = eligible
+          .where((c) => c.rainPct! - bar.rainPct! >= reviewComparisonMinGapPct)
+          .toList();
+      final orderInEligible = {
+        for (var n = 0; n < eligible.length; n++) eligible[n].model: n,
+      };
+      clearing.sort((a, b) {
+        final byPct = b.rainPct!.compareTo(a.rainPct!);
+        if (byPct != 0) return byPct;
+        return orderInEligible[a.model]!.compareTo(orderInEligible[b.model]!);
+      });
+
+      final barEvidence =
+          '${bar.model} ${bar.correct}/${bar.checks} (${_fmtPct(bar.rainPct!)}%), '
+          'the best of ${eligibleBaselines.length} trivial baseline(s); a model '
+          'has to clear it by more than the '
+          '${_fmtPct(reviewComparisonMinGapPct)}-point noise floor to count.';
+
+      if (clearing.isNotEmpty) {
+        findings.add(Finding(
+          kind: 'baseline',
+          claim: 'At Day+$k, ${clearing.map((c) => c.model).join(', ')} '
+              'beat${clearing.length == 1 ? 's' : ''} the best trivial baseline.',
+          evidence: '$barEvidence Clearing it: '
+              '${clearing.map((c) => '${c.model} ${_fmtPct(c.rainPct!)}%').join(', ')}.',
+          confidence: _lowestConfidence([...clearing, bar]),
+          checks: _fewestChecks([...clearing, bar]),
+        ));
+      } else {
+        // The finding this item exists for. Deliberately phrased as what the
+        // models FAILED to do rather than as praise for the baseline: nobody
+        // should come away thinking persistence is a forecast worth using,
+        // only that the guidance did not earn its place here at this lead.
+        var bestModel = eligible.first;
+        for (final c in eligible) {
+          if (c.rainPct! > bestModel.rainPct!) bestModel = c;
+        }
+        findings.add(Finding(
+          kind: 'baseline',
+          claim: 'At Day+$k, no model here beats ${bar.model} by more than '
+              'noise — the guidance is not yet earning its place at this '
+              'lead time.',
+          evidence: '$barEvidence Best model: ${bestModel.model} '
+              '${_fmtPct(bestModel.rainPct!)}%.',
+          confidence: _lowestConfidence([...eligible, bar]),
+          checks: _fewestChecks([...eligible, bar]),
         ));
       }
     }

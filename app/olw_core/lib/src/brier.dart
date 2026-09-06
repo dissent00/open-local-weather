@@ -13,6 +13,8 @@
 /// where zero is perfect. Anything that displays it should say so in words.
 library;
 
+import 'sums.dart';
+
 /// The squared error of one probabilistic call: `(p - outcome)^2`.
 ///
 /// [probability] is a PROBABILITY in [0, 1], not a percentage. A 70 passed
@@ -45,7 +47,7 @@ double? meanBrier(List<double?> scores) {
     return null;
   }
 
-  return present.reduce((a, b) => a + b) / present.length;
+  return compensatedSum(present) / present.length;
 }
 
 /// How much better than the reference forecast: `1 - brier/reference`.

@@ -74,6 +74,20 @@ Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
 
+### Added 2026-09-06: 58's aggregation half is in, display is next
+
+`SkillCell` carries Brier on both sides, paired against climatology and
+vector-locked. What is left is `TrackRecordEntry` — held on purpose, because
+that object goes into the user prompt whole and the operator is mid-way
+through a readability evaluation — and the app's accuracy screen, which is in
+that repo's owed table.
+
+Two defects came out of it that were not item 58's: Dart had never had the
+baseline finding and ranked the yardsticks as peers, and every mean in the
+project differed across languages because CPython 3.12's `sum()` compensates
+and Dart's `reduce` does not. Both fixed, both swept. The item records the
+numbers.
+
 ### Added 2026-09-06: measure before building the model machinery
 
 Items 76, 77 and 78 came out of one question — what the accumulated prompt is
@@ -5707,17 +5721,83 @@ what a baseline is measured with), item 26 (the spend this justifies).
 
 ---
 
-## 58. Score the probability, not the guess · **Partly shipped — per-check scoring 2026-09-03**
+## 58. Score the probability, not the guess · **Partly shipped — the skill table, 2026-09-06**
 
-> **The aggregation half is not built, on either side — found 2026-09-05.**
-> `verify/scoring.py` rolls `rain_brier` and `brier_checks` into
-> `RollingWindowResult`, and that is as far as it goes: **no `SkillCell` in
-> either language carries a Brier field**, so nothing that renders a skill
-> table can show one. Dart is a step further back and scores per check
-> without aggregating at all. The app's owed entry claimed "what is owed
-> here is display", which was wrong and is corrected there. Order: Dart
-> aggregation to parity, the field through `SkillCell` and the track record
-> both sides, vectors, then display.
+> **The aggregation half shipped 2026-09-06.** `SkillCell` now carries
+> `mean_rain_brier`, `brier_checks`, `rain_brier_skill` and
+> `brier_skill_checks` in both languages, vector-locked over ten cases.
+> `RollingWindowResult` reached Brier parity in Dart the same day.
+>
+> **A correction to what this block said on 2026-09-05.** It claimed "Dart is
+> a step further back and scores per check without aggregating at all". That
+> was wrong: Dart's `rescoreRollingWindow` had aggregated rain percentage,
+> onset, wind, temperature and pressure error since the port. What it lacked
+> was Brier, and only Brier. The claim was written from Python's file without
+> opening Dart's.
+>
+> **Still owed: the track record and the display.** `TrackRecordEntry` has no
+> Brier field in either language, and it is deliberately not being given one
+> yet — `model_dump()` puts that whole object into the user prompt, so two new
+> numbers per model per lead would land in the forecaster's context in the
+> middle of the readability evaluation the operator started on 2026-09-06.
+> `SkillCell` has no such problem: `_review_prompt_payload` omits the cell
+> table on purpose, so this change is invisible to the prompt. Display is the
+> app's, and is in its owed table.
+
+### What the skill score had to be, and nearly was not
+
+`brier_skill_score` divides one mean by another, and **the two means have to
+be taken over the SAME days or the ratio answers nothing.** The first
+implementation divided each model's Brier by climatology's, both computed
+over whatever days each happened to have — and the real record at 2026-09-06
+made that concrete: at Day+0 the NWP models had probabilities on 5 days and
+climatology on 2, because backfilled baselines predate the field. Five days
+of one forecast against two days of another is not a comparison, and if those
+two were easy days the model is flattered by nothing it did.
+
+So the score is PAIRED, over the intersection, and `brier_skill_checks`
+reports the size of it. That is now three counts on one row — `checks`,
+`brier_checks`, `brier_skill_checks` — which reads as over-reporting right up
+until they diverge. On the real record they were **26, 5 and 2**.
+
+Caught by running the review against the real record rather than by any test.
+The vectors all had climatology speaking every day, so paired and unpaired
+agreed on every one of them; a case where they disagree was added afterwards.
+
+### Two parity defects this turned up, neither of them item 58's
+
+**Dart never had the baseline finding at all, and ranked the yardsticks as
+peers.** Python excludes `BASELINE_MODEL_IDS` from ranking and bias and then
+emits a `baseline` finding — item 57's whole point, "no model here beats
+persistence by more than noise". Dart's `_deriveFindings` had neither half,
+so the app would have published "climatology is the strongest rain caller
+here" and "persistence under-forecasts peak wind" — the two claims Python's
+comment says must never be made — and would never have published the finding
+item 57 exists for. Ported, with vector cases for the exclusion, the finding,
+and the tie-ordering (Python's `sorted` is stable and Dart's `sort` is not,
+and the claim string joins model names in that order).
+
+Item 57's app entry says "Closed 2026-09-05". That was true of the baselines
+themselves and false of the finding derived from them.
+
+**Every mean in the project disagreed across languages.** CPython 3.12
+changed `sum()` to Neumaier compensated summation; Dart's
+`reduce((a, b) => a + b)` is a plain loop. Over a 4,000-case sweep built to
+mix magnitudes, **2,275 disagreed**. The existing vectors had not caught it
+because their values summed exactly — the Brier mean was the first published
+figure whose addends did not.
+
+Dart converged to Python (`compensatedSum` in `sums.dart`), not the reverse:
+Python's is both the more accurate algorithm and the one that produced every
+figure already committed to the record and published on the site. Sweep
+re-run after the change: 0 of 4,000.
+
+`brier_score` was aligned the same way — Python's `** 2` goes through C
+`pow()` and disagrees with `x * x` on ~0.13% of arbitrary reals. Unreachable
+today, because the input is an integer percentage and the whole domain is 101
+values times two outcomes, swept with zero mismatches. Changed anyway, and
+pinned by that sweep as a test: it costs nothing now and springs the first
+time a probability arrives from a calibrated value or an ensemble mean.
 
 `rain` is a boolean. `extract.py` thresholds `precip_mm` at
 `RAIN_THRESHOLD_MM` and the ledger stores true or false, so a model that

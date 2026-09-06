@@ -343,3 +343,161 @@ def test_no_baseline_in_the_record_means_no_finding_rather_than_a_pass():
     r = review_of(logs, actuals)
 
     assert not [f for f in r.findings if f.kind == "baseline"]
+
+
+# ---------------------------------------------------------------------------
+# Brier on the skill table — ROADMAP item 58
+# ---------------------------------------------------------------------------
+
+
+def brier_history(days: int, model_pct: int | None, climatology_pct: int, wet: bool = True):
+    """`days` scoreable days at Day+0 where every day has the same outcome and
+    each model states the same probability every day.
+
+    Fixing the probability makes the expected mean Brier a hand-checkable
+    square rather than something only the code under test can produce.
+    """
+    logs, actuals = {}, {}
+    for i in range(days):
+        d = TODAY - timedelta(days=i + 1)
+        actuals[d] = DailyActual(
+            rain=wet, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+        )
+        logs[d] = entry(d, [
+            ModelPrediction(
+                model="good_model",
+                rain=wet,
+                rain_probability_pct=model_pct,
+                high_c=26.0,
+                low_c=18.0,
+            ),
+            ModelPrediction(
+                model="climatology",
+                rain=wet,
+                rain_probability_pct=climatology_pct,
+                high_c=26.0,
+                low_c=18.0,
+            ),
+        ])
+    return logs, actuals
+
+
+def brier_review_of(logs, actuals):
+    return build_weekly_review(
+        log_lookup=lambda d: logs.get(d),
+        actuals=actuals,
+        all_log_dates=sorted(logs),
+        today=TODAY,
+        models=["good_model", "climatology"],
+        lead_times_days=[0],
+    )
+
+
+def cell_for(review, model: str):
+    return next(c for c in review.cells if c.model == model)
+
+
+def test_mean_brier_is_the_mean_of_the_daily_squared_errors():
+    # 90% every day on a day that rains: (0.9 - 1)^2 == 0.01, ten times over.
+    logs, actuals = brier_history(days=10, model_pct=90, climatology_pct=50)
+    cell = cell_for(brier_review_of(logs, actuals), "good_model")
+
+    assert cell.mean_rain_brier == pytest.approx(0.01)
+    assert cell.brier_checks == 10
+
+
+def test_brier_skill_is_measured_against_climatology():
+    # Model at 0.01, climatology at 0.25 -> 1 - 0.01/0.25 == 0.96.
+    logs, actuals = brier_history(days=10, model_pct=90, climatology_pct=50)
+    r = brier_review_of(logs, actuals)
+
+    assert cell_for(r, "good_model").rain_brier_skill == pytest.approx(0.96)
+    # The reference measured against itself is exactly 0.0 by construction,
+    # which is the honest reading: climatology is precisely as good as
+    # climatology. It is not missing data and must not be rendered as such.
+    assert cell_for(r, "climatology").rain_brier_skill == pytest.approx(0.0)
+
+
+def test_brier_skill_goes_negative_when_the_model_loses_to_climatology():
+    """Not clamped at zero. Item 57 measured two of five models losing to
+    persistence on the boolean, and a negative number states that in a form
+    that cannot be misread as merely 'less good'."""
+    logs, actuals = brier_history(days=10, model_pct=10, climatology_pct=50)
+    cell = cell_for(brier_review_of(logs, actuals), "good_model")
+
+    # 0.81 against 0.25 -> 1 - 3.24 == -2.24.
+    assert cell.rain_brier_skill == pytest.approx(-2.24)
+
+
+def test_brier_checks_is_counted_separately_from_checks():
+    """The display trap this field exists to prevent: a cell can be scored on
+    every day of the record and carry a probability on none of them, and one
+    count shown for both would claim evidence that does not exist."""
+    logs, actuals = brier_history(days=10, model_pct=None, climatology_pct=50)
+    cell = cell_for(brier_review_of(logs, actuals), "good_model")
+
+    assert cell.checks == 10
+    assert cell.brier_checks == 0
+    assert cell.mean_rain_brier is None
+    assert cell.rain_brier_skill is None
+
+
+def test_no_reference_means_no_skill_score_rather_than_a_wrong_one():
+    """The prompt path reviews only the forecaster's own models, so
+    climatology is absent from `models` there and there is no reference to
+    measure against. Every other Brier figure must still be present."""
+    logs, actuals = brier_history(days=10, model_pct=90, climatology_pct=50)
+    r = build_weekly_review(
+        log_lookup=lambda d: logs.get(d),
+        actuals=actuals,
+        all_log_dates=sorted(logs),
+        today=TODAY,
+        models=["good_model"],
+        lead_times_days=[0],
+    )
+    cell = cell_for(r, "good_model")
+
+    assert cell.mean_rain_brier == pytest.approx(0.01)
+    assert cell.brier_checks == 10
+    assert cell.rain_brier_skill is None
+
+
+def test_brier_skill_is_paired_on_the_days_both_forecasts_spoke():
+    """The reference and the model rarely cover the same days.
+
+    Here the model states a probability on all 10 days and climatology on the
+    5 most recent. An unpaired ratio would divide the model's 10-day mean by
+    the reference's 5-day mean and call the result skill. The paired one
+    compares both over the 5 shared days, which is the only comparison a
+    skill score can honestly make.
+    """
+    logs, actuals = {}, {}
+    for i in range(10):
+        d = TODAY - timedelta(days=i + 1)
+        # The older half of the record is WET, the recent half DRY, so an
+        # unpaired mean differs from a paired one by more than rounding.
+        wet = i >= 5
+        actuals[d] = DailyActual(
+            rain=wet, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+        )
+        logs[d] = entry(d, [
+            ModelPrediction(model="good_model", rain=wet, rain_probability_pct=90,
+                            high_c=26.0, low_c=18.0),
+            ModelPrediction(model="climatology", rain=wet,
+                            rain_probability_pct=50 if i < 5 else None,
+                            high_c=26.0, low_c=18.0),
+        ])
+
+    cell = cell_for(brier_review_of(logs, actuals), "good_model")
+
+    # The model's own Brier still spans all ten days: five at (0.9-0)^2 = 0.81
+    # and five at (0.9-1)^2 = 0.01, mean 0.41.
+    assert cell.mean_rain_brier == pytest.approx(0.41)
+    assert cell.brier_checks == 10
+
+    # The skill score spans only the five shared days, all of them dry, where
+    # the model scored 0.81 and climatology 0.25: 1 - 0.81/0.25 == -2.24.
+    # Unpaired it would have been 1 - 0.41/0.25 == -0.64, a materially
+    # different claim about the same forecasts.
+    assert cell.brier_skill_checks == 5
+    assert cell.rain_brier_skill == pytest.approx(-2.24)

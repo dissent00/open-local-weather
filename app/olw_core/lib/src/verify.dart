@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'brier.dart';
 import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
@@ -37,6 +38,8 @@ class RollingWindowResult {
     required this.highErr,
     required this.lowErr,
     required this.mslpErr,
+    this.rainBrier,
+    this.brierChecks = 0,
   });
 
   /// How many of the window actually had data. Load-bearing for cold-start
@@ -49,6 +52,18 @@ class RollingWindowResult {
   final double? highErr;
   final double? lowErr;
   final double? mslpErr;
+
+  /// Mean Brier over the checks in this window that carried a probability —
+  /// upstream ROADMAP item 58. LOWER IS BETTER. Null until some day in the
+  /// window has a probability; see `meanBrier` for why absent days are
+  /// skipped rather than defaulted to a hedge nobody made.
+  final double? rainBrier;
+
+  /// Reported SEPARATELY from [checksFound] because the two genuinely differ
+  /// and will for weeks: a window can hold 30 scored days of which 3 carry a
+  /// probability, and one count presented for both would imply the Brier
+  /// rests on evidence it does not have.
+  final int brierChecks;
 }
 
 /// Walks backward from [yesterday] collecting up to [windowSize] scoreable
@@ -99,6 +114,8 @@ RollingWindowResult rescoreRollingWindow({
     highErr: mean([for (final s in scores) s.highErrorC]),
     lowErr: mean([for (final s in scores) s.lowErrorC]),
     mslpErr: mean([for (final s in scores) s.mslpErrorHpa]),
+    rainBrier: meanBrier([for (final s in scores) s.rainBrier]),
+    brierChecks: scores.where((s) => s.rainBrier != null).length,
   );
 }
 
