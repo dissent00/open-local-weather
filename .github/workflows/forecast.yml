@@ -222,3 +222,69 @@ jobs:
               exit 1
             fi
           fi
+
+      # THE LEDGER OUTLIVES THE RUN THAT SPENT IT.
+      #
+      # Measured 2026-09-06: the evening refresh aborted after four Gemini
+      # 503s. `record_attempt` had appended all four to data/spend_ledger.json
+      # on this runner's disk before each request — the file's own note
+      # promises "written BEFORE each call so a crash cannot lose the count" —
+      # and the step above then discarded them, because an `if:` with no
+      # status function has success() ANDed into it. Four real requests to a
+      # metered API, no trace, and the next run's 24-hour window short by four.
+      #
+      # The cause is worth keeping. On 2026-09-02 the identical abort WAS
+      # recorded, because the missing `pipefail` made that job report success
+      # and the step above ran. Fixing pipefail turned a wrongly-succeeding
+      # job into a correctly-failing one and silently took ledger persistence
+      # with it.
+      #
+      # ONLY THE LEDGER. Not `data/` — a run that died mid-way has no business
+      # publishing whatever half-state it reached, and everything else under
+      # data/ is re-derived from scratch every run by design. The ledger is
+      # the one file that is append-only and cannot be recomputed, which is
+      # exactly why it is the one file worth rescuing from a failure.
+      # `always()`, not `failure()`: a run CANCELLED between the request and
+      # the commit spent exactly as much as one that failed. On a successful
+      # run the step above has already committed the ledger, so the guard
+      # below finds a clean file and does nothing.
+      - name: Preserve the spend ledger whatever happened to the run
+        if: ${{ always() && github.event.inputs.dry_run != 'true' }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- data/spend_ledger.json; then
+            echo "No ledger entries to preserve."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/spend_ledger.json
+          git commit -m "Record the calls a failed run spent: $(date -u +%Y-%m-%d)"
+
+          # Same race as above, same bounded rebase. A failure to push here
+          # must NOT mask the original failure, so this step reports and lets
+          # the job keep the exit status it already earned.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              break
+            fi
+            echo "ledger push rejected (attempt $attempt/3); rebasing" >&2
+            git pull --rebase
+          done
+          # A push still rejected after three real rebases warns rather than
+          # exiting non-zero: this step only has work to do when the job is
+          # already failing, and a second error annotation would compete with
+          # the real cause for attention.
+          #
+          # A rebase CONFLICT is different and does end the step non-zero,
+          # verified 2026-09-06 by driving both paths against a real remote.
+          # That matches the step above, deliberately: a conflicting ledger
+          # means two runs wrote it differently, which is a separate problem
+          # and should not be retried into a worse state. The runner's
+          # workspace is discarded either way.
+          echo "WARNING: the spend ledger is committed but unpushed — the next run will not see these calls" >&2

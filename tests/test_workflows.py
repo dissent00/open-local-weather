@@ -87,3 +87,46 @@ def test_ci_invokes_pytest_the_plain_way():
         "CI's invocation changed; test_the_suite_runs_the_same_way_ci_runs_it "
         "is written against `pytest -q` and must be revisited with it"
     )
+
+
+def test_the_spend_ledger_is_committed_even_when_the_run_fails():
+    """The defect this exists for, measured 2026-09-06.
+
+    The evening refresh aborted after four Gemini 503s. `record_attempt`
+    appended all four to `data/spend_ledger.json` on the runner's disk — the
+    ledger's own note promises it is "written BEFORE each call so a crash
+    cannot lose the count" — and then the workflow threw the file away,
+    because the commit step carries an `if:` with no status function and
+    GitHub therefore ANDs `success()` into it.
+
+    So four real HTTP requests to a metered API left no trace, and the next
+    run's 24-hour window is short by four.
+
+    It has a sharp cause. On 2026-09-02 the same total abort was RECORDED,
+    because the missing `pipefail` made that job report success and the
+    commit step ran. Fixing pipefail turned a wrongly-succeeding job into a
+    correctly-failing one, and silently disabled ledger persistence for
+    exactly the runs that spend without producing anything.
+
+    It also biases the ledger as a latency record: it keeps failed attempts
+    that were followed by a success and drops the ones that were not.
+    """
+    doc = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "forecast.yml").read_text())
+    steps = [s for job in (doc.get("jobs") or {}).values() for s in (job.get("steps") or [])]
+
+    ledger_steps = [
+        s for s in steps
+        if isinstance(s.get("run"), str) and "spend_ledger.json" in s["run"]
+    ]
+    assert ledger_steps, (
+        "no step commits data/spend_ledger.json by name, so the only step that "
+        "can persist it is the general one — which does not run on failure"
+    )
+
+    for step in ledger_steps:
+        condition = str(step.get("if", ""))
+        assert "failure()" in condition or "always()" in condition, (
+            f"step {step.get('name')!r} has if: {condition!r}. A condition with "
+            "no status function has success() ANDed into it by GitHub, which "
+            "is precisely how the ledger was lost"
+        )

@@ -74,6 +74,36 @@ Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
 
+### Added 2026-09-06: a failed run used to lose its own spend record
+
+The 18:01 EAT refresh aborted after four Gemini 503s. Provider-side, nothing
+to fix there — but it exposed that `data/spend_ledger.json` was written on
+the runner and then discarded, because `forecast.yml`'s commit step carries
+an `if:` with no status function and GitHub ANDs `success()` into it. Four
+real requests to a metered API, no trace, and the next run's 24-hour window
+short by four.
+
+The cause is worth keeping: on 2026-09-02 the identical abort WAS recorded,
+because the missing `pipefail` made that job report success and the commit
+step ran. **Fixing pipefail turned a wrongly-succeeding job into a correctly
+failing one and took ledger persistence with it** — the fix was right and its
+side effect was invisible for four days.
+
+It also means the ledger is biased as a latency record, which matters because
+item 66's timeout diagnosis was read out of it: it keeps failed attempts that
+were followed by a success, and drops the ones that were not.
+
+Fixed with an `always()` step that commits ONLY the ledger. Not `data/` — a
+run that died mid-way should not publish its half-state, and everything else
+under `data/` is re-derived from scratch every run by design. The ledger is
+the one append-only file that cannot be recomputed. Both paths driven against
+a real remote before committing, including the rebase-conflict one.
+
+**The four lost calls were not backfilled.** The ledger's worth is that every
+row was machine-written before a request; hand-adding rows from a log would
+make it a reconstruction. Today's window under-counts by 4 of 16, against a
+schedule that spends 2.
+
 ### Added 2026-09-06: 58's aggregation half is in, display is next
 
 `SkillCell` carries Brier on both sides, paired against climatology and
