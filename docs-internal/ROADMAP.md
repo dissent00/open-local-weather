@@ -5993,7 +5993,7 @@ disagreement, a feature this would key on).
 
 ---
 
-## 61. The Overview stops at today · **Shipped 2026-09-05 — unverified in production**
+## 61. The Overview stops at today · **Shipped 2026-09-05, verified live 2026-09-06**
 
 > **Both halves shipped**, against the item's own sequencing note (the code
 > half could ship first, the prompt half wanted item 27). Item 27's replay is
@@ -6024,8 +6024,12 @@ disagreement, a feature this would key on).
 > 09-05 inputs: **"Much the same through Monday."** as the Overview's closing
 > clause, in a two-sentence Overview.
 >
-> **Not verified in production.** Deliberately left to run for a few days
-> before anything else touches this paragraph.
+> **Verified live 2026-09-06.** The phrase handed over — "much the same
+> through Wednesday, with rain becoming more likely" — appears verbatim in
+> the published Overview, and the day name is right: 2026-09-09 is a
+> Wednesday. See item 75, which quotes the run the operator called the
+> best-reading one yet. Still left alone for a few more days before
+> anything else touches this paragraph.
 >
 > Still owed: **item 35's middle clause**. The request's example includes
 > "models show strong disagreement on atmospheric instability", which is item
@@ -7219,6 +7223,12 @@ rather than an impression).
 > real extended-blend data beats designing them against none. That data starts
 > accumulating today rather than in October.
 >
+> **Fired on its first production day, 2026-09-06.** `olw_blend` carried
+> `rain False / 40%` at Day+3 and `rain True / 75%` at Day+7 — the first
+> scoreable call this forecaster has ever committed to beyond today, and
+> monotonic with its own Extended Outlook prose. Day+3 settles 2026-09-09,
+> which is the first time any of it can be scored. See item 75.
+>
 > **Found while porting it:** `to_gemini_schema` lifts a pydantic docstring
 > into the response schema's `description`, so a docstring on any of these
 > models is billed on every request and read by the forecaster. The first
@@ -7402,9 +7412,14 @@ and, for anything scored, live days.
 Do not do this while another prompt change is in flight. Item 61 shipped
 2026-09-05 and is deliberately being left to run for a few days first.
 
+**Item 75 is the baseline to measure against.** It quotes the 2026-09-06
+morning run, which the operator called the best-reading one yet, and names
+which change produced each part. A pass that makes those two sections read
+worse has cost something, whatever else it bought.
+
 Related: item 27 (replay, the other half of the harness), item 69 (which
-makes the archived inputs available), item 67 (the failure mode this item
-generalises), item 48, item 23, item 61.
+makes the archived inputs available), item 75 (the readability baseline),
+item 67 (the failure mode this item generalises), item 48, item 23, item 61.
 
 ---
 
@@ -7499,3 +7514,92 @@ Related: item 36 (feedback, which this precedes), item 46 (the closed
 question, which this makes answerable), item 45 (provenance, which this
 displays), item 63 (why sources disagree), item 31 (the other stat-block
 question), and the 2026-09-05 rain-silence change in `comparison.py`.
+
+---
+
+## 75. What good reads like — the 2026-09-06 morning run · **Reference**
+
+Recorded by the operator on 2026-09-06: *"probably the best yet in terms of
+reading how I want this to read"*, explicitly about READABILITY and making no
+claim about accuracy. Kept because item 73's audit needs something to measure
+against, and "did the prose get worse" is otherwise a matter of memory.
+
+Run: 2026-09-06 03:02:44Z, `gemini-3.6-flash`, prompt `fee7ceab…`.
+Full narrative in `data/log/2026-09-06.json`; inputs in
+`data/prompts/2026-09-06.json`.
+
+### The Overview
+
+> Slightly cooler and calmer today, with thunder possible late tonight as
+> convective instability peaks near 22:00. Expect conditions to remain much
+> the same through Wednesday, with rain becoming more likely.
+
+Two sentences. What each part is, and which change produced it:
+
+- **"Slightly cooler and calmer today"** — `high_label` and `wind_label`,
+  used as given. No yesterday number and no delta, because `comparison_for_prompt`
+  no longer hands them over (2026-09-05).
+- **No rain clause about yesterday.** `rain_contrast` was null and the prompt
+  now treats null as an instruction rather than a gap. Before 2026-09-05 this
+  sentence opened "with dry today; yesterday was..." every single day.
+- **The thunder clause** is the convective flag's, not a judgement call.
+- **"much the same through Wednesday, with rain becoming more likely"** is
+  item 61, and it is VERBATIM: the same string appears in the archived user
+  prompt's NEXT THREE DAYS block. The steady band earned its words, which was
+  the operator's correction to an earlier draft that would have gone quiet.
+
+### Today's Forecast
+
+> Warm conditions reaching 32°C / 90°F under sunny intervals will characterize
+> the daytime hours.
+
+Opens on a weather condition. Four earlier runs opened on the clock —
+"Stepping into the day at dawn,", "After sunrise at 06:36,", "Sunrise at
+06:36 finds", "Sunrise is at 06:36." — and what fixed it was moving the rule
+to the front of its section rather than rewording it (item 73, category 2).
+
+### Two arithmetic results worth having checked
+
+**Day names are right.** "through Wednesday" and "Day+7 (Sunday, September
+13th)": 2026-09-09 is a Wednesday and 2026-09-13 is a Sunday. Item 61 flagged
+day names as arithmetic that "silently reads a day early", and
+`weekday_name` against the LOCATION's date is why it did not.
+
+**Item 72 fired on its first production day**, and this is the first time in
+the project's history that the forecaster has committed to a scoreable call
+beyond today:
+
+```text
+olw_blend   Day+0   rain False   20%
+            Day+3   rain False   40%
+            Day+7   rain True    75%
+```
+
+Monotonic, and consistent with the Extended Outlook's own prose about a shift
+toward wet weather by the 13th. Nothing scores these yet — Day+3 settles on
+2026-09-09 — but the rows exist, which they never did before.
+
+### The one thing not verbatim, kept as an observation rather than a defect
+
+The prompt says to use item 61's phrase "VERBATIM as the Overview's closing
+clause". The model wrapped it: *"Expect conditions to remain* much the same
+through Wednesday, with rain becoming more likely." The phrase itself is
+untouched, and the wrapper makes it a sentence — but "Much the same through
+Wednesday, with rain becoming more likely." is shorter and says the same
+thing.
+
+**Not being changed.** The operator called this reading the best yet WITH the
+wrapper in it, and tightening a clause nobody complained about is how a
+prompt grows a rule that earns nothing. Recorded so that if the wrapper later
+drifts into something worse, the origin is known.
+
+### How to use this item
+
+When item 73 changes the prompt, regenerate against
+`data/prompts/2026-09-06.json` and compare the Overview and Today's Forecast
+to what is quoted above. Not for accuracy — this is a readability baseline
+and nothing more. A change that makes these two sections read worse has cost
+something, whatever else it bought.
+
+Related: item 61, item 67, item 72, item 73 (which this exists to serve),
+item 69 (which makes the inputs re-runnable), item 23, item 48.
