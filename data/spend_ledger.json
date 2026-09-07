@@ -222,6 +222,18 @@
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
       "purpose": "health-check"
+    },
+    {
+      "at": "2026-09-07T15:01:43.693463+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh"
+    },
+    {
+      "at": "2026-09-07T15:02:14.419613+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh"
     }
   ]
 }
