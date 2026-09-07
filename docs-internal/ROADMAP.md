@@ -74,6 +74,25 @@ Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
 
+### Added 2026-09-07: the timeout was never going to be the fix
+
+Item 66's recorded prediction came back and **failed**: 90.1s has replaced
+60.1s as the failure cluster, which by its own written criterion means hung
+connections rather than slow generations. Three failures, all during a Google
+incident, so the sample is thin — but it also settles that 60s was OUR
+deadline and not a standard HTTP cut, because the cluster moved when we did.
+
+Two items came out of it and they are complementary, not alternatives:
+**79** (back further off on a 503, which is the service refusing work) and
+**80** (submit-and-poll via the Interactions API, which is the hang).
+Neither should be built yet — the evidence is three failures on two bad days,
+and the ledger now records failed runs honestly, so a few ordinary weeks will
+say which failure mode is real.
+
+Item 80 also carries a fact that outlives it: **`generateContent` is labelled
+legacy as of June 2026**, with the Interactions API recommended for new
+projects. That belongs with item 68 whatever happens to the polling question.
+
 ### Added 2026-09-07: the first health check to fire found mostly its own noise
 
 `data/health/status.json` was created and pushed on the first weekly run
@@ -7117,6 +7136,13 @@ item 23, item 48, item 27 (the harness), item 61 (the other Overview change).
 
 ## 68. The forecaster is two model versions behind · **Planned**
 
+> **Added 2026-09-07: the API is decaying as well as the model.** Google
+> labels `generateContent` **legacy** as of June 2026 — fully supported, with
+> the Interactions API "recommended for all new projects". So a future move is
+> not only "which model", it is "which API", and the two need not happen
+> together: the Interactions API lists `gemini-3.6-flash`, so the API could
+> move with the model pinned. Item 80 has the details and the costs.
+
 Raised 2026-09-03. `DEFAULT_GEMINI_MODEL` is `gemini-3.6-flash`; the current
 Flash is 3.8. Nothing here is broken — the pipeline pins a model on purpose,
 and drifting to whatever is newest would make the accuracy record
@@ -8422,3 +8448,105 @@ Related: item 66 (the timeout and the ledger-as-latency-record technique),
 item 26 (the cap these attempts count against), item 11 in the Ensemble repo
 (the app's fail-fast half), item 2 (the health check that reports the
 outcome).
+
+---
+
+## 80. The synchronous call may be the wrong shape · **Planned**
+
+Raised by the operator 2026-09-07, from two observations: that 60s looked
+"like a standard HTTP timeout", and a link to Gemini's background execution
+docs. Both turned out to point at the same thing.
+
+### The 60s question, answered from our own ledger
+
+It was OURS, not a standard cut somewhere in the path. The evidence is that
+the cluster MOVED when we moved:
+
+| era | ceiling | failures on the ceiling | failures near 60s |
+|---|---|---|---|
+| before 2026-09-04 | 60s | 60.1s repeatedly | — |
+| after 2026-09-04 | 90s | **3 of 3** at 90.1s | **zero** |
+
+A fixed 60s timeout upstream would still be cutting at 60s. Nothing has
+failed near 60s since we raised our own deadline.
+
+### Which resolves item 66's recorded prediction, against the fix
+
+The comment beside `REQUEST_TIMEOUT_S` said, in advance:
+
+> "Check the ledger again in a week: if 90.1s replaces 60.1s as the cluster,
+> it was hangs and the timeout is not the fix."
+
+**90.1s has replaced 60.1s.** By the project's own written criterion these are
+hung connections, and raising the ceiling bought a longer wait rather than a
+completed generation. The honest caveats: the sample is three, and
+2026-09-06/07 was a Google incident, so this is degraded behaviour and not
+necessarily normal load.
+
+The conclusion that matters is not "raise it to 120s". It is that **no
+synchronous deadline is the right instrument for a hung connection** — every
+value is a guess about how long to hold a socket that may never answer.
+
+### What the provider now offers
+
+`generateContent` is the API this project is built on. As of June 2026 Google
+labels it **legacy** — "fully supported", with the Interactions API
+"recommended for all new projects" — and that API takes `background: true`,
+returning an interaction id immediately and letting the client poll.
+
+Checked rather than assumed, because each of these could have killed it:
+
+- **Structured output is supported.** `response_format` carrying a JSON
+  schema, which is the one non-negotiable — the whole pipeline rests on
+  `to_gemini_schema` and a strict response schema.
+- **`gemini-3.6-flash` is supported.** The background-execution page lists
+  only a few models and ours is not among them; the Interactions API model
+  table does list it. The narrower page misleads.
+- **There is a free tier.** Interactions are retained 1 day on it, which is
+  irrelevant to a poll that finishes in minutes.
+- `store=false` is incompatible with `background=true`.
+
+### What it would and would not fix
+
+**Would:** the hang. A submit returns an id in one short request instead of
+holding a socket open for a generation that may never come back, and a
+GitHub Actions job can poll for ten minutes without caring. This is exactly
+the failure the ledger now says we have.
+
+**Would not:** 2026-09-06's abort. Four HTTP 503s are the service refusing to
+accept work at all, and a submit has to be accepted before there is anything
+to poll. Item 79's longer backoff is the answer to that one, and the two
+items are complementary rather than alternatives.
+
+### Costs, none of them small
+
+- **A second provider implementation in Python.** Different endpoint,
+  different request shape, a poll loop, and terminal-state handling
+  (`completed` / `failed` / `cancelled`).
+- **A deliberate divergence from the app.** Dart must stay synchronous: a
+  person holding a phone will not wait out a poll loop, and `RetryPolicy
+  .interactive` exists because the operator asked for a fast error. So the
+  provider layer stops being a port, and `spec/README.md`'s change order
+  needs to say so explicitly rather than leaving it to be discovered.
+- **The spend cap needs re-deciding.** It counts HTTP requests via
+  `before_attempt`. Under polling, one forecast is one submit plus N polls,
+  and counting polls as spend would be wrong while counting nothing would
+  lose the retry visibility the cap was built for.
+
+### Do not start this yet
+
+The measurement is three failures during a provider incident. **The right
+next step is more evidence, not a rewrite** — and the ledger now records
+failed runs honestly (fixed 2026-09-06), so a few weeks of ordinary
+operation will say whether 90.1s hangs happen on normal days or only on bad
+ones. If they only happen during incidents, item 79's backoff is the whole
+answer and this item is not needed.
+
+The `generateContent`-is-legacy fact is independent of that and outlives it —
+it belongs with item 68's model-change planning whatever happens here.
+
+Related: item 79 (the outage backoff, which this does not replace), item 66
+(the timeout and the prediction this resolves), item 68 (safe model change,
+which now has an API migration beside it), item 26 (the cap this would
+redefine), item 77 (the harness any provider swap should be measured with).
+

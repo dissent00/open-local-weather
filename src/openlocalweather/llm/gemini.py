@@ -57,6 +57,26 @@ GEMINI_API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/mode
 # slow generations turn into successes at 90s, hung connections just fail 30s
 # later for the same cost. Check the ledger again in a week: if 90.1s
 # replaces 60.1s as the cluster, it was hangs and the timeout is not the fix.
+#
+# ANSWERED 2026-09-07, AND THE PREDICTION FAILED. 90.1s has replaced 60.1s as
+# the cluster: three failed attempts since the change (2026-09-05 03:01:45,
+# 2026-09-07 03:01:40, 2026-09-07 03:03:40) all ran 90.1s exactly, and NOT ONE
+# has failed anywhere near 60s since. By the criterion written above, these
+# are hangs and the timeout is not the fix — raising it bought a longer wait
+# before giving up, not a completed generation.
+#
+# Two things that follow, both of which the count above cannot settle. The
+# sample is three, and 2026-09-06/07 was a Google incident, so this is the
+# behaviour under degradation and not necessarily under normal load.
+#
+# It does settle one question that was asked separately: whether 60s was a
+# STANDARD HTTP timeout somewhere in the path rather than ours. It was not. A
+# fixed 60s cut upstream would still be cutting at 60s; the cluster moved when
+# WE moved, which makes it ours.
+#
+# Do not raise this to 120s on the strength of it. If the failure is a hung
+# connection then no synchronous deadline is the right instrument, and the
+# provider now offers an asynchronous one — see ROADMAP item 80.
 REQUEST_TIMEOUT_S = 90
 
 # Transient, retryable HTTP statuses: 429 rate-limited, 500/502/503/504
