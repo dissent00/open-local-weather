@@ -74,6 +74,30 @@ Deliberately NOT next, listed because they read as though they might be:
 54/55/56 (mailer and glossary, raised 2026-08-31 and none of them urgent),
 41 (satellite — right answer, not the cheap one), 40 (AGENTS.md cleanup).
 
+### Added 2026-09-07: the first health check to fire found mostly its own noise
+
+`data/health/status.json` was created and pushed on the first weekly run
+after the doorbell shipped, on a job that exited non-zero — so the
+`if: always()` commit works. The report itself was 13 coverage-gap lines of
+which **none was a defect**: 10 are nulls this project writes on purpose
+(`olw_blend` beyond Day+0 per item 72, its Day+0 wind and pressure per
+`_blend_prediction`) and 3 are `climatology mslp_trend`, which has no
+observed trend to average.
+
+Eight of the thirteen were new, and were caused by item 72 shipping the
+extended blend rows on 2026-09-05. **Adding a deliberately-absent field now
+has a second step: acknowledge it in `acknowledged_coverage_gaps`**, or the
+next health check reports the design as a fault.
+
+That matters because of what the noise was sitting on top of: one real
+warning, `hours_ahead_narrowed` recurring 4 times in the last 12 issuances,
+which is the only line in the report that asks for anything. All 13 are now
+acknowledged with per-variable reasons, and the check reports "every model is
+supplying what its peers supply".
+
+Item 79 was raised the same day, from the outage — see it for the two failure
+modes.
+
 ### Added 2026-09-06: a failed run used to lose its own spend record
 
 The 18:01 EAT refresh aborted after four Gemini 503s. Provider-side, nothing
@@ -7910,6 +7934,42 @@ sentence ("Cooling through Thursday.") where the live run wrapped it
 ("Expect conditions to remain..."), so the wrapper is occasional rather than
 systematic.
 
+### Confirmed a second time — the 2026-09-07 morning run
+
+The operator again called it good to read, again with no claim about
+accuracy: *"nothing obviously wrong either."* Recorded because one good run
+is a sample and two consecutive ones at the SAME prompt are weak evidence
+that the wording is stable rather than lucky — `system_prompt_sha256` is
+`fee7ceab...` on both days.
+
+> Warm today with maximum temperatures feeling much like yesterday, before
+> dry daytime conditions give way to evening showers. Thunderstorms are
+> possible tonight peaking around 19:00 EAT as atmospheric instability
+> develops, with models showing significant disagreement on shower timing;
+> much the same through Thursday, with rain becoming more likely.
+
+Three things checked rather than assumed:
+
+- **The item 61 clause is verbatim, and the wrapper did NOT recur.** The
+  archived prompt handed over `much the same through Thursday, with rain
+  becoming more likely` and the Overview used exactly that. On 2026-09-06 the
+  model wrapped it as "Expect conditions to remain much the same through…",
+  which was recorded there as an observation and explicitly not fixed. It did
+  not repeat, so it was a one-off rather than drift — which is the outcome
+  that justifies having left it alone.
+- **Day arithmetic right again.** 2026-09-07 is a Monday and Day+3 is
+  Thursday 2026-09-10.
+- **Both openers still hold.** The Overview opens on a condition ("Warm
+  today"), Today's Forecast on a temperature. Four earlier runs opened on the
+  clock; that has not returned in the two runs since the rule was moved.
+
+One observation, not a defect: "feeling much like yesterday" and "much the
+same through Thursday" put two same-ish phrases in one Overview. The operator
+likes the result, so nothing is being changed — noted only so that if the
+Overview later reads repetitive, the origin is known. Same discipline as the
+wrapper above, and the wrapper is the reason to trust it: leaving a
+non-complaint alone cost nothing.
+
 ### How to use this item
 
 When item 73 changes the prompt, regenerate against
@@ -8275,3 +8335,90 @@ blocks that go with it.
 
 Related: item 76 (the argument), item 77 (which gates this), item 70 (the
 hash that will vary), item 28 (the removal trigger), item 68.
+
+---
+
+## 79. A provider outage deserves a longer wait than a hiccup · **Planned**
+
+Raised by the operator 2026-09-07, after the 2026-09-06 evening refresh
+aborted: *"if the API is returning 503 then we should probably back way off
+for the last try or two."*
+
+### What the current policy is, and what it cost
+
+`MAX_ATTEMPTS = 4`, `RETRY_BASE_DELAY_S = 30` — so 30s, 60s, 120s, about
+3.5 minutes of waiting across four attempts, with a 90s read timeout each.
+
+**Two consecutive runs failed differently, and that is the finding.**
+
+| run | mode | outcome |
+|---|---|---|
+| 2026-09-06 18:01 EAT | 4 x HTTP 503, each returning in ~25-30s | **aborted**, no forecast |
+| 2026-09-07 06:01 EAT | 2 x read timeout at exactly 90s, then success | **saved by the retry**, 6m0s |
+
+The morning run is the one that matters: the third attempt worked. The policy
+already earns its keep. The evening one ran out of attempts inside 3.5
+minutes of a provider incident that lasted longer than that.
+
+### The two modes are not the same failure, and probably want different waits
+
+- **HTTP 503 is a fast, cheap refusal.** The server says no in 25s and has
+  not done any work. Waiting a long time costs almost nothing and is exactly
+  what an overloaded service needs from a client. This is the operator's case
+  and the obvious one to lengthen.
+- **A read timeout at exactly 90s is not the same thing.** The request may
+  have been received and generated; what failed was waiting for the answer.
+  A retry may therefore be a SECOND generation of the same forecast, billed
+  twice, and each attempt costs 90 seconds of wall clock rather than 25.
+
+`RETRYABLE_STATUS_CODES` and the network-error path are treated identically
+today. Whether they should be is the item's first question, and it is
+answerable from the ledger rather than by argument.
+
+### What lengthening actually costs, which is less than it looks
+
+**Not calls.** The cap counts attempts, not delay, so four attempts spread
+over forty minutes cost exactly what four attempts over 3.5 minutes cost. The
+spend argument against a long backoff does not exist.
+
+**Wall clock, against a deadline nobody has written down.** The morning run
+fires at 03:01 UTC — 06:01 local — and a reader looking at 06:00 wants a
+forecast, not a spinner. A 20-minute final backoff delivers at ~06:25 on a
+bad day and never on a good one. **The open question is what the latest
+useful morning issuance actually is**, and it should be decided before a
+number is picked, not inferred from whatever the backoff happens to produce.
+
+A sketch, not a decision: 30s, 60s, then something in the 5-20 minute range
+for the last one or two, possibly with a 5th attempt since attempts are free
+against the clock and not against the cap.
+
+### Do NOT let this reach the app
+
+The app's `RetryPolicy.interactive` is 2 attempts / 3s / 75s, deliberately —
+the operator's instruction on 2026-09-04 was "for the app we should get an
+error pretty quickly and be able to present that to the user". A person
+holding a phone will not wait out a provider incident, and a shared constant
+here would drag them into one. The split exists; this item must not collapse
+it.
+
+### The evidence will now accumulate honestly
+
+Until 2026-09-06 a run that failed ENTIRELY committed none of its ledger
+entries, so the record kept failed attempts followed by a success and dropped
+the ones followed by nothing — a survivorship bias in exactly the data this
+item needs. Fixed the same day. From here the ledger is a usable record of
+what outages look like, and this item should be sized from it after a few
+have been captured rather than from these two.
+
+**One reading to correct if it holds up.** Item 66 raised the timeout 60s ->
+90s because 8 of 13 failed attempts sat exactly on the 60s ceiling. On
+2026-09-07 two attempts sat exactly on the 90s ceiling. That is the same
+signature at the new number — but under a provider incident rather than
+normal load, so it is not yet evidence that 90s is too low. Worth watching:
+if the deadline cluster reappears on ordinary days, the tail is longer than
+90s and the timeout is the wrong knob.
+
+Related: item 66 (the timeout and the ledger-as-latency-record technique),
+item 26 (the cap these attempts count against), item 11 in the Ensemble repo
+(the app's fail-fast half), item 2 (the health check that reports the
+outcome).

@@ -110,5 +110,73 @@ location:
       variable: "mslp_trend"
       reason: "As Day+0 — no pressure figure published."
 
+    # The blend and the baselines. Every entry below is a null this project
+    # WRITES on purpose, each with its reason beside the code that writes it.
+    # Listed per VARIABLE rather than per lead: omitting `variable` would
+    # cover the whole (model, lead) and would also silence `rain`, which these
+    # models do supply and whose disappearance should be reported.
+    - model: "olw_blend"
+      lead_time_days: 0
+      variable: "wind_kmh"
+      reason: "today_properties.peak_wind_kmh is the SECONDARY point's wind; scoring it against the primary point's observation would compare two different places. Deliberately null in _blend_prediction."
+    - model: "olw_blend"
+      lead_time_days: 0
+      variable: "mslp_trend"
+      reason: "mslp_trend_24h is prose in the schema, not a number. Null reads as 'not forecast', which is the truthful answer until it is structured. See _blend_prediction."
+
+    # ROADMAP item 72, shipped 2026-09-05. Beyond Day+0 the forecaster is
+    # asked for rain and rain_probability_pct and nothing else, so every other
+    # field is absent rather than zero — a guessed boolean is scored wrong
+    # exactly as confidently as a real one. These appeared as gaps on the
+    # first health check after that shipped, 2026-09-07.
+    - model: "olw_blend"
+      lead_time_days: 3
+      variable: "wind_kmh"
+      reason: "Item 72: not asked for beyond Day+0. A value here would enter the record as a commitment the forecaster never made."
+    - model: "olw_blend"
+      lead_time_days: 3
+      variable: "high_c"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 3
+      variable: "low_c"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 3
+      variable: "mslp_trend"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 7
+      variable: "wind_kmh"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 7
+      variable: "high_c"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 7
+      variable: "low_c"
+      reason: "Item 72: not asked for beyond Day+0."
+    - model: "olw_blend"
+      lead_time_days: 7
+      variable: "mslp_trend"
+      reason: "Item 72: not asked for beyond Day+0."
+
+    # Climatology averages past OBSERVATIONS, and there is no observed
+    # pressure TREND to average — baselines.py sets it null rather than
+    # inventing one. Reported for 27 runs, which is every run since it existed.
+    - model: "climatology"
+      lead_time_days: 0
+      variable: "mslp_trend"
+      reason: "No observed pressure trend exists to average; climatology_baseline sets it null rather than fabricating one."
+    - model: "climatology"
+      lead_time_days: 3
+      variable: "mslp_trend"
+      reason: "As Day+0 — nothing to average."
+    - model: "climatology"
+      lead_time_days: 7
+      variable: "mslp_trend"
+      reason: "As Day+0 — nothing to average."
+
   local_bulletin_area_name: "Kisumu"
   local_bulletin_model_id: "kenya_met"
