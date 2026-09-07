@@ -89,12 +89,15 @@ Neither should be built yet — the evidence is three failures on two bad days,
 and the ledger now records failed runs honestly, so a few ordinary weeks will
 say which failure mode is real.
 
-**The one thing worth building before either is a measurement.** The ledger
-records when each attempt STARTED and nothing else, so the success-latency
-distribution has never been observed — every number in items 79 and 80 is
-derived by subtracting something unmeasured. Recording outcome and elapsed
-time per attempt is additive, Python-only, and turns "is 180s the right
-number" from an argument into a two-week observation. Item 80 has the shape.
+**The one thing approved to build is the measurement**, and the operator's
+reason for it is not the timeout: *"good practice for troubleshooting later
+on. The interactive mode/background mode will be forced on us and should
+solve for this anyhow."* The ledger records when each attempt STARTED and
+nothing else, so every latency figure this project has ever quoted — item
+66's included, in both its wrong and its corrected form — is arithmetic over
+start timestamps. Recording outcome and elapsed time is additive and
+Python-only. Build it as standing diagnostic capability, not as a
+precondition for 79 or 80, and do not let it delay the API migration.
 
 **And a third item came out of the API half: 81.** If the model and the API
 decay independently, "bring your own model" is an untested surface presented
@@ -8603,6 +8606,32 @@ process died mid-attempt.
 would say whether 90.1s hangs happen off incident days at all, and what the
 real success tail is. Picking 180s first would work and we would not know
 why, which is how the 60s reading went wrong the first time.
+
+> **Approved 2026-09-07, and for a different reason than the one argued
+> above.** The operator's words: *"only because I think this will be good
+> practice for troubleshooting later on. The interactive mode/background mode
+> will be forced on us and should solve for this anyhow."*
+>
+> That reframes it, and the reframing is the part worth keeping. The
+> instrumentation is NOT justified by the 180s decision — that decision is
+> likely to be overtaken, because `generateContent` is legacy (item 28) and
+> the move to the Interactions API is a question of when rather than whether,
+> and submit-and-poll removes the synchronous deadline that 180s is arguing
+> about.
+>
+> It is justified as **standing diagnostic capability**. Every latency
+> question this project has asked has been answered by subtracting something
+> unmeasured from something else — item 66's timeout reading was wrong the
+> first time for exactly that reason, and its correction, and this item's
+> whole analysis, all rest on arithmetic over start timestamps. A per-attempt
+> outcome and duration makes the next such question a query instead of an
+> inference, and there will be a next one: the poll loop in this item has its
+> own latency characteristics that nobody has measured either.
+>
+> So: build it because the ledger should be able to answer questions about
+> itself, not because it will settle 180s. If it settles 180s on the way,
+> that is a bonus and not the point — and it should NOT be a reason to delay
+> the API migration.
 
 ### Do not start this yet
 
