@@ -89,6 +89,18 @@ Neither should be built yet — the evidence is three failures on two bad days,
 and the ledger now records failed runs honestly, so a few ordinary weeks will
 say which failure mode is real.
 
+**The one thing worth building before either is a measurement.** The ledger
+records when each attempt STARTED and nothing else, so the success-latency
+distribution has never been observed — every number in items 79 and 80 is
+derived by subtracting something unmeasured. Recording outcome and elapsed
+time per attempt is additive, Python-only, and turns "is 180s the right
+number" from an argument into a two-week observation. Item 80 has the shape.
+
+**And a third item came out of the API half: 81.** If the model and the API
+decay independently, "bring your own model" is an untested surface presented
+as a feature. A supported matrix replaces it, produced by item 77's harness
+and degraded honestly at its edges rather than refused.
+
 Item 80 also carries a fact that outlives it: **`generateContent` is labelled
 legacy as of June 2026**, with the Interactions API recommended for new
 projects. That belongs with item 68 whatever happens to the polling question.
@@ -2515,6 +2527,18 @@ onboarding as a dated fact and then had to be removed, because Google no
 longer publishes free-tier figures at all and says limits depend on your
 account tier. That was caught by chance while researching something else. The
 next such change will not be.
+
+> **Widened 2026-09-07, on the operator's point: the API decays too.** This
+> item was scoped to terms, pricing, limits and model deprecation. On
+> 2026-09-07 Google was found to have labelled `generateContent` **legacy**
+> in favour of the Interactions API — a change with more consequence for this
+> project than any pricing note, and one nothing here was watching for. The
+> watcher's target list gains the API surface itself: legacy/deprecated
+> notices on the endpoint we call, not only on the model we name.
+>
+> The operator's conclusion from it is item 81: if the API and the model both
+> decay independently, "bring your own model" is not a position this project
+> can hold.
 
 ### What actually depends on provider terms
 
@@ -8523,15 +8547,62 @@ items are complementary rather than alternatives.
 - **A second provider implementation in Python.** Different endpoint,
   different request shape, a poll loop, and terminal-state handling
   (`completed` / `failed` / `cancelled`).
-- **A deliberate divergence from the app.** Dart must stay synchronous: a
-  person holding a phone will not wait out a poll loop, and `RetryPolicy
-  .interactive` exists because the operator asked for a fast error. So the
-  provider layer stops being a port, and `spec/README.md`'s change order
-  needs to say so explicitly rather than leaving it to be discovered.
+- **A different interaction model in the app — not a synchronous one.**
+  *Corrected 2026-09-07, on the operator's objection to the first draft of
+  this item.* "Dart must stay synchronous" was wrong: an app that holds a
+  dead connection for 90 seconds helps nobody either. The real requirement is
+  that the app must never leave a person watching a spinner with no way out,
+  and there are two ways to satisfy it — a short timeout with a clear error
+  (what `RetryPolicy.interactive` does today), or the SAME polling loop with
+  progress and a working Cancel. The second is strictly better if it is
+  built, because it turns a 90-second hang into something the reader can
+  abandon. So the app choice is a UI question, not a protocol one, and the
+  provider layer may well end up shared after all.
 - **The spend cap needs re-deciding.** It counts HTTP requests via
   `before_attempt`. Under polling, one forecast is one submit plus N polls,
   and counting polls as spend would be wrong while counting nothing would
   lose the retry visibility the cap was built for.
+
+### Would a bigger number fix it? Probably not, and we cannot yet prove it
+
+Asked by the operator 2026-09-07: *"maybe there is a number that will 'fix'
+it in that the model 'hangs' but never for more than 180s."*
+
+Fair, and testable in principle. What the record says now, from job timings
+paired with ledger entries across 13 successful runs — the time from the
+LAST (successful) attempt starting to the job ending, which includes writing,
+rendering and pushing:
+
+```text
+40s 63s 49s 65s 64s 43s 43s 53s 78s 66s 46s 58s 50s
+```
+
+**Successes cluster at 40-78s including post-processing, and they did not
+move when the ceiling went from 60s to 90s.** Failures did — they track
+whatever ceiling exists, exactly. A latency TAIL would have produced
+successes at 70s and 85s once 90s allowed them; none appeared. That is the
+signature of a connection that never answers, not of a generation that needs
+longer, and under it 180s buys three minutes of waiting per attempt and
+rescues nothing.
+
+**But this is inference, not measurement, and the gap is one field.** The
+ledger records only the START of each attempt — no outcome, no duration — so
+every latency figure above is either derived by subtracting a known backoff
+from failures, or by subtracting an UNMEASURED post-processing time from job
+durations. The success distribution has never been observed directly.
+
+Recording outcome and elapsed time per attempt would end the argument rather
+than continue it, and it is additive: `spec/vectors/spend.json` locks
+`calls_in_window`/`prune`, which read only `at`, so extra fields cost the
+Dart side nothing. The count must still be written BEFORE the call — that
+guarantee is what makes the cap honest — so this is a second write that
+completes the row, and a row left incomplete is itself the signal that the
+process died mid-attempt.
+
+**Sequence: measure, then choose a number.** Two weeks of ordinary running
+would say whether 90.1s hangs happen off incident days at all, and what the
+real success tail is. Picking 180s first would work and we would not know
+why, which is how the 60s reading went wrong the first time.
 
 ### Do not start this yet
 
@@ -8549,4 +8620,74 @@ Related: item 79 (the outage backoff, which this does not replace), item 66
 (the timeout and the prediction this resolves), item 68 (safe model change,
 which now has an API migration beside it), item 26 (the cap this would
 redefine), item 77 (the harness any provider swap should be measured with).
+
+---
+
+## 81. "Bring your own model" is a promise this project cannot keep · **Planned**
+
+Raised by the operator 2026-09-07, from item 80's finding: *"this means we'll
+need to define supported models/providers and keep up with this, rather than
+just say 'bring your own model'."*
+
+### What the project implies today, and why it is no longer honest
+
+The app lets a reader pick among three providers and type a model name. The
+pipeline takes `llm_model` from `config/location.yaml` and calls it. Nothing
+anywhere states which combinations have been RUN, and the implicit offer is
+that any of them work.
+
+Three findings in three days say otherwise, and none was visible from the
+config:
+
+- **The prompt is model-coupled** (item 76). ~34,000 characters accumulated
+  against one model's failure modes, and nothing distinguishes a rule the
+  next model also needs from a workaround for this one.
+- **The API is decaying independently of the model** (item 80).
+  `generateContent` is legacy; the Interactions API is the successor. A model
+  name in a config file says nothing about which API reaches it.
+- **Provider behaviour differs in ways the config cannot express** —
+  thinking levels, structured-output support, timeout and hang
+  characteristics, whether background execution exists at all.
+
+So "bring your own model" is not a feature, it is an untested surface
+presented as one. A reader who types a model name and gets a worse forecast
+has no way to know that is what happened.
+
+### What replaces it
+
+**A supported matrix, small and stated.** Which (provider, model, API)
+combinations have actually been run against the archived inputs, when, and
+what came out. Item 77's harness is what produces the rows; this item is
+what publishes them and what the code does about a row that is not there.
+
+The hard part is not the list, it is the behaviour at its edges:
+
+- **An unsupported combination must still run**, and must say what it is.
+  Refusing to call an unlisted model would make every new release a blocker
+  and would make forks worse off than they are now. The right shape is
+  almost certainly a DEGRADATION (item 53.4's machinery already exists) —
+  "this model is not one the prompt has been validated against" — recorded
+  in the entry and visible to the reader, not a hard stop.
+- **Unsupported must not silently inherit another model's workarounds.**
+  Item 78's open question, and this is where it gets its answer: the base
+  prompt plus a recorded degradation, never gemini-3.6's scar tissue applied
+  to a model that never had the habit.
+- **The list has to be maintained or it lies**, exactly like the pricing
+  claim item 28 exists for. A matrix nobody updates is worse than none,
+  because it looks authoritative. Item 28's watcher is the natural owner:
+  a model leaving the provider's list should mark its rows stale.
+
+### The uncomfortable part
+
+**A supported matrix has a cost per entry, so it will be short** — realistic
+first version is one or two rows. That is a narrowing of what the project
+appears to offer today, and it should be stated plainly rather than
+presented as an improvement. The honest framing is that the offer was never
+real: the app has always let a reader pick a combination nobody had tried.
+
+Related: item 77 (the harness that produces the rows), item 78 (whose
+unknown-model question this answers), item 76 (why the prompt does not
+travel), item 80 (the API half of the problem), item 28 (which must watch
+both and mark rows stale), item 53.4 (the degradation machinery this reuses),
+item 68.
 
