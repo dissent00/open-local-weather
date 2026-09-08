@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'dates.dart';
+import 'rounding.dart';
 import 'extract.dart' show rainThresholdMm, getOnsetHour;
 import 'models.dart';
 
@@ -427,9 +428,8 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
     // rather than 0.0 — "no data" and "no rain" are different answers and the
     // summary must not conflate them.
     final precipMm = day.precip.any((v) => v != null)
-        ? (((day.precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
-                .roundToDouble() /
-            100)
+        ? roundLikePython(
+            day.precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!), 2)
         : null;
 
     // Upstream ROADMAP item 45, trap 2. A key per field this source actually

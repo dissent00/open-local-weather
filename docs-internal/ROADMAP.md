@@ -9698,7 +9698,7 @@ Related: item 61 and item 85 (the two whose ports were incomplete), item 77
 
 ---
 
-## 89. Dart rounds half away from zero in three places · **One fixed 2026-09-08; two measured, unfixed**
+## 89. Dart rounds half away from zero in three places · **Fixed 2026-09-09**
 
 Found by sweeping item 83's band ladders, not by a test. `comparison.dart`'s
 `_round1` was
@@ -9755,12 +9755,33 @@ against Python's `round(sum(...), 2)` in `extract.py:75` and its counterpart.
 - `app/olw_core/lib/src/extract.dart:126`
 - `app/olw_core/lib/src/open_meteo.dart:431`
 
-**378 of 15,102 swept days disagree, 189 of them with a non-negative total** —
-that is, reachable with real precipitation, which is never negative. The
-errors are 0.01 mm: `0.12` against `0.13`, `0.01` against `0.02`. Small, but
-`precip_mm` feeds `day_rain_band`'s 1.0 / 5.0 / 15.0 thresholds, so a total
-sitting on a band edge changes the word the reader gets, and it is stored in
-the record either way.
+378 of 15,102 swept days disagree, by 0.01 mm.
+
+**CORRECTION, and it matters.** This item first recorded 189 of those as
+"reachable with real precipitation, which is never negative". That was wrong —
+non-negative is not the same as reachable, and the claim was made without
+checking. Re-swept with the corpus split by how each case was generated:
+
+| generator | mismatches |
+|---|---|
+| realistic day (24 h, nulls, 0.1/0.01 grid) | **0 / 6,000** |
+| many small values | **0 / 3,000** |
+| repeated 0.1 | **0 / 1,500** |
+| repeating pattern | **0 / 1,500** |
+| one large hour, many tiny | **0 / 1,500** |
+| synthetic eighths (`k/8`) | 200 / 801 |
+| synthetic 200ths (`k/200`) | 178 / 801 |
+
+**Every mismatch came from the two synthetic categories**, which are exact
+ties by construction. A further 400,000 targeted searches over realistic
+hourly series found none either.
+
+**Why this site is safe and the day-over-day one was not**, which is the
+useful part: a MEAN divides by two to six models and lands on x.x5
+constantly — measured at ~3.6% of realistic draws, which is why item 83's
+band edges were genuinely being crossed. A SUM of feed-resolution values does
+not manufacture ties, and Open-Meteo does not return an odd eighth. So this
+half was defence in depth; the comparison half was a live bug.
 
 **The compensated sum is NOT involved here.** `sums.dart` exists because
 CPython's `sum()` uses Neumaier compensation and Dart's `reduce` does not, so
@@ -9769,10 +9790,21 @@ that was the first suspect. Substituting `compensatedSum` changed nothing:
 addresses only the summation would have looked like diligence and moved
 nothing.
 
-**A fix is verified at 0 of 15,102** — the same `toStringAsFixed` approach,
-with the tie test re-derived for two decimals. Not applied: it is two files
-outside the change that found it, and it wants its own vector coverage on the
-Dart side, since Python is already correct and no Python test can fail.
+**Fixed 2026-09-09 on the operator's call**, knowing it was defence in depth:
+the expression is wrong against Python whatever the feed currently sends, and
+"unreachable" is a statement about today's data resolution, not a guarantee.
+
+The three sites now share `app/olw_core/lib/src/rounding.dart` —
+`roundLikePython(v, places)` — rather than a third and fourth hand-copy. That
+IS the convention change flagged below, taken deliberately: having just
+written "do not copy this without re-deriving it", duplicating it twice more
+would have been perverse. `_roundHalfEven` (integers) and `_fmt0` (string
+formatting) are different operations and are left alone.
+
+Vector cases were added to `extract_day0.json` and `bucket_hourly_by_date.json`
+and watched failing against the old Dart, and `rounding_test.dart` pins the
+precision trap directly. Swept after: **0 across 116,588 values** — 32,001 at
+one decimal, 30,204 at two, and 54,383 rows of the band ladders.
 
 ### Do not copy the helper without re-deriving it
 
@@ -9787,10 +9819,14 @@ at two places and the test said it was. Naive generalisation of this helper is
 worse than leaving it alone, which is why the warning is in the code as well
 as here.
 
-Also worth deciding: whether a single shared helper should replace all four,
-or whether the existing per-file duplication with cross-references is
-preferred. The repo currently duplicates deliberately (`models.dart` points at
-`synoptic.dart`), so this is a change of convention, not a cleanup.
+### Still open
+
+`extract.py` and its Dart twin sum with a plain fold while Python's `sum()`
+compensates. **Substituting `compensatedSum` changed nothing here — 378
+before, 378 after** — so it is not the cause of anything measured, and a fix
+addressing only the summation would have looked like diligence and moved
+nothing. Whether some other input reaches a difference is unmeasured, and the
+sweep above was not designed to find one.
 
 Related: item 88 (the rule this vindicates), item 83 (whose new band edges
 made the defect reader-visible), `temp_high_low.json` (the same divergence,

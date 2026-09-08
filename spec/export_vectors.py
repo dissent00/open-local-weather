@@ -371,6 +371,15 @@ def export_extract() -> None:
             "pressure_msl_ecmwf_ifs025": [None, None, None],
         }
     }
+    hourly_tie = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00"],
+            "precipitation_gfs_seamless": [0.1, 0.025],
+            "windgusts_10m_gfs_seamless": [10.0, 12.0],
+            "temperature_2m_gfs_seamless": [21.0, 22.0],
+            "pressure_msl_gfs_seamless": [1013.0, 1012.4],
+        }
+    }
     hourly_dry = {
         "hourly": {
             "time": ["2026-08-11T12:00", "2026-08-11T13:00"],
@@ -424,6 +433,23 @@ def export_extract() -> None:
             "name": "present series never crossing threshold IS a real dry call",
             "input": {"hourly_multi_model": hourly_dry, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
             "expected": dump(extract_day0_predictions_from_hourly(hourly_dry, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
+        },
+        {
+            # ROUNDING TIE, item 89. The day total is round(sum(...), 2) in
+            # Python and was (sum * 100).roundToDouble() / 100 in Dart, which
+            # rounds half AWAY FROM ZERO. 0.125 is an exact tie at two
+            # decimals, so Python gives 0.12 and the old Dart gave 0.13.
+            #
+            # CONSTRUCTED, NOT OBSERVED. Open-Meteo returns precipitation on a
+            # 0.1/0.01 grid and a plain SUM of such values was never seen
+            # landing on an exact eighth — 0 divergences in 13,500 swept days
+            # and in 400,000 targeted searches. Unlike the day-over-day
+            # deltas, which are MEANS and hit a tie on ~3.6% of real days,
+            # this one needs an input the feed does not produce. The case is
+            # here to pin the contract, not to reproduce a sighting.
+            "name": "a precipitation total on an exact rounding tie",
+            "input": {"hourly_multi_model": hourly_tie, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly(hourly_tie, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
         },
         {
             "name": "empty payload yields no predictions",
@@ -686,10 +712,27 @@ def export_bucketing() -> None:
             "pressure_msl": [1013.0, 1013.5],
         }
     }
+    # ROUNDING TIE, item 89. Same defect as extract_day0's tie case, in the
+    # observed-side twin of the same expression: the day total is
+    # round(sum(...), 2) in Python and was rounded half away from zero in
+    # Dart. 0.1 + 0.025 is exactly 0.125, so Python gives 0.12 and the old
+    # Dart gave 0.13. Constructed rather than observed, for the reason given
+    # on the other case — a SUM of feed-resolution values was never seen
+    # landing on a tie.
+    rounding_tie = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00"],
+            "temperature_2m": [18.0, 19.0],
+            "precipitation": [0.1, 0.025],
+            "windgusts_10m": [12.0, 16.0],
+            "pressure_msl": [1013.0, 1013.5],
+        }
+    }
     scenarios = [
         ("multi-day split, onset and aggregates per day", multi_day),
         ("gust array present with nulls — no windspeed substitution", gusts_with_nulls),
         ("gust array absent — falls back to windspeed", speed_fallback),
+        ("a precipitation total on an exact rounding tie", rounding_tie),
         ("empty payload yields no days", {}),
     ]
     cases = []

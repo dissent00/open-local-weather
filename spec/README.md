@@ -88,7 +88,7 @@ absent values are `null`, never omitted keys.
 | `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
 | `aqi_merge.json` | `merge_ground_aqi` | 9 |
 | `round_hours_to_tenths.json` | `round_hours_to_tenths` | 16 |
-| `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 4 |
+| `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 5 |
 | `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
@@ -99,7 +99,7 @@ absent values are `null`, never omitted keys.
 | `describe_day_over_day.json` | `describe_day_over_day` | 13 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
-| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 4 |
+| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 5 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
 | `llm_schema_gemini.json` | `to_gemini_schema` | 1 |

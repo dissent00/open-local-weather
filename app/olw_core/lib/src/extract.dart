@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'models.dart';
+import 'rounding.dart';
 
 /// Default rain threshold in mm, matching Python's `RAIN_THRESHOLD_MM`.
 /// Used consistently for both "did it rain" scoring and onset detection.
@@ -122,9 +123,8 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       // null rather than 0.0 — "no data" and "no rain" are different
       // answers and the summary must not conflate them.
       precipMm: hasPrecipData
-          ? (((precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!)) * 100)
-                  .roundToDouble() /
-              100)
+          ? roundLikePython(
+              precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!), 2)
           : null,
     );
   }).toList();
