@@ -8911,3 +8911,192 @@ it answers), item 62 (the same question from the other end), item 45 (events
 are not observations), item 64 (where the document is registered and where
 the brake is stated), item 44 (the sources page that would have to show all
 of this).
+
+---
+
+## 83. The prompt welds code-written phrases together, and nobody wrote the contract · **Planned**
+
+Raised by the operator 2026-09-08 from a real Overview, quoted whole:
+
+> "Slightly warmer and calmer today, with dry until evening showers today;
+> yesterday was largely dry — much the same through Friday, with rain
+> becoming more likely. Thunderstorms are possible late this afternoon and
+> overnight, peaking around 22:00 as model guidance displays sharp
+> divergence on convective energy, with UKMO and ICON building CAPE to
+> 1000–1360 J/kg while GFS remains suppressed near 240 J/kg."
+
+Six complaints were raised against it. Two were the prompt's and are fixed
+2026-09-08 — the run-on, and the CAPE breakdown landing in the section a
+reader checks before going outside. **The other four are `comparison.py`,
+and the model was obeying instructions in every one of them.**
+
+### The design that produces them
+
+Phrases like `rain_contrast` and the NEXT THREE DAYS trend are computed in
+code and the prompt orders them used VERBATIM. That is deliberate and it
+works: anything left for the model to phrase is something the model can get
+wrong, and item 61 and `describe_extended_trend`'s docstring both say so.
+
+What was never written down is the other side of that bargain. **A phrase
+the model may not alter must be grammatical where the prompt tells it to go,
+and must carry its own baseline**, because the model has been forbidden from
+fixing either. Four defects, all violations of a contract nobody stated:
+
+**1. The phrases are sentence openers, used mid-sentence.**
+`describe_day_rain` returns "dry until evening showers" — which reads
+correctly as "Dry until evening showers." and not at all after "with". The
+Overview is told to open with the comparison and use the phrase verbatim, so
+it produced "with dry until evening showers today". There is no legal move
+available to the model here.
+
+**2. The "; yesterday was X" half is filler**, and this is already known.
+`comparison.py`'s `both_dry` branch carries a comment condemning exactly
+this — *"ungrammatical where it lands and, worse, spends the first thing a
+reader sees on weather that has already happened. Item 67's complaint,
+arriving by a different route."* The fix went into that branch. The `else`
+branch still builds `f"{today_character} today; yesterday was
+{yesterday_character}"`.
+
+**3. Two baselines in one sentence, neither stated.** `high_label` and
+`wind_label` measure today against YESTERDAY. `describe_extended_trend`
+computes `highs[-1] - today_high_c` — the next three days against TODAY.
+Both are correct. Welded together they read as a contradiction: the day is
+warmer and calmer, and also much the same. A reader cannot tell which day
+"much the same" is same AS.
+
+**4. The temperature bands have no ceiling.** `TEMP_CHANGE_BANDS_C` is
+1/3/6/99, so everything at or above 6 °C is "much warmer" — a 6-degree
+change and a 25-degree frontal passage produce identical words. The
+operator's point, and worth quoting because it names why this went unseen:
+*"Some places will see temps swing 20-30 degrees in a day as a front passes.
+Kisumu is not the best place for this."* The deployment hides the defect.
+
+Note what is NOT wrong here: bands rather than raw deltas. `_band_label`'s
+docstring gives the reason — the consensus this is computed from differs
+from the LLM's final blended call, so a band survives that gap and "1.3
+degrees" would not. That argues for MORE BANDS AT THE TOP, not for quoting
+numbers. `PROMPT_COMPARISON_FIELDS` exists because a run handed the raw
+operands wrote "against yesterday's 30.4C" in the sentence after the rule
+forbidding it; do not undo that.
+
+### What the fix has to establish
+
+Not four patches. The four are one theme, and patching them separately just
+moves the seam:
+
+- **Every verbatim phrase declares where it may appear** — standalone
+  sentence, or embeddable fragment — and the prompt places it accordingly.
+  Today the prompt guesses, and "with" + a sentence opener is the result.
+- **Every comparative phrase names what it is measured against**, in its own
+  words, because the sentence around it will not.
+- **A phrase says one thing.** The "; yesterday was X" tail is a second
+  statement smuggled into a phrase whose slot allows one.
+
+### Do not fix this in the prompt
+
+It has been tried, in this exact spot. `PROMPT_COMPARISON_FIELDS`'s comment
+records the result: *"A rule cannot win against a payload that supplies its
+own counter-example, and the cheapest way to delete a rule is to delete the
+temptation."* Moving the rule to the front of the section did not work;
+deleting the field did. The same applies here — a prompt rule telling the
+model to repair ungrammatical input it was told not to alter is a rule
+against itself.
+
+### Sequencing
+
+This changes `comparison.py`, which is ported to Dart and pinned by vectors,
+so it is Python → vectors → Dart → re-pin. The prompt is pinned by
+`llm_system_prompt.json` and mirrored in
+`app/olw_core/lib/src/llm/prompt.dart` (457 lines of the same prose), so
+prompt and comparison changes should land TOGETHER — otherwise that
+two-language prose mirror gets done twice.
+
+Related: item 61 (the extended clause, and its verbatim design), item 67
+(the same class, fixed in one branch), item 48 (the enumeration this keeps
+producing), item 75 (what good reads like), item 73 (pare the prompt),
+item 84 (which would have caught defect 4's blind spot).
+
+---
+
+## 84. A register of what this system could observe, and what it actually does · **Planned**
+
+Raised by the operator 2026-09-08, after a prompt edit asked the forecaster
+to describe fog and wind chill. Neither is fetched, neither is stored, and
+neither appears anywhere in the prompt. The edit was reasonable and the
+information needed to check it took a code read.
+
+### The problem is repetition, not any one gap
+
+Every gap in this project's variable coverage has been discovered the same
+way: from a bad output, after the fact.
+
+- **Humidity** — a run wrote "warm and humid through the morning". Humidity
+  is not fetched. The prompt now carries an explicit ban naming it, along
+  with dew point, "feels like", visibility and cloud base.
+- **Cloud** — the forecast predicts `cloud_cover` and nothing observes it,
+  so a day that turns overcast cannot be compared to a clear one. Item 65.
+- **Lightning** — shipped as an observation with nothing to score it
+  against, on purpose. Item 65 again.
+- **Fog and wind chill** — 2026-09-08, this item.
+
+Four discoveries, four separate investigations, and the answer each time was
+a fact that does not change day to day. **There is no place to look it up.**
+
+### What it is
+
+A static table in this repo, one row per weather variable, with the columns
+that answer the questions actually asked:
+
+| column | answers |
+|---|---|
+| variable | the name used in code |
+| forecast | is it predicted, and by which models |
+| observed | is there a truth source, or is it forecast-only |
+| stored | is it on `DailyActual` / `ModelPrediction` |
+| scored | does it enter the accuracy record |
+| in the prompt | may the forecaster mention it at all |
+| day-over-day | does it have a comparison label |
+
+The "observed" and "in the prompt" columns are the load-bearing ones. Those
+two would have answered the cloud question in seconds, and they are the pair
+that decides whether a prompt edit is legal or is asking for an invention.
+
+### Rows that are already known
+
+Enough exists today to make this a day's work rather than a research task:
+temperature, wind, precipitation amount, rain boolean, rain probability,
+onset, MSLP trend, thunder, lightning, CAPE, AQI, UV. Forecast-only or
+unobserved: cloud cover. Absent entirely: humidity, dew point, apparent
+temperature, visibility, fog, wind chill, gales as a distinct class.
+
+The absent rows are the point. A table listing only what exists answers no
+question anyone has asked.
+
+### Its relationship to item 56, which is NOT a merge
+
+Item 56 is a glossary: reader-facing definitions of terms the forecast
+ALREADY uses — CAPE, hPa, kt, AQI. This is engineering-facing and mostly
+about variables the forecast does NOT have. They should not become one item,
+because 56's whole value is that it is a day's work and ships cheaply.
+
+The useful link runs one way: **this register is the superset, and 56's term
+list is the subset of rows whose "in the prompt" column says yes.** If both
+get built, 56's table should be derived from this one rather than
+hand-kept beside it — two hand-maintained lists of the same facts is the
+staleness 56 already warns about in its own "One copy, read by both
+surfaces" section.
+
+### What it is not
+
+Not a plan to add variables. A row saying "fog: not observed, not fetched,
+not in the prompt" is a complete and useful answer, and most rows should
+stay that way — item 64's brake applies, and `observed_convection()` is
+still a monotonic OR where every added source can only manufacture wet days.
+The register's job is to make the answer cheap to look up, not to turn every
+blank into work.
+
+Related: item 56 (the reader-facing glossary this would feed), item 65
+(cloud and lightning, the two rows that prompted it), item 45 (which source
+counts as observed), item 64 (why adding sources is not the default), item
+83 (whose band-ceiling defect a "day-over-day" column would have exposed),
+item 44 (the reader-facing sources page).
