@@ -6575,8 +6575,10 @@ sources page), item 46 (asking the reader when sources disagree).
 
 ## 64. Source research, September 2026 — what these documents are · **Reference**
 
-Five documents landed in `docs-internal/` on 2026-09-03 from a separate
-research effort. They are REFERENCE, not a work item, and this entry exists
+Six documents landed in `docs-internal/` on 2026-09-03 from a separate
+research effort. The sixth — the hazard matrix — was registered here later,
+on 2026-09-08; it is the only one that proposes BEHAVIOUR rather than
+sources, which is why it also has an item of its own. They are REFERENCE, not a work item, and this entry exists
 so nobody mistakes them for a plan.
 
 | Document | What it is | Read it when |
@@ -6584,6 +6586,7 @@ so nobody mistakes them for a plan.
 | `OBSERVED_REALITY_SOURCE_HANDOFF.md` | The synthesis. Roles for an observational source, WIGOS/WIS2/METAR/radar/satellite, and a set of principles | Before adding any truth source |
 | `GLOBAL_SOURCE_REGISTRY_REFERENCE.md` | Registry design: three registries, richness dimensions, coordinate-based selection | Building item 11 |
 | `OPEN_LOCAL_WEATHER_GLOBAL_SOURCE_MATRIX_v1.0.xlsx` | 193 WMO members scored for adapter priority | Answering "how does a fork elsewhere configure this" |
+| `OPEN_LOCAL_WEATHER_GLOBAL_HAZARD_SPECIALIST_SOURCE_MATRIX_v0.3.xlsx` | 31 specialist hazard sources, plus a deduplication and notification-gating model | Item 82 |
 | `RADAR_SATELLITE_REGIONAL_OBSERVATIONS_HANDOFF.md` | Earlier, superseded in part. Kept for the Kisumu radar and Meteosat findings | Item 41 |
 | `WEATHER_STATION_DISCOVERY_HANDOFF.md` | Earlier, superseded in part. Kept for the station discovery test | Item 63 |
 
@@ -8773,3 +8776,117 @@ travel), item 80 (the API half of the problem), item 28 (which must watch
 both and mark rows stale), item 53.4 (the degradation machinery this reuses),
 item 68.
 
+---
+
+## 82. Hazards nobody's model forecasts, and the duplicate-warning problem · **Planned**
+
+`OPEN_LOCAL_WEATHER_GLOBAL_HAZARD_SPECIALIST_SOURCE_MATRIX_v0.3.xlsx`,
+2026-09-03, registered here 2026-09-08. Item 64 covers the other five
+research documents and treats them as reference. This one gets an item
+because it is not a source list: **it proposes how the system should
+behave**, and that is a design question this repo has open in three places.
+
+### The problem it names
+
+Every source this project has added so far answers "what will the weather
+be". A whole class of things a reader needs answers "what is about to
+happen to you", and the two are not the same question:
+
+- A tropical cyclone that has not formed yet has no temperature to forecast,
+  and a formation probability can appear **days before** any national
+  warning exists.
+- River flooding is not rainfall. Basin response and antecedent wetness
+  decide it, and the amount that falls on your head does not.
+- Smoke, dust, volcanic ash and fire danger are hazards with no forecast
+  variable in this pipeline at all.
+
+The workbook's own framing: forecast variables do not equal consequences.
+
+### The part worth having, which is not the source list
+
+31 sources across 17 hazard families is the visible content. The valuable
+content is five pages of gating:
+
+- **The core rule.** Do not notify twice for one hazard merely because both
+  a national met service and a regional centre published it. A national
+  warning is the canonical user-facing warning once it exists; the
+  specialist centre may hold the event object silently underneath it.
+- **Five notification modes** — EARLY WATCH, IMPACT UPDATE, CANONICAL
+  WARNING, CONTEXT ONLY, SILENT EVENT BACKBONE. Ten of the 31 sources
+  default to SILENT EVENT BACKBONE, which is the interesting number: most
+  of this is evidence the system holds and does not say.
+- **A forecast threshold LOWER than the notification threshold.** Specialist
+  evidence may change the extended forecast narrative without interrupting
+  anyone. This is the sentence that makes the document relevant to work
+  already in flight rather than to a future alerting feature — see below.
+- **An independence rule this project should have written itself**: do not
+  count specialist guidance as an independent model vote when it derives
+  from models already in the ensemble. Expert synthesis over ECMWF and GFS
+  is not a sixth opinion. The matrix marks the lineage per source.
+
+### Why it lands on work already open
+
+- **Item 61's extended-outlook clause**, still gated on review. The forecast
+  threshold above says specialist evidence belongs in exactly that clause,
+  below the bar that would send an alert. If that is right, 61 is where this
+  first shows up, and it changes what the clause is allowed to carry.
+- **Item 2 (severe-weather alerts, gated on October 2026)** already has the
+  duplicate problem and no stated answer to it. The KMD CAP feed is a
+  national authority; NHC and the RSMCs are not. R1-R3 in the workbook are
+  a candidate answer.
+- **Item 62 (a hazard that crosses a line, and what silence means)** is the
+  same question from the other end. 62 asks what silence means; this asks
+  what a second voice means. They should be decided together or they will
+  contradict each other.
+- **Item 45's precedence ladder** is about observed reality. This is about
+  events. Keeping them separate is deliberate and worth saying out loud:
+  a cyclone advisory is not a candidate for "what actually happened".
+
+### The brake from item 64 still applies, but not the way it looks
+
+Item 64's constraint — the project's problem is not source count, and
+`observed_convection()` is a monotonic OR where every added source can only
+manufacture wet days — does **not** transfer directly here, because most of
+these sources never enter scoring. A formation probability is not an
+observation and does not touch `DailyActual`.
+
+That is a reason to be careful, not a reason to relax. **The question each
+source must answer before it lands is which of the two it is**: evidence
+that changes the narrative, or an observation that changes a score. The
+second kind inherits every one of item 45's and item 64's conditions,
+including its own divergence measurement first. The workbook does not draw
+this line; this item does.
+
+### Unverified, and one thing already known to be wrong-shaped
+
+Treat the workbook the way item 64 treated the others. Its Research Evidence
+sheet has a "Checked 2026-09-03" column, and item 64 found precisely that
+kind of column overstating itself: the source matrix marked Kenya's CAP feed
+verified on a live 200, when its newest alert was four months old. **Nothing
+in this workbook has been checked by this repo.** The same
+`last_live_observation` requirement item 64 asks for applies here, and more
+sharply — a hazard feed that has gone quiet is indistinguishable from a
+world with no hazards in it.
+
+Smaller, but it is the kind of thing this project fixes rather than lives
+with: the Summary sheet's title cell still says **v0.1** while its version
+rows and the filename say v0.3.
+
+### Not now, and what would change that
+
+Nothing here is next. Item 2 is gated on October 2026 and this sits behind
+it; item 61's review is the cheaper decision and comes first. The one thing
+worth doing early is the DECISION, not the build — whether specialist
+evidence may enter the extended outlook below the alerting bar — because
+item 61 is blocked on a related judgement and answering both at once costs
+one conversation instead of two.
+
+Scope boundary the workbook sets for itself and this item keeps: general
+earthquake and tsunami aggregation is out. Weather-driven and environmental
+hazards only.
+
+Related: item 61 (the clause this would feed), item 2 (the duplicate problem
+it answers), item 62 (the same question from the other end), item 45 (events
+are not observations), item 64 (where the document is registered and where
+the brake is stated), item 44 (the sources page that would have to show all
+of this).
