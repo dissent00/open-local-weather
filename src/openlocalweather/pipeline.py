@@ -1329,11 +1329,27 @@ def run_daily_pipeline(
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
     )
+    # THE FOURTH PLACE THE STANDING RULE HAS TO BE APPLIED, and the one it
+    # was missing. per_model_scores is scored for EVERY model, the blend and
+    # the two baselines included, and it went to the prompt unfiltered while
+    # the system prompt in the same call said "Your own accuracy record is
+    # deliberately NOT in your context".
+    #
+    # It survived because the tests for this rule all run a FIRST day, which
+    # has nothing to verify — so this block was empty in every one of them.
+    # Found 2026-09-09 by the prompt harness reading the real 2026-09-08
+    # payload, where olw_blend's Day+0 score and both baselines at all three
+    # leads were sitting in it.
+    forecaster_models = models_visible_to_the_forecaster(location.local_bulletin_model_id)
     verification_context = [
         {
             "lead_time_days": r.lead_time_days,
             "target_date_verified": format_date(r.target_date_verified) if r.target_date_verified else None,
-            "per_model_scores": {model: score.model_dump() for model, score in r.per_model_scores.items()},
+            "per_model_scores": {
+                model: score.model_dump()
+                for model, score in r.per_model_scores.items()
+                if model in forecaster_models
+            },
         }
         for r in verification_result.lead_time_results
     ]
@@ -1347,7 +1363,6 @@ def run_daily_pipeline(
     # directly, so adding a second hidden model meant remembering three
     # places; the baselines leaked through exactly this block on the first
     # attempt, in a prompt nobody would have read closely.
-    forecaster_models = models_visible_to_the_forecaster(location.local_bulletin_model_id)
     track_record_context = [
         e.model_dump()
         for e in verification_result.updated_track_record.entries

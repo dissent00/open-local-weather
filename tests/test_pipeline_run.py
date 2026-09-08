@@ -2529,3 +2529,36 @@ def test_both_attempts_failing_still_falls_back_and_says_so(tmp_path, monkeypatc
     result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     assert "hours_ahead_narrowed" in [d.code for d in result.log_entry.meta.degradations]
+
+
+def test_the_verification_block_hides_the_blend_and_the_baselines_too(tmp_path):
+    """A FOURTH block the rule leaks through, and the one that reached
+    production: PRE-COMPUTED VERIFICATION RESULTS.
+
+    The existing tests above all run a FIRST day, which has nothing to
+    verify — so verification_context is empty and the leak cannot appear in
+    them. It needs a second run, with yesterday's forecast on disk to score.
+
+    Found 2026-09-09 by the prompt harness, in the real archived payload for
+    2026-09-08: per_model_scores carried olw_blend at Day+0 and persistence
+    and climatology at all three lead times, while the system prompt in the
+    same call told the model "Your own accuracy record is deliberately NOT in
+    your context". The worker noticed, said so, and had to decide for itself
+    what to do — which is the loop models_visible_to_the_forecaster exists to
+    keep closed.
+    """
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 12), dry_run=False)
+
+    system_prompt, user_prompt = llm.calls[-1]
+    assert "PRE-COMPUTED VERIFICATION RESULTS" in user_prompt
+    # Guard the guard: an empty block would pass every assertion below
+    # without exercising anything, which is exactly how this survived.
+    assert '"per_model_scores"' in user_prompt
+    assert any(m in user_prompt for m in MODELS), "no model was scored — the block is empty"
+
+    for hidden in (BLEND_MODEL_ID, *BASELINE_MODEL_IDS):
+        assert hidden not in user_prompt, f"the forecaster can see {hidden}'s scores"
+        assert hidden not in system_prompt

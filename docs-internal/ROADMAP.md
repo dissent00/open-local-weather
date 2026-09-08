@@ -9202,17 +9202,45 @@ Dart would have kept the old behaviour silently. `describe_day_over_day.json`
 is new and pins the label combinations that are awkward to reach through a
 pair of days.
 
+### The harness run, 2026-09-09
+
+It ran on the rewritten paragraph and found four defects in it, all created by
+this change and all now fixed:
+
+- **The Overview's length cap became unachievable.** "1-2 plain-language
+  sentences" against a composed value that may itself be two, plus a mandatory
+  instability clause, plus the extended-trend sentence — four before the model
+  writes anything. Now stated as a ceiling of three or four, with the
+  arithmetic spelled out.
+- **The instability clause lost its position.** It was told to go "as the
+  second sentence, or appended to the first"; both are now locked. It gets its
+  own sentence, after the comparison.
+- **"add nothing after it" read as scoping the whole section**, forbidding the
+  two clauses that are required to follow. Narrowed to the value itself.
+- **The drop rule was undecidable.** A true convective flag is listed as
+  grounds to describe the day on its own terms, and it was true — but the
+  carve-out only makes sense against a SAMENESS claim, not a change. Now says
+  so: drop "Much like yesterday.", keep a reported change.
+
+The worker also offered the Overview the literal reading would have produced,
+and it was better than the one it wrote. That is the argument for running this
+at the seam rather than after a week of live output.
+
+**One claim of its own was false**, and worth recording because it was
+confidently made: it read `yesterday_rain: true` beside "Largely dry again."
+as a contradiction. It is not — `RAIN_THRESHOLD_MM` asks whether measurable
+rain fell in any hour, the band asks what kind of day it was, and a day can be
+both. This item's own defect-5 section already says so. But that is now TWO
+careful readers tripping on the same pairing, so the packaging is at least
+misleading even where the values are right.
+
 ### Not verified
 
 - **No live forecast has used any of this.** Every judgement above is from
   archived payloads replayed through the new code, plus the vectors. The next
   scheduled run is the first real exercise.
-- **THE HARNESS DID NOT RUN.** Item 77 lists all three of this change's seams
-  — a `prompt.py` edit, a `comparison.py` edit, and closing a prompt-facing
-  item — so it was owed here and is the one step of the method that was
-  skipped. The inputs are built and the flags are verified (see below); the
-  worker model hit an account rate limit. **Run it before trusting the
-  rewritten Overview paragraph**, which no cold reader has yet seen.
+- **The four prompt fixes above have not themselves been harness-run.** They
+  were written in response to one cold reading and have had none of their own.
 - The flags WERE verified rather than guessed: `825c468` is the commit whose
   default-flag system prompt reproduces the archive's
   `system_prompt_sha256`, confirming `is_reissue=False`,
@@ -9831,3 +9859,104 @@ sweep above was not designed to find one.
 Related: item 88 (the rule this vindicates), item 83 (whose new band edges
 made the defect reader-visible), `temp_high_low.json` (the same divergence,
 caught years earlier in another function).
+
+---
+
+## 90. The forecaster was shown its own record for weeks · **Fixed 2026-09-09**
+
+Found by the prompt harness (item 77) on its second run, reading the real
+archived 2026-09-08 payload. `PRE-COMPUTED VERIFICATION RESULTS` carried:
+
+```
+lead 0: [..., climatology, ..., olw_blend, persistence, ...]
+lead 3: [..., climatology, ..., persistence, ...]
+lead 7: [..., climatology, ..., persistence, ...]
+```
+
+All three models `models_visible_to_the_forecaster` exists to hide, at every
+lead time — while the system prompt in the same call said *"Your own accuracy
+record is deliberately NOT in your context. Do not speculate about how you
+have scored historically."*
+
+The docstring on that function says what the rule is protecting: *"Seeing its
+OWN record closes one: the output becomes the record becomes the output. The
+likely equilibrium is not self-correction but consensus-hugging."*
+
+### Why three passing tests did not catch it
+
+`test_the_forecaster_is_never_shown_its_own_record`,
+`test_a_re_issue_is_never_shown_the_blend_either` and the review-findings
+assertion all run a **first** day — 2026-08-11, with nothing on disk to
+verify. `verification_context` is therefore EMPTY in every one of them, and an
+empty block satisfies `BLEND_MODEL_ID not in user_prompt` perfectly.
+
+The new test runs two days so the block is populated, and asserts the block is
+non-empty before asserting what is absent. **A guard that passes against an
+empty input is not a guard**, and this one had been passing that way since the
+filter was written — the comment beside it even says "the baselines leaked
+through exactly this block on the first attempt, in a prompt nobody would have
+read closely."
+
+`pipeline.py` now applies the filter at the fourth site.
+
+### What the worker did with it
+
+It noticed, quoted the contradiction, and **omitted `olw_blend` from its
+output on its own judgement** — the right call, arrived at unaided, and
+precisely the private decision-making this design exists to remove. It also
+flagged that Step 1's "for EACH (model, lead time) pair that has a result
+today" would have required writing a skill summary for the blend.
+
+---
+
+## 91. Stored skill summaries are always one day behind their own numbers · **Planned**
+
+Also from the 2026-09-09 harness run, and it **corrects a "do not re-derive"
+note that was wrong.** The previous session recorded: *"Do the skill-profile
+summaries disagree with their own numbers? No. Paired properly inside each
+object, zero disagree."* That was mistaken. Re-checked by parsing the track
+record array and comparing each summary only against fields in its own object:
+
+| | count |
+|---|---|
+| agrees with a field in its own object | 1 |
+| **stale — matches the counts from one day earlier** | **11** |
+| unexplained | 0 |
+| no summary stored (all three `best_match` rows) | 3 |
+
+Every one of the eleven is explained exactly, e.g. `gfs_seamless` Day+0 says
+"63% all-time" where the object holds 17/28 = 61% — and **17/27 = 63%**.
+Day+3 says 75% against 18/25, and 18/24 = 75%.
+
+**The mechanism, which is the point.** `skill_profile_summary` is written by
+the LLM at Step 1 against that day's counts, stored, and read back on a later
+issuance beside numbers that have since advanced. It is stale by construction,
+by exactly one verification cycle, and it drifts further any day the record is
+not written.
+
+Same class as item 86: LLM-authored prose stored and fed back as evidence,
+disagreeing with the code-computed numbers beside it. There it was the sign
+convention; here it is the vintage.
+
+**Severity is low on the numbers and high on the pattern.** One to three
+points never crosses the review's 15-point noise floor. But the worker read
+the disagreement, could not tell which side was right, and picked one — *"I
+quoted no percentage from a `skill_profile_summary` and used the arithmetic
+fields"* — which is item 83's defect 5 again, in a different block.
+
+Options, undecided: recompute the summary each run from current counts; strip
+the percentages from the stored prose and let the numbers carry them; or stamp
+each summary with the counts it was written against so the staleness is
+visible rather than silent. The third is the cheapest and the only one that
+does not need an LLM call.
+
+### Not a defect, checked and confirmed
+
+The same run claimed all sixteen `bias` findings state the opposite of their
+own evidence. **They do not.** Every one matches: `review.py:320` computes
+errors as `actual - predicted`, so positive means the model came in UNDER what
+happened, and the claim wording follows. The worker took the convention from
+the LLM-written HISTORICAL NOTES, which have it backwards — item 86 — and
+concluded the code was wrong. It then dropped every bias finding from its
+narrative. **Item 86's cost is now measured: contradictory stored prose does
+not merely sit there, it makes a careful reader discard correct findings.**
