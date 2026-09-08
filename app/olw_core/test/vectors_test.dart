@@ -87,6 +87,20 @@ void main() {
       }
     });
 
+    // Two implementations of one string: strftime("%A") and a hand-written
+    // list. It reaches the reader inside item 61's verbatim phrase, so a
+    // disagreement publishes a different sentence in the app than on the site.
+    test('weekday_name', () {
+      for (final c in casesOf('weekday_name.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expectMatches(
+          weekdayName(parseDate(i['date'] as String)),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+
     test('add_days', () {
       for (final c in casesOf('dates_add_days.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1028,6 +1042,7 @@ void main() {
     // vector file nobody reads is a contract nobody checks.
     const covered = {
       'dates.json',
+      'weekday_name.json',
       'dates_add_days.json',
       'scoring_score_prediction.json',
       'scoring_mean.json',

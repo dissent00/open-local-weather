@@ -50,7 +50,7 @@ from openlocalweather.aqi import (
 )
 from openlocalweather.comparison import describe_day_rain
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
-from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.dates import weekday_name, add_days, prediction_row_date_for_target
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 
@@ -120,6 +120,47 @@ def write(filename: str, function: str, description: str, cases: list[dict]) -> 
 # ---------------------------------------------------------------------------
 # dates
 # ---------------------------------------------------------------------------
+
+
+def export_weekday_name() -> None:
+    """The day name that reaches the Overview inside a VERBATIM phrase.
+
+    Pinned because `strftime("%A")` and a hand-written Dart list are two
+    different implementations of one string, and item 61's clause is used
+    unaltered — a name that disagreed would publish a different sentence on
+    the app than on the site. A full week plus the boundaries, so an
+    off-by-one in either direction shows up as a wrong name rather than a
+    wrong date.
+    """
+    cases = []
+    # A full Monday-to-Sunday run, so an index error in either direction lands
+    # on a name rather than out of range.
+    for day in range(7, 14):
+        d = date(2026, 9, day)
+        cases.append(
+            {
+                "name": f"{d.isoformat()}",
+                "input": {"date": d.isoformat()},
+                "expected": weekday_name(d),
+            }
+        )
+    for target in ("2026-01-01", "2026-02-28", "2026-03-01", "2026-12-31"):
+        d = date.fromisoformat(target)
+        cases.append(
+            {
+                "name": f"boundary {target}",
+                "input": {"date": target},
+                "expected": weekday_name(d),
+            }
+        )
+    write(
+        "weekday_name.json",
+        "weekday_name",
+        "The English day name for a date already resolved in the location's "
+        "timezone. Reaches the reader inside a phrase the prompt uses verbatim, "
+        "so both languages must produce the same characters.",
+        cases,
+    )
 
 
 def export_dates() -> None:
@@ -2483,6 +2524,7 @@ def main() -> None:
     export_daypart()
     export_solar()
     export_dates()
+    export_weekday_name()
     export_scoring()
     export_extract()
     export_aqi()

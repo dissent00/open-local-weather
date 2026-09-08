@@ -91,6 +91,7 @@ absent values are `null`, never omitted keys.
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 4 |
 | `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
+| `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 11 |
 | `extended_trend.json` | `describe_extended_trend` | 11 |

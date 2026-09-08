@@ -204,6 +204,35 @@ void main() {
     expect(gfs.highC, 27.5);
   });
 
+  // ROADMAP item 61's app half. The clause was shipped upstream on
+  // 2026-09-05 and vector-locked on both sides, and this side still handed
+  // the prompt nothing — so an app-generated forecast silently omitted it and
+  // no test noticed, because every test that existed checked the FUNCTION
+  // rather than the wiring.
+  test('the Overview is given something to say about the next three days',
+      () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
+    expect(
+      llm.seenUserPrompt,
+      isNot(contains('Unavailable — omit the extended clause.')),
+      reason: 'daily guidance is present, so a trend must have been computed',
+    );
+    // The day name is the end of the span, not today: 2026-08-19 is a
+    // Wednesday, so Day+3 is the Saturday. A name computed from the device
+    // clock or off by one lands on a different word and this is where that
+    // shows.
+    expect(llm.seenUserPrompt, contains('through Saturday'));
+  });
+
   test('the model sees the same numbers that will be scored', () async {
     // The property that keeps the narrative and the accuracy record
     // describing one set of numbers rather than two.

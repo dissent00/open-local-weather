@@ -3,6 +3,8 @@
 import 'daypart.dart';
 import 'solar.dart';
 import 'dates.dart';
+import 'comparison.dart';
+import 'scoring.dart';
 import 'config.dart';
 import 'cycle.dart';
 import 'extract.dart';
@@ -326,6 +328,28 @@ Future<ForecastRun> generateForecast({
   final day3 = extractDayNPredictionsFromDaily(daily, 3, models);
   final day7 = extractDayNPredictionsFromDaily(daily, 7, models);
 
+  // ROADMAP item 61 — where the Overview learns to look past today.
+  //
+  // Days 1-3 from the SAME daily source and the SAME model list as the scored
+  // day3 row above, so the clause a reader acts on and the number the record
+  // scores cannot describe different weather. Consensus per day, then banded
+  // in comparison.dart: the arithmetic lives in code and the prompt is handed
+  // one finished phrase to use verbatim.
+  //
+  // Mirrors pipeline.py's call exactly, including which predictions feed
+  // todayHighC: the models as extracted, with no baselines. Python appends
+  // those AFTER this call, and a mean that included climatology would band a
+  // different trend from the one the site publishes.
+  final extendedDays = [
+    for (final n in const [1, 2, 3]) extractDayNPredictionsFromDaily(daily, n, models),
+  ];
+  final extendedTrend = describeExtendedTrend(
+    mean([for (final p in day0) p.highC]),
+    [for (final d in extendedDays) mean([for (final p in d) p.highC])],
+    [for (final d in extendedDays) mean([for (final p in d) p.precipMm])],
+    weekdayName(addDays(today, 3)),
+  );
+
   // The app has no metadata fetch (fetch/model_run.py's HTTP call to
   // Open-Meteo's own meta.json), so guidance recency here is always the
   // DERIVED floor from cycle.dart, never OBSERVED — see cycle.py's
@@ -391,6 +415,7 @@ Future<ForecastRun> generateForecast({
       'day7': day7.map((p) => p.toJson()).toList(),
     },
     guidanceRecency: guidanceRecency,
+    extendedTrend: extendedTrend,
   );
 
   final response = await llm.generate(systemPrompt: systemPrompt, userPrompt: userPrompt);

@@ -34,3 +34,29 @@ DateTime parseDate(String s) {
   final parts = s.split('-').map(int.parse).toList();
   return DateTime.utc(parts[0], parts[1], parts[2]);
 }
+
+/// Day names, Monday-first to match Dart's `DateTime.weekday` (1 = Monday).
+///
+/// A fixed English list rather than anything locale-aware, because the Python
+/// side is `strftime("%A")` under the C locale and the two must agree
+/// character for character — the name reaches the forecast inside a phrase the
+/// prompt uses VERBATIM, so a localised name here would silently produce a
+/// different sentence on a device with a different locale.
+const _weekdayNames = <String>[
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+/// "Friday". Computed from a date already resolved in the LOCATION's timezone
+/// by the caller — never from a device clock.
+///
+/// A day name is arithmetic, and this is the kind that silently reads a day
+/// early: a run at 03:00 UTC is already the next day in Kisumu, so a name
+/// derived from the device's own `DateTime.now()` would be yesterday's.
+String weekdayName(DateTime d) =>
+    _weekdayNames[DateTime.utc(d.year, d.month, d.day).weekday - 1];

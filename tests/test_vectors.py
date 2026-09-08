@@ -31,7 +31,7 @@ from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summariz
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 from openlocalweather.cycle import round_hours_to_tenths
-from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.dates import weekday_name, add_days, prediction_row_date_for_target
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
@@ -100,6 +100,17 @@ def test_vectors_prediction_row_date_for_target():
     for case in data["cases"]:
         i = case["input"]
         check(case, prediction_row_date_for_target(date.fromisoformat(i["target_date"]), i["lead_time_days"]))
+
+
+def test_vectors_weekday_name():
+    """The day name inside item 61's verbatim phrase.
+
+    Two implementations of one string — strftime("%A") and a hand-written
+    Dart list — reaching the reader unaltered. A disagreement would publish a
+    different sentence in the app than on the site.
+    """
+    for case in load("weekday_name.json")["cases"]:
+        check(case, weekday_name(date.fromisoformat(case["input"]["date"])))
 
 
 def test_vectors_add_days():
@@ -625,6 +636,7 @@ def test_every_vector_file_is_exercised():
     without wiring it up here should fail loudly rather than pass quietly."""
     covered = {
         "dates.json",
+        "weekday_name.json",
         "dates_add_days.json",
         "scoring_score_prediction.json",
         "scoring_mean.json",

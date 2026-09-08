@@ -1,0 +1,84 @@
+{
+  "vector_format_version": 1,
+  "function": "weekday_name",
+  "description": "The English day name for a date already resolved in the location's timezone. Reaches the reader inside a phrase the prompt uses verbatim, so both languages must produce the same characters.",
+  "cases": [
+    {
+      "name": "2026-09-07",
+      "input": {
+        "date": "2026-09-07"
+      },
+      "expected": "Monday"
+    },
+    {
+      "name": "2026-09-08",
+      "input": {
+        "date": "2026-09-08"
+      },
+      "expected": "Tuesday"
+    },
+    {
+      "name": "2026-09-09",
+      "input": {
+        "date": "2026-09-09"
+      },
+      "expected": "Wednesday"
+    },
+    {
+      "name": "2026-09-10",
+      "input": {
+        "date": "2026-09-10"
+      },
+      "expected": "Thursday"
+    },
+    {
+      "name": "2026-09-11",
+      "input": {
+        "date": "2026-09-11"
+      },
+      "expected": "Friday"
+    },
+    {
+      "name": "2026-09-12",
+      "input": {
+        "date": "2026-09-12"
+      },
+      "expected": "Saturday"
+    },
+    {
+      "name": "2026-09-13",
+      "input": {
+        "date": "2026-09-13"
+      },
+      "expected": "Sunday"
+    },
+    {
+      "name": "boundary 2026-01-01",
+      "input": {
+        "date": "2026-01-01"
+      },
+      "expected": "Thursday"
+    },
+    {
+      "name": "boundary 2026-02-28",
+      "input": {
+        "date": "2026-02-28"
+      },
+      "expected": "Saturday"
+    },
+    {
+      "name": "boundary 2026-03-01",
+      "input": {
+        "date": "2026-03-01"
+      },
+      "expected": "Sunday"
+    },
+    {
+      "name": "boundary 2026-12-31",
+      "input": {
+        "date": "2026-12-31"
+      },
+      "expected": "Thursday"
+    }
+  ]
+}
