@@ -1,0 +1,124 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_day_over_day",
+  "description": "The day-over-day comparison composed into finished, punctuated sentences. Code does the welding because code is what knows the shape of the phrases it wrote: the rain phrase is a sentence opener and never survives a preposition, the baseline is named once, and a label that did not move is dropped rather than enumerated.",
+  "cases": [
+    {
+      "name": "nothing at all",
+      "input": {
+        "high_label": null,
+        "wind_label": null,
+        "rain_contrast": null
+      },
+      "expected": null
+    },
+    {
+      "name": "all three quiet is one short sentence",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "rain_contrast": null
+      },
+      "expected": "Much like yesterday."
+    },
+    {
+      "name": "both labels moved",
+      "input": {
+        "high_label": "slightly warmer",
+        "wind_label": "calmer",
+        "rain_contrast": null
+      },
+      "expected": "Slightly warmer and calmer than yesterday."
+    },
+    {
+      "name": "only the high moved",
+      "input": {
+        "high_label": "noticeably cooler",
+        "wind_label": "similar winds",
+        "rain_contrast": null
+      },
+      "expected": "Noticeably cooler than yesterday."
+    },
+    {
+      "name": "only the wind moved",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "much windier",
+        "rain_contrast": null
+      },
+      "expected": "Much windier than yesterday."
+    },
+    {
+      "name": "the unmoved label is dropped, not listed",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "dramatically calmer",
+        "rain_contrast": null
+      },
+      "expected": "Dramatically calmer than yesterday."
+    },
+    {
+      "name": "a sentence opener gets its own sentence",
+      "input": {
+        "high_label": "slightly warmer",
+        "wind_label": "calmer",
+        "rain_contrast": "dry until evening showers"
+      },
+      "expected": "Slightly warmer and calmer than yesterday. Dry until evening showers."
+    },
+    {
+      "name": "rain alone moving is not much like yesterday",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "rain_contrast": "wet, after a dry day"
+      },
+      "expected": "Wet, after a dry day."
+    },
+    {
+      "name": "rain with both labels moved",
+      "input": {
+        "high_label": "much warmer",
+        "wind_label": "much windier",
+        "rain_contrast": "wet again"
+      },
+      "expected": "Much warmer and much windier than yesterday. Wet again."
+    },
+    {
+      "name": "a missing wind label does not fabricate a quiet one",
+      "input": {
+        "high_label": "slightly warmer",
+        "wind_label": null,
+        "rain_contrast": null
+      },
+      "expected": "Slightly warmer than yesterday."
+    },
+    {
+      "name": "a quiet high with no wind measured claims nothing",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": null,
+        "rain_contrast": null
+      },
+      "expected": null
+    },
+    {
+      "name": "a quiet wind with no high measured claims nothing",
+      "input": {
+        "high_label": null,
+        "wind_label": "similar winds",
+        "rain_contrast": null
+      },
+      "expected": null
+    },
+    {
+      "name": "rain alone, with no labels at all",
+      "input": {
+        "high_label": null,
+        "wind_label": null,
+        "rain_contrast": "dry, after a thundery day"
+      },
+      "expected": "Dry, after a thundery day."
+    }
+  ]
+}

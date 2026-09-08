@@ -179,15 +179,46 @@ TREND_THRESHOLD_PCT = 15.0
 # same", and the reader, looking at 90 F yesterday and 92 F today, disagreed.
 # 1.0 C is 1.8 F: close enough that the numbers on the page do not contradict
 # the word.
+#
+# THE TOP BAND NEEDS A CEILING TOO, added 2026-09-08 (item 83). It was
+# 6.0 -> 99.0, so a 6 degree change and a 25 degree frontal passage produced
+# the same three words. The operator named why it had gone unseen: "Some
+# places will see temps swing 20-30 degrees in a day as a front passes.
+# Kisumu is not the best place for this." Nothing here has ever cleared 7 C,
+# so the deployment hid the bug rather than the code being right.
+#
+# 12 C is where "much warmer" stops being enough. A day-over-day swing that
+# large is a front, a foehn or a dust-laden airmass, not weather varying —
+# and a reader who is about to walk into one should not be told the same
+# thing as a reader facing a mild afternoon.
 TEMP_CHANGE_BANDS_C = [
     (1.0, "about the same"),
     (3.0, "slightly"),
     (6.0, "noticeably"),
-    (99.0, "much"),
+    (12.0, "much"),
+    (99.0, "dramatically"),
 ]
 
-# Gust change below this is not worth remarking on.
-WIND_CHANGE_THRESHOLD_KMH = 8.0
+# Gust change bands, read the same way as TEMP_CHANGE_BANDS_C: the first
+# entry is the whole label, the rest are modifiers on "windier" / "calmer",
+# and an empty modifier means the bare word.
+#
+# Below 8 km/h is not worth remarking on. Above it, everything used to be
+# one word, which is the ceiling defect of item 83 living in a second field:
+# the archived -13.5 and -11.0 km/h changes and a gale collapsing to nothing
+# all read "calmer".
+#
+# Absolute rather than proportional, matching the temperature bands. A ratio
+# would arguably describe gusts better — 15 km/h off 60 is not 15 off 25 —
+# but it is a different design, harder to reason about at the call site, and
+# nothing measured yet says it is needed. Three steps, not four: gusts do
+# not support the precision a "slightly" band would imply.
+WIND_CHANGE_BANDS_KMH = [
+    (8.0, "similar winds"),
+    (18.0, ""),
+    (35.0, "much"),
+    (99.0, "dramatically"),
+]
 
 # --- Weekly review (see review.py) ---
 #

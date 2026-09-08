@@ -5,7 +5,11 @@ does rather than assert it is right (see spec/README.md). These are the
 missing layer: every expectation below was worked out by hand.
 """
 
-from openlocalweather.comparison import compute_day_over_day, describe_day_rain
+from openlocalweather.comparison import (
+    compute_day_over_day,
+    describe_day_over_day,
+    describe_day_rain,
+)
 from openlocalweather.models import DailyActual, ModelPrediction
 
 
@@ -93,8 +97,13 @@ def test_existing_bands_unchanged():
 def test_the_2026_08_24_regression():
     # Yesterday thundered; today is genuinely dry. The old code said
     # "dry again" because both sides landed in the sub-1 mm band.
+    #
+    # Reworded by item 83's one-statement rule, from "dry today; yesterday
+    # was dry but thundery". What the regression is ABOUT is unchanged and
+    # is what this asserts: the storm the reader stood in is still on the
+    # page the next morning.
     result = compute_day_over_day(actual(thunder=True), preds())
-    assert result.rain_contrast == "dry today; yesterday was dry but thundery"
+    assert result.rain_contrast == "dry, after a thundery day"
     assert result.yesterday_thunder is True
 
 
@@ -174,3 +183,182 @@ def test_the_reanalysis_onset_still_wins_when_it_has_one():
 def test_station_onset_fills_in_only_when_the_reanalysis_had_none():
     assert actual(onset_hour=None, precipitation_onset="19:00").observed_onset() == "19:00"
     assert actual(onset_hour=None, precipitation_onset=None).observed_onset() is None
+
+
+# ---------------------------------------------------------------------------
+# Item 83 defect 5 — the block contradicting its own prose.
+# ---------------------------------------------------------------------------
+
+
+def real_2026_09_08_day0() -> list[ModelPrediction]:
+    """The archived Day+0 payload that produced the contradiction, verbatim.
+
+    Copied from data/prompts/2026-09-08.json rather than invented, because
+    the shape is the whole point: ONE model of six carries the onset.
+    """
+    rows = [
+        ("gfs_seamless", False, None, 0.4),
+        ("ecmwf_ifs025", True, "16:00", 8.7),
+        ("icon_seamless", False, None, 0.7),
+        ("ukmo_seamless", False, None, 0.3),
+        ("best_match", False, None, 0.5),
+        ("kenya_met", True, None, None),
+    ]
+    return [
+        ModelPrediction(model=m, rain=r, onset=o, precip_mm=p,
+                        wind_kmh=33.0, high_c=31.5, low_c=18.9)
+        for m, r, o, p in rows
+    ]
+
+
+def test_one_model_of_six_does_not_get_to_name_the_day():
+    """A minority onset must not be spoken as the day's shape.
+
+    Measured 2026-09-08. Four of the five models carrying an amount forecast
+    0.3-0.7 mm; ecmwf alone forecast 8.7 mm from 16:00. The mean it dragged
+    to 2.12 mm banded as "largely dry", and _consensus_onset took the median
+    of a one-member list, so the phrase read "dry until evening showers
+    today" while today_rain_expected — a straight majority vote — read False.
+
+    The payload contradicted itself and the worker model resolved toward the
+    prose, saying so in as many words. That is the forecaster quietly
+    choosing, which is the judgement this whole design exists to remove.
+    """
+    result = compute_day_over_day(actual(precip_mm=2.0), real_2026_09_08_day0())
+
+    assert result.today_rain_expected is False
+    assert "evening showers" not in result.rain_contrast
+
+
+# ---------------------------------------------------------------------------
+# Item 83 defect 4 — the top band had no ceiling.
+# ---------------------------------------------------------------------------
+
+
+def test_a_frontal_passage_does_not_read_like_a_mild_afternoon():
+    """6 degrees and 25 degrees were the same three words.
+
+    TEMP_CHANGE_BANDS_C topped out at "much", so every change from 6 C
+    upward produced identical wording. Raised by the operator 2026-09-08:
+    "Some places will see temps swing 20-30 degrees in a day as a front
+    passes. Kisumu is not the best place for this." The deployment hid the
+    defect — it has never once fired here — which is exactly why it survived.
+    """
+    mild = compute_day_over_day(actual(high_c=31.5), preds(high_c=25.0))
+    front = compute_day_over_day(actual(high_c=31.5), preds(high_c=6.5))
+
+    assert mild.high_delta_c == -6.5
+    assert front.high_delta_c == -25.0
+    assert mild.high_label != front.high_label
+
+
+def test_a_gale_does_not_read_like_a_freshening_breeze():
+    """wind_label had the same missing ceiling, one field over.
+
+    Above WIND_CHANGE_THRESHOLD_KMH everything was "windier" or "calmer",
+    so the archived -13.5 and -11.0 km/h changes and a 40 km/h collapse were
+    all one word. Not named in item 83; it is the same defect and shipped in
+    the same pass rather than paying the two-language port twice.
+    """
+    ordinary = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=35.8))
+    collapse = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=9.0))
+
+    assert ordinary.wind_delta_kmh == -13.5
+    assert collapse.wind_delta_kmh == -40.3
+    assert ordinary.wind_label == "calmer"
+    assert collapse.wind_label != ordinary.wind_label
+
+
+# ---------------------------------------------------------------------------
+# Item 83 defects 1-3 — the composition contract.
+# ---------------------------------------------------------------------------
+
+
+def test_a_sentence_opener_is_never_welded_after_a_preposition():
+    """Defect 1, the one with no legal move.
+
+    describe_day_rain returns "dry until evening showers" — correct as
+    "Dry until evening showers." and broken after "with". The prompt told the
+    model to open with the comparison AND to use the phrase verbatim, so it
+    produced "with dry until evening showers today". Code now does the
+    placing, because code is what knows the phrase's shape.
+    """
+    text = describe_day_over_day("slightly warmer", "calmer", "dry until evening showers")
+
+    assert "with dry" not in text
+    assert text == "Slightly warmer and calmer than yesterday. Dry until evening showers."
+
+
+def test_the_comparison_names_what_it_is_measured_against():
+    """Defect 2. The labels measure today against YESTERDAY; the extended
+    trend measures the next three days against TODAY. Welded, they read as a
+    contradiction — warmer, and also much the same. The baseline is now said
+    out loud, once, in the sentence that owns it."""
+    assert describe_day_over_day("slightly warmer", "calmer", None) == (
+        "Slightly warmer and calmer than yesterday."
+    )
+
+
+def test_nothing_moved_is_one_short_sentence():
+    """The anti-enumeration rule, now structural rather than instructed.
+    "much like yesterday, with similar warmth, similar winds, and dry again"
+    is four statements of one fact, and was a real Overview."""
+    assert describe_day_over_day("about the same", "similar winds", None) == (
+        "Much like yesterday."
+    )
+
+
+def test_rain_alone_changing_does_not_get_called_much_like_yesterday():
+    """The operator's complaint, in miniature: three quiet vectors and one
+    that moved is not "much the same". When temperature and wind are the
+    non-news, they are dropped and the rain leads."""
+    assert describe_day_over_day("about the same", "similar winds", "wet, after a dry day") == (
+        "Wet, after a dry day."
+    )
+
+
+def test_one_label_moving_drops_the_other_rather_than_listing_it():
+    assert describe_day_over_day("noticeably cooler", "similar winds", None) == (
+        "Noticeably cooler than yesterday."
+    )
+    assert describe_day_over_day("about the same", "much windier", None) == (
+        "Much windier than yesterday."
+    )
+
+
+def test_no_comparison_at_all_is_a_gap_not_a_sentence():
+    assert describe_day_over_day(None, None, None) is None
+
+
+def test_yesterday_is_said_once():
+    text = describe_day_over_day("slightly warmer", "calmer", "wet, after a dry day")
+    assert text.count("yesterday") == 1
+
+
+def test_the_tail_is_gone_and_yesterday_keeps_its_thunder():
+    """Defect 3. "X today; yesterday was Y" was two statements in a slot that
+    allows one, and it spent the reader's first sentence on weather that had
+    already happened.
+
+    Yesterday now contributes one word. THUNDER OUTRANKS THE BAND, the same
+    rule describe_day_rain already uses and for the same measured reason —
+    2026-08-24 thundered and was reported the next morning as "dry again".
+    """
+    changed = compute_day_over_day(
+        actual(precip_mm=20.0, thunder=False), preds(rain=True, precip_mm=0.1)
+    )
+    assert changed.rain_contrast == "dry, after a wet day"
+
+    thundery = compute_day_over_day(
+        actual(precip_mm=20.0, thunder=True), preds(rain=True, precip_mm=0.1)
+    )
+    assert thundery.rain_contrast == "dry, after a thundery day"
+
+
+def test_much_like_yesterday_is_not_claimed_on_a_missing_measurement():
+    """It is a claim about THREE measurements. A null wind label is missing
+    data, not a quiet wind, so the claim is not available — found reading the
+    diff rather than by a test, and the same class of defect item 83 is
+    about: a phrase asserting a baseline it does not have."""
+    assert describe_day_over_day("about the same", None, None) is None
+    assert describe_day_over_day(None, "similar winds", None) is None

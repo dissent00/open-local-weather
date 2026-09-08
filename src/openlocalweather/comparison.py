@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from openlocalweather.defaults import TEMP_CHANGE_BANDS_C, WIND_CHANGE_THRESHOLD_KMH
+from openlocalweather.defaults import TEMP_CHANGE_BANDS_C, WIND_CHANGE_BANDS_KMH
 from openlocalweather.models import DailyActual, ModelPrediction
 from openlocalweather.verify.scoring import mean
 
@@ -59,23 +59,43 @@ class DayOverDayComparison:
     high_label: str | None
     wind_label: str | None
     rain_contrast: str | None
+    # The three labels above, composed into finished sentences — item 83.
+    # This is what the PROMPT is given; the labels themselves stay in the
+    # record because that is what is stored and scored.
+    overview_comparison: str | None
 
 
-def _band_label(delta: float | None, warmer: str, cooler: str) -> str | None:
+def _band_label(
+    delta: float | None,
+    bands: list[tuple[float, str]],
+    up: str,
+    down: str,
+) -> str | None:
     """Maps a signed delta onto a felt-change band.
 
     Bands, not raw numbers, because the consensus this is computed from will
     differ slightly from the LLM's final blended call. A band is stable
     across that gap; "1.3 degrees" would not be.
+
+    THE FIRST BAND IS THE WHOLE LABEL — "about the same", "similar winds" —
+    because a change too small to remark on has no direction worth naming.
+    Every band above it is a MODIFIER on `up` or `down`, and an empty
+    modifier means the bare word.
     """
     if delta is None:
         return None
+
     magnitude = abs(delta)
-    for threshold, word in TEMP_CHANGE_BANDS_C:
+    no_change_threshold, no_change_label = bands[0]
+    if magnitude < no_change_threshold:
+        return no_change_label
+
+    direction = up if delta > 0 else down
+    for threshold, modifier in bands[1:]:
         if magnitude < threshold:
-            return word if word == "about the same" else f"{word} {warmer if delta > 0 else cooler}"
-    threshold, word = TEMP_CHANGE_BANDS_C[-1]
-    return f"{word} {warmer if delta > 0 else cooler}"
+            return f"{modifier} {direction}".strip()
+
+    return f"{bands[-1][1]} {direction}".strip()
 
 
 # What separates a wet day from a dry one with a shower in it.
@@ -214,6 +234,11 @@ def _consensus_onset(predictions: list[ModelPrediction]) -> str | None:
     Median rather than mean: onset is a time of day, and one model calling
     dawn while three call evening should not average into mid-afternoon — a
     shape of day none of them forecast.
+
+    THE SUBSET IS SELF-SELECTED AND MAY HAVE ONE MEMBER, in which case this
+    returns that member's opinion under a name that says consensus. It is
+    the caller's job to have established that rain is expected at all before
+    asking when it starts — see compute_day_over_day, and 2026-09-08.
     """
     hours = []
     for p in predictions:
@@ -251,13 +276,6 @@ def compute_day_over_day(
     low_delta = delta(consensus_low, yesterday_actual.low_c)
     wind_delta = delta(consensus_wind, yesterday_actual.peak_wind_kmh)
 
-    wind_label = None
-    if wind_delta is not None:
-        if abs(wind_delta) < WIND_CHANGE_THRESHOLD_KMH:
-            wind_label = "similar winds"
-        else:
-            wind_label = "windier" if wind_delta > 0 else "calmer"
-
     # Both days described by AMOUNT and TIMING, then compared — rather than
     # by whether any hour crossed 0.5 mm, which called a clear day with
     # evening storms "another wet day".
@@ -272,7 +290,31 @@ def compute_day_over_day(
     )
 
     today_precip = mean([p.precip_mm for p in today_day0_predictions])
-    today_onset = _consensus_onset(today_day0_predictions)
+
+    # THE ONSET ANSWERS "WHEN", NEVER "WHETHER", so it is gated on the same
+    # vote today_rain_expected reports. Both now come from one decision, and
+    # the block can no longer contradict itself.
+    #
+    # Measured 2026-09-08, and the numbers are the argument. Of six models,
+    # ecmwf alone forecast rain from 16:00, at 8.7 mm; the other four
+    # carrying an amount forecast 0.3 to 0.7 mm. The mean that outlier
+    # dragged to 2.12 mm banded as "largely dry", and _consensus_onset took
+    # the median of a ONE-MEMBER list — a median with no consensus behind it
+    # — so the phrase read "dry until evening showers today" beside
+    # "today_rain_expected": false.
+    #
+    # The forecaster is handed both and told the phrase is verbatim. It
+    # resolved toward the prose and said so: "my own rain: true call agrees
+    # with the label's prose and disagrees with the block's boolean." A
+    # payload that contradicts itself does not produce a refusal, it
+    # produces a quiet choice — which is the judgement this file exists to
+    # take away from the model.
+    #
+    # The minority's storm is not lost. It reaches the reader through the
+    # convective block, which on that same day carried CAPE to 1360 J/kg,
+    # and through Today's Forecast — where a risk belongs, and where it can
+    # be hedged. The Overview's job is the shape of the day.
+    today_onset = _consensus_onset(today_day0_predictions) if today_rain else None
     # Today has no thunder observation — it has not happened yet. Today's
     # convective risk is a forecast, and belongs to the hazard sections.
     today_character = describe_day_rain(today_precip, today_onset, thunder=None)
@@ -330,10 +372,30 @@ def compute_day_over_day(
             # - ... until evening showers again, like yesterday".
             rain_contrast = f"{today_character} again"
         else:
-            # "X today; yesterday was Y" rather than "X after a Y day",
-            # because the characters are phrases of varying shape and only
-            # this frame reads correctly for all of them.
-            rain_contrast = f"{today_character} today; yesterday was {yesterday_character}"
+            # ONE STATEMENT, NOT TWO. This was "X today; yesterday was Y",
+            # which is a second sentence smuggled into a slot that allows
+            # one, and it spent the reader's opening words on weather that
+            # had already happened — the complaint item 67 raised and the
+            # both_dry branch above already answers.
+            #
+            # "after a Y day" was tried first and rejected, correctly,
+            # because yesterday_character varies in shape: "after a dry
+            # until evening thunderstorms day" is not English. So YESTERDAY
+            # CONTRIBUTES ONE WORD, which always fits the frame, while the
+            # full phrase describes TODAY — the day the reader is walking
+            # into.
+            #
+            # Thunder outranks the band, the same rule describe_day_rain
+            # uses and for the same measured reason: 2026-08-24 thundered
+            # over the city and was reported the next morning as "dry
+            # again", to readers who had stood in it.
+            yesterday_summary = (
+                "thundery" if yesterday_actual.thunder else day_rain_band(yesterday_actual.precip_mm)
+            )
+            rain_contrast = f"{today_character}, after a {yesterday_summary} day"
+
+    high_label = _band_label(high_delta, TEMP_CHANGE_BANDS_C, "warmer", "cooler")
+    wind_label = _band_label(wind_delta, WIND_CHANGE_BANDS_KMH, "windier", "calmer")
 
     return DayOverDayComparison(
         yesterday_high_c=yesterday_actual.high_c,
@@ -348,10 +410,94 @@ def compute_day_over_day(
         high_delta_c=high_delta,
         low_delta_c=low_delta,
         wind_delta_kmh=wind_delta,
-        high_label=_band_label(high_delta, "warmer", "cooler"),
+        high_label=high_label,
         wind_label=wind_label,
         rain_contrast=rain_contrast,
+        overview_comparison=describe_day_over_day(high_label, wind_label, rain_contrast),
     )
+
+# ROADMAP item 83. THE COMPOSITION CONTRACT.
+#
+# The three labels above are computed in code and the prompt orders them used
+# verbatim. That half of the bargain works. The other half was never written
+# down: a phrase the model may not alter must be GRAMMATICAL WHERE IT LANDS
+# and must CARRY ITS OWN BASELINE, because the model has been forbidden from
+# fixing either.
+#
+# Four defects came out of that gap, all in one real Overview on 2026-09-08:
+#
+#   "Slightly warmer and calmer today, with dry until evening showers today;
+#    yesterday was largely dry — much the same through Friday..."
+#
+#   1. "dry until evening showers" is a sentence opener. After "with" it is
+#      an adjective with no noun, and there was no legal move available: the
+#      prompt said open with the comparison AND use the phrase verbatim.
+#   2. Two baselines, neither stated. The labels measure today against
+#      YESTERDAY; the extended trend measures the next three days against
+#      TODAY. Welded, the day is warmer and also much the same.
+#   3. "; yesterday was largely dry" is a second statement in a one-statement
+#      slot, spending the reader's first words on a day already over.
+#   4. "today" twice.
+#
+# THE FIX IS NOT A PROMPT RULE, and that is a finding rather than a
+# preference. It was tried in this exact spot; see PROMPT_COMPARISON_FIELDS
+# below, where a rule lost to a payload supplying its own counter-example and
+# deleting the field is what worked. Prompt rule 8 ALREADY told the model to
+# give a non-fitting phrase its own sentence, and the model still wrote "with
+# dry until evening showers today". A rule instructing a model to repair
+# input it was told not to alter is a rule against itself.
+#
+# So code composes, because code is what knows the shape of the phrases it
+# wrote. What is left to the model is the judgement code cannot do: WHETHER
+# to lead with this at all. Three quiet labels do not make a quiet day — the
+# operator's point, and the reason "much like yesterday" is offered rather
+# than imposed — because nothing here measures the sky, the air quality or
+# how it felt, and a cloudy day at yesterday's temperature is not yesterday.
+def describe_day_over_day(
+    high_label: str | None,
+    wind_label: str | None,
+    rain_contrast: str | None,
+) -> str | None:
+    """The whole day-over-day comparison as finished, punctuated sentences.
+
+    Returns None when there is nothing to compare, which is the prompt's
+    existing "omit it" signal and needs no new rule.
+
+    THE RAIN PHRASE ALWAYS GETS ITS OWN SENTENCE. It is written as a sentence
+    opener and there is no preposition it survives — which is defect 1, and
+    the reason this function exists rather than a longer instruction.
+    """
+    quiet_high = TEMP_CHANGE_BANDS_C[0][1]
+    quiet_wind = WIND_CHANGE_BANDS_KMH[0][1]
+
+    moved = [
+        label
+        for label, quiet in ((high_label, quiet_high), (wind_label, quiet_wind))
+        if label is not None and label != quiet
+    ]
+
+    sentences = []
+    if moved:
+        # "than yesterday" ONCE, on the clause that owns the comparison. The
+        # unmoved label is dropped rather than listed: "slightly warmer and
+        # similar winds" is an enumeration of one fact and one non-fact.
+        sentences.append(f"{' and '.join(moved)} than yesterday")
+    elif not rain_contrast and high_label is not None and wind_label is not None:
+        # All three quiet. This is the ONLY case that earns the phrase, and
+        # it is a claim about three measurements, not about the day — so a
+        # MISSING label withholds it too. A null wind label is absent data,
+        # not a quiet wind, and "much like yesterday" would be asserting a
+        # baseline that was never measured.
+        sentences.append("much like yesterday")
+
+    if rain_contrast:
+        sentences.append(rain_contrast)
+
+    if not sentences:
+        return None
+
+    return " ".join(f"{s[0].upper()}{s[1:]}." for s in sentences)
+
 
 # ROADMAP item 61. How far the three-day high has to move before the word
 # "warming" is honest.
@@ -439,13 +585,19 @@ def describe_extended_trend(
 # The full comparison is unchanged in the RECORD — asdict(day_over_day) is
 # still what gets stored and scored. This narrows only the view handed to the
 # forecaster.
+#
+# THE THREE LABELS WENT THE SAME WAY, 2026-09-08 (item 83). They were
+# fragments of unstated grammatical shape, handed over with an order to use
+# them verbatim and an instruction to weld them into one flowing sentence.
+# Code now does the welding — describe_day_over_day — and the fragments are
+# withdrawn for the reason above: leaving them beside the composed sentence
+# leaves the temptation to re-weld them, and a rule would be all that stood
+# in the way.
 PROMPT_COMPARISON_FIELDS = (
     "yesterday_rain",
     "yesterday_thunder",
     "today_rain_expected",
-    "high_label",
-    "wind_label",
-    "rain_contrast",
+    "overview_comparison",
 )
 
 

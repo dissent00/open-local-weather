@@ -9016,7 +9016,7 @@ of this).
 
 ---
 
-## 83. The prompt welds code-written phrases together, and nobody wrote the contract · **Planned**
+## 83. The prompt welds code-written phrases together, and nobody wrote the contract · **Fixed 2026-09-08**
 
 Raised by the operator 2026-09-08 from a real Overview, quoted whole:
 
@@ -9141,6 +9141,79 @@ Related: item 61 (the extended clause, and its verbatim design), item 67
 (the same class, fixed in one branch), item 48 (the enumeration this keeps
 producing), item 75 (what good reads like), item 73 (pare the prompt),
 item 84 (which would have caught defect 4's blind spot).
+
+### Resolved 2026-09-08
+
+`describe_day_over_day()` composes the whole comparison into finished,
+punctuated sentences, and `PROMPT_COMPARISON_FIELDS` withdraws the three
+fragments — the same move that worked for the raw operands, for the same
+reason. The real 2026-09-08 payload now reads:
+
+```
+"overview_comparison": "Slightly warmer and calmer than yesterday. Largely dry again."
+```
+
+against the sentence that opened this item. Defects 1, 2 and 3 are structural
+now rather than instructed: code knows the shape of the phrases it wrote, so
+it places them; the baseline is named once, in the clause that owns it; and
+the rain phrase always takes a sentence of its own, because it is a sentence
+opener and no preposition survives it.
+
+**What is left to the model is the judgement code cannot do — whether to lead
+with the comparison at all.** Three quiet labels are not a quiet day. Nothing
+here measures the sky, the air quality or how it felt, so the operator's case
+stands: a cloudy day at yesterday's temperature is not yesterday. The prompt
+offers the sentence rather than imposing it, and forbids widening it.
+
+The Overview paragraph lost 200 words and rule 8 was narrowed to the phrases
+that are still fragments. Most of what went was there only to make the model
+weld correctly — item 73 paid by a side effect.
+
+### What the item did not know
+
+**Defect 5's mechanism was worse than "two questions with different
+answers".** Of six models on 2026-09-08, ONE carried an onset — ecmwf, 8.7 mm
+from 16:00, against 0.3–0.7 mm from the four others with an amount. The mean
+that outlier dragged to 2.12 mm banded as "largely dry", and
+`_consensus_onset` took the median of a ONE-MEMBER list. So "dry until evening
+showers today" was a single model's forecast spoken as the day's character,
+under a function name that says consensus. The boolean was the only thing in
+the payload that noticed.
+
+The onset is now gated on the same majority vote `today_rain_expected`
+reports: it answers WHEN, never WHETHER. Checked against all five archived
+days — 2026-09-07 had 4/6 voting rain and three onsets, and is unchanged.
+
+**`wind_label` had defect 4 too**, and the item does not mention it. Above
+8 km/h everything was "windier" or "calmer", so the archived −13.5 and −11.0
+changes and a gale collapsing to nothing were one word. Fixed in the same
+pass on the operator's call, rather than paying the two-language port twice.
+`_band_label` now takes its bands as an argument and both fields share it.
+
+**"Much like yesterday" could fire on one measurement.** Caught reading the
+diff, not by a test: a null `wind_label` is absent data, not a quiet wind,
+and the phrase would have asserted a baseline never measured. It now requires
+both labels present. Same class as the item's own defect 2 — a phrase
+claiming a baseline it does not have.
+
+**The fixes shipped with vector cases**, per item 88, and two of them needed
+new ones: nothing existing exercised the onset gate or the band ceilings, so
+Dart would have kept the old behaviour silently. `describe_day_over_day.json`
+is new and pins the label combinations that are awkward to reach through a
+pair of days.
+
+### Not verified
+
+- **No live forecast has used any of this.** Every judgement above is from
+  archived payloads replayed through the new code, plus the vectors. The next
+  scheduled run is the first real exercise, and the harness has not been run
+  against the rewritten Overview paragraph.
+- The 12 °C and 35 km/h ceilings have never fired and cannot fire at this
+  deployment. They are reasoned, not measured.
+- Whether the model actually declines to lead with the comparison when it
+  holds contrary evidence is untested. That is the whole judgement half of
+  the design, and only a live run or a harness run will show it.
+
 
 ---
 

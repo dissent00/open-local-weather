@@ -48,7 +48,7 @@ from openlocalweather.aqi import (
     merge_ground_aqi,
     summarize_ground_aqi,
 )
-from openlocalweather.comparison import describe_day_rain
+from openlocalweather.comparison import describe_day_over_day, describe_day_rain
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import weekday_name, add_days, prediction_row_date_for_target
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
@@ -1876,6 +1876,34 @@ def export_day_over_day() -> None:
         ("a wet thundery day contrasted against a dry one",
          actual(rain=True, precip_mm=8.0, onset_hour="17:00", thunder=True),
          preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        # ITEM 83 DEFECT 5, the archived 2026-09-08 Day+0 payload. One model
+        # of six carried an onset; the mean its 8.7 mm dragged to 2.12 banded
+        # as "largely dry", and the median of a ONE-MEMBER list named the
+        # hour. The block then read "dry until evening showers today" beside
+        # "today_rain_expected": false, and the forecaster picked a side.
+        ("one model of six does not get to name the day",
+         actual(rain=True, precip_mm=2.0, onset_hour=None),
+         [ModelPrediction(model=m, rain=r, onset=o, precip_mm=mm,
+                          high_c=31.5, low_c=18.9, wind_kmh=33.0)
+          for m, r, o, mm in [
+              ("gfs_seamless", False, None, 0.4),
+              ("ecmwf_ifs025", True, "16:00", 8.7),
+              ("icon_seamless", False, None, 0.7),
+              ("ukmo_seamless", False, None, 0.3),
+              ("best_match", False, None, 0.5),
+              ("kenya_met", True, None, None),
+          ]]),
+        # ITEM 83 DEFECT 4, both axes. The top band had no ceiling, so a
+        # 6 degree change and a frontal passage were the same three words.
+        ("a frontal passage is not merely much cooler",
+         actual(high_c=50.0), preds([29.0, 29.0, 29.0])),
+        ("11.9C still reads as much, not dramatically",
+         actual(high_c=40.9), preds([29.0, 29.0, 29.0])),
+        ("12C is where much stops being enough",
+         actual(high_c=41.0), preds([29.0, 29.0, 29.0])),
+        ("17 km/h is a change, not a big one", actual(peak_wind_kmh=25.0), preds([29.0], winds=[42.0])),
+        ("a gale collapsing to nothing is not merely calmer",
+         actual(peak_wind_kmh=55.0), preds([29.0], winds=[10.0])),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),
@@ -2147,6 +2175,61 @@ def export_daypart() -> None:
 # ---------------------------------------------------------------------------
 # day character and instability
 # ---------------------------------------------------------------------------
+
+
+def export_describe_day_over_day() -> None:
+    """ROADMAP item 83 — the composition contract.
+
+    Vector-tested separately from compute_day_over_day because the label
+    COMBINATIONS are where it goes wrong, and most of them are awkward to
+    reach through a pair of days: whether an unmoved label is dropped,
+    whether "much like yesterday" is earned, and whether the rain phrase
+    lands in a sentence of its own. A real Overview welded these three into
+    "with dry until evening showers today; yesterday was largely dry".
+    """
+    scenarios = [
+        ("nothing at all", None, None, None),
+        ("all three quiet is one short sentence", "about the same", "similar winds", None),
+        ("both labels moved", "slightly warmer", "calmer", None),
+        ("only the high moved", "noticeably cooler", "similar winds", None),
+        ("only the wind moved", "about the same", "much windier", None),
+        ("the unmoved label is dropped, not listed", "about the same", "dramatically calmer", None),
+        # Defect 1: a sentence opener that has no legal place after "with".
+        ("a sentence opener gets its own sentence",
+         "slightly warmer", "calmer", "dry until evening showers"),
+        # The operator's complaint: three quiet vectors and one that moved
+        # is not "much the same". Rain leads, and the quiet labels go.
+        ("rain alone moving is not much like yesterday",
+         "about the same", "similar winds", "wet, after a dry day"),
+        ("rain with both labels moved", "much warmer", "much windier", "wet again"),
+        ("a missing wind label does not fabricate a quiet one",
+         "slightly warmer", None, None),
+        # "Much like yesterday" is a claim about three measurements, so a
+        # missing one withholds it: a null label is absent data, not quiet.
+        ("a quiet high with no wind measured claims nothing",
+         "about the same", None, None),
+        ("a quiet wind with no high measured claims nothing",
+         None, "similar winds", None),
+        ("rain alone, with no labels at all", None, None, "dry, after a thundery day"),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"high_label": h, "wind_label": w, "rain_contrast": r},
+            "expected": describe_day_over_day(h, w, r),
+        }
+        for name, h, w, r in scenarios
+    ]
+    write(
+        "describe_day_over_day.json",
+        "describe_day_over_day",
+        "The day-over-day comparison composed into finished, punctuated "
+        "sentences. Code does the welding because code is what knows the "
+        "shape of the phrases it wrote: the rain phrase is a sentence opener "
+        "and never survives a preposition, the baseline is named once, and a "
+        "label that did not move is dropped rather than enumerated.",
+        cases,
+    )
 
 
 def export_describe_day_rain() -> None:
@@ -2609,6 +2692,7 @@ def main() -> None:
     export_day_over_day()
     export_extended_trend()
     export_describe_day_rain()
+    export_describe_day_over_day()
     export_temp_high_low()
     export_instability()
     export_cycle()

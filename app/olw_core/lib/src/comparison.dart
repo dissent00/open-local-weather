@@ -25,11 +25,27 @@ const List<(double, String)> tempChangeBandsC = [
   (1.0, 'about the same'),
   (3.0, 'slightly'),
   (6.0, 'noticeably'),
-  (99.0, 'much'),
+  // THE TOP BAND NEEDS A CEILING TOO — item 83. It was 6.0 -> 99.0, so a
+  // 6 degree change and a 25 degree frontal passage produced the same three
+  // words. Nothing at this deployment has ever cleared 7 C, so the site hid
+  // the bug rather than the code being right.
+  (12.0, 'much'),
+  (99.0, 'dramatically'),
 ];
 
-/// Gust change below this isn't worth remarking on.
-const double windChangeThresholdKmh = 8.0;
+/// Gust change bands, read the same way as [tempChangeBandsC]: the first
+/// entry is the whole label, the rest are modifiers on "windier"/"calmer",
+/// and an empty modifier means the bare word.
+///
+/// Below 8 km/h is not worth remarking on. Above it, everything used to be
+/// one word — the same missing ceiling, one field over. Absolute rather than
+/// proportional, matching the temperature bands.
+const List<(double, String)> windChangeBandsKmh = [
+  (8.0, 'similar winds'),
+  (18.0, ''),
+  (35.0, 'much'),
+  (99.0, 'dramatically'),
+];
 
 class DayOverDayComparison {
   final double? yesterdayHighC;
@@ -50,6 +66,10 @@ class DayOverDayComparison {
   final String? highLabel;
   final String? windLabel;
   final String? rainContrast;
+  /// The three labels above, composed into finished sentences — item 83.
+  /// This is what the PROMPT is given; the labels themselves stay in the
+  /// record because that is what is stored and scored.
+  final String? overviewComparison;
 
   const DayOverDayComparison({
     this.yesterdayHighC,
@@ -67,6 +87,7 @@ class DayOverDayComparison {
     this.highLabel,
     this.windLabel,
     this.rainContrast,
+    this.overviewComparison,
   });
 
   Map<String, Object?> toJson() => {
@@ -85,24 +106,35 @@ class DayOverDayComparison {
         'high_label': highLabel,
         'wind_label': windLabel,
         'rain_contrast': rainContrast,
+        'overview_comparison': overviewComparison,
       };
 }
 
 double? _round1(double? v) =>
     v == null ? null : (v * 10).roundToDouble() / 10;
 
-String? _bandLabel(double? delta, String warmer, String cooler) {
+/// THE FIRST BAND IS THE WHOLE LABEL — "about the same", "similar winds" —
+/// because a change too small to remark on has no direction worth naming.
+/// Every band above it is a MODIFIER on [up] or [down], and an empty modifier
+/// means the bare word.
+String? _bandLabel(
+  double? delta,
+  List<(double, String)> bands,
+  String up,
+  String down,
+) {
   if (delta == null) return null;
+
   final magnitude = delta.abs();
-  for (final (threshold, word) in tempChangeBandsC) {
-    if (magnitude < threshold) {
-      return word == 'about the same'
-          ? word
-          : '$word ${delta > 0 ? warmer : cooler}';
-    }
+  final (noChangeThreshold, noChangeLabel) = bands.first;
+  if (magnitude < noChangeThreshold) return noChangeLabel;
+
+  final direction = delta > 0 ? up : down;
+  for (final (threshold, modifier) in bands.skip(1)) {
+    if (magnitude < threshold) return '$modifier $direction'.trim();
   }
-  final (_, word) = tempChangeBandsC.last;
-  return '$word ${delta > 0 ? warmer : cooler}';
+
+  return '${bands.last.$2} $direction'.trim();
 }
 
 /// What separates a wet day from a dry one with a shower in it.
@@ -202,6 +234,11 @@ String? describeDayRain(double? precipMm, String? onset, [bool? thunder]) {
 ///
 /// Median rather than mean: one model calling dawn while three call evening
 /// should not average into mid-afternoon — a shape of day none forecast.
+///
+/// THE SUBSET IS SELF-SELECTED AND MAY HAVE ONE MEMBER, in which case this
+/// returns that member's opinion under a name that says consensus. It is the
+/// caller's job to have established that rain is expected at all before
+/// asking when it starts — see [computeDayOverDay], and 2026-09-08.
 String? consensusOnset(List<ModelPrediction> predictions) {
   final hours = <int>[];
   for (final p in predictions) {
@@ -233,13 +270,6 @@ DayOverDayComparison? computeDayOverDay(
   final lowDelta = delta(consensusLow, yesterdayActual.lowC);
   final windDelta = delta(consensusWind, yesterdayActual.peakWindKmh);
 
-  String? windLabel;
-  if (windDelta != null) {
-    windLabel = windDelta.abs() < windChangeThresholdKmh
-        ? 'similar winds'
-        : (windDelta > 0 ? 'windier' : 'calmer');
-  }
-
   final votes = [for (final p in todayDay0Predictions) if (p.rain != null) p.rain!];
   final bool? todayRain =
       votes.isEmpty ? null : votes.where((v) => v).length > votes.length / 2;
@@ -250,10 +280,20 @@ DayOverDayComparison? computeDayOverDay(
   // stored, because it is what the accuracy record scores; it is simply no
   // longer what the reader is handed.
   final todayPrecip = mean([for (final p in todayDay0Predictions) p.precipMm]);
+  // THE ONSET ANSWERS "WHEN", NEVER "WHETHER", so it is gated on the same
+  // vote todayRainExpected reports, and the block can no longer contradict
+  // itself. Measured 2026-09-08: of six models ecmwf alone forecast rain,
+  // from 16:00 at 8.7 mm, against 0.3-0.7 mm elsewhere. The mean it dragged
+  // to 2.12 banded as "largely dry" and the median of a ONE-MEMBER list named
+  // the hour, so the phrase read "dry until evening showers today" beside
+  // "today_rain_expected": false — and the forecaster resolved toward the
+  // prose. The minority's storm still reaches the reader through the
+  // convective block and Today's Forecast.
+  final todayOnset =
+      todayRain == true ? consensusOnset(todayDay0Predictions) : null;
   // Today has no thunder observation — it has not happened yet. Today's
   // convective risk is a forecast, and belongs to the hazard sections.
-  final todayCharacter =
-      describeDayRain(todayPrecip, consensusOnset(todayDay0Predictions), null);
+  final todayCharacter = describeDayRain(todayPrecip, todayOnset, null);
   final yesterdayCharacter = describeDayRain(
       yesterdayActual.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed
@@ -296,9 +336,24 @@ DayOverDayComparison? computeDayOverDay(
       // comparison, so appending ", like yesterday" said it twice.
       rainContrast = '$todayCharacter again';
     } else {
-      rainContrast = '$todayCharacter today; yesterday was $yesterdayCharacter';
+      // ONE STATEMENT, NOT TWO — item 83. This was "X today; yesterday was
+      // Y", a second sentence smuggled into a slot that allows one, spending
+      // the reader's opening words on a day already over. "after a Y day"
+      // using the full character was tried and rejected because the phrases
+      // vary in shape: "after a dry until evening thunderstorms day" is not
+      // English. So YESTERDAY CONTRIBUTES ONE WORD, and thunder outranks the
+      // band — 2026-08-24 thundered over the city and was reported the next
+      // morning as "dry again", to readers who had stood in it.
+      final yesterdaySummary = yesterdayActual.thunder == true
+          ? 'thundery'
+          : dayRainBand(yesterdayActual.precipMm);
+      rainContrast = '$todayCharacter, after a $yesterdaySummary day';
     }
   }
+
+  final highLabel = _bandLabel(highDelta, tempChangeBandsC, 'warmer', 'cooler');
+  final windLabel =
+      _bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
 
   return DayOverDayComparison(
     yesterdayHighC: yesterdayActual.highC,
@@ -313,10 +368,88 @@ DayOverDayComparison? computeDayOverDay(
     highDeltaC: highDelta,
     lowDeltaC: lowDelta,
     windDeltaKmh: windDelta,
-    highLabel: _bandLabel(highDelta, 'warmer', 'cooler'),
+    highLabel: highLabel,
     windLabel: windLabel,
     rainContrast: rainContrast,
+    overviewComparison:
+        describeDayOverDay(highLabel, windLabel, rainContrast),
   );
+}
+
+
+/// The whole day-over-day comparison as finished, punctuated sentences.
+/// ROADMAP item 83 — THE COMPOSITION CONTRACT.
+///
+/// The three labels are computed in code and the prompt orders them used
+/// verbatim. That half of the bargain works. The other half was never
+/// written down: a phrase the model may not alter must be GRAMMATICAL WHERE
+/// IT LANDS and must CARRY ITS OWN BASELINE, because the model has been
+/// forbidden from fixing either. One real Overview, 2026-09-08:
+///
+///   "Slightly warmer and calmer today, with dry until evening showers
+///    today; yesterday was largely dry — much the same through Friday..."
+///
+/// "dry until evening showers" is a sentence opener with no legal place
+/// after "with"; two baselines are welded with neither stated (the labels
+/// measure against YESTERDAY, the extended trend against TODAY); the
+/// "; yesterday was" half is a second statement in a one-statement slot; and
+/// "today" appears twice.
+///
+/// THE FIX IS NOT A PROMPT RULE. It was tried in this exact spot — see
+/// `PROMPT_COMPARISON_FIELDS` in the Python — where a rule lost to a payload
+/// supplying its own counter-example, and deleting the field is what worked.
+/// Prompt rule 8 ALREADY told the model to give a non-fitting phrase its own
+/// sentence, and the model still wrote "with dry until evening showers
+/// today". A rule instructing a model to repair input it was told not to
+/// alter is a rule against itself.
+///
+/// So code composes, because code is what knows the shape of the phrases it
+/// wrote. What is left to the model is the judgement code cannot do: WHETHER
+/// to lead with this at all. Three quiet labels do not make a quiet day —
+/// nothing here measures the sky, the air quality or how it felt.
+///
+/// Returns null when there is nothing to compare, which is the prompt's
+/// existing "omit it" signal and needs no new rule. THE RAIN PHRASE ALWAYS
+/// GETS ITS OWN SENTENCE: it is written as a sentence opener and there is no
+/// preposition it survives.
+String? describeDayOverDay(
+  String? highLabel,
+  String? windLabel,
+  String? rainContrast,
+) {
+  final quietHigh = tempChangeBandsC.first.$2;
+  final quietWind = windChangeBandsKmh.first.$2;
+
+  final moved = [
+    for (final (label, quiet) in [(highLabel, quietHigh), (windLabel, quietWind)])
+      if (label != null && label != quiet) label,
+  ];
+
+  final sentences = <String>[];
+  if (moved.isNotEmpty) {
+    // "than yesterday" ONCE, on the clause that owns the comparison. The
+    // unmoved label is dropped rather than listed: "slightly warmer and
+    // similar winds" is an enumeration of one fact and one non-fact.
+    sentences.add('${moved.join(' and ')} than yesterday');
+  } else if ((rainContrast == null || rainContrast.isEmpty) &&
+      highLabel != null &&
+      windLabel != null) {
+    // All three quiet. This is the ONLY case that earns the phrase, and it is
+    // a claim about three measurements, not about the day — so a MISSING
+    // label withholds it too. A null wind label is absent data, not a quiet
+    // wind, and the phrase would assert a baseline never measured.
+    sentences.add('much like yesterday');
+  }
+
+  if (rainContrast != null && rainContrast.isNotEmpty) {
+    sentences.add(rainContrast);
+  }
+
+  if (sentences.isEmpty) return null;
+
+  return sentences
+      .map((s) => '${s[0].toUpperCase()}${s.substring(1)}.')
+      .join(' ');
 }
 
 

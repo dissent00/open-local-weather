@@ -811,6 +811,20 @@ void main() {
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
     });
+
+    test('describe_day_over_day', () {
+      // Item 83's composition contract — the label combinations that produced
+      // "with dry until evening showers today; yesterday was largely dry".
+      for (final c in casesOf('describe_day_over_day.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = describeDayOverDay(
+          i['high_label'] as String?,
+          i['wind_label'] as String?,
+          i['rain_contrast'] as String?,
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
   });
 
   group('temperature display', () {
@@ -1067,6 +1081,7 @@ void main() {
       'day_over_day.json',
       'extended_trend.json',
       'describe_day_rain.json',
+      'describe_day_over_day.json',
       'temp_high_low.json',
       'aqi_last_known.json',
       'instability.json',

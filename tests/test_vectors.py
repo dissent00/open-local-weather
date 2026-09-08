@@ -44,7 +44,12 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.aqi import last_known_ground_aqi
-from openlocalweather.comparison import compute_day_over_day, describe_extended_trend, describe_day_rain
+from openlocalweather.comparison import (
+    compute_day_over_day,
+    describe_day_over_day,
+    describe_extended_trend,
+    describe_day_rain,
+)
 from openlocalweather.instability import summarize_instability
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
@@ -541,6 +546,15 @@ def test_vectors_describe_day_rain():
         )
 
 
+def test_vectors_describe_day_over_day():
+    """Item 83's composition contract — the label combinations that produced
+    "with dry until evening showers today; yesterday was largely dry"."""
+    for case in load("describe_day_over_day.json")["cases"]:
+        i = case["input"]
+        got = describe_day_over_day(i["high_label"], i["wind_label"], i["rain_contrast"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_temp_high_low():
     """The headline temperature line, including the half-to-even edges where
     a Dart port using .round() would diverge."""
@@ -661,6 +675,7 @@ def test_every_vector_file_is_exercised():
         "day_over_day.json",
         "extended_trend.json",
         "describe_day_rain.json",
+        "describe_day_over_day.json",
         "temp_high_low.json",
         "aqi_last_known.json",
         "instability.json",
