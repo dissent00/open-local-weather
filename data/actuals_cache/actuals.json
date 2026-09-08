@@ -1184,6 +1184,36 @@
         "station_low_c": "metar_station",
         "station_peak_wind_kmh": "metar_station"
       }
+    },
+    "2026-09-07": {
+      "rain": true,
+      "high_c": 29.4,
+      "low_c": 19.2,
+      "peak_wind_kmh": 48.2,
+      "mslp_trend": 0.5,
+      "onset_hour": "14:00",
+      "precip_mm": 1.4,
+      "thunder": false,
+      "precipitation": false,
+      "precipitation_onset": null,
+      "station_high_c": 32.0,
+      "station_low_c": 20.0,
+      "station_peak_wind_kmh": 24.08,
+      "lightning": null,
+      "provenance": {
+        "rain": "era5_archive",
+        "high_c": "era5_archive",
+        "low_c": "era5_archive",
+        "peak_wind_kmh": "era5_archive",
+        "mslp_trend": "era5_archive",
+        "onset_hour": "era5_archive",
+        "precip_mm": "era5_archive",
+        "thunder": "metar_station",
+        "precipitation": "metar_station",
+        "station_high_c": "metar_station",
+        "station_low_c": "metar_station",
+        "station_peak_wind_kmh": "metar_station"
+      }
     }
   },
   "secondary": {
@@ -2160,6 +2190,31 @@
         "low_c": "era5_archive",
         "peak_wind_kmh": "era5_archive",
         "mslp_trend": "era5_archive",
+        "precip_mm": "era5_archive"
+      }
+    },
+    "2026-09-07": {
+      "rain": true,
+      "high_c": 19.1,
+      "low_c": 13.6,
+      "peak_wind_kmh": 25.6,
+      "mslp_trend": 0.5,
+      "onset_hour": "06:00",
+      "precip_mm": 8.0,
+      "thunder": null,
+      "precipitation": null,
+      "precipitation_onset": null,
+      "station_high_c": null,
+      "station_low_c": null,
+      "station_peak_wind_kmh": null,
+      "lightning": null,
+      "provenance": {
+        "rain": "era5_archive",
+        "high_c": "era5_archive",
+        "low_c": "era5_archive",
+        "peak_wind_kmh": "era5_archive",
+        "mslp_trend": "era5_archive",
+        "onset_hour": "era5_archive",
         "precip_mm": "era5_archive"
       }
     }

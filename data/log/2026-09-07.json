@@ -334,8 +334,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+0 (2026-09-07): ECMWF, ICON, Kenya Met, Best Match, and OLW blend correctly verified the rain event, with ECMWF catching onset within 1 hour and Best Match showing zero high temperature error. GFS and UKMO failed the rain call, with GFS exhibiting a severe daytime cold bias (-4.2°C) and persistent wind overestimation (+22.6 km/h)."
     },
     "day3": {
       "verified": false,

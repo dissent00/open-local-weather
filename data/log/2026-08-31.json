@@ -309,8 +309,8 @@
       "note": "Day+3 verified dry for August 31st across all models. High temperature errors were small across GFS (-2.5°C) and ICON (-0.7°C), while wind speed overestimation persisted on GFS (+24.1 km/h) and UKMO (+21.2 km/h)."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7 (2026-08-31): GFS and ECMWF successfully verified the rain call, while Best Match failed with a false dry call. ECMWF captured wind speed within 6.1 km/h and high temperature within -1.2°C, compared to GFS which overpredicted wind speed by 34.5 km/h."
     }
   },
   "local_bulletin": {
@@ -421,6 +421,7 @@
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
+    "system_prompt_sha256": null,
     "refreshed_at": "2026-08-31T15:05:05.588275Z",
     "trigger_source": "workflow_dispatch",
     "degradations": [
