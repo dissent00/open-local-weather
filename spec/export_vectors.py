@@ -1213,6 +1213,69 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
+    def thin_third_model_case(name: str):
+        """ROADMAP item 85. A thin model drags the sufficiency band down while
+        two well-covered models are still rankable.
+
+        `data_sufficiency` reports the WEAKEST scored model's coverage, on
+        purpose. The ranking gate excludes anything under the comparison floor
+        and compares what is left. So both numbers are right and they measure
+        different things — and the sufficiency SENTENCE must not therefore
+        conclude that models cannot be ranked, because a ranking for that same
+        lead sits in the same payload.
+
+        Measured on the real 2026-09-08 prompt before this was fixed: Day+3
+        read "9 check(s) per model — directional only, not yet enough to rank
+        models against each other" beside a ranking marked usable on 25 checks.
+        Locked here because no other case has a thin third model, so the two
+        languages could drift on this branch without a test noticing.
+        """
+        models_here = ["alpha", "beta", "thin"]
+        logs, actuals = build(14, 13, 4)
+        # `thin` appears only in the most recent few days, so it is SCORED but
+        # below the comparison floor — never unscored, which is a different
+        # case the newcomer test already covers.
+        for i, d in enumerate(sorted(logs, reverse=True)):
+            if i < 5:
+                logs[d].model_predictions.day0 = [
+                    *logs[d].model_predictions.day0,
+                    ModelPrediction(model="thin", rain=True, high_c=26.0, low_c=18.0),
+                ]
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
+    def newcomer_case(name: str):
+        """A model added today, with no verified checks at all.
+
+        Never-scored and scored-less are different claims. Python learned this
+        when the local met service was added: one newcomer at zero turned an
+        honest "8 checks per model" into "0 check(s) per model — not enough to
+        say anything", with eight days of scored forecasts sitting right there.
+
+        Locked because that fix was Python-only for months and NOTHING caught
+        it — no vector case had a zero-check model, so the Dart port kept the
+        old behaviour and would have published a different sufficiency line
+        from the site's on the first day a model was added.
+        """
+        models_here = ["alpha", "beta", "newcomer"]
+        logs, actuals = build(12, 10, 3)
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
     write(
         "weekly_review.json",
         "build_weekly_review",
@@ -1239,6 +1302,12 @@ def export_weekly_review() -> None:
             ),
             tie_case("two models clear the baseline on equal footing — order is prose"),
             pairing_case("skill is scored on shared days only, and it changes the answer"),
+            thin_third_model_case(
+                "a thin third model lowers the count without denying the ranking",
+            ),
+            newcomer_case(
+                "a never-scored model is named, not used as the headline",
+            ),
         ],
     )
 

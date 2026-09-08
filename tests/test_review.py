@@ -18,6 +18,7 @@ from openlocalweather.models import (
     ModelPrediction,
     ModelPredictionsByLead,
 )
+from openlocalweather.defaults import REVIEW_MIN_CHECKS_FOR_COMPARISON
 from openlocalweather.review import build_weekly_review, confidence_for
 
 MODELS = ["good_model", "poor_model"]
@@ -61,13 +62,13 @@ def build_history(days: int, good_hits: int, poor_hits: int, high_bias: float = 
     return logs, actuals
 
 
-def review_of(logs, actuals):
+def review_of(logs, actuals, models=None):
     return build_weekly_review(
         log_lookup=lambda d: logs.get(d),
         actuals=actuals,
         all_log_dates=sorted(logs),
         today=TODAY,
-        models=MODELS,
+        models=models or MODELS,
         lead_times_days=[0],
     )
 
@@ -501,3 +502,53 @@ def test_brier_skill_is_paired_on_the_days_both_forecasts_spoke():
     # different claim about the same forecasts.
     assert cell.brier_skill_checks == 5
     assert cell.rain_brier_skill == pytest.approx(-2.24)
+
+
+def test_sufficiency_does_not_deny_a_ranking_the_review_itself_publishes():
+    """ROADMAP item 85. The two counts are both right and mean different
+    things; the CONCLUSION drawn from one of them is what contradicts.
+
+    `_describe_sufficiency` takes the minimum over every SCORED model, which
+    is deliberate — the weakest model's coverage is the honest headline, and
+    the comment above it records the regression that established that. The
+    ranking gate takes the minimum of the TWO MODELS IT COMPARED, having
+    already excluded anything under REVIEW_MIN_CHECKS_FOR_COMPARISON.
+
+    So a thin third model drags the sufficiency band down to "provisional",
+    whose wording asserts the record is "not yet enough to rank models
+    against each other" — while a gated ranking for that same lead sits in
+    the same payload. Measured on the real 2026-09-08 prompt: Day+3 carried
+    "9 check(s) per model — directional only, not yet enough to rank" beside
+    a ranking finding marked usable on 25 checks.
+
+    The forecaster is told a present finding is authoritative AND that
+    data_sufficiency must be reflected in the Confidence Notes. It cannot
+    honour both, so it picks — which is the judgement this design exists to
+    take away from it.
+    """
+    logs, actuals = build_history(days=14, good_hits=13, poor_hits=4)
+    # A third model, scored but thin: present for only the last few days, so
+    # it lands below the comparison floor without ever being unscored.
+    for i, d in enumerate(sorted(logs, reverse=True)):
+        if i < 5:
+            logs[d].model_predictions.day0 = [
+                *logs[d].model_predictions.day0,
+                ModelPrediction(model="thin_model", rain=True, high_c=26.0, low_c=18.0),
+            ]
+
+    r = review_of(logs, actuals, models=[*MODELS, "thin_model"])
+    counts = {c.model: c.checks for c in r.cells if c.lead_time_days == 0}
+    assert counts["thin_model"] < REVIEW_MIN_CHECKS_FOR_COMPARISON, counts
+    assert counts["good_model"] >= REVIEW_MIN_CHECKS_FOR_COMPARISON, counts
+
+    ranked = [
+        f for f in r.findings
+        if f.kind == "ranking" and "At Day+0" in f.claim
+        and "is the strongest rain caller" in f.claim
+    ]
+    assert ranked, "the setup must produce a ranking, or this proves nothing"
+
+    assert "not yet enough to rank models against each other" not in r.data_sufficiency, (
+        f"the review publishes {ranked[0].claim!r} and simultaneously tells the "
+        f"forecaster the record cannot rank models at this lead"
+    )

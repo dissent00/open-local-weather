@@ -9173,7 +9173,7 @@ item 44 (the reader-facing sources page).
 
 ---
 
-## 85. Two counters of the same thing disagree inside one prompt · **Planned — bug**
+## 85. Two counters of the same thing disagree inside one prompt · **Fixed 2026-09-08**
 
 Found 2026-09-08 by a cold worker model reading the archived 2026-09-08
 prompt, and verified against the payload afterwards. The forecaster is handed
@@ -9211,6 +9211,45 @@ enough. **A second counter that disagrees by 16 checks means one of the two
 numbers is wrong, and if it is the gate's, the gate is passing rankings it
 was built to withhold.** Which of the two is right is not yet established;
 that is the first thing to find out.
+
+> **Fixed 2026-09-08, and the innocent explanation was the right one.** Both
+> numbers are correct and they measure different things:
+>
+> - `_describe_sufficiency` takes the minimum over every SCORED model. That is
+>   deliberate, documented, and has its own regression test — the weakest
+>   model's coverage is the honest headline for a lead.
+> - The ranking gate excludes anything below `REVIEW_MIN_CHECKS_FOR_COMPARISON`
+>   and then takes the minimum of THE TWO MODELS IT COMPARED.
+>
+> So one thin model lowers the sufficiency figure without touching the
+> evidence behind a ranking between two well-covered ones. Day+7 agreed at 21
+> because no model there was both scored and thin.
+>
+> **The count was not the bug. The conclusion drawn from it was.** "Not yet
+> enough to rank models against each other" is a claim about what the record
+> supports, and the ranking gate had already decided that question on a better
+> subset. The sufficiency sentence now defers to the same eligibility rule the
+> gate uses, so there is one source of truth for "can these be compared".
+>
+> On the real record, Day+3 went from *"9 check(s) per model — directional
+> only, not yet enough to rank models against each other"* to *"9 check(s) per
+> model — directional only for the least-covered model, though 7 models have
+> enough checks to compare. Any ranking below rests on those, not on this
+> number."* The figure is unchanged.
+>
+> **A second defect fell out of the mirror, and it was the worse one.**
+> `review.dart` never received the newcomer fix at all — it took the minimum
+> over ALL cells including zero-check ones, had no `unscored` clause, and
+> counted never-scored models as merely behind. So the app would have
+> published "0 check(s) per model — not enough to say anything" on the first
+> day a model was added, while the site published the honest figure. **No
+> vector case had a zero-check model**, so both suites were green over a
+> divergence that had been there for months. Ported, and locked with a case
+> that was watched failing against the old Dart before it was kept.
+>
+> Two new vector cases, both because the shape they cover existed nowhere:
+> a thin third model that lowers the count without denying the ranking, and a
+> never-scored model that is named rather than used as the headline.
 
 ### First step, per the repo's rule
 

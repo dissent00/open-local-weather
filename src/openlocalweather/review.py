@@ -451,21 +451,60 @@ def _describe_sufficiency(
         # anything", with eight days of scored forecasts sitting right there.
         scored = [c.checks for c in at_lead if c.checks > 0]
         checks = min(scored, default=0)
+
+        # WHETHER MODELS CAN BE RANKED IS THE RANKING GATE'S QUESTION, NOT
+        # THIS ONE'S — ROADMAP item 85.
+        #
+        # `checks` above is the WEAKEST SCORED model's coverage, deliberately,
+        # and that is the honest headline for the lead as a whole. It is not
+        # the number the ranking rests on: the gate excludes anything below
+        # REVIEW_MIN_CHECKS_FOR_COMPARISON and then compares what is left, so
+        # one thin model drags this figure down without touching the evidence
+        # behind a ranking between two well-covered ones.
+        #
+        # Measured on the real 2026-09-08 prompt: Day+3 read "9 check(s) per
+        # model — directional only, not yet enough to rank models against each
+        # other" while a gated ranking marked `usable` on 25 checks sat in the
+        # same payload. The forecaster is told a present finding is
+        # authoritative AND that this statement must be reflected in the
+        # Confidence Notes, so it cannot honour both and picks one — which is
+        # the judgement this whole design exists to take away from it.
+        #
+        # So the COUNT is unchanged and the CONCLUSION defers to the same
+        # eligibility rule the gate uses. One source of truth for "can these
+        # be compared", rather than two that disagree.
+        comparable = [c for c in at_lead if c.checks >= REVIEW_MIN_CHECKS_FOR_COMPARISON]
         richest = max((c.checks for c in at_lead), default=0)
         behind = sorted(c.model for c in at_lead if 0 < c.checks < richest)
         unscored = sorted(c.model for c in at_lead if c.checks == 0)
         conf = confidence_for(checks)
         if conf == "insufficient":
             need = REVIEW_CONFIDENCE_BANDS[0][0] - checks
-            parts.append(
-                f"Day+{k}: {checks} check(s) per model — not enough to say anything; "
-                f"roughly {need} more day(s) before even a provisional read."
-            )
+            if len(comparable) >= 2:
+                parts.append(
+                    f"Day+{k}: {checks} check(s) per model — not enough to say "
+                    f"anything about the least-covered model, though "
+                    f"{len(comparable)} models have enough checks to compare. "
+                    f"Any ranking below rests on those, not on this number."
+                )
+            else:
+                parts.append(
+                    f"Day+{k}: {checks} check(s) per model — not enough to say anything; "
+                    f"roughly {need} more day(s) before even a provisional read."
+                )
         elif conf == "provisional":
-            parts.append(
-                f"Day+{k}: {checks} check(s) per model — directional only, "
-                "not yet enough to rank models against each other."
-            )
+            if len(comparable) >= 2:
+                parts.append(
+                    f"Day+{k}: {checks} check(s) per model — directional only "
+                    f"for the least-covered model, though {len(comparable)} "
+                    f"models have enough checks to compare. Any ranking below "
+                    f"rests on those, not on this number."
+                )
+            else:
+                parts.append(
+                    f"Day+{k}: {checks} check(s) per model — directional only, "
+                    "not yet enough to rank models against each other."
+                )
         elif conf == "usable":
             parts.append(
                 f"Day+{k}: {checks} check(s) per model — enough to compare models, "

@@ -495,24 +495,67 @@ String _describeSufficiency(
   for (final k in leadTimesDays) {
     final atLead = cells.where((c) => c.leadTimeDays == k).toList();
     if (atLead.isEmpty) continue;
-    // The WEAKEST model sets the confidence, not the best-covered one — not
-    // every model reaches every lead time, and reporting the maximum as "per
-    // model" would overstate coverage for exactly the models that have least.
-    var checks = atLead.first.checks;
+    // The WEAKEST SCORED model sets the confidence, not the best-covered one —
+    // not every model reaches every lead time, and reporting the maximum as
+    // "per model" would overstate coverage for exactly the models that have
+    // least.
+    //
+    // Models with NO checks are excluded from setting that number and named
+    // separately instead, because never-scored and scored-less are different
+    // claims. When the local met service was first added, one newcomer at
+    // zero turned an honest "8 checks per model" into "0 check(s) per model —
+    // not enough to say anything" with eight days of scored forecasts sitting
+    // right there. That fix landed in Python and was never ported here, and
+    // no vector case had a zero-check model, so nothing caught it — see
+    // review.py for the original.
+    final scored = atLead.where((c) => c.checks > 0).map((c) => c.checks).toList();
+    var checks = scored.isEmpty ? 0 : scored.first;
+    for (final n in scored) {
+      if (n < checks) checks = n;
+    }
     var richest = atLead.first.checks;
     for (final c in atLead) {
-      if (c.checks < checks) checks = c.checks;
       if (c.checks > richest) richest = c.checks;
     }
-    final behind = (atLead.where((c) => c.checks < richest).map((c) => c.model).toList()..sort());
+    final behind = (atLead
+        .where((c) => c.checks > 0 && c.checks < richest)
+        .map((c) => c.model)
+        .toList()
+      ..sort());
+    final unscored =
+        (atLead.where((c) => c.checks == 0).map((c) => c.model).toList()..sort());
+
+    // WHETHER MODELS CAN BE RANKED IS THE RANKING GATE'S QUESTION, NOT THIS
+    // ONE'S — ROADMAP item 85. `checks` is the weakest scored model's
+    // coverage; the gate excludes anything under the comparison floor and
+    // compares what is left, so one thin model lowers this figure without
+    // touching the evidence behind a ranking between two well-covered ones.
+    // The count is unchanged and the CONCLUSION defers to the same
+    // eligibility rule the gate uses.
+    final comparable =
+        atLead.where((c) => c.checks >= reviewMinChecksForComparison).toList();
     final conf = confidenceFor(checks);
     if (conf == 'insufficient') {
       final need = reviewConfidenceBands.first.$1 - checks;
-      parts.add('Day+$k: $checks check(s) per model — not enough to say anything; '
-          'roughly $need more day(s) before even a provisional read.');
+      if (comparable.length >= 2) {
+        parts.add('Day+$k: $checks check(s) per model — not enough to say '
+            'anything about the least-covered model, though '
+            '${comparable.length} models have enough checks to compare. '
+            'Any ranking below rests on those, not on this number.');
+      } else {
+        parts.add('Day+$k: $checks check(s) per model — not enough to say anything; '
+            'roughly $need more day(s) before even a provisional read.');
+      }
     } else if (conf == 'provisional') {
-      parts.add('Day+$k: $checks check(s) per model — directional only, '
-          'not yet enough to rank models against each other.');
+      if (comparable.length >= 2) {
+        parts.add('Day+$k: $checks check(s) per model — directional only '
+            'for the least-covered model, though ${comparable.length} '
+            'models have enough checks to compare. Any ranking below '
+            'rests on those, not on this number.');
+      } else {
+        parts.add('Day+$k: $checks check(s) per model — directional only, '
+            'not yet enough to rank models against each other.');
+      }
     } else if (conf == 'usable') {
       parts.add('Day+$k: $checks check(s) per model — enough to compare models, '
           'though differences smaller than about 15 points remain noise.');
@@ -524,6 +567,13 @@ String _describeSufficiency(
           '${behind.length == 1 ? 'has' : 'have'} fewer than the '
           '$richest check(s) the other models have, so any comparison '
           'at this lead time is not like-for-like.)');
+    }
+    if (unscored.isNotEmpty) {
+      parts.add('(${unscored.join(', ')} '
+          '${unscored.length == 1 ? 'has' : 'have'} '
+          'no verified checks at Day+$k yet and '
+          '${unscored.length == 1 ? 'is' : 'are'} '
+          'not included in the figure above.)');
     }
   }
   return parts.join(' ');
