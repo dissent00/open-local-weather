@@ -9100,3 +9100,144 @@ Related: item 56 (the reader-facing glossary this would feed), item 65
 counts as observed), item 64 (why adding sources is not the default), item
 83 (whose band-ceiling defect a "day-over-day" column would have exposed),
 item 44 (the reader-facing sources page).
+
+---
+
+## 85. Two counters of the same thing disagree inside one prompt · **Planned — bug**
+
+Found 2026-09-08 by a cold worker model reading the archived 2026-09-08
+prompt, and verified against the payload afterwards. The forecaster is handed
+two statements of how much evidence exists, and they do not match:
+
+| lead | ranking finding says | `data_sufficiency` says |
+|---|---|---|
+| Day+0 | 28 checks | 19 checks |
+| Day+3 | **25 checks** | **9 checks** |
+| Day+7 | 21 checks | 21 checks |
+
+Day+7 agrees, which is the part that makes this a bug rather than two
+different measures wearing the same name.
+
+### Why Day+3 is the one that matters
+
+`data_sufficiency` at Day+3 reads *"9 check(s) per model — directional only,
+not yet enough to rank models against each other"*, and a Day+3 **ranking**
+finding is present in the same payload, gated, marked `usable`, on 25 checks.
+
+So the prompt simultaneously supplies a ranking and says the record cannot
+support one. The instructions tell the forecaster to honour both: a present
+finding is authoritative, AND `data_sufficiency` must be reflected in the
+Confidence Notes. The worker did both and said the result *"reads as slightly
+self-undermining, and that is the input's doing rather than a choice"* —
+which is the correct reading and exactly the position no forecaster should be
+put in.
+
+### Why this is worse than a cosmetic mismatch
+
+Item 57's gate exists to stop small-sample rankings being stated. Rule 2 in
+the prompt — NEVER RANK MODELS WITHOUT A REVIEW FINDING THAT RANKS THEM —
+rests on the gate being the single authority on whether the sample is big
+enough. **A second counter that disagrees by 16 checks means one of the two
+numbers is wrong, and if it is the gate's, the gate is passing rankings it
+was built to withhold.** Which of the two is right is not yet established;
+that is the first thing to find out.
+
+### First step, per the repo's rule
+
+Write the failing test first: one that builds a record and asserts the check
+count `data_sufficiency` reports equals the count the findings carry at the
+same lead time. Watch it fail on the 2026-09-08 record, which is stored and
+replayable (item 69). Then find which counter is wrong.
+
+Two candidates worth checking before anything else, neither confirmed:
+per-model versus pooled counting, and whether one counts days stored while
+the other counts days actually SCORED at that lead — a Day+3 check needs a
+forecast from three days ago AND an observation today, so the two populations
+genuinely differ and one of the two numbers may be answering a different
+question honestly.
+
+If that turns out to be it, the fix is naming rather than arithmetic: two
+numbers that mean different things must not both be called "checks per
+model" in one payload.
+
+Related: item 57 (the gate this could be undermining), item 72 (which reads
+the same counts), item 69 (the stored record that makes this replayable),
+item 77 (the harness that found it), item 83 (the other defect from the same
+run).
+
+---
+
+## 86. Wind is compared against two different quantities, and the record describes the sign backwards · **Planned**
+
+Two findings from the same 2026-09-08 harness run, kept together because
+both are about wind error and one hides the other.
+
+### 1. The sign convention is right in code and backwards in the record
+
+`scoring.py`'s `_diff` returns `actual - predicted`, so a positive mean error
+means the model came in UNDER what happened. `review.py` says so in a comment
+and its `direction` line follows it correctly: `"At Day+0, gfs_seamless
+systematically under-forecasts peak wind here."` with evidence `"Mean error
++21.1 km/h"` is **correct**.
+
+The HISTORICAL NOTES in the same prompt say the opposite. They are
+LLM-written, from previous runs, and they read *"GFS again significantly
+over-forecasted surface wind speeds (+20.2 km/h error)"* — a positive error
+called an over-forecast.
+
+**This matters because those notes are fed back to the forecaster as learning
+material**, under an instruction to reason from them. A wrong sign that
+compounds run over run is the "unverified claim hardens into received wisdom"
+failure this project has already named elsewhere, except here it is being
+written into the record by the thing that reads it.
+
+A cold worker model reading the 2026-09-08 prompt hit exactly this: it
+concluded the FINDINGS were inverted, on the strength of the notes, and
+declined to apply any wind bias correction in either direction. That is the
+right call when two sources contradict, and it means the bias findings are
+currently doing nothing.
+
+Worth stating plainly, because it was nearly recorded the wrong way round
+here: **the code is not the bug**. The prose written about it is.
+
+### 2. Observed peak wind is not always the same quantity as forecast wind
+
+- Forecast `wind_kmh` comes from `wind_gusts_10m` (`extract.py`).
+- Reanalysis observed `peak_wind_kmh` also comes from `wind_gusts_10m`
+  (`open_meteo.py`). Like for like.
+- **METAR observed `peak_wind_kmh` is `sknt` — max SUSTAINED wind**
+  (`metar.py`). Not like for like.
+
+So on days a station reading wins item 45's ladder, a sustained observation
+is scored against a gust forecast; on reanalysis days it is gust against
+gust. The same column holds both, and nothing downstream can tell them apart.
+`provenance` records which source answered, so the two populations are
+separable after the fact — that is what makes this measurable rather than
+merely suspected.
+
+### What is NOT explained, and must not be guessed
+
+Mean wind errors run +10 to +34 km/h across every model and every lead time,
+in the same direction. A sustained-versus-gust mismatch would push the other
+way on station days, so it does not explain the sign, and **no explanation
+here is verified**. Candidates, all unchecked: a point-versus-station
+elevation difference, the reanalysis gust product being systematically low
+over the lake basin, or `max()` over an hourly series meeting a station that
+reports twice an hour. Do not write any of these down as the cause until one
+is measured.
+
+### Sequence
+
+1. Split the stored wind errors by `provenance` and see whether station days
+   and reanalysis days have different means. That is a query over data
+   already stored, and it either finds the mismatch or clears it.
+2. Fix whichever way the record describes the sign — the cheap half is a
+   prompt instruction telling the forecaster the convention explicitly when
+   it writes a verification note, since it is the author of the wrong ones.
+3. Only then decide whether the METAR path should read gusts. It cannot
+   simply switch: METAR files a gust group only when a gust occurs, which is
+   why `sknt` was used, and item 45 already records that absence is not zero.
+
+Related: item 45 (the source ladder and provenance stamp this query needs),
+item 57 (the findings machinery), item 84 (a register would have shown two
+sources filling one column), item 77 (the harness), item 74.
