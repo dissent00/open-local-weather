@@ -9442,7 +9442,7 @@ run).
 
 ---
 
-## 86. Wind is compared against two different quantities, and the record describes the sign backwards · **Planned**
+## 86. Wind is compared against two different quantities, and the record describes the sign backwards · **Measured and fixed 2026-09-09**
 
 Two findings from the same 2026-09-08 harness run, kept together because
 both are about wind error and one hides the other.
@@ -9501,17 +9501,77 @@ over the lake basin, or `max()` over an hourly series meeting a station that
 reports twice an hour. Do not write any of these down as the cause until one
 is measured.
 
-### Sequence
+### Step 1, done 2026-09-09: the split CLEARS the mismatch
 
-1. Split the stored wind errors by `provenance` and see whether station days
-   and reanalysis days have different means. That is a query over data
-   already stored, and it either finds the mismatch or clears it.
-2. Fix whichever way the record describes the sign — the cheap half is a
-   prompt instruction telling the forecaster the convention explicitly when
-   it writes a verification note, since it is the author of the wrong ones.
-3. Only then decide whether the METAR path should read gusts. It cannot
-   simply switch: METAR files a gust group only when a gust occurs, which is
-   why `sknt` was used, and item 45 already records that absence is not zero.
+**All 41 cached days took `peak_wind_kmh` from `era5_archive`. Not one came
+from a station.** So every scored wind error in the record is gust forecast
+against gust reanalysis, like for like, and the sustained-vs-gust mismatch —
+real in the code — has never once fired. It explains nothing about the bias
+because it has never touched the data.
+
+The gap it *would* introduce is now measured, from the station value stored
+alongside but never used: **reanalysis gust exceeds station sustained by
++14.6 km/h on average** (median +16.0, range −9.3 to +30.5), a mean ratio of
+1.66 against the textbook 1.4–1.6. Large enough that step 3 would matter if
+the ladder ever fell through to a station.
+
+### And the baselines explain the bias the item said not to guess at
+
+Day+0 mean wind error, observed minus forecast, over the stored record —
+which reproduces the review's own figures exactly, so the method is sound:
+
+| model | n | mean |
+|---|---|---|
+| gfs_seamless | 28 | **+21.1** |
+| ukmo_seamless | 28 | +14.1 |
+| ecmwf_ifs025 | 19 | +10.3 |
+| icon_seamless | 28 | +9.1 |
+| best_match | 28 | +4.3 |
+| climatology | 28 | **+2.6** |
+| persistence | 28 | **+0.4** |
+
+**`persistence` is unbiased.** It forecasts today's gust as yesterday's, from
+the same ERA5 gust series the score is measured against — so if the
+observation were the problem, persistence would carry the same bias. It does
+not, at +0.4 km/h over 28 checks.
+
+That kills all three of the candidates this item said must not be written
+down until measured:
+
+- *reanalysis gust product systematically low over the basin* — the errors
+  are positive, so the reanalysis is HIGH relative to forecasts, not low; and
+  persistence would inherit any such offset and does not.
+- *point-versus-station elevation difference* — no station day exists.
+- *`max()` over hourly meeting a station reporting twice an hour* — likewise.
+
+**The bias belongs to the forecast models, not to the scoring.** Their
+`wind_gusts_10m` forecasts run systematically below ERA5's `wind_gusts_10m`
+reanalysis, by 4 to 21 km/h depending on the model. That is a product
+difference between two gust fields, and it is a real finding about the models
+rather than an artefact to be corrected away.
+
+### Step 2, done 2026-09-09
+
+The Step 1 instruction that asks the forecaster to write verification notes
+now states the sign convention with a worked example, and says outright that
+stored notes written before it have the error in them so their phrasing must
+not be copied. The forecaster is the author of the wrong notes, so that is
+where the fix belongs.
+
+Item 92 covers the other half — the convention is now stated in the two
+payload block headers as well, which is what stopped two cold readers from
+having to infer it.
+
+### Step 3, still open and now better specified
+
+Whether the METAR path should read gusts. **Not urgent**: the ladder has never
+fallen through to a station for wind in 41 days. But if it ever does, the
+measurement above says the substituted value would be about 14.6 km/h low,
+which would read as a sudden model improvement rather than as a source
+change. It cannot simply switch — METAR files a gust group only when a gust
+occurs, and item 45 records that absence is not zero — so the honest options
+are to read gusts where present and refuse the day otherwise, or to keep
+`sknt` and stamp the column so the two populations stay separable.
 
 Related: item 45 (the source ladder and provenance stamp this query needs),
 item 57 (the findings machinery), item 84 (a register would have shown two
