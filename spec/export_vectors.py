@@ -1904,6 +1904,21 @@ def export_day_over_day() -> None:
         ("17 km/h is a change, not a big one", actual(peak_wind_kmh=25.0), preds([29.0], winds=[42.0])),
         ("a gale collapsing to nothing is not merely calmer",
          actual(peak_wind_kmh=55.0), preds([29.0], winds=[10.0])),
+        # ROUNDING TIES, and they are here because they reach the READER.
+        # Dart's `(v * 10).roundToDouble() / 10` disagreed with Python's
+        # `round(v, 1)` on 600 of 32,001 swept values, and two of them crossed
+        # a band edge: -11.95 read "much cooler" in Python and "dramatically
+        # cooler" in Dart, -17.95 read "calmer" against "much calmer". Every
+        # vector case passed throughout — which is the whole argument for
+        # sweeping a function rather than trusting the cases you chose.
+        ("a negative tie rounds toward Python, not away from zero",
+         actual(high_c=30.0), preds([18.05])),
+        ("the same tie one field over, on the wind band edge",
+         actual(peak_wind_kmh=40.0), preds([29.0], winds=[22.05])),
+        # An exact quarter is the ONLY value that is genuinely a tie at one
+        # decimal place, and Python rounds it half to EVEN.
+        ("an exact quarter rounds half to even",
+         actual(high_c=30.0), preds([29.75])),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),

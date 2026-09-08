@@ -1849,6 +1849,165 @@
       }
     },
     {
+      "name": "a negative tie rounds toward Python, not away from zero",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 30.0,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 18.05,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 30.0,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 18.1,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -11.9,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "much cooler",
+        "wind_label": "much calmer",
+        "rain_contrast": "wet again",
+        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
+      }
+    },
+    {
+      "name": "the same tie one field over, on the wind band edge",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.0,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 22.05,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.0,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 22.1,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -17.9,
+        "high_label": "about the same",
+        "wind_label": "calmer",
+        "rain_contrast": "wet again",
+        "overview_comparison": "Calmer than yesterday. Wet again."
+      }
+    },
+    {
+      "name": "an exact quarter rounds half to even",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 30.0,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.75,
+            "low_c": 18.0,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "yesterday_high_c": 30.0,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 29.8,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.2,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "rain_contrast": "wet again",
+        "overview_comparison": "Much calmer than yesterday. Wet again."
+      }
+    },
+    {
       "name": "no observed record yields nothing at all",
       "input": {
         "yesterday_actual": null,

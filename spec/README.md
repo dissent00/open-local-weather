@@ -93,7 +93,7 @@ absent values are `null`, never omitted keys.
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |
-| `day_over_day.json` | `compute_day_over_day` | 11 |
+| `day_over_day.json` | `compute_day_over_day` | 34 |
 | `extended_trend.json` | `describe_extended_trend` | 11 |
 | `describe_day_rain.json` | `describe_day_rain` | 17 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 13 |
@@ -108,11 +108,11 @@ absent values are `null`, never omitted keys.
 | `llm_user_prompt.json` | `build_user_prompt` | 6 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
-| `scoring_score_prediction.json` | `score_prediction` | 12 |
+| `scoring_score_prediction.json` | `score_prediction` | 16 |
 | `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 6 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |
-| `weekly_review.json` | `build_weekly_review` | 10 |
+| `weekly_review.json` | `build_weekly_review` | 12 |
 | `solar.json` | `sun_times` | Sunrise and sunset for a LOCAL date, computed from latitude, longitude and the location's UTC offset. Whole minutes, truncated. The midnight sun is midnight to midnight; polar night is a span of zero. |
 | `daypart.json` | `summarize_daypart` | Where the issuance moment sits in the day. Sun-relative, so the same clock time is a different part of the day at another latitude. Every string is written into the prompt verbatim. |
 | `daypart_without_sun.json` | `daypart_without_sun` | The issuance moment when sunrise/sunset could not be fetched — phase `unknown` rather than guessed, horizon still precise because midnight is midnight everywhere. |

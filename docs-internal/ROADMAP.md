@@ -9206,8 +9206,17 @@ pair of days.
 
 - **No live forecast has used any of this.** Every judgement above is from
   archived payloads replayed through the new code, plus the vectors. The next
-  scheduled run is the first real exercise, and the harness has not been run
-  against the rewritten Overview paragraph.
+  scheduled run is the first real exercise.
+- **THE HARNESS DID NOT RUN.** Item 77 lists all three of this change's seams
+  — a `prompt.py` edit, a `comparison.py` edit, and closing a prompt-facing
+  item — so it was owed here and is the one step of the method that was
+  skipped. The inputs are built and the flags are verified (see below); the
+  worker model hit an account rate limit. **Run it before trusting the
+  rewritten Overview paragraph**, which no cold reader has yet seen.
+- The flags WERE verified rather than guessed: `825c468` is the commit whose
+  default-flag system prompt reproduces the archive's
+  `system_prompt_sha256`, confirming `is_reissue=False`,
+  `ground_stations_configured=True`, `local_bulletin_configured=True`.
 - The 12 °C and 35 km/h ceilings have never fired and cannot fire at this
   deployment. They are reasoned, not measured.
 - Whether the model actually declines to lead with the comparison when it
@@ -9686,3 +9695,70 @@ half and should come first.
 Related: item 61 and item 85 (the two whose ports were incomplete), item 77
 (the harness, which found the prompt half of the same problem), and
 `spec/README.md`, which is where the rule should be written down.
+
+---
+
+## 89. Dart rounds half away from zero in three more places · **One fixed 2026-09-08; two unaudited**
+
+Found by sweeping item 83's band ladders, not by a test. `comparison.dart`'s
+`_round1` was
+
+```dart
+(v * 10).roundToDouble() / 10
+```
+
+against Python's `round(v, 1)`, and it disagreed on **600 of 32,001 swept
+values**. Two of those crossed a band edge and changed the words a reader
+sees:
+
+| delta | Python | Dart (before) |
+|---|---|---|
+| −11.95 | `much cooler` | `dramatically cooler` |
+| −17.95 | `calmer` | `much calmer` |
+
+**Every vector case passed throughout, before and after.** That is item 88's
+argument arriving on its own: the cases pin what someone thought to write
+down, and a sweep pins the function.
+
+### Two separate faults, and the multiply causes both
+
+1. `roundToDouble` rounds half AWAY FROM ZERO; Python rounds half to EVEN.
+   Already known here — `_roundHalfEven` in `models.dart` and `_fmt0` in
+   `synoptic.dart` both guard it, and `temp_high_low.json` exists for it. The
+   guard simply was never applied in `comparison.dart`.
+2. **Multiplying by 10 INVENTS ties.** −11.95 is stored as
+   −11.94999999999999928, which Python correctly rounds to −11.9 — but
+   `−11.95 * 10` lands exactly on −119.5, and the tie it created then rounds
+   away. This one is not in the existing guards, and it is why a half-to-even
+   fix applied to `v * 10` still fails: it was measured at 484 disagreements,
+   worse than the two-line candidates.
+
+The fix does the decimal rounding with `toStringAsFixed(1)`, which works from
+the double's true value rather than a scaled copy, and handles the only
+genuinely exact tie separately. **A value that is exactly x.x5 must be an odd
+quarter** — k/20 is representable as a double only when 5 divides k — and
+testing that with a multiply by 4 is exact, being a power of two. So the tie
+is detected without creating one. Swept again: 0 of 32,001, and 0 across
+54,383 rows of the two band sweeps that found it.
+
+### Still to do
+
+**Two other call sites use the same broken form and have NOT been measured:**
+
+- `app/olw_core/lib/src/extract.dart:126`
+- `app/olw_core/lib/src/open_meteo.dart:431`
+
+Both are `.roundToDouble() / …`. Whether their Python counterparts use
+`round()`, whether the values reach a reader, and whether any tie is
+achievable there are all unknown — this item claims nothing about them beyond
+the shape of the expression. Sweep each against its Python counterpart the
+way this one was swept; the method is three commands and is what found this.
+
+Also worth deciding: whether a single shared helper should replace all four,
+or whether the existing per-file duplication with cross-references is
+preferred. The repo currently duplicates deliberately (`models.dart` points at
+`synoptic.dart`), so this is a change of convention, not a cleanup.
+
+Related: item 88 (the rule this vindicates), item 83 (whose new band edges
+made the defect reader-visible), `temp_high_low.json` (the same divergence,
+caught years earlier in another function).

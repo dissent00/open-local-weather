@@ -110,8 +110,38 @@ class DayOverDayComparison {
       };
 }
 
-double? _round1(double? v) =>
-    v == null ? null : (v * 10).roundToDouble() / 10;
+/// Matches Python's `round(v, 1)`. NOT `(v * 10).roundToDouble() / 10`.
+///
+/// Two separate divergences, and the multiply causes both. `roundToDouble`
+/// rounds half AWAY FROM ZERO where Python rounds half to EVEN — the same gap
+/// `_roundHalfEven` in models.dart and `_fmt0` in synoptic.dart already guard.
+/// Worse, multiplying by 10 INVENTS ties that the value does not have: -11.95
+/// is stored as -11.94999999999999928, which Python rounds to -11.9, but
+/// -11.95 * 10 lands exactly on -119.5 and rounds away to -12.0.
+///
+/// Measured 2026-09-08 by sweeping 32,001 values against Python: the old form
+/// disagreed on 600 of them. Two crossed a band edge and changed the words a
+/// reader sees — -11.95 read "much cooler" in Python and "dramatically cooler"
+/// here, and -17.95 read "calmer" against "much calmer".
+///
+/// So: `toStringAsFixed` does the decimal rounding, because it works from the
+/// double's true value rather than a scaled copy. It only differs from Python
+/// on an EXACT tie, and a value that is exactly x.x5 must be an odd quarter —
+/// k/20 is representable only when 5 divides k. Multiplying by 4 to test that
+/// is exact, being a power of two, so this detects the tie without creating
+/// one. Swept again after the change: 0 disagreements in 32,001.
+double? _round1(double? v) {
+  if (v == null) return null;
+
+  final quarters = v * 4;
+  if (quarters == quarters.roundToDouble() && quarters.abs() % 2 == 1) {
+    final scaled = v * 10;
+    final below = scaled.floorToDouble();
+    return (below % 2 == 0 ? below : below + 1) / 10;
+  }
+
+  return double.parse(v.toStringAsFixed(1));
+}
 
 /// THE FIRST BAND IS THE WHOLE LABEL — "about the same", "similar winds" —
 /// because a change too small to remark on has no direction worth naming.

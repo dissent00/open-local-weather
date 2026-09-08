@@ -695,6 +695,24 @@ def test_every_vector_file_is_exercised():
     )
 
 
+def test_readme_coverage_table_counts_match_the_files():
+    """The Cases column drifted on three rows before anything checked it —
+    day_over_day said 11 with 34 in the file. A number nobody verifies is
+    worse than no number, because it is read as though someone did."""
+    table = re.findall(
+        r"^\| `([a-z0-9_]+\.json)` \| `[^`]+` \| (\d+) \|$",
+        (VECTORS_DIR.parent / "README.md").read_text(),
+        re.M,
+    )
+    assert table, "coverage table not found — did the README format change?"
+    stale = [
+        (name, int(claimed), len(json.loads((VECTORS_DIR / name).read_text())["cases"]))
+        for name, claimed in table
+        if int(claimed) != len(json.loads((VECTORS_DIR / name).read_text())["cases"])
+    ]
+    assert not stale, f"README case counts are stale: {stale}"
+
+
 def test_vector_files_declare_a_known_format_version():
     for path in VECTORS_DIR.glob("*.json"):
         data = json.loads(path.read_text())
