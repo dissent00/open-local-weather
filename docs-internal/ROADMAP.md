@@ -8979,6 +8979,27 @@ numbers. `PROMPT_COMPARISON_FIELDS` exists because a run handed the raw
 operands wrote "against yesterday's 30.4C" in the sentence after the rule
 forbidding it; do not undo that.
 
+**5. The block's own booleans contradict its own prose.** Found in the same
+2026-09-08 payload:
+
+```json
+{"yesterday_rain": true, "today_rain_expected": false,
+ "rain_contrast": "dry until evening showers today; yesterday was largely dry"}
+```
+
+`yesterday_rain: true` beside "yesterday was largely dry" is FINE and
+deliberate — `RAIN_THRESHOLD_MM` (0.5) answers "did measurable rain fall in
+any hour" while the day band answers "what kind of day was it", and
+`describe_day_rain`'s comment explains exactly that. **`today_rain_expected:
+false` beside "evening showers today" is not fine.** One says no rain, the
+other names when it starts.
+
+The consequence is measurable rather than theoretical: the worker model
+resolved toward the prose, and said so — *"my own rain: true call agrees with
+the label's prose and disagrees with the block's boolean."* A payload that
+contradicts itself does not produce a refusal; it produces a forecaster
+quietly picking a side.
+
 ### What the fix has to establish
 
 Not four patches. The four are one theme, and patching them separately just
@@ -8991,6 +9012,9 @@ moves the seam:
   words, because the sentence around it will not.
 - **A phrase says one thing.** The "; yesterday was X" tail is a second
   statement smuggled into a phrase whose slot allows one.
+- **A block agrees with itself.** Where a boolean and a phrase describe the
+  same fact, they cannot disagree — or the forecaster chooses, which is the
+  judgement this whole design exists to take away from it.
 
 ### Do not fix this in the prompt
 
@@ -9241,3 +9265,75 @@ is measured.
 Related: item 45 (the source ladder and provenance stamp this query needs),
 item 57 (the findings machinery), item 84 (a register would have shown two
 sources filling one column), item 77 (the harness), item 74.
+
+---
+
+## 87. The prompt bans four variables and then hands three of them over · **Planned**
+
+Found 2026-09-08 by a cold worker model, which reported visibility and cloud
+base in a forecast, suppressed dew point, and flagged the inconsistency
+itself rather than hiding it.
+
+### The rule, and the payload that contradicts it
+
+The Overview section carries an absolute ban:
+
+> "If a quantity is not in the data above, it does not exist for this
+> forecast: no humidity, no dew point, no 'feels like', no visibility, no
+> cloud base."
+
+It was written after a run produced "warm and humid through the morning" and
+humidity is not fetched. For humidity the rule and its rationale agree.
+
+For the other three they do not. `airport_metar` reaches the forecaster whole:
+
+```json
+{"temp": 22, "dewp": 16, "visib": "6+", "altim": 1017,
+ "clouds": [{"cover": "FEW", "base": 2000}, {"cover": "SCT", "base": 9000}],
+ "rawOb": "METAR HKKI 080000Z VRB02KT 9999 FEW020CB SCT090 22/16 Q1017"}
+```
+
+Dew point, visibility and cloud base are all there — twice, since `rawOb`
+encodes them again. So the ban's stated reason ("not in the data above") is
+false for three of the four things it bans, and a careful reader that follows
+the REASON rather than the LIST will report them. That is precisely what
+happened.
+
+### This project has already learned this lesson once
+
+`PROMPT_COMPARISON_FIELDS` exists because a run handed `yesterday_high_c` and
+`wind_delta_kmh` wrote "against yesterday's 30.4C" and "a drop of 11 km/h" in
+the sentence after the rule forbidding both. Its comment records the outcome:
+
+> "Moving that rule to the front of the section did not fix it. Deleting the
+> fields did. A rule cannot win against a payload that supplies its own
+> counter-example, and the cheapest way to delete a rule is to delete the
+> temptation."
+
+The METAR block is the same shape and the same fix: **narrow what the prompt
+is shown**, rather than adding a firmer ban.
+
+### What is genuinely wanted from that block, and what is not
+
+Not a deletion — the block earns its place. The worker used the observation's
+cumulonimbus report as corroboration for the models' overnight CAPE, which is
+a real use and the kind of reasoning the pipeline wants. `temp`, `wspd`,
+`wdir`, `obsTime` and the cloud COVER are all legitimately in play.
+
+The question is narrower: does the forecaster need `dewp`, `visib`, cloud
+`base` and `rawOb`, or are they four fields riding along because the block is
+passed through unfiltered? A `PROMPT_METAR_FIELDS` tuple beside the existing
+one answers it, and `rawOb` is the interesting case — it is the whole
+observation in one string and cannot be partially withheld.
+
+### Then fix the rule to match
+
+Whatever survives the filter, the ban's LIST and its REASON must stop
+disagreeing. Either a variable is absent, in which case the existing
+rationale covers it, or it is present and withheld for a different reason —
+that a three-hour-old point observation is not a forecast — which is a
+different sentence and should be written as one.
+
+Related: item 45 (the observation ladder this block feeds), item 73 (pare the
+prompt, by category), item 84 (a register would list which of these the
+forecaster may name), item 77 (the harness), item 83.
