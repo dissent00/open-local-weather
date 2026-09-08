@@ -130,6 +130,14 @@ class DayOverDayComparison {
 /// k/20 is representable only when 5 divides k. Multiplying by 4 to test that
 /// is exact, being a power of two, so this detects the tie without creating
 /// one. Swept again after the change: 0 disagreements in 32,001.
+///
+/// THE `* 4` IS SPECIFIC TO ONE DECIMAL PLACE. Do not copy this helper to
+/// another precision without re-deriving it. An exact tie at n places is
+/// (2m+1)/(2*10^n), which is representable only when 5^n divides the
+/// numerator, leaving j/2^(n+1) with j odd — odd QUARTERS at one place, odd
+/// EIGHTHS at two. Copying the `* 4` to a 2 dp site was measured making
+/// things worse: 544 disagreements against the broken original's 378,
+/// because 27.25 is not a tie at two places and the test said it was.
 double? _round1(double? v) {
   if (v == null) return null;
 

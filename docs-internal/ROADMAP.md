@@ -9698,7 +9698,7 @@ Related: item 61 and item 85 (the two whose ports were incomplete), item 77
 
 ---
 
-## 89. Dart rounds half away from zero in three more places · **One fixed 2026-09-08; two unaudited**
+## 89. Dart rounds half away from zero in three places · **One fixed 2026-09-08; two measured, unfixed**
 
 Found by sweeping item 83's band ladders, not by a test. `comparison.dart`'s
 `_round1` was
@@ -9741,18 +9741,51 @@ testing that with a multiply by 4 is exact, being a power of two. So the tie
 is detected without creating one. Swept again: 0 of 32,001, and 0 across
 54,383 rows of the two band sweeps that found it.
 
-### Still to do
+### The other two sites, now measured
 
-**Two other call sites use the same broken form and have NOT been measured:**
+Swept 2026-09-08, so this is no longer a guess. Both compute the same thing —
+the day's precipitation total — and both are
+
+```dart
+((vals.fold<double>(0, (a, v) => a + v!)) * 100).roundToDouble() / 100
+```
+
+against Python's `round(sum(...), 2)` in `extract.py:75` and its counterpart.
 
 - `app/olw_core/lib/src/extract.dart:126`
 - `app/olw_core/lib/src/open_meteo.dart:431`
 
-Both are `.roundToDouble() / …`. Whether their Python counterparts use
-`round()`, whether the values reach a reader, and whether any tie is
-achievable there are all unknown — this item claims nothing about them beyond
-the shape of the expression. Sweep each against its Python counterpart the
-way this one was swept; the method is three commands and is what found this.
+**378 of 15,102 swept days disagree, 189 of them with a non-negative total** —
+that is, reachable with real precipitation, which is never negative. The
+errors are 0.01 mm: `0.12` against `0.13`, `0.01` against `0.02`. Small, but
+`precip_mm` feeds `day_rain_band`'s 1.0 / 5.0 / 15.0 thresholds, so a total
+sitting on a band edge changes the word the reader gets, and it is stored in
+the record either way.
+
+**The compensated sum is NOT involved here.** `sums.dart` exists because
+CPython's `sum()` uses Neumaier compensation and Dart's `reduce` does not, so
+that was the first suspect. Substituting `compensatedSum` changed nothing:
+378 before, 378 after. The rounding is the whole of it, and a fix that
+addresses only the summation would have looked like diligence and moved
+nothing.
+
+**A fix is verified at 0 of 15,102** — the same `toStringAsFixed` approach,
+with the tie test re-derived for two decimals. Not applied: it is two files
+outside the change that found it, and it wants its own vector coverage on the
+Dart side, since Python is already correct and no Python test can fail.
+
+### Do not copy the helper without re-deriving it
+
+`_round1`'s tie test multiplies by 4. That is specific to ONE decimal place.
+An exact tie at n places is (2m+1)/(2·10^n), representable only when 5^n
+divides the numerator, which leaves j/2^(n+1) with j odd — odd QUARTERS at
+one place, odd EIGHTHS at two.
+
+Copying the `* 4` to the 2 dp sites was measured **making things worse: 544
+disagreements against the broken original's 378**, because 27.25 is not a tie
+at two places and the test said it was. Naive generalisation of this helper is
+worse than leaving it alone, which is why the warning is in the code as well
+as here.
 
 Also worth deciding: whether a single shared helper should replace all four,
 or whether the existing per-file duplication with cross-references is
