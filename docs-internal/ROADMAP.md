@@ -10008,3 +10008,101 @@ the LLM-written HISTORICAL NOTES, which have it backwards — item 86 — and
 concluded the code was wrong. It then dropped every bias finding from its
 narrative. **Item 86's cost is now measured: contradictory stored prose does
 not merely sit there, it makes a careful reader discard correct findings.**
+
+---
+
+## 92. The payload never states its own error-sign convention · **Fixed 2026-09-09**
+
+**Two independent cold readers, on two separate harness runs, read every bias
+finding backwards.** Both concluded the code was inverted; both were wrong.
+
+`verify/scoring.py:64` is unambiguous — `_diff` returns `actual_val -
+pred_val`, so a positive error means the model came in UNDER what happened,
+and `review.py:322` writes "under-forecasts" for a positive value. Sixteen of
+sixteen findings match their evidence.
+
+**But the payload never says so, and neither reader could settle it from what
+they were given.** The second one said as much in terms: *"there is no single
+computed field in the file that settles forecast − observed versus observed −
+forecast on its own."* It then corroborated from the stored HISTORICAL NOTES,
+which are LLM-written and have the convention backwards (item 86) — and
+inverted the whole thing.
+
+The first run dropped every bias finding from its narrative on that basis. The
+second published a paragraph telling the reader the review is defective.
+
+**So this was never really about item 86's notes.** They are one wrong source
+among several a reader might reach for; the root cause is a payload that hands
+over signed errors and expects a convention to be inferred. Now stated
+explicitly in both block headers, with a worked example in each direction, and
+with a line telling the reader not to take the convention from a narrative
+note.
+
+Cheap fix, and the highest-leverage one this harness has produced: it removes
+a failure that recurred across two independent readers with different
+instructions.
+
+Related: item 86 (the notes that are actually backwards, still to fix — but
+now with a stated convention beside them), item 77.
+
+---
+
+## 93. A locked comparison quietly decides the scored rain boolean · **Fixed 2026-09-09**
+
+The second harness run's own headline, and it is a real one:
+
+> "a locked prose value silently constrains a machine-scored boolean, and the
+> record will attribute the call to the forecaster."
+
+The chain: `overview_comparison` arrives locked, saying "Largely dry again.";
+the prompt requires prose and the `rain` boolean to agree; so `rain: false` is
+effectively pre-decided. The worker said its honest call was nearer 55 and set
+false anyway, to stay consistent with a sentence it could not edit.
+
+**That is the blend's own product being set by the model consensus.** The
+comparison is built in code from the models' MEAN, before the forecaster
+weighs anything — and the forecaster's departure from consensus is the entire
+reason a blend exists and is scored as a peer. Item 83 sharpened this by
+composing the rain phrase into a locked SENTENCE rather than a fragment that
+could be placed or omitted.
+
+Fixed in the prompt rather than the composition, because the composition is
+right: the sentence now says out loud that it describes the CONSENSUS, that
+the forecaster's own call may depart from it, that the way to depart is to
+publish the sentence unedited and make the call in `today_properties`, and
+that a genuine divergence gets one line in the Forecaster Confidence Notes
+naming what moved it.
+
+### Also confirmed on this run
+
+- **The four Overview defects from the first run are fixed.** The worker
+  reports length, clause placement and the drop rule *"individually decidable
+  and jointly satisfiable"* — which was the whole point. It adds that the
+  budget now has zero slack: 2 + 1 + 1 exactly fills the ceiling of four, so
+  "add nothing beyond those" is unreachable rather than merely tight.
+- `precipitation_probability_best_match` is **byte-identical to ECMWF's** at
+  all 30 hours, while their precipitation arrays differ 17-fold (8.7 mm
+  against 0.5 mm). Best Match is the top-ranked Day+0 rain caller and is not
+  independent of ECMWF on probability. Unexplained; worth a look upstream.
+- **`uv_index` has data from two models of five, and the two series are
+  identical.** So `uv_index_max` rests on one source while sitting in a
+  section that demands precision match agreement.
+- ECMWF Day+0 precipitation is 8.7 by hourly sum and 8.5 in the daily block.
+  Only ECMWF disagrees between the two; the other four match exactly. Second
+  run in a row this has been raised.
+
+### Checked and NOT defects
+
+- **ECMWF's hourly precip is not triple-counted.** Its afternoon arrives as
+  three runs of three identical values, which looks exactly like 3-hourly
+  accumulations repeat-filled into hourly slots — and would make 8.7 mm
+  really 2.9. It is not: Open-Meteo's own `precipitation_sum` for that day is
+  8.5, agreeing with the hourly sum, so the values are per-hour rates. UKMO
+  shows the same shape and the same agreement. The worker marked it uncertain
+  and did not act on it, which is the right handling of a plausible pattern
+  with no confirmation.
+- `yesterday_rain: true` beside "Largely dry again." Third reader to call this
+  a contradiction. It is not — one asks whether measurable rain fell in any
+  hour, the other what kind of day it was. But three for three is no longer a
+  reader problem, and it belongs on the list with item 91's staleness as
+  packaging that misleads while being literally correct.
