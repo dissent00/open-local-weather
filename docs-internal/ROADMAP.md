@@ -8689,6 +8689,27 @@ and read timeouts alike, because `requests.ConnectTimeout` subclasses
 them in practice — a connect timeout fails long before the ceiling — but the
 outcome word alone does not.
 
+### The incident framing is already wrong, from row counts alone
+
+Read off the ledger 2026-09-08, and it needs no subtraction — one row per
+HTTP request means N rows for one run is N-1 failed attempts:
+
+| date | morning forecast | note |
+|---|---|---|
+| 2026-09-05 | 3 attempts | **before** the incident |
+| 2026-09-06 | 1 attempt | first day of the incident |
+| 2026-09-07 | 3 attempts | incident |
+| 2026-09-08 | 3 attempts | **after** the incident |
+
+So retries are not an incident artefact. The morning run needed two of them
+on an ordinary day before Google's outage and again on the day after it, and
+the one clean run of the four was during the outage itself. Whatever this
+is, "it only happens on bad days" is not it.
+
+What the counts still cannot say is WHY each attempt failed, or how long it
+took — which is the field that just got built, and the next scheduled run is
+the first to write it.
+
 ### Do not start the REWRITE yet
 
 The measurement is three failures during a provider incident. **The right
