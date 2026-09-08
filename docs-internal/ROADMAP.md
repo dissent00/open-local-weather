@@ -9899,6 +9899,41 @@ read closely."
 
 `pipeline.py` now applies the filter at the fourth site.
 
+### The leak wrote its own persistence into the record — STILL OPEN
+
+Filtering `verification_context` stops NEW contamination. It does not touch
+what the leak already produced: the notes the forecaster wrote **while it
+could see those scores**, which are stored and fed back as HISTORICAL NOTES.
+
+Measured 2026-09-09 over the 29 stored days, counting only
+`verification.dayN.note`, which is the field that actually reaches the prompt:
+
+**8 of 87 notes name a hidden model** — 5 the blend, 1 persistence,
+2 climatology. The sharpest is 2026-09-07, one day old:
+
+> "Day+0 (2026-09-07): ECMWF, ICON, Kenya Met, Best Match, and **OLW blend**
+> correctly verified the rain event, with ECMWF catching onset..."
+
+A forecaster reading that is being told its own blend was right, in prose,
+by itself. That is the loop the standing rule exists to keep open-circuit,
+arriving by a route no filter on the scores block can close.
+
+They age out of the 30-day window on their own, and the 2026-09-07 one
+persists for a month. Options, undecided — this needs a call because the
+honest ones cost stored content:
+
+- **Drop any note naming a hidden model when building HISTORICAL NOTES.**
+  Read-time, so the archive stays true; a gap reads as a gap, which this
+  codebase already prefers. Costs 8 notes' content.
+- Redact just the name. Cheap to write and hard to keep grammatical —
+  "ECMWF, ICON, Kenya Met, Best Match, and correctly verified" is worse than
+  nothing.
+- Do nothing and let them expire. Defensible only because the leak that
+  produced them is now closed, and it leaves the loop live for a month.
+
+Recommended: the first. Not done, because it discards stored content and that
+is the operator's call.
+
 ### What the worker did with it
 
 It noticed, quoted the contradiction, and **omitted `olw_blend` from its
