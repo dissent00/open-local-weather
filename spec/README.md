@@ -250,6 +250,42 @@ precisely how S1 went unnoticed, since the pipeline suite's `FakeLLMProvider`
 never called it and so could not see the seam it was meant to cover. When you
 add a fake provider, make it call the hook exactly as a real one does.
 
+### A bug fix ships with a vector case
+
+**A fix to shared logic needs a vector case that reproduces the bug, not only
+a unit test in the language the bug was found in.** The unit test proves the
+fix. The vector case is the only artefact that proves the OTHER implementation
+got it too.
+
+This is not hypothetical. Three divergences were found on 2026-09-08, all
+invisible to both suites:
+
+- `weekdayName` did not exist in Dart at all, while item 61 read
+  "vector-locked on both sides" — `extended_trend.json` passes
+  `last_day_name` as an INPUT STRING, so the vector exercised the banding and
+  never the name.
+- `review.dart` never received the newcomer fix. Python has a careful
+  regression test for it; no vector case had a zero-check model, so `dart
+  test` had nothing to fail on, and the app would have published "0 check(s)
+  per model — not enough to say anything" on the first day a model was added.
+- Item 85's sufficiency wording, same shape.
+
+The mechanism is the same each time and it is not carelessness: **a vector
+proves the cases someone chose, and the case that motivated a fix is exactly
+the one most likely to be missing.**
+
+Two corollaries:
+
+- **Watch the new case fail against the unported code**, then fix. A case
+  added once both sides are already correct proves nothing about whether the
+  port would have drifted.
+- **A vector whose INPUT is the thing under test says nothing about how that
+  input is produced.** `last_day_name` is the example. When a fix touches a
+  value the vector accepts rather than computes, widen the vector — another
+  case will not reach it.
+
+See `docs-internal/ROADMAP.md` item 88.
+
 ### When a change has no Dart counterpart yet
 
 Some Python has no port and should not have one — HTML publishing, email,

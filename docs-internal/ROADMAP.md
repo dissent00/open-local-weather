@@ -8442,6 +8442,22 @@ hash that will vary), item 28 (the removal trigger), item 68.
 
 ## 79. A provider outage deserves a longer wait than a hiccup · **Planned**
 
+> **Measured 2026-09-08, and this item is the one that fits.** A failed 15:01
+> refresh spent four attempts, every one `http_503`, at 4.228 / 4.564 /
+> 67.593 / 5.429 s — the first failure recorded with outcomes attached, from
+> the per-attempt record item 80 built. No timeout, no ceiling-tracking, no
+> hang: the service answered every time and refused every time.
+>
+> That is exactly the shape this item's longer backoff is for, and the total
+> spread the current schedule covers is about 3.5 minutes (30 + 60 + 120 s of
+> waiting). The 67.6 s refusal is worth noting on its own — a 503 that takes
+> over a minute to arrive is a service under load rather than one rejecting
+> cheaply, which argues the wait should be longer still.
+>
+> Do not size the new backoff off this one run. It is one outage on one
+> evening; the point here is that the failure now arrives labelled, so the
+> next few can be counted instead of inferred.
+
 Raised by the operator 2026-09-07, after the 2026-09-06 evening refresh
 aborted: *"if the API is returning 503 then we should probably back way off
 for the last try or two."*
@@ -8734,6 +8750,46 @@ and read timeouts alike, because `requests.ConnectTimeout` subclasses
 `Timeout` (checked). Those are different failures. The elapsed time separates
 them in practice — a connect timeout fails long before the ceiling — but the
 outcome word alone does not.
+
+### First live data, 2026-09-08 evening — and it is not this item's failure
+
+The measurement built at the top of this item ran on a real runner for the
+first time, on a failed 15:01 refresh. Four attempts:
+
+| at | outcome | elapsed |
+|---|---|---|
+| 15:01:46 | `http_503` | 4.228 s |
+| 15:02:21 | `http_503` | 4.564 s |
+| 15:03:25 | `http_503` | **67.593 s** |
+| 15:06:33 | `http_503` | 5.429 s |
+
+The runner log agrees line for line, and the rows are internally consistent
+with the backoff schedule — each gap is the recorded elapsed plus the next
+delay, to within 0.6 s (34/34.2, 65/64.6, 188/187.6). The
+`forecast.yml` ledger-commit step also ran on a real runner for the first
+time and worked: commit `296ce3e`, from the failed job.
+
+**Not a hang. Not a timeout. Four refusals.** The 90.1 s ceiling-tracking
+cluster this item is built on did not appear at all, so this is **item 79's
+failure — a service refusing to accept work — and not this item's.**
+
+**The 67.6 s refusal is the row nothing could have produced before.** A 503
+that took over a minute to arrive is not what "503" suggests, and it is not
+at any ceiling. Note carefully what the OLD ledger could and could not have
+said here: the durations were recoverable by subtracting the known backoff
+from consecutive start timestamps, and that arithmetic would have got 68 s.
+What it could never have supplied is the OUTCOME — and the outcome is the
+whole routing decision between items 79 and 80. A 68-second attempt read as
+a hung socket sends you to submit-and-poll; read as a slow refusal it sends
+you to a longer backoff.
+
+It also weakens an assumption sitting under this item's analysis: that a long
+attempt is a hung one. This attempt was long, answered, and nowhere near the
+deadline.
+
+**One run, and one failure mode.** It says nothing about whether the 90.1 s
+hangs recur. Both patterns are now on the record with outcomes attached,
+which is what the next few weeks are for.
 
 ### The incident framing is already wrong, from row counts alone
 
@@ -9472,3 +9528,88 @@ that would make this a lookup), item 45 (the observation ladder, and the
 cross-check pattern a satellite product would later follow), item 83 (which
 needs a sky label), item 67 (why a stale point observation does not belong in
 a forecast section), item 73, item 77 (the harness that found it).
+
+---
+
+## 88. A fix ships with a vector case, or the other language never gets it · **Rule written 2026-09-08; the sweep is Planned**
+
+Three divergences were found on 2026-09-08, all the same shape, none caught
+by either test suite:
+
+| what | how long it had been wrong |
+|---|---|
+| `weekdayName` did not exist in Dart at all | since item 61 shipped, 2026-09-05 |
+| `review.dart` never got the newcomer fix — no `checks > 0` filter, no `unscored` clause | months |
+| item 85's sufficiency wording | since the wording was written |
+
+Every one was invisible for the same reason, and it is not carelessness.
+
+### The mechanism
+
+**A vector proves the cases someone chose, and the case that motivated a fix
+is exactly the one most likely to be missing.** The fix gets a Python unit
+test — written naturally, in the language the bug was found in — and the
+vector file keeps whatever cases it already had. Both suites stay green. The
+port silently keeps the old behaviour.
+
+Concretely: the newcomer fix has a careful Python regression test
+(`test_a_newly_added_model_does_not_erase_the_existing_record`) whose
+docstring explains the incident in full. **No vector case had a zero-check
+model**, so `dart test` had nothing to fail on, and the app would have
+published "0 check(s) per model — not enough to say anything" on the first
+day a model was added while the site published the honest figure.
+
+`weekdayName` is the sharper version: `spec/vectors/extended_trend.json`
+passes `last_day_name` as an INPUT STRING, so the vector exercised the
+banding and never the name. Item 61 has read "vector-locked on both sides"
+since 2026-09-05 and half the function was not ported.
+
+### The rule
+
+**A bug fix in shared logic ships with a vector case that reproduces the
+bug**, not only a unit test in the language the bug was found in. The unit
+test proves the fix; the vector case proves the OTHER implementation has it
+too, and it is the only artefact that does.
+
+Two corollaries worth stating, because both were violated above:
+
+- **Watch the vector case fail against the unported code.** A case added
+  after both sides are correct proves nothing about whether the port would
+  have drifted. Both cases added on 2026-09-08 were run against the old Dart
+  first and did fail.
+- **A vector whose INPUT is the thing under test proves nothing about how
+  that input is produced.** `last_day_name` as a string is the example. When
+  a fix touches a value the vector accepts rather than computes, the vector
+  needs widening, not another case.
+
+### Where it lives, and why not only here
+
+`spec/README.md` is what someone reads before touching shared logic, and it
+already carries the invariants table and the "when a change has no Dart
+counterpart yet" test. This rule belongs beside those. `AGENTS.md`'s "do not
+trust your own diff" section already tells you to sweep arithmetic across the
+boundary; this is the same instinct applied to behaviour rather than numbers,
+and it is cheaper — a vector case is a few lines and it runs forever.
+
+### What this does NOT ask for
+
+Not a vector for every fix. Storage, I/O, CLI, publishing and met-service
+parsing have no Dart counterpart and should not grow one — `spec/README.md`
+already names them. The rule binds only where a function exists on both
+sides, which is exactly where a silent divergence is possible.
+
+### A cheap check worth having
+
+Nothing today can tell you that `review.dart` and `review.py` disagree. A
+test that walks the exported vector files and asserts each names every
+public function of its module would not have caught these either. What would:
+a periodic diff of the two implementations' behaviour on generated input —
+the same sweep `AGENTS.md` prescribes for arithmetic, applied to the string
+outputs. `data_sufficiency` is a string built from counts, and a few thousand
+generated records would have found all three of these in one run. Worth
+building only if a fourth divergence appears; the rule above is the cheap
+half and should come first.
+
+Related: item 61 and item 85 (the two whose ports were incomplete), item 77
+(the harness, which found the prompt half of the same problem), and
+`spec/README.md`, which is where the rule should be written down.
