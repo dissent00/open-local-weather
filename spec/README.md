@@ -228,9 +228,20 @@ the bug from the table above repeating itself.
 | S4 | A provider that never reports a request is **reported loudly** | `test_a_provider_that_ignores_the_hook_is_reported_loudly` | app-side: `ForecastRunner` owns construction, so no provider can be substituted |
 | S5 | A failure **after** the request still counts | covered by S3 | `a failed model call still counts, because it was made` (app) |
 | S6 | A failure **before** the request costs nothing | `record_attempt` is unreachable until the prompt is built | `weather-data failure costs the user nothing from their daily limit` (app) |
+| S7 | The completing write **cannot move what the cap counts** | `test_completing_a_row_does_not_change_what_the_cap_counts` | n/a — Dart never writes this ledger (see below) |
+| S8 | An attempt records **what it did and how long it took** | `test_each_attempt_records_what_it_did_and_how_long_it_took` | n/a — same reason |
 
 Files: `tests/test_spend_seam.py`, `app/olw_core/test/spend_seam_test.dart`, and
 `test/forecast_runner_test.dart` in the Ensemble repo.
+
+**S7 and S8 have no Dart column, and that is structural rather than owed.**
+`spend.dart` is the DECISION half only — it says so in its own header — and
+the storage half belongs to each surface. The pipeline's ledger is a committed
+JSON file that Dart never reads and never rewrites, so the two fields added
+for S8 cannot be stripped by a Dart round-trip. That is why the change needed
+no vector and no Dart edit: it was checked, not assumed. If the app ever grows
+its own per-attempt timing, it is a new invariant against its own store, not a
+port of these.
 
 **Test doubles must honour the hook.** A stub provider that skips
 `before_attempt` silently exempts every test using it from the cap — which is

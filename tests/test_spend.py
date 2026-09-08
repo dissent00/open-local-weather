@@ -14,6 +14,7 @@ from openlocalweather.spend import (
     SpendCapExceeded,
     SpendRecord,
     calls_in_window,
+    complete_attempt,
     ledger_path,
     read_ledger,
     record_attempt,
@@ -191,3 +192,117 @@ def test_the_health_check_records_its_llm_call(monkeypatch, tmp_path):
     from openlocalweather.spend import calls_in_window, read_ledger
 
     assert calls_in_window(read_ledger(tmp_path), datetime.now(timezone.utc)) == 1
+
+
+# --- The completing write: outcome and duration per attempt -----------------
+#
+# The count is still written BEFORE the call; these cover the SECOND write
+# that fills in what the call did. Roadmap item 80 is the why: every latency
+# question this project has asked was answered by subtracting something
+# unmeasured from something else, and got item 66's timeout reading wrong
+# doing it.
+
+
+def test_completing_a_row_does_not_change_what_the_cap_counts(tmp_path):
+    """The diagnostic must not be able to alter the guard it rides on.
+
+    The completing write is a read-modify-write of the same file the cap is
+    computed from. If it could drop, duplicate or re-time a row it would move
+    the count — turning a measurement into a way to spend more.
+    """
+    _attempt(tmp_path, NOW, max_calls=3)
+    before = read_ledger(tmp_path)
+
+    complete_attempt(tmp_path, at=before[0].at, outcome="http_200", elapsed_s=1.5)
+
+    after = read_ledger(tmp_path)
+    assert len(after) == len(before) == 1
+    assert after[0].at == before[0].at
+    assert calls_in_window(after, NOW) == calls_in_window(before, NOW)
+
+
+def test_the_completing_write_fills_the_row_it_opened(tmp_path):
+    _attempt(tmp_path, NOW, max_calls=3)
+    at = read_ledger(tmp_path)[0].at
+
+    complete_attempt(tmp_path, at=at, outcome="timeout", elapsed_s=90.1)
+
+    row = read_ledger(tmp_path)[0]
+    assert row.outcome == "timeout"
+    assert row.elapsed_s == 90.1
+
+
+def test_it_completes_only_the_row_it_was_given(tmp_path):
+    """Three attempts, one completed — the other two stay open."""
+    for minute in range(3):
+        _attempt(tmp_path, NOW + timedelta(minutes=minute), max_calls=10)
+    rows = read_ledger(tmp_path)
+
+    complete_attempt(tmp_path, at=rows[1].at, outcome="http_503", elapsed_s=0.4)
+
+    outcomes = [r.outcome for r in read_ledger(tmp_path)]
+    assert outcomes == [None, "http_503", None]
+
+
+def test_an_incomplete_row_is_the_signal_that_the_process_died(tmp_path):
+    """No outcome means the second write never happened.
+
+    That is the whole point of writing in two halves rather than once at the
+    end: a row with a start and no finish says the attempt left and nothing
+    came back, which a single write after the fact could not distinguish from
+    an attempt that was never made.
+    """
+    _attempt(tmp_path, NOW, max_calls=3)
+
+    row = read_ledger(tmp_path)[0]
+    assert row.outcome is None
+    assert row.elapsed_s is None
+
+
+def test_a_row_that_was_never_opened_is_reported_not_invented(tmp_path, capsys):
+    """Completing a row that is not there must not append one.
+
+    An appended row would be a call that was never made, counted against the
+    cap. Refusing silently would hide a wiring bug, so it says so instead.
+    """
+    _attempt(tmp_path, NOW, max_calls=3)
+    before = ledger_path(tmp_path).read_text()
+
+    complete_attempt(
+        tmp_path, at=NOW - timedelta(days=400), outcome="http_200", elapsed_s=1.0
+    )
+
+    assert ledger_path(tmp_path).read_text() == before, "the ledger is untouched"
+    assert "WARNING" in capsys.readouterr().err
+
+
+def test_rows_written_before_this_existed_still_read(tmp_path):
+    """Every row on the real ledger predates these two fields."""
+    path = ledger_path(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        '{"calls": [{"at": "2026-08-21T11:00:00+00:00", "provider": "p",'
+        ' "model": "m", "purpose": "forecast"}]}'
+    )
+
+    row = read_ledger(tmp_path)[0]
+    assert row.outcome is None
+    assert row.elapsed_s is None
+
+
+def test_an_open_row_serialises_without_the_fields_at_all(tmp_path):
+    """Absent, not null — because every write rewrites the whole file.
+
+    `record_attempt` prunes and rewrites all of it, so emitting explicit
+    nulls would add two lines to every historical row the next time the
+    pipeline runs. The ledger is committed, so that is a diff on hundreds of
+    lines that means nothing.
+    """
+    assert SpendRecord(
+        at=NOW, provider="p", model="m", purpose="forecast"
+    ).to_json() == {
+        "at": NOW.isoformat(),
+        "provider": "p",
+        "model": "m",
+        "purpose": "forecast",
+    }

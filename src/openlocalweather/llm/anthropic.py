@@ -36,6 +36,13 @@ import requests
 from pydantic import BaseModel, ValidationError
 
 from openlocalweather.llm.gemini import LLMResponseError
+from openlocalweather.llm.provider import (
+    OUTCOME_ERROR,
+    OUTCOME_TIMEOUT,
+    AfterAttempt,
+    http_outcome,
+    report_outcome,
+)
 from openlocalweather.llm.schema import to_strict_json_schema
 
 T = TypeVar("T", bound=BaseModel)
@@ -80,6 +87,7 @@ class AnthropicProvider:
         max_tokens: int = DEFAULT_MAX_TOKENS,
         temperature: float | None = None,
         before_attempt: Callable[[], None] | None = None,
+        after_attempt: AfterAttempt | None = None,
     ):
         if not api_key:
             raise ValueError("AnthropicProvider requires a non-empty api_key.")
@@ -99,6 +107,9 @@ class AnthropicProvider:
         # counts calls, not forecasts. Raising from this hook aborts the retry
         # loop, which is the correct response to "you are out of budget".
         self.before_attempt = before_attempt
+        # The other half: called after each request resolves, with what it
+        # did and how long it took. See AfterAttempt in provider.py.
+        self.after_attempt = after_attempt
 
     @property
     def endpoint(self) -> str:
@@ -115,15 +126,24 @@ class AnthropicProvider:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             if self.before_attempt is not None:
                 self.before_attempt()
+            started = time.monotonic()
             try:
                 resp = requests.post(
                     self.endpoint, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S
                 )
+                report_outcome(self.after_attempt, http_outcome(resp.status_code), started)
                 if resp.status_code not in RETRYABLE_STATUS_CODES:
                     return resp
                 last_exc = LLMResponseError(f"Anthropic returned HTTP {resp.status_code}")
                 delay = _retry_after_seconds(resp) or RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+            # Timeout before RequestException: it is a subclass, and it is the
+            # one this measurement exists to separate from the rest.
+            except requests.Timeout as e:
+                report_outcome(self.after_attempt, OUTCOME_TIMEOUT, started)
+                last_exc = e
+                delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
             except requests.RequestException as e:
+                report_outcome(self.after_attempt, OUTCOME_ERROR, started)
                 last_exc = e
                 delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
 

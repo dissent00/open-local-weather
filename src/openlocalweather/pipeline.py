@@ -119,7 +119,7 @@ from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
 from openlocalweather.store import prompt_archive
 from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
-from openlocalweather.spend import assert_capacity, record_attempt
+from openlocalweather.spend import assert_capacity, complete_attempt, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
@@ -309,21 +309,37 @@ def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
     assert_capacity(deps.data_dir, max_calls=location.max_llm_calls_per_24h)
 
     recorded: list[int] = []
+    # The row _record opened and _complete is owed. Held here rather than
+    # returned through the hook so `before_attempt` keeps the signature every
+    # third-party provider already implements.
+    pending: dict[str, datetime | None] = {"at": None}
 
     def _record() -> None:
+        # Cleared first, so a refusal below cannot leave the PREVIOUS row
+        # eligible to be completed with this attempt's outcome.
+        pending["at"] = None
+        at = datetime.now(timezone.utc)
         used = record_attempt(
             deps.data_dir,
             provider=type(deps.llm_provider).__name__,
             model=getattr(deps.llm_provider, "model", "unknown"),
             purpose=purpose,
             max_calls=location.max_llm_calls_per_24h,
+            now=at,
         )
+        pending["at"] = at
         recorded.append(used)
         print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
+
+    def _complete(outcome: str, elapsed_s: float) -> None:
+        complete_attempt(
+            deps.data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
+        )
 
     # Set rather than passed to the constructor: the provider is built in
     # cli.py, which has no reason to know where the ledger lives.
     deps.llm_provider.before_attempt = _record
+    deps.llm_provider.after_attempt = _complete
 
     def _verify_recorded() -> None:
         """Complain if the provider went and called a model without saying so.

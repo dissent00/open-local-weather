@@ -75,7 +75,7 @@ from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
 from openlocalweather.models import RunDegradation
-from openlocalweather.spend import record_attempt
+from openlocalweather.spend import complete_attempt, record_attempt
 from openlocalweather.store.log_store import (
     list_log_dates,
     make_log_lookup,
@@ -451,17 +451,31 @@ def _attach_spend_hook(provider, data_dir, *, purpose: str, max_calls: int) -> N
     the reconciliation that found it.
     """
 
+    # The row _record opened and _complete is owed. See pipeline.py for why
+    # this is carried alongside rather than returned through the hook.
+    pending: dict[str, datetime | None] = {"at": None}
+
     def _record() -> None:
+        pending["at"] = None
+        at = datetime.now(timezone.utc)
         used = record_attempt(
             data_dir,
             provider=type(provider).__name__,
             model=getattr(provider, "model", "unknown"),
             purpose=purpose,
             max_calls=max_calls,
+            now=at,
         )
+        pending["at"] = at
         print(f"LLM call {used}/{max_calls} in the last 24h")
 
+    def _complete(outcome: str, elapsed_s: float) -> None:
+        complete_attempt(
+            data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
+        )
+
     provider.before_attempt = _record
+    provider.after_attempt = _complete
 
 
 def _run_check_health(args: argparse.Namespace) -> int:

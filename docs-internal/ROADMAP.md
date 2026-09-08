@@ -8478,7 +8478,7 @@ outcome).
 
 ---
 
-## 80. The synchronous call may be the wrong shape · **Planned**
+## 80. The synchronous call may be the wrong shape · **Measurement built, rest Planned**
 
 Raised by the operator 2026-09-07, from two observations: that 60s looked
 "like a standard HTTP timeout", and a link to Gemini's background execution
@@ -8633,7 +8633,60 @@ why, which is how the 60s reading went wrong the first time.
 > that is a bonus and not the point — and it should NOT be a reason to delay
 > the API migration.
 
-### Do not start this yet
+### Built 2026-09-08: the per-attempt record
+
+The approved half, and only that half. Each attempt's row is now written in
+two parts: `record_attempt` before the request as always, then
+`complete_attempt` filling in `outcome` and `elapsed_s` when it resolves.
+
+- **The count is still written first.** That guarantee is what makes the cap
+  honest and it did not move. The second write edits one row in place and
+  appends nothing — `calls_in_window` reads only `at`, which it never touches
+  — so a diagnostic cannot become a way to spend more. Pinned as S7 in
+  `spec/README.md`.
+- **An incomplete row is the finding, not a gap.** Both fields absent means
+  the attempt left and nothing came back, or the process died holding the
+  socket. A single write after the fact could not tell that apart from a call
+  that was never made.
+- **Outcomes are facts, not judgements**: `http_<code>` for any answer the
+  server gave, `timeout` for our own deadline expiring, `error` for other
+  transport failures. Vocabulary lives in `llm/provider.py`; the ledger stores
+  it opaquely so a new provider can add one without a storage change.
+- **Elapsed excludes the backoff.** Folding the retry schedule in would make
+  the ledger agree with whatever delay was configured — the circularity that
+  made the first reading of the 60s timeout wrong.
+- **No Dart change, and that was checked rather than assumed.** `spend.dart`
+  is the decision half only; the pipeline's ledger is a committed file Dart
+  never reads or rewrites, so the new fields cannot be stripped by a round
+  trip. No vector either — this is storage, and vectors cover computation.
+- Fields are omitted when unset rather than written as null, because every
+  write rewrites the whole committed file and nulls would churn every
+  historical row.
+
+**Driven against a real socket, not only mocks.** A local HTTP server, a real
+`GeminiProvider`, the real `_attach_spend_cap` and `_attach_spend_hook`
+wiring, and a real ledger file: 503/503/200 produced
+`http_503, http_503, http_200`, and a server that accepts a connection and
+never answers produced four `timeout` rows at **2.003s against a 2s ceiling**.
+That reproduces the production 90.1s signature exactly — ceiling plus a
+fraction — which is what a hung connection looks like and what a slow
+generation does not.
+
+### What this does NOT yet say
+
+The instrumentation exists; the evidence does not. Nothing here has run on a
+real GitHub runner or against Google, so **the success distribution is still
+unobserved** and "successes cluster at 40-78s" remains the inference it always
+was. Do not quote it as measured. Two weeks of ordinary running is what turns
+this from capability into an answer.
+
+One known limit, recorded so it is not re-derived: `timeout` covers connect
+and read timeouts alike, because `requests.ConnectTimeout` subclasses
+`Timeout` (checked). Those are different failures. The elapsed time separates
+them in practice — a connect timeout fails long before the ceiling — but the
+outcome word alone does not.
+
+### Do not start the REWRITE yet
 
 The measurement is three failures during a provider incident. **The right
 next step is more evidence, not a rewrite** — and the ledger now records

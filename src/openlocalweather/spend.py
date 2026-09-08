@@ -40,7 +40,8 @@ WHAT MAKES IT IRONCLAD RATHER THAN MERELY PRESENT.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+import sys
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -55,6 +56,11 @@ DEFAULT_MAX_LLM_CALLS_PER_24H = 10
 
 WINDOW = timedelta(hours=24)
 
+# Milliseconds. The ledger is committed, so full float repr would put
+# seventeen meaningless digits into a tracked file, and the questions this
+# field exists to answer are about tens of seconds.
+ELAPSED_PRECISION = 3
+
 
 class SpendCapExceeded(RuntimeError):
     """Raised instead of making a call that would exceed the cap.
@@ -68,7 +74,15 @@ class SpendCapExceeded(RuntimeError):
 
 @dataclass(frozen=True)
 class SpendRecord:
-    """One call attempt. Written before the attempt, never edited after."""
+    """One call attempt, written in two halves.
+
+    The first half — everything the cap needs — is written BEFORE the request
+    leaves, and that half is never edited. The second half says what the
+    request did, and can only be written after it has done it. Splitting the
+    row rather than writing it once at the end is what keeps both properties
+    at the same time: the count cannot be lost by a crash, and the outcome is
+    still recorded.
+    """
 
     at: datetime
     provider: str
@@ -77,13 +91,31 @@ class SpendRecord:
     # a health check without cross-referencing timestamps.
     purpose: str
 
+    # The second half. Both absent means the completing write never happened,
+    # which is itself the finding: the attempt left and nothing came back, or
+    # the process died holding the socket. A single write after the fact could
+    # not tell that apart from a call that was never made.
+    #
+    # Absent rather than null on purpose — see to_json.
+    outcome: str | None = None
+    elapsed_s: float | None = None
+
     def to_json(self) -> dict:
-        return {
+        d = {
             "at": self.at.isoformat(),
             "provider": self.provider,
             "model": self.model,
             "purpose": self.purpose,
         }
+        # Omitted when unset, not emitted as null. Every write rewrites the
+        # whole file (prune runs on the way in), so explicit nulls would add
+        # two lines to every historical row the next time the pipeline ran —
+        # a diff over the entire committed ledger that says nothing.
+        if self.outcome is not None:
+            d["outcome"] = self.outcome
+        if self.elapsed_s is not None:
+            d["elapsed_s"] = self.elapsed_s
+        return d
 
     @staticmethod
     def from_json(d: dict) -> SpendRecord:
@@ -92,6 +124,8 @@ class SpendRecord:
             provider=d.get("provider", ""),
             model=d.get("model", ""),
             purpose=d.get("purpose", ""),
+            outcome=d.get("outcome"),
+            elapsed_s=d.get("elapsed_s"),
         )
 
 
@@ -125,7 +159,9 @@ def _write_ledger(data_dir: str | Path, records: list[SpendRecord]) -> None:
                 "note": (
                     "Append-only record of LLM call attempts. Written BEFORE "
                     "each call so a crash cannot lose the count. The 24-hour "
-                    "total is recomputed from these entries, never stored."
+                    "total is recomputed from these entries, never stored. "
+                    "outcome/elapsed_s are filled in when the call returns; "
+                    "a row without them is one that never came back."
                 ),
                 "calls": [r.to_json() for r in records],
             },
@@ -229,3 +265,70 @@ def record_attempt(
     records.append(SpendRecord(at=now, provider=provider, model=model, purpose=purpose))
     _write_ledger(data_dir, records)
     return used + 1
+
+
+def complete_attempt(
+    data_dir: str | Path,
+    *,
+    at: datetime | None,
+    outcome: str,
+    elapsed_s: float,
+) -> None:
+    """Fills in what the attempt recorded at [at] actually did.
+
+    The second of the two writes. It exists because every latency question
+    this project has asked was answered by subtracting something unmeasured
+    from something else — job duration minus an unmeasured post-processing
+    time, or consecutive start timestamps minus a known backoff. That is how
+    the 60s timeout was read wrong the first time (item 66), and the reading
+    that replaced it rests on the same arithmetic.
+
+    WHY THIS CANNOT MOVE THE COUNT. It edits one row in place and appends
+    nothing: `calls_in_window` reads only `at`, which this never touches. A
+    diagnostic that could change what the cap counts would be a way to spend
+    more, so the safe property is structural rather than promised.
+
+    [outcome] is whatever vocabulary the provider layer uses (see
+    `llm/provider.py`); storage keeps it opaque so a new provider can add one
+    without a change here.
+
+    Does not raise on a missing row — a wiring bug must not turn a successful
+    forecast into a failed run — but says so loudly, because an appended row
+    would be a call that was never made, counted against the cap. It does NOT
+    otherwise catch: an unreadable ledger between the two writes is real
+    corruption, and this module fails closed on that everywhere else.
+    """
+    if at is None:
+        print(
+            "WARNING: an LLM attempt reported an outcome without having "
+            "recorded a start. Its duration is lost and the row it belongs "
+            "to cannot be identified.",
+            file=sys.stderr,
+        )
+        return
+
+    records = read_ledger(data_dir)
+
+    # Last match, not first. Timestamps are unique in practice — attempts are
+    # separated by seconds of network time and tens of seconds of backoff —
+    # but if two ever collide, the most recently appended is the one this
+    # call opened.
+    index = next(
+        (i for i in reversed(range(len(records))) if records[i].at == at), None
+    )
+    if index is None:
+        print(
+            f"WARNING: no spend ledger row recorded at {at.isoformat()} to "
+            f"complete with outcome {outcome!r}. Nothing was written — an "
+            f"appended row would be a call that never happened, counted "
+            f"against the cap.",
+            file=sys.stderr,
+        )
+        return
+
+    records[index] = replace(
+        records[index],
+        outcome=outcome,
+        elapsed_s=round(elapsed_s, ELAPSED_PRECISION),
+    )
+    _write_ledger(data_dir, records)

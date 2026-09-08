@@ -29,6 +29,7 @@ from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.spend import (
     SpendCapExceeded,
     calls_in_window,
+    complete_attempt,
     read_ledger,
     record_attempt,
 )
@@ -186,3 +187,148 @@ def test_a_provider_that_ignores_the_hook_is_reported_loudly(tmp_path, capsys):
     assert "WARNING" in err
     assert "SilentProvider" in err
     assert "NOT counted" in err
+
+
+# --- The other half of the seam: what the attempt did ------------------------
+#
+# `before_attempt` proves a request left. These prove the provider comes back
+# and says what happened to it, which is the measurement roadmap item 80 was
+# approved for: outcome and elapsed time per attempt, so the next latency
+# question is a query rather than an inference.
+
+
+def _paired_hooks(tmp_path, max_calls=10):
+    """Both halves of the wiring the pipeline installs, sharing one row."""
+    pending = {"at": None}
+
+    def _record():
+        pending["at"] = None
+        at = datetime.now(timezone.utc)
+        record_attempt(
+            tmp_path,
+            provider="GeminiProvider",
+            model="gemini-3.6-flash",
+            purpose="forecast",
+            max_calls=max_calls,
+            now=at,
+        )
+        pending["at"] = at
+
+    def _complete(outcome, elapsed_s):
+        complete_attempt(
+            tmp_path, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
+        )
+
+    return _record, _complete
+
+
+def test_each_attempt_records_what_it_did_and_how_long_it_took(tmp_path, monkeypatch):
+    """503, 503, 200 — three rows, and the ledger says which was which.
+
+    This is the distribution item 80 could only infer. Failures track
+    whatever ceiling exists; successes have never been observed directly,
+    because the ledger recorded only the START of an attempt.
+    """
+    calls = {"n": 0}
+
+    def fake_post(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            return _FakeResponse(503)
+        return _FakeResponse(200, {"candidates": [{"content": {"parts": [{"text": "{}"}]}}]})
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
+    record, complete = _paired_hooks(tmp_path)
+    provider = GeminiProvider(
+        api_key="k", model="m", before_attempt=record, after_attempt=complete
+    )
+    provider.generate("sys", "user", _TinySchema)
+
+    rows = read_ledger(tmp_path)
+    assert [r.outcome for r in rows] == ["http_503", "http_503", "http_200"]
+    assert all(r.elapsed_s is not None and r.elapsed_s >= 0 for r in rows), (
+        "every completed row carries a duration"
+    )
+
+
+def test_a_timeout_is_distinguishable_from_a_refusal(tmp_path, monkeypatch):
+    """The distinction the whole item turns on.
+
+    A hung connection cut at our own ceiling and a service refusing to accept
+    work are different failures with different fixes — item 80's polling
+    versus item 79's backoff. Both looked identical on the old ledger, which
+    recorded a start time and nothing else.
+    """
+    monkeypatch.setattr(
+        requests, "post", lambda *a, **k: (_ for _ in ()).throw(requests.Timeout("hung"))
+    )
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
+    record, complete = _paired_hooks(tmp_path)
+    provider = GeminiProvider(
+        api_key="k", model="m", before_attempt=record, after_attempt=complete
+    )
+    with pytest.raises(LLMResponseError):
+        provider.generate("sys", "user", _TinySchema)
+
+    assert [r.outcome for r in read_ledger(tmp_path)] == ["timeout"] * 4
+
+
+def test_a_connection_error_is_neither_a_timeout_nor_an_http_answer(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        requests,
+        "post",
+        lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError("refused")),
+    )
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
+    record, complete = _paired_hooks(tmp_path)
+    provider = GeminiProvider(
+        api_key="k", model="m", before_attempt=record, after_attempt=complete
+    )
+    with pytest.raises(LLMResponseError):
+        provider.generate("sys", "user", _TinySchema)
+
+    assert [r.outcome for r in read_ledger(tmp_path)] == ["error"] * 4
+
+
+def test_a_provider_that_never_finishes_the_row_still_counts_its_call(tmp_path):
+    """The completing write is optional; the counting one is not.
+
+    A third-party provider that only calls `before_attempt` stays correct
+    under the cap and simply leaves open rows behind. That is why an
+    unfinished row is not warned about the way an unrecorded call is — it is
+    the expected shape for a provider that does not measure itself.
+    """
+    record, _ = _paired_hooks(tmp_path)
+    record()
+
+    row = read_ledger(tmp_path)[0]
+    assert row.outcome is None
+    assert len(read_ledger(tmp_path)) == 1
+
+
+def test_the_duration_excludes_the_backoff_it_waited_afterwards(tmp_path, monkeypatch):
+    """Elapsed is the request, not the retry schedule.
+
+    Including the sleep would bake RETRY_BASE_DELAY_S into every failed
+    attempt's latency and make the ledger agree with whatever backoff was
+    configured — the same circularity that made the 60s reading wrong.
+    """
+    monkeypatch.setattr(requests, "post", lambda *a, **k: _FakeResponse(503))
+    slept = []
+    monkeypatch.setattr("time.sleep", lambda s: slept.append(s))
+
+    record, complete = _paired_hooks(tmp_path)
+    provider = GeminiProvider(
+        api_key="k", model="m", before_attempt=record, after_attempt=complete
+    )
+    with pytest.raises(LLMResponseError):
+        provider.generate("sys", "user", _TinySchema)
+
+    assert sum(slept) > 0, "the loop really did back off between attempts"
+    assert all(r.elapsed_s < 1.0 for r in read_ledger(tmp_path)), (
+        "a sub-second fake request is recorded as sub-second"
+    )
