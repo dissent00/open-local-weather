@@ -8220,13 +8220,59 @@ discipline this borrows), item 23, item 28.
 
 ---
 
-## 77. A prompt harness that asks which models to test against · **Planned**
+## 77. A prompt harness that asks which models to test against · **Planned — the manual form is now standing practice**
 
 Requested by the operator 2026-09-06. The harness used through items 73, 75
 and 76 was assembled by hand each time — render the system prompt, copy an
 archived user prompt, hand both to a worker model, read the prose. It works,
 it has already produced findings, and it is not repeatable by anyone who was
 not in the session that built it.
+
+> **Run the manual form at every prompt-touching seam, until this is built.**
+> Agreed with the operator 2026-09-08 after a run that paid for itself twice
+> over. It costs no LLM budget — no Gemini call, no spend-ledger row — so the
+> only cost is the reading.
+>
+> **The seams.** Not every commit. These:
+>
+> - Any change to `prompt.py`, before the vectors are regenerated. A prompt
+>   edit that cannot be exercised is a prompt edit nobody has read as a whole.
+> - Any change to `comparison.py` or anything else producing a phrase the
+>   prompt uses VERBATIM, because those defects are invisible in the code and
+>   only appear when something tries to write a sentence with them.
+> - Before closing any prompt-facing roadmap item.
+>
+> **The method**, until the real harness exists:
+>
+> 1. Render the system prompt for the real config with
+>    `build_system_prompt(load_location_config("config/location.yaml"), ...)`.
+> 2. Take an archived `user_prompt` from `data/prompts/`, preferring a day
+>    whose output is already known to be bad — the point is a before/after on
+>    a real failure, not a fresh sample.
+> 3. **Verify the flags reproduce production.** The archive stores
+>    `system_prompt_sha256`; rebuild the OLD prompt at the previous commit and
+>    find the flag combination whose hash matches. Guessing them tests a
+>    prompt production never uses. (2026-09-08: `ground_stations=True`,
+>    `local_bulletin=True`, `is_reissue=False`.)
+> 4. Hand both to a worker model that has been told NOTHING about what
+>    changed. The cold reading is the whole value; whoever made the edit is
+>    the worst judge of whether it lands.
+> 5. Ask for the narrative AND a compliance section naming anything
+>    ambiguous, self-contradictory, or impossible — with the instruction
+>    quoted. **Tell it not to smooth over an awkward result**: an ungrammatical
+>    sentence produced under protest is a finding, and a tidied one is not.
+>
+> **Triage every note before believing any of it.** The 2026-09-08 run
+> produced 15 notes: 6 real, 2 false, 7 not-defects. Both false ones came
+> from mis-pairing values across object boundaries in a 152k-character
+> payload — and the reviewer's own first regex made the identical error
+> before parsing the JSON properly. A worker's note is a lead, not a result.
+>
+> **What it found that nothing else did**, on one run: a grammar rule banning
+> a sentence another rule required, two check counts for one lead time
+> differing by 16, a payload whose boolean contradicts its own prose, and a
+> ban whose stated reason is false for three of the four things it bans. It
+> also caught a defect introduced by the previous day's own commit, twice.
 
 ### What it has to do that reading three outputs does not
 
@@ -9299,41 +9345,91 @@ false for three of the four things it bans, and a careful reader that follows
 the REASON rather than the LIST will report them. That is precisely what
 happened.
 
-### This project has already learned this lesson once
+### The first draft of this item said "narrow them away". That was wrong
 
-`PROMPT_COMPARISON_FIELDS` exists because a run handed `yesterday_high_c` and
-`wind_delta_kmh` wrote "against yesterday's 30.4C" and "a drop of 11 km/h" in
-the sentence after the rule forbidding both. Its comment records the outcome:
+*Corrected 2026-09-08 on the operator's objection, and the objection is
+right.* The draft reached for the `PROMPT_COMPARISON_FIELDS` precedent —
+"the cheapest way to delete a rule is to delete the temptation" — and that
+precedent does not transfer. What was deleted there was **derived operands
+the model was told not to recompute**: `yesterday_high_c` and
+`wind_delta_kmh` carried nothing the label did not already carry, so removing
+them cost the forecast nothing.
 
-> "Moving that rule to the front of the section did not fix it. Deleting the
-> fields did. A rule cannot win against a payload that supplies its own
-> counter-example, and the cheapest way to delete a rule is to delete the
-> temptation."
+Dew point, visibility and cloud cover are not that. They are independent
+measurements carrying information **nothing else in this pipeline supplies**,
+and METARs will always have them. The operator's question is the right one:
+are they useful now, or is the work to USE them rather than hide them?
 
-The METAR block is the same shape and the same fix: **narrow what the prompt
-is shown**, rather than adding a firmer ban.
+### Three of them answer questions already open
 
-### What is genuinely wanted from that block, and what is not
+- **Cloud.** Item 65 states the gap: "The forecast predicts `cloud_cover`;
+  nothing observes it", and reaches for satellite while warning that
+  "brightness temperature is not cloud cover". A METAR reports FEW/SCT/BKN/OVC
+  with base heights — a direct cloud observation, from a ceilometer and an
+  observer, not a proxy needing derivation. It is a point at an airport rather
+  than an area, and its cover categories are not percentages, so it does not
+  drop straight into a `cloud_cover` comparison. It is still far cheaper than
+  the satellite path and it exists today.
+- **Fog.** Item 84 lists fog as absent entirely. Visibility plus the present-
+  weather group is how fog is actually observed; it is not a derived quantity
+  and no model in this stack forecasts it.
+- **Moisture, for the call the prompt already asks for.** The INSTABILITY AND
+  THUNDER passage tells the forecaster that "high CAPE with modest moisture
+  gives storms that are heard and seen but drop little or nothing". Dew point
+  IS the moisture measure in that sentence, and the forecaster is currently
+  asked to make the call without it.
 
-Not a deletion — the block earns its place. The worker used the observation's
-cumulonimbus report as corroboration for the models' overnight CAPE, which is
-a real use and the kind of reasoning the pipeline wants. `temp`, `wspd`,
-`wdir`, `obsTime` and the cloud COVER are all legitimately in play.
+**This file already treats cloud as decisive and throws it away.**
+`metar.py`'s own header records the case that justified reading rain and not
+only thunder: a day with "cumulonimbus and a 32 °C -> 22 °C outflow drop, and
+NO `TS` group anywhere". The reasoning turned on the cloud group. The parser
+keeps `thunder`, `precipitation` and `onset`, and discards the clouds array,
+`dewp` and `visib` — so the evidence that settled the argument is not
+available to the next argument.
 
-The question is narrower: does the forecaster need `dewp`, `visib`, cloud
-`base` and `rawOb`, or are they four fields riding along because the block is
-passed through unfiltered? A `PROMPT_METAR_FIELDS` tuple beside the existing
-one answers it, and `rawOb` is the interesting case — it is the whole
-observation in one string and cannot be partially withheld.
+### The real reason a ban is wanted, which is not the one written down
+
+None of that makes reporting them in a forecast correct. A METAR is a **point
+observation at one airport at one hour**, and the sections it would land in
+are about the day ahead. "Visibility over 10 km" in a forecast is item 67's
+complaint exactly — narrating what is already over — and three hours stale by
+the time anyone reads it.
+
+So the ban's SHAPE is defensible and its stated REASON is false. Those are
+different problems and only one of them is urgent.
+
+### What this item actually asks for
+
+Not a narrowing, and not a licence. A decision per variable, which is item
+84's register doing its job:
+
+1. **Does it become an observed variable** — parsed into `StationWeather`,
+   stored on `DailyActual`, given a day-level meaning, and eventually a
+   day-over-day label? That is the item 65 path for cloud, and it is the
+   honest answer for fog.
+2. **Or does it stay out**, with the real reason written down — a stale point
+   observation is not a forecast — rather than the false one?
+
+Cloud is the one to take first, because item 65 wants it, item 83 needs a sky
+label to stop "much like yesterday" overclaiming, and the operator has said
+cloud data is coming into the system anyway. Doing it from METARs is a
+smaller change than the satellite work item 65 contemplates, and the two are
+not exclusive: a station-observed sky is a point truth that a satellite
+product would later be cross-checked against, which is exactly item 45's
+pattern.
 
 ### Then fix the rule to match
 
-Whatever survives the filter, the ban's LIST and its REASON must stop
-disagreeing. Either a variable is absent, in which case the existing
-rationale covers it, or it is present and withheld for a different reason —
-that a three-hour-old point observation is not a forecast — which is a
-different sentence and should be written as one.
+Whichever way each variable goes, the ban's LIST and its REASON must stop
+disagreeing, and that fix is cheap and independent of everything above.
+Either a variable is absent, in which case the existing rationale covers it,
+or it is present and withheld because a stale point observation is not a
+forecast — a different sentence, which should be written as one. Do that
+first; it costs a prompt edit and stops a careful reader reasoning from a
+false premise in the meantime.
 
-Related: item 45 (the observation ladder this block feeds), item 73 (pare the
-prompt, by category), item 84 (a register would list which of these the
-forecaster may name), item 77 (the harness), item 83.
+Related: item 65 (the observed cloud this could supply), item 84 (the register
+that would make this a lookup), item 45 (the observation ladder, and the
+cross-check pattern a satellite product would later follow), item 83 (which
+needs a sky label), item 67 (why a stale point observation does not belong in
+a forecast section), item 73, item 77 (the harness that found it).
