@@ -98,6 +98,47 @@ def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[
     return [m for m in scored_models(local_bulletin_model_id) if m not in hidden]
 
 
+# Prose the forecaster used for a hidden model back when it could see one.
+#
+# The ids alone are not enough: these notes are written by the LLM, in
+# English, so "OLW blend" and "the blend" appear where "olw_blend" never
+# does. Measured against the real record 2026-09-09 — of the 8 contaminated
+# notes, 5 name the blend and every one of those five spells it out in prose.
+#
+# DELIBERATELY BROAD, and the asymmetry is the point. "climatological
+# normals" in a note about the weather will trip this and cost one note; a
+# missed mention keeps open the loop the whole rule exists to prevent. One
+# note is the cheaper loss, so this over-matches on purpose.
+_HIDDEN_MODEL_ALIASES = ("olw blend", "our blend", "the blend", "blended call")
+
+
+def note_names_a_hidden_model(note: str | None, local_bulletin_model_id: str = "") -> bool:
+    """Whether a stored, LLM-written note mentions a model the forecaster is
+    not shown — so that the note can be dropped before it is fed back.
+
+    THE LEAK SEEDED THE NOTES IT IS FED. Filtering the scores block stops new
+    contamination and does nothing about the notes written while the
+    forecaster could see those scores: 8 of 87 in the record on 2026-09-09,
+    including one that tells it its own blend called a rain event correctly.
+    That is the loop arriving as prose, where no filter on a scores block can
+    reach it.
+
+    Read-time rather than a rewrite of the log, so the archive stays true to
+    what was actually written.
+    """
+    if not note:
+        return False
+
+    hidden = set(scored_models(local_bulletin_model_id)) - set(
+        models_visible_to_the_forecaster(local_bulletin_model_id)
+    )
+    haystack = note.lower()
+
+    return any(h.replace("_", " ") in haystack or h in haystack for h in hidden) or any(
+        alias in haystack for alias in _HIDDEN_MODEL_ALIASES
+    )
+
+
 # Which lead times get independently tracked and scored. Day+0 is verified
 # against hourly data (has onset timing); Day+3/Day+7 are verified against
 # daily aggregates only (no onset timing available at that range, by design,

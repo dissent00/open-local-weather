@@ -2562,3 +2562,84 @@ def test_the_verification_block_hides_the_blend_and_the_baselines_too(tmp_path):
     for hidden in (BLEND_MODEL_ID, *BASELINE_MODEL_IDS):
         assert hidden not in user_prompt, f"the forecaster can see {hidden}'s scores"
         assert hidden not in system_prompt
+
+
+def contaminated_provider() -> FakeLLMProvider:
+    """A provider whose verification note names the blend, the way the real
+    forecaster's notes did while it could see the blend's scores."""
+    response = FakeLLMProvider()._default_response()
+    response.verification_notes = [
+        VerificationNote(
+            lead_time_days=0,
+            note=(
+                "Day+0: ECMWF, ICON, Kenya Met, Best Match, and OLW blend "
+                "correctly verified the rain event, with ECMWF catching onset."
+            ),
+        )
+    ]
+    return FakeLLMProvider(response)
+
+
+def test_a_note_naming_a_hidden_model_never_comes_back_as_context(tmp_path):
+    """The leak seeded the notes it is fed, and closing it does not undo that.
+
+    Measured 2026-09-09 across the real stored record: 8 of 87 notes that
+    reach HISTORICAL NOTES name a hidden model, 5 of them the blend. The
+    2026-09-07 one tells the forecaster its own blend called the rain event
+    correctly — the loop models_visible_to_the_forecaster exists to keep
+    open, arriving as prose rather than as a score, where no filter on the
+    scores block can reach it.
+
+    Dropped at READ time, not rewritten in the log: the archive stays true to
+    what was written, and a gap reads as a gap.
+    """
+    # One contaminated day and one clean one, so the test can show the filter
+    # is SELECTIVE. Dropping every note would satisfy a test that only looked
+    # for the bad string.
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 11), dry_run=False
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+
+    system_prompt, user_prompt = llm.calls[-1]
+    # GUARD THE GUARD, and it is not decoration: the first version of this
+    # test ran one day and then checked the next, where no note has been
+    # written yet, so it passed against an empty block. Same failure as the
+    # three tests that let the original leak through for weeks.
+    assert "HISTORICAL NOTES" in user_prompt
+    assert "Rain call was accurate." in user_prompt, (
+        "the clean note was dropped too — this is a filter, not a delete"
+    )
+
+    assert "OLW blend" not in user_prompt
+    assert BLEND_MODEL_ID not in user_prompt
+    assert "catching onset" not in user_prompt, (
+        "the note was redacted in place rather than dropped; a half-sentence "
+        "is worse than a gap"
+    )
+
+
+def test_a_re_issue_drops_the_contaminated_note_too(tmp_path):
+    """Both pipelines build HISTORICAL NOTES, and last time this rule broke
+    it was because only run_daily_pipeline had the filter AND only
+    run_daily_pipeline had the test. Same shape, so the same pair of tests."""
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 11), dry_run=False
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
+
+    llm = FakeLLMProvider()
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False
+    )
+
+    system_prompt, user_prompt = llm.calls[-1]
+    assert "HISTORICAL NOTES" in user_prompt
+    assert "Rain call was accurate." in user_prompt, "the clean note was dropped too"
+
+    assert "OLW blend" not in user_prompt
+    assert BLEND_MODEL_ID not in user_prompt

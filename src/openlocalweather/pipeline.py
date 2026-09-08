@@ -104,6 +104,7 @@ from openlocalweather.defaults import (
     MODELS,
     WEEKLY_BATCH_WEEKDAY,
     models_visible_to_the_forecaster,
+    note_names_a_hidden_model,
     scored_models,
 )
 from openlocalweather.extract import (
@@ -1181,6 +1182,23 @@ def run_daily_pipeline(
     )
 
     # --- Step 4: historical notes context for the LLM ---
+    # The leak seeded the notes it is fed — item 90. Filtering the scores
+    # block stops NEW contamination and does nothing about the notes written
+    # while the forecaster could see those scores; one of them tells it its
+    # own blend called a rain event correctly.
+    #
+    # DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
+    # correctly verified the rain event" is worse than a gap, and a gap is
+    # already how this prompt says there is nothing to report. The log itself
+    # is untouched, so the archive stays true to what was written.
+    #
+    # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
+    # time this rule was broken, and only run_daily_pipeline had the test.
+    def visible_note(note: str | None) -> str | None:
+        if note_names_a_hidden_model(note, location.local_bulletin_model_id):
+            return None
+        return note
+
     historical_logs = []
     lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
     for d in log_store.list_log_dates(deps.data_dir):
@@ -1192,11 +1210,11 @@ def run_daily_pipeline(
                         "date": format_date(d),
                         "rain_expected": entry.rain_expected,
                         "day0_verified": entry.verification.day0.verified,
-                        "day0_note": entry.verification.day0.note,
+                        "day0_note": visible_note(entry.verification.day0.note),
                         "day3_verified": entry.verification.day3.verified,
-                        "day3_note": entry.verification.day3.note,
+                        "day3_note": visible_note(entry.verification.day3.note),
                         "day7_verified": entry.verification.day7.verified,
-                        "day7_note": entry.verification.day7.note,
+                        "day7_note": visible_note(entry.verification.day7.note),
                     }
                 )
 
@@ -1688,6 +1706,23 @@ def run_refresh_pipeline(
     guidance = _with_merged_ground_aqi(guidance, existing_entry.ground_aqi)
 
     # --- Step 2: historical notes context, same as the morning run ---
+    # The leak seeded the notes it is fed — item 90. Filtering the scores
+    # block stops NEW contamination and does nothing about the notes written
+    # while the forecaster could see those scores; one of them tells it its
+    # own blend called a rain event correctly.
+    #
+    # DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
+    # correctly verified the rain event" is worse than a gap, and a gap is
+    # already how this prompt says there is nothing to report. The log itself
+    # is untouched, so the archive stays true to what was written.
+    #
+    # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
+    # time this rule was broken, and only run_daily_pipeline had the test.
+    def visible_note(note: str | None) -> str | None:
+        if note_names_a_hidden_model(note, location.local_bulletin_model_id):
+            return None
+        return note
+
     historical_logs = []
     lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
     log_lookup = log_store.make_log_lookup(deps.data_dir)
@@ -1700,11 +1735,11 @@ def run_refresh_pipeline(
                         "date": format_date(d),
                         "rain_expected": entry.rain_expected,
                         "day0_verified": entry.verification.day0.verified,
-                        "day0_note": entry.verification.day0.note,
+                        "day0_note": visible_note(entry.verification.day0.note),
                         "day3_verified": entry.verification.day3.verified,
-                        "day3_note": entry.verification.day3.note,
+                        "day3_note": visible_note(entry.verification.day3.note),
                         "day7_verified": entry.verification.day7.verified,
-                        "day7_note": entry.verification.day7.note,
+                        "day7_note": visible_note(entry.verification.day7.note),
                     }
                 )
 

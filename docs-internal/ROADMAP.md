@@ -9899,7 +9899,7 @@ read closely."
 
 `pipeline.py` now applies the filter at the fourth site.
 
-### The leak wrote its own persistence into the record — STILL OPEN
+### The leak wrote its own persistence into the record — FIXED 2026-09-09
 
 Filtering `verification_context` stops NEW contamination. It does not touch
 what the leak already produced: the notes the forecaster wrote **while it
@@ -9908,8 +9908,9 @@ could see those scores**, which are stored and fed back as HISTORICAL NOTES.
 Measured 2026-09-09 over the 29 stored days, counting only
 `verification.dayN.note`, which is the field that actually reaches the prompt:
 
-**8 of 87 notes name a hidden model** — 5 the blend, 1 persistence,
-2 climatology. The sharpest is 2026-09-07, one day old:
+**7 of 74 stored notes name a hidden model** — 5 the blend, and one naming
+both baselines. (Recorded as 8 on first count, which double-counted the note
+matching two names.) The sharpest is 2026-09-07, one day old:
 
 > "Day+0 (2026-09-07): ECMWF, ICON, Kenya Met, Best Match, and **OLW blend**
 > correctly verified the rain event, with ECMWF catching onset..."
@@ -9918,21 +9919,33 @@ A forecaster reading that is being told its own blend was right, in prose,
 by itself. That is the loop the standing rule exists to keep open-circuit,
 arriving by a route no filter on the scores block can close.
 
-They age out of the 30-day window on their own, and the 2026-09-07 one
-persists for a month. Options, undecided — this needs a call because the
-honest ones cost stored content:
+**Fixed on the operator's call**: `note_names_a_hidden_model` in
+`defaults.py`, applied at READ time in both pipelines. The log is untouched,
+so the archive stays true to what was written, and the note is dropped whole
+rather than redacted — "ECMWF, ICON, Kenya Met, Best Match, and correctly
+verified the rain event" is worse than a gap, and a gap is already how this
+prompt says there is nothing to report.
 
-- **Drop any note naming a hidden model when building HISTORICAL NOTES.**
-  Read-time, so the archive stays true; a gap reads as a gap, which this
-  codebase already prefers. Costs 8 notes' content.
-- Redact just the name. Cheap to write and hard to keep grammatical —
-  "ECMWF, ICON, Kenya Met, Best Match, and correctly verified" is worse than
-  nothing.
-- Do nothing and let them expire. Defensible only because the leak that
-  produced them is now closed, and it leaves the loop live for a month.
+The matcher takes the ids AND prose aliases, because these notes are English:
+of the five blend mentions, every one spells it "OLW blend" and none writes
+`olw_blend`. **It over-matches on purpose** — "climatological normals" in a
+note about the weather will trip it and cost one note, while a missed mention
+keeps the loop open. One note is the cheaper loss.
 
-Recommended: the first. Not done, because it discards stored content and that
-is the operator's call.
+Run against the real record: **7 dropped, 67 kept**, and every drop fired on a
+genuine mention — no false positive in 74 notes.
+
+Two tests, one per pipeline, because the last time this rule broke only
+`run_daily_pipeline` was filtered and only `run_daily_pipeline` had a test.
+Each seeds one contaminated day AND one clean one, so they prove the filter is
+selective rather than a blanket delete — a test that only looked for the bad
+string would pass against a filter that dropped everything.
+
+Two of this item's tests were written wrong first and caught by their own
+guards: one checked the next day's prompt, where no note has been written yet,
+and one demanded a surviving note in a fixture where every note was
+contaminated. **The empty-input trap is not a one-off; it is the default
+shape of a mistake here.**
 
 ### What the worker did with it
 
