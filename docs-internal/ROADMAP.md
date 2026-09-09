@@ -10504,3 +10504,84 @@ that it needs a deliberate decision rather than a quiet one.
 
 Related: item 84 (the register of what this system can observe), item 94
 (where the operator raised it), item 57 (the baselines), item 45.
+
+---
+
+## 96. A sandbox fleet, because this deployment's weather hides defects · **First sweep 2026-09-09**
+
+The operator's idea, replacing a human beta: *"maybe we just run some virtual
+apps in a sandbox for different locations and compare results to some
+measurements we can make from satellite/ground stations etc."*
+
+It is better than a human beta on every axis, and the reason is that the two
+goals had been tangled. *Does the app work for a person* and *what can we
+learn from the records* are different questions. The second needs no people
+at all — and without people there is no cost shifted onto users, no privacy
+question, and no comparability problem, because the model and config matrix is
+ours to choose. Items 81 and 47 stop being prerequisites.
+
+**And it is free.** `verify/` contains no LLM reference: fetching model
+predictions, fetching observations and scoring them are entirely
+deterministic, and Open-Meteo's forecast and archive APIs need no key. Three
+requests per location.
+
+### What the first sweep found
+
+Twelve locations, chosen for the cases they produce rather than for coverage —
+Wellington and Punta Arenas for wind, Ulaanbaatar and Winnipeg for continental
+temperature swings, Mumbai and Singapore for convection, Kisumu as the
+control. One day, 2026-09-09:
+
+**18 of the 24 observed code paths had never fired at the deployment.**
+
+Including, on the first day:
+
+- **`wind_warning: gale force`** — Punta Arenas, 65.5 km/h of consensus gust.
+  The ladder shipped hours earlier, dormant here by construction, fired
+  immediately somewhere else.
+- **`wind_warning: strong breeze`** — Wellington and Alice Springs.
+- **`trend: becoming windier` / `becoming calmer` / `warming and becoming
+  windier`** — the wind trend added the same day, unreachable at Kisumu.
+- **`trend: conditions much the same`** — Ulaanbaatar. The widened scope noun
+  needs temperature, wind AND rain all quiet, and Kisumu always has rain
+  arriving, so it gets "temperatures and winds" every time.
+- **`high_label: much cooler`** — Alice Springs at −9.4 °C day over day.
+- **`wind_label: much windier` / `much calmer`** — the bands widened that day.
+
+**And one nobody had thought to look for: `convective: False` has never been
+observed here.** Kisumu's flag was true on every sampled day, so the entire
+"say nothing about instability" branch is exercised locally by nothing.
+
+Every composed sentence read correctly, in twelve climates, which is the first
+independent evidence that item 83's composition holds outside the one place
+it was written for.
+
+### What it deliberately does not do
+
+- **No blend**, because `olw_blend` comes from the LLM's own call and a
+  stubbed one would put fiction into a record.
+- **Nothing is written.** A diagnostic sweep, not a second pipeline.
+- **One day.** Accumulating a fleet record over time is a larger thing.
+
+### Next, and an honest blocker
+
+The operator asked whether the item 77 harness can supply narratives for
+sandbox locations without spending their Gemini quota. **It can in principle
+and cannot yet in practice**: rendering a user prompt needs a track record,
+verification results and historical notes, none of which exist for a location
+with no history. Two routes, and the choice has not been made:
+
+1. **Accumulate first.** Run the sweep daily against stored per-location
+   records until there is enough history to build a real prompt. Costs
+   nothing but time, and it is what makes the records worth having anyway.
+2. **A minimal prompt.** Build one with the history blocks empty. Faster, and
+   it tests a payload shape production never sends — which is exactly the
+   trap item 77's flag-verification step exists to avoid.
+
+Also unbuilt: comparison against satellite or additional ground stations, the
+other half of the operator's idea. METAR and ERA5 are already wired and are
+the cheap truth; satellite is new capability and belongs with items 65 and 87.
+
+Related: item 83 (the composition this exercises), item 95 (the bands),
+item 77 (the harness), item 47 and item 81 (which this makes unnecessary as
+beta prerequisites), item 84.
