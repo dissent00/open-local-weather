@@ -1,0 +1,91 @@
+name: Sandbox sweep
+
+# Runs the deterministic labels against the fleet in sandbox/locations.py and
+# commits each location's predictions and observations. See sandbox/README.md
+# for what this is for; ROADMAP item 96 for what the first sweep found.
+#
+# THIS ONE HAS A `schedule:` BLOCK AND forecast.yml DELIBERATELY DOES NOT.
+# That is not an inconsistency, and the difference is worth stating so nobody
+# reconciles them later. forecast.yml avoids GitHub's scheduler because it
+# ISSUES A FORECAST: it must be punctual against the cycle it reports on, and
+# two triggers once produced a duplicate issuance on 2026-08-29.
+#
+# Neither applies here. Nothing is issued, no reader is waiting, and a sweep
+# at 04:00 or 04:40 is equally useful. Running twice in a day is harmless —
+# the second run overwrites the first's file with the same or fresher data for
+# the same LOCAL date. So the unpunctuality that disqualifies the scheduler
+# there costs nothing here, and not needing the operator's crontab is worth
+# more than a punctuality this job has no use for.
+#
+# COST: none. verify/ has no LLM reference and Open-Meteo's forecast and
+# archive endpoints need no key. Three requests per location, twelve
+# locations.
+on:
+  schedule:
+    # 04:10 UTC. Deliberately off the hour: GitHub queues scheduled jobs and
+    # the top of the hour is the most contended slot.
+    - cron: "10 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  # Never two sweeps writing the same day's files. Not cancel-in-progress: a
+  # half-finished sweep leaves some locations stored and some not, and the
+  # next day would paper over the gap.
+  group: sandbox-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Sweep
+        # Not `set -e` on the sweep itself: a location whose endpoint is down
+        # reports the failure and the others still store. The exit code is 0
+        # whatever it finds, because this reports and does not judge.
+        run: python sandbox/sweep.py --store | tee "$RUNNER_TEMP/sweep.log"
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sandbox/data/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "sandbox: $(date -u +%Y-%m-%d)"
+
+          # Same race as forecast.yml's: this job and the daily forecast can
+          # both commit and then race the push. Rebase rather than merge —
+          # each day's write is independent and the history reads better
+          # linear. Bounded, because a push still failing after three real
+          # rebases is a different problem and should fail the job.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "git push still rejected after 3 attempts" >&2
+              exit 1
+            fi
+            echo "git push rejected (attempt $attempt/3); pulling --rebase" >&2
+            git pull --rebase
+          done

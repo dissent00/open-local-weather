@@ -1,0 +1,243 @@
+{
+  "date": "2026-09-09",
+  "labels": {
+    "comparison": {
+      "high_delta_c": -1.8,
+      "high_label": "slightly cooler",
+      "low_delta_c": -2.7,
+      "overview_comparison": "Slightly cooler and calmer than yesterday. Dry, after a largely dry day.",
+      "rain_contrast": "dry, after a largely dry day",
+      "today_consensus_high_c": 28.5,
+      "today_consensus_low_c": 15.6,
+      "today_consensus_peak_wind_kmh": 27.3,
+      "today_rain_expected": false,
+      "wind_delta_kmh": -10.5,
+      "wind_label": "calmer",
+      "yesterday_high_c": 30.3,
+      "yesterday_low_c": 18.3,
+      "yesterday_peak_wind_kmh": 37.8,
+      "yesterday_rain": false,
+      "yesterday_thunder": null
+    },
+    "extended_trend": "becoming windier through Saturday, with rain becoming more likely",
+    "instability": {
+      "convective": false,
+      "models_above_threshold": [],
+      "peak_cape_by_model": {
+        "best_match": 60.0,
+        "ecmwf_ifs025": 600.0,
+        "gfs_seamless": 60.0,
+        "icon_seamless": 220.0,
+        "ukmo_seamless": 860.0
+      },
+      "peak_cape_jkg": 860.0,
+      "peak_hour": "01:00",
+      "peak_model": "ukmo_seamless"
+    },
+    "wind_warning": null
+  },
+  "location": {
+    "icao": "KDEN",
+    "lat": 39.7392,
+    "lon": -104.9903,
+    "name": "Denver",
+    "timezone": "America/Denver"
+  },
+  "predictions": {
+    "day0": [
+      {
+        "high_c": 28.7,
+        "low_c": 13.9,
+        "model": "gfs_seamless",
+        "mslp_trend": 4.0,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 2,
+        "wind_kmh": 23.8
+      },
+      {
+        "high_c": 28.5,
+        "low_c": 16.4,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 0.40000000000009095,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 23.8
+      },
+      {
+        "high_c": 27.3,
+        "low_c": 15.5,
+        "model": "icon_seamless",
+        "mslp_trend": 1.6000000000000227,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 32.4
+      },
+      {
+        "high_c": 29.1,
+        "low_c": 18.2,
+        "model": "ukmo_seamless",
+        "mslp_trend": 2.699999999999932,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": null,
+        "wind_kmh": 32.8
+      },
+      {
+        "high_c": 28.7,
+        "low_c": 13.9,
+        "model": "best_match",
+        "mslp_trend": 4.0,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 2,
+        "wind_kmh": 23.8
+      }
+    ],
+    "day3": [
+      {
+        "high_c": 28.5,
+        "low_c": 20.3,
+        "model": "gfs_seamless",
+        "mslp_trend": 3.1000000000000227,
+        "onset": null,
+        "precip_mm": 2.2,
+        "rain": true,
+        "rain_probability_pct": 15,
+        "wind_kmh": 37.1
+      },
+      {
+        "high_c": 29.1,
+        "low_c": 18.2,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 4.0,
+        "onset": null,
+        "precip_mm": 0.6,
+        "rain": true,
+        "rain_probability_pct": 37,
+        "wind_kmh": 41.4
+      },
+      {
+        "high_c": 28.4,
+        "low_c": 15.2,
+        "model": "icon_seamless",
+        "mslp_trend": 3.1000000000000227,
+        "onset": null,
+        "precip_mm": 0.6,
+        "rain": true,
+        "rain_probability_pct": 18,
+        "wind_kmh": 31.3
+      },
+      {
+        "high_c": 30.3,
+        "low_c": 15.0,
+        "model": "ukmo_seamless",
+        "mslp_trend": 2.0,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": null,
+        "wind_kmh": 58.0
+      },
+      {
+        "high_c": 28.5,
+        "low_c": 20.3,
+        "model": "best_match",
+        "mslp_trend": 3.1000000000000227,
+        "onset": null,
+        "precip_mm": 2.2,
+        "rain": true,
+        "rain_probability_pct": 15,
+        "wind_kmh": 37.1
+      }
+    ],
+    "day7": [
+      {
+        "high_c": 33.6,
+        "low_c": 19.7,
+        "model": "gfs_seamless",
+        "mslp_trend": 0.8999999999999773,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 27,
+        "wind_kmh": 20.5
+      },
+      {
+        "high_c": 32.2,
+        "low_c": 15.4,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": -3.6000000000000227,
+        "onset": null,
+        "precip_mm": 0.7,
+        "rain": true,
+        "rain_probability_pct": 25,
+        "wind_kmh": 31.7
+      },
+      {
+        "high_c": null,
+        "low_c": null,
+        "model": "icon_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "high_c": null,
+        "low_c": null,
+        "model": "ukmo_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "high_c": 33.6,
+        "low_c": 19.7,
+        "model": "best_match",
+        "mslp_trend": 0.8999999999999773,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 27,
+        "wind_kmh": 20.5
+      }
+    ]
+  },
+  "yesterday_observed": {
+    "high_c": 30.3,
+    "lightning": null,
+    "low_c": 18.3,
+    "mslp_trend": 5.100000000000023,
+    "onset_hour": null,
+    "peak_wind_kmh": 37.8,
+    "precip_mm": 1.2,
+    "precipitation": null,
+    "precipitation_onset": null,
+    "provenance": {
+      "high_c": "era5_archive",
+      "low_c": "era5_archive",
+      "mslp_trend": "era5_archive",
+      "peak_wind_kmh": "era5_archive",
+      "precip_mm": "era5_archive",
+      "rain": "era5_archive"
+    },
+    "rain": false,
+    "station_high_c": null,
+    "station_low_c": null,
+    "station_peak_wind_kmh": null,
+    "thunder": null
+  }
+}
