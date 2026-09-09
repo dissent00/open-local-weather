@@ -58,7 +58,7 @@ from __future__ import annotations
 import csv
 import re
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -137,6 +137,70 @@ def fetch_metar(icao: str) -> list[dict] | None:
     return data or None
 
 
+# SKY COVER, IN EIGHTHS. ROADMAP items 87 and 65.
+#
+# The forecast predicts cloud_cover and NOTHING OBSERVED IT. A METAR reports
+# the sky directly — a ceilometer and a human observer — and this parser threw
+# it away, while `metar.py`'s own header records a day whose argument turned on
+# a cumulonimbus group. The evidence that settled one argument was not
+# available to the next.
+#
+# THE UNIT IS THE STANDARD'S. The NWS glossary defines sky condition as
+# "octants (eighths) of the sky covered by opaque clouds" and confirms SCT
+# directly: "3/8th to 4/8th (sky cover is measured in eighths or oktas)". Its
+# published band table — Clear 0/8, Mostly Clear 1-2/8, Partly Cloudy 3-4/8,
+# Mostly Cloudy 5-7/8, Cloudy 8/8 — has exactly the boundaries the METAR
+# abbreviations use, which is where FEW, BKN and OVC come from below. Only
+# SCT is quoted outright; the other three are read off that table's edges and
+# that is a derivation, not a citation.
+#
+# THE TOP OF EACH RANGE, not the middle. A layer group reports the sky covered
+# at and below its height, so the greatest group is the total. Taking the top
+# errs toward MORE cloud, which is the honest direction for a value that will
+# be used to ask whether the sun got through.
+SKY_COVER_OKTAS = {
+    "SKC": 0, "CLR": 0, "NSC": 0, "NCD": 0,
+    "FEW": 2, "SCT": 4, "BKN": 7, "OVC": 8,
+}
+
+# Ceiling And Visibility OK: no cloud below 5,000 ft and no CB or TCU. Not
+# strictly zero cover — high cirrus is permitted — but it is the standard's
+# way of saying the sky is not in the way, and it is what this station files
+# on a clear day. Counted as clear, and named here so the choice is visible.
+CAVOK_GROUP = re.compile(r"(?:^|\s)CAVOK(?=\s|$)")
+
+# Vertical visibility: the sky is OBSCURED, by fog or heavy precipitation, and
+# the observer cannot see it at all. Counted as fully covered rather than as
+# no data, because an obscured sky is emphatically not a clear one and a null
+# would let a fog day read as unobserved.
+OBSCURED_GROUP = re.compile(r"(?:^|\s)VV(?:\d{3}|///)(?=\s|$)")
+
+CLOUD_LAYER_GROUP = re.compile(
+    rf"(?:^|\s)({'|'.join(SKY_COVER_OKTAS)})(?:\d{{3}}|///)?(?:CB|TCU)?(?=\s|$)"
+)
+
+
+def report_cloud_oktas(raw_metar: str) -> int | None:
+    """Total sky cover for ONE report, 0-8, or None when it says nothing.
+
+    None matters: a report with no sky group at all is not a clear sky, and
+    averaging it in as zero would manufacture sunshine.
+    """
+    body = _observed_body(raw_metar)
+
+    if OBSCURED_GROUP.search(body):
+        return SKY_COVER_OKTAS["OVC"]
+
+    layers = [SKY_COVER_OKTAS[m] for m in CLOUD_LAYER_GROUP.findall(body)]
+    if layers:
+        return max(layers)
+
+    if CAVOK_GROUP.search(body):
+        return 0
+
+    return None
+
+
 def _observed_body(raw_metar: str) -> str:
     """The part of a report that describes what was actually seen.
 
@@ -187,6 +251,20 @@ class StationWeather:
     # honest direction to err, and the phrase it feeds resolves to a part of
     # the day rather than a clock reading anyway.
     precipitation_onset: str | None = None
+
+    # MEAN sky cover across the day's reports, 0-8, or None when no report
+    # said anything about the sky. ROADMAP items 87 and 65.
+    #
+    # MEAN AND NOT MAX, unlike the two flags above, and the difference is the
+    # question each answers. Thunder asks "did it happen at all", so one
+    # report is enough. Cloud asks "what kind of day was it", and a single
+    # OVC hour in an otherwise clear day did not make it a cloudy day. It is
+    # also the directly comparable thing: the models' cloud_cover is a mean
+    # over the same 24 hours.
+    #
+    # Reports with no sky group are left out of the mean rather than counted
+    # as zero — that would manufacture sunshine out of silence.
+    cloud_oktas: float | None = None
 
 
 def fetch_metar_archive(
@@ -460,6 +538,10 @@ def _weather_from_reports(
     observed_station_data can reuse it without a second fetch."""
     local_zone = ZoneInfo(timezone_name)
     weather_by_date: dict[date, StationWeather] = {}
+    # Accumulated separately because this one is averaged, not latched: the
+    # loop below builds each day's flags by OR-ing report into report, and a
+    # mean cannot be computed that way.
+    oktas_by_date: dict[date, list[int]] = {}
     for observed_at, raw_metar in reports:
         local_date = observed_at.astimezone(local_zone).date()
         if local_date < start or local_date > end:
@@ -477,10 +559,21 @@ def _weather_from_reports(
         if precipitating and onset is None:
             onset = observed_at.astimezone(local_zone).strftime("%H:%M")
 
+        oktas = report_cloud_oktas(raw_metar)
+        if oktas is not None:
+            oktas_by_date.setdefault(local_date, []).append(oktas)
+
         weather_by_date[local_date] = StationWeather(
             thunder=(seen is not None and seen.thunder) or report_has_thunder(raw_metar),
             precipitation=(seen is not None and seen.precipitation) or precipitating,
             precipitation_onset=onset,
         )
+
+    for local_date, values in oktas_by_date.items():
+        if local_date in weather_by_date:
+            weather_by_date[local_date] = replace(
+                weather_by_date[local_date],
+                cloud_oktas=round(sum(values) / len(values), 1),
+            )
 
     return weather_by_date or None

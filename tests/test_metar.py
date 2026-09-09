@@ -9,6 +9,7 @@ from openlocalweather.fetch.metar import (
     StationWeather,
     fetch_metar,
     observed_weather_by_date,
+    report_cloud_oktas,
 )
 
 DAY = date(2026, 8, 24)
@@ -95,7 +96,7 @@ def test_observed_thunder_reports_without_thunder_are_false_not_absent():
             "HKKI,2026-08-24 09:00,HKKI 240900Z 22008KT 9999 FEW029 31/12 Q1016",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=False, precipitation=False)
+            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=2.0)
         }
 
 
@@ -106,7 +107,7 @@ def test_observed_thunder_plain_ts():
             "HKKI,2026-08-24 13:30,HKKI 241330Z 18005KT 9999 TS FEW029CB BKN030 31/14 Q1015",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=True, precipitation=False)
+            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=4.5)
         }
 
 
@@ -132,7 +133,7 @@ def test_observed_thunder_ignores_lookalikes():
             "HKKI,2026-08-24 13:00,HKKI 241300Z 18005KT 9999 FEW029CB BKN030 31/14 Q1015 RMK TS DISTANT",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=False, precipitation=False)
+            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=7.0)
         }
 
 
@@ -144,7 +145,11 @@ def test_observed_thunder_buckets_by_local_date_not_utc():
             "HKKI,2026-08-24 21:30,HKKI 242130Z 18005KT 9999 TS FEW029CB 22/16 Q1015",
         ))
         result = observed_weather_by_date("HKKI", DAY, date(2026, 8, 25), "Africa/Nairobi")
-        assert result == {date(2026, 8, 25): StationWeather(thunder=True, precipitation=False)}
+        assert result == {
+            date(2026, 8, 25): StationWeather(
+                thunder=True, precipitation=False, cloud_oktas=2.0
+            )
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -173,7 +178,11 @@ def test_observed_weather_reads_the_2026_08_29_miss_as_rain_without_thunder():
 
     assert result == {
         AUG_29: StationWeather(
-            thunder=False, precipitation=True, precipitation_onset="19:00"
+            thunder=False, precipitation=True, precipitation_onset="19:00",
+            # The real 2026-08-29 reports, whose sky groups average to just
+            # under five eighths — a genuinely half-clouded day, which is the
+            # kind the reanalysis called dry.
+            cloud_oktas=4.8,
         )
     }
 
@@ -228,7 +237,7 @@ def test_observed_weather_keeps_thunder_and_precipitation_separate():
             "HKKI,2026-08-24 13:00,HKKI 241300Z 18005KT 9999 TS FEW029CB 31/14 Q1015",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=True, precipitation=False)
+            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=2.0)
         }
 
     with requests_mock.Mocker() as m:
@@ -237,7 +246,8 @@ def test_observed_weather_keeps_thunder_and_precipitation_separate():
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
             DAY: StationWeather(
-                thunder=True, precipitation=True, precipitation_onset="16:00"
+                thunder=True, precipitation=True, precipitation_onset="16:00",
+                cloud_oktas=2.0,
             )
         }
 
@@ -253,7 +263,8 @@ def test_observed_weather_buckets_precipitation_by_local_date_not_utc():
     # 21:30Z is 00:30 local, so the onset is stamped on the NEXT day too.
     assert result == {
         date(2026, 8, 25): StationWeather(
-            thunder=False, precipitation=True, precipitation_onset="00:30"
+            thunder=False, precipitation=True, precipitation_onset="00:30",
+            cloud_oktas=2.0,
         )
     }
 
@@ -288,3 +299,75 @@ def test_a_dry_day_has_no_precipitation_onset():
         result = observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")
 
     assert result[DAY].precipitation_onset is None
+
+
+# ---------------------------------------------------------------------------
+# Sky cover — ROADMAP items 87 and 65. The forecast predicts cloud_cover and
+# nothing observed it; this parser was discarding the one direct observation.
+# ---------------------------------------------------------------------------
+
+
+def test_the_greatest_layer_is_the_total_not_the_sum():
+    """A METAR layer reports the sky covered at AND BELOW its height, so the
+    layers are cumulative and the greatest one is the whole answer. Adding
+    them would put an eight-eighths sky over a half-clouded afternoon."""
+    assert report_cloud_oktas("METAR X 010000Z 9999 FEW020CB SCT090 22/16 Q1017") == 4
+    assert report_cloud_oktas("METAR X 010000Z 9999 BKN012 OVC040 20/18 Q1010") == 8
+    assert report_cloud_oktas("METAR X 010000Z 9999 FEW029 31/12 Q1016") == 2
+
+
+def test_a_report_with_no_sky_group_is_not_a_clear_sky():
+    """None, never zero. Averaging silence in as clear would manufacture
+    sunshine out of a report that simply did not mention the sky."""
+    assert report_cloud_oktas("METAR X 010000Z 12005KT 25/10 Q1015") is None
+
+
+def test_cavok_is_the_clear_day_this_station_actually_files():
+    """HKKI files CAVOK, not SKC — the 2026-09-09 03:00 report is CAVOK — so a
+    parser that only knew the cover abbreviations would read every clear day
+    here as no data. Not strictly zero cover, since high cirrus is permitted,
+    and counted as clear deliberately."""
+    assert report_cloud_oktas("METAR HKKI 090200Z 05004KT CAVOK 18/15 Q1016") == 0
+    assert report_cloud_oktas("METAR X 010000Z 9999 SKC 25/10 Q1015") == 0
+    assert report_cloud_oktas("METAR X 010000Z 9999 NSC 25/10 Q1015") == 0
+
+
+def test_an_obscured_sky_is_covered_and_not_unknown():
+    """VV is the observer reporting they cannot see the sky at all, through
+    fog or heavy precipitation. Emphatically not a clear sky, and a null would
+    let a fog day read as unobserved."""
+    assert report_cloud_oktas("METAR X 010000Z 0100 VV002 18/18 Q1010") == 8
+    assert report_cloud_oktas("METAR X 010000Z 0100 VV/// 18/18 Q1010") == 8
+
+
+def test_a_trend_group_is_a_forecast_and_never_an_observation():
+    """The same truncation that stops TEMPO precipitation being scored as
+    observed. A predicted overcast must not become an observed one."""
+    assert report_cloud_oktas("METAR X 010000Z 9999 SCT030 25/10 Q1015 TEMPO OVC005") == 4
+    assert report_cloud_oktas("METAR X 010000Z 9999 SCT030 25/10 Q1015 BECMG BKN008") == 4
+
+
+def test_the_day_is_a_mean_and_the_flags_are_not():
+    """Thunder asks "did it happen at all", so one report is enough. Cloud
+    asks "what kind of day was it", and one overcast hour in a clear day did
+    not make it a cloudy day. It is also what compares to the models, whose
+    cloud_cover is a mean over the same hours."""
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=csv_rows(
+            "HKKI,2026-08-24 06:00,HKKI 240600Z 22008KT 9999 SKC 20/12 Q1016",
+            "HKKI,2026-08-24 09:00,HKKI 240900Z 22008KT 9999 OVC030 24/14 Q1016",
+        ))
+        result = observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")
+
+    assert result[DAY].cloud_oktas == 4.0
+
+
+def test_a_report_without_a_sky_group_does_not_drag_the_mean_down():
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=csv_rows(
+            "HKKI,2026-08-24 06:00,HKKI 240600Z 22008KT 9999 OVC030 20/12 Q1016",
+            "HKKI,2026-08-24 09:00,HKKI 240900Z 22008KT 24/14 Q1016",
+        ))
+        result = observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")
+
+    assert result[DAY].cloud_oktas == 8.0

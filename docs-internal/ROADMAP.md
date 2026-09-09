@@ -9650,7 +9650,7 @@ sources filling one column), item 77 (the harness), item 74.
 
 ---
 
-## 87. The prompt bans four variables and then hands three of them over · **Planned**
+## 87. The prompt bans four variables and then hands three of them over · **Rule fixed and cloud parsed 2026-09-09; storage and label still Planned**
 
 Found 2026-09-08 by a cold worker model, which reported visibility and cloud
 base in a forecast, suppressed dew point, and flagged the inconsistency
@@ -9753,6 +9753,63 @@ smaller change than the satellite work item 65 contemplates, and the two are
 not exclusive: a station-observed sky is a point truth that a satellite
 product would later be cross-checked against, which is exactly item 45's
 pattern.
+
+### Done 2026-09-09
+
+**The rule was split into the two rules it always was.** One sentence claimed
+all four quantities were absent, which was false for three of them, and two
+independent cold readers followed the stated REASON rather than the list and
+reported them — correctly. It now says: humidity and "feels like" are not
+fetched and do not exist; dew point, visibility and cloud base ARE present,
+twice over, and are withheld because **a METAR is a point observation at one
+airport at one hour and these sections are about the day ahead**. Reasoning
+from them is explicitly allowed — dew point is the moisture in "high CAPE
+with modest moisture" — and printing the figures is not.
+
+**Cloud is now parsed.** `report_cloud_oktas` reads the sky groups the parser
+had been discarding, and `StationWeather.cloud_oktas` carries the day's MEAN
+across reports.
+
+- **The unit is the standard's.** The NWS glossary defines sky condition as
+  "octants (eighths) of the sky covered by opaque clouds" and confirms SCT
+  outright: "3/8th to 4/8th (sky cover is measured in eighths or oktas)". Its
+  published band table — Clear 0/8, Mostly Clear 1–2/8, Partly Cloudy 3–4/8,
+  Mostly Cloudy 5–7/8, Cloudy 8/8 — has exactly the METAR abbreviations'
+  boundaries, which is where FEW, BKN and OVC come from. **Only SCT is
+  quoted; the other three are read off that table's edges, and the code says
+  that is a derivation rather than a citation.**
+- **The greatest layer is the total**, because a METAR layer reports the sky
+  covered at and below its height. Adding them would put an eight-eighths sky
+  over a half-clouded afternoon.
+- **MEAN for the day, where thunder and precipitation are latched.** Thunder
+  asks "did it happen at all"; cloud asks "what kind of day was it", and one
+  overcast hour does not make a cloudy day. It is also the directly
+  comparable thing, since the models' `cloud_cover` is a mean over the same
+  hours.
+- **CAVOK is handled, and had to be**: HKKI files CAVOK rather than SKC, so a
+  parser that knew only the cover abbreviations would have read every clear
+  day here as no data.
+- **An obscured sky (`VV`) counts as covered, not unknown** — a null would
+  let a fog day read as unobserved.
+- Trend groups are excluded by the existing truncation, so a forecast
+  overcast never becomes an observed one.
+
+Seven of the existing METAR tests had fixtures carrying cloud groups and were
+asserting whole objects, so they now assert the sky too. Each value was
+verified by hand against its own fixture — one replacement was applied to two
+sites needing different values and caught before it stood.
+
+### Still to do
+
+- **`DailyActual` does not carry it yet.** `StationWeather.cloud_oktas` exists
+  and nothing stores it, so there is no day-over-day sky and no provenance
+  stamp. That is the next step and it is what item 65 actually wants.
+- **No label.** Item 83 needs a sky dimension to stop "much like yesterday"
+  overclaiming, and that needs the FORECAST side too — the models predict
+  `cloud_cover` as a percentage and this is in eighths, so the comparison
+  needs the NWS band table on both sides.
+- Dew point and visibility remain parsed by nothing. The rule now states the
+  real reason for withholding them, which was the urgent half.
 
 ### Then fix the rule to match
 
