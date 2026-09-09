@@ -362,6 +362,78 @@
         "day_winds_kmh": null
       },
       "expected": "temperatures much the same through Friday"
+    },
+    {
+      "name": "a steady span above the warning floor still warns",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 90.0,
+        "day_winds_kmh": [
+          92.0,
+          88.0,
+          91.0
+        ]
+      },
+      "expected": "temperatures much the same through Friday, with gusts reaching near gale"
+    },
+    {
+      "name": "warning and rain share one 'with'",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          8.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 90.0,
+        "day_winds_kmh": [
+          92.0,
+          88.0,
+          91.0
+        ]
+      },
+      "expected": "temperatures much the same through Friday, with gusts reaching near gale and rain becoming more likely"
+    },
+    {
+      "name": "just under the floor says nothing about level",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 60.0,
+        "day_winds_kmh": [
+          64.0,
+          63.0,
+          62.0
+        ]
+      },
+      "expected": "conditions much the same through Friday"
     }
   ]
 }

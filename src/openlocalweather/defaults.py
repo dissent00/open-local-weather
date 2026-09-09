@@ -240,6 +240,51 @@ TEMP_CHANGE_BANDS_C = [
     (99.0, "dramatically"),
 ]
 
+# ABSOLUTE wind level, as opposed to the change bands below.
+#
+# Everything else in this file compares today against yesterday, so two
+# consecutive gales read "similar winds" and the reader is never told it is
+# dangerous — the operator's point, 2026-09-09: "we at least need warning
+# thresholds, if not 'normal' bands."
+#
+# A warning threshold and a "normal" band are different things and only the
+# second needs a local record. Beaufort is published, so it needs none.
+#
+# THE TRAP, AND WHY THE NUMBERS ARE NOT BEAUFORT'S OWN. Beaufort is defined on
+# SUSTAINED wind and every wind figure this system scores is a GUST —
+# wind_gusts_10m forecast against wind_gusts_10m reanalysis. Applying
+# Beaufort's sustained boundaries to the gust column was measured against the
+# stored record on 2026-09-09: force 6 at 39 km/h would flag 19 of 42 days,
+# where the sustained column reaches force 6 on ZERO. It would cry wolf on
+# nearly half the days.
+#
+# So the boundaries are Beaufort's, converted by the gust factor measured at
+# this deployment — 1.66, ERA5 gust over METAR sustained, n=42, from item 86's
+# split. Published scale, local measurement, both citable, nothing invented.
+# The sustained figures are kept beside each band because that is what the
+# name actually describes, and knots because that is what boaters use.
+#
+# Names, not force numbers, on the operator's call: "gale" tells a reader what
+# to do and "force 8" does not.
+BEAUFORT_GUST_BANDS_KMH = [
+    # (gust km/h at or above, name, sustained km/h, sustained knots)
+    (33.0, "moderate breeze", 20, 11),
+    (48.0, "fresh breeze", 29, 16),
+    (65.0, "strong breeze", 39, 22),
+    (83.0, "near gale", 50, 28),
+    (103.0, "gale", 62, 34),
+    (124.0, "strong gale", 75, 41),
+    (148.0, "storm", 89, 48),
+]
+
+# Where a description becomes a WARNING. Below this the name is worth having
+# in the detail sections and is not worth interrupting the Overview for:
+# "moderate breeze" covers 36 of the 42 stored days here and "fresh breeze" 6,
+# so warning on either would be noise. "strong breeze" is the first band this
+# location has never recorded, and it is where a small boat on Lake Victoria
+# is already in trouble.
+WIND_WARNING_FLOOR_KMH = 65.0
+
 # Gust change bands, read the same way as TEMP_CHANGE_BANDS_C: the first
 # entry is the whole label, the rest are modifiers on "windier" / "calmer",
 # and an empty modifier means the bare word.

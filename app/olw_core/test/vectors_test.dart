@@ -832,6 +832,7 @@ void main() {
           i['rain_contrast'] as String?,
           todayCharacter: i['today_character'] as String?,
           rainUnchanged: (i['rain_unchanged'] as bool?) ?? false,
+          windWarningName: i['wind_warning_name'] as String?,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }

@@ -555,6 +555,7 @@ def test_vectors_describe_day_over_day():
             i["high_label"], i["wind_label"], i["rain_contrast"],
             today_character=i.get("today_character"),
             rain_unchanged=i.get("rain_unchanged", False),
+            wind_warning_name=i.get("wind_warning_name"),
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 

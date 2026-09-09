@@ -41,6 +41,57 @@ const List<(double, String)> tempChangeBandsC = [
 /// Below 8 km/h is not worth remarking on. Above it, everything used to be
 /// one word — the same missing ceiling, one field over. Absolute rather than
 /// proportional, matching the temperature bands.
+/// ABSOLUTE wind level, as opposed to the change bands below.
+///
+/// Every other label in this file is relative to yesterday, so two
+/// consecutive gales read "similar winds" and the reader is never told it is
+/// dangerous. A warning threshold and a "normal" band are different things
+/// and only the second needs a local record; Beaufort is published.
+///
+/// THE NUMBERS ARE NOT BEAUFORT'S OWN. Beaufort is defined on SUSTAINED wind
+/// and every wind figure here is a GUST. Measured 2026-09-09: force 6 at
+/// 39 km/h would flag 19 of 42 stored days, where the sustained column
+/// reaches force 6 on ZERO. The boundaries are converted by the gust factor
+/// measured at this deployment — 1.66, ERA5 gust over METAR sustained, n=42.
+/// Sustained km/h and knots are kept beside each band because that is what
+/// the name describes, and knots is what boaters use.
+const List<(double, String, int, int)> beaufortGustBandsKmh = [
+  // (gust km/h at or above, name, sustained km/h, sustained knots)
+  (33.0, 'moderate breeze', 20, 11),
+  (48.0, 'fresh breeze', 29, 16),
+  (65.0, 'strong breeze', 39, 22),
+  (83.0, 'near gale', 50, 28),
+  (103.0, 'gale', 62, 34),
+  (124.0, 'strong gale', 75, 41),
+  (148.0, 'storm', 89, 48),
+];
+
+/// Where a description becomes a WARNING. "moderate breeze" covers 36 of the
+/// 42 stored days here and "fresh breeze" 6, so warning on either is noise.
+/// "strong breeze" is the first band this location has never recorded, and is
+/// where a small boat on Lake Victoria is already in trouble.
+const double windWarningFloorKmh = 65.0;
+
+/// The Beaufort name for a GUST reading, or null below the lowest band.
+String? windLevel(double? gustKmh) {
+  if (gustKmh == null) return null;
+
+  String? name;
+  for (final (threshold, band, _, _) in beaufortGustBandsKmh) {
+    if (gustKmh >= threshold) name = band;
+  }
+
+  return name;
+}
+
+/// The Beaufort name only when it is worth interrupting for. Stated however
+/// ordinary it has become — that is the whole point of a level.
+String? windWarning(double? gustKmh) {
+  if (gustKmh == null || gustKmh < windWarningFloorKmh) return null;
+
+  return windLevel(gustKmh);
+}
+
 const List<(double, String)> windChangeBandsKmh = [
   (8.0, 'similar winds'),
   (18.0, ''),
@@ -405,6 +456,7 @@ DayOverDayComparison? computeDayOverDay(
       rainContrast,
       todayCharacter: todayCharacter,
       rainUnchanged: rainUnchanged,
+      windWarningName: windWarning(consensusWind),
     ),
   );
 }
@@ -451,6 +503,7 @@ String? describeDayOverDay(
   String? rainContrast, {
   String? todayCharacter,
   bool rainUnchanged = false,
+  String? windWarningName,
 }) {
   final quietHigh = tempChangeBandsC.first.$2;
   final quietWind = windChangeBandsKmh.first.$2;
@@ -488,6 +541,11 @@ String? describeDayOverDay(
     sentences.add(lead == 'much like yesterday' && todayCharacter != null
         ? todayCharacter
         : rainContrast);
+  }
+
+  if (windWarningName != null) {
+    // A LEVEL, NOT A CHANGE, in its own sentence so nothing can suppress it.
+    sentences.add('gusting to $windWarningName');
   }
 
   if (sentences.isEmpty) return null;
@@ -576,16 +634,27 @@ String? describeExtendedTrend(
     moving.add(windDelta > 0 ? 'becoming windier' : 'becoming calmer');
   }
 
+  // A LEVEL, NOT A TREND, for the same reason the day-over-day half needs
+  // one: four dangerous days running are "conditions much the same".
+  double? spanMax;
+  for (final w in dayWindsKmh ?? const <double?>[]) {
+    if (w != null && (spanMax == null || w > spanMax)) spanMax = w;
+  }
+  final spanWarning = windWarning(spanMax);
+
   final String trend;
   if (moving.isNotEmpty) {
     trend = '${moving.join(' and ')} through $lastDayName';
   } else {
+    // A SCOPE NOUN CANNOT COVER WHAT THE TAIL IS ABOUT TO CONTRADICT.
+    // "conditions much the same, with rain becoming more likely" denies
+    // itself, and so does "winds much the same, with gusts reaching gale" —
+    // steady and dangerous are both true of that wind, and welding them into
+    // one clause reads as a mistake rather than as two facts.
     final String scope;
-    if (windDelta == null) {
+    if (windDelta == null || spanWarning != null) {
       scope = 'temperatures';
     } else if (anyWet) {
-      // "conditions much the same, with rain becoming more likely" would
-      // contradict its own tail.
       scope = 'temperatures and winds';
     } else {
       scope = 'conditions';
@@ -593,6 +662,12 @@ String? describeExtendedTrend(
     trend = '$scope much the same through $lastDayName';
   }
 
-  return anyWet ? '$trend, with rain becoming more likely' : trend;
+  // ONE "with", however many things follow it.
+  final tails = <String>[
+    if (spanWarning != null) 'gusts reaching $spanWarning',
+    if (anyWet) 'rain becoming more likely',
+  ];
+
+  return tails.isEmpty ? trend : '$trend, with ${tails.join(' and ')}';
 }
 

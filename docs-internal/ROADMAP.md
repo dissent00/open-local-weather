@@ -10261,7 +10261,7 @@ item 88 (the vector-case rule these four new cases follow), item 77.
 
 ---
 
-## 95. The comparison reports change and never level · **Planned, blocked on record depth**
+## 95. The comparison reports change and never level · **Warning half fixed 2026-09-09; anomaly half blocked**
 
 Raised by the operator 2026-09-09, generalising their own example: *"Anything
 anomalous from the mean, or from the prior day. I know we're not tracking mean
@@ -10279,15 +10279,50 @@ most. The operator's `"gusty winds again today"` needs no intraday timing —
 it needs an absolute claim (gusty) alongside the persistence claim (again),
 and there is no absolute claim anywhere in this file.
 
-### Why it is not fixed now
+### The operator split it, and half of it was never blocked
 
-Both available references fail, and inventing a number is what this repo
-forbids:
+*"You do have one key point mentioning gales — we at least need warning
+thresholds, if not 'normal' bands."* Correct, and this item had conflated two
+different things. **A warning threshold is externally defined; a "normal" band
+needs a local record.** Only the second is blocked.
 
-- **No absolute wind threshold exists.** `WIND_CHANGE_BANDS_KMH` and
-  `REVIEW_WIND_BIAS_THRESHOLD_KMH` are both about CHANGE. Nothing says what
-  counts as a windy day here, and picking one would be a number nobody
-  measured.
+**Fixed 2026-09-09: `BEAUFORT_GUST_BANDS_KMH` and `wind_warning()`**, consumed
+by BOTH halves of the Overview, because both had the same hole — `wind_label`
+is relative, so two gale days compare as "similar winds" and are swallowed by
+"much like yesterday"; `describe_extended_trend` is relative too, so four
+dangerous days read "conditions much the same through Saturday".
+
+**The numbers are not Beaufort's own, and that is the whole care of it.**
+Beaufort is defined on SUSTAINED wind and every wind figure this system scores
+is a GUST. Measured against the stored record:
+
+| | median | max | days at force 6 |
+|---|---|---|---|
+| ERA5 gust (scored) | 37.8 | 52.6 | **19 of 42** |
+| METAR sustained | 22.2 | 37.0 | **0 of 42** |
+
+Beaufort's force-6 line applied to the gust column would have warned on
+nearly half the days. The boundaries are therefore converted by the gust
+factor measured at this deployment — 1.66, from item 86's split — giving
+"strong breeze" at 65 km/h of gust rather than 39. Published scale, local
+measurement, both citable.
+
+Names rather than force numbers, on the operator's call: "gale" tells a reader
+what to do and "force 8" does not. Sustained km/h and knots are carried beside
+each band, because the name describes sustained wind and knots is what boaters
+use.
+
+**Dormant here, and correctly so.** The record's windiest day is 52.6 km/h of
+gust — "fresh breeze", below the warning floor. Nothing in 42 days would have
+fired. Same shape as item 83's temperature ceiling: the deployment hides the
+case, which is not a reason to leave the code unable to express it.
+
+### The anomaly half, still blocked
+
+- **No absolute wind threshold existed** before the above, and the ones that
+  did — `WIND_CHANGE_BANDS_KMH`, `REVIEW_WIND_BIAS_THRESHOLD_KMH` — are both
+  about CHANGE. A warning ladder is not an anomaly reference: it says this
+  wind is dangerous, never that it is unusual HERE.
 - **`climatology_prediction` is the right shape and the wrong depth.** It is
   already "the usual weather here, so far as this record knows" — a trailing
   mean over every stored observation. But the record is **42 days,

@@ -94,9 +94,9 @@ absent values are `null`, never omitted keys.
 | `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 38 |
-| `extended_trend.json` | `describe_extended_trend` | 17 |
+| `extended_trend.json` | `describe_extended_trend` | 20 |
 | `describe_day_rain.json` | `describe_day_rain` | 17 |
-| `describe_day_over_day.json` | `describe_day_over_day` | 16 |
+| `describe_day_over_day.json` | `describe_day_over_day` | 18 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 5 |

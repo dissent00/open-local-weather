@@ -10,7 +10,8 @@
         "wind_label": null,
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": null
     },
@@ -21,7 +22,8 @@
         "wind_label": "similar winds",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Much like yesterday."
     },
@@ -32,7 +34,8 @@
         "wind_label": "calmer",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Slightly warmer and calmer than yesterday."
     },
@@ -43,7 +46,8 @@
         "wind_label": "similar winds",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Noticeably cooler than yesterday."
     },
@@ -54,7 +58,8 @@
         "wind_label": "much windier",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Much windier than yesterday."
     },
@@ -65,7 +70,8 @@
         "wind_label": "dramatically calmer",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Dramatically calmer than yesterday."
     },
@@ -76,7 +82,8 @@
         "wind_label": "calmer",
         "rain_contrast": "dry until evening showers",
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Slightly warmer and calmer than yesterday. Dry until evening showers."
     },
@@ -87,7 +94,8 @@
         "wind_label": "similar winds",
         "rain_contrast": "wet, after a dry day",
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Wet, after a dry day."
     },
@@ -98,7 +106,8 @@
         "wind_label": "much windier",
         "rain_contrast": "wet again",
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Much warmer and much windier than yesterday. Wet again."
     },
@@ -109,7 +118,8 @@
         "wind_label": null,
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Slightly warmer than yesterday."
     },
@@ -120,7 +130,8 @@
         "wind_label": null,
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": null
     },
@@ -131,7 +142,8 @@
         "wind_label": "similar winds",
         "rain_contrast": null,
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": null
     },
@@ -142,7 +154,8 @@
         "wind_label": null,
         "rain_contrast": "dry, after a thundery day",
         "today_character": null,
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Dry, after a thundery day."
     },
@@ -153,7 +166,8 @@
         "wind_label": "similar winds",
         "rain_contrast": "largely dry with thunderstorms again",
         "today_character": "largely dry with thunderstorms",
-        "rain_unchanged": true
+        "rain_unchanged": true,
+        "wind_warning_name": null
       },
       "expected": "Much like yesterday. Largely dry with thunderstorms."
     },
@@ -164,7 +178,8 @@
         "wind_label": "similar winds",
         "rain_contrast": "largely dry with thunderstorms again",
         "today_character": "largely dry with thunderstorms",
-        "rain_unchanged": true
+        "rain_unchanged": true,
+        "wind_warning_name": null
       },
       "expected": "Noticeably cooler than yesterday. Largely dry with thunderstorms again."
     },
@@ -175,9 +190,34 @@
         "wind_label": "similar winds",
         "rain_contrast": "dry, after a thundery day",
         "today_character": "dry",
-        "rain_unchanged": false
+        "rain_unchanged": false,
+        "wind_warning_name": null
       },
       "expected": "Dry, after a thundery day."
+    },
+    {
+      "name": "a warning is not suppressed by sameness",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false,
+        "wind_warning_name": "near gale"
+      },
+      "expected": "Much like yesterday. Gusting to near gale."
+    },
+    {
+      "name": "nor by a change leading",
+      "input": {
+        "high_label": "noticeably cooler",
+        "wind_label": "similar winds",
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false,
+        "wind_warning_name": "gale"
+      },
+      "expected": "Noticeably cooler than yesterday. Gusting to gale."
     }
   ]
 }

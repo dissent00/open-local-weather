@@ -10,6 +10,8 @@ from openlocalweather.comparison import (
     describe_day_over_day,
     describe_day_rain,
     describe_extended_trend,
+    wind_level,
+    wind_warning,
 )
 from openlocalweather.models import DailyActual, ModelPrediction
 
@@ -481,3 +483,65 @@ def test_a_wind_trend_is_worth_saying_even_when_the_heat_holds():
     assert describe_extended_trend(30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], "Saturday",
                                    today_wind_kmh=18.0, day_winds_kmh=[24.0, 30.0, 34.0]) == (
         "warming and becoming windier through Saturday")
+
+
+# ---------------------------------------------------------------------------
+# Absolute wind level — the thing neither half of the Overview could say.
+# ---------------------------------------------------------------------------
+
+
+def test_a_named_wind_level_is_not_beaufort_applied_to_gusts():
+    """Beaufort is defined on SUSTAINED wind and this column is gusts.
+    Measured 2026-09-09: force 6's 39 km/h would flag 19 of 42 stored days,
+    where the sustained column reaches force 6 on none. The boundaries are
+    Beaufort's, converted by the gust factor measured here."""
+    assert wind_level(30.0) is None
+    assert wind_level(33.0) == "moderate breeze"
+    assert wind_level(52.6) == "fresh breeze"      # the record's windiest day
+    assert wind_level(65.0) == "strong breeze"
+    assert wind_level(110.0) == "gale"
+    assert wind_level(None) is None
+
+
+def test_a_warning_is_stated_however_ordinary_it_has_become():
+    """The whole point of a level: it must not be suppressed by sameness.
+    Two consecutive gales read "similar winds" and told the reader nothing."""
+    assert wind_warning(52.6) is None       # windiest day on record: no warning
+    assert wind_warning(64.9) is None
+    assert wind_warning(65.0) == "strong breeze"
+    assert wind_warning(110.0) == "gale"
+
+
+def test_a_warning_survives_much_like_yesterday():
+    """Half one of the Overview. Two gale days running compared as "similar
+    winds" and the sameness lead then swallowed them whole."""
+    assert describe_day_over_day(
+        "about the same", "similar winds", None, wind_warning_name="near gale",
+    ) == "Much like yesterday. Gusting to near gale."
+
+    # And it is not suppressed by a change leading either.
+    assert describe_day_over_day(
+        "noticeably cooler", "similar winds", None, wind_warning_name="gale",
+    ) == "Noticeably cooler than yesterday. Gusting to gale."
+
+    assert describe_day_over_day("about the same", "similar winds", None) == (
+        "Much like yesterday.")
+
+
+def test_a_warning_survives_conditions_much_the_same():
+    """Half two. Four dangerous days running read "conditions much the same
+    through Saturday", which is true and is the least useful thing to say."""
+    steady = [30.2, 30.1, 29.8]
+    # Note the scope narrows to "temperatures": "winds much the same, with
+    # gusts reaching near gale" would deny its own tail, even though steady
+    # and dangerous are both true of that wind.
+    assert describe_extended_trend(
+        30.0, steady, [0.0, 0.0, 0.0], "Saturday",
+        today_wind_kmh=90.0, day_winds_kmh=[92.0, 88.0, 91.0],
+    ) == "temperatures much the same through Saturday, with gusts reaching near gale"
+
+    # Below the floor the clause is unchanged.
+    assert describe_extended_trend(
+        30.0, steady, [0.0, 0.0, 0.0], "Saturday",
+        today_wind_kmh=20.0, day_winds_kmh=[21.0, 20.0, 19.0],
+    ) == "conditions much the same through Saturday"

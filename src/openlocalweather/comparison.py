@@ -26,7 +26,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from openlocalweather.defaults import TEMP_CHANGE_BANDS_C, WIND_CHANGE_BANDS_KMH
+from openlocalweather.defaults import (
+    BEAUFORT_GUST_BANDS_KMH,
+    TEMP_CHANGE_BANDS_C,
+    WIND_CHANGE_BANDS_KMH,
+    WIND_WARNING_FLOOR_KMH,
+)
 from openlocalweather.models import DailyActual, ModelPrediction
 from openlocalweather.verify.scoring import mean
 
@@ -63,6 +68,37 @@ class DayOverDayComparison:
     # This is what the PROMPT is given; the labels themselves stay in the
     # record because that is what is stored and scored.
     overview_comparison: str | None
+
+
+def wind_level(gust_kmh: float | None) -> str | None:
+    """The Beaufort name for a GUST reading, or None below the lowest band.
+
+    Not Beaufort applied to gusts — see BEAUFORT_GUST_BANDS_KMH for why that
+    would flag nearly half the stored days here. The boundaries are converted.
+    """
+    if gust_kmh is None:
+        return None
+
+    name = None
+    for threshold, band, _sustained, _knots in BEAUFORT_GUST_BANDS_KMH:
+        if gust_kmh >= threshold:
+            name = band
+
+    return name
+
+
+def wind_warning(gust_kmh: float | None) -> str | None:
+    """The Beaufort name only when it is worth interrupting for.
+
+    EVERY OTHER LABEL IN THIS FILE IS RELATIVE, which is the defect this
+    exists to close: two consecutive gales compare as "similar winds", feed
+    "much like yesterday", and never tell the reader it is dangerous. A
+    warning is stated however ordinary it has become.
+    """
+    if gust_kmh is None or gust_kmh < WIND_WARNING_FLOOR_KMH:
+        return None
+
+    return wind_level(gust_kmh)
 
 
 def _band_label(
@@ -443,6 +479,7 @@ def compute_day_over_day(
             rain_contrast,
             today_character=today_character,
             rain_unchanged=rain_unchanged,
+            wind_warning_name=wind_warning(consensus_wind),
         ),
     )
 
@@ -490,6 +527,7 @@ def describe_day_over_day(
     *,
     today_character: str | None = None,
     rain_unchanged: bool = False,
+    wind_warning_name: str | None = None,
 ) -> str | None:
     """The whole day-over-day comparison as finished, punctuated sentences.
 
@@ -538,6 +576,14 @@ def describe_day_over_day(
         sentences.append(
             today_character if lead == "much like yesterday" and today_character else rain_contrast
         )
+
+    if wind_warning_name:
+        # A LEVEL, NOT A CHANGE, and it gets its own sentence so that nothing
+        # can suppress it. Every other label here is relative to yesterday, so
+        # two gale days running compare as "similar winds" and are then
+        # swallowed by "much like yesterday" — true, and the least useful
+        # thing that could be said on the day it matters most.
+        sentences.append(f"gusting to {wind_warning_name}")
 
     if not sentences:
         return None
@@ -641,22 +687,39 @@ def describe_extended_trend(
     if wind_delta is not None and abs(wind_delta) >= WIND_CHANGE_BANDS_KMH[0][0]:
         moving.append("becoming windier" if wind_delta > 0 else "becoming calmer")
 
+    # A LEVEL, NOT A TREND, for the same reason the day-over-day half needs
+    # one: four dangerous days running are "conditions much the same".
+    span_warning = wind_warning(max(
+        (w for w in (day_winds_kmh or []) if w is not None), default=None
+    ))
+
     if moving:
         trend = f"{' and '.join(moving)} through {last_day_name}"
     else:
-        measured_wind = wind_delta is not None
-        if not measured_wind:
+        # A SCOPE NOUN CANNOT COVER WHAT THE TAIL IS ABOUT TO CONTRADICT.
+        # "conditions much the same, with rain becoming more likely" denies
+        # itself, and so does "winds much the same, with gusts reaching gale"
+        # — steady and dangerous are both true of that wind, and welding them
+        # into one clause reads as a mistake rather than as two facts.
+        if wind_delta is None or span_warning:
             scope = "temperatures"
         elif wet_days:
-            # "conditions much the same, with rain becoming more likely" would
-            # contradict its own tail.
             scope = "temperatures and winds"
         else:
             scope = "conditions"
         trend = f"{scope} much the same through {last_day_name}"
 
+    # ONE "with", however many things follow it. Two tails stacked as
+    # "with gusts reaching gale, with rain becoming more likely" reads as a
+    # dropped word.
+    tails = []
+    if span_warning:
+        tails.append(f"gusts reaching {span_warning}")
     if wet_days:
-        return f"{trend}, with rain becoming more likely"
+        tails.append("rain becoming more likely")
+
+    if tails:
+        return f"{trend}, with {' and '.join(tails)}"
 
     return trend
 

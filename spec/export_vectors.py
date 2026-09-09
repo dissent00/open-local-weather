@@ -2054,6 +2054,14 @@ def export_extended_trend() -> None:
          30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 34.0, [30.0, 26.0, 20.0]),
         ("no wind measured keeps the narrow noun",
          30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", None, None),
+        # A LEVEL, not a trend. Four dangerous days running are "conditions
+        # much the same", which is true and useless.
+        ("a steady span above the warning floor still warns",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
+        ("warning and rain share one 'with'",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
+        ("just under the floor says nothing about level",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 60.0, [64.0, 63.0, 62.0]),
     ]
 
     cases = []
@@ -2322,6 +2330,10 @@ def export_describe_day_over_day() -> None:
          "largely dry with thunderstorms", True),
         ("rain that genuinely changed forfeits the sameness claim",
          "about the same", "similar winds", "dry, after a thundery day", "dry", False),
+        ("a warning is not suppressed by sameness",
+         "about the same", "similar winds", None, None, False, "near gale"),
+        ("nor by a change leading",
+         "noticeably cooler", "similar winds", None, None, False, "gale"),
     ]
     cases = [
         {
@@ -2330,11 +2342,13 @@ def export_describe_day_over_day() -> None:
                 "high_label": s[1], "wind_label": s[2], "rain_contrast": s[3],
                 "today_character": s[4] if len(s) > 4 else None,
                 "rain_unchanged": s[5] if len(s) > 5 else False,
+                "wind_warning_name": s[6] if len(s) > 6 else None,
             },
             "expected": describe_day_over_day(
                 s[1], s[2], s[3],
                 today_character=s[4] if len(s) > 4 else None,
                 rain_unchanged=s[5] if len(s) > 5 else False,
+                wind_warning_name=s[6] if len(s) > 6 else None,
             ),
         }
         for s in scenarios
