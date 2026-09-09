@@ -14,12 +14,29 @@ location:
     lat: -0.0917
     lon: 34.7680
 
+  # THE WATER KISUMU'S BOATS ARE ACTUALLY ON, moved 2026-09-09.
+  #
+  # This was -0.75, 33.15 — open Lake Victoria, 194 km away and outside the
+  # Winam Gulf entirely. Two independent harness readers flagged its
+  # temperatures as implausible before anyone checked the distance; they were
+  # not implausible, they were a different climate. Measured the same day:
+  # the old point forecast a high of 18.5 C while the gulf off Kisumu was
+  # 28.0 C and the city 31.1 C. The boaters' section had been describing
+  # water 9.5 C colder than the water anyone reads it for.
+  #
+  # Wind was the half that survived — 36.3 against 36.6 km/h — which is why
+  # nothing looked wrong for as long as it did.
+  #
+  # These coordinates resolve to an over-water cell 12.9 km WSW of the city,
+  # elevation 1133 m, which is lake surface. Candidates further out return
+  # cells as cold as 19.5 C on the same day, the same signature as the old
+  # point, so nearer is both more relevant and more plausible here.
   secondary_point:
     enabled: true
-    name: "Lake Victoria"
+    name: "Winam Gulf"
     section_label: "Conditions for Boaters"
-    lat: -0.75
-    lon: 33.15
+    lat: -0.15
+    lon: 34.65
 
   region_points:
     - name: "Siaya"

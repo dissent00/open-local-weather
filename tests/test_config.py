@@ -18,7 +18,13 @@ def test_load_real_kisumu_config():
     assert cfg.primary_place_name == "Kisumu, Kenya"
     assert cfg.timezone == "Africa/Nairobi"
     assert cfg.secondary_point.enabled is True
-    assert cfg.secondary_point.name == "Lake Victoria"
+    # Moved 2026-09-09 from open Lake Victoria 194 km away to the Winam Gulf
+    # off the city — the old point forecast an 18.5 C high against the gulf's
+    # 28.0 C on the same day, so the boaters' section had been describing a
+    # different climate. Pinned by name AND position, because the position is
+    # the part that was wrong and a rename alone would not have caught it.
+    assert cfg.secondary_point.name == "Winam Gulf"
+    assert (cfg.secondary_point.lat, cfg.secondary_point.lon) == (-0.15, 34.65)
     assert len(cfg.region_points) == 4
     assert cfg.primary_point.lat == pytest.approx(-0.0917)
 

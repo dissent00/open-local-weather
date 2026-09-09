@@ -85,7 +85,7 @@ NYANZA: tuple[SandboxLocation, ...] = (
                     "65 km SE at 1684 m — 500 m higher, and the area most likely to differ every single day"),
     SandboxLocation("Migori", -1.0634, 34.4731, "Africa/Nairobi", "",
                     "113 km S, 1373 m — the far edge of the basin"),
-    SandboxLocation("Winam Gulf", -0.25, 34.50, "Africa/Nairobi", "",
-                    "35 km W on the water where Kisumu's boats actually are; the configured "
-                    "secondary point is 194 km away in open lake and 9.5 C colder"),
+    SandboxLocation("Winam Gulf", -0.15, 34.65, "Africa/Nairobi", "",
+                    "the water Kisumu's boats are on, 12.9 km WSW; matches the "
+                    "secondary_point moved here 2026-09-09 from 194 km away"),
 )
