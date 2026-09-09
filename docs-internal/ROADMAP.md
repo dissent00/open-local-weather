@@ -10811,3 +10811,78 @@ and it needs the operator.
 
 Related: item 42 (what "observed rain" means), item 57 (the findings that
 compare across leads), item 84.
+
+---
+
+## 98. "Did it rain yesterday" has no single answer, and the block presents one · **Planned**
+
+Raised by the operator 2026-09-09 from lived experience, which is the only
+instrument that noticed:
+
+> "It's been very dry — no measurable rain at my location in a week or more —
+> but also thunderstorms do pop up and drop some rain here and there. That's
+> very hard to quantify well from the data I think, even though it's true and
+> I expect fairly common worldwide."
+
+Measured against the stored record for the fortnight to 2026-09-08:
+
+| | days |
+|---|---|
+| station saw rain, reanalysis recorded none | 3 (08-29, 09-04, 09-05) |
+| reanalysis recorded rain, station saw none | 1 (09-07) |
+| **disagreement** | **4 of 14 — 29%** |
+
+Reanalysis total for the fortnight: 3.8 mm. The airport observed rain on four
+days. The operator, in the same town, observed none. **Three points, three
+answers, and all three can be correct.**
+
+### The block mixes point sources and says so nowhere
+
+```
+"yesterday_rain":    from the ERA5 grid cell at the primary point
+"yesterday_thunder": from the airport station, 3.8 km away
+```
+
+Two fields, side by side, from two places, presented as one day's weather.
+`provenance.rain` is `era5_archive` on all fourteen days, so the scored
+boolean is ALWAYS the cell — the station never wins for `rain`, only for
+`thunder`, `precipitation` and onset.
+
+**A cell is not a place.** ERA5-Land is about 9 km across and ERA5 about 31.
+A cell mean of 0.5 mm on a convective day is consistent with 15 mm over one
+village and nothing over the rest, and the record cannot tell those apart.
+This is why `yesterday_rain: true` beside a "largely dry" phrase has now made
+FOUR independent careful readers stop and call it a contradiction: the two
+values are not wrong, they are answers to questions about different places at
+different scales, and nothing labels them.
+
+### What two points cannot settle
+
+The obvious move — treat station/reanalysis disagreement as a patchiness
+signal — does not work, and the record shows why. Three of the four
+disagreements are "station saw, reanalysis missed", which is ERA5's known
+convective blind spot (item 42), not evidence of spatial variation. **With two
+points you cannot separate "the rain was patchy" from "the reanalysis missed
+it."** A third independent source is what distinguishes them:
+
+- **More stations** — item 63, which this is now the strongest argument for.
+  Two more reporting points in the basin would turn a disagreement into a map.
+- **Radar or satellite** — `docs-internal/RADAR_SATELLITE_REGIONAL_OBSERVATIONS_HANDOFF.md`
+  exists for this, and item 65 wants it for cloud. Precipitation radar is the
+  instrument that actually answers "where did it fall".
+
+### What is cheap and honest now
+
+Not a fix, a label. The payload could say WHERE each observation comes from —
+the cell for rain, the station for thunder, and how far apart they are — so
+the forecaster stops treating them as one measurement of one place. That is
+the item 84 register doing its job on a block that already exists, and it
+costs a line of provenance rather than a new source.
+
+Whether the OVERVIEW should carry it is a separate and harder question. "Dry
+here, though storms were scattered" is more true and less useful than "dry",
+and hedging every convective day would undo item 67's work. Do not reach for
+that until the register above exists.
+
+Related: item 42 (reanalysis does not see thunderstorms), item 45 (the source
+ladder), item 53.1a (the day this was first hit), item 63, item 65, item 84.
