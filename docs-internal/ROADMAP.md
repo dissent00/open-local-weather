@@ -9325,7 +9325,7 @@ misleading even where the values are right.
 
 ---
 
-## 84. A register of what this system could observe, and what it actually does · **Planned**
+## 84. A register of what this system could observe, and what it actually does · **Shipped 2026-09-09**
 
 Raised by the operator 2026-09-08, after a prompt edit asked the forecaster
 to describe fog and wind chill. Neither is fetched, neither is stored, and
@@ -9378,6 +9378,54 @@ temperature, visibility, fog, wind chill, gales as a distinct class.
 
 The absent rows are the point. A table listing only what exists answers no
 question anyone has asked.
+
+### Shipped 2026-09-09 — GENERATED, not written
+
+`docs-internal/OBSERVATION_REGISTER.md`, 21 variables, produced by
+`spec/generate_observation_register.py` from the code itself.
+
+**This item asked for a static table and it should not have.** A static table
+is precisely what let `cloud_cover` be fetched in THREE separate places — the
+forecast hourly vars, the archive, and the METAR — and discarded in all three
+for months. The answer was knowable the whole time and nobody knew it. So
+every column but the last is derived from `HOURLY_FORECAST_VARS`,
+`ARCHIVE_HOURLY_VARS`, `DailyActual`, `ModelPrediction`, `VerificationScore`,
+`DayOverDayComparison` and the built prompt, and a test regenerates it and
+fails if the committed copy disagrees. Watched failing against a one-character
+change.
+
+### The two load-bearing columns needed THREE values, not two
+
+This item named `observed` and `in the prompt` as the pair that decides
+whether a prompt edit is legal. Built as booleans they both lied:
+
+- **`in prompt: yes` for humidity**, because the prompt names it in a
+  PROHIBITION. A register answering "may the forecaster mention this?" with
+  *yes* because the answer is written down as *no* is worse than no register.
+  Now **banned** is its own value.
+- **`observed: no` for dew point**, which is in every METAR and parsed by
+  nothing. "There is no source" and "there is a source we discard" are
+  different answers to the question anyone is actually asking. Now
+  **unparsed (METAR)**.
+
+### What the first generation showed
+
+- **`precip_mm` is stored on both sides and scored on neither.** Only the
+  rain BOOLEAN enters the record, so the amount — the thing a reader asks
+  about — has no accuracy history at all. Not previously noticed.
+- **`sustained wind` is observed and never scored**, while the scored column
+  is gusts. Item 86, now visible in one row rather than needing an
+  investigation.
+- **CAPE, air quality and UV are forecast, in the prompt, and unscored.**
+  Three variables the forecast talks about with no accuracy record behind
+  them.
+- The absent rows — humidity, fog, wind chill — read as absent, which is the
+  answer four separate investigations each had to derive from a code read.
+
+A first version matched day-over-day labels by substring and gave "sustained
+wind" the gust label. The labels are now named explicitly and the generator
+refuses a name the comparison does not have — guessing has no place in a
+register whose purpose is to be authoritative.
 
 ### Its relationship to item 56, which is NOT a merge
 
