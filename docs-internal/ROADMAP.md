@@ -8645,6 +8645,48 @@ every failure as a hiccup and the long wait would never run. Verified against
 the real path: read timeout and connect timeout both wait 15/30, a refused
 connection waits 1.5/3.
 
+### Resilient and polite, rather than well-timed — the operator's call
+
+A latency probe was offered: an hourly workflow timing both APIs from a
+GitHub runner, giving a real by-hour curve to choose a slot from. The operator
+declined it, and the reasoning is better than the experiment:
+
+> "I don't think that's a permanent solution though, the trough we find could
+> easily move, so just becoming more resilient to blips/timeouts is probably
+> the right path. So let's focus on making our requests more resilient and, I
+> guess, maximally respectful of the hosts."
+
+Tuning to a quiet hour is tuning to somebody else's load curve, and that curve
+moves. Being cheap to serve does not. Three changes, all 2026-09-09:
+
+- **We say who we are.** The default `python-requests/x.y` is anonymous,
+  indistinguishable from a scraper, and gives an operator no way to reach the
+  project before blocking it. The User-Agent now carries the name, the version
+  and the repository URL. This API is free and unauthenticated, so that header
+  is the ONLY identification it gets.
+- **`Retry-After` is obeyed.** On a 429 or 503 the host is answering the exact
+  question our backoff guesses at. Capped at 60 s because a cron slot cannot
+  wait an hour — capped rather than ignored, because the header still means
+  "not yet". Only the delta-seconds form is read; the HTTP-date form needs the
+  server's clock and this project has a whole module about not trusting
+  clocks.
+- **Retries are jittered**, up to +25%, and only ever upward. A fixed delay
+  means every client that failed together returns together. One deployment
+  does not matter; this project is meant to be FORKED, and N forks on a shared
+  schedule turn a blip into a thundering herd against an API that charges
+  nobody. A jitter that could shorten the wait would make a busy server
+  busier, so it adds and never subtracts.
+
+### Still open, and the larger resilience lever
+
+**A failed extended-daily fetch kills the whole run.** That is what happened
+on 2026-09-09: `forecast_days=8` timed out and there was no forecast at all,
+though today's hourly guidance had already arrived. A forecast for today
+without a seven-day outlook beats no forecast, and the machinery for saying so
+already exists — `degradations` carries exactly this shape of message, and
+`hours_ahead_narrowed` is the precedent. Deciding which fetches are genuinely
+required is the biggest remaining resilience win here and is not done.
+
 ### What the two failures actually say, which is not what either of us guessed
 
 | run | cause | attempts |

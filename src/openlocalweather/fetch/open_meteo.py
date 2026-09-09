@@ -23,6 +23,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import random
 import sys
 import time
 
@@ -99,14 +100,53 @@ RETRY_BASE_DELAY_S = 1.5
 # catching them, so they get different waits.
 TIMEOUT_RETRY_DELAY_S = 15.0
 
+# BEING A GOOD CITIZEN OF A FREE SERVICE, added 2026-09-09.
+#
+# The operator's framing, and it is the right one: chasing a quiet hour is
+# tuning to someone else's load curve, and that curve moves. Being cheap to
+# serve does not.
+#
+# JITTER, because a fixed delay means every client that failed together
+# returns together. One deployment retrying in lockstep is nothing; this
+# project is meant to be forked, and N forks sharing a schedule turn a blip
+# into a thundering herd against an API that charges nobody. Added rather
+# than multiplied, so the delay can only grow — a jitter that can shorten the
+# wait is a jitter that can make a busy server busier.
+JITTER_FRACTION = 0.25
+
+# THE HOST'S OWN ANSWER BEATS OUR GUESS. `Retry-After` on a 429 or 503 is the
+# server saying when it wants us back; our backoff is a guess at the same
+# question. Capped because a cron slot cannot wait an hour — but capped rather
+# than ignored, because the header still means "not yet".
+MAX_RETRY_AFTER_S = 60.0
+
 
 def _retry_delay_s(attempt: int, *, timed_out: bool) -> float:
     """How long to wait before attempt N+1. Linear, not exponential: with
     MAX_ATTEMPTS at 3 there are only two waits, so the shape hardly matters
     and a doubling would push the worst case past the useful window."""
-    base = TIMEOUT_RETRY_DELAY_S if timed_out else RETRY_BASE_DELAY_S
+    base = (TIMEOUT_RETRY_DELAY_S if timed_out else RETRY_BASE_DELAY_S) * attempt
 
-    return base * attempt
+    return base + random.random() * JITTER_FRACTION * base
+
+
+def _retry_after_s(response: requests.Response) -> float | None:
+    """The host's own answer, in seconds, or None when it did not give one.
+
+    Only the delta-seconds form is read. The HTTP-date form is legal and is
+    not worth parsing here: it needs the server's clock, this project already
+    has a whole module about not trusting local clocks, and Open-Meteo does
+    not send it.
+    """
+    raw = response.headers.get("Retry-After")
+    if not raw:
+        return None
+    try:
+        seconds = float(raw.strip())
+    except ValueError:
+        return None
+
+    return min(max(seconds, 0.0), MAX_RETRY_AFTER_S)
 
 # ONE CONNECTION FOR THE WHOLE RUN, rather than a fresh TCP+TLS handshake per
 # call. A run makes seven /v1/forecast requests plus air quality inside about
@@ -118,6 +158,13 @@ def _retry_delay_s(attempt: int, *, timed_out: bool) -> float:
 # request is still worth having. It is NOT a claimed fix — see item 53's
 # confound before treating it as one.
 _SESSION = requests.Session()
+# SAY WHO IS CALLING. This API is free and unauthenticated, so the User-Agent
+# is the only thing identifying us — the default `python-requests/x.y` is
+# indistinguishable from a scraper and gives an operator no way to reach the
+# project before blocking it.
+_SESSION.headers["User-Agent"] = (
+    "open-local-weather/0.1.0 (+https://github.com/dissent00/open-local-weather)"
+)
 
 # How many requests this run has made, and to what. Item 53 cost a full
 # investigation because the logs said only that something timed out: not which
@@ -157,6 +204,7 @@ def _get(url: str, params: dict[str, Any]) -> dict:
 
     last_error: Exception | None = None
     timed_out = False
+    asked_for: float | None = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             resp = _SESSION.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
@@ -192,8 +240,13 @@ def _get(url: str, params: dict[str, Any]) -> dict:
             last_error = OpenMeteoFetchError(
                 f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
             )
+            asked_for = _retry_after_s(resp)
         if attempt < MAX_ATTEMPTS:
-            time.sleep(_retry_delay_s(attempt, timed_out=timed_out))
+            time.sleep(
+                asked_for
+                if asked_for is not None
+                else _retry_delay_s(attempt, timed_out=timed_out)
+            )
     raise last_error  # type: ignore[misc]
 
 

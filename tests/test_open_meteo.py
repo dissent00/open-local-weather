@@ -383,13 +383,18 @@ def test_a_timeout_waits_longer_than_a_hiccup(monkeypatch):
     monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 15.0)
     delay = open_meteo._retry_delay_s
 
-    # Short for the blip it was written for.
-    assert delay(1, timed_out=False) == 1.5
-    assert delay(2, timed_out=False) == 3.0
+    # Ranges, not equalities: the delay is jittered so that forks sharing a
+    # schedule do not all return at the same instant. Jitter only ever ADDS,
+    # so the floor is the nominal wait.
+    top = 1 + open_meteo.JITTER_FRACTION
+    assert 1.5 <= delay(1, timed_out=False) <= 1.5 * top
+    assert 3.0 <= delay(2, timed_out=False) <= 3.0 * top
 
     # An order of magnitude longer for a service under load, and growing.
-    assert delay(1, timed_out=True) >= 10 * delay(1, timed_out=False)
-    assert delay(2, timed_out=True) > delay(1, timed_out=True)
+    # Floor against floor: jitter widens both, so comparing a jittered value
+    # against another jittered ceiling would be asserting luck.
+    assert delay(1, timed_out=True) >= 10 * open_meteo.RETRY_BASE_DELAY_S
+    assert delay(2, timed_out=True) >= 2 * open_meteo.TIMEOUT_RETRY_DELAY_S
 
 
 def test_the_long_backoff_still_fits_inside_the_run(monkeypatch):
@@ -404,3 +409,67 @@ def test_the_long_backoff_still_fits_inside_the_run(monkeypatch):
         for a in range(1, open_meteo.MAX_ATTEMPTS)
     )
     assert worst < 300, f"a single request could take {worst}s before giving up"
+
+
+def test_we_say_who_we_are():
+    """Open-Meteo is free and unauthenticated, so the User-Agent is the only
+    thing telling them who is calling. The default `python-requests/x.y` is
+    anonymous, indistinguishable from a scraper, and gives an operator no way
+    to reach us before blocking us."""
+    from openlocalweather.fetch.open_meteo import _SESSION
+
+    ua = _SESSION.headers.get("User-Agent", "")
+    assert "open-local-weather" in ua
+    assert "github.com" in ua, "a bare name gives them nothing to look up"
+    assert "python-requests" not in ua
+
+
+def test_the_host_saying_when_to_come_back_is_obeyed(monkeypatch):
+    """`Retry-After` is the server telling us exactly when it wants us. Our
+    own backoff is a guess; theirs is not, and honouring it is both more
+    respectful and more likely to succeed than guessing shorter."""
+    from openlocalweather.fetch import open_meteo
+
+    monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 15.0)
+    slept = []
+    monkeypatch.setattr(open_meteo.time, "sleep", lambda s: slept.append(s))
+
+    with requests_mock.Mocker() as m:
+        m.get(open_meteo.FORECAST_URL, [
+            {"status_code": 503, "headers": {"Retry-After": "7"}},
+            {"json": {"ok": True}, "status_code": 200},
+        ])
+        open_meteo._get(open_meteo.FORECAST_URL, {"latitude": 0, "longitude": 0})
+
+    assert slept == [7.0], f"ignored the host's own Retry-After: {slept}"
+
+
+def test_an_absurd_retry_after_is_not_obeyed_blindly(monkeypatch):
+    """A header is input, not instruction. A cron slot cannot wait an hour, so
+    an implausible value is capped rather than trusted — and capped rather
+    than ignored, because the host still meant "not yet"."""
+    from openlocalweather.fetch import open_meteo
+
+    slept = []
+    monkeypatch.setattr(open_meteo.time, "sleep", lambda s: slept.append(s))
+    with requests_mock.Mocker() as m:
+        m.get(open_meteo.FORECAST_URL, [
+            {"status_code": 429, "headers": {"Retry-After": "3600"}},
+            {"json": {"ok": True}, "status_code": 200},
+        ])
+        open_meteo._get(open_meteo.FORECAST_URL, {"latitude": 0, "longitude": 0})
+
+    assert slept and slept[0] == open_meteo.MAX_RETRY_AFTER_S
+
+
+def test_retries_are_jittered_so_clients_do_not_return_in_lockstep(monkeypatch):
+    """Every fork of this project retrying on the same fixed schedule turns a
+    blip into a thundering herd against a free service. Jitter is the cheapest
+    thing a polite client does."""
+    from openlocalweather.fetch import open_meteo
+
+    monkeypatch.setattr(open_meteo, "RETRY_BASE_DELAY_S", 1.5)
+    seen = {open_meteo._retry_delay_s(1, timed_out=False) for _ in range(40)}
+
+    assert len(seen) > 1, "a fixed delay means every client returns at once"
+    assert all(1.5 <= d <= 1.5 * (1 + open_meteo.JITTER_FRACTION) for d in seen)
