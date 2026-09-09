@@ -24,6 +24,7 @@ export 'src/cycle.dart';
 export 'src/dates.dart';
 export 'src/extract.dart';
 export 'src/forecast.dart';
+export 'src/glossary.dart';
 export 'src/instability.dart';
 export 'src/models.dart';
 export 'src/comparison.dart';

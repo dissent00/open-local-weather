@@ -681,6 +681,7 @@ def test_every_vector_file_is_exercised():
         "extended_trend.json",
         "describe_day_rain.json",
         "describe_day_over_day.json",
+        "glossary.json",
         "temp_high_low.json",
         "aqi_last_known.json",
         "instability.json",
@@ -716,6 +717,22 @@ def test_readme_coverage_table_counts_match_the_files():
         if int(claimed) != len(json.loads((VECTORS_DIR / name).read_text())["cases"])
     ]
     assert not stale, f"README case counts are stale: {stale}"
+
+
+def test_vectors_glossary():
+    """Item 56. Prose that reaches a reader in two languages, pinned exactly —
+    a definition that drifts between the site and the app is two forecasts
+    explaining one word differently."""
+    from openlocalweather.glossary import GLOSSARY
+
+    by_term = {e.term: e for e in GLOSSARY}
+    cases = load("glossary.json")["cases"]
+    assert len(cases) == len(GLOSSARY), "a term was added or removed without re-exporting"
+
+    for case in cases:
+        entry = by_term[case["input"]["term"]]
+        assert entry.definition == case["expected"]["definition"], case["name"]
+        assert entry.source == case["expected"]["source"], case["name"]
 
 
 def test_vector_files_declare_a_known_format_version():

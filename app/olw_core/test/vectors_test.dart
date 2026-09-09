@@ -839,6 +839,29 @@ void main() {
     });
   });
 
+  group('glossary', () {
+    test('GLOSSARY', () {
+      // Item 56. Prose that reaches a reader in two languages, pinned
+      // exactly: a definition that drifts between the site and the app is two
+      // forecasts explaining one word differently. The Dart half is generated
+      // by spec/generate_glossary_dart.py, so a failure here means it was
+      // hand-edited or the generator was not re-run.
+      final cases = casesOf('glossary.json');
+      expect(glossary.length, cases.length,
+          reason: 'a term was added or removed without regenerating');
+
+      final byTerm = {for (final e in glossary) e.term: e};
+      for (final c in cases) {
+        final term = (c['input'] as Map<String, Object?>)['term'] as String;
+        final want = c['expected'] as Map<String, Object?>;
+        final got = byTerm[term];
+        expect(got, isNotNull, reason: 'missing term: \$term');
+        expect(got!.definition, want['definition'], reason: term);
+        expect(got.source, want['source'], reason: term);
+      }
+    });
+  });
+
   group('temperature display', () {
     test('temp_high_low', () {
       // Arithmetic that used to be the model's job. The .5 cases are the
@@ -1094,6 +1117,7 @@ void main() {
       'extended_trend.json',
       'describe_day_rain.json',
       'describe_day_over_day.json',
+      'glossary.json',
       'temp_high_low.json',
       'aqi_last_known.json',
       'instability.json',

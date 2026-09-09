@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
@@ -761,3 +762,32 @@ def test_the_morning_view_shows_the_morning_s_own_degradation():
         _entry_as_morning_view(entry), LOCATION, nav, is_latest=False
     )
     assert "did not arrive" in morning
+
+
+def test_the_glossary_page_is_written_without_a_record_to_score(tmp_path):
+    """Item 56. Static data, so it does not wait on a review the way the
+    accuracy page must — a reader on day one still gets the definitions."""
+    from openlocalweather.publish.pages import render_glossary_page, build_nav_links
+    from openlocalweather.glossary import GLOSSARY
+
+    nav = build_nav_links("https://example.org/", "owner/repo")
+    html = render_glossary_page(LOCATION, nav)
+
+    assert "{{" not in html and "{%" not in html, "unrendered template syntax"
+    for entry in GLOSSARY:
+        assert entry.term in html, f"{entry.term} missing from the page"
+    # Sources are shown where claimed and nowhere else.
+    assert html.count('class="source"') == sum(1 for e in GLOSSARY if e.source)
+
+
+def test_every_page_can_reach_the_glossary(tmp_path):
+    """A page nothing links to is a page nobody reads."""
+    from openlocalweather.publish.pages import build_nav_links
+
+    nav = build_nav_links("https://example.org/", "owner/repo")
+    assert nav.glossary.endswith("/glossary.html")
+
+    templates = Path(__file__).resolve().parents[1] / "src/openlocalweather/publish/templates"
+    for name in ("forecast", "accuracy", "archive_index", "glossary"):
+        body = (templates / f"{name}.html.jinja").read_text()
+        assert "nav.glossary" in body, f"{name} has no link to the glossary"

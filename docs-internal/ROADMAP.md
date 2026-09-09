@@ -5542,7 +5542,7 @@ audience rather than by subscriber), items 2, 3, 5, 24, 54.
 
 ---
 
-## 56. A glossary for the forecast's vocabulary · **Planned, both sides**
+## 56. A glossary for the forecast's vocabulary · **Cheap version shipped 2026-09-09; inline linking still Planned**
 
 > **A worked precedent landed 2026-09-09.** `WIND_WARNING_BANDS_KT` in
 > `defaults.py` carries a descriptor, a threshold in the standard's own unit,
@@ -5605,6 +5605,48 @@ written once. Two routes:
 - **In the published feed** (item 24), so terms can be corrected without one.
   Item 24 has to land first, and it is the item that decides how much the app
   may be told remotely at all.
+
+### Shipped 2026-09-09 — the cheap version, as this item specified
+
+A static `GLOSSARY` in `glossary.py`, 17 entries, rendered to
+`docs/glossary.html` and linked from every page's nav. **Not** inline
+linking, which this item said to treat as a separate decision after seeing
+the first in use.
+
+**The term list is measured, not guessed.** Across the 30 stored narratives
+(129,951 characters): knots 171, hPa 156, "Day+N" 127, AQI 125, J/kg 103,
+convective 88, CAPE 69, gust 67, instability 62, PM2.5/PM10 54, UV 41,
+synoptic 37, MSLP 29, consensus 21, METAR 10, cumulonimbus 9. A test asserts
+every one of those is defined — and a second test asserts the list is not
+stale, by checking each claimed term still appears in a real narrative. A
+coverage list describing a forecast that no longer exists is worse than none.
+
+**Sources where a body publishes them, `None` where it does not.** Four
+entries cite: AQI and PM2.5/PM10 to the US EPA, gale and storm force to NOAA
+marine. The other thirteen are this project's own plain-English wording and
+say so by carrying no citation, because an invented one is worse than none.
+A test asserts every claimed source names a locator.
+
+**The Dart half is GENERATED**, by `spec/generate_glossary_dart.py`, and
+pinned by `spec/vectors/glossary.json`. The two-language prose mirror has
+been broken twice this project by hand-copying — once by missing an edit,
+once by trailing whitespace — so this one is not hand-copied. The Dart vector
+test was watched failing against a one-word perturbation.
+
+Route taken: **in `olw_core`**, the option this item lists as available now.
+The published-feed route still waits on item 24, and the tradeoff it names
+holds — correcting a definition needs an app release.
+
+### Still owed
+
+- **The app does not render it yet.** `olw_core` exports `glossary` and the
+  vector holds it; the Ensemble side has to build the screen. That is the
+  surface with the STRONGER claim per this item — someone who installed an
+  app has no repo to read — and it is the half not done.
+- **The email has no glossary section.** Same list, a different template.
+- Thirteen entries are unsourced. Not wrong, but item 56's own precedent
+  (see the blockquote above) is that a published standard beats our wording,
+  and UV index and METAR in particular have obvious authorities.
 
 ### The thing a glossary does not fix
 

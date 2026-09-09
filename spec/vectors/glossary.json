@@ -1,0 +1,177 @@
+{
+  "vector_format_version": 1,
+  "function": "GLOSSARY",
+  "description": "The forecast's technical vocabulary, defined once. Static data rather than an LLM call: a definition has one right answer that does not depend on today's weather, and a generated one would drift. `source` names the publishing body where the numbers come from and is null where the entry is this project's own plain-English wording \u2014 an invented citation being worse than none.",
+  "cases": [
+    {
+      "name": "AQI",
+      "input": {
+        "term": "AQI"
+      },
+      "expected": {
+        "definition": "Air Quality Index: a 0-500+ scale that converts pollutant concentrations into one number. 0-50 is Good, 51-100 Moderate, 101-150 Unhealthy for Sensitive Groups, 151-200 Unhealthy, 201-300 Very Unhealthy, 301 and above Hazardous. The number reported is the worst single pollutant, not an average of them.",
+        "source": "US EPA Air Quality Index (airnow.gov/aqi/aqi-basics)"
+      }
+    },
+    {
+      "name": "PM2.5 and PM10",
+      "input": {
+        "term": "PM2.5 and PM10"
+      },
+      "expected": {
+        "definition": "Airborne particles under 2.5 and under 10 micrometres across, measured in micrograms per cubic metre. PM10 includes PM2.5 by definition, so PM10 can never be the smaller of the two. The finer particles reach deeper into the lungs, which is why PM2.5 usually drives the AQI.",
+        "source": "US EPA Air Quality Index (airnow.gov/aqi/aqi-basics)"
+      }
+    },
+    {
+      "name": "CAPE",
+      "input": {
+        "term": "CAPE"
+      },
+      "expected": {
+        "definition": "Convective Available Potential Energy, in joules per kilogram: how much energy is available to lift air, and so how vigorous a thunderstorm could become. Below about 300 J/kg convection is unlikely, 300-1000 is marginal to moderate, and above 1000 supports thunderstorms. It measures POTENTIAL, not certainty \u2014 a day can carry high CAPE and never produce a storm, because something still has to lift the air.",
+        "source": null
+      }
+    },
+    {
+      "name": "instability",
+      "input": {
+        "term": "instability"
+      },
+      "expected": {
+        "definition": "The atmosphere's willingness to keep lifting air that has started rising. An unstable day is one where a small nudge can grow into a storm. CAPE is how it is measured here.",
+        "source": null
+      }
+    },
+    {
+      "name": "convective",
+      "input": {
+        "term": "convective"
+      },
+      "expected": {
+        "definition": "Driven by rising air rather than by a large weather system. Convective rain is showery, local and short-lived, and can fall heavily on one side of a town while the other stays dry.",
+        "source": null
+      }
+    },
+    {
+      "name": "gust versus sustained wind",
+      "input": {
+        "term": "gust versus sustained wind"
+      },
+      "expected": {
+        "definition": "Sustained wind is an average over a period, usually ten minutes; a gust is a brief peak within it. Gusts run roughly one and a half times the sustained speed, and they are what moves boats and branches. Wind figures in this forecast are GUSTS unless it says otherwise.",
+        "source": null
+      }
+    },
+    {
+      "name": "gale force",
+      "input": {
+        "term": "gale force"
+      },
+      "expected": {
+        "definition": "Sustained wind, or frequent gusts, of 34 to 47 knots (63-87 km/h). A large-scale event lasting hours, driven by a front or system passing \u2014 distinct from the sudden gusts a single thunderstorm produces, which are violent, local and over in minutes.",
+        "source": "US National Weather Service, marine forecast definitions (weather.gov/marine/faq)"
+      }
+    },
+    {
+      "name": "storm force",
+      "input": {
+        "term": "storm force"
+      },
+      "expected": {
+        "definition": "Sustained wind, or frequent gusts, of 48 to 63 knots (89-117 km/h). Above 64 knots (118 km/h) is hurricane force.",
+        "source": "US National Weather Service, marine forecast definitions (weather.gov/marine/faq)"
+      }
+    },
+    {
+      "name": "knot",
+      "input": {
+        "term": "knot"
+      },
+      "expected": {
+        "definition": "One nautical mile per hour, 1.852 km/h. Used for wind because marine and aviation forecasts worldwide use it, so a figure in knots can be compared against any of them.",
+        "source": null
+      }
+    },
+    {
+      "name": "hPa and MSLP",
+      "input": {
+        "term": "hPa and MSLP"
+      },
+      "expected": {
+        "definition": "Hectopascals, the unit of air pressure, and Mean Sea Level Pressure \u2014 the reading corrected to sea level so that places at different altitudes can be compared. Around 1013 hPa is average. Falling pressure generally means unsettled weather approaching; the RATE of change says more than the value.",
+        "source": null
+      }
+    },
+    {
+      "name": "synoptic",
+      "input": {
+        "term": "synoptic"
+      },
+      "expected": {
+        "definition": "Of the large scale \u2014 systems spanning hundreds to thousands of kilometres, such as fronts and pressure centres, as opposed to a single storm cell over one town.",
+        "source": null
+      }
+    },
+    {
+      "name": "Day+0, Day+3, Day+7",
+      "input": {
+        "term": "Day+0, Day+3, Day+7"
+      },
+      "expected": {
+        "definition": "How far ahead a forecast was made. Day+0 is today, forecast this morning; Day+3 is today, forecast three days ago. Accuracy is tracked separately at each, because a model good at tomorrow is not necessarily good at next week.",
+        "source": null
+      }
+    },
+    {
+      "name": "consensus",
+      "input": {
+        "term": "consensus"
+      },
+      "expected": {
+        "definition": "What the numerical models agree on before any judgement is applied \u2014 here, the average across them. Where they disagree sharply, the spread is reported rather than averaged away, because the disagreement is itself the information.",
+        "source": null
+      }
+    },
+    {
+      "name": "METAR",
+      "input": {
+        "term": "METAR"
+      },
+      "expected": {
+        "definition": "The standard hourly weather report filed by airports worldwide. It is a direct observation rather than a model output, which makes it the closest thing to ground truth available here.",
+        "source": null
+      }
+    },
+    {
+      "name": "cumulonimbus",
+      "input": {
+        "term": "cumulonimbus"
+      },
+      "expected": {
+        "definition": "The tall, anvil-topped cloud that produces thunderstorms. Its presence in an airport report is a direct observation of a storm, not a forecast of one.",
+        "source": null
+      }
+    },
+    {
+      "name": "onset",
+      "input": {
+        "term": "onset"
+      },
+      "expected": {
+        "definition": "The hour rain is expected to begin. A forecast of the same total rainfall starting at dawn or at dusk describes two very different days, so onset is scored separately from amount.",
+        "source": null
+      }
+    },
+    {
+      "name": "UV index",
+      "input": {
+        "term": "UV index"
+      },
+      "expected": {
+        "definition": "How strong the sun's ultraviolet radiation is, on an open-ended scale where 3 is moderate, 6 high, 8 very high and 11 extreme. It peaks near midday and is barely reduced by thin cloud.",
+        "source": null
+      }
+    }
+  ]
+}

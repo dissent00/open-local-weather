@@ -49,6 +49,7 @@ from openlocalweather.aqi import (
     summarize_ground_aqi,
 )
 from openlocalweather.comparison import describe_day_over_day, describe_day_rain
+from openlocalweather.glossary import GLOSSARY
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG, summarize_instability
 from openlocalweather.dates import weekday_name, add_days, prediction_row_date_for_target
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
@@ -2289,6 +2290,34 @@ def export_daypart() -> None:
 # ---------------------------------------------------------------------------
 
 
+def export_glossary() -> None:
+    """ROADMAP item 56 — the forecast's vocabulary.
+
+    Not a function's behaviour but a body of PROSE that reaches a reader in
+    two languages, so it is pinned the same way the system prompt is: exported
+    whole, compared character for character. A definition that drifts between
+    the site and the app is two forecasts explaining one word differently.
+    """
+    write(
+        "glossary.json",
+        "GLOSSARY",
+        "The forecast's technical vocabulary, defined once. Static data rather "
+        "than an LLM call: a definition has one right answer that does not "
+        "depend on today's weather, and a generated one would drift. `source` "
+        "names the publishing body where the numbers come from and is null "
+        "where the entry is this project's own plain-English wording — an "
+        "invented citation being worse than none.",
+        [
+            {
+                "name": e.term,
+                "input": {"term": e.term},
+                "expected": {"definition": e.definition, "source": e.source},
+            }
+            for e in GLOSSARY
+        ],
+    )
+
+
 def export_describe_day_over_day() -> None:
     """ROADMAP item 83 — the composition contract.
 
@@ -2829,6 +2858,7 @@ def main() -> None:
     export_extended_trend()
     export_describe_day_rain()
     export_describe_day_over_day()
+    export_glossary()
     export_temp_high_low()
     export_instability()
     export_cycle()

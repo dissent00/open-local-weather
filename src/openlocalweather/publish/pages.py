@@ -17,6 +17,8 @@ being trivially relocatable to a different URL without a regenerate.
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -28,6 +30,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import format_date
+from openlocalweather.glossary import GLOSSARY
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.review import WeeklyReview
 
@@ -115,6 +118,7 @@ class NavLinks:
     css: str
     github: str
     accuracy: str
+    glossary: str
 
 
 def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
@@ -126,6 +130,7 @@ def build_nav_links(base_url: str, github_repo: str) -> NavLinks:
         css=base + "assets/style.css",
         github=f"https://github.com/{github_repo}",
         accuracy=base + "accuracy.html",
+        glossary=base + "glossary.html",
     )
 
 
@@ -223,6 +228,28 @@ def build_archive_items(
         items.append(ArchiveItem(date=d, slug=slug, label=_issuance_label(entry, morning=False)))
         items.append(ArchiveItem(date=d, slug=f"{slug}-morning", label=_issuance_label(entry, morning=True)))
     return items
+
+
+def render_glossary_page(location: LocationConfig, nav: NavLinks) -> str:
+    """ROADMAP item 56. Static, so it takes no forecast and no review — the
+    page is identical every run and re-rendering it costs nothing.
+
+    The slug is built here rather than stored on the entry: it is a rendering
+    concern, and putting it in glossary.py would put an HTML detail into the
+    file the app also reads.
+    """
+    rows = [
+        {
+            "term": e.term,
+            "definition": e.definition,
+            "source": e.source,
+            "slug": re.sub(r"[^a-z0-9]+", "-", e.term.lower()).strip("-"),
+        }
+        for e in GLOSSARY
+    ]
+    template = _env().get_template("glossary.html.jinja")
+
+    return template.render(glossary=rows, location=location, nav=nav)
 
 
 def render_archive_index_page(items: list[ArchiveItem], location: LocationConfig, nav: NavLinks) -> str:
@@ -333,6 +360,14 @@ class GitHubPagesPublisher:
         archive_items = build_archive_items(all_dates, self.entry_provider or (lambda d: None))
         archive_index_html = render_archive_index_page(archive_items, self.location, self.nav)
         (archive_dir / "index.html").write_text(archive_index_html)
+
+        # Static, so it is written unconditionally and needs no provider —
+        # unlike the accuracy page, which cannot exist before there is a
+        # record to score. Rewritten every run because that is cheaper than
+        # deciding whether a definition changed.
+        (self.docs_dir / "glossary.html").write_text(
+            render_glossary_page(self.location, self.nav)
+        )
 
         if self.review_provider is not None:
             review = self.review_provider()
