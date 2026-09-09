@@ -10088,7 +10088,7 @@ today" would have required writing a skill summary for the blend.
 
 ---
 
-## 91. Stored skill summaries are always one day behind their own numbers · **Planned**
+## 91. Stored skill summaries are always one day behind their own numbers · **Fixed 2026-09-09**
 
 Also from the 2026-09-09 harness run, and it **corrects a "do not re-derive"
 note that was wrong.** The previous session recorded: *"Do the skill-profile
@@ -10123,11 +10123,59 @@ the disagreement, could not tell which side was right, and picked one — *"I
 quoted no percentage from a `skill_profile_summary` and used the arithmetic
 fields"* — which is item 83's defect 5 again, in a different block.
 
-Options, undecided: recompute the summary each run from current counts; strip
-the percentages from the stored prose and let the numbers carry them; or stamp
-each summary with the counts it was written against so the staleness is
-visible rather than silent. The third is the cheapest and the only one that
-does not need an LLM call.
+### What settled the choice
+
+**The summary's only consumer is the next run's prompt.** Not the accuracy
+page, not the app, not any template — `verify/pipeline.py` even leaves it
+untouched on update. It is LLM-written prose stored and fed back to the LLM,
+and nothing else reads it.
+
+**And the staleness is not a timing bug.** Verification runs BEFORE the LLM
+call, so the model sees current counts and writes prose that matches them.
+Then it is stored, the next run advances the counts by one cycle, and the
+model is shown yesterday's figure beside today's. Structural, and always
+exactly one day.
+
+That ruled out all three listed options. Stamping the vintage makes the
+contradiction explicable and leaves the model with two numbers for one fact,
+still having to pick. Recomputing is already what happens. **The answer is
+that a stored summary must carry no figure at all** — the founding principle
+applied to storage, since a percentage inside LLM prose is arithmetic in the
+LLM. "Highs run consistently too warm" is as true tomorrow as today; "63%
+all-time" is not.
+
+Also: the prompt was ASKING for the figure. Its own example read *"temperature
+highs have run consistently 2-3°C too warm"*, requesting a number in prose
+that would be read a cycle later beside a fresher one.
+
+### Fixed 2026-09-09, both halves
+
+- **The instruction** now forbids figures in `skill_profile_summary` and says
+  why, with the example corrected. A lead time is the only digit allowed,
+  because "At Day+0" names which row the summary is about rather than
+  reporting one of its values.
+- **A read-time filter** withholds any stored summary that still carries one,
+  in BOTH pipelines. `summary_carries_a_figure` lives beside the field it
+  governs. Dropped whole rather than stripped: a summary with its number cut
+  out reads as a sentence missing a word, and the qualitative half is written
+  fresh every run for every pair that verified anyway.
+
+The refresh pipeline is the worse case and was filtered too — it does no
+verification, so every summary it reads was written by an earlier run and not
+one of them is current. Only `run_daily_pipeline` was filtered the last time a
+rule like this was applied to one of these blocks (item 90), so both were done
+together here.
+
+**Against the real record: 12 of 15 stored summaries are withheld today**, the
+three survivors being "insufficient data yet to characterize", which correctly
+quote nothing. They self-heal within a cycle, since every verified pair gets a
+fresh summary each run. The staleness was visible while fixing it: the
+`gfs_seamless` Day+0 summary read "63% all-time" when measured on 2026-09-08
+and "59% all-time" a day later, neither matching the count beside it.
+
+One thing an existing test caught on the way past: the new sandbox workflow
+piped its sweep into `tee` without `set -o pipefail`, which is the exact hole
+that let a failed forecast report success on 2026-09-02.
 
 ### Not a defect, checked and confirmed
 

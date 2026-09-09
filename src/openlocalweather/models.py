@@ -14,6 +14,8 @@ auditable against KisumuForecastPipeline_v2.gs.
 
 from __future__ import annotations
 
+import re
+
 from datetime import date, datetime
 
 from pydantic import BaseModel, Field
@@ -819,8 +821,45 @@ class TrackRecordEntry(BaseModel):
     # failure, or a second scheduled run later the same day. Distinct from
     # last_updated, which is just "when did any run last touch this row".
     last_verified_target_date: date | None = None
-    skill_profile_summary: str | None = None  # LLM-written, qualitative
+    # LLM-written and QUALITATIVE, which is load-bearing rather than
+    # descriptive — see summary_carries_a_figure below for why a number in
+    # here cannot be right for long.
+    skill_profile_summary: str | None = None
     notes: str = ""
+
+
+# A lead time is not a measurement. "At Day+0" is the only digit a summary is
+# allowed, because it names which row it is about rather than reporting one of
+# its values.
+_LEAD_TIME_REFERENCE = re.compile(r"Day\+\d")
+
+
+def summary_carries_a_figure(summary: str | None) -> bool:
+    """Whether a stored skill summary quotes a number, and so cannot be fed
+    back.
+
+    ROADMAP item 91. THE SUMMARY'S ONLY CONSUMER IS THE NEXT RUN'S PROMPT.
+    Verification runs before the LLM call, so the model sees current counts
+    and writes prose that matches them — and then it is stored, the next run
+    advances the counts by one cycle, and the model is shown yesterday's
+    figure beside today's. It is stale by construction and always by exactly
+    one day.
+
+    Measured across the real 2026-09-08 payload: of twelve stored figures,
+    eleven matched n-1 exactly and none matched the current count.
+    `gfs_seamless` Day+0 read "63% all-time" against a stored 17/28, and
+    17/27 is 63%.
+
+    A cold reader could not tell which side was right and dropped every
+    percentage rather than choose — the same forced private judgement item 83
+    exists to remove. The qualitative half does not go stale: "highs run
+    consistently too warm" is as true tomorrow as today. Only the numbers do,
+    and the computed fields beside them are fresh every run.
+    """
+    if not summary:
+        return False
+
+    return any(ch.isdigit() for ch in _LEAD_TIME_REFERENCE.sub("", summary))
 
 
 class TrackRecord(BaseModel):

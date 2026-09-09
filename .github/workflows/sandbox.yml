@@ -57,10 +57,16 @@ jobs:
           pip install -e .
 
       - name: Sweep
-        # Not `set -e` on the sweep itself: a location whose endpoint is down
-        # reports the failure and the others still store. The exit code is 0
-        # whatever it finds, because this reports and does not judge.
-        run: python sandbox/sweep.py --store | tee "$RUNNER_TEMP/sweep.log"
+        # A location whose endpoint is down reports the failure and the others
+        # still store: the sweep exits 0 whatever it FINDS, because it reports
+        # and does not judge. That is different from exiting 0 when the sweep
+        # itself breaks, which is what pipefail is here for — GitHub's default
+        # shell is `bash -e {0}`, without `-o pipefail`, so a crash would exit
+        # with tee's status and the job would report success with no data
+        # written. That exact hole swallowed a failed forecast on 2026-09-02.
+        run: |
+          set -o pipefail
+          python sandbox/sweep.py --store | tee "$RUNNER_TEMP/sweep.log"
 
       - name: Commit
         run: |

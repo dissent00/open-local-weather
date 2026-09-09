@@ -125,6 +125,7 @@ from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
+    summary_carries_a_figure,
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
     DEGRADATION_SYNOPTIC,
@@ -1398,8 +1399,17 @@ def run_daily_pipeline(
     # directly, so adding a second hidden model meant remembering three
     # places; the baselines leaked through exactly this block on the first
     # attempt, in a prompt nobody would have read closely.
+    # A STORED FIGURE IS ALWAYS A CYCLE OLD BY THE TIME IT IS READ — item 91.
+    # Dropped whole rather than stripped: a summary with its number cut out
+    # reads as a sentence missing a word, and the qualitative half is still
+    # written fresh every run for every pair that verified.
+    def visible_summary(entry: dict) -> dict:
+        if summary_carries_a_figure(entry.get("skill_profile_summary")):
+            entry = dict(entry, skill_profile_summary=None)
+        return entry
+
     track_record_context = [
-        e.model_dump()
+        visible_summary(e.model_dump())
         for e in verification_result.updated_track_record.entries
         if e.model in forecaster_models
     ]
@@ -1794,8 +1804,14 @@ def run_refresh_pipeline(
     _refresh_forecaster_models = models_visible_to_the_forecaster(
         deps.location.local_bulletin_model_id
     )
+    # Item 91, and the refresh is the WORSE case: it does no verification, so
+    # every summary it reads was written by an earlier run and none is
+    # current. Only run_daily_pipeline was filtered the last time a rule like
+    # this was applied to one of these two blocks.
     track_record_context = [
-        e.model_dump()
+        dict(e.model_dump(), skill_profile_summary=None)
+        if summary_carries_a_figure(e.skill_profile_summary)
+        else e.model_dump()
         for e in track_record_store.read_track_record(deps.data_dir).entries
         if e.model in _refresh_forecaster_models
     ]

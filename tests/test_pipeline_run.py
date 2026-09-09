@@ -2643,3 +2643,57 @@ def test_a_re_issue_drops_the_contaminated_note_too(tmp_path):
 
     assert "OLW blend" not in user_prompt
     assert BLEND_MODEL_ID not in user_prompt
+
+
+def summarising_provider(summary: str) -> FakeLLMProvider:
+    from openlocalweather.llm.schema import SkillProfileSummaryItem
+
+    response = FakeLLMProvider()._default_response()
+    response.skill_profile_summaries = [
+        SkillProfileSummaryItem(model=MODELS[0], lead_time_days=0, summary=summary)
+    ]
+    return FakeLLMProvider(response)
+
+
+def test_a_stored_summary_carrying_a_figure_never_comes_back(tmp_path):
+    """Item 91. The summary's only consumer is the NEXT run's prompt, and by
+    then the counts have advanced one verification cycle — measured
+    2026-09-09, where 11 of 12 stored figures matched n-1 exactly. GFS Day+0
+    said "63% all-time" against a stored 17/28, and 17/27 is 63%.
+
+    A figure inside stored prose is therefore always read beside a fresher
+    one, and a cold reader could not tell which side was right: it dropped
+    every percentage rather than choose. So a figure must not be stored,
+    and one already stored must not be fed back.
+    """
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=summarising_provider(
+            "At Day+0, strong on timing, though highs run 63% of the time too warm."
+        )),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    _, user_prompt = llm.calls[-1]
+
+    assert "MODEL TRACK RECORD" in user_prompt
+    assert '"skill_profile_summary"' in user_prompt, "the block never carried one"
+    assert "63% of the time too warm" not in user_prompt
+
+
+def test_a_figureless_summary_is_kept(tmp_path):
+    """A filter, not a delete. The qualitative picture is the whole value and
+    survives a cycle intact — it is only the numbers that go stale."""
+    clean = "At Day+0, strong on precip timing and pressure, with highs running warm."
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=summarising_provider(clean)),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+
+    assert clean in llm.calls[-1][1]
