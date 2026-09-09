@@ -50,6 +50,16 @@ const List<GlossaryEntry> glossary = [
     _nwsGlossary,
   ),
   GlossaryEntry(
+    'cloud cover',
+    'How much of the sky is covered, as a percentage. Forecasts give it that way; observers measure it in EIGHTHS of the sky, so 0/8 is clear, 1-2/8 mostly clear, 3-4/8 partly cloudy, 5-7/8 mostly cloudy and 8/8 cloudy. One eighth is the smallest change worth calling a change, which is why a sky has to shift by more than that here before the forecast says it did.',
+    _nwsGlossary,
+  ),
+  GlossaryEntry(
+    'sky obscured',
+    'The observer could not see the sky at all, through fog or heavy rain, rather than seeing a clear one. Reported as a vertical visibility instead of a cloud layer, and counted here as fully covered, because an obscured sky is emphatically not an empty one.',
+    null,
+  ),
+  GlossaryEntry(
     'instability',
     'The atmosphere\'s willingness to keep lifting air that has started rising. An unstable day is one where a small nudge can grow into a storm. CAPE is how it is measured here.',
     null,

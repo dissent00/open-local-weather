@@ -97,7 +97,7 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 17 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
-| `glossary.json` | `GLOSSARY` | 17 |
+| `glossary.json` | `GLOSSARY` | 19 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 5 |
