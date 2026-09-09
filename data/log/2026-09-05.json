@@ -316,8 +316,8 @@
       "note": "Day+0: All numerical models and Kenya Met successfully verified the dry precipitation call for September 5th. High temperatures were captured within 1.8°C error across all models, while GFS continued to over-forecast peak wind speeds."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: All models correctly verified precipitation for the September 5th target date. ECMWF and Best Match demonstrated superior rain calibration (Brier 0.0016), while GFS over-forecasted daytime high temperature by 5.0°C."
     },
     "day7": {
       "verified": false,

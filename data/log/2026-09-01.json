@@ -309,8 +309,8 @@
       "note": "Day+3: Models failed to verify the dry target for September 1st, falsely predicting rain. High temperature errors ranged from -1.4°C on UKMO to -4.8°C on GFS."
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+7: ECMWF and Best Match successfully verified precipitation for September 1st, whereas GFS incorrectly predicted dry conditions and over-forecasted daytime maximum temperature by 3.1°C."
     }
   },
   "local_bulletin": {
