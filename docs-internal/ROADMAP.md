@@ -10348,9 +10348,45 @@ comparison.
 **It cannot tell a convective downburst from a synoptic gale.** NOAA separates
 them: a Special Marine Warning covers *"sustained marine thunderstorm winds or
 associated gusts of 34 knots or greater"* lasting up to two hours, which is a
-different product. Raised by the operator, who expected the local gale gusts
-to be convective — *"I don't want it to seem like we're generalizing that wind
-level."*
+different product.
+
+**And the operator sharpened why that separation is not about duration.** The
+convective warning does not depend on a measured speed at all:
+
+> "If thunderstorms are forecast at sea, and there's not a larger synoptic
+> system/front/etc., then they can pretty safely say that gusty winds well
+> above the daily sustained winds are possible. It's just a standard warning...
+> Go around the big angry cloud regardless of the wind speeds measured inside."
+
+That is right, and this deployment's own data forces it rather than merely
+agreeing with it:
+
+- **The airport station has never filed a gust group.** `metar.py` records it
+  from a 932-row, 45-day sample and the whole archive confirms it — station
+  winds run 3 to 13 knots and no `G` group appears anywhere.
+- So **there is no observed gust series at all.** A convective gust here
+  cannot be measured, which means it cannot be verified, which means a warning
+  gated on a gust figure would be gated on the one number that will never
+  show it. The forecast gusts are smoothed daily maxima from models that do
+  not resolve downdrafts.
+
+**Fixed in the prompt 2026-09-09**, in Severe Weather rather than the
+Overview, and deliberately as a STANDING STATEMENT rather than a computed
+band: when the convective flag is true, say strong sudden gusts are possible
+with any storm, *whatever the wind numbers are*, including on a day forecast
+calm. With the inverse forbidden explicitly — never write that the wind is
+light and therefore the storms are harmless, never use a low gust figure to
+soften a storm. That inference is backwards and it is the one that drowns
+someone.
+
+The absence of gusts from the record is named there too, as a gap in the
+instruments and never as evidence that they do not happen.
+
+**The gale half stays where it is**: threshold-driven, NOAA-sourced,
+large-scale, and — as the operator notes — dependent on detecting the front or
+system that causes it, which this system does only partially. The synoptic
+ring locates a gradient direction and explicitly cannot name a front or a
+centre.
 
 **Checked against the record, and NOT confirmed:** thundery days average
 40.5 km/h of gust against 38.6 for the rest, and 3 of the 10 windiest days
