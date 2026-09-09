@@ -6,6 +6,7 @@ missing layer: every expectation below was worked out by hand.
 """
 
 from openlocalweather.comparison import (
+    comparison_for_prompt,
     compute_day_over_day,
     describe_day_over_day,
     describe_day_rain,
@@ -596,3 +597,45 @@ def test_no_sky_measurement_withholds_the_sameness_claim():
     result = compute_day_over_day(actual(cloud_cover_pct=None), preds(cloud_cover_pct=None))
     assert result.cloud_label is None
     assert result.overview_comparison is None
+
+
+# ---------------------------------------------------------------------------
+# Item 98 — the block mixes point sources and said so nowhere.
+# ---------------------------------------------------------------------------
+
+
+def test_the_block_says_where_each_observation_came_from():
+    """Four independent careful readers called `yesterday_rain: true` beside a
+    "largely dry" phrase a contradiction. It is not — but it took the
+    operator, living here, to say why: the rain is a grid cell and the thunder
+    is a station 3.8 km away, and on a convective day those answer questions
+    about different places.
+
+    Measured over the fortnight to 2026-09-08: the two disagreed on 4 of 14
+    days. Nothing labelled them, so a reader had to guess whether they were
+    looking at a defect or at two places.
+    """
+    view = comparison_for_prompt({
+        "yesterday_rain": True,
+        "yesterday_thunder": False,
+        "today_rain_expected": False,
+        "overview_comparison": "Largely dry again.",
+        "provenance": {"rain": "era5_archive", "thunder": "metar_station"},
+    })
+
+    assert view["observed_from"] == {
+        "yesterday_rain": "era5_archive",
+        "yesterday_thunder": "metar_station",
+    }
+    # The numbers behind the labels stay withheld — this adds a source, not an
+    # operand.
+    assert "provenance" not in view
+    assert "yesterday_high_c" not in view
+
+
+def test_a_record_with_no_provenance_carries_no_claim_about_sources():
+    view = comparison_for_prompt({
+        "yesterday_rain": True, "yesterday_thunder": None,
+        "today_rain_expected": False, "overview_comparison": "Dry again.",
+    })
+    assert "observed_from" not in view

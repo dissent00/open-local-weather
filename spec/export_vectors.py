@@ -2010,6 +2010,15 @@ def export_day_over_day() -> None:
         ("a sky nobody measured withholds the sameness claim",
          actual(rain=False, precip_mm=0.0, onset_hour=None, cloud_cover_pct=None),
          preds([29.0], rains=[False], mm=[0.0], onsets=[None], clouds=[None])),
+        # ITEM 98. Without a case carrying provenance every one is null and the
+        # Dart half is compared against nothing — the empty-input trap, and the
+        # fourth time it has come up in a day. The two sources here are the
+        # real pairing: a reanalysis cell for rain, a station 3.8 km away for
+        # thunder, which disagreed on 4 of 14 days.
+        ("the two observations come from two different places",
+         actual(rain=True, precip_mm=3.0, onset_hour=None, thunder=True,
+                provenance={"rain": "era5_archive", "thunder": "metar_station"}),
+         preds([29.0], rains=[False], mm=[2.0], onsets=[None]), True),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),

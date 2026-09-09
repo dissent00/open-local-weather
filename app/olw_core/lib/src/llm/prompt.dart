@@ -438,7 +438,7 @@ ${guidanceRecency == null ? 'Unavailable — this run could not establish which 
 CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE per model, and whether any model crosses the threshold that supports thunderstorms):
 ${instability == null ? instabilityGapNotice : promptJson(instability)}
 
-DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — "overview_comparison" is finished sentences, used VERBATIM or not at all):
+DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus — "overview_comparison" is finished sentences, used VERBATIM or not at all. "observed_from" names WHERE each observed value was taken, and it is there because they are not the same place: "era5_archive" is a reanalysis grid CELL about 9 km across, "metar_station" is one airport. A cell mean of half a millimetre on a convective day is consistent with fifteen millimetres over one village and nothing over the rest. SO "yesterday_rain": true BESIDE A PHRASE CALLING YESTERDAY LARGELY DRY IS NOT A CONTRADICTION AND MUST NOT BE REPORTED AS ONE — measured here, the station and the cell disagreed on 4 of 14 days, three of them the station seeing rain the cell missed. Two instruments, two places, both right. Do not try to reconcile them and do not pick one; the composed sentence has already made the call, and where it matters the disagreement is itself worth a line in the Detailed Discussion.):
 ${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; omit the day-over-day comparison.' : promptJson(yesterdayActual)}
 
 NEXT THREE DAYS (pre-computed by code — one finished phrase, use it VERBATIM or not at all):

@@ -74,6 +74,10 @@ class DayOverDayComparison:
     # This is what the PROMPT is given; the labels themselves stay in the
     # record because that is what is stored and scored.
     overview_comparison: str | None
+    # Where yesterday's observed values were taken — item 98. Carried through
+    # so comparison_for_prompt can name the source beside each boolean; the
+    # comparison itself never reads it.
+    provenance: dict[str, str] | None = None
 
 
 def wind_warning(gust_kmh: float | None) -> str | None:
@@ -483,6 +487,7 @@ def compute_day_over_day(
         wind_label=wind_label,
         cloud_label=cloud_label,
         rain_contrast=rain_contrast,
+        provenance=dict(yesterday_actual.provenance) if yesterday_actual.provenance else None,
         overview_comparison=describe_day_over_day(
             high_label,
             wind_label,
@@ -768,10 +773,45 @@ PROMPT_COMPARISON_FIELDS = (
 )
 
 
+# Which observed field each exposed boolean actually comes from. ROADMAP
+# item 98.
+#
+# TWO POINTS, PRESENTED AS ONE DAY. `yesterday_rain` is the reanalysis grid
+# cell at the primary point; `yesterday_thunder` is the airport station, 3.8 km
+# away at this deployment. They answer questions about different places at
+# different scales, and nothing said so.
+#
+# Measured over the fortnight to 2026-09-08: the station and the cell
+# disagreed on 4 OF 14 DAYS — three where the station saw rain the cell
+# missed, one the reverse. Four independent careful readers have called that
+# pairing a contradiction. It is not one; it is two places, and the fix is to
+# say so rather than to reconcile values that were never measuring the same
+# thing.
+#
+# A SOURCE IS NOT AN OPERAND. This adds where a value came from, never the
+# value itself, so it does not reopen what PROMPT_COMPARISON_FIELDS closed.
+OBSERVED_FIELD_SOURCES = {
+    "yesterday_rain": "rain",
+    "yesterday_thunder": "thunder",
+}
+
+
 def comparison_for_prompt(comparison: dict | None) -> dict | None:
-    """The labels and the booleans, never the numbers behind them."""
+    """The labels and the booleans, never the numbers behind them — plus
+    where each observation was taken."""
     if comparison is None:
         return None
 
-    return {k: comparison[k] for k in PROMPT_COMPARISON_FIELDS if k in comparison}
+    view = {k: comparison[k] for k in PROMPT_COMPARISON_FIELDS if k in comparison}
+
+    provenance = comparison.get("provenance") or {}
+    sources = {
+        exposed: provenance[stored]
+        for exposed, stored in OBSERVED_FIELD_SOURCES.items()
+        if stored in provenance and exposed in view
+    }
+    if sources:
+        view["observed_from"] = sources
+
+    return view
 

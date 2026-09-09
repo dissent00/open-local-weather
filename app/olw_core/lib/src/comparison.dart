@@ -148,6 +148,13 @@ class DayOverDayComparison {
   /// record because that is what is stored and scored.
   final String? overviewComparison;
 
+  /// Where yesterday's observed values were taken — item 98. `yesterday_rain`
+  /// is a reanalysis grid CELL about 9 km across and `yesterday_thunder` is
+  /// one airport station; they disagreed on 4 of 14 days here, and nothing
+  /// said they were different places. Carried so the prompt view can name the
+  /// source beside each boolean; the comparison itself never reads it.
+  final Map<String, String>? provenance;
+
   const DayOverDayComparison({
     this.yesterdayHighC,
     this.yesterdayLowC,
@@ -166,6 +173,7 @@ class DayOverDayComparison {
     this.cloudLabel,
     this.rainContrast,
     this.overviewComparison,
+    this.provenance,
   });
 
   Map<String, Object?> toJson() => {
@@ -186,6 +194,7 @@ class DayOverDayComparison {
         'cloud_label': cloudLabel,
         'rain_contrast': rainContrast,
         'overview_comparison': overviewComparison,
+        'provenance': provenance,
       };
 }
 
@@ -488,6 +497,9 @@ DayOverDayComparison? computeDayOverDay(
     windLabel: windLabel,
     cloudLabel: cloudLabel,
     rainContrast: rainContrast,
+    provenance: yesterdayActual.provenance == null
+        ? null
+        : Map<String, String>.from(yesterdayActual.provenance!),
     overviewComparison: describeDayOverDay(
       highLabel,
       windLabel,

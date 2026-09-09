@@ -82,7 +82,8 @@
         "wind_label": "similar winds",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Wet again."
+        "overview_comparison": "Wet again.",
+        "provenance": null
       }
     },
     {
@@ -164,7 +165,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
+        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -246,7 +248,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Noticeably cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Noticeably cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -328,7 +331,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -410,7 +414,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
+        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -492,7 +497,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
+        "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -574,7 +580,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much calmer than yesterday. Wet again."
+        "overview_comparison": "Much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -632,7 +639,8 @@
         "wind_label": "similar winds",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Wet again."
+        "overview_comparison": "Wet again.",
+        "provenance": null
       }
     },
     {
@@ -690,7 +698,8 @@
         "wind_label": "much windier",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much windier than yesterday. Wet again."
+        "overview_comparison": "Much windier than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -748,7 +757,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry, after a wet day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a wet day."
+        "overview_comparison": "Much calmer than yesterday. Dry, after a wet day.",
+        "provenance": null
       }
     },
     {
@@ -806,7 +816,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet, after a dry day",
-        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day."
+        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day.",
+        "provenance": null
       }
     },
     {
@@ -864,7 +875,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry until evening showers, after a wet day",
-        "overview_comparison": "Much calmer than yesterday. Dry until evening showers, after a wet day."
+        "overview_comparison": "Much calmer than yesterday. Dry until evening showers, after a wet day.",
+        "provenance": null
       }
     },
     {
@@ -922,7 +934,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry until evening showers again",
-        "overview_comparison": "Much calmer than yesterday. Dry until evening showers again."
+        "overview_comparison": "Much calmer than yesterday. Dry until evening showers again.",
+        "provenance": null
       }
     },
     {
@@ -980,7 +993,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet, after a dry day",
-        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day."
+        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day.",
+        "provenance": null
       }
     },
     {
@@ -1038,7 +1052,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry apart from a brief evening shower again",
-        "overview_comparison": "Much calmer than yesterday. Dry apart from a brief evening shower again."
+        "overview_comparison": "Much calmer than yesterday. Dry apart from a brief evening shower again.",
+        "provenance": null
       }
     },
     {
@@ -1096,7 +1111,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -1154,7 +1170,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry, after a showery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a showery day."
+        "overview_comparison": "Much calmer than yesterday. Dry, after a showery day.",
+        "provenance": null
       }
     },
     {
@@ -1212,7 +1229,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -1306,7 +1324,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry until evening showers again",
-        "overview_comparison": "Much calmer than yesterday. Dry until evening showers again."
+        "overview_comparison": "Much calmer than yesterday. Dry until evening showers again.",
+        "provenance": null
       }
     },
     {
@@ -1364,7 +1383,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day."
+        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day.",
+        "provenance": null
       }
     },
     {
@@ -1422,7 +1442,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -1480,7 +1501,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -1538,7 +1560,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day."
+        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day.",
+        "provenance": null
       }
     },
     {
@@ -1656,7 +1679,8 @@
         "wind_label": "similar winds",
         "cloud_label": null,
         "rain_contrast": "largely dry again",
-        "overview_comparison": "Slightly warmer than yesterday. Largely dry again."
+        "overview_comparison": "Slightly warmer than yesterday. Largely dry again.",
+        "provenance": null
       }
     },
     {
@@ -1738,7 +1762,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -1820,7 +1845,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -1902,7 +1928,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -1960,7 +1987,8 @@
         "wind_label": "windier",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Windier than yesterday. Wet again."
+        "overview_comparison": "Windier than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -2018,7 +2046,8 @@
         "wind_label": "dramatically calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Dramatically calmer than yesterday. Wet again."
+        "overview_comparison": "Dramatically calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -2076,7 +2105,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
+        "overview_comparison": "Much cooler and much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -2134,7 +2164,8 @@
         "wind_label": "calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Calmer than yesterday. Wet again."
+        "overview_comparison": "Calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -2192,7 +2223,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much calmer than yesterday. Wet again."
+        "overview_comparison": "Much calmer than yesterday. Wet again.",
+        "provenance": null
       }
     },
     {
@@ -2250,7 +2282,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "largely dry with thunderstorms again",
-        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms again."
+        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms again.",
+        "provenance": null
       }
     },
     {
@@ -2308,7 +2341,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "largely dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Largely dry, after a thundery day."
+        "overview_comparison": "Much calmer than yesterday. Largely dry, after a thundery day.",
+        "provenance": null
       }
     },
     {
@@ -2366,7 +2400,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "largely dry with thunderstorms, after a largely dry day",
-        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms, after a largely dry day."
+        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms, after a largely dry day.",
+        "provenance": null
       }
     },
     {
@@ -2424,7 +2459,8 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": "largely dry again",
-        "overview_comparison": "Much calmer than yesterday. Largely dry again."
+        "overview_comparison": "Much calmer than yesterday. Largely dry again.",
+        "provenance": null
       }
     },
     {
@@ -2482,7 +2518,8 @@
         "wind_label": "much calmer",
         "cloud_label": "much clearer",
         "rain_contrast": null,
-        "overview_comparison": "Much calmer and much clearer than yesterday."
+        "overview_comparison": "Much calmer and much clearer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -2540,7 +2577,8 @@
         "wind_label": "much calmer",
         "cloud_label": "similar cloud",
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
       }
     },
     {
@@ -2598,7 +2636,73 @@
         "wind_label": "much calmer",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much calmer than yesterday."
+        "overview_comparison": "Much calmer than yesterday.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "the two observations come from two different places",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": null,
+          "precip_mm": 3.0,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": {
+            "rain": "era5_archive",
+            "thunder": "metar_station"
+          }
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 2.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": true
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": true,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "largely dry with thunderstorms again",
+        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms again.",
+        "provenance": {
+          "rain": "era5_archive",
+          "thunder": "metar_station"
+        }
       }
     },
     {
@@ -2690,7 +2794,8 @@
         "wind_label": "similar winds",
         "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": null
+        "overview_comparison": null,
+        "provenance": null
       }
     }
   ]

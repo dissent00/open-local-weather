@@ -93,7 +93,7 @@ absent values are `null`, never omitted keys.
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |
-| `day_over_day.json` | `compute_day_over_day` | 41 |
+| `day_over_day.json` | `compute_day_over_day` | 42 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 17 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |

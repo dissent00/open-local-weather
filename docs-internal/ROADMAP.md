@@ -10871,13 +10871,32 @@ it."** A third independent source is what distinguishes them:
   exists for this, and item 65 wants it for cloud. Precipitation radar is the
   instrument that actually answers "where did it fall".
 
-### What is cheap and honest now
+### The label, shipped 2026-09-09
 
-Not a fix, a label. The payload could say WHERE each observation comes from —
-the cell for rain, the station for thunder, and how far apart they are — so
-the forecaster stops treating them as one measurement of one place. That is
-the item 84 register doing its job on a block that already exists, and it
-costs a line of provenance rather than a new source.
+`observed_from` now sits in the comparison block naming the source of each
+observed boolean, and the block header explains what the sources ARE — a
+reanalysis cell about 9 km across against one airport — with the 4-of-14
+disagreement measured and the explicit instruction that this is not a
+contradiction and must not be reported as one.
+
+**A source is not an operand**, so this does not reopen what
+`PROMPT_COMPARISON_FIELDS` closed: it adds where a value came from, never the
+value.
+
+Two things about building it, both caught by running the real path rather
+than the tests. The unit test passed a hand-built dict with `provenance` in
+it and went green while production sent nothing, because
+`DayOverDayComparison` had no such field — the comparison is built from the
+`DailyActual` but does not carry its provenance. And every vector case had
+`provenance: null`, so the Dart half was again being compared against
+nothing; that is the empty-input trap for the fourth time in one day. Both
+fixed, and the new vector was watched failing against a deliberately broken
+port.
+
+**The operator's own reading, which is the reason this is a label and not a
+fix:** *"dry with a chance of thunderstorms bringing rain has been 100%
+correct. So we don't need to fix that necessarily, just grasp it and attempt
+to use the data as well as we can to measure it."*
 
 Whether the OVERVIEW should carry it is a separate and harder question. "Dry
 here, though storms were scattered" is more true and less useful than "dry",
