@@ -10905,3 +10905,92 @@ that until the register above exists.
 
 Related: item 42 (reanalysis does not see thunderstorms), item 45 (the source
 ladder), item 53.1a (the day this was first hit), item 63, item 65, item 84.
+
+---
+
+## 99. One call, several areas — and where "significantly different" actually is · **Planned, measure before designing**
+
+Raised by the operator 2026-09-09, from a concrete reader: someone who lives
+in Kisumu, works in Homa Bay, and wants ONE forecast email. Their proposal:
+
+> "Maybe the middle ground is a local forecast to the nearest point, and one
+> more stanza in the prompt that covers adjacent/nearby areas that are
+> significantly different?"
+
+That is the right shape. The hard part is the last three words.
+
+### The parts that are already true
+
+**Multi-area in one LLM call is not speculative — it is the shipped
+architecture, used once.** The "Lake Victoria — Conditions for Boaters"
+section is a SECOND LOCATION written in the same call from
+`secondary_today_hourly`. Generalising from one secondary to several is the
+same pattern, and a regional stanza costs no additional call.
+
+**The forecast data is free.** Open-Meteo takes comma-separated coordinates
+and returns an array: measured 2026-09-09, ONE request returned six points ×
+five models × the full hourly variable set in 1.2 s.
+`fetch_regional_pressure` already uses that mechanism, just with three daily
+variables instead of the whole set.
+
+**The label machinery is already point-agnostic.** The sandbox (item 96) runs
+the entire deterministic stack — comparison, instability, extended trend, wind
+warnings, sky — against twelve arbitrary global locations. Nyanza is the same
+code with different coordinates.
+
+**The contrast needs no verification.** It is a difference between two
+forecasts, not a prediction that gets scored, so it adds nothing to the
+accuracy record and items 47 and 81 do not gate it.
+
+### The part that is not solved, and must not be guessed
+
+**A persistent difference is not news.** Measured across the four configured
+region points today, using the existing temperature bands:
+
+| rule | fired | why it is wrong or unproven |
+|---|---|---|
+| delta (Kisii is 3.2 °C cooler) | 1 of 4 | Kisii is 500 m higher, so this fires EVERY day — geography reported as news, which is item 48's enumeration |
+| category (a different KIND of day) | 0 of 4 | correctly silent today; one day cannot show whether it is USEFULLY silent or just mute |
+
+The day-over-day thresholds cannot be reused. A 2 °C change since yesterday is
+news; a neighbouring town being 2 °C warmer than you is the map. What would
+be news is a neighbour departing from its OWN usual relationship to the
+primary — which is item 95's anomaly problem again, and blocked on the same
+thing: a record long enough to know what usual is.
+
+### So: measure first
+
+**Add the region points to the sandbox sweep and accumulate.** It already runs
+daily, costs nothing, and stores per-point predictions. In a fortnight it can
+answer the only question that matters here — how often does a neighbouring
+area cross a CATEGORY boundary the primary does not? — and the threshold gets
+chosen from data instead of taste. Building the stanza first would mean
+picking a number and finding out later.
+
+### Resolution, corrected
+
+An earlier note in this session put Homa Bay's grid snap at 13.5 km. **That
+was wrong, and the error is instructive.** Measured properly: `best_match`
+alone returns a cell **0.7 km** from the town; the multi-model request returns
+one snapped to the COARSEST model's grid, roughly 25 km for GFS and ECMWF.
+
+So the effective resolution is a consequence of asking five models rather than
+one, and it is not fixed. Anyone filling the 0–56 km gap should know that
+adding points below about 11 km apart buys nothing under a multi-model query,
+and that a single-model regional layer would resolve finer than the scored
+multi-model one — which is a real and slightly awkward asymmetry.
+
+### What is still expensive
+
+- **A full narrative per area** is one LLM call each. The stanza above is not
+  that; it is one more section in the existing call. Item 59 is the lever if
+  full per-area forecasts are ever wanted.
+- **Verification per area.** ERA5 is free at any point, but METAR exists only
+  at Kisumu, so every other area would be scored by reanalysis alone — which
+  item 98 has just shown is the weak source for exactly the convective rain
+  that matters here.
+- **Publishing surface**: pages, nav and archive per area.
+
+Related: item 96 (the sandbox that should measure this), item 98 (why a cell
+is not a place), item 95 (the anomaly reference this needs and does not have),
+item 59, item 63.
