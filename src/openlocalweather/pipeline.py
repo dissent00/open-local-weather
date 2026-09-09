@@ -131,6 +131,8 @@ from openlocalweather.models import (
     DEGRADATION_SYNOPTIC,
     SOURCE_STATION,
     DEGRADATION_SUN_TIMES,
+    DEGRADATION_EXTENDED_OUTLOOK,
+    DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
     LocalBulletinRecord,
     DailyActual,
     DailyLogEntry,
@@ -705,9 +707,33 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
             )
         )
 
-    primary_daily = open_meteo.fetch_forecast_daily_extended(
-        location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
-    )
+    # BEST-EFFORT, unlike today's hourly guidance above. See
+    # DEGRADATION_EXTENDED_OUTLOOK: losing the seven-day outlook costs the
+    # Extended Outlook section and the day-over-day trend clause; losing today
+    # costs the forecast.
+    try:
+        primary_daily = open_meteo.fetch_forecast_daily_extended(
+            location.primary_point.lat, location.primary_point.lon, MODELS, location.timezone
+        )
+    except open_meteo.OpenMeteoFetchError as e:
+        primary_daily = {}
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_EXTENDED_OUTLOOK,
+                summary=(
+                    "The seven-day outlook did not arrive. Today and tonight are "
+                    "unaffected; where this forecast says nothing about the days "
+                    "ahead, that is missing data rather than a settled week."
+                ),
+                detail=(
+                    f"The extended daily fetch failed and the run continued without "
+                    f"it: {e}. Day+3 and Day+7 predictions are absent from the "
+                    "record for this run, so nothing is scored at those leads, and "
+                    "the Overview's closing trend clause is omitted rather than "
+                    "guessed."
+                ),
+            )
+        )
     region_points = [(p.lat, p.lon) for p in location.region_points]
     regional_pressure = open_meteo.fetch_regional_pressure(
         (location.primary_point.lat, location.primary_point.lon), region_points, location.timezone
@@ -722,9 +748,30 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         secondary_hourly = open_meteo.fetch_forecast_hourly_today(
             location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
         )
-        secondary_daily = open_meteo.fetch_forecast_daily_extended(
-            location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
-        )
+        # Same endpoint and the same outage, but a DIFFERENT code — see
+        # DEGRADATION_SECONDARY_EXTENDED_OUTLOOK, which the prompt's switch
+        # deliberately does not key on. None here is a state every consumer
+        # already handles, because a location is allowed to have no secondary
+        # point at all.
+        try:
+            secondary_daily = open_meteo.fetch_forecast_daily_extended(
+                location.secondary_point.lat, location.secondary_point.lon, MODELS, location.timezone
+            )
+        except open_meteo.OpenMeteoFetchError as e:
+            secondary_daily = None
+            degradations.append(
+                RunDegradation(
+                    code=DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
+                    summary=(
+                        f"The seven-day outlook for {location.secondary_point.name} did "
+                        "not arrive. Today and tonight are unaffected."
+                    ),
+                    detail=(
+                        "The extended daily fetch for the secondary point failed and "
+                        f"the run continued without it: {e}."
+                    ),
+                )
+            )
 
     airport_metar = metar_fetch.fetch_metar(location.metar_station_icao)
     # fetch_metar returns None for every failure path and airport_metar is
@@ -1365,6 +1412,14 @@ def run_daily_pipeline(
     # state, not a fetch that came back empty. LocalBulletinRecord already
     # keys off this same field for whether to store a bulletin at all.
     local_bulletin_configured = bool(location.local_bulletin_source_name)
+    # ROADMAP item 51. DERIVED FROM THE RECORDED CODE, not from
+    # `bool(primary_daily)`. An empty dict cannot tell a fetch that failed
+    # from a fetch that was never wired up, and the degradation is the run's
+    # own statement about which happened — so the prompt and the log entry
+    # cannot disagree about whether the week is missing.
+    extended_outlook_available = DEGRADATION_EXTENDED_OUTLOOK not in {
+        d.code for d in guidance.degradations
+    }
     # A run on a day that already has an entry is a later issuance, whatever
     # verb was typed. Told otherwise it writes a fresh morning-style forecast
     # over one the readers have already had, and emails it as the day's first.
@@ -1373,6 +1428,7 @@ def run_daily_pipeline(
         is_reissue=existing_entry is not None,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
+        extended_outlook_available=extended_outlook_available,
     )
     # THE FOURTH PLACE THE STANDING RULE HAS TO BE APPLIED, and the one it
     # was missing. per_model_scores is scored for EVERY model, the blend and
@@ -1851,11 +1907,17 @@ def run_refresh_pipeline(
 
     ground_stations_configured = bool(location.waqi_stations)
     local_bulletin_configured = bool(location.local_bulletin_source_name)
+    # Item 51, derived from the recorded code rather than from an empty dict
+    # — the reasoning is at the same derivation in run_daily_pipeline.
+    extended_outlook_available = DEGRADATION_EXTENDED_OUTLOOK not in {
+        d.code for d in guidance.degradations
+    }
     system_prompt = build_system_prompt(
         location,
         is_reissue=True,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
+        extended_outlook_available=extended_outlook_available,
     )
     user_prompt = build_user_prompt(
         today=today,

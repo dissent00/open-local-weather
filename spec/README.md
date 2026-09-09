@@ -105,7 +105,7 @@ absent values are `null`, never omitted keys.
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
 | `llm_schema_gemini.json` | `to_gemini_schema` | 1 |
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
-| `llm_system_prompt.json` | `build_system_prompt` | 6 |
+| `llm_system_prompt.json` | `build_system_prompt` | 7 |
 | `llm_user_prompt.json` | `build_user_prompt` | 6 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |

@@ -569,3 +569,39 @@ def test_user_prompt_forwards_every_weather_key_the_pipeline_sends():
     assert not missing, (
         f"pipeline sends these weather keys but build_user_prompt drops them: {missing}"
     )
+
+
+def test_the_extended_outlook_says_when_its_guidance_never_arrived():
+    """ROADMAP item 51. Degrading is only an improvement if the degraded run
+    is HONEST. The seven-day fetch failing leaves `primary_extended_daily`
+    empty and the Day+3/Day+7 prediction blocks empty, and until this the
+    prompt still asked for an Extended Outlook paragraph "using the daily
+    summary data" that was no longer there — a required section with nothing
+    to fill it, which is the exact shape that produces invention.
+    """
+    available = build_system_prompt(KISUMU)
+    missing = build_system_prompt(KISUMU, extended_outlook_available=False)
+
+    # The heading stays on every issuance — the structure is a contract, and
+    # a section that vanishes reads as a forecast that forgot rather than one
+    # that could not.
+    assert ("##", "Extended Outlook") in headings(available)
+    assert ("##", "Extended Outlook") in headings(missing)
+
+    # "using the daily summary data" is the phrase that POINTS AT A SOURCE.
+    # The degraded text names the same data to say it is absent, so the bare
+    # noun phrase is not the thing to test on.
+    assert "using the daily summary data" in available
+    assert "using the daily summary data" not in missing, (
+        "the degraded prompt still points at data the run does not have"
+    )
+    assert "did not arrive" in missing
+
+    # SCORED FIELDS TOO, not only the prose. "extended_properties" is graded
+    # against what happens on those days beside every model in the record, so
+    # a lead called from no guidance is scored exactly as confidently as one
+    # that was.
+    assert "extended_properties" in missing
+    assert re.search(r"extended_properties[^\n]*empty|empty[^\n]*extended_properties", missing) or (
+        "leave \"extended_properties\" empty" in missing
+    ), "nothing tells the forecaster not to commit to Day+3/Day+7 blind"

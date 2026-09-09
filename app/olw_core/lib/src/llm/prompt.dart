@@ -38,6 +38,18 @@ String buildSystemPrompt(
   /// met services for a real place, so silence prevents a report of a failure
   /// and does not prevent an invention.
   bool localBulletinConfigured = true,
+
+  /// Whether this run has the seven-day guidance the Extended Outlook is
+  /// built from.
+  ///
+  /// False when the extended daily fetch failed and the run published today
+  /// anyway rather than aborting — see DEGRADATION_EXTENDED_OUTLOOK. The
+  /// HEADING stays either way, because the structure is a contract and a
+  /// vanished section reads as a forecast that forgot the week. What changes
+  /// is the instruction: pointing the forecaster at daily summary data that
+  /// is not there leaves a required section with nothing to fill it, which is
+  /// the shape that produces invention.
+  bool extendedOutlookAvailable = true,
 }) {
   final groundAqiQualityNote = groundStationsConfigured
       ? '- Ground AQI stations may occasionally be offline individually; if some but not all report, say so. If none report, note the air quality assessment relies on model (CAMS) data alone for that day. Separately, each ground station reading in GROUND AQI STATIONS carries a pre-computed "hours_old" and "stale" flag (stale = more than 3 hours old) - a reading CAN be present but stale, which is different from being absent. Do not treat a stale reading as describing current conditions; if the freshest available ground reading is stale, say so explicitly (e.g. "the ground sensor\'s most recent reading is from early this morning") and lean on CAMS model data to characterize conditions right now. The pre-computed GROUND AQI SUMMARY (range/worst station) already excludes stale readings for exactly this reason - never substitute a stale reading\'s number into that summary yourself.'
@@ -57,6 +69,14 @@ String buildSystemPrompt(
       localBulletinConfigured ? '\n\n' + 'LOCAL MET SERVICE AS A MODEL: where a national met service is configured, its own forecast appears in EXTRACTED PER-MODEL PREDICTIONS as another model, with its own track record and its own entry in the review findings. Treat it as a peer of the numerical models, not as a more authoritative source and not as a lesser one - what it has earned is whatever its verification record says it has earned, exactly as for GFS or ECMWF. It has genuine local knowledge a global model cannot have, and it is also a forecast that can be wrong; both are settled by the record rather than by deference. Note that it supplies only rain and temperature - no wind, no pressure, no onset - so a null there means "not forecast", never "no rain" or "calm". When it disagrees with the numerical consensus, say so explicitly and explain which way you lean and why, citing its track record at the lead time in question.' : '';
   final localMetNamingRule =
       localBulletinConfigured ? '   NAME THE LOCAL MET SERVICE EVERY TIME. It is a peer model with its own entry in MODEL TRACK RECORD and its own prediction in EXTRACTED PER-MODEL PREDICTIONS, and it is the forecast your readers can compare you against for free. State what it called for today and whether it agrees with the numerical consensus, whichever way that lands. If LOCAL BULLETIN is unavailable this run, say that instead - explicitly, in one clause. Silence is the one option that is not available, and it is what happened: a live forecast weighed five numerical models and never mentioned the national service that had published a forecast for the same day, which reads as though it was never consulted.)' : '   No national met service is configured for this location, so there is no peer forecast to name - and none must be invented. Do not attribute a forecast to a met service, named or unnamed, and do not note the absence of one either.)';
+  final extendedOutlookNote = extendedOutlookAvailable
+      ? "   (a paragraph for the next 3 days and then out to 7 days, using the daily summary data - treat days 1-3 as your higher-confidence near-term range and days 4-7 as lower-confidence. Consult each model's Day+3/Day+7 track record specifically here, not its Day+0 numbers.)"
+      : '   (THE EXTENDED GUIDANCE DID NOT ARRIVE THIS RUN. The daily summary data this section is normally built from failed to fetch, so EXTRACTED PER-MODEL PREDICTIONS carries nothing at Day+3 or Day+7 and "primary_extended_daily" is empty. Say so, in one plain sentence - that the outlook beyond today is unavailable for this issuance - and write nothing further here. Today and tonight are unaffected and are forecast normally. Do not extrapolate the coming days from today\'s hourly data, from climatology, or from an earlier forecast in the record: none of those is a model run for those days, and a reader cannot tell an extrapolation from guidance.)';
+  // SCORED, so this one is not a matter of tone. An invented Day+7 boolean
+  // is graded beside every model exactly as confidently as a meant one.
+  final extendedPropertiesRule = extendedOutlookAvailable
+      ? '   OMITTING A LEAD IS A LEGITIMATE ANSWER and is better than a guess. A boolean you invented is scored wrong exactly as confidently as one you meant, so leave a lead out entirely when the models are too scattered to call it. An empty list is fine. What is NOT fine is calling rain at Day+7 because the section reads better with a number in it.'
+      : '   RETURN AN EMPTY "extended_properties" THIS RUN. The guidance those calls are made from did not arrive, so there is nothing to reconcile and nothing that would make a call at Day+3 or Day+7 anything but invented - and it would be scored beside every model as though you had meant it. An empty list is the correct answer here, not a failure to answer.';
   final localBulletinChecklistItem =
       localBulletinConfigured ? 'the local bulletin, ' : '';
 
@@ -177,10 +197,10 @@ $reissueBlock
 
    THESE ARE SCORED, against what actually happens on those days, beside every model in the record. That is the point of asking: until now your own call existed only at Day+0, which is where the free numerical models are already strongest and where there is least room to show anything. Reconciling models that disagree is worth most at the leads where they disagree most, and nothing measured whether you were any good at it.
 
-   OMITTING A LEAD IS A LEGITIMATE ANSWER and is better than a guess. A boolean you invented is scored wrong exactly as confidently as one you meant, so leave a lead out entirely when the models are too scattered to call it. An empty list is fine. What is NOT fine is calling rain at Day+7 because the section reads better with a number in it.
+$extendedPropertiesRule
 
    ## Extended Outlook
-   (a paragraph for the next 3 days and then out to 7 days, using the daily summary data - treat days 1-3 as your higher-confidence near-term range and days 4-7 as lower-confidence. Consult each model's Day+3/Day+7 track record specifically here, not its Day+0 numbers.)
+$extendedOutlookNote
 
    ## Severe Weather / Hazard Potential
 $secondaryHeadingBlock

@@ -4826,7 +4826,57 @@ Blocked on rows: 0 of 18 entries carry `guidance_source` as of 2026-08-28,
 the field having shipped after that day's only run. Item 49 no longer waits
 on this — two issuances were enough to settle it.
 
-Related: items 4, 25, 39, 49, 50.
+### Shipped 2026-09-09: the seven-day outlook, and what it revealed
+
+The 15:01 run on 2026-09-09 produced no forecast at all. Open-Meteo's
+extended daily endpoint read-timed out three times and
+`fetch_forecast_daily_extended` was fatal, so a run that already held
+today's hourly guidance — the part that IS the forecast — aborted over the
+part that decorates it. Conor's call: "definitely ok to have a forecast
+missing the 7-day guidance. I'd be more concerned about accumulating
+misses."
+
+Both extended-daily call sites are now best-effort, each with its own code
+(`extended_outlook_unavailable`, `secondary_extended_outlook_unavailable`).
+Today's hourly fetch stays fatal, and should: a run without it has nothing
+to say.
+
+**Degrading is only an improvement if the degraded run is honest.** With the
+guidance gone, `primary_extended_daily` is empty and the Day+3/Day+7
+prediction blocks are empty, but the prompt still carried a required
+`## Extended Outlook` section asking for a paragraph "using the daily
+summary data" — a required section with nothing to fill it, which is the
+shape that produces invention. `build_system_prompt` now takes
+`extended_outlook_available`: the heading stays, because the structure is a
+contract and a vanished section reads as a forecast that forgot the week,
+and the instruction is replaced with one that reports the gap and forbids
+extrapolating the days ahead from today's hourly data, from climatology, or
+from an earlier forecast. `extended_properties` — which is SCORED — is told
+to come back empty. The trend clause needed nothing: `describe_extended_trend`
+already returns None on absent inputs and the prompt already prints
+"Unavailable — omit the extended clause."
+
+The flag is derived from the recorded degradation code, not from
+`bool(primary_daily)`. An empty dict cannot tell a fetch that failed from a
+fetch that was never wired up, so deriving from the code is what stops the
+prompt and the log entry disagreeing about whether the week is missing. It
+is also why the secondary point got its own code: under a shared one, the
+lake losing its outlook would have suppressed a perfectly good seven-day
+outlook for the town.
+
+**The counting and reporting half was already built**, by item 53.4.
+`check_recent_degradations` is generic over codes, so a single lost outlook
+prints and passes, and the same code twice in the last 20 issuances turns
+`check-health` red — exactly the blip/death rule this item asks for, with no
+new machinery. A test pins that for these codes specifically, so that a
+later change which special-cases which codes count fails there rather than
+in six weeks of silence.
+
+What this does NOT do: it covers one source. The general question — a
+per-run `sources` block versus a reason beside each optional value — is
+still open, and the aligned-window debt below is still unpaid.
+
+Related: items 4, 25, 39, 49, 50, 53.4, 79.
 
 ---
 

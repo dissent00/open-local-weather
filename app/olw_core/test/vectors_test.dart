@@ -338,6 +338,7 @@ void main() {
           isReissue: i['is_reissue'] as bool,
           groundStationsConfigured: i['ground_stations_configured'] as bool,
           localBulletinConfigured: i['local_bulletin_configured'] as bool,
+          extendedOutlookAvailable: i['extended_outlook_available'] as bool,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }

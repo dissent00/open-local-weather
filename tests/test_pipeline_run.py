@@ -5,6 +5,10 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
+from openlocalweather.models import (
+    DEGRADATION_EXTENDED_OUTLOOK,
+    DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
+)
 from openlocalweather.fetch.metar import StationWeather
 from openlocalweather.fetch import metar as metar_fetch
 import requests
@@ -2697,3 +2701,143 @@ def test_a_figureless_summary_is_kept(tmp_path):
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
 
     assert clean in llm.calls[-1][1]
+
+
+def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
+    """ROADMAP items 51 and 79. On 2026-09-09 the extended daily fetch
+    read-timed out three times and the whole run aborted — no forecast at all,
+    though today's hourly guidance had already arrived and nothing about today
+    was in doubt.
+
+    A forecast for today without a seven-day outlook beats no forecast. The
+    operator's call, and the machinery already existed: `degradations` carries
+    exactly this shape of message.
+    """
+    deps = make_deps(tmp_path)
+    real = pipeline.open_meteo.fetch_forecast_daily_extended
+
+    def fail_extended(lat, lon, models, timezone, days=8):
+        raise pipeline.open_meteo.OpenMeteoFetchError("Read timed out. (read timeout=30)")
+
+    system_prompts = []
+    real_system = pipeline.build_system_prompt
+
+    def spy(*args, **kwargs):
+        built = real_system(*args, **kwargs)
+        system_prompts.append(built)
+        return built
+
+    pipeline.open_meteo.fetch_forecast_daily_extended = fail_extended
+    pipeline.build_system_prompt = spy
+    try:
+        result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    finally:
+        pipeline.open_meteo.fetch_forecast_daily_extended = real
+        pipeline.build_system_prompt = real_system
+
+    assert result is not None, "the run aborted rather than degrading"
+    codes = {d.code for d in result.log_entry.meta.degradations}
+    assert DEGRADATION_EXTENDED_OUTLOOK in codes
+
+    # A CODE, not just prose. Item 51's whole sequence is reason, then count,
+    # then report — and a degradation nothing can count is an accumulating
+    # miss nobody will see.
+    deg = next(d for d in result.log_entry.meta.degradations if d.code == DEGRADATION_EXTENDED_OUTLOOK)
+    assert deg.summary and deg.detail
+    assert "seven" in deg.summary.lower() or "extended" in deg.summary.lower()
+
+    # AND THE FORECASTER IS TOLD. Wiring the flag through is the half that
+    # can rot silently: the degraded run leaves "primary_extended_daily"
+    # empty and the Day+3/Day+7 blocks empty, and a prompt that still asks
+    # for the section "using the daily summary data" is asking for invention.
+    # Asserted on the prompt the RUN built, not on build_system_prompt in
+    # isolation, because what fails here is the wiring and not the wording.
+    assert "THE EXTENDED GUIDANCE DID NOT ARRIVE" in system_prompts[0]
+    assert "using the daily summary data" not in system_prompts[0]
+
+
+def test_the_lake_losing_its_outlook_degrades_too(tmp_path):
+    """The SAME endpoint and the same outage. The secondary point's extended
+    daily is fetched from Open-Meteo exactly as the primary's is, so a read
+    timeout takes both or either — and wrapping only the primary would leave
+    half the calls to the fragile endpoint still able to abort a run that has
+    today's guidance in hand.
+
+    `secondary_daily` is already `dict | None` because a location can have no
+    secondary point at all, so None is a state every consumer downstream
+    already handles.
+
+    THE SECONDARY POINT HAS TO BE TURNED ON HERE. Module LOCATION disables it
+    to keep fixtures simple, and against that fixture this test passed while
+    fetching nothing at all — a guard that never runs, tested against an
+    input that never reaches it.
+    """
+    location = LOCATION.model_copy(
+        update={
+            "secondary_point": SecondaryPoint(
+                enabled=True, name="Test Lake", section_label="Conditions for Boaters", lat=1.5, lon=2.5
+            )
+        }
+    )
+    from dataclasses import replace
+
+    deps = replace(make_deps(tmp_path), location=location)
+
+    real = pipeline.open_meteo.fetch_forecast_daily_extended
+    attempted: list[tuple[float, float]] = []
+
+    def fail_secondary_only(lat, lon, models, timezone, days=8):
+        attempted.append((lat, lon))
+        if (lat, lon) == (location.primary_point.lat, location.primary_point.lon):
+            return real(lat, lon, models, timezone, days)
+        raise pipeline.open_meteo.OpenMeteoFetchError("Read timed out. (read timeout=30)")
+
+    system_prompts = []
+    real_system = pipeline.build_system_prompt
+
+    def spy(*args, **kwargs):
+        built = real_system(*args, **kwargs)
+        system_prompts.append(built)
+        return built
+
+    pipeline.open_meteo.fetch_forecast_daily_extended = fail_secondary_only
+    pipeline.build_system_prompt = spy
+    try:
+        result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    finally:
+        pipeline.open_meteo.fetch_forecast_daily_extended = real
+        pipeline.build_system_prompt = real_system
+
+    assert (location.secondary_point.lat, location.secondary_point.lon) in attempted, (
+        "the secondary extended fetch was never attempted, so nothing was tested"
+    )
+    assert result is not None, "the run aborted rather than degrading"
+    codes = {d.code for d in result.log_entry.meta.degradations}
+    assert DEGRADATION_SECONDARY_EXTENDED_OUTLOOK in codes
+
+    # A DIFFERENT CODE FROM THE PRIMARY'S, and this is the reason for the
+    # split rather than tidiness. The prompt's "the extended guidance did not
+    # arrive" switch is derived from the primary code, so sharing one code
+    # would let the lake's outlook failing suppress a perfectly good
+    # seven-day outlook for the town.
+    assert DEGRADATION_EXTENDED_OUTLOOK not in codes
+    assert "THE EXTENDED GUIDANCE DID NOT ARRIVE" not in system_prompts[0]
+    assert "using the daily summary data" in system_prompts[0]
+
+
+def test_losing_today_is_still_fatal(tmp_path):
+    """Degrading is not the same as tolerating anything. Today's hourly
+    guidance IS the forecast; a run without it has nothing to say and must
+    still abort rather than publish a confident silence."""
+    deps = make_deps(tmp_path)
+    real = pipeline.open_meteo.fetch_forecast_hourly_today
+
+    def fail_today(lat, lon, models, timezone):
+        raise pipeline.open_meteo.OpenMeteoFetchError("Read timed out. (read timeout=30)")
+
+    pipeline.open_meteo.fetch_forecast_hourly_today = fail_today
+    try:
+        with pytest.raises(pipeline.open_meteo.OpenMeteoFetchError):
+            run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    finally:
+        pipeline.open_meteo.fetch_forecast_hourly_today = real

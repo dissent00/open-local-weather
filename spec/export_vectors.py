@@ -1813,6 +1813,12 @@ def export_system_prompt() -> None:
         # model knows real met services for a real place, so silence would
         # leave it free to attribute a forecast to one.
         ("no local met service configured", plain, False, {"local_bulletin_configured": False}),
+        # ROADMAP item 51. A run whose seven-day fetch timed out and which
+        # published today anyway. The Extended Outlook HEADING stays — the
+        # structure is a contract — and its instruction is replaced, because
+        # asking for a paragraph "using the daily summary data" that is not
+        # there is a required section with nothing to fill it.
+        ("extended outlook unavailable", plain, False, {"extended_outlook_available": False}),
     ]
 
     cases = []
@@ -1823,6 +1829,7 @@ def export_system_prompt() -> None:
             "rolling_window_long": ROLLING_WINDOW_LONG,
             "ground_stations_configured": True,
             "local_bulletin_configured": True,
+            "extended_outlook_available": True,
         }
         kwargs.update(overrides)
         cases.append(
@@ -1853,7 +1860,9 @@ def export_system_prompt() -> None:
         "passage is omitted rather than reworded, and one with no local met "
         "service, where the peer-model guidance goes but the absence is still "
         "stated once so no forecast gets attributed to a service that was "
-        "never consulted.",
+        "never consulted. The last case is a run that published today after "
+        "its seven-day fetch timed out: the Extended Outlook heading stays "
+        "and its instruction is replaced with one that reports the gap.",
         cases,
     )
 

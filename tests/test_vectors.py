@@ -506,6 +506,7 @@ def test_vectors_system_prompt():
             is_reissue=i["is_reissue"],
             ground_stations_configured=i["ground_stations_configured"],
             local_bulletin_configured=i["local_bulletin_configured"],
+            extended_outlook_available=i["extended_outlook_available"],
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 

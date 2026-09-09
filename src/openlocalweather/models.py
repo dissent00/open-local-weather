@@ -441,6 +441,29 @@ DEGRADATION_HOURS_AHEAD_NARROWED = "hours_ahead_narrowed"
 DEGRADATION_SUN_TIMES = "sun_times_unavailable"
 DEGRADATION_METAR = "metar_unavailable"
 DEGRADATION_SYNOPTIC = "synoptic_unavailable"
+# ROADMAP items 51 and 79. The seven-day outlook failing used to abort the
+# whole run: on 2026-09-09 `forecast_days=8` read-timed out three times and
+# there was no forecast at all, though today's hourly guidance had already
+# arrived and nothing about today was in doubt.
+#
+# A forecast for today without a seven-day outlook beats no forecast. TODAY'S
+# HOURLY GUIDANCE IS STILL FATAL — it IS the forecast, and a run without it
+# has nothing to say.
+#
+# THE CODE IS THE POINT, not the prose beside it. Item 51's sequence is
+# reason, then count, then report: a degradation nothing can count is an
+# accumulating miss nobody sees, which is the failure mode graceful
+# degradation creates. The counting half already exists —
+# check_recent_degradations is generic over codes, so one lost outlook prints
+# and passes and the same code twice in the last 20 issuances turns
+# check-health red.
+DEGRADATION_EXTENDED_OUTLOOK = "extended_outlook_unavailable"
+# SEPARATE FROM THE PRIMARY'S, though it is the same endpoint and the same
+# outage. The prompt's "the extended guidance did not arrive" switch is
+# derived from the primary code, and under a shared code the lake's outlook
+# failing would suppress a perfectly good seven-day outlook for the town.
+# Splitting them also lets step two threshold each source on its own.
+DEGRADATION_SECONDARY_EXTENDED_OUTLOOK = "secondary_extended_outlook_unavailable"
 
 
 class RunDegradation(BaseModel):

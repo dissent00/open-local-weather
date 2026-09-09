@@ -340,3 +340,32 @@ def test_no_feed_configured_is_a_state_not_a_problem():
     """A fork whose met service publishes no CAP is not broken."""
     r = check_cap_feed("", now=datetime(2026, 9, 3, tzinfo=timezone.utc), configured=False)
     assert r.status is CapFeedStatus.NOT_CONFIGURED
+
+
+def test_a_lost_seven_day_outlook_accumulates_like_any_other_gap():
+    """ROADMAP item 51, and the reason its steps two and three needed nothing
+    new. Making the extended fetch degrade rather than abort trades a loud
+    failure for a quiet one, and the trade is only safe if the quiet one is
+    counted: a forecast missing the seven-day outlook is fine, a fortnight of
+    them is a dead source nobody noticed.
+
+    This check was already generic over codes, so the accumulation alarm came
+    for free. The test exists so it stays that way — a later change that
+    special-cases which codes count would break here rather than in six
+    weeks' silence.
+    """
+    once = check_recent_degradations([[], [_deg("extended_outlook_unavailable")], []])
+    assert once.status is DegradationStatus.ISOLATED, "one blip must not turn the job red"
+
+    twice = check_recent_degradations(
+        [[_deg("extended_outlook_unavailable")], [], [_deg("extended_outlook_unavailable")]]
+    )
+    assert twice.status is DegradationStatus.REPEATED
+    assert "extended_outlook_unavailable" in twice.message
+
+    # The two points are counted SEPARATELY, which is what splitting the codes
+    # bought. One failure at each is two one-off gaps, not a pattern.
+    mixed = check_recent_degradations(
+        [[_deg("extended_outlook_unavailable")], [_deg("secondary_extended_outlook_unavailable")]]
+    )
+    assert mixed.status is DegradationStatus.ISOLATED
