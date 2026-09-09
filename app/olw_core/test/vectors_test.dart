@@ -830,6 +830,7 @@ void main() {
           i['high_label'] as String?,
           i['wind_label'] as String?,
           i['rain_contrast'] as String?,
+          cloudLabel: i['cloud_label'] as String?,
           todayCharacter: i['today_character'] as String?,
           rainUnchanged: (i['rain_unchanged'] as bool?) ?? false,
           windWarningName: i['wind_warning_name'] as String?,

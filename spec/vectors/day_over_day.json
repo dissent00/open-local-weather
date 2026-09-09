@@ -35,6 +35,7 @@
             "wind_kmh": 37.0,
             "high_c": 29.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -46,6 +47,7 @@
             "wind_kmh": 35.0,
             "high_c": 29.4,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -57,6 +59,7 @@
             "wind_kmh": 38.0,
             "high_c": 29.6,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -77,8 +80,9 @@
         "wind_delta_kmh": -4.0,
         "high_label": "about the same",
         "wind_label": "similar winds",
+        "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much like yesterday. Wet."
+        "overview_comparison": "Wet again."
       }
     },
     {
@@ -113,6 +117,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -124,6 +129,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -135,6 +141,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -155,6 +162,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "slightly warmer",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
       }
@@ -191,6 +199,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -202,6 +211,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -213,6 +223,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -233,6 +244,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "noticeably cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Noticeably cooler and much calmer than yesterday. Wet again."
       }
@@ -269,6 +281,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -280,6 +293,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -291,6 +305,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -311,6 +326,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "much cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
       }
@@ -347,6 +363,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -358,6 +375,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -369,6 +387,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -389,6 +408,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "slightly warmer",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
       }
@@ -425,6 +445,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -436,6 +457,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -447,6 +469,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -467,6 +490,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "slightly warmer",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Slightly warmer and much calmer than yesterday. Wet again."
       }
@@ -503,6 +527,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -514,6 +539,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -525,6 +551,7 @@
             "wind_kmh": 20.0,
             "high_c": 33.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -545,6 +572,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much calmer than yesterday. Wet again."
       }
@@ -581,6 +609,7 @@
             "wind_kmh": 30.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -601,8 +630,9 @@
         "wind_delta_kmh": 5.0,
         "high_label": "about the same",
         "wind_label": "similar winds",
+        "cloud_label": null,
         "rain_contrast": "wet again",
-        "overview_comparison": "Much like yesterday. Wet."
+        "overview_comparison": "Wet again."
       }
     },
     {
@@ -637,6 +667,7 @@
             "wind_kmh": 40.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -657,6 +688,7 @@
         "wind_delta_kmh": 25.0,
         "high_label": "about the same",
         "wind_label": "much windier",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much windier than yesterday. Wet again."
       }
@@ -693,6 +725,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -713,6 +746,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry, after a wet day",
         "overview_comparison": "Much calmer than yesterday. Dry, after a wet day."
       }
@@ -749,6 +783,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -769,6 +804,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet, after a dry day",
         "overview_comparison": "Much calmer than yesterday. Wet, after a dry day."
       }
@@ -805,6 +841,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -825,6 +862,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry until evening showers, after a wet day",
         "overview_comparison": "Much calmer than yesterday. Dry until evening showers, after a wet day."
       }
@@ -861,6 +899,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -881,6 +920,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry until evening showers again",
         "overview_comparison": "Much calmer than yesterday. Dry until evening showers again."
       }
@@ -917,6 +957,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -937,6 +978,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet, after a dry day",
         "overview_comparison": "Much calmer than yesterday. Wet, after a dry day."
       }
@@ -973,6 +1015,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -993,6 +1036,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry apart from a brief evening shower again",
         "overview_comparison": "Much calmer than yesterday. Dry apart from a brief evening shower again."
       }
@@ -1029,6 +1073,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1049,6 +1094,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": null,
         "overview_comparison": "Much calmer than yesterday."
       }
@@ -1085,6 +1131,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1105,6 +1152,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry, after a showery day",
         "overview_comparison": "Much calmer than yesterday. Dry, after a showery day."
       }
@@ -1141,6 +1189,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1161,6 +1210,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": null,
         "overview_comparison": "Much calmer than yesterday."
       }
@@ -1197,6 +1247,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1208,6 +1259,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1219,6 +1271,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1230,6 +1283,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1250,6 +1304,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry until evening showers again",
         "overview_comparison": "Much calmer than yesterday. Dry until evening showers again."
       }
@@ -1286,6 +1341,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1306,6 +1362,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry, after a thundery day",
         "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day."
       }
@@ -1342,6 +1399,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1362,6 +1420,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": null,
         "overview_comparison": "Much calmer than yesterday."
       }
@@ -1398,6 +1457,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1418,6 +1478,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": null,
         "overview_comparison": "Much calmer than yesterday."
       }
@@ -1454,6 +1515,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1474,6 +1536,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "dry, after a thundery day",
         "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day."
       }
@@ -1510,6 +1573,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1521,6 +1585,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1532,6 +1597,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1543,6 +1609,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1554,6 +1621,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1565,6 +1633,7 @@
             "wind_kmh": 33.0,
             "high_c": 31.5,
             "low_c": 18.9,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1585,6 +1654,7 @@
         "wind_delta_kmh": -7.7,
         "high_label": "slightly warmer",
         "wind_label": "similar winds",
+        "cloud_label": null,
         "rain_contrast": "largely dry again",
         "overview_comparison": "Slightly warmer than yesterday. Largely dry again."
       }
@@ -1621,6 +1691,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1632,6 +1703,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1643,6 +1715,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1663,6 +1736,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "dramatically cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again."
       }
@@ -1699,6 +1773,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1710,6 +1785,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1721,6 +1797,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1741,6 +1818,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "much cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
       }
@@ -1777,6 +1855,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1788,6 +1867,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -1799,6 +1879,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1819,6 +1900,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "dramatically cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Dramatically cooler and much calmer than yesterday. Wet again."
       }
@@ -1855,6 +1937,7 @@
             "wind_kmh": 42.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1875,6 +1958,7 @@
         "wind_delta_kmh": 17.0,
         "high_label": "about the same",
         "wind_label": "windier",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Windier than yesterday. Wet again."
       }
@@ -1911,6 +1995,7 @@
             "wind_kmh": 10.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1931,6 +2016,7 @@
         "wind_delta_kmh": -45.0,
         "high_label": "about the same",
         "wind_label": "dramatically calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Dramatically calmer than yesterday. Wet again."
       }
@@ -1967,6 +2053,7 @@
             "wind_kmh": 20.0,
             "high_c": 18.05,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -1987,6 +2074,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "much cooler",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much cooler and much calmer than yesterday. Wet again."
       }
@@ -2023,6 +2111,7 @@
             "wind_kmh": 22.05,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2043,6 +2132,7 @@
         "wind_delta_kmh": -17.9,
         "high_label": "about the same",
         "wind_label": "calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Calmer than yesterday. Wet again."
       }
@@ -2079,6 +2169,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.75,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2099,6 +2190,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Much calmer than yesterday. Wet again."
       }
@@ -2135,6 +2227,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2155,6 +2248,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "largely dry with thunderstorms again",
         "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms again."
       }
@@ -2191,6 +2285,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2211,6 +2306,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "largely dry, after a thundery day",
         "overview_comparison": "Much calmer than yesterday. Largely dry, after a thundery day."
       }
@@ -2247,6 +2343,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2267,6 +2364,7 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "largely dry with thunderstorms, after a largely dry day",
         "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms, after a largely dry day."
       }
@@ -2303,6 +2401,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2323,8 +2422,183 @@
         "wind_delta_kmh": -20.7,
         "high_label": "about the same",
         "wind_label": "much calmer",
+        "cloud_label": null,
         "rain_contrast": "largely dry again",
         "overview_comparison": "Much calmer than yesterday. Largely dry again."
+      }
+    },
+    {
+      "name": "a sky two categories clearer is news",
+      "input": {
+        "yesterday_actual": {
+          "rain": false,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": 90.0,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": 10.0,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": false,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": "much clearer",
+        "rain_contrast": null,
+        "overview_comparison": "Much calmer and much clearer than yesterday."
+      }
+    },
+    {
+      "name": "one okta of change is not",
+      "input": {
+        "yesterday_actual": {
+          "rain": false,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": 40.0,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": 48.0,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": false,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": "similar cloud",
+        "rain_contrast": null,
+        "overview_comparison": "Much calmer than yesterday."
+      }
+    },
+    {
+      "name": "a sky nobody measured withholds the sameness claim",
+      "input": {
+        "yesterday_actual": {
+          "rain": false,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": null,
+          "precip_mm": 0.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": false,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": null,
+        "overview_comparison": "Much calmer than yesterday."
       }
     },
     {
@@ -2341,6 +2615,7 @@
             "wind_kmh": 20.0,
             "high_c": 29.0,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2380,6 +2655,7 @@
             "wind_kmh": 37.0,
             "high_c": 29.5,
             "low_c": 18.0,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           },
           {
@@ -2391,6 +2667,7 @@
             "wind_kmh": null,
             "high_c": null,
             "low_c": null,
+            "cloud_cover_pct": null,
             "mslp_trend": null
           }
         ],
@@ -2411,8 +2688,9 @@
         "wind_delta_kmh": -3.7,
         "high_label": "about the same",
         "wind_label": "similar winds",
+        "cloud_label": null,
         "rain_contrast": null,
-        "overview_comparison": "Much like yesterday."
+        "overview_comparison": null
       }
     }
   ]

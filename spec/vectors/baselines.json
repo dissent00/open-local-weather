@@ -37,6 +37,7 @@
         "wind_kmh": 30.0,
         "high_c": 30.0,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     },
@@ -74,6 +75,7 @@
         "wind_kmh": 30.0,
         "high_c": 30.0,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     },
@@ -160,6 +162,7 @@
         "wind_kmh": 20.0,
         "high_c": 26.0,
         "low_c": 15.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     },
@@ -237,6 +240,7 @@
         "wind_kmh": 10.0,
         "high_c": 20.0,
         "low_c": 10.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     },
@@ -295,6 +299,7 @@
         "wind_kmh": 20.0,
         "high_c": 25.0,
         "low_c": 15.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     },

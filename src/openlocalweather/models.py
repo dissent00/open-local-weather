@@ -110,6 +110,14 @@ class ModelPrediction(BaseModel):
     wind_kmh: float | None = None
     high_c: float | None = None
     low_c: float | None = None
+    # Day MEAN cloud cover, 0-100. Fetched in HOURLY_FORECAST_VARS since
+    # before this field existed and discarded at extraction, which is the
+    # third place cloud was being paid for and thrown away — items 87 and 65.
+    #
+    # A MEAN where wind is a max and temperature is an extreme, because the
+    # question is what kind of day it was rather than what the worst hour did.
+    # It is also what the observed side is, so the two compare like for like.
+    cloud_cover_pct: float | None = None
     mslp_trend: float | None = None
 
 

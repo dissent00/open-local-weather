@@ -25,7 +25,7 @@
         "rain_unchanged": false,
         "wind_warning_name": null
       },
-      "expected": "Much like yesterday."
+      "expected": null
     },
     {
       "name": "both labels moved",
@@ -169,7 +169,7 @@
         "rain_unchanged": true,
         "wind_warning_name": null
       },
-      "expected": "Much like yesterday. Largely dry with thunderstorms."
+      "expected": "Largely dry with thunderstorms again."
     },
     {
       "name": "a change still leads, and the rain half keeps its own again",
@@ -205,7 +205,7 @@
         "rain_unchanged": false,
         "wind_warning_name": "gale force"
       },
-      "expected": "Much like yesterday. Gusting to gale force."
+      "expected": "Gusting to gale force."
     },
     {
       "name": "nor by a change leading",

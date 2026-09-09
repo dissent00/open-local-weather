@@ -1843,7 +1843,7 @@ def export_day_over_day() -> None:
     """The Overview's opening sentence. Vector-tested because a live run got
     it wrong when the LLM was left to subtract: it called a 0.1°C difference
     "about 1°C cooler"."""
-    def preds(highs, lows=None, winds=None, rains=None, mm=None, onsets=None):
+    def preds(highs, lows=None, winds=None, rains=None, mm=None, onsets=None, clouds=None):
         n = len(highs)
         lows = lows or [18.0] * n
         winds = winds or [20.0] * n
@@ -1855,7 +1855,8 @@ def export_day_over_day() -> None:
         onsets = onsets if onsets is not None else ["08:00"] * n
         return [
             ModelPrediction(model=f"m{i}", rain=rains[i], high_c=highs[i], low_c=lows[i],
-                            wind_kmh=winds[i], precip_mm=mm[i], onset=onsets[i])
+                            wind_kmh=winds[i], precip_mm=mm[i], onset=onsets[i],
+                            cloud_cover_pct=(clouds[i] if clouds is not None else None))
             for i in range(n)
         ]
 
@@ -1996,6 +1997,19 @@ def export_day_over_day() -> None:
         ("one band on both sides is never a contrast",
          actual(rain=True, precip_mm=3.0, onset_hour="17:00", thunder=False),
          preds([29.0], rains=[False], mm=[2.0], onsets=[None]), False),
+        # THE SKY — items 87, 65 and 83. Without a case carrying cloud on both
+        # sides every cloud_label in this file is null and the Dart half is
+        # compared against nothing, which is the empty-input trap item 90
+        # recorded. Watched failing before the Dart port existed.
+        ("a sky two categories clearer is news",
+         actual(rain=False, precip_mm=0.0, onset_hour=None, cloud_cover_pct=90.0),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None], clouds=[10.0])),
+        ("one okta of change is not",
+         actual(rain=False, precip_mm=0.0, onset_hour=None, cloud_cover_pct=40.0),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None], clouds=[48.0])),
+        ("a sky nobody measured withholds the sameness claim",
+         actual(rain=False, precip_mm=0.0, onset_hour=None, cloud_cover_pct=None),
+         preds([29.0], rains=[False], mm=[0.0], onsets=[None], clouds=[None])),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),

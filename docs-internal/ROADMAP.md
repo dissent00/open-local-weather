@@ -9650,7 +9650,7 @@ sources filling one column), item 77 (the harness), item 74.
 
 ---
 
-## 87. The prompt bans four variables and then hands three of them over · **Rule fixed and cloud observed 2026-09-09; the label is still Planned**
+## 87. The prompt bans four variables and then hands three of them over · **Cloud done 2026-09-09; dew point and visibility remain out**
 
 Found 2026-09-08 by a cold worker model, which reported visibility and cloud
 base in a forecast, suppressed dew point, and flagged the inconsistency
@@ -9832,10 +9832,46 @@ thundered, which is the first independent evidence the sky parsing is right.
 `bucketHourlyByDate` is ported, so this crossed the language boundary: the
 Dart half and a vector case landed with it, and the Dart test was watched
 failing on the new case first.
-- **No label.** Item 83 needs a sky dimension to stop "much like yesterday"
-  overclaiming, and that needs the FORECAST side too — the models predict
-  `cloud_cover` as a percentage and this is in eighths, so the comparison
-  needs the NWS band table on both sides.
+### The label, 2026-09-09 — and the units turned out not to be a problem
+
+The worry was that the forecast is in percent and the station in eighths. It
+does not arise: **the comparison is percent against percent.** The models
+forecast `cloud_cover` and the REANALYSIS observed it, so the two sides match
+by construction, and the station's eighths sit beside them as a cross-check —
+exactly as the station's sustained wind sits beside the scored gust and is
+never the thing scored.
+
+**A third discard, found on the way.** `cloud_cover` is in
+`HOURLY_FORECAST_VARS` too and `ModelPrediction` had no field for it, so the
+forecast side was being fetched and dropped as well. Three places paid for
+cloud and none kept it.
+
+`cloud_label` now joins `high_label` and `wind_label` on the same band
+machinery. The thresholds are the standard's own resolution converted: **one
+okta, 12.5 points, is the smallest change the NWS bands distinguish**, and
+three oktas, 37.5 points, is a sky two whole categories away. No local
+measurement and nothing invented — the lesson item 95 recorded.
+
+**"Much like yesterday" is now a claim about FOUR measurements**, and the
+prompt says so. This is the operator's founding objection closed, quoted when
+it was raised on 2026-09-08: *"a cloudy/rainy day with the same temps, wind
+speed, and AQI or whatever is not 'much the same' even though 3/4 vectors may
+be the same."* Until today the sentence could be true of three things and
+wrong about the day. A missing sky withholds the claim, the same rule the
+wind label already followed.
+
+**First real day.** Kisumu yesterday observed 28.1% cloud; today's consensus
+is 44.8%, so the Overview reads *"Cloudier than yesterday. Dry until evening
+showers again."* Worth noting what the fleet will see: the models disagree
+about cloud by a factor of five on that same day — UKMO 11.9% against GFS
+66.5% — which is a wider spread than they carry on rain.
+
+**A vector case was needed and nearly missed.** Every existing `day_over_day`
+fixture has no cloud, so every `cloud_label` was null and the Dart half was
+being compared against nothing — the empty-input trap of item 90, third
+occurrence. Three cases now carry cloud on both sides. The first perturbation
+used to check them changed no expected output and proved nothing; the second
+did, and the vector caught it.
 - Dew point and visibility remain parsed by nothing. The rule now states the
   real reason for withholding them, which was the urgent half.
 

@@ -92,6 +92,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     // ModelPrediction.rainProbabilityPct for why it is recorded before
     // anything scores it.
     final prob = _series(hourly, 'precipitation_probability', model);
+    final cloud = _series(hourly, 'cloud_cover', model);
 
     final hasPrecipData = precip.any((v) => v != null);
     final bool? rain =
@@ -104,6 +105,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final tempVals = temp.whereType<double>().toList();
     final pressVals = press.whereType<double>().toList();
     final probVals = prob.whereType<double>().toList();
+    final cloudVals = cloud.whereType<double>().toList();
 
     return ModelPrediction(
       model: model,
@@ -119,6 +121,10 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       rainProbabilityPct: probVals.isEmpty
           ? null
           : probVals.reduce((a, b) => a > b ? a : b).toInt(),
+      cloudCoverPct: cloudVals.isEmpty
+          ? null
+          : roundLikePython(
+              cloudVals.fold<double>(0, (a, v) => a + v) / cloudVals.length, 1),
       // Summed over hours that reported a value. An all-null day gives
       // null rather than 0.0 — "no data" and "no rain" are different
       // answers and the summary must not conflate them.

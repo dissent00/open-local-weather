@@ -302,6 +302,24 @@ KNOTS_TO_KMH = 1.852
 # were thundery against a 9-of-42 base rate. But no day in the record reaches
 # gale force at all, so 42 days cannot answer it either way.
 
+# Cloud change bands, read the same way as TEMP_CHANGE_BANDS_C: the first
+# entry is the whole label, the rest are modifiers on "cloudier" / "clearer".
+#
+# THE UNIT IS EIGHTHS, EXPRESSED IN PERCENT. Sky cover is measured in oktas —
+# the NWS glossary says so and confirms SCT as "3/8th to 4/8th" — so the
+# threshold below which a sky did not really change is ONE OKTA, 12.5
+# percentage points. Three oktas, 37.5 points, is a sky two whole categories
+# away on the NWS band table, which is "much".
+#
+# Nothing invented and no local measurement: the boundaries are the standard's
+# own resolution converted, which is the lesson item 95 recorded after a
+# Kisumu gust factor was baked into a published scale.
+CLOUD_CHANGE_BANDS_PCT = [
+    (12.5, "similar cloud"),
+    (37.5, ""),
+    (99.0, "much"),
+]
+
 # Gust change bands, read the same way as TEMP_CHANGE_BANDS_C: the first
 # entry is the whole label, the rest are modifiers on "windier" / "calmer",
 # and an empty modifier means the bare word.

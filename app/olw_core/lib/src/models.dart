@@ -80,6 +80,13 @@ class ModelPrediction {
   final double? lowC;
   final double? mslpTrend;
 
+  /// Day MEAN cloud cover, 0-100. Fetched in the forecast vars since before
+  /// this field existed and discarded at extraction — the third place cloud
+  /// was paid for and thrown away. A MEAN where wind is a max, because the
+  /// question is what kind of day it was, and because the observed side is a
+  /// mean too so the two compare like for like.
+  final double? cloudCoverPct;
+
   /// Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
   /// `rain` stays the boolean the accuracy record is built on, because
   /// changing what that means would make every stored day incomparable with
@@ -112,6 +119,7 @@ class ModelPrediction {
     this.highC,
     this.lowC,
     this.mslpTrend,
+    this.cloudCoverPct,
     this.precipMm,
     this.rainProbabilityPct,
   });
@@ -126,6 +134,7 @@ class ModelPrediction {
         mslpTrend: _toDouble(j['mslp_trend']),
         precipMm: _toDouble(j['precip_mm']),
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
+        cloudCoverPct: _toDouble(j['cloud_cover_pct']),
       );
 
   Map<String, Object?> toJson() => {
@@ -136,6 +145,7 @@ class ModelPrediction {
         'high_c': highC,
         'low_c': lowC,
         'mslp_trend': mslpTrend,
+        'cloud_cover_pct': cloudCoverPct,
         'precip_mm': precipMm,
         'rain_probability_pct': rainProbabilityPct,
       };

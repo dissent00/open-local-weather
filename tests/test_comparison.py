@@ -305,9 +305,11 @@ def test_nothing_moved_is_one_short_sentence():
     """The anti-enumeration rule, now structural rather than instructed.
     "much like yesterday, with similar warmth, similar winds, and dry again"
     is four statements of one fact, and was a real Overview."""
-    assert describe_day_over_day("about the same", "similar winds", None) == (
-        "Much like yesterday."
-    )
+    # "similar cloud" is required for the claim now: it covers every measured
+    # dimension, and the sky is one since items 87 and 65.
+    assert describe_day_over_day(
+        "about the same", "similar winds", None, cloud_label="similar cloud"
+    ) == "Much like yesterday."
 
 
 def test_rain_alone_changing_does_not_get_called_much_like_yesterday():
@@ -422,6 +424,7 @@ def test_when_nothing_moved_at_all_say_so_once():
     because a reader told the day is like yesterday has already been told."""
     assert describe_day_over_day(
         "about the same", "similar winds", "largely dry with thunderstorms again",
+        cloud_label="similar cloud",
         today_character="largely dry with thunderstorms", rain_unchanged=True,
     ) == "Much like yesterday. Largely dry with thunderstorms."
 
@@ -516,7 +519,8 @@ def test_a_warning_survives_much_like_yesterday():
     """Half one of the Overview. Two gale days running compared as "similar
     winds" and the sameness lead then swallowed them whole."""
     assert describe_day_over_day(
-        "about the same", "similar winds", None, wind_warning_name="gale force",
+        "about the same", "similar winds", None, cloud_label="similar cloud",
+        wind_warning_name="gale force",
     ) == "Much like yesterday. Gusting to gale force."
 
     # And it is not suppressed by a change leading either.
@@ -524,8 +528,9 @@ def test_a_warning_survives_much_like_yesterday():
         "noticeably cooler", "similar winds", None, wind_warning_name="storm force",
     ) == "Noticeably cooler than yesterday. Gusting to storm force."
 
-    assert describe_day_over_day("about the same", "similar winds", None) == (
-        "Much like yesterday.")
+    assert describe_day_over_day(
+        "about the same", "similar winds", None, cloud_label="similar cloud"
+    ) == "Much like yesterday."
 
 
 def test_a_warning_survives_conditions_much_the_same():
@@ -545,3 +550,49 @@ def test_a_warning_survives_conditions_much_the_same():
         30.0, steady, [0.0, 0.0, 0.0], "Saturday",
         today_wind_kmh=20.0, day_winds_kmh=[21.0, 20.0, 19.0],
     ) == "conditions much the same through Saturday"
+
+
+# ---------------------------------------------------------------------------
+# The sky — items 87, 65 and 83. "Much like yesterday" covered three
+# measurements and the operator's original complaint was about the fourth.
+# ---------------------------------------------------------------------------
+
+
+def test_a_changed_sky_is_a_changed_day():
+    """The operator's founding objection, 2026-09-08: "a cloudy/rainy day with
+    the same temps, wind speed, and AQI or whatever is not 'much the same'
+    even though 3/4 vectors may be the same."
+
+    Until now the comparison had no sky at all, so a clear day following an
+    overcast one read as "much like yesterday" and was, on three of the four
+    things a reader notices."""
+    overcast = actual(cloud_cover_pct=90.0)
+    clear = preds(cloud_cover_pct=10.0)
+
+    result = compute_day_over_day(overcast, clear)
+    assert result.cloud_label == "much clearer"
+    assert result.overview_comparison == "Much clearer than yesterday."
+
+
+def test_a_sky_that_held_still_is_not_news():
+    """One okta, 12.5 percentage points, is the smallest change the standard's
+    own bands distinguish — below it the sky did not change category and
+    saying so would be enumeration."""
+    result = compute_day_over_day(actual(cloud_cover_pct=40.0), preds(cloud_cover_pct=48.0))
+    assert result.cloud_label == "similar cloud"
+    assert result.overview_comparison == "Much like yesterday."
+
+
+def test_the_sky_joins_the_other_measurements_rather_than_replacing_them():
+    result = compute_day_over_day(
+        actual(high_c=25.0, cloud_cover_pct=20.0), preds(high_c=29.0, cloud_cover_pct=70.0)
+    )
+    assert result.overview_comparison == "Noticeably warmer and much cloudier than yesterday."
+
+
+def test_no_sky_measurement_withholds_the_sameness_claim():
+    """"Much like yesterday" is a claim about every measured dimension, so a
+    missing one withholds it — the same rule the wind label already follows."""
+    result = compute_day_over_day(actual(cloud_cover_pct=None), preds(cloud_cover_pct=None))
+    assert result.cloud_label is None
+    assert result.overview_comparison is None

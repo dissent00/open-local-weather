@@ -100,6 +100,19 @@ String? windWarning(double? gustKmh) {
   return name;
 }
 
+/// Cloud change bands, read the same way as [tempChangeBandsC].
+///
+/// THE UNIT IS EIGHTHS, EXPRESSED IN PERCENT. Sky cover is measured in oktas,
+/// so the threshold below which a sky did not really change is ONE OKTA,
+/// 12.5 points. Three oktas, 37.5 points, is a sky two whole categories away
+/// on the NWS band table, which is "much". The standard's own resolution
+/// converted — nothing invented and no local measurement.
+const List<(double, String)> cloudChangeBandsPct = [
+  (12.5, 'similar cloud'),
+  (37.5, ''),
+  (99.0, 'much'),
+];
+
 const List<(double, String)> windChangeBandsKmh = [
   (8.0, 'similar winds'),
   (18.0, ''),
@@ -125,6 +138,10 @@ class DayOverDayComparison {
   final double? windDeltaKmh;
   final String? highLabel;
   final String? windLabel;
+
+  /// Items 87, 65 and 83. The fourth measurement, and the one the operator's
+  /// founding objection was about: three quiet vectors are not a quiet day.
+  final String? cloudLabel;
   final String? rainContrast;
   /// The three labels above, composed into finished sentences — item 83.
   /// This is what the PROMPT is given; the labels themselves stay in the
@@ -146,6 +163,7 @@ class DayOverDayComparison {
     this.windDeltaKmh,
     this.highLabel,
     this.windLabel,
+    this.cloudLabel,
     this.rainContrast,
     this.overviewComparison,
   });
@@ -165,6 +183,7 @@ class DayOverDayComparison {
         'wind_delta_kmh': windDeltaKmh,
         'high_label': highLabel,
         'wind_label': windLabel,
+        'cloud_label': cloudLabel,
         'rain_contrast': rainContrast,
         'overview_comparison': overviewComparison,
       };
@@ -334,6 +353,14 @@ DayOverDayComparison? computeDayOverDay(
   double? delta(double? today, double? yesterday) =>
       (today == null || yesterday == null) ? null : _round1(today - yesterday);
 
+  // The sky — items 87, 65 and 83. Percent on both sides, so like for like:
+  // the models forecast cloud_cover and the reanalysis observed it. The
+  // station's eighths sit beside it as a cross-check, exactly as the
+  // station's sustained wind sits beside the scored gust.
+  final consensusCloud =
+      mean([for (final p in todayDay0Predictions) p.cloudCoverPct]);
+  final cloudDelta = delta(consensusCloud, yesterdayActual.cloudCoverPct);
+
   final highDelta = delta(consensusHigh, yesterdayActual.highC);
   final lowDelta = delta(consensusLow, yesterdayActual.lowC);
   final windDelta = delta(consensusWind, yesterdayActual.peakWindKmh);
@@ -438,6 +465,8 @@ DayOverDayComparison? computeDayOverDay(
   }
 
   final highLabel = _bandLabel(highDelta, tempChangeBandsC, 'warmer', 'cooler');
+  final cloudLabel =
+      _bandLabel(cloudDelta, cloudChangeBandsPct, 'cloudier', 'clearer');
   final rainUnchanged = rainContrast != null && rainKeysMatch;
   final windLabel =
       _bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
@@ -457,11 +486,13 @@ DayOverDayComparison? computeDayOverDay(
     windDeltaKmh: windDelta,
     highLabel: highLabel,
     windLabel: windLabel,
+    cloudLabel: cloudLabel,
     rainContrast: rainContrast,
     overviewComparison: describeDayOverDay(
       highLabel,
       windLabel,
       rainContrast,
+      cloudLabel: cloudLabel,
       todayCharacter: todayCharacter,
       rainUnchanged: rainUnchanged,
       windWarningName: windWarning(consensusWind),
@@ -509,19 +540,23 @@ String? describeDayOverDay(
   String? highLabel,
   String? windLabel,
   String? rainContrast, {
+  String? cloudLabel,
   String? todayCharacter,
   bool rainUnchanged = false,
   String? windWarningName,
 }) {
-  final quietHigh = tempChangeBandsC.first.$2;
-  final quietWind = windChangeBandsKmh.first.$2;
+  final dimensions = [
+    (highLabel, tempChangeBandsC.first.$2),
+    (windLabel, windChangeBandsKmh.first.$2),
+    (cloudLabel, cloudChangeBandsPct.first.$2),
+  ];
 
   final moved = [
-    for (final (label, quiet) in [(highLabel, quietHigh), (windLabel, quietWind)])
+    for (final (label, quiet) in dimensions)
       if (label != null && label != quiet) label,
   ];
 
-  final measured = highLabel != null && windLabel != null;
+  final measured = dimensions.every((d) => d.$1 != null);
   final hasRain = rainContrast != null && rainContrast.isNotEmpty;
 
   String? lead;

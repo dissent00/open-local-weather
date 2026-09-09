@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from openlocalweather.defaults import (
+    CLOUD_CHANGE_BANDS_PCT,
     KNOTS_TO_KMH,
     TEMP_CHANGE_BANDS_C,
     WIND_CHANGE_BANDS_KMH,
@@ -63,6 +64,11 @@ class DayOverDayComparison:
     wind_delta_kmh: float | None
     high_label: str | None
     wind_label: str | None
+    # Items 87, 65 and 83. The fourth measurement, and the one the operator's
+    # founding objection was about: "a cloudy/rainy day with the same temps,
+    # wind speed, and AQI is not 'much the same' even though 3/4 vectors may
+    # be the same."
+    cloud_label: str | None
     rain_contrast: str | None
     # The three labels above, composed into finished sentences — item 83.
     # This is what the PROMPT is given; the labels themselves stay in the
@@ -303,6 +309,14 @@ def compute_day_over_day(
             return None
         return round(today - yesterday, 1)
 
+    # The sky, at last — items 87, 65 and 83. Percent on both sides, so this
+    # is like for like: the models forecast cloud_cover and the reanalysis
+    # observed it. The station's eighths are stored beside it as a
+    # cross-check and are deliberately not the comparison basis, exactly as
+    # the station's sustained wind sits beside the scored gust.
+    consensus_cloud = mean([p.cloud_cover_pct for p in today_day0_predictions])
+    cloud_delta = delta(consensus_cloud, yesterday_actual.cloud_cover_pct)
+
     high_delta = delta(consensus_high, yesterday_actual.high_c)
     low_delta = delta(consensus_low, yesterday_actual.low_c)
     wind_delta = delta(consensus_wind, yesterday_actual.peak_wind_kmh)
@@ -448,6 +462,7 @@ def compute_day_over_day(
             rain_contrast = f"{today_character}, after a {yesterday_summary} day"
 
     high_label = _band_label(high_delta, TEMP_CHANGE_BANDS_C, "warmer", "cooler")
+    cloud_label = _band_label(cloud_delta, CLOUD_CHANGE_BANDS_PCT, "cloudier", "clearer")
     rain_unchanged = bool(rain_contrast) and today_key == yesterday_key
     wind_label = _band_label(wind_delta, WIND_CHANGE_BANDS_KMH, "windier", "calmer")
 
@@ -466,11 +481,13 @@ def compute_day_over_day(
         wind_delta_kmh=wind_delta,
         high_label=high_label,
         wind_label=wind_label,
+        cloud_label=cloud_label,
         rain_contrast=rain_contrast,
         overview_comparison=describe_day_over_day(
             high_label,
             wind_label,
             rain_contrast,
+            cloud_label=cloud_label,
             today_character=today_character,
             rain_unchanged=rain_unchanged,
             wind_warning_name=wind_warning(consensus_wind),
@@ -519,6 +536,7 @@ def describe_day_over_day(
     wind_label: str | None,
     rain_contrast: str | None,
     *,
+    cloud_label: str | None = None,
     today_character: str | None = None,
     rain_unchanged: bool = False,
     wind_warning_name: str | None = None,
@@ -532,16 +550,15 @@ def describe_day_over_day(
     opener and there is no preposition it survives — which is defect 1, and
     the reason this function exists rather than a longer instruction.
     """
-    quiet_high = TEMP_CHANGE_BANDS_C[0][1]
-    quiet_wind = WIND_CHANGE_BANDS_KMH[0][1]
+    dimensions = (
+        (high_label, TEMP_CHANGE_BANDS_C[0][1]),
+        (wind_label, WIND_CHANGE_BANDS_KMH[0][1]),
+        (cloud_label, CLOUD_CHANGE_BANDS_PCT[0][1]),
+    )
 
-    moved = [
-        label
-        for label, quiet in ((high_label, quiet_high), (wind_label, quiet_wind))
-        if label is not None and label != quiet
-    ]
+    moved = [label for label, quiet in dimensions if label is not None and label != quiet]
 
-    measured = high_label is not None and wind_label is not None
+    measured = all(label is not None for label, _quiet in dimensions)
 
     lead = None
     if moved:
