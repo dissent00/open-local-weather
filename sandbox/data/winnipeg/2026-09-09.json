@@ -1,0 +1,244 @@
+{
+  "date": "2026-09-09",
+  "labels": {
+    "comparison": {
+      "high_delta_c": -1.1,
+      "high_label": "slightly cooler",
+      "low_delta_c": -2.0,
+      "overview_comparison": "Slightly cooler and much calmer than yesterday. Dry, after a showery day.",
+      "rain_contrast": "dry, after a showery day",
+      "today_consensus_high_c": 21.5,
+      "today_consensus_low_c": 13.6,
+      "today_consensus_peak_wind_kmh": 44.6,
+      "today_rain_expected": false,
+      "wind_delta_kmh": -30.6,
+      "wind_label": "much calmer",
+      "yesterday_high_c": 22.6,
+      "yesterday_low_c": 15.6,
+      "yesterday_peak_wind_kmh": 75.2,
+      "yesterday_rain": true,
+      "yesterday_thunder": null
+    },
+    "extended_trend": "cooling through Saturday",
+    "instability": {
+      "convective": false,
+      "models_above_threshold": [],
+      "peak_cape_by_model": {
+        "best_match": 220.0,
+        "ecmwf_ifs025": 60.0,
+        "gfs_seamless": 220.0,
+        "icon_seamless": 50.0,
+        "ukmo_seamless": 120.0
+      },
+      "peak_cape_jkg": 220.0,
+      "peak_hour": "17:00",
+      "peak_model": "gfs_seamless"
+    },
+    "wind_warning": null
+  },
+  "location": {
+    "icao": "CYWG",
+    "lat": 49.8951,
+    "lon": -97.1384,
+    "name": "Winnipeg",
+    "timezone": "America/Winnipeg"
+  },
+  "predictions": {
+    "day0": [
+      {
+        "high_c": 22.2,
+        "low_c": 13.6,
+        "model": "gfs_seamless",
+        "mslp_trend": 5.400000000000091,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 6,
+        "wind_kmh": 48.6
+      },
+      {
+        "high_c": 20.5,
+        "low_c": 13.5,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 5.0,
+        "onset": "05:00",
+        "precip_mm": 2.1,
+        "rain": true,
+        "rain_probability_pct": 39,
+        "wind_kmh": 43.2
+      },
+      {
+        "high_c": 20.9,
+        "low_c": 14.1,
+        "model": "icon_seamless",
+        "mslp_trend": 5.300000000000068,
+        "onset": null,
+        "precip_mm": 0.2,
+        "rain": false,
+        "rain_probability_pct": 30,
+        "wind_kmh": 40.3
+      },
+      {
+        "high_c": 21.5,
+        "low_c": 13.3,
+        "model": "ukmo_seamless",
+        "mslp_trend": 5.300000000000068,
+        "onset": "06:00",
+        "precip_mm": 1.2,
+        "rain": true,
+        "rain_probability_pct": null,
+        "wind_kmh": 42.5
+      },
+      {
+        "high_c": 22.2,
+        "low_c": 13.6,
+        "model": "best_match",
+        "mslp_trend": 5.400000000000091,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 6,
+        "wind_kmh": 48.6
+      }
+    ],
+    "day3": [
+      {
+        "high_c": 17.4,
+        "low_c": 11.3,
+        "model": "gfs_seamless",
+        "mslp_trend": 10.0,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 9,
+        "wind_kmh": 41.4
+      },
+      {
+        "high_c": 15.5,
+        "low_c": 11.1,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 7.599999999999909,
+        "onset": null,
+        "precip_mm": 3.1,
+        "rain": true,
+        "rain_probability_pct": 27,
+        "wind_kmh": 48.2
+      },
+      {
+        "high_c": 14.7,
+        "low_c": 10.9,
+        "model": "icon_seamless",
+        "mslp_trend": 6.800000000000068,
+        "onset": null,
+        "precip_mm": 0.6,
+        "rain": true,
+        "rain_probability_pct": 30,
+        "wind_kmh": 45.7
+      },
+      {
+        "high_c": 16.9,
+        "low_c": 12.2,
+        "model": "ukmo_seamless",
+        "mslp_trend": 7.5,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": null,
+        "wind_kmh": 47.2
+      },
+      {
+        "high_c": 17.4,
+        "low_c": 11.3,
+        "model": "best_match",
+        "mslp_trend": 10.0,
+        "onset": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 9,
+        "wind_kmh": 41.4
+      }
+    ],
+    "day7": [
+      {
+        "high_c": 22.6,
+        "low_c": 5.8,
+        "model": "gfs_seamless",
+        "mslp_trend": 0.10000000000002274,
+        "onset": null,
+        "precip_mm": 14.6,
+        "rain": true,
+        "rain_probability_pct": 23,
+        "wind_kmh": 62.3
+      },
+      {
+        "high_c": 19.6,
+        "low_c": 8.7,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 0.2999999999999545,
+        "onset": null,
+        "precip_mm": 0.6,
+        "rain": true,
+        "rain_probability_pct": 33,
+        "wind_kmh": 46.1
+      },
+      {
+        "high_c": null,
+        "low_c": null,
+        "model": "icon_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "high_c": null,
+        "low_c": null,
+        "model": "ukmo_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "high_c": 22.6,
+        "low_c": 5.8,
+        "model": "best_match",
+        "mslp_trend": 0.10000000000002274,
+        "onset": null,
+        "precip_mm": 14.6,
+        "rain": true,
+        "rain_probability_pct": 23,
+        "wind_kmh": 62.3
+      }
+    ]
+  },
+  "yesterday_observed": {
+    "high_c": 22.6,
+    "lightning": null,
+    "low_c": 15.6,
+    "mslp_trend": 2.7000000000000455,
+    "onset_hour": "00:00",
+    "peak_wind_kmh": 75.2,
+    "precip_mm": 7.0,
+    "precipitation": null,
+    "precipitation_onset": null,
+    "provenance": {
+      "high_c": "era5_archive",
+      "low_c": "era5_archive",
+      "mslp_trend": "era5_archive",
+      "onset_hour": "era5_archive",
+      "peak_wind_kmh": "era5_archive",
+      "precip_mm": "era5_archive",
+      "rain": "era5_archive"
+    },
+    "rain": true,
+    "station_high_c": null,
+    "station_low_c": null,
+    "station_peak_wind_kmh": null,
+    "thunder": null
+  }
+}
