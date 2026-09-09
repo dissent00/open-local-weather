@@ -392,6 +392,7 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     times = h.get("time") or []
     temp_arr = h.get("temperature_2m") or []
     precip_arr = h.get("precipitation") or []
+    cloud_arr = h.get("cloud_cover") or []
     wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m", "wind_speed_10m", "windspeed_10m")
     pressure_arr = h.get("pressure_msl") or []
 
@@ -399,10 +400,12 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     for i, t in enumerate(times):
         d_str = t.split("T")[0]
         bucket = by_date.setdefault(
-            d_str, {"temps": [], "precip": [], "wind": [], "pressure": [], "times": []}
+            d_str,
+            {"temps": [], "precip": [], "wind": [], "pressure": [], "times": [], "cloud": []},
         )
         bucket["temps"].append(temp_arr[i] if i < len(temp_arr) else None)
         bucket["precip"].append(precip_arr[i] if i < len(precip_arr) else None)
+        bucket["cloud"].append(cloud_arr[i] if i < len(cloud_arr) else None)
         bucket["wind"].append(wind_arr[i] if i < len(wind_arr) else None)
         bucket["pressure"].append(pressure_arr[i] if i < len(pressure_arr) else None)
         bucket["times"].append(t)
@@ -418,6 +421,12 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
             else None
         )
         onset_hour = get_onset_hour(day["times"], day["precip"], threshold)
+        # A MEAN, matching what the models' own cloud_cover is a mean of, and
+        # matching the station reading's day-level meaning. Hours with no
+        # value are skipped rather than counted as clear: absent is not zero,
+        # the same rule the precipitation sum follows.
+        clouds = [v for v in day["cloud"] if v is not None]
+        cloud_pct = round(sum(clouds) / len(clouds), 1) if clouds else None
         high_c = max(temps) if temps else None
         low_c = min(temps) if temps else None
         peak_wind = max(wind) if wind else None
@@ -435,6 +444,7 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
             ("mslp_trend", mslp_trend),
             ("onset_hour", onset_hour),
             ("precip_mm", precip_mm),
+            ("cloud_cover_pct", cloud_pct),
         ):
             if value is not None:
                 provenance[field] = SOURCE_REANALYSIS
@@ -451,5 +461,6 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
             # None rather than 0.0 — "no data" and "no rain" are different
             # answers and the summary must not conflate them.
             precip_mm=precip_mm,
+            cloud_cover_pct=cloud_pct,
         )
     return result

@@ -21,6 +21,8 @@
           "station_high_c": null,
           "station_low_c": null,
           "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
           "lightning": null,
           "provenance": null
         },
@@ -56,6 +58,8 @@
           "station_high_c": null,
           "station_low_c": null,
           "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
           "lightning": null,
           "provenance": null
         },
@@ -101,6 +105,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           },
@@ -118,6 +124,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           },
@@ -135,6 +143,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           }
@@ -172,6 +182,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           },
@@ -189,6 +201,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           },
@@ -206,6 +220,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           }
@@ -243,6 +259,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           },
@@ -260,6 +278,8 @@
             "station_high_c": null,
             "station_low_c": null,
             "station_peak_wind_kmh": null,
+            "cloud_cover_pct": null,
+            "station_cloud_oktas": null,
             "lightning": null,
             "provenance": null
           }

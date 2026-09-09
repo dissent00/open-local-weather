@@ -239,6 +239,25 @@ class DailyActual(BaseModel):
     station_low_c: float | None = None
     station_peak_wind_kmh: float | None = None
 
+    # TWO CLOUD OBSERVATIONS, IN DIFFERENT UNITS, AND NEITHER IS THE OTHER —
+    # ROADMAP items 87 and 65, which recorded "the forecast predicts
+    # cloud_cover; nothing observes it" while both of these were being
+    # fetched and discarded.
+    #
+    # cloud_cover_pct is the reanalysis daily MEAN, 0-100, and has been in
+    # ARCHIVE_HOURLY_VARS all along. station_cloud_oktas is the airport's
+    # daily mean in EIGHTHS, 0-8, parsed from the sky groups metar.py used to
+    # throw away.
+    #
+    # NOT MERGED INTO ONE FIELD, unlike high_c and station_high_c: those are
+    # the same quantity in the same unit from two sources, so a ladder can
+    # pick between them. Percent and eighths are not, and converting one to
+    # the other needs the NWS band table on both sides — that belongs with
+    # the label work, not here. Storing both unmerged is the honest state:
+    # two observations exist, and nothing yet claims which is right.
+    cloud_cover_pct: float | None = None
+    station_cloud_oktas: float | None = None
+
     # Which source supplied which value, for THIS day — ROADMAP item 45,
     # trap 2. Keys are DailyActual field names, values are SOURCE_* ids.
     #

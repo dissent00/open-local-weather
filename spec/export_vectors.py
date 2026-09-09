@@ -729,11 +729,26 @@ def export_bucketing() -> None:
             "pressure_msl": [1013.0, 1013.5],
         }
     }
+    # Items 87 and 65: cloud_cover was in ARCHIVE_HOURLY_VARS all along and
+    # the bucket never read it. A MEAN, with absent hours skipped rather than
+    # counted as clear.
+    cloudy = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T01:00", "2026-08-11T02:00"],
+            "temperature_2m": [18.0, 19.0, 20.0],
+            "precipitation": [0.0, 0.0, 0.0],
+            "windgusts_10m": [12.0, 16.0, 14.0],
+            "pressure_msl": [1013.0, 1013.5, 1013.2],
+            "cloud_cover": [10.0, None, 80.0],
+        }
+    }
     scenarios = [
         ("multi-day split, onset and aggregates per day", multi_day),
         ("gust array present with nulls — no windspeed substitution", gusts_with_nulls),
         ("gust array absent — falls back to windspeed", speed_fallback),
         ("a precipitation total on an exact rounding tie", rounding_tie),
+        ("the archive's own cloud is a mean, and an absent hour is not clear",
+         cloudy),
         ("empty payload yields no days", {}),
     ]
     cases = []

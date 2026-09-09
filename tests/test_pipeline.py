@@ -554,3 +554,49 @@ def test_apply_station_observations_stamps_the_precipitation_onset(monkeypatch):
 
     assert actuals[AUG_24].precipitation_onset == "19:00"
     assert actuals[AUG_24].observed_onset() == "19:00"
+
+
+def test_the_station_sky_is_stored_and_stamped(monkeypatch):
+    """ROADMAP items 87 and 65. metar.py parses the sky groups it used to
+    discard; this is where the day's mean reaches the record.
+
+    Stored ALONGSIDE the reanalysis figure and not merged with it: percent
+    and eighths are not the same quantity, so nothing here claims which is
+    right — see DailyActual.cloud_cover_pct."""
+    from openlocalweather.models import SOURCE_STATION
+
+    day = date(2026, 8, 24)
+    actuals = {day: DailyActual(
+        rain=False, high_c=30.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=0.0,
+        onset_hour=None, precip_mm=0.0, cloud_cover_pct=40.0,
+        provenance={"cloud_cover_pct": "era5_archive"},
+    )}
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_station_data",
+        lambda *a, **k: ({day: StationWeather(thunder=False, precipitation=False,
+                                              cloud_oktas=6.0)}, None),
+    )
+    pipeline._apply_station_observations(actuals, thunder_location())
+
+    assert actuals[day].station_cloud_oktas == 6.0
+    assert actuals[day].provenance["station_cloud_oktas"] == SOURCE_STATION
+    # The archive's own reading and its stamp are untouched.
+    assert actuals[day].cloud_cover_pct == 40.0
+    assert actuals[day].provenance["cloud_cover_pct"] == "era5_archive"
+
+
+def test_a_station_with_no_sky_reading_stamps_nothing(monkeypatch):
+    """A stamp asserts an observation was made — item 45, trap 2."""
+    day = date(2026, 8, 24)
+    actuals = {day: DailyActual(
+        rain=False, high_c=30.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=0.0,
+        onset_hour=None, precip_mm=0.0,
+    )}
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_station_data",
+        lambda *a, **k: ({day: StationWeather(thunder=False, precipitation=False)}, None),
+    )
+    pipeline._apply_station_observations(actuals, thunder_location())
+
+    assert actuals[day].station_cloud_oktas is None
+    assert "station_cloud_oktas" not in (actuals[day].provenance or {})

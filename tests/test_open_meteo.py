@@ -5,6 +5,7 @@ import requests
 import requests_mock
 
 from openlocalweather.fetch import open_meteo
+from openlocalweather.models import SOURCE_REANALYSIS
 from openlocalweather.fetch.open_meteo import (
     OpenMeteoFetchError,
     bucket_hourly_by_date,
@@ -316,3 +317,46 @@ def test_the_counter_numbers_requests_within_a_run(monkeypatch):
 
     open_meteo.reset_request_counter()
     assert open_meteo.requests_made() == 0
+
+
+def test_the_archive_cloud_it_was_already_paying_for_is_kept():
+    """ROADMAP items 87 and 65. `cloud_cover` has been in ARCHIVE_HOURLY_VARS
+    all along and `bucket_hourly_by_date` never read it — fetched on every
+    archive call and thrown away, while item 65 recorded "the forecast
+    predicts cloud_cover; nothing observes it".
+
+    A MEAN over the day, matching what the models' own cloud_cover is a mean
+    of, and matching the station reading's day-level meaning."""
+    payload = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T12:00", "2026-08-11T23:00"],
+            "temperature_2m": [18.0, 27.5, 19.0],
+            "precipitation": [0.0, 0.0, 0.0],
+            "windgusts_10m": [10.0, 20.0, 12.0],
+            "pressure_msl": [1013.0, 1012.0, 1013.5],
+            "cloud_cover": [10.0, 80.0, 30.0],
+        }
+    }
+    day = bucket_hourly_by_date(payload)[date(2026, 8, 11)]
+
+    assert day.cloud_cover_pct == 40.0
+    assert day.provenance["cloud_cover_pct"] == SOURCE_REANALYSIS
+
+
+def test_an_hour_with_no_cloud_reading_is_not_a_clear_hour():
+    """Absent, never zero — the same rule the precipitation sum follows. An
+    all-null day gives None rather than a confident clear sky."""
+    base = {
+        "time": ["2026-08-11T00:00", "2026-08-11T12:00"],
+        "temperature_2m": [18.0, 27.5],
+        "precipitation": [0.0, 0.0],
+        "windgusts_10m": [10.0, 20.0],
+        "pressure_msl": [1013.0, 1012.0],
+    }
+    partial = bucket_hourly_by_date({"hourly": {**base, "cloud_cover": [None, 80.0]}})
+    assert partial[date(2026, 8, 11)].cloud_cover_pct == 80.0
+
+    absent = bucket_hourly_by_date({"hourly": {**base, "cloud_cover": [None, None]}})
+    day = absent[date(2026, 8, 11)]
+    assert day.cloud_cover_pct is None
+    assert "cloud_cover_pct" not in day.provenance

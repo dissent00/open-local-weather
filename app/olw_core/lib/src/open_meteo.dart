@@ -392,6 +392,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
   final times = (hourly['time'] as List?)?.cast<String>() ?? const <String>[];
   final tempArr = nums(hourly['temperature_2m']);
   final precipArr = nums(hourly['precipitation']);
+  final cloudArr = nums(hourly['cloud_cover']);
   // Presence of the ARRAY decides, not presence of values within it.
   final gusts = hourly['windgusts_10m'];
   final windArr = (gusts is List && gusts.isNotEmpty)
@@ -407,6 +408,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
     final b = byDate.putIfAbsent(dStr, _DayBucket.new);
     b.temps.add(at(tempArr, i));
     b.precip.add(at(precipArr, i));
+    b.cloud.add(at(cloudArr, i));
     b.wind.add(at(windArr, i));
     b.pressure.add(at(pressureArr, i));
     b.times.add(times[i]);
@@ -424,6 +426,16 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
     final mslpTrend =
         pressure.length >= 2 ? pressure.last - pressure.first : null;
     final onsetHour = getOnsetHour(day.times, day.precip, threshold: threshold);
+    // A MEAN, matching what the models' own cloud_cover is a mean of. Hours
+    // with no value are skipped rather than counted as clear: absent is not
+    // zero, the same rule the precipitation sum follows.
+    final clouds = [
+      for (final v in day.cloud)
+        if (v != null) v
+    ];
+    final cloudPct = clouds.isEmpty
+        ? null
+        : roundLikePython(clouds.fold<double>(0, (a, v) => a + v) / clouds.length, 1);
     // Summed over hours that reported a value. An all-null day gives null
     // rather than 0.0 — "no data" and "no rain" are different answers and the
     // summary must not conflate them.
@@ -444,6 +456,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
       'mslp_trend': mslpTrend,
       'onset_hour': onsetHour,
       'precip_mm': precipMm,
+      'cloud_cover_pct': cloudPct,
     }.entries) {
       if (e.value != null) provenance[e.key] = sourceReanalysis;
     }
@@ -456,6 +469,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
       mslpTrend: mslpTrend,
       onsetHour: onsetHour,
       precipMm: precipMm,
+      cloudCoverPct: cloudPct,
       provenance: provenance,
     );
   });
@@ -465,6 +479,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
 class _DayBucket {
   final List<double?> temps = [];
   final List<double?> precip = [];
+  final List<double?> cloud = [];
   final List<double?> wind = [];
   final List<double?> pressure = [];
   final List<String> times = [];

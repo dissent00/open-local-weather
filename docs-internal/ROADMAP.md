@@ -9650,7 +9650,7 @@ sources filling one column), item 77 (the harness), item 74.
 
 ---
 
-## 87. The prompt bans four variables and then hands three of them over · **Rule fixed and cloud parsed 2026-09-09; storage and label still Planned**
+## 87. The prompt bans four variables and then hands three of them over · **Rule fixed and cloud observed 2026-09-09; the label is still Planned**
 
 Found 2026-09-08 by a cold worker model, which reported visibility and cloud
 base in a forecast, suppressed dew point, and flagged the inconsistency
@@ -9801,9 +9801,37 @@ sites needing different values and caught before it stood.
 
 ### Still to do
 
-- **`DailyActual` does not carry it yet.** `StationWeather.cloud_oktas` exists
-  and nothing stores it, so there is no day-over-day sky and no provenance
-  stamp. That is the next step and it is what item 65 actually wants.
+### Stored 2026-09-09, and there were TWO observations, not one
+
+**`cloud_cover` has been in `ARCHIVE_HOURLY_VARS` the whole time and
+`bucket_hourly_by_date` never read it.** Fetched on every archive call and
+discarded — the same shape as the METAR clouds array, found the same day. So
+item 65's "the forecast predicts `cloud_cover`; nothing observes it" was
+true only because two observations were being thrown away.
+
+`DailyActual` now carries both:
+
+- `cloud_cover_pct` — the reanalysis daily MEAN, 0–100, stamped
+  `era5_archive`.
+- `station_cloud_oktas` — the airport's daily mean in EIGHTHS, 0–8, stamped
+  `metar_station`.
+
+**Deliberately NOT merged**, unlike `high_c` and `station_high_c`. Those are
+one quantity in one unit from two sources, so a ladder can choose between
+them. Percent and eighths are not, and converting needs the NWS band table on
+both sides — that belongs with the label, not with storage. Two observations
+exist and nothing yet claims which is right, which is the honest state.
+
+Absent hours are skipped rather than counted as clear, on both sides, and an
+absent value is left unstamped — item 45's trap 2.
+
+**First real day, 2026-09-08 at Kisumu: reanalysis 28.1%, station 1.7/8
+(21.2% equivalent).** They agree within seven points on a day that also
+thundered, which is the first independent evidence the sky parsing is right.
+
+`bucketHourlyByDate` is ported, so this crossed the language boundary: the
+Dart half and a vector case landed with it, and the Dart test was watched
+failing on the new case first.
 - **No label.** Item 83 needs a sky dimension to stop "much like yesterday"
   overclaiming, and that needs the FORECAST side too — the models predict
   `cloud_cover` as a percentage and this is in eighths, so the comparison

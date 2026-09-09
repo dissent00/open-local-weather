@@ -510,6 +510,15 @@ def _apply_station_observations(
         if observed.precipitation_onset is not None:
             actual.provenance["precipitation_onset"] = SOURCE_STATION
 
+        # The sky the station actually saw — items 87 and 65. Stored beside
+        # the archive's own figure rather than merged with it: percent and
+        # eighths are not the same quantity, and picking between them needs
+        # the band table on both sides. Unstamped when absent, because a
+        # stamp asserts an observation was made.
+        if observed.cloud_oktas is not None:
+            actual.station_cloud_oktas = observed.cloud_oktas
+            actual.provenance["station_cloud_oktas"] = SOURCE_STATION
+
         apply_station_readings(actual, (readings_by_date or {}).get(day))
         # All THREE fields, not the two booleans. Storing the flag without the
         # onset leaves the day-over-day description with no timing to reach

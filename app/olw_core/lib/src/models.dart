@@ -216,6 +216,17 @@ class DailyActual {
   final double? stationLowC;
   final double? stationPeakWindKmh;
 
+  /// TWO CLOUD OBSERVATIONS, IN DIFFERENT UNITS, AND NEITHER IS THE OTHER.
+  /// [cloudCoverPct] is the reanalysis daily MEAN, 0-100, and had been fetched
+  /// and discarded on every archive call. [stationCloudOktas] is the airport's
+  /// daily mean in EIGHTHS, 0-8, from the METAR sky groups.
+  ///
+  /// NOT MERGED, unlike highC and stationHighC: those are one quantity in one
+  /// unit from two sources, so a ladder can choose. Percent and eighths are
+  /// not, and converting needs the NWS band table on both sides.
+  final double? cloudCoverPct;
+  final double? stationCloudOktas;
+
   /// Which source supplied which value, for THIS day — upstream ROADMAP item
   /// 45, trap 2. Keys are field names, values are source ids.
   ///
@@ -267,6 +278,8 @@ class DailyActual {
     this.stationHighC,
     this.stationLowC,
     this.stationPeakWindKmh,
+    this.cloudCoverPct,
+    this.stationCloudOktas,
     this.lightning,
     this.provenance,
   });
@@ -314,6 +327,8 @@ class DailyActual {
         stationHighC: _toDouble(j['station_high_c']),
         stationLowC: _toDouble(j['station_low_c']),
         stationPeakWindKmh: _toDouble(j['station_peak_wind_kmh']),
+        cloudCoverPct: _toDouble(j['cloud_cover_pct']),
+        stationCloudOktas: _toDouble(j['station_cloud_oktas']),
         provenance: (j['provenance'] as Map?)?.map(
             (k, v) => MapEntry(k as String, v as String)),
       );
@@ -333,6 +348,8 @@ class DailyActual {
         'station_high_c': stationHighC,
         'station_low_c': stationLowC,
         'station_peak_wind_kmh': stationPeakWindKmh,
+        'cloud_cover_pct': cloudCoverPct,
+        'station_cloud_oktas': stationCloudOktas,
         'provenance': provenance,
       };
 }
