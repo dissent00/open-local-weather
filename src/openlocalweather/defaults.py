@@ -242,48 +242,65 @@ TEMP_CHANGE_BANDS_C = [
 
 # ABSOLUTE wind level, as opposed to the change bands below.
 #
-# Everything else in this file compares today against yesterday, so two
+# Every other label in this file compares today against yesterday, so two
 # consecutive gales read "similar winds" and the reader is never told it is
 # dangerous — the operator's point, 2026-09-09: "we at least need warning
-# thresholds, if not 'normal' bands."
+# thresholds, if not 'normal' bands." A warning threshold and a "normal" band
+# are different things and only the second needs a local record.
 #
-# A warning threshold and a "normal" band are different things and only the
-# second needs a local record. Beaufort is published, so it needs none.
+# THE THRESHOLDS ARE NOAA'S, IN KNOTS, AND THEY APPLY TO GUSTS BY DEFINITION.
+# https://www.weather.gov/marine/faq — a Gale Warning is "sustained surface
+# winds, OR FREQUENT GUSTS, in the range of 34 knots to 47 knots inclusive",
+# and Storm and Hurricane Force Wind Warnings are worded the same way.
 #
-# THE TRAP, AND WHY THE NUMBERS ARE NOT BEAUFORT'S OWN. Beaufort is defined on
-# SUSTAINED wind and every wind figure this system scores is a GUST —
-# wind_gusts_10m forecast against wind_gusts_10m reanalysis. Applying
-# Beaufort's sustained boundaries to the gust column was measured against the
-# stored record on 2026-09-09: force 6 at 39 km/h would flag 19 of 42 days,
-# where the sustained column reaches force 6 on ZERO. It would cry wolf on
-# nearly half the days.
+# THIS REPLACED A LOCALLY-DERIVED LADDER, and the reason is worth keeping.
+# Beaufort is defined on sustained wind, so a first attempt converted its
+# boundaries with a gust factor measured here (1.66, ERA5 gust over METAR
+# sustained). That produced a constant fitted to one deployment — exactly the
+# failure item 83's band ceiling records — and the ratio was not even a true
+# gust factor, being taken across two different sources. The operator caught
+# it: "I want this to be standardized and not kisumu-specific." NOAA needs no
+# conversion because the standard already covers gusts, so the local constant
+# is gone rather than corrected.
 #
-# So the boundaries are Beaufort's, converted by the gust factor measured at
-# this deployment — 1.66, ERA5 gust over METAR sustained, n=42, from item 86's
-# split. Published scale, local measurement, both citable, nothing invented.
-# The sustained figures are kept beside each band because that is what the
-# name actually describes, and knots because that is what boaters use.
+# The names are wind descriptors rather than warning-product names, because
+# "gusts reaching gale force" reads to anyone and "Gale Warning" is a US
+# product this deployment does not issue. The boundaries coincide with
+# Beaufort's at 34, 48 and 64 knots, so the descriptor and the threshold agree.
 #
-# Names, not force numbers, on the operator's call: "gale" tells a reader what
-# to do and "force 8" does not.
-BEAUFORT_GUST_BANDS_KMH = [
-    # (gust km/h at or above, name, sustained km/h, sustained knots)
-    (33.0, "moderate breeze", 20, 11),
-    (48.0, "fresh breeze", 29, 16),
-    (65.0, "strong breeze", 39, 22),
-    (83.0, "near gale", 50, 28),
-    (103.0, "gale", 62, 34),
-    (124.0, "strong gale", 75, 41),
-    (148.0, "storm", 89, 48),
+# SMALL CRAFT ADVISORY IS REGIONALLY VARIABLE in the source — 20 kt Southern,
+# 21 kt Western, 23 kt Alaska, 25 kt Eastern and Great Lakes. The Great Lakes
+# figure is used here: it is the large-inland-water criterion, and it is one
+# of the two that explicitly says "or frequent gusts".
+WIND_WARNING_BANDS_KT = [
+    # (knots at or above, descriptor, the NOAA product it corresponds to)
+    (25, "strong breeze", "Small Craft Advisory (Great Lakes criterion)"),
+    (34, "gale force", "Gale Warning"),
+    (48, "storm force", "Storm Warning"),
+    (64, "hurricane force", "Hurricane Force Wind Warning"),
 ]
 
-# Where a description becomes a WARNING. Below this the name is worth having
-# in the detail sections and is not worth interrupting the Overview for:
-# "moderate breeze" covers 36 of the 42 stored days here and "fresh breeze" 6,
-# so warning on either would be noise. "strong breeze" is the first band this
-# location has never recorded, and it is where a small boat on Lake Victoria
-# is already in trouble.
-WIND_WARNING_FLOOR_KMH = 65.0
+KNOTS_TO_KMH = 1.852
+
+# WHAT THIS SYSTEM HOLDS IS A DAILY PEAK, WHICH IS ONE GUST, and NOAA's
+# criterion is FREQUENT gusts. A single peak crossing 34 kt is therefore not a
+# Gale Warning, and nothing here may say it is. The wording that reaches a
+# reader is "gusts reaching gale force" — a statement about a gust, which is
+# what was actually measured.
+#
+# Establishing "frequent" needs hourly wind, which exists in the payload's
+# HOURS AHEAD block and not in the daily comparison. Until then this
+# over-warns relative to the standard, and says so.
+#
+# It also cannot tell a convective downburst from a synoptic gale. NOAA
+# separates them — a Special Marine Warning covers "sustained marine
+# thunderstorm winds or associated gusts of 34 knots or greater" lasting up to
+# two hours, which is a different product from a Gale Warning. Raised by the
+# operator, who expected the local gale gusts to be convective. Checked
+# against the record 2026-09-09 and NOT confirmed: thundery days average
+# 40.5 km/h of gust against 38.6 for the rest, and 3 of the 10 windiest days
+# were thundery against a 9-of-42 base rate. But no day in the record reaches
+# gale force at all, so 42 days cannot answer it either way.
 
 # Gust change bands, read the same way as TEMP_CHANGE_BANDS_C: the first
 # entry is the whole label, the rest are modifiers on "windier" / "calmer",

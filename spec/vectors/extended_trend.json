@@ -385,7 +385,7 @@
           91.0
         ]
       },
-      "expected": "temperatures much the same through Friday, with gusts reaching near gale"
+      "expected": "temperatures much the same through Friday, with gusts reaching storm force"
     },
     {
       "name": "warning and rain share one 'with'",
@@ -409,10 +409,10 @@
           91.0
         ]
       },
-      "expected": "temperatures much the same through Friday, with gusts reaching near gale and rain becoming more likely"
+      "expected": "temperatures much the same through Friday, with gusts reaching storm force and rain becoming more likely"
     },
     {
-      "name": "just under the floor says nothing about level",
+      "name": "just under the 25 kt floor says nothing about level",
       "input": {
         "today_high_c": 30.0,
         "day_highs_c": [
@@ -426,14 +426,38 @@
           0.0
         ],
         "last_day_name": "Friday",
-        "today_wind_kmh": 60.0,
+        "today_wind_kmh": 44.0,
         "day_winds_kmh": [
-          64.0,
-          63.0,
-          62.0
+          45.0,
+          46.0,
+          45.5
         ]
       },
       "expected": "conditions much the same through Friday"
+    },
+    {
+      "name": "the record's windiest day is an advisory, not a gale",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 50.0,
+        "day_winds_kmh": [
+          52.6,
+          51.1,
+          49.7
+        ]
+      },
+      "expected": "temperatures much the same through Friday, with gusts reaching strong breeze"
     }
   ]
 }

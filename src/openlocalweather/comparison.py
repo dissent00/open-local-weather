@@ -27,10 +27,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from openlocalweather.defaults import (
-    BEAUFORT_GUST_BANDS_KMH,
+    KNOTS_TO_KMH,
     TEMP_CHANGE_BANDS_C,
     WIND_CHANGE_BANDS_KMH,
-    WIND_WARNING_FLOOR_KMH,
+    WIND_WARNING_BANDS_KT,
 )
 from openlocalweather.models import DailyActual, ModelPrediction
 from openlocalweather.verify.scoring import mean
@@ -70,35 +70,29 @@ class DayOverDayComparison:
     overview_comparison: str | None
 
 
-def wind_level(gust_kmh: float | None) -> str | None:
-    """The Beaufort name for a GUST reading, or None below the lowest band.
+def wind_warning(gust_kmh: float | None) -> str | None:
+    """NOAA's marine wind descriptor for a gust reading, or None below the
+    lowest band.
 
-    Not Beaufort applied to gusts — see BEAUFORT_GUST_BANDS_KMH for why that
-    would flag nearly half the stored days here. The boundaries are converted.
+    A LEVEL, NOT A CHANGE, which is the defect this exists to close: every
+    other label in this file is relative to yesterday, so two gale days
+    compare as "similar winds", feed "much like yesterday", and never tell the
+    reader it is dangerous.
+
+    The thresholds are NOAA's and they apply to gusts by the standard's own
+    wording — see WIND_WARNING_BANDS_KT, including what this cannot yet do:
+    a daily PEAK is one gust and the criterion is FREQUENT gusts, so the
+    caller must say "gusts reaching gale force" and never "Gale Warning".
     """
     if gust_kmh is None:
         return None
 
     name = None
-    for threshold, band, _sustained, _knots in BEAUFORT_GUST_BANDS_KMH:
-        if gust_kmh >= threshold:
-            name = band
+    for knots, descriptor, _product in WIND_WARNING_BANDS_KT:
+        if gust_kmh >= knots * KNOTS_TO_KMH:
+            name = descriptor
 
     return name
-
-
-def wind_warning(gust_kmh: float | None) -> str | None:
-    """The Beaufort name only when it is worth interrupting for.
-
-    EVERY OTHER LABEL IN THIS FILE IS RELATIVE, which is the defect this
-    exists to close: two consecutive gales compare as "similar winds", feed
-    "much like yesterday", and never tell the reader it is dangerous. A
-    warning is stated however ordinary it has become.
-    """
-    if gust_kmh is None or gust_kmh < WIND_WARNING_FLOOR_KMH:
-        return None
-
-    return wind_level(gust_kmh)
 
 
 def _band_label(

@@ -2056,12 +2056,15 @@ def export_extended_trend() -> None:
          30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", None, None),
         # A LEVEL, not a trend. Four dangerous days running are "conditions
         # much the same", which is true and useless.
+        # NOAA thresholds against gusts, per the standard's own wording.
         ("a steady span above the warning floor still warns",
          30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
         ("warning and rain share one 'with'",
          30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
-        ("just under the floor says nothing about level",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 60.0, [64.0, 63.0, 62.0]),
+        ("just under the 25 kt floor says nothing about level",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 44.0, [45.0, 46.0, 45.5]),
+        ("the record's windiest day is an advisory, not a gale",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 50.0, [52.6, 51.1, 49.7]),
     ]
 
     cases = []
@@ -2331,9 +2334,9 @@ def export_describe_day_over_day() -> None:
         ("rain that genuinely changed forfeits the sameness claim",
          "about the same", "similar winds", "dry, after a thundery day", "dry", False),
         ("a warning is not suppressed by sameness",
-         "about the same", "similar winds", None, None, False, "near gale"),
+         "about the same", "similar winds", None, None, False, "gale force"),
         ("nor by a change leading",
-         "noticeably cooler", "similar winds", None, None, False, "gale"),
+         "noticeably cooler", "similar winds", None, None, False, "storm force"),
     ]
     cases = [
         {

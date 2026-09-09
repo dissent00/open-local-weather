@@ -43,53 +43,61 @@ const List<(double, String)> tempChangeBandsC = [
 /// proportional, matching the temperature bands.
 /// ABSOLUTE wind level, as opposed to the change bands below.
 ///
-/// Every other label in this file is relative to yesterday, so two
+/// Every other label in this file compares today against yesterday, so two
 /// consecutive gales read "similar winds" and the reader is never told it is
 /// dangerous. A warning threshold and a "normal" band are different things
-/// and only the second needs a local record; Beaufort is published.
+/// and only the second needs a local record.
 ///
-/// THE NUMBERS ARE NOT BEAUFORT'S OWN. Beaufort is defined on SUSTAINED wind
-/// and every wind figure here is a GUST. Measured 2026-09-09: force 6 at
-/// 39 km/h would flag 19 of 42 stored days, where the sustained column
-/// reaches force 6 on ZERO. The boundaries are converted by the gust factor
-/// measured at this deployment — 1.66, ERA5 gust over METAR sustained, n=42.
-/// Sustained km/h and knots are kept beside each band because that is what
-/// the name describes, and knots is what boaters use.
-const List<(double, String, int, int)> beaufortGustBandsKmh = [
-  // (gust km/h at or above, name, sustained km/h, sustained knots)
-  (33.0, 'moderate breeze', 20, 11),
-  (48.0, 'fresh breeze', 29, 16),
-  (65.0, 'strong breeze', 39, 22),
-  (83.0, 'near gale', 50, 28),
-  (103.0, 'gale', 62, 34),
-  (124.0, 'strong gale', 75, 41),
-  (148.0, 'storm', 89, 48),
+/// THE THRESHOLDS ARE NOAA'S, IN KNOTS, AND THEY APPLY TO GUSTS BY
+/// DEFINITION. https://www.weather.gov/marine/faq — a Gale Warning is
+/// "sustained surface winds, OR FREQUENT GUSTS, in the range of 34 knots to
+/// 47 knots inclusive", and Storm and Hurricane Force are worded the same.
+///
+/// THIS REPLACED A LOCALLY-DERIVED LADDER. Beaufort is defined on sustained
+/// wind, so a first attempt converted its boundaries with a gust factor
+/// measured at this site — a constant fitted to one deployment, which is the
+/// failure the temperature band ceiling already records. NOAA needs no
+/// conversion because the standard covers gusts, so the constant is gone
+/// rather than corrected.
+///
+/// Descriptors rather than warning-product names: "gusts reaching gale force"
+/// reads to anyone, and "Gale Warning" is a US product this deployment does
+/// not issue. The boundaries coincide with Beaufort's at 34, 48 and 64 knots.
+///
+/// Small Craft Advisory is regionally variable in the source (20-25 kt); the
+/// Great Lakes figure is used, being the large-inland-water criterion and one
+/// of the two that explicitly says "or frequent gusts".
+const List<(int, String, String)> windWarningBandsKt = [
+  // (knots at or above, descriptor, the NOAA product it corresponds to)
+  (25, 'strong breeze', 'Small Craft Advisory (Great Lakes criterion)'),
+  (34, 'gale force', 'Gale Warning'),
+  (48, 'storm force', 'Storm Warning'),
+  (64, 'hurricane force', 'Hurricane Force Wind Warning'),
 ];
 
-/// Where a description becomes a WARNING. "moderate breeze" covers 36 of the
-/// 42 stored days here and "fresh breeze" 6, so warning on either is noise.
-/// "strong breeze" is the first band this location has never recorded, and is
-/// where a small boat on Lake Victoria is already in trouble.
-const double windWarningFloorKmh = 65.0;
+const double knotsToKmh = 1.852;
 
-/// The Beaufort name for a GUST reading, or null below the lowest band.
-String? windLevel(double? gustKmh) {
+/// NOAA's marine wind descriptor for a gust reading, or null below the lowest
+/// band.
+///
+/// WHAT THIS SYSTEM HOLDS IS A DAILY PEAK, WHICH IS ONE GUST, and NOAA's
+/// criterion is FREQUENT gusts. A single peak crossing 34 kt is not a Gale
+/// Warning and nothing here may say it is — the wording that reaches a reader
+/// is "gusts reaching gale force", a statement about a gust, which is what
+/// was measured. Establishing "frequent" needs hourly wind, which the daily
+/// comparison does not hold, so this over-warns relative to the standard.
+///
+/// It also cannot tell a convective downburst from a synoptic gale; NOAA
+/// separates them with a Special Marine Warning.
+String? windWarning(double? gustKmh) {
   if (gustKmh == null) return null;
 
   String? name;
-  for (final (threshold, band, _, _) in beaufortGustBandsKmh) {
-    if (gustKmh >= threshold) name = band;
+  for (final (knots, descriptor, _) in windWarningBandsKt) {
+    if (gustKmh >= knots * knotsToKmh) name = descriptor;
   }
 
   return name;
-}
-
-/// The Beaufort name only when it is worth interrupting for. Stated however
-/// ordinary it has become — that is the whole point of a level.
-String? windWarning(double? gustKmh) {
-  if (gustKmh == null || gustKmh < windWarningFloorKmh) return null;
-
-  return windLevel(gustKmh);
 }
 
 const List<(double, String)> windChangeBandsKmh = [

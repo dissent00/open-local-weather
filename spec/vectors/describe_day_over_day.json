@@ -203,9 +203,9 @@
         "rain_contrast": null,
         "today_character": null,
         "rain_unchanged": false,
-        "wind_warning_name": "near gale"
+        "wind_warning_name": "gale force"
       },
-      "expected": "Much like yesterday. Gusting to near gale."
+      "expected": "Much like yesterday. Gusting to gale force."
     },
     {
       "name": "nor by a change leading",
@@ -215,9 +215,9 @@
         "rain_contrast": null,
         "today_character": null,
         "rain_unchanged": false,
-        "wind_warning_name": "gale"
+        "wind_warning_name": "storm force"
       },
-      "expected": "Noticeably cooler than yesterday. Gusting to gale."
+      "expected": "Noticeably cooler than yesterday. Gusting to storm force."
     }
   ]
 }

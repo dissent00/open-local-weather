@@ -5544,6 +5544,19 @@ audience rather than by subscriber), items 2, 3, 5, 24, 54.
 
 ## 56. A glossary for the forecast's vocabulary · **Planned, both sides**
 
+> **A worked precedent landed 2026-09-09.** `WIND_WARNING_BANDS_KT` in
+> `defaults.py` carries a descriptor, a threshold in the standard's own unit,
+> and the NOAA product each corresponds to, sourced from
+> https://www.weather.gov/marine/faq. It replaced a locally-derived ladder
+> that had baked a Kisumu measurement into a published scale.
+>
+> Two lessons for the rest of this item. **Check whether the standard already
+> covers your quantity** — NOAA defines its warnings on "sustained winds OR
+> FREQUENT GUSTS", which removed the conversion the first attempt needed. And
+> **record what the definition requires that you cannot yet supply**: a daily
+> peak is one gust and the criterion is frequent gusts, so that entry says so
+> rather than quietly over-warning. See item 95.
+
 The forecast is written to be technical where it needs to be, and nothing
 explains its vocabulary. Counted case-insensitively over the single
 entry for 2026-08-31 (`narrative_markdown`, 5060 characters, headings
@@ -10292,30 +10305,76 @@ is relative, so two gale days compare as "similar winds" and are swallowed by
 "much like yesterday"; `describe_extended_trend` is relative too, so four
 dangerous days read "conditions much the same through Saturday".
 
-**The numbers are not Beaufort's own, and that is the whole care of it.**
-Beaufort is defined on SUSTAINED wind and every wind figure this system scores
-is a GUST. Measured against the stored record:
+**The thresholds are NOAA's, and the first attempt at them was wrong.**
 
-| | median | max | days at force 6 |
-|---|---|---|---|
-| ERA5 gust (scored) | 37.8 | 52.6 | **19 of 42** |
-| METAR sustained | 22.2 | 37.0 | **0 of 42** |
+Beaufort is defined on SUSTAINED wind and every wind figure scored here is a
+GUST, so the first version converted Beaufort's boundaries with a gust factor
+measured at this site — 1.66, ERA5 gust over METAR sustained. The operator
+rejected it: *"I want this to be standardized and not kisumu-specific."*
+Correct, and it was worse than deployment-specific — 1.66 is a ratio taken
+ACROSS TWO SOURCES, not a gust factor at all. It was also precisely the
+failure item 83's band ceiling records, committed two turns after writing that
+warning down.
 
-Beaufort's force-6 line applied to the gust column would have warned on
-nearly half the days. The boundaries are therefore converted by the gust
-factor measured at this deployment — 1.66, from item 86's split — giving
-"strong breeze" at 65 km/h of gust rather than 39. Published scale, local
-measurement, both citable.
+**NOAA needs no conversion, because the standard already covers gusts.** From
+https://www.weather.gov/marine/faq, a Gale Warning is *"sustained surface
+winds, OR FREQUENT GUSTS, in the range of 34 knots to 47 knots inclusive"*,
+and Storm and Hurricane Force Wind Warnings are worded identically. So the
+local constant is deleted rather than corrected:
 
-Names rather than force numbers, on the operator's call: "gale" tells a reader
-what to do and "force 8" does not. Sustained km/h and knots are carried beside
-each band, because the name describes sustained wind and knots is what boaters
-use.
+| knots | descriptor | NOAA product |
+|---|---|---|
+| 25 | strong breeze | Small Craft Advisory (Great Lakes criterion) |
+| 34 | gale force | Gale Warning |
+| 48 | storm force | Storm Warning |
+| 64 | hurricane force | Hurricane Force Wind Warning |
 
-**Dormant here, and correctly so.** The record's windiest day is 52.6 km/h of
-gust — "fresh breeze", below the warning floor. Nothing in 42 days would have
-fired. Same shape as item 83's temperature ceiling: the deployment hides the
-case, which is not a reason to leave the code unable to express it.
+Descriptors rather than product names — "gusts reaching gale force" reads to
+anyone, and a Gale Warning is a US product this deployment does not issue. The
+boundaries coincide with Beaufort's at 34, 48 and 64 knots, so the operator's
+"names not force numbers" holds and the threshold is citable. Small Craft
+Advisory is regionally variable in the source (20–25 kt); the Great Lakes
+figure is used, being the large-inland-water criterion.
+
+### Two things it still cannot do, both stated in the code
+
+**A daily PEAK is one gust; NOAA's criterion is FREQUENT gusts.** So this
+over-warns relative to the standard, and the wording a reader sees is
+therefore "gusts reaching gale force" — a claim about a gust, which is what
+was measured — never "Gale Warning". Establishing "frequent" needs hourly
+wind, which is in the payload's HOURS AHEAD block and not in the daily
+comparison.
+
+**It cannot tell a convective downburst from a synoptic gale.** NOAA separates
+them: a Special Marine Warning covers *"sustained marine thunderstorm winds or
+associated gusts of 34 knots or greater"* lasting up to two hours, which is a
+different product. Raised by the operator, who expected the local gale gusts
+to be convective — *"I don't want it to seem like we're generalizing that wind
+level."*
+
+**Checked against the record, and NOT confirmed:** thundery days average
+40.5 km/h of gust against 38.6 for the rest, and 3 of the 10 windiest days
+were thundery against a 9-of-42 base rate. No separation worth calling. But
+**no day in the record reaches gale force at all** — the maximum is 28.4 kt,
+a Small Craft Advisory — so 42 days cannot answer the question either way, and
+the concern stands on principle whatever this record says.
+
+**Dormant here, and correctly so.** Same shape as item 83's temperature
+ceiling: the deployment hides the case, which is not a reason to leave the
+code unable to express it.
+
+### This is item 56's territory
+
+The operator connected it: *"the Beaufort descriptions bring us full circle to
+our glossary/definitions roadmap item... we can draw from NOAA for some of
+these names/descriptions/definitions of hazards. this is the marine list, but
+it applies more broadly too."*
+
+`WIND_WARNING_BANDS_KT` is the first entry in that glossary that is actually
+load-bearing — a name, a threshold and the standard it comes from, all in one
+place. Every other hazard vocabulary this forecast uses (thunderstorm, heavy
+rain, heat) is currently either a local band or an LLM's choice of word. Item
+56 should take this shape and this source.
 
 ### The anomaly half, still blocked
 
