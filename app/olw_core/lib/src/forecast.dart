@@ -348,6 +348,11 @@ Future<ForecastRun> generateForecast({
     [for (final d in extendedDays) mean([for (final p in d) p.highC])],
     [for (final d in extendedDays) mean([for (final p in d) p.precipMm])],
     weekdayName(addDays(today, 3)),
+    // Wind at these leads was available and discarded, so a three-day build
+    // in gusts under a flat temperature read as "much the same". It is also
+    // what lets the clause say "conditions" rather than "temperatures".
+    todayWindKmh: mean([for (final p in day0) p.windKmh]),
+    dayWindsKmh: [for (final d in extendedDays) mean([for (final p in d) p.windKmh])],
   );
 
   // The app has no metadata fetch (fetch/model_run.py's HTTP call to

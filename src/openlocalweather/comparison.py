@@ -563,6 +563,8 @@ def describe_extended_trend(
     day_highs_c: list[float | None],
     day_precip_mm: list[float | None],
     last_day_name: str,
+    today_wind_kmh: float | None = None,
+    day_winds_kmh: list[float | None] | None = None,
 ) -> str | None:
     """One finished phrase for the next three days, or None when the data is
     too thin to say anything.
@@ -595,30 +597,64 @@ def describe_extended_trend(
     # sequence averages into a steadiness none of the three days has.
     delta = highs[-1] - today_high_c
 
-    # NAME THE MEASUREMENT, not the weather. Raised by the operator
-    # 2026-09-09: "'Much the same through Saturday' — are temps, wind,
-    # everything much the same? Same thunderstorm chance?"
+    # NAME THE SCOPE YOU ACTUALLY MEASURED, and widen it when you can.
     #
-    # This function is handed day highs and day precipitation and nothing
-    # else. It has no wind, no low, no convective flag, so "much the same"
-    # was a claim about the DAY+3 HIGH wearing the clothes of a claim about
-    # the weather — the same fault as "much like yesterday" covering three
-    # measurements and reading as though it covered the day. The warming and
-    # cooling branches never had the problem, because a temperature word
-    # already says which quantity moved.
-    if delta >= EXTENDED_TREND_THRESHOLD_C:
-        trend = f"warming through {last_day_name}"
-    elif delta <= -EXTENDED_TREND_THRESHOLD_C:
-        trend = f"cooling through {last_day_name}"
-    else:
-        trend = f"temperatures much the same through {last_day_name}"
-
-    # Rain is reported only when it ARRIVES. A dry spell continuing is
-    # already carried by "much the same", and a second clause saying so is
-    # the enumeration item 48 was raised to stop.
+    # Raised by the operator 2026-09-09 in two steps. First: "'Much the same
+    # through Saturday' — are temps, wind, everything much the same?" It was
+    # a claim about the DAY+3 HIGH wearing the clothes of a claim about the
+    # weather. Then, on the narrowed wording: "let's make sure we're not only
+    # on temps — if it's temps/wind/cloudcover/precip/chance of thunderstorms
+    # that are all the same, let's call it conditions."
+    #
+    # WIND WAS AVAILABLE AT DAY+1..3 THE WHOLE TIME and was being discarded,
+    # so a three-day build in gusts under a flat temperature read as "much
+    # the same". With it in, "conditions" is honest when every measured
+    # dimension is steady, and the narrow noun is used when it is not.
+    #
+    # Cloud and convective risk are NOT available at these leads, so
+    # "conditions" still means temperature, wind and rain. That is a wider
+    # claim than before and a smaller one than the word suggests; it widens
+    # again when item 65's cloud data lands.
+    # Rain is reported only when it ARRIVES. A dry spell continuing is already
+    # carried by "much the same", and a second clause saying so is the
+    # enumeration item 48 was raised to stop. Computed here rather than below
+    # because the scope noun depends on it.
     wet_days = [
         p for p in day_precip_mm if p is not None and day_rain_band(p) != DRY_DAY_LABEL
     ]
+
+    wind_delta = None
+    if today_wind_kmh is not None and day_winds_kmh:
+        winds = [w for w in day_winds_kmh if w is not None]
+        if winds:
+            wind_delta = winds[-1] - today_wind_kmh
+
+    moving = []
+    if delta >= EXTENDED_TREND_THRESHOLD_C:
+        moving.append("warming")
+    elif delta <= -EXTENDED_TREND_THRESHOLD_C:
+        moving.append("cooling")
+
+    # The same threshold the day-over-day comparison uses for "not worth
+    # remarking on", so a reader is not told about a change in one place that
+    # the other calls noise.
+    if wind_delta is not None and abs(wind_delta) >= WIND_CHANGE_BANDS_KMH[0][0]:
+        moving.append("becoming windier" if wind_delta > 0 else "becoming calmer")
+
+    if moving:
+        trend = f"{' and '.join(moving)} through {last_day_name}"
+    else:
+        measured_wind = wind_delta is not None
+        if not measured_wind:
+            scope = "temperatures"
+        elif wet_days:
+            # "conditions much the same, with rain becoming more likely" would
+            # contradict its own tail.
+            scope = "temperatures and winds"
+        else:
+            scope = "conditions"
+        trend = f"{scope} much the same through {last_day_name}"
+
     if wet_days:
         return f"{trend}, with rain becoming more likely"
 

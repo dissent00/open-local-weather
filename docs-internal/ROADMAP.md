@@ -10227,12 +10227,17 @@ Temperature and wind already satisfy both, which is why `"Noticeably cooler
 than yesterday. Largely dry with thunderstorms again."` falls out with no
 extra work — the operator's own second example.
 
-### What does NOT generalise, and is not fixed here
+### Wind, revisited on the operator's follow-up
 
-`"gusty winds again this evening"` — their first example — needs intraday
-wind. `DayOverDayComparison` holds one peak gust for the whole day, so there
-is no "this evening" available for wind. Rain has an onset and thunder has a
-peak hour; wind has neither. **Separate and larger, and not attempted.**
+The first answer here was that `"gusty winds again this evening"` needs
+intraday wind and was therefore out of reach. The operator corrected the
+framing: *"could be generalized to 'gusty winds again today' if true, so I do
+want to make sure we're not too focused on any one metric."* The timing was
+never the blocker — the DIMENSION was.
+
+Acted on for the extended clause, which had wind available at Day+1..3 and was
+discarding it: see below. The day-over-day half is a different problem and is
+item 95.
 
 ### Result
 
@@ -10252,3 +10257,62 @@ model and acted on.
 
 Related: item 83 (the composition this extends), item 48 (enumeration),
 item 88 (the vector-case rule these four new cases follow), item 77.
+
+
+---
+
+## 95. The comparison reports change and never level · **Planned, blocked on record depth**
+
+Raised by the operator 2026-09-09, generalising their own example: *"Anything
+anomalous from the mean, or from the prior day. I know we're not tracking mean
+like that so take that as more of a suggestion/meaning."*
+
+The gap is real and is structural. `wind_label`, `high_label` and the rain
+bands are ALL relative to yesterday, and nothing anywhere carries a level. So:
+
+- Two consecutive gales read `"similar winds"`, feed `"much like yesterday"`,
+  and **the reader is never told it is windy.**
+- Two consecutive 38 °C days read `"about the same"` and never say it is hot.
+
+"Much like yesterday" is true and useless on exactly the days that matter
+most. The operator's `"gusty winds again today"` needs no intraday timing —
+it needs an absolute claim (gusty) alongside the persistence claim (again),
+and there is no absolute claim anywhere in this file.
+
+### Why it is not fixed now
+
+Both available references fail, and inventing a number is what this repo
+forbids:
+
+- **No absolute wind threshold exists.** `WIND_CHANGE_BANDS_KMH` and
+  `REVIEW_WIND_BIAS_THRESHOLD_KMH` are both about CHANGE. Nothing says what
+  counts as a windy day here, and picking one would be a number nobody
+  measured.
+- **`climatology_prediction` is the right shape and the wrong depth.** It is
+  already "the usual weather here, so far as this record knows" — a trailing
+  mean over every stored observation. But the record is **42 days,
+  2026-07-29 to 2026-09-08**: one season. Calling a day "unusually windy"
+  against a 42-day base rate in a location with a seasonal cycle is a claim
+  the data cannot support, and its own docstring says it is "honest about
+  being thin".
+
+### What would unblock it
+
+A year of record, at which point `climatology_prediction` narrowed to a
+same-time-of-year window becomes a defensible reference and the label writes
+itself: compare today's consensus against it, band the anomaly the way
+`_band_label` already bands a delta, and the phrase is "unusually windy" or
+"hot for the time of year".
+
+**Do not shortcut it with a hand-picked threshold.** A fork in another
+location would inherit a number chosen for Kisumu, which is the failure
+item 83's band ceiling already demonstrated — a constant that fits one
+deployment and hides a defect everywhere else.
+
+There is also a standing-rule interaction to settle first: `climatology` is on
+`BASELINE_MODEL_IDS` and withheld from the forecaster. Deriving a LABEL from
+its values is not the same as showing it its SCORE, but it is adjacent enough
+that it needs a deliberate decision rather than a quiet one.
+
+Related: item 84 (the register of what this system can observe), item 94
+(where the operator raised it), item 57 (the baselines), item 45.

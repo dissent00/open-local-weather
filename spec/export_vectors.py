@@ -2039,10 +2039,28 @@ def export_extended_trend() -> None:
          30.0, [None, None, None], [None, None, None], "Friday"),
         ("a gap mid-span still answers from what is there",
          30.0, [None, 33.0, None], [0.0, None, 0.0], "Sunday"),
+        # 2026-09-09: wind was available at these leads and discarded, so the
+        # clause could only ever be about temperature. The scope noun now
+        # follows what was actually measured and found steady.
+        ("everything measured is steady, so the noun widens to conditions",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 20.0, [20.5, 21.0, 19.5]),
+        ("rain arriving forbids 'conditions', which would deny its own tail",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], "Friday", 20.0, [20.5, 21.0, 19.5]),
+        ("a wind build under a flat temperature is worth saying",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 18.0, [24.0, 30.0, 34.0]),
+        ("both moving names both",
+         30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], "Friday", 18.0, [24.0, 30.0, 34.0]),
+        ("a wind drop past the threshold reads as calming",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 34.0, [30.0, 26.0, 20.0]),
+        ("no wind measured keeps the narrow noun",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", None, None),
     ]
 
     cases = []
-    for name, today, highs, precip, day_name in scenarios:
+    for scenario in scenarios:
+        name, today, highs, precip, day_name = scenario[:5]
+        wind_today = scenario[5] if len(scenario) > 5 else None
+        winds = scenario[6] if len(scenario) > 6 else None
         cases.append({
             "name": name,
             "input": {
@@ -2050,8 +2068,12 @@ def export_extended_trend() -> None:
                 "day_highs_c": highs,
                 "day_precip_mm": precip,
                 "last_day_name": day_name,
+                "today_wind_kmh": wind_today,
+                "day_winds_kmh": winds,
             },
-            "expected": describe_extended_trend(today, highs, precip, day_name),
+            "expected": describe_extended_trend(
+                today, highs, precip, day_name,
+                today_wind_kmh=wind_today, day_winds_kmh=winds),
         })
     write(
         "extended_trend.json",

@@ -231,6 +231,19 @@ void main() {
     // clock or off by one lands on a different word and this is where that
     // shows.
     expect(llm.seenUserPrompt, contains('through Saturday'));
+
+    // WIND HAS TO REACH IT TOO. The clause takes wind at these leads and the
+    // app is a separate caller from the pipeline — exactly the shape of gap
+    // item 88 exists for, where a fix lands in Python and Dart silently keeps
+    // the old behaviour because no vector covers the wiring.
+    //
+    // "temperatures much the same" is what the clause says when it was given
+    // no wind, so seeing it here means the app dropped the argument.
+    expect(
+      llm.seenUserPrompt,
+      isNot(contains('temperatures much the same')),
+      reason: 'wind was not passed to describeExtendedTrend by the app path',
+    );
   });
 
   test('the model sees the same numbers that will be scored', () async {

@@ -9,6 +9,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_day_over_day,
     describe_day_rain,
+    describe_extended_trend,
 )
 from openlocalweather.models import DailyActual, ModelPrediction
 
@@ -434,3 +435,49 @@ def test_when_nothing_moved_at_all_say_so_once():
         "about the same", "similar winds", "dry, after a thundery day",
         today_character="dry", rain_unchanged=False,
     ) == "Dry, after a thundery day."
+
+
+# ---------------------------------------------------------------------------
+# The extended clause names the scope it actually measured.
+# ---------------------------------------------------------------------------
+
+
+def test_the_extended_clause_says_conditions_when_it_measured_conditions():
+    """Operator, 2026-09-09: "if it's temps/wind/cloudcover/precip/chance of
+    thunderstorms that are all the same, let's call it conditions. If we only
+    have temps to compare, fine."
+
+    Wind is present at Day+1..3 and was being discarded — the clause used
+    highs and precipitation only. With wind in, "conditions" is honest when
+    all three are steady, and the narrower wording is used when it is not.
+    """
+    steady_highs = [30.5, 30.2, 30.4]
+    steady_winds = [20.0, 21.0, 19.5]
+    dry = [0.0, 0.0, 0.0]
+
+    # All three steady: the broad noun is earned.
+    assert describe_extended_trend(30.0, steady_highs, dry, "Saturday",
+                                   today_wind_kmh=20.0, day_winds_kmh=steady_winds) == (
+        "conditions much the same through Saturday")
+
+    # Rain arriving: "conditions much the same" would contradict its own tail.
+    assert describe_extended_trend(30.0, steady_highs, [0.0, 0.0, 6.0], "Saturday",
+                                   today_wind_kmh=20.0, day_winds_kmh=steady_winds) == (
+        "temperatures and winds much the same through Saturday, with rain becoming more likely")
+
+    # No wind measured at all: say only what was compared.
+    assert describe_extended_trend(30.0, steady_highs, dry, "Saturday") == (
+        "temperatures much the same through Saturday")
+
+
+def test_a_wind_trend_is_worth_saying_even_when_the_heat_holds():
+    """Wind was discarded entirely, so a three-day build in gusts under a flat
+    temperature reads as "much the same" — the operator's point that this
+    must not be a temperature-only clause."""
+    assert describe_extended_trend(30.0, [30.5, 30.2, 30.4], [0.0, 0.0, 0.0], "Saturday",
+                                   today_wind_kmh=18.0, day_winds_kmh=[24.0, 30.0, 34.0]) == (
+        "becoming windier through Saturday")
+
+    assert describe_extended_trend(30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], "Saturday",
+                                   today_wind_kmh=18.0, day_winds_kmh=[24.0, 30.0, 34.0]) == (
+        "warming and becoming windier through Saturday")

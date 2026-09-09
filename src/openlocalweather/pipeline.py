@@ -1275,6 +1275,11 @@ def run_daily_pipeline(
         day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
         day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
         last_day_name=weekday_name(add_days(today, 3)),
+        # Wind is present at these leads and was being discarded, so a
+        # three-day build in gusts under a flat temperature read as "much the
+        # same". It is also what lets the clause say "conditions" honestly.
+        today_wind_kmh=_mean_of([p.wind_kmh for p in day0_predictions]),
+        day_winds_kmh=[_mean_of([p.wind_kmh for p in day]) for day in extended_days],
     )
 
     # The yardsticks — ROADMAP item 57. Built from the stored record rather

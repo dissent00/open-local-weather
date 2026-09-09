@@ -530,7 +530,8 @@ def test_vectors_extended_trend():
     for case in load("extended_trend.json")["cases"]:
         i = case["input"]
         got = describe_extended_trend(
-            i["today_high_c"], i["day_highs_c"], i["day_precip_mm"], i["last_day_name"]
+            i["today_high_c"], i["day_highs_c"], i["day_precip_mm"], i["last_day_name"],
+            today_wind_kmh=i.get("today_wind_kmh"), day_winds_kmh=i.get("day_winds_kmh"),
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 

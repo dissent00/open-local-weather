@@ -525,8 +525,10 @@ String? describeExtendedTrend(
   double? todayHighC,
   List<double?> dayHighsC,
   List<double?> dayPrecipMm,
-  String lastDayName,
-) {
+  String lastDayName, {
+  double? todayWindKmh,
+  List<double?>? dayWindsKmh,
+}) {
   final highs = [
     for (final h in dayHighsC)
       if (h != null) h
@@ -538,23 +540,58 @@ String? describeExtendedTrend(
   // averages into a steadiness none of the three days has.
   final delta = highs.last - todayHighC;
 
-  final String trend;
-  if (delta >= extendedTrendThresholdC) {
-    trend = 'warming through $lastDayName';
-  } else if (delta <= -extendedTrendThresholdC) {
-    trend = 'cooling through $lastDayName';
-  } else {
-    // NAME THE MEASUREMENT, not the weather. This function is handed day
-    // highs and day precipitation and nothing else — no wind, no low, no
-    // convective flag — so "much the same" was a claim about the DAY+3 HIGH
-    // wearing the clothes of a claim about the weather.
-    trend = 'temperatures much the same through $lastDayName';
-  }
-
   // Rain is reported only when it ARRIVES. A dry spell continuing is already
   // carried by "much the same", and a second clause saying so is the
-  // enumeration item 48 was raised to stop.
+  // enumeration item 48 was raised to stop. Computed here rather than below
+  // because the scope noun depends on it.
   final anyWet = dayPrecipMm.any((p) => p != null && dayRainBand(p) != dryDayLabel);
+
+  // NAME THE SCOPE YOU ACTUALLY MEASURED, and widen it when you can. Wind was
+  // available at these leads and discarded, so a three-day build in gusts
+  // under a flat temperature read as "much the same". With it in,
+  // "conditions" is honest when every measured dimension is steady.
+  //
+  // Cloud and convective risk are NOT available at these leads, so
+  // "conditions" means temperature, wind and rain — wider than before and
+  // narrower than the word suggests. It widens again when cloud lands.
+  double? windDelta;
+  if (todayWindKmh != null && dayWindsKmh != null) {
+    final winds = [
+      for (final w in dayWindsKmh)
+        if (w != null) w
+    ];
+    if (winds.isNotEmpty) windDelta = winds.last - todayWindKmh;
+  }
+
+  final moving = <String>[];
+  if (delta >= extendedTrendThresholdC) {
+    moving.add('warming');
+  } else if (delta <= -extendedTrendThresholdC) {
+    moving.add('cooling');
+  }
+
+  // The same threshold the day-over-day comparison calls "not worth remarking
+  // on", so one place does not report a change the other calls noise.
+  if (windDelta != null && windDelta.abs() >= windChangeBandsKmh.first.$1) {
+    moving.add(windDelta > 0 ? 'becoming windier' : 'becoming calmer');
+  }
+
+  final String trend;
+  if (moving.isNotEmpty) {
+    trend = '${moving.join(' and ')} through $lastDayName';
+  } else {
+    final String scope;
+    if (windDelta == null) {
+      scope = 'temperatures';
+    } else if (anyWet) {
+      // "conditions much the same, with rain becoming more likely" would
+      // contradict its own tail.
+      scope = 'temperatures and winds';
+    } else {
+      scope = 'conditions';
+    }
+    trend = '$scope much the same through $lastDayName';
+  }
 
   return anyWet ? '$trend, with rain becoming more likely' : trend;
 }

@@ -774,6 +774,13 @@ void main() {
             nums('day_highs_c'),
             nums('day_precip_mm'),
             i['last_day_name'] as String,
+            todayWindKmh: (i['today_wind_kmh'] as num?)?.toDouble(),
+            dayWindsKmh: i['day_winds_kmh'] == null
+                ? null
+                : [
+                    for (final v in i['day_winds_kmh'] as List)
+                      (v as num?)?.toDouble()
+                  ],
           ),
           c['expected'],
           c['name'] as String,

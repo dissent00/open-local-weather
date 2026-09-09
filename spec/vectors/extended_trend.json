@@ -17,7 +17,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "temperatures much the same through Friday"
     },
@@ -35,7 +37,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "warming through Friday"
     },
@@ -53,7 +57,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "cooling through Friday"
     },
@@ -71,7 +77,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Saturday"
+        "last_day_name": "Saturday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "temperatures much the same through Saturday"
     },
@@ -89,7 +97,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Saturday"
+        "last_day_name": "Saturday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "warming through Saturday"
     },
@@ -107,7 +117,9 @@
           0.0,
           8.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "cooling through Friday, with rain becoming more likely"
     },
@@ -125,7 +137,9 @@
           0.0,
           0.9
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "temperatures much the same through Friday"
     },
@@ -143,7 +157,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "temperatures much the same through Friday"
     },
@@ -161,7 +177,9 @@
           0.0,
           0.0
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": null
     },
@@ -179,7 +197,9 @@
           null,
           null
         ],
-        "last_day_name": "Friday"
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": null
     },
@@ -197,9 +217,151 @@
           null,
           0.0
         ],
-        "last_day_name": "Sunday"
+        "last_day_name": "Sunday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
       },
       "expected": "warming through Sunday"
+    },
+    {
+      "name": "everything measured is steady, so the noun widens to conditions",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 20.0,
+        "day_winds_kmh": [
+          20.5,
+          21.0,
+          19.5
+        ]
+      },
+      "expected": "conditions much the same through Friday"
+    },
+    {
+      "name": "rain arriving forbids 'conditions', which would deny its own tail",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          8.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 20.0,
+        "day_winds_kmh": [
+          20.5,
+          21.0,
+          19.5
+        ]
+      },
+      "expected": "temperatures and winds much the same through Friday, with rain becoming more likely"
+    },
+    {
+      "name": "a wind build under a flat temperature is worth saying",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 18.0,
+        "day_winds_kmh": [
+          24.0,
+          30.0,
+          34.0
+        ]
+      },
+      "expected": "becoming windier through Friday"
+    },
+    {
+      "name": "both moving names both",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          33.0,
+          33.5,
+          34.0
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 18.0,
+        "day_winds_kmh": [
+          24.0,
+          30.0,
+          34.0
+        ]
+      },
+      "expected": "warming and becoming windier through Friday"
+    },
+    {
+      "name": "a wind drop past the threshold reads as calming",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": 34.0,
+        "day_winds_kmh": [
+          30.0,
+          26.0,
+          20.0
+        ]
+      },
+      "expected": "becoming calmer through Friday"
+    },
+    {
+      "name": "no wind measured keeps the narrow noun",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "last_day_name": "Friday",
+        "today_wind_kmh": null,
+        "day_winds_kmh": null
+      },
+      "expected": "temperatures much the same through Friday"
     }
   ]
 }
