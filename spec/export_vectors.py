@@ -1962,6 +1962,24 @@ def export_day_over_day() -> None:
         # decimal place, and Python rounds it half to EVEN.
         ("an exact quarter rounds half to even",
          actual(high_c=30.0), preds([29.75])),
+        # ITEM 83 / 2026-09-09: today's thunder is the convective flag. Without
+        # it today could never be thundery while yesterday always could, so a
+        # thundery yesterday manufactured a contrast — and the Overview then
+        # said today was thundery one sentence later.
+        ("thunder on both days is not a change",
+         actual(rain=True, precip_mm=3.0, onset_hour=None, thunder=True),
+         preds([29.0], rains=[False], mm=[2.0], onsets=[None]), True),
+        ("thunder yesterday but not today still reads as a change",
+         actual(rain=True, precip_mm=3.0, onset_hour=None, thunder=True),
+         preds([29.0], rains=[False], mm=[2.0], onsets=[None]), False),
+        ("thunder today but not yesterday is the actionable direction",
+         actual(rain=True, precip_mm=3.0, onset_hour=None, thunder=False),
+         preds([29.0], rains=[False], mm=[2.0], onsets=[None]), True),
+        # The contrast frame around no contrast: characters differed, bands
+        # did not, and the summary reports the band.
+        ("one band on both sides is never a contrast",
+         actual(rain=True, precip_mm=3.0, onset_hour="17:00", thunder=False),
+         preds([29.0], rains=[False], mm=[2.0], onsets=[None]), False),
         ("no observed record yields nothing at all", None, preds([29.0])),
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),
@@ -1969,13 +1987,16 @@ def export_day_over_day() -> None:
     ]
 
     cases = []
-    for name, y, ps in scenarios:
-        result = compute_day_over_day(y, ps)
+    for scenario in scenarios:
+        name, y, ps = scenario[0], scenario[1], scenario[2]
+        convective = scenario[3] if len(scenario) > 3 else None
+        result = compute_day_over_day(y, ps, today_convective=convective)
         cases.append({
             "name": name,
             "input": {
                 "yesterday_actual": dump(y),
                 "today_day0_predictions": [dump(p) for p in ps],
+                "today_convective": convective,
             },
             "expected": dump(result),
         })
@@ -2269,14 +2290,32 @@ def export_describe_day_over_day() -> None:
         ("a quiet wind with no high measured claims nothing",
          None, "similar winds", None),
         ("rain alone, with no labels at all", None, None, "dry, after a thundery day"),
+        # Nothing moved on ANY dimension, so the lead says so and the rain
+        # half drops its "again" rather than saying it twice.
+        ("nothing moved at all, so the lead says so",
+         "about the same", "similar winds", "largely dry with thunderstorms again",
+         "largely dry with thunderstorms", True),
+        ("a change still leads, and the rain half keeps its own again",
+         "noticeably cooler", "similar winds", "largely dry with thunderstorms again",
+         "largely dry with thunderstorms", True),
+        ("rain that genuinely changed forfeits the sameness claim",
+         "about the same", "similar winds", "dry, after a thundery day", "dry", False),
     ]
     cases = [
         {
-            "name": name,
-            "input": {"high_label": h, "wind_label": w, "rain_contrast": r},
-            "expected": describe_day_over_day(h, w, r),
+            "name": s[0],
+            "input": {
+                "high_label": s[1], "wind_label": s[2], "rain_contrast": s[3],
+                "today_character": s[4] if len(s) > 4 else None,
+                "rain_unchanged": s[5] if len(s) > 5 else False,
+            },
+            "expected": describe_day_over_day(
+                s[1], s[2], s[3],
+                today_character=s[4] if len(s) > 4 else None,
+                rain_unchanged=s[5] if len(s) > 5 else False,
+            ),
         }
-        for name, h, w, r in scenarios
+        for s in scenarios
     ]
     write(
         "describe_day_over_day.json",

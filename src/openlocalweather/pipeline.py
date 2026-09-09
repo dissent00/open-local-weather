@@ -1225,7 +1225,19 @@ def run_daily_pipeline(
     # the LLM. A live run asked to compare 29.6°C against 29.5°C described it
     # as "about 1°C cooler": a ten-fold overstatement of the one sentence
     # most readers actually act on. See comparison.py.
-    day_over_day = compute_day_over_day(actuals_primary.get(yesterday), day0_predictions)
+    #
+    # today_convective is the OTHER half of the comparison's thunder
+    # dimension. Without it today's side could never be thundery while
+    # yesterday's always could, so a thundery yesterday manufactured a change
+    # — see compute_day_over_day. The flag is already computed above, from
+    # the hours ahead; it simply never reached here.
+    day_over_day = compute_day_over_day(
+        actuals_primary.get(yesterday),
+        day0_predictions,
+        today_convective=(
+            guidance.instability.convective if guidance.instability is not None else None
+        ),
+    )
     # The local met service's own forecast, scored as another model. Its
     # prediction comes from the same bulletin fetch that already happened for
     # the narrative, so this costs no additional request — and it is decoded
@@ -1760,7 +1772,13 @@ def run_refresh_pipeline(
     # The evening refresh deliberately keeps the morning's model_predictions,
     # so it compares against those — the numbers actually published today.
     _refresh_comparison = compute_day_over_day(
-        _refresh_actuals.get(_refresh_yesterday), existing_entry.model_predictions.day0
+        _refresh_actuals.get(_refresh_yesterday),
+        existing_entry.model_predictions.day0,
+        # The refresh recomputes instability from its own fresh forward hours,
+        # so the evening comparison sees the evening's convective picture.
+        today_convective=(
+            guidance.instability.convective if guidance.instability is not None else None
+        ),
     )
     refresh_yesterday_actual = comparison_for_prompt(
         asdict(_refresh_comparison) if _refresh_comparison is not None else None

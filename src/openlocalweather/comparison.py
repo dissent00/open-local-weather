@@ -257,6 +257,7 @@ def _consensus_onset(predictions: list[ModelPrediction]) -> str | None:
 def compute_day_over_day(
     yesterday_actual: DailyActual | None,
     today_day0_predictions: list[ModelPrediction],
+    today_convective: bool | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
     as a gap, not as a day with unremarkable weather."""
@@ -315,9 +316,24 @@ def compute_day_over_day(
     # and through Today's Forecast — where a risk belongs, and where it can
     # be hedged. The Overview's job is the shape of the day.
     today_onset = _consensus_onset(today_day0_predictions) if today_rain else None
-    # Today has no thunder observation — it has not happened yet. Today's
-    # convective risk is a forecast, and belongs to the hazard sections.
-    today_character = describe_day_rain(today_precip, today_onset, thunder=None)
+    # SYMMETRY. Today's side used to pass thunder=None always, on the
+    # reasoning that today has no thunder OBSERVATION — true, and it made the
+    # comparison structurally incapable of ever calling today thundery while
+    # yesterday always could be. Every thundery yesterday therefore
+    # manufactured a change.
+    #
+    # Raised by the operator 2026-09-09 from a live Overview: "Largely dry,
+    # after a thundery day. Thunderstorms are possible this evening" — a
+    # contrast drawn against yesterday's storms, then an admission that today
+    # has them too, one sentence later.
+    #
+    # Today does have a thunder signal: the convective flag, computed in code
+    # from the hours ahead and already in the payload. A forecast against an
+    # observation is not a perfect pairing, but it is the pairing the reader
+    # is making anyway, and it is far better than comparing a value against
+    # nothing. THE RULE IS GENERAL: a dimension may enter this comparison only
+    # if BOTH days can be measured on it.
+    today_character = describe_day_rain(today_precip, today_onset, thunder=today_convective)
     # observed_onset(), not onset_hour: a shower the reanalysis missed
     # entirely leaves onset_hour None, and the dry band's shower phrases are
     # reached by TIMING. Without this the description says "dry" for a day
@@ -357,16 +373,23 @@ def compute_day_over_day(
         # pair of dry days is usually the instability rather than the rain:
         # "convective instability spikes sharply again tonight" is the clause
         # that earns the word.
+        # TEST WHAT THE SUMMARY REPORTS. This compared full CHARACTER phrases
+        # while the else-branch below reports only the BAND, so two days in
+        # the same band could differ as characters and be framed as a change:
+        # "Largely dry, after a largely dry day" was reachable, and is not
+        # English anybody means. The key is now exactly the pair the summary
+        # is built from, so the test and the sentence cannot disagree.
         today_band = day_rain_band(today_precip)
-        both_dry = today_band == DRY_DAY_LABEL and (
-            day_rain_band(yesterday_actual.precip_mm) == DRY_DAY_LABEL
-        )
+        yesterday_band = day_rain_band(yesterday_actual.precip_mm)
+        today_key = (today_band, bool(today_convective))
+        yesterday_key = (yesterday_band, bool(yesterday_actual.thunder))
+        both_dry = today_band == DRY_DAY_LABEL and yesterday_band == DRY_DAY_LABEL
 
         if both_dry and today_character == today_band and not yesterday_actual.thunder:
             # None is already the prompt's "omit the comparison" signal, so
             # this needs no new rule on that side.
             rain_contrast = None
-        elif today_character == yesterday_character:
+        elif today_key == yesterday_key:
             # The sentence this lands in already opens with a day-over-day
             # comparison, so ", like yesterday" produced "much like yesterday
             # - ... until evening showers again, like yesterday".
@@ -395,6 +418,7 @@ def compute_day_over_day(
             rain_contrast = f"{today_character}, after a {yesterday_summary} day"
 
     high_label = _band_label(high_delta, TEMP_CHANGE_BANDS_C, "warmer", "cooler")
+    rain_unchanged = bool(rain_contrast) and today_key == yesterday_key
     wind_label = _band_label(wind_delta, WIND_CHANGE_BANDS_KMH, "windier", "calmer")
 
     return DayOverDayComparison(
@@ -413,7 +437,13 @@ def compute_day_over_day(
         high_label=high_label,
         wind_label=wind_label,
         rain_contrast=rain_contrast,
-        overview_comparison=describe_day_over_day(high_label, wind_label, rain_contrast),
+        overview_comparison=describe_day_over_day(
+            high_label,
+            wind_label,
+            rain_contrast,
+            today_character=today_character,
+            rain_unchanged=rain_unchanged,
+        ),
     )
 
 # ROADMAP item 83. THE COMPOSITION CONTRACT.
@@ -457,6 +487,9 @@ def describe_day_over_day(
     high_label: str | None,
     wind_label: str | None,
     rain_contrast: str | None,
+    *,
+    today_character: str | None = None,
+    rain_unchanged: bool = False,
 ) -> str | None:
     """The whole day-over-day comparison as finished, punctuated sentences.
 
@@ -476,22 +509,35 @@ def describe_day_over_day(
         if label is not None and label != quiet
     ]
 
-    sentences = []
+    measured = high_label is not None and wind_label is not None
+
+    lead = None
     if moved:
         # "than yesterday" ONCE, on the clause that owns the comparison. The
         # unmoved label is dropped rather than listed: "slightly warmer and
         # similar winds" is an enumeration of one fact and one non-fact.
-        sentences.append(f"{' and '.join(moved)} than yesterday")
-    elif not rain_contrast and high_label is not None and wind_label is not None:
-        # All three quiet. This is the ONLY case that earns the phrase, and
-        # it is a claim about three measurements, not about the day — so a
-        # MISSING label withholds it too. A null wind label is absent data,
-        # not a quiet wind, and "much like yesterday" would be asserting a
-        # baseline that was never measured.
-        sentences.append("much like yesterday")
+        lead = f"{' and '.join(moved)} than yesterday"
+    elif measured and (rain_unchanged or not rain_contrast):
+        # NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting
+        # one of them. Raised by the operator 2026-09-09: an Overview opening
+        # "Largely dry with thunderstorms again" tells the reader the rain is
+        # unchanged and says nothing about the temperature or the wind, which
+        # were unchanged too.
+        #
+        # A claim about the measurements, not about the day, so a MISSING
+        # label withholds it: a null wind label is absent data, not a quiet
+        # wind, and this would be asserting a baseline never measured.
+        lead = "much like yesterday"
+
+    sentences = [s for s in (lead,) if s]
 
     if rain_contrast:
-        sentences.append(rain_contrast)
+        # The lead has already made the comparison, so the rain half drops
+        # its own "again" and simply describes today. Item 48's enumeration:
+        # a reader told the day is like yesterday has been told the rain is.
+        sentences.append(
+            today_character if lead == "much like yesterday" and today_character else rain_contrast
+        )
 
     if not sentences:
         return None
@@ -549,12 +595,23 @@ def describe_extended_trend(
     # sequence averages into a steadiness none of the three days has.
     delta = highs[-1] - today_high_c
 
+    # NAME THE MEASUREMENT, not the weather. Raised by the operator
+    # 2026-09-09: "'Much the same through Saturday' — are temps, wind,
+    # everything much the same? Same thunderstorm chance?"
+    #
+    # This function is handed day highs and day precipitation and nothing
+    # else. It has no wind, no low, no convective flag, so "much the same"
+    # was a claim about the DAY+3 HIGH wearing the clothes of a claim about
+    # the weather — the same fault as "much like yesterday" covering three
+    # measurements and reading as though it covered the day. The warming and
+    # cooling branches never had the problem, because a temperature word
+    # already says which quantity moved.
     if delta >= EXTENDED_TREND_THRESHOLD_C:
         trend = f"warming through {last_day_name}"
     elif delta <= -EXTENDED_TREND_THRESHOLD_C:
         trend = f"cooling through {last_day_name}"
     else:
-        trend = f"much the same through {last_day_name}"
+        trend = f"temperatures much the same through {last_day_name}"
 
     # Rain is reported only when it ARRIVES. A dry spell continuing is
     # already carried by "much the same", and a second clause saying so is

@@ -10166,3 +10166,89 @@ naming what moved it.
   hour, the other what kind of day it was. But three for three is no longer a
   reader problem, and it belongs on the list with item 91's staleness as
   packaging that misleads while being literally correct.
+
+
+---
+
+## 94. The Overview reported one dimension and looked backward to do it · **Fixed 2026-09-09**
+
+Raised by the operator from a live Overview, quoted whole:
+
+> "Largely dry, after a thundery day. Thunderstorms are possible this
+> evening, though models disagree on how likely. Much the same through
+> Saturday, with rain becoming more likely."
+
+Their reading: sentence one gives one metric and spends half itself on
+yesterday; sentence two gives one more metric and a disclaimer; sentence
+three is unspecific — *"are temps, wind, everything much the same? Same
+thunderstorm chance?"* And the suggestion that turned out to be the fix:
+*"maybe the first two sentences should actually be reading that it's the same
+as yesterday, since there's no new info and thunderstorms are still likely."*
+
+### Three faults, and only one of them is about thunder
+
+**1. The comparison was asymmetric.** `compute_day_over_day` passed
+`thunder=None` for today, always — today has no thunder OBSERVATION. So
+yesterday could be thundery and today never could, and **every thundery
+yesterday manufactured a change.** The Overview drew a contrast against
+yesterday's storms and then said today had them too, one sentence later.
+
+Today's thunder signal existed the whole time: the convective flag, computed
+in code from the hours ahead and already in the payload. It just never
+reached `comparison.py`.
+
+**2. The same-or-different test ran on different quantities than the
+sentence.** The test compared full CHARACTER phrases; the contrast branch
+reports only the BAND. So two days in one band could differ as characters and
+be framed as a change — `"Largely dry, after a largely dry day"` was
+reachable, and is not English anybody means.
+
+**3. `describe_extended_trend` is handed day highs and day precipitation and
+nothing else** — no wind, no low, no convective flag. "Much the same through
+Saturday" was a claim about the DAY+3 HIGH wearing the clothes of a claim
+about the weather. It now says "temperatures much the same". The warming and
+cooling branches never had the fault, because a temperature word already
+names its quantity.
+
+### The general rules, which is what the operator asked for
+
+They pushed back on fixing this as a thunder special case — *"I want to make
+sure we're being general here... I don't want to laser focus on Kisumu's
+rather consistent weather"* — and they were right. Two rules, both general,
+and thunder is only where they happened to show:
+
+- **A dimension may enter the comparison only if BOTH days can be measured on
+  it.** Thunder failed this: observation on one side, nothing on the other.
+- **The same-or-different test must run on the quantities the sentence
+  reports.** Otherwise the test and the sentence can disagree, which is
+  fault 2.
+
+Temperature and wind already satisfy both, which is why `"Noticeably cooler
+than yesterday. Largely dry with thunderstorms again."` falls out with no
+extra work — the operator's own second example.
+
+### What does NOT generalise, and is not fixed here
+
+`"gusty winds again this evening"` — their first example — needs intraday
+wind. `DayOverDayComparison` holds one peak gust for the whole day, so there
+is no "this evening" available for wind. Rain has an onset and thunder has a
+peak hour; wind has neither. **Separate and larger, and not attempted.**
+
+### Result
+
+> "Much like yesterday. Largely dry with thunderstorms. Temperatures much the
+> same through Saturday, with rain becoming more likely."
+
+Nothing moved on any dimension, so the lead says so once rather than
+reporting one of them — and the rain half then drops its own "again", because
+a reader told the day is like yesterday has been told the rain is (item 48).
+
+The Overview's instability clause is now conditional: the comparison carries
+thunder whenever the flag is true, so the clause fires only when the
+comparison is unavailable or silent on it. The hedge went too, on the
+operator's call — "possible" already carries the uncertainty, and the
+five-fold model spread belongs in Severe Weather where it can be given per
+model and acted on.
+
+Related: item 83 (the composition this extends), item 48 (enumeration),
+item 88 (the vector-case rule these four new cases follow), item 77.

@@ -8,7 +8,9 @@
       "input": {
         "high_label": null,
         "wind_label": null,
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": null
     },
@@ -17,7 +19,9 @@
       "input": {
         "high_label": "about the same",
         "wind_label": "similar winds",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Much like yesterday."
     },
@@ -26,7 +30,9 @@
       "input": {
         "high_label": "slightly warmer",
         "wind_label": "calmer",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Slightly warmer and calmer than yesterday."
     },
@@ -35,7 +41,9 @@
       "input": {
         "high_label": "noticeably cooler",
         "wind_label": "similar winds",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Noticeably cooler than yesterday."
     },
@@ -44,7 +52,9 @@
       "input": {
         "high_label": "about the same",
         "wind_label": "much windier",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Much windier than yesterday."
     },
@@ -53,7 +63,9 @@
       "input": {
         "high_label": "about the same",
         "wind_label": "dramatically calmer",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Dramatically calmer than yesterday."
     },
@@ -62,7 +74,9 @@
       "input": {
         "high_label": "slightly warmer",
         "wind_label": "calmer",
-        "rain_contrast": "dry until evening showers"
+        "rain_contrast": "dry until evening showers",
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Slightly warmer and calmer than yesterday. Dry until evening showers."
     },
@@ -71,7 +85,9 @@
       "input": {
         "high_label": "about the same",
         "wind_label": "similar winds",
-        "rain_contrast": "wet, after a dry day"
+        "rain_contrast": "wet, after a dry day",
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Wet, after a dry day."
     },
@@ -80,7 +96,9 @@
       "input": {
         "high_label": "much warmer",
         "wind_label": "much windier",
-        "rain_contrast": "wet again"
+        "rain_contrast": "wet again",
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Much warmer and much windier than yesterday. Wet again."
     },
@@ -89,7 +107,9 @@
       "input": {
         "high_label": "slightly warmer",
         "wind_label": null,
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": "Slightly warmer than yesterday."
     },
@@ -98,7 +118,9 @@
       "input": {
         "high_label": "about the same",
         "wind_label": null,
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": null
     },
@@ -107,7 +129,9 @@
       "input": {
         "high_label": null,
         "wind_label": "similar winds",
-        "rain_contrast": null
+        "rain_contrast": null,
+        "today_character": null,
+        "rain_unchanged": false
       },
       "expected": null
     },
@@ -116,7 +140,42 @@
       "input": {
         "high_label": null,
         "wind_label": null,
-        "rain_contrast": "dry, after a thundery day"
+        "rain_contrast": "dry, after a thundery day",
+        "today_character": null,
+        "rain_unchanged": false
+      },
+      "expected": "Dry, after a thundery day."
+    },
+    {
+      "name": "nothing moved at all, so the lead says so",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "rain_contrast": "largely dry with thunderstorms again",
+        "today_character": "largely dry with thunderstorms",
+        "rain_unchanged": true
+      },
+      "expected": "Much like yesterday. Largely dry with thunderstorms."
+    },
+    {
+      "name": "a change still leads, and the rain half keeps its own again",
+      "input": {
+        "high_label": "noticeably cooler",
+        "wind_label": "similar winds",
+        "rain_contrast": "largely dry with thunderstorms again",
+        "today_character": "largely dry with thunderstorms",
+        "rain_unchanged": true
+      },
+      "expected": "Noticeably cooler than yesterday. Largely dry with thunderstorms again."
+    },
+    {
+      "name": "rain that genuinely changed forfeits the sameness claim",
+      "input": {
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "rain_contrast": "dry, after a thundery day",
+        "today_character": "dry",
+        "rain_unchanged": false
       },
       "expected": "Dry, after a thundery day."
     }

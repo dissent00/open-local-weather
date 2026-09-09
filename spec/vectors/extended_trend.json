@@ -19,7 +19,7 @@
         ],
         "last_day_name": "Friday"
       },
-      "expected": "much the same through Friday"
+      "expected": "temperatures much the same through Friday"
     },
     {
       "name": "warming past the threshold",
@@ -73,7 +73,7 @@
         ],
         "last_day_name": "Saturday"
       },
-      "expected": "much the same through Saturday"
+      "expected": "temperatures much the same through Saturday"
     },
     {
       "name": "exactly at the threshold names the trend",
@@ -127,7 +127,7 @@
         ],
         "last_day_name": "Friday"
       },
-      "expected": "much the same through Friday"
+      "expected": "temperatures much the same through Friday"
     },
     {
       "name": "the END of the span decides, not the mean",
@@ -145,7 +145,7 @@
         ],
         "last_day_name": "Friday"
       },
-      "expected": "much the same through Friday"
+      "expected": "temperatures much the same through Friday"
     },
     {
       "name": "no today high - nothing to compare against",

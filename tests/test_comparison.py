@@ -362,3 +362,75 @@ def test_much_like_yesterday_is_not_claimed_on_a_missing_measurement():
     about: a phrase asserting a baseline it does not have."""
     assert describe_day_over_day("about the same", None, None) is None
     assert describe_day_over_day(None, "similar winds", None) is None
+
+
+# ---------------------------------------------------------------------------
+# The comparison must be symmetric, and must test what it reports.
+# ---------------------------------------------------------------------------
+
+
+def test_today_can_be_thundery_too(preds_thunder=None):
+    """Raised by the operator 2026-09-09 from a live Overview: "Largely dry,
+    after a thundery day" followed by "Thunderstorms are possible this
+    evening" — a contrast against yesterday's storms, then an admission that
+    today has them too.
+
+    Today's side passed thunder=None ALWAYS, because today has no thunder
+    OBSERVATION. But it has a forecast — the convective flag, already
+    pre-computed and already in the payload. So yesterday could be thundery
+    and today never could, and any thundery yesterday manufactured a change.
+    """
+    y = actual(precip_mm=3.0, onset_hour=None, thunder=True)
+    today = preds(rain=False, precip_mm=2.0)
+
+    same = compute_day_over_day(y, today, today_convective=True)
+    assert same.rain_contrast == "largely dry with thunderstorms again"
+
+    # A genuine change still reads as one — the 2026-08-24 lesson survives.
+    changed = compute_day_over_day(y, today, today_convective=False)
+    assert changed.rain_contrast == "largely dry, after a thundery day"
+
+    # And the actionable direction, which was unreachable before.
+    quiet_yesterday = actual(precip_mm=3.0, onset_hour=None, thunder=False)
+    news = compute_day_over_day(quiet_yesterday, today, today_convective=True)
+    assert news.rain_contrast == "largely dry with thunderstorms, after a largely dry day"
+
+
+def test_the_contrast_frame_needs_an_actual_contrast():
+    """"Largely dry, after a largely dry day" was reachable: the
+    same-or-different test compared full CHARACTER phrases while the summary
+    reported the BAND, so two days in one band could be framed as a change.
+
+    The test now runs on exactly what the summary reports."""
+    y = actual(precip_mm=3.0, onset_hour="17:00", thunder=False)
+    result = compute_day_over_day(y, preds(rain=False, precip_mm=2.0), today_convective=False)
+
+    assert "after a largely dry day" not in (result.rain_contrast or "")
+    assert result.rain_contrast == "largely dry again"
+
+
+def test_when_nothing_moved_at_all_say_so_once():
+    """The operator's actual ask, 2026-09-09: "the first two sentences should
+    actually be reading that it's the same as yesterday, since there's no new
+    info and thunderstorms are still likely."
+
+    "Largely dry with thunderstorms again" says the RAIN is unchanged. It
+    says nothing about temperature or wind, which were also unchanged. The
+    lead now carries that — and the rain sentence then drops its "again",
+    because a reader told the day is like yesterday has already been told."""
+    assert describe_day_over_day(
+        "about the same", "similar winds", "largely dry with thunderstorms again",
+        today_character="largely dry with thunderstorms", rain_unchanged=True,
+    ) == "Much like yesterday. Largely dry with thunderstorms."
+
+    # A change still leads, and the rain half keeps its own comparison.
+    assert describe_day_over_day(
+        "noticeably cooler", "similar winds", "largely dry with thunderstorms again",
+        today_character="largely dry with thunderstorms", rain_unchanged=True,
+    ) == "Noticeably cooler than yesterday. Largely dry with thunderstorms again."
+
+    # Rain genuinely changed: no sameness claim is available.
+    assert describe_day_over_day(
+        "about the same", "similar winds", "dry, after a thundery day",
+        today_character="dry", rain_unchanged=False,
+    ) == "Dry, after a thundery day."

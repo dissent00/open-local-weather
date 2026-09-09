@@ -516,9 +516,8 @@ def test_vectors_day_over_day():
         i = case["input"]
         y = DailyActual.model_validate(i["yesterday_actual"]) if i["yesterday_actual"] else None
         preds = [ModelPrediction.model_validate(p) for p in i["today_day0_predictions"]]
-        assert as_json(compute_day_over_day(y, preds)) == case["expected"], (
-            f"vector case failed: {case['name']}"
-        )
+        got = compute_day_over_day(y, preds, today_convective=i.get("today_convective"))
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
 
 def test_vectors_extended_trend():
@@ -551,7 +550,11 @@ def test_vectors_describe_day_over_day():
     "with dry until evening showers today; yesterday was largely dry"."""
     for case in load("describe_day_over_day.json")["cases"]:
         i = case["input"]
-        got = describe_day_over_day(i["high_label"], i["wind_label"], i["rain_contrast"])
+        got = describe_day_over_day(
+            i["high_label"], i["wind_label"], i["rain_contrast"],
+            today_character=i.get("today_character"),
+            rain_unchanged=i.get("rain_unchanged", False),
+        )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 

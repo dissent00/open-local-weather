@@ -792,7 +792,9 @@ void main() {
         final preds = (i['today_day0_predictions'] as List)
             .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
             .toList();
-        expectMatches(computeDayOverDay(y, preds)?.toJson(), c['expected'], c['name'] as String);
+        final got = computeDayOverDay(y, preds,
+            todayConvective: i['today_convective'] as bool?);
+        expectMatches(got?.toJson(), c['expected'], c['name'] as String);
       }
     });
   });
@@ -821,6 +823,8 @@ void main() {
           i['high_label'] as String?,
           i['wind_label'] as String?,
           i['rain_contrast'] as String?,
+          todayCharacter: i['today_character'] as String?,
+          rainUnchanged: (i['rain_unchanged'] as bool?) ?? false,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }

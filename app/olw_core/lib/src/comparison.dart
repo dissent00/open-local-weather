@@ -263,8 +263,9 @@ String? consensusOnset(List<ModelPrediction> predictions) {
 /// a gap, not as a day with unremarkable weather.
 DayOverDayComparison? computeDayOverDay(
   DailyActual? yesterdayActual,
-  List<ModelPrediction> todayDay0Predictions,
-) {
+  List<ModelPrediction> todayDay0Predictions, {
+  bool? todayConvective,
+}) {
   if (yesterdayActual == null) return null;
 
   final consensusHigh = mean([for (final p in todayDay0Predictions) p.highC]);
@@ -299,9 +300,17 @@ DayOverDayComparison? computeDayOverDay(
   // convective block and Today's Forecast.
   final todayOnset =
       todayRain == true ? consensusOnset(todayDay0Predictions) : null;
-  // Today has no thunder observation — it has not happened yet. Today's
-  // convective risk is a forecast, and belongs to the hazard sections.
-  final todayCharacter = describeDayRain(todayPrecip, todayOnset, null);
+  // SYMMETRY. Today's side used to pass null always, on the reasoning that
+  // today has no thunder OBSERVATION. True, and it made the comparison
+  // structurally incapable of calling today thundery while yesterday always
+  // could be, so every thundery yesterday manufactured a change — a live
+  // Overview read "Largely dry, after a thundery day. Thunderstorms are
+  // possible this evening", drawing a contrast and then denying it.
+  //
+  // Today does have a thunder signal: the convective flag. THE RULE IS
+  // GENERAL — a dimension may enter this comparison only if BOTH days can be
+  // measured on it.
+  final todayCharacter = describeDayRain(todayPrecip, todayOnset, todayConvective);
   final yesterdayCharacter = describeDayRain(
       yesterdayActual.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed
@@ -313,6 +322,9 @@ DayOverDayComparison? computeDayOverDay(
       yesterdayActual.thunder);
 
   String? rainContrast;
+  // Hoisted because the keys are computed inside the block below and the
+  // composed sentence needs to know whether they matched.
+  var rainKeysMatch = false;
   if (todayCharacter != null && yesterdayCharacter != null) {
     // Reaches the reader almost verbatim — the prompt says to use this AS
     // GIVEN — so the wording is a user-facing decision, not an internal
@@ -330,16 +342,23 @@ DayOverDayComparison? computeDayOverDay(
     // verification notes and the detailed discussion where a reader looks it
     // up. "again" is then free for whatever genuinely recurs, which on a
     // pair of dry days is usually the instability rather than the rain.
+    // TEST WHAT THE SUMMARY REPORTS. This compared full CHARACTER phrases
+    // while the else-branch reports only the BAND, so two days in one band
+    // could be framed as a change: "Largely dry, after a largely dry day"
+    // was reachable. The key is now the pair the summary is built from.
     final todayBand = dayRainBand(todayPrecip);
-    final bothDry = todayBand == dryDayLabel &&
-        dayRainBand(yesterdayActual.precipMm) == dryDayLabel;
+    final yesterdayBand = dayRainBand(yesterdayActual.precipMm);
+    final todayKey = '$todayBand|${todayConvective == true}';
+    final yesterdayKey = '$yesterdayBand|${yesterdayActual.thunder == true}';
+    rainKeysMatch = todayKey == yesterdayKey;
+    final bothDry = todayBand == dryDayLabel && yesterdayBand == dryDayLabel;
 
     if (bothDry &&
         todayCharacter == todayBand &&
         yesterdayActual.thunder != true) {
       // Null is already the prompt's "omit the comparison" signal.
       rainContrast = null;
-    } else if (todayCharacter == yesterdayCharacter) {
+    } else if (todayKey == yesterdayKey) {
       // The sentence this lands in already opens with a day-over-day
       // comparison, so appending ", like yesterday" said it twice.
       rainContrast = '$todayCharacter again';
@@ -360,6 +379,7 @@ DayOverDayComparison? computeDayOverDay(
   }
 
   final highLabel = _bandLabel(highDelta, tempChangeBandsC, 'warmer', 'cooler');
+  final rainUnchanged = rainContrast != null && rainKeysMatch;
   final windLabel =
       _bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
 
@@ -379,8 +399,13 @@ DayOverDayComparison? computeDayOverDay(
     highLabel: highLabel,
     windLabel: windLabel,
     rainContrast: rainContrast,
-    overviewComparison:
-        describeDayOverDay(highLabel, windLabel, rainContrast),
+    overviewComparison: describeDayOverDay(
+      highLabel,
+      windLabel,
+      rainContrast,
+      todayCharacter: todayCharacter,
+      rainUnchanged: rainUnchanged,
+    ),
   );
 }
 
@@ -423,8 +448,10 @@ DayOverDayComparison? computeDayOverDay(
 String? describeDayOverDay(
   String? highLabel,
   String? windLabel,
-  String? rainContrast,
-) {
+  String? rainContrast, {
+  String? todayCharacter,
+  bool rainUnchanged = false,
+}) {
   final quietHigh = tempChangeBandsC.first.$2;
   final quietWind = windChangeBandsKmh.first.$2;
 
@@ -433,24 +460,34 @@ String? describeDayOverDay(
       if (label != null && label != quiet) label,
   ];
 
-  final sentences = <String>[];
+  final measured = highLabel != null && windLabel != null;
+  final hasRain = rainContrast != null && rainContrast.isNotEmpty;
+
+  String? lead;
   if (moved.isNotEmpty) {
     // "than yesterday" ONCE, on the clause that owns the comparison. The
     // unmoved label is dropped rather than listed: "slightly warmer and
     // similar winds" is an enumeration of one fact and one non-fact.
-    sentences.add('${moved.join(' and ')} than yesterday');
-  } else if ((rainContrast == null || rainContrast.isEmpty) &&
-      highLabel != null &&
-      windLabel != null) {
-    // All three quiet. This is the ONLY case that earns the phrase, and it is
-    // a claim about three measurements, not about the day — so a MISSING
-    // label withholds it too. A null wind label is absent data, not a quiet
-    // wind, and the phrase would assert a baseline never measured.
-    sentences.add('much like yesterday');
+    lead = '${moved.join(' and ')} than yesterday';
+  } else if (measured && (rainUnchanged || !hasRain)) {
+    // NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting one
+    // of them: an Overview opening "Largely dry with thunderstorms again"
+    // tells the reader the rain is unchanged and says nothing about the
+    // temperature or wind, which were unchanged too.
+    //
+    // A claim about the measurements, not the day, so a MISSING label
+    // withholds it — a null wind label is absent data, not a quiet wind.
+    lead = 'much like yesterday';
   }
 
-  if (rainContrast != null && rainContrast.isNotEmpty) {
-    sentences.add(rainContrast);
+  final sentences = <String>[if (lead != null) lead];
+
+  if (hasRain) {
+    // The lead already made the comparison, so the rain half drops its own
+    // "again" and simply describes today.
+    sentences.add(lead == 'much like yesterday' && todayCharacter != null
+        ? todayCharacter
+        : rainContrast);
   }
 
   if (sentences.isEmpty) return null;
@@ -507,7 +544,11 @@ String? describeExtendedTrend(
   } else if (delta <= -extendedTrendThresholdC) {
     trend = 'cooling through $lastDayName';
   } else {
-    trend = 'much the same through $lastDayName';
+    // NAME THE MEASUREMENT, not the weather. This function is handed day
+    // highs and day precipitation and nothing else — no wind, no low, no
+    // convective flag — so "much the same" was a claim about the DAY+3 HIGH
+    // wearing the clothes of a claim about the weather.
+    trend = 'temperatures much the same through $lastDayName';
   }
 
   // Rain is reported only when it ARRIVES. A dry spell continuing is already
