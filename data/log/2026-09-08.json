@@ -64,7 +64,7 @@
       },
       {
         "model": "icon_seamless",
-        "rain": false,
+        "rain": true,
         "onset": null,
         "precip_mm": 0.7,
         "rain_probability_pct": 65,
@@ -86,7 +86,7 @@
       },
       {
         "model": "best_match",
-        "rain": false,
+        "rain": true,
         "onset": null,
         "precip_mm": 0.5,
         "rain_probability_pct": 72,

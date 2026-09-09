@@ -50,7 +50,31 @@ def extract_day0_predictions_from_hourly(
         # ModelPrediction.rain. (A present series that simply never crosses
         # the threshold IS a real "no rain" call.)
         has_precip_data = any(v is not None for v in precip)
-        rain = any((v or 0) >= threshold for v in precip) if has_precip_data else None
+        # THE DAILY TOTAL, NOT THE WETTEST HOUR — ROADMAP item 97, changed
+        # 2026-09-09.
+        #
+        # This asked whether ANY HOUR crossed the threshold while
+        # extract_day_n_predictions_from_daily asked whether the DAY'S TOTAL
+        # did, so the same 2.0 mm day was `rain: false` at Day+0 and
+        # `rain: true` at Day+3 — and that boolean is what every Brier score,
+        # rain percentage and ranking finding is built on. Six of 85 stored
+        # Day+0 predictions carried the difference.
+        #
+        # The total wins because it is the only rule that CAN apply at every
+        # lead: the extended forecast comes from a daily endpoint and has no
+        # hours to take a peak over. It is also what the prompt already tells
+        # the forecaster — "whether measurable rain falls at the location
+        # during the day".
+        rain = (
+            sum(v for v in precip if v is not None) >= threshold
+            if has_precip_data
+            else None
+        )
+        # ONSET IS DELIBERATELY UNCHANGED and still asks about an HOUR. A day
+        # whose rain never concentrated into one has no onset to report, so
+        # this now legitimately returns rain=True with onset=None — which the
+        # scorer already handles, since it scores onset only when both sides
+        # have one.
         onset = get_onset_hour(times, precip, threshold) if rain else None
 
         wind_vals = [v for v in wind if v is not None]

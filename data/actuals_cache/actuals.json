@@ -15,6 +15,8 @@
       "station_high_c": 28.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 31.48,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -46,6 +48,8 @@
       "station_high_c": 29.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -75,6 +79,8 @@
       "station_high_c": 30.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 18.52,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -104,6 +110,8 @@
       "station_high_c": 30.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -135,6 +143,8 @@
       "station_high_c": 29.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -165,6 +175,8 @@
       "station_high_c": 28.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -195,6 +207,8 @@
       "station_high_c": 30.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 25.93,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -225,6 +239,8 @@
       "station_high_c": 27.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 29.63,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -255,6 +271,8 @@
       "station_high_c": 29.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -284,6 +302,8 @@
       "station_high_c": 30.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 37.04,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -314,6 +334,8 @@
       "station_high_c": 31.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -344,6 +366,8 @@
       "station_high_c": 30.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -374,6 +398,8 @@
       "station_high_c": 30.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 33.34,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -404,6 +430,8 @@
       "station_high_c": 30.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -433,6 +461,8 @@
       "station_high_c": 30.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 18.52,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -462,6 +492,8 @@
       "station_high_c": 31.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -491,6 +523,8 @@
       "station_high_c": 31.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -520,6 +554,8 @@
       "station_high_c": 31.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -549,6 +585,8 @@
       "station_high_c": 31.0,
       "station_low_c": 21.0,
       "station_peak_wind_kmh": 33.34,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -579,6 +617,8 @@
       "station_high_c": 30.0,
       "station_low_c": 20.0,
       "station_peak_wind_kmh": 33.34,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -608,6 +648,8 @@
       "station_high_c": 31.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 18.52,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -638,6 +680,8 @@
       "station_high_c": 30.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 29.63,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -669,6 +713,8 @@
       "station_high_c": 28.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -700,6 +746,8 @@
       "station_high_c": 30.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -729,6 +777,8 @@
       "station_high_c": 30.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -760,6 +810,8 @@
       "station_high_c": 31.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -790,6 +842,8 @@
       "station_high_c": 32.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -819,6 +873,8 @@
       "station_high_c": 32.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 14.82,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -848,6 +904,8 @@
       "station_high_c": 33.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -877,6 +935,8 @@
       "station_high_c": 33.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 24.08,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -906,6 +966,8 @@
       "station_high_c": 33.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -935,6 +997,8 @@
       "station_high_c": 32.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 18.52,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -965,6 +1029,8 @@
       "station_high_c": 32.0,
       "station_low_c": 16.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -994,6 +1060,8 @@
       "station_high_c": 31.0,
       "station_low_c": 17.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1023,6 +1091,8 @@
       "station_high_c": 32.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 32.39,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1052,6 +1122,8 @@
       "station_high_c": 32.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 20.37,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1081,6 +1153,8 @@
       "station_high_c": 31.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 25.93,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1110,6 +1184,8 @@
       "station_high_c": 32.0,
       "station_low_c": 19.0,
       "station_peak_wind_kmh": 22.22,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1140,6 +1216,8 @@
       "station_high_c": 34.0,
       "station_low_c": 18.0,
       "station_peak_wind_kmh": 37.04,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1170,6 +1248,8 @@
       "station_high_c": 33.0,
       "station_low_c": 21.0,
       "station_peak_wind_kmh": 25.21,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1198,7 +1278,9 @@
       "precipitation_onset": null,
       "station_high_c": 32.0,
       "station_low_c": 20.0,
-      "station_peak_wind_kmh": 24.08,
+      "station_peak_wind_kmh": 25.93,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1225,10 +1307,12 @@
       "precip_mm": 1.8,
       "thunder": true,
       "precipitation": true,
-      "precipitation_onset": "16:00",
-      "station_high_c": 31.0,
+      "precipitation_onset": "15:30",
+      "station_high_c": 32.0,
       "station_low_c": 17.0,
-      "station_peak_wind_kmh": 22.22,
+      "station_peak_wind_kmh": 35.19,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1262,6 +1346,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1287,6 +1373,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1312,6 +1400,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1337,6 +1427,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1362,6 +1454,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1387,6 +1481,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1412,6 +1508,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1437,6 +1535,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1462,6 +1562,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1487,6 +1589,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1512,6 +1616,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1536,6 +1642,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1560,6 +1668,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1584,6 +1694,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1608,6 +1720,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1633,6 +1747,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1657,6 +1773,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1681,6 +1799,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1705,6 +1825,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1729,6 +1851,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1753,6 +1877,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1778,6 +1904,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1802,6 +1930,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1827,6 +1957,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1851,6 +1983,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1876,6 +2010,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1901,6 +2037,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1925,6 +2063,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1949,6 +2089,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1973,6 +2115,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -1997,6 +2141,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2021,6 +2167,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2045,6 +2193,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2069,6 +2219,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2093,6 +2245,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2117,6 +2271,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2141,6 +2297,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2165,6 +2323,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2190,6 +2350,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2214,6 +2376,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2238,6 +2402,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",
@@ -2263,6 +2429,8 @@
       "station_high_c": null,
       "station_low_c": null,
       "station_peak_wind_kmh": null,
+      "cloud_cover_pct": null,
+      "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
         "rain": "era5_archive",

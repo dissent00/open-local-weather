@@ -75,7 +75,7 @@
       },
       {
         "model": "ukmo_seamless",
-        "rain": false,
+        "rain": true,
         "onset": null,
         "precip_mm": 0.6,
         "rain_probability_pct": null,

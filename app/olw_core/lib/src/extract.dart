@@ -95,8 +95,18 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final cloud = _series(hourly, 'cloud_cover', model);
 
     final hasPrecipData = precip.any((v) => v != null);
-    final bool? rain =
-        hasPrecipData ? precip.any((v) => (v ?? 0) >= threshold) : null;
+    // THE DAILY TOTAL, NOT THE WETTEST HOUR — ROADMAP item 97. This asked
+    // whether any HOUR crossed the threshold while the Day+N path asked
+    // whether the DAY'S TOTAL did, so one 2.0 mm day was `rain: false` here
+    // and `rain: true` three days out, from the same number. The total wins
+    // because it is the only rule that CAN apply at every lead: the extended
+    // forecast comes from a daily endpoint with no hours to take a peak over.
+    final bool? rain = hasPrecipData
+        ? precip.fold<double>(0, (a, v) => a + (v ?? 0)) >= threshold
+        : null;
+    // Onset still asks about an HOUR, deliberately, so a day whose rain never
+    // concentrated returns rain=true with no onset — which the scorer handles,
+    // scoring onset only when both sides have one.
     final onset = (rain == true)
         ? getOnsetHour(times, precip, threshold: threshold)
         : null;

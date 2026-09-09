@@ -10805,7 +10805,7 @@ beta prerequisites), item 84.
 
 ---
 
-## 97. `rain` means one thing at Day+0 and another at Day+3 · **Planned — do not fix casually**
+## 97. `rain` means one thing at Day+0 and another at Day+3 · **Fixed and the record re-derived 2026-09-09**
 
 Found by the third harness run, 2026-09-09, and confirmed directly:
 
@@ -10852,10 +10852,64 @@ taken:
    Day+3 skill. Cheapest, and it gives up a comparison the review currently
    makes.
 
-The daily-total rule is probably the right target — it is what the prompt
-already tells the forecaster, and "did measurable rain fall today" is the
-question a reader asks. But that is a judgement about product, not a bug fix,
-and it needs the operator.
+### The choice collapsed once the leads were checked
+
+There was never a real choice of DEFINITION. `fetch_forecast_daily_extended`
+requests `daily` only — Day+3 and Day+7 have **no hourly data at all**, so the
+wettest-hour rule cannot be applied there even in principle. The daily total
+is the only rule that works at every lead, and it is what the prompt already
+tells the forecaster: *"whether measurable rain falls at the location during
+the day"*.
+
+### And the scope was far smaller than first stated
+
+The first count said 14% of Day+0 predictions. **That was wrong**: it included
+`persistence` and `climatology`, which compute `rain` their own way and are
+governed by neither extraction path. Scoped to the models the rule actually
+governs:
+
+**6 of 85 stored Day+0 predictions — 7.1%.** All six flip dry to rain, because
+a total is easier to reach than any single hour. Day+3 and Day+7 flip zero,
+confirming they already used this rule.
+
+| date | model | total |
+|---|---|---|
+| 2026-08-24 | ukmo_seamless | 0.6 mm |
+| 2026-09-03 | ecmwf_ifs025 | 0.6 mm |
+| 2026-09-08 | icon_seamless | 0.7 mm |
+| 2026-09-08 | best_match | 0.5 mm |
+| 2026-09-09 | ecmwf_ifs025 | 2.1 mm |
+| 2026-09-09 | best_match | 2.1 mm |
+
+### Re-derived, on the operator's call
+
+The six stored booleans were recomputed from each prediction's own
+`precip_mm` and `rebuild-record` re-derived the accuracy record. **A
+recomputation from the committed record, not an invention** — which is the
+property that made rewriting published figures defensible, and it is the
+project's own claim about every number it publishes.
+
+Day+0 all-time rain accuracy moved:
+
+| model | was | now |
+|---|---|---|
+| best_match | 79.3% | **82.8%** |
+| icon_seamless | 72.4% | **75.9%** |
+| ukmo_seamless | 58.6% | **62.1%** |
+| ecmwf_ifs025 | 75.9% | **72.4%** |
+
+Three improved and one got worse, which is the shape to expect: a dry call
+turned wet is a correction on days it rained and a new error on days it did
+not. ECMWF's two both landed on dry days.
+
+**It also resolved a harness finding by accident.** The 2026-09-09 run
+reported that the Day+0 "weakest rain caller" was a tie — `gfs_seamless` and
+`ukmo_seamless` both 17/29. UKMO is now 18/29, so the ranking names a genuine
+weakest again.
+
+**Onset was deliberately not changed** and still asks about an HOUR, so a day
+whose rain never concentrated now returns `rain: true` with `onset: null`. The
+scorer already handles it, scoring onset only when both sides have one.
 
 Related: item 42 (what "observed rain" means), item 57 (the findings that
 compare across leads), item 84.

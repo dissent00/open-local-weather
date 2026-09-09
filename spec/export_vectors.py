@@ -372,6 +372,17 @@ def export_extract() -> None:
             "pressure_msl_ecmwf_ifs025": [None, None, None],
         }
     }
+    hourly_spread = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00", "2026-08-11T14:00",
+                     "2026-08-11T15:00", "2026-08-11T16:00"],
+            "precipitation_gfs_seamless": [0.4, 0.4, 0.4, 0.4, 0.4],
+            "windgusts_10m_gfs_seamless": [10.0, 12.0, 14.0, 12.0, 10.0],
+            "temperature_2m_gfs_seamless": [21.0, 22.0, 23.0, 22.0, 21.0],
+            "pressure_msl_gfs_seamless": [1013.0, 1012.8, 1012.6, 1012.4, 1012.2],
+            "cloud_cover_gfs_seamless": [80.0, 85.0, 90.0, 85.0, 80.0],
+        }
+    }
     hourly_tie = {
         "hourly": {
             "time": ["2026-08-11T12:00", "2026-08-11T13:00"],
@@ -451,6 +462,15 @@ def export_extract() -> None:
             "name": "a precipitation total on an exact rounding tie",
             "input": {"hourly_multi_model": hourly_tie, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
             "expected": dump(extract_day0_predictions_from_hourly(hourly_tie, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
+        },
+        {
+            # ROADMAP item 97. 2.0 mm spread across five hours, none reaching
+            # 0.5 — the shape that used to be `rain: false` here and
+            # `rain: true` at Day+3 from the identical total. Six stored
+            # predictions carried it, including today's ECMWF and Best Match.
+            "name": "a day that rained without a heavy hour is still a rain day",
+            "input": {"hourly_multi_model": hourly_spread, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly(hourly_spread, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
         },
         {
             "name": "empty payload yields no predictions",

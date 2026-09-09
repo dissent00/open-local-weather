@@ -53,7 +53,7 @@
       },
       {
         "model": "ecmwf_ifs025",
-        "rain": false,
+        "rain": true,
         "onset": null,
         "precip_mm": 2.1,
         "rain_probability_pct": 96,
@@ -86,7 +86,7 @@
       },
       {
         "model": "best_match",
-        "rain": false,
+        "rain": true,
         "onset": null,
         "precip_mm": 2.1,
         "rain_probability_pct": 96,

@@ -272,3 +272,54 @@ def test_an_all_null_probability_series_is_absent_not_zero():
     }
     preds = extract_day0_predictions_from_hourly(hourly, ["gfs_seamless"])
     assert preds[0].rain_probability_pct is None
+
+
+def test_rain_means_the_same_thing_at_every_lead():
+    """ROADMAP item 97, found by the prompt harness 2026-09-09.
+
+    Day+0 set `rain` from whether ANY HOUR crossed the threshold; Day+3 and
+    Day+7 set it from the DAILY TOTAL crossing the same threshold. So the same
+    2.0 mm day was false at one lead and true at another — and that boolean is
+    what every Brier score, rain percentage and ranking finding is built on.
+
+    The daily-total rule wins because it is the only one that CAN apply at
+    every lead: the extended forecast comes from a daily endpoint and has no
+    hours to take a peak over. It is also what the prompt already tells the
+    forecaster — "whether measurable rain falls at the location during the
+    day".
+    """
+    hourly = {"hourly": {
+        "time": [f"2026-09-09T{h:02d}:00" for h in range(24)],
+        # 2.0 mm across the day, no single hour reaching 0.5 — the shape that
+        # scored differently at different leads. Six stored predictions had it.
+        "precipitation_m": [0.0] * 10 + [0.4] * 5 + [0.0] * 9,
+        "windgusts_10m_m": [20.0] * 24, "temperature_2m_m": [25.0] * 24,
+        "pressure_msl_m": [1013.0] * 24, "cloud_cover_m": [50.0] * 24,
+        "precipitation_probability_m": [80] * 24,
+    }}
+    daily = {"daily": {"time": ["2026-09-09"], "precipitation_sum_m": [2.0],
+        "windgusts_10m_max_m": [20.0], "temperature_2m_max_m": [25.0],
+        "temperature_2m_min_m": [18.0], "pressure_msl_mean_m": [1013.0],
+        "precipitation_probability_max_m": [80]}}
+
+    day0 = extract_day0_predictions_from_hourly(hourly, ["m"])[0]
+    day_n = extract_day_n_predictions_from_daily(daily, 0, ["m"])[0]
+
+    assert day0.precip_mm == day_n.precip_mm == 2.0
+    assert day0.rain is True
+    assert day0.rain == day_n.rain, "the same day scores differently at two leads"
+
+
+def test_a_day_that_rained_without_a_heavy_hour_has_no_onset():
+    """Onset is unchanged and still asks when an HOUR crossed the threshold.
+    A day whose rain never concentrated has no onset to report, and None is
+    the honest answer rather than the first damp hour."""
+    hourly = {"hourly": {
+        "time": [f"2026-09-09T{h:02d}:00" for h in range(24)],
+        "precipitation_m": [0.0] * 10 + [0.4] * 5 + [0.0] * 9,
+        "windgusts_10m_m": [20.0] * 24, "temperature_2m_m": [25.0] * 24,
+        "pressure_msl_m": [1013.0] * 24, "cloud_cover_m": [50.0] * 24,
+        "precipitation_probability_m": [80] * 24,
+    }}
+    p = extract_day0_predictions_from_hourly(hourly, ["m"])[0]
+    assert p.rain is True and p.onset is None
