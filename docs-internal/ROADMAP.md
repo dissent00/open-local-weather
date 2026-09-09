@@ -10958,14 +10958,45 @@ be news is a neighbour departing from its OWN usual relationship to the
 primary — which is item 95's anomaly problem again, and blocked on the same
 thing: a record long enough to know what usual is.
 
-### So: measure first
+### Measuring started 2026-09-09
 
-**Add the region points to the sandbox sweep and accumulate.** It already runs
-daily, costs nothing, and stores per-point predictions. In a fortnight it can
-answer the only question that matters here — how often does a neighbouring
-area cross a CATEGORY boundary the primary does not? — and the threshold gets
-chosen from data instead of taste. Building the stanza first would mean
-picking a number and finding out later.
+`sandbox/locations.py` gained a second fleet, `NYANZA` — Kisumu, Siaya, Homa
+Bay, Kisii, Migori and a Winam Gulf point 35 km west. The daily sweep stores
+all six alongside the global twelve, so the threshold question gets answered
+from a fortnight of data rather than from taste. Costs nothing: still one
+request per location, still no LLM.
+
+**The first day already argues against my own caution.** Six areas, six
+different Overviews:
+
+| area | today |
+|---|---|
+| Kisumu | Cloudier than yesterday. Dry until **evening** thunderstorms |
+| Siaya | Slightly warmer and cloudier. Largely dry with **afternoon** thunderstorms |
+| Homa Bay | Slightly warmer. Largely dry with thunderstorms |
+| Kisii | Slightly warmer. Dry until evening thunderstorms |
+| Migori | Dry until evening thunderstorms, after a **dry** day |
+| Winam Gulf | **Much warmer** (+7.2 °C day-over-day, against Kisumu's +0.6) |
+
+Siaya and Kisumu are 56 km apart and disagree about WHEN the storms arrive —
+afternoon against evening. That is not geography restated; it is the thing a
+commuter acts on. One day is not a rate, and the fleet exists to turn it into
+one.
+
+**The operator's later call, which supersedes the filter above:** drop
+"significantly different" and give each chosen area its own blurb. That is
+better than a threshold, because checkboxes let the READER decide relevance
+and a person who works in Homa Bay knows that better than a band ever will.
+
+The refinement worth keeping from the filtered design: **let the contrast
+decide LENGTH, not INCLUSION.** An area much like the primary gets one line;
+an area that differs gets a paragraph. Anti-enumeration discipline without a
+threshold deciding whether to mention it at all, which was the risky part.
+
+**And the lake stops being special.** `secondary_point` is currently a
+hardcoded second location with its own config block and prompt section. Under
+this model it is one more supplementary area that happens to be water — a
+simplification, not an addition.
 
 ### Resolution, corrected
 

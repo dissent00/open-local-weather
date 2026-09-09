@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from locations import FLEET, SandboxLocation  # noqa: E402
+from locations import FLEET, NYANZA, SandboxLocation  # noqa: E402
 
 from openlocalweather.comparison import (  # noqa: E402
     compute_day_over_day,
@@ -167,14 +167,17 @@ def observe(loc: SandboxLocation) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--locations", nargs="*", help="names to include; default all")
+    parser.add_argument("--fleet", choices=("global", "nyanza", "all"), default="all",
+                        help="which fleet to sweep; the two answer different questions "
+                             "(see locations.py)")
     parser.add_argument("--store", action="store_true",
                         help="write each location's predictions and observations under sandbox/data/")
     args = parser.parse_args()
 
-    fleet = FLEET
+    fleet = {"global": FLEET, "nyanza": NYANZA, "all": FLEET + NYANZA}[args.fleet]
     if args.locations:
         wanted = {n.lower() for n in args.locations}
-        fleet = tuple(loc for loc in FLEET if loc.name.lower() in wanted)
+        fleet = tuple(loc for loc in fleet if loc.name.lower() in wanted)
 
     fired: dict[str, list[str]] = defaultdict(list)
     print(f"Sweeping {len(fleet)} locations; each date is the LOCATION's, not the runner's\n")

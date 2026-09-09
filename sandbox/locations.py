@@ -26,6 +26,8 @@ class SandboxLocation:
     why: str
 
 
+# THE GLOBAL FLEET answers "what does this deployment's weather hide" — see
+# README.md. Chosen for the cases they produce, not for coverage.
 FLEET: tuple[SandboxLocation, ...] = (
     SandboxLocation("Kisumu", -0.0917, 34.7680, "Africa/Nairobi", "HKKI",
                     "the control — the deployment whose blind spots this is measuring"),
@@ -51,4 +53,39 @@ FLEET: tuple[SandboxLocation, ...] = (
                     "maritime temperate, persistent wind, frequent frontal rain"),
     SandboxLocation("Denver", 39.7392, -104.9903, "America/Denver", "KDEN",
                     "lee-of-the-Rockies downslope wind and violent temperature changes"),
+)
+
+
+# THE REGIONAL FLEET answers a different question, and is kept separate so the
+# two purposes stay legible. ROADMAP item 99: the operator wants a primary
+# area plus supplementary ones a reader can choose — someone who lives in
+# Kisumu and works in Homa Bay, which is common wherever people commute into
+# a town.
+#
+# The open question is not whether it can be built. One Open-Meteo request
+# returns six points, five models and the full hourly set in 1.2 seconds, and
+# the label machinery is already point-agnostic. The question is HOW OFTEN A
+# NEIGHBOUR ACTUALLY DIFFERS, because a difference that is there every day is
+# geography rather than news — Kisii is 500 m higher and will read "cooler"
+# forever. Accumulating these lets that threshold be chosen from data.
+#
+# ICAO CODES ARE MOSTLY EMPTY AND THAT IS THE FINDING, not an omission. Only
+# Kisumu has a station, so every other area can be verified against reanalysis
+# alone — which item 98 has just shown is the weak source for exactly the
+# convective rain that matters here. Anyone filling these in should confirm
+# the station actually files, rather than that an identifier exists.
+NYANZA: tuple[SandboxLocation, ...] = (
+    SandboxLocation("Kisumu", -0.0917, 34.7680, "Africa/Nairobi", "HKKI",
+                    "the primary — every other area is a contrast against this"),
+    SandboxLocation("Siaya", 0.0607, 34.2881, "Africa/Nairobi", "",
+                    "56 km NW, 1315 m — lower relief contrast, tests whether distance alone matters"),
+    SandboxLocation("Homa Bay", -0.5273, 34.4571, "Africa/Nairobi", "",
+                    "60 km S on the lake shore, 1154 m — nearly Kisumu's elevation, so any difference is not relief"),
+    SandboxLocation("Kisii", -0.6773, 34.7796, "Africa/Nairobi", "",
+                    "65 km SE at 1684 m — 500 m higher, and the area most likely to differ every single day"),
+    SandboxLocation("Migori", -1.0634, 34.4731, "Africa/Nairobi", "",
+                    "113 km S, 1373 m — the far edge of the basin"),
+    SandboxLocation("Winam Gulf", -0.25, 34.50, "Africa/Nairobi", "",
+                    "35 km W on the water where Kisumu's boats actually are; the configured "
+                    "secondary point is 194 km away in open lake and 9.5 C colder"),
 )

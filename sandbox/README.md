@@ -1,4 +1,4 @@
-# Sandbox — the same code, somewhere the weather is different
+# Sandbox — two fleets, two questions
 
 Kisumu is a mild, consistent place, and that has hidden defects. Every one of
 these survived a full test suite because the deployment never produced the case:
@@ -12,8 +12,22 @@ these survived a full test suite because the deployment never produced the case:
 - Two consecutive gales would read "similar winds", which no local day tests.
 
 **This runs the deterministic half of the pipeline against a fleet of
-locations and reports which code paths fired.** It answers one question: what
-does this deployment's weather hide?
+locations and reports which code paths fired.**
+
+## The two fleets
+
+`--fleet global` (12 locations, Wellington to Ulaanbaatar) answers: **what does
+this deployment's weather hide?** Chosen for the cases they produce.
+
+`--fleet nyanza` (6 points, 0-113 km from Kisumu) answers a different
+question, for ROADMAP item 99: **how often does a neighbouring area actually
+differ?** The operator wants a primary area plus supplementary ones a reader
+can pick — someone who lives in Kisumu and works in Homa Bay. Building it is
+easy; knowing when a neighbour is worth a sentence is not, because a
+difference that is there every day is geography rather than news. Kisii is
+500 m higher and will read "cooler" forever.
+
+The default is both. They are kept separate so the purposes stay legible.
 
 ## What it costs
 
