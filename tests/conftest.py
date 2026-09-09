@@ -23,4 +23,7 @@ def _no_retry_sleeping(monkeypatch):
     call site, which is exactly the kind of discipline that lapses.
     """
     monkeypatch.setattr(open_meteo, "RETRY_BASE_DELAY_S", 0)
+    # Item 79's longer wait for a timed-out request, zeroed for the same
+    # reason. A test that is ABOUT the delay values sets them back itself.
+    monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 0)
     monkeypatch.setattr(open_meteo.time, "sleep", lambda _: None)

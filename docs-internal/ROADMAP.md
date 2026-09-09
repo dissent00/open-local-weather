@@ -8511,7 +8511,7 @@ hash that will vary), item 28 (the removal trigger), item 68.
 
 ---
 
-## 79. A provider outage deserves a longer wait than a hiccup · **Planned**
+## 79. A provider outage deserves a longer wait than a hiccup · **Weather fetches done 2026-09-09; the LLM half still Planned**
 
 > **Measured 2026-09-08, and this item is the one that fits.** A failed 15:01
 > refresh spent four attempts, every one `http_503`, at 4.228 / 4.564 /
@@ -8613,6 +8613,52 @@ item 26 (the cap these attempts count against), item 11 in the Ensemble repo
 outcome).
 
 ---
+
+### Extended to the WEATHER fetches, and done there first — 2026-09-09
+
+This item was written about the LLM. The same failure arrived from the other
+direction: the 15:01 run died on three consecutive 30-second read timeouts
+against `api.open-meteo.com`, and never reached the LLM at all — the spend
+ledger for that run is empty, and a row is written BEFORE each call.
+
+The attempts were **1.6 s and 3.2 s apart**. Ninety-five seconds of elapsed
+time and functionally ONE attempt repeated three times: a service saturated
+enough to drop a connection is still saturated a second and a half later, and
+asking again immediately asks the same overloaded server.
+
+**A timeout means busy; a refused connection means something else.** So
+`_retry_delay_s` now gives a timed-out request 15 s and 30 s between attempts
+while everything else keeps 1.5 s and 3 s. The short delay is kept rather than
+replaced, because it was earned by a different failure recorded in the same
+file — *"a run succeeded, and an identical one 30 seconds later failed to
+reach the API, with the service demonstrably healthy either side"*. That blip
+IS fixed by retrying at once, and slowing it would make a recoverable run
+slower for nothing.
+
+Worst case for one request under sustained timeouts rises from 94 s to 135 s,
+and a test asserts it stays under 300 so a retry policy cannot outlive the
+cron slot.
+
+**The ordering is the load-bearing line.** `requests.Timeout` subclasses
+`requests.RequestException`, so catching the general case first would classify
+every failure as a hiccup and the long wait would never run. Verified against
+the real path: read timeout and connect timeout both wait 15/30, a refused
+connection waits 1.5/3.
+
+### What the two failures actually say, which is not what either of us guessed
+
+| run | cause | attempts |
+|---|---|---|
+| 2026-09-08 15:01 | Gemini HTTP 503 | 4 at 4.2 / 4.6 / 67.6 / 5.4 s |
+| 2026-09-09 15:01 | Open-Meteo read timeout | 3 at 30 s |
+
+**Two independent services, the same cron slot, and every 03:01 run
+succeeds.** That points at the slot rather than at either service. The
+operator suspected US morning load; 15:01 UTC is 11:01 Eastern, which fits.
+
+**The prompt is not implicated in either**, though it was the other
+hypothesis. The 09-09 run never built one. The 09-08 failures were 503s — a
+service refusing — which a longer prompt does not cause.
 
 ## 80. The synchronous call may be the wrong shape · **Measurement built, rest Planned**
 

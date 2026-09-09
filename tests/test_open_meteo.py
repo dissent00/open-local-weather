@@ -360,3 +360,47 @@ def test_an_hour_with_no_cloud_reading_is_not_a_clear_hour():
     day = absent[date(2026, 8, 11)]
     assert day.cloud_cover_pct is None
     assert "cloud_cover_pct" not in day.provenance
+
+
+def test_a_timeout_waits_longer_than_a_hiccup(monkeypatch):
+    """ROADMAP item 79, extended to the weather fetches 2026-09-09.
+
+    The 15:01 run that day died on three consecutive 30-second read timeouts
+    against api.open-meteo.com, 1.6 s and 3.2 s apart. That is 95 seconds of
+    elapsed time and functionally ONE attempt repeated: a service saturated
+    enough to drop a connection is still saturated a second and a half later.
+
+    A timeout means BUSY; a refused connection or a 5xx means something else.
+    So a timeout gets the long backoff and everything else keeps the short
+    one, because a transient blip genuinely is fixed by trying again at once
+    and delaying it would only make a recoverable run slower.
+    """
+    from openlocalweather.fetch import open_meteo
+
+    # conftest zeroes every backoff so the suite does not sleep. This test is
+    # ABOUT the delays, so it puts the real ones back.
+    monkeypatch.setattr(open_meteo, "RETRY_BASE_DELAY_S", 1.5)
+    monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 15.0)
+    delay = open_meteo._retry_delay_s
+
+    # Short for the blip it was written for.
+    assert delay(1, timed_out=False) == 1.5
+    assert delay(2, timed_out=False) == 3.0
+
+    # An order of magnitude longer for a service under load, and growing.
+    assert delay(1, timed_out=True) >= 10 * delay(1, timed_out=False)
+    assert delay(2, timed_out=True) > delay(1, timed_out=True)
+
+
+def test_the_long_backoff_still_fits_inside_the_run(monkeypatch):
+    """A retry policy that outlives the cron slot is a different outage. Three
+    attempts at 30 s plus the waits must stay well under the gap to the next
+    scheduled run."""
+    from openlocalweather.fetch import open_meteo
+
+    monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 15.0)
+    worst = open_meteo.REQUEST_TIMEOUT_S * open_meteo.MAX_ATTEMPTS + sum(
+        open_meteo._retry_delay_s(a, timed_out=True)
+        for a in range(1, open_meteo.MAX_ATTEMPTS)
+    )
+    assert worst < 300, f"a single request could take {worst}s before giving up"

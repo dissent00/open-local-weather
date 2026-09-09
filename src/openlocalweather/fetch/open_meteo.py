@@ -81,6 +81,33 @@ class OpenMeteoFetchError(RuntimeError):
 MAX_ATTEMPTS = 3
 RETRY_BASE_DELAY_S = 1.5
 
+# A TIMEOUT MEANS BUSY, AND BUSY DOES NOT CLEAR IN A SECOND AND A HALF.
+# ROADMAP item 79, extended from the LLM to the weather fetches 2026-09-09.
+#
+# The 15:01 run that day died on three consecutive 30-second read timeouts
+# against this API, spaced 1.6 s and 3.2 s apart. Ninety-five seconds of
+# elapsed time, and functionally ONE attempt repeated three times: a service
+# saturated enough to drop the connection is still saturated a second later,
+# and asking again immediately asks the same overloaded server.
+#
+# Kept separate from RETRY_BASE_DELAY_S rather than replacing it, because the
+# short delay was earned by a different failure — "a run succeeded, and an
+# identical one 30 seconds later failed to reach the API, with the service
+# demonstrably healthy either side", recorded above. That blip IS fixed by
+# trying again at once, and slowing it down would make a recoverable run
+# slower for nothing. The two failures are distinguishable at the point of
+# catching them, so they get different waits.
+TIMEOUT_RETRY_DELAY_S = 15.0
+
+
+def _retry_delay_s(attempt: int, *, timed_out: bool) -> float:
+    """How long to wait before attempt N+1. Linear, not exponential: with
+    MAX_ATTEMPTS at 3 there are only two waits, so the shape hardly matters
+    and a doubling would push the worst case past the useful window."""
+    base = TIMEOUT_RETRY_DELAY_S if timed_out else RETRY_BASE_DELAY_S
+
+    return base * attempt
+
 # ONE CONNECTION FOR THE WHOLE RUN, rather than a fresh TCP+TLS handshake per
 # call. A run makes seven /v1/forecast requests plus air quality inside about
 # half a minute, and every one of them used to open its own connection.
@@ -129,10 +156,15 @@ def _get(url: str, params: dict[str, Any]) -> dict:
     started = time.monotonic()
 
     last_error: Exception | None = None
+    timed_out = False
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             resp = _SESSION.get(url, params=params, timeout=REQUEST_TIMEOUT_S)
         except requests.RequestException as e:
+            # Timeout BEFORE RequestException matters — requests.Timeout is a
+            # subclass, so ordering the other way would catch every failure as
+            # a hiccup and the long wait would never happen.
+            timed_out = isinstance(e, requests.Timeout)
             print(
                 f"request #{position} ({_describe(url, params)}) failed on "
                 f"attempt {attempt}/{MAX_ATTEMPTS}, {time.monotonic() - started:.1f}s "
@@ -161,7 +193,7 @@ def _get(url: str, params: dict[str, Any]) -> dict:
                 f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
             )
         if attempt < MAX_ATTEMPTS:
-            time.sleep(RETRY_BASE_DELAY_S * attempt)
+            time.sleep(_retry_delay_s(attempt, timed_out=timed_out))
     raise last_error  # type: ignore[misc]
 
 
