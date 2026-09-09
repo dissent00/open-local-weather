@@ -10754,3 +10754,60 @@ the cheap truth; satellite is new capability and belongs with items 65 and 87.
 Related: item 83 (the composition this exercises), item 95 (the bands),
 item 77 (the harness), item 47 and item 81 (which this makes unnecessary as
 beta prerequisites), item 84.
+
+---
+
+## 97. `rain` means one thing at Day+0 and another at Day+3 · **Planned — do not fix casually**
+
+Found by the third harness run, 2026-09-09, and confirmed directly:
+
+```
+Same 2.0 mm day, wettest hour 0.4 mm:
+  Day+0 (hourly path): precip_mm=2.0  rain=False
+  Day+3 (daily path) : precip_mm=2.0  rain=True
+```
+
+`extract_day0_predictions_from_hourly` sets `rain` from whether ANY HOUR
+crosses `RAIN_THRESHOLD_MM` (0.5 mm). `extract_day_n_predictions_from_daily`
+sets it from whether the DAILY TOTAL crosses the same 0.5 mm. Those are
+different questions, and the second is far easier to satisfy — 0.1 mm in each
+of six hours is rain at Day+3 and no rain at Day+0.
+
+**This is the boolean the entire accuracy record is built on.** Every Brier
+score, every rain-verification percentage, every ranking finding. So Day+0
+skill and Day+3 skill are not measuring the same quantity, and the long-run
+review compares them as though they were.
+
+The worker reconstructed the rule from the payload before I confirmed it, and
+its live example is better than my synthetic one: `ecmwf_ifs025` and
+`best_match` both carry `rain: false` with `precip_mm: 2.1` and
+`rain_probability_pct: 96` at Day+0 today. It also noted the consequence for
+its own call — the prompt says *"Set 'rain' by the same standard the models
+are scored on: whether measurable rain falls at the location during the day"*,
+which is the DAILY-TOTAL reading, so a forecaster obeying the prompt is scored
+at Day+0 against the HOURLY-PEAK rule.
+
+### Why this is not a quick fix
+
+`ModelPrediction.rain`'s own docstring records the constraint: *"changing what
+that means would make every stored day incomparable with every other."* 29
+days of record are scored under the current pair of rules. Options, none
+taken:
+
+1. **Converge on one definition and re-derive the record.** Every stored
+   prediction keeps its `precip_mm`, so the boolean is recomputable for the
+   whole archive — this is the only option that leaves the record internally
+   comparable, and it rewrites history.
+2. **Converge going forward only**, and mark the changeover date. Honest, and
+   it splits every rolling window across two definitions for 30 days.
+3. **Score them as separate quantities** and stop comparing Day+0 skill with
+   Day+3 skill. Cheapest, and it gives up a comparison the review currently
+   makes.
+
+The daily-total rule is probably the right target — it is what the prompt
+already tells the forecaster, and "did measurable rain fall today" is the
+question a reader asks. But that is a judgement about product, not a bug fix,
+and it needs the operator.
+
+Related: item 42 (what "observed rain" means), item 57 (the findings that
+compare across leads), item 84.
