@@ -30,6 +30,8 @@ class GlossaryEntry {
 const _noaaMarine =
     'US National Weather Service, marine forecast definitions (weather.gov/marine/faq)';
 const _epaAqi = 'US EPA Air Quality Index (airnow.gov/aqi/aqi-basics)';
+const _nwsGlossary =
+    'US National Weather Service Glossary (forecast.weather.gov/glossary.php)';
 
 const List<GlossaryEntry> glossary = [
   GlossaryEntry(
@@ -45,7 +47,7 @@ const List<GlossaryEntry> glossary = [
   GlossaryEntry(
     'CAPE',
     'Convective Available Potential Energy, in joules per kilogram: how much energy is available to lift air, and so how vigorous a thunderstorm could become. Below about 300 J/kg convection is unlikely, 300-1000 is marginal to moderate, and above 1000 supports thunderstorms. It measures POTENTIAL, not certainty — a day can carry high CAPE and never produce a storm, because something still has to lift the air.',
-    null,
+    _nwsGlossary,
   ),
   GlossaryEntry(
     'instability',
@@ -55,7 +57,7 @@ const List<GlossaryEntry> glossary = [
   GlossaryEntry(
     'convective',
     'Driven by rising air rather than by a large weather system. Convective rain is showery, local and short-lived, and can fall heavily on one side of a town while the other stays dry.',
-    null,
+    _nwsGlossary,
   ),
   GlossaryEntry(
     'gust versus sustained wind',
@@ -105,7 +107,7 @@ const List<GlossaryEntry> glossary = [
   GlossaryEntry(
     'cumulonimbus',
     'The tall, anvil-topped cloud that produces thunderstorms. Its presence in an airport report is a direct observation of a storm, not a forecast of one.',
-    null,
+    _nwsGlossary,
   ),
   GlossaryEntry(
     'onset',

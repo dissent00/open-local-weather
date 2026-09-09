@@ -12,7 +12,12 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
-from openlocalweather.glossary import EPA_AQI, GLOSSARY, NOAA_MARINE  # noqa: E402
+from openlocalweather.glossary import (  # noqa: E402
+    EPA_AQI,
+    GLOSSARY,
+    NOAA_MARINE,
+    NWS_GLOSSARY,
+)
 
 DART = pathlib.Path(__file__).resolve().parents[1] / "app/olw_core/lib/src/glossary.dart"
 HEADER_TERMS = (
@@ -28,7 +33,7 @@ def quote(text: str) -> str:
 
 
 def main() -> None:
-    aliases = {NOAA_MARINE: "_noaaMarine", EPA_AQI: "_epaAqi"}
+    aliases = {NOAA_MARINE: "_noaaMarine", EPA_AQI: "_epaAqi", NWS_GLOSSARY: "_nwsGlossary"}
     entries = []
     for e in GLOSSARY:
         source = aliases.get(e.source) or ("null" if e.source is None else quote(e.source))
@@ -70,6 +75,8 @@ class GlossaryEntry {{
 const _noaaMarine =
     {quote(NOAA_MARINE)};
 const _epaAqi = {quote(EPA_AQI)};
+const _nwsGlossary =
+    {quote(NWS_GLOSSARY)};
 
 const List<GlossaryEntry> glossary = [
 {body}

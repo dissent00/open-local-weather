@@ -30,7 +30,7 @@
       },
       "expected": {
         "definition": "Convective Available Potential Energy, in joules per kilogram: how much energy is available to lift air, and so how vigorous a thunderstorm could become. Below about 300 J/kg convection is unlikely, 300-1000 is marginal to moderate, and above 1000 supports thunderstorms. It measures POTENTIAL, not certainty \u2014 a day can carry high CAPE and never produce a storm, because something still has to lift the air.",
-        "source": null
+        "source": "US National Weather Service Glossary (forecast.weather.gov/glossary.php)"
       }
     },
     {
@@ -50,7 +50,7 @@
       },
       "expected": {
         "definition": "Driven by rising air rather than by a large weather system. Convective rain is showery, local and short-lived, and can fall heavily on one side of a town while the other stays dry.",
-        "source": null
+        "source": "US National Weather Service Glossary (forecast.weather.gov/glossary.php)"
       }
     },
     {
@@ -150,7 +150,7 @@
       },
       "expected": {
         "definition": "The tall, anvil-topped cloud that produces thunderstorms. Its presence in an airport report is a direct observation of a storm, not a forecast of one.",
-        "source": null
+        "source": "US National Weather Service Glossary (forecast.weather.gov/glossary.php)"
       }
     },
     {

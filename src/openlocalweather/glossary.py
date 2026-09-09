@@ -39,6 +39,11 @@ class GlossaryEntry:
 
 NOAA_MARINE = "US National Weather Service, marine forecast definitions (weather.gov/marine/faq)"
 EPA_AQI = "US EPA Air Quality Index (airnow.gov/aqi/aqi-basics)"
+# The standing source for meteorological vocabulary: 2,000+ terms, letter
+# indexed at glossary.php?letter=<x>. CHECK IT BEFORE WRITING A DEFINITION —
+# a term it defines should be defined its way, and a term it does not carry
+# (like "consensus") is one we are genuinely on our own for.
+NWS_GLOSSARY = "US National Weather Service Glossary (forecast.weather.gov/glossary.php)"
 
 GLOSSARY: tuple[GlossaryEntry, ...] = (
     GlossaryEntry(
@@ -68,6 +73,7 @@ GLOSSARY: tuple[GlossaryEntry, ...] = (
         "thunderstorms. It measures POTENTIAL, not certainty — a day can "
         "carry high CAPE and never produce a storm, because something still "
         "has to lift the air.",
+        NWS_GLOSSARY,
     ),
     GlossaryEntry(
         "instability",
@@ -80,6 +86,7 @@ GLOSSARY: tuple[GlossaryEntry, ...] = (
         "Driven by rising air rather than by a large weather system. "
         "Convective rain is showery, local and short-lived, and can fall "
         "heavily on one side of a town while the other stays dry.",
+        NWS_GLOSSARY,
     ),
     GlossaryEntry(
         "gust versus sustained wind",
@@ -148,6 +155,7 @@ GLOSSARY: tuple[GlossaryEntry, ...] = (
         "The tall, anvil-topped cloud that produces thunderstorms. Its "
         "presence in an airport report is a direct observation of a storm, "
         "not a forecast of one.",
+        NWS_GLOSSARY,
     ),
     GlossaryEntry(
         "onset",

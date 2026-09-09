@@ -5644,9 +5644,25 @@ holds — correcting a definition needs an app release.
   surface with the STRONGER claim per this item — someone who installed an
   app has no repo to read — and it is the half not done.
 - **The email has no glossary section.** Same list, a different template.
-- Thirteen entries are unsourced. Not wrong, but item 56's own precedent
-  (see the blockquote above) is that a published standard beats our wording,
-  and UV index and METAR in particular have obvious authorities.
+- **Ten entries are unsourced**, down from thirteen. UV index, METAR, hPa and
+  knot in particular have obvious authorities and should be checked.
+
+### The standing source, added 2026-09-09
+
+**The NWS Glossary — https://forecast.weather.gov/glossary.php — 2,000+ terms,
+letter-indexed at `glossary.php?letter=<x>`.** The operator's call, and it
+covers everything this forecast is likely to need as terms accumulate.
+
+**The rule: check it before writing a definition.** A term it defines should
+be defined its way; a term it does not carry is one we are genuinely on our
+own for. Both cases were confirmed on the first pass — CAPE, convection and
+cumulonimbus matched what had already been written and are now cited to it,
+while "consensus" is absent from all 2,000 terms, so that entry's lack of a
+citation is a fact rather than an omission.
+
+That check is worth doing for its own sake: three definitions written from
+memory were being published to readers, and this is what turned them from
+plausible into verified.
 
 ### The thing a glossary does not fix
 
