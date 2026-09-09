@@ -2755,6 +2755,16 @@ def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
     assert "THE EXTENDED GUIDANCE DID NOT ARRIVE" in system_prompts[0]
     assert "using the daily summary data" not in system_prompts[0]
 
+    # AND IT SURVIVES THE ROUND TRIP TO DISK. check_recent_degradations reads
+    # the COMMITTED log, so an in-memory code that never lands on disk is a
+    # miss that accumulates invisibly — the exact failure this degradation was
+    # added to prevent.
+    written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert DEGRADATION_EXTENDED_OUTLOOK in {d.code for d in written.meta.degradations}
+    assert DEGRADATION_EXTENDED_OUTLOOK in {
+        d.code for issuance in written.issuance_log() for d in issuance.degradations
+    }
+
 
 def test_the_lake_losing_its_outlook_degrades_too(tmp_path):
     """The SAME endpoint and the same outage. The secondary point's extended
