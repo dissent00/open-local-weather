@@ -304,8 +304,14 @@ def _response_meta(holder: dict) -> ResponseMeta:
     return holder.get("meta") or ResponseMeta()
 
 
-def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
+def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
     """Make the cap count HTTP requests, which is what actually costs money.
+
+    PUBLIC because the pipeline is not the only thing that spends. `olw
+    replay` calls the model once per frozen case and went uncounted until
+    2026-09-10 precisely because this was private and the CLI reached past it
+    to the provider — see `_run_replay`. Anything that can reach
+    `deps.llm_provider` must come through here first.
 
     Recording once before generate() undercounted by up to a factor of
     MAX_ATTEMPTS: the providers retry transient failures inside a single
@@ -1627,7 +1633,7 @@ def run_daily_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = _attach_spend_cap(deps, location, purpose="forecast")
+    _verify_spend, _last_response = attach_spend_cap(deps, location, purpose="forecast")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
@@ -2061,7 +2067,7 @@ def run_refresh_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = _attach_spend_cap(deps, location, purpose="refresh")
+    _verify_spend, _last_response = attach_spend_cap(deps, location, purpose="refresh")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )

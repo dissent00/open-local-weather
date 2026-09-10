@@ -6365,6 +6365,50 @@ is a change in the world since 08-30, not a difference of opinion about it.
 **Cost: 5 calls for no comparison**, against a configured cap of 10. That is
 item 66's arithmetic arriving in practice rather than in theory.
 
+### It ran, and succeeded, 2026-09-10 — and was not counted
+
+All six cases returned, in 22-91s each, through two 503s that retried. Stored
+as `data/replay/2026-09-10/`, which is the first thing this project has to
+diff a prompt change against; the README there says what it is for, because a
+replay nobody kept is the 2026-09-03 outcome with extra steps.
+
+**The baseline reads clean.** Every display string across the six is 22
+characters or shorter, so item 100's 200-character bound has enormous headroom
+in normal operation and is not going to fire on a wordy forecaster. `onset_hour`
+is null in all six, consistent with the rule now that it lives in one place.
+
+One thing to watch rather than act on: `rain_probability_pct` came back null in
+both cases where `rain` was false, and those are the two thinnest payloads. If
+that is a pattern rather than an artefact of minimal fixtures, item 58's Brier
+score gets no data at all from dry calls, which is half the days. Two cases is
+not a finding — check it against the next replay.
+
+**AND THE REPLAY WAS NOT COUNTED AGAINST THE SPEND CAP.** Found by reading the
+ledger after the run: six cases, eight requests once the 503s had retried, and
+not one row. `_run_replay` built its deps through `_build_pipeline_deps` and
+then called `run_replay(deps.llm_provider, cases)`, reaching the provider
+without passing through `attach_spend_cap`.
+
+The docstring has promised the opposite since item 27 — *"counted by the same
+spend cap the forecast uses (item 26) — which means a careless replay can
+exhaust the day's budget and refuse the morning forecast"* — and the command
+prints the same claim to the operator before asking them to confirm the spend.
+Both were false, and the line above about "5 calls against a cap of 10" was
+therefore wrong when it was written too.
+
+The missing rows are the smaller half. The real one is that the most expensive
+command here could run with the cap already exhausted, because `assert_capacity`
+was never reached.
+
+Fixed: the cap is attached before `run_replay` and verified after, with
+`purpose="replay"` so a later read can tell a harness run from the forecast it
+was meant to be compared against. `attach_spend_cap` is public now, and its
+docstring says why — anything that can reach `deps.llm_provider` has to come
+through it, and it was private precisely when the CLI reached past it.
+
+**The eight requests are not backfilled.** Their timestamps are not recoverable
+and inventing them would put false rows in the one record the cap reads.
+
 ### Still open
 
 - **Nothing displays Brier yet.** The accuracy page and the track record

@@ -53,6 +53,7 @@ from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.pipeline import (
     ForecastSkipped,
+    attach_spend_cap,
     PipelineDeps,
     PipelineRunResult,
     RefreshWithoutMorningRunError,
@@ -751,7 +752,27 @@ def _run_replay(args) -> int:
     # configuration and therefore a different thing being measured. A harness
     # whose conditions differ from production answers a question nobody asked.
     deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
+
+    # AND COUNTED, which this said it was and was not until 2026-09-10.
+    #
+    # The docstring above has promised since item 27 that a replay is "counted
+    # by the same spend cap the forecast uses", and the line printed a few
+    # lines up tells the operator the same thing. Neither was true: building
+    # deps and calling run_replay reaches the provider without ever passing
+    # through attach_spend_cap, so nothing recorded, nothing counted, and
+    # assert_capacity never asked whether there was budget left.
+    #
+    # Measured on the run that found it — six cases, eight requests once two
+    # 503s had retried, and not one row in the ledger. The failure mode is not
+    # the missing rows: it is that the most expensive command here could run
+    # with the cap already spent and leave the morning forecast to be refused.
+    #
+    # `purpose="replay"` rather than "forecast" so a later read can tell a
+    # harness run from the forecast it was meant to be compared against.
+    verify_spend, _ = attach_spend_cap(deps, deps.location, purpose="replay")
+
     results, failures = replay.run_replay(deps.llm_provider, cases)
+    verify_spend()
 
     out = Path(args.out)
     # Written even when some cases failed: every case is a paid call, and

@@ -1,0 +1,208 @@
+[
+  {
+    "case": "fully populated",
+    "model": "gemini-3.6-flash",
+    "latency_s": 34.179073874955066,
+    "response": {
+      "yesterday_verification": "At Day+0, rainfall verification was successful as model guidance correctly anticipated precipitation.",
+      "verification_notes": [
+        {
+          "lead_time_days": 0,
+          "note": "Day+0 rain call was accurate, with GFS correctly forecasting precipitation for yesterday."
+        }
+      ],
+      "skill_profile_summaries": [
+        {
+          "model": "gfs_seamless",
+          "lead_time_days": 0,
+          "summary": "At Day+0, shows reasonable accuracy on precipitation calls, though evaluation history remains brief."
+        }
+      ],
+      "today_properties": {
+        "rain_expected": "Yes",
+        "onset_window": null,
+        "peak_wind_kmh": null,
+        "temp_high_c": 30.0,
+        "temp_low_c": 17.0,
+        "rain": true,
+        "onset_hour": null,
+        "precip_mm": 2.1,
+        "rain_probability_pct": 65,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": "40-55"
+      },
+      "extended_properties": [],
+      "today_narrative": "## Overview\nSunny intervals with light scattered rains expected today, with temperatures peaking at 30°C / 86°F.\n\n## Today's Forecast\n30°C / 86°F temperatures and sunny intervals will define the day, accompanied by scattered light rain producing around 2.1 mm (0.08 in) of precipitation. Overnight lows will drop to 17°C / 63°F. Winds are expected around 15 km/h (8 kt). Air quality index values range from 40 to 55 across regional monitoring points, with Dunga Beach identified as the worst station.\n\n## Extended Outlook\nGuidance beyond today remains sparse for days three through seven. Near-term conditions suggest light precipitation tendencies, but lower confidence applies to the extended period due to limited multi-model data far out.\n\n## Severe Weather / Hazard Potential\nConvective guidance was unavailable this run. Readers should observe local sky conditions and consult subsequent forecast issuances regarding storm hazards.\n\n## Detailed Discussion\n### Synoptic Overview\nRegional surface pressure observations show Kisumu at 1012.4 hPa, with local airport METAR reporting Q1013 hPa. Large-scale synoptic scale pressure analysis was unavailable this cycle, limiting broader gradient evaluation to local point observations.\n\n### Forecaster Confidence Notes\nKenya Meteorological Department (KMD) called for sunny intervals and light rains over a few places with a maximum temperature of 30°C / 86°F, which aligns with GFS numerical predictions of 2.1 mm (0.08 in) precipitation. GFS holds a Day+0 rain verification accuracy of 62.5% over 8 checks. Review findings confirm data sufficiency is currently limited to 8 checks per model at Day+0, meaning cross-model rankings are not supported by the record. Model guidance was last aligned at 00:00Z, roughly 6.5 hours prior to issuance. Ground air quality monitoring recorded Dunga Beach at an AQI of 42.",
+      "whatsapp_summary": "⛅ Example Town Weather: Sunny intervals with scattered light rain today. Highs reaching 30°C / 86°F, lows around 17°C / 63°F. Air quality AQI 40-55."
+    }
+  },
+  {
+    "case": "evening refresh carries the morning narrative",
+    "model": "gemini-3.6-flash",
+    "latency_s": 23.964153458015062,
+    "response": {
+      "yesterday_verification": "No new verification performed on this intra-day update.",
+      "verification_notes": [
+        {
+          "lead_time_days": 0,
+          "note": "Verification is unchanged on intra-day updates."
+        }
+      ],
+      "skill_profile_summaries": [],
+      "today_properties": {
+        "rain_expected": "Yes",
+        "onset_window": "Evening through night",
+        "peak_wind_kmh": null,
+        "temp_high_c": 30.0,
+        "temp_low_c": 17.0,
+        "rain": true,
+        "onset_hour": null,
+        "precip_mm": 2.1,
+        "rain_probability_pct": 60,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": "40-55"
+      },
+      "extended_properties": [],
+      "today_narrative": "## Overview\nUpdated guidance arriving this evening maintains a chance of light showers overnight, with conditions settling toward dawn.\n\n## Today's Forecast\nLight showers remain possible through the evening and night, with temperatures dropping to around 17°C / 63°F by early morning. Air quality across ground stations ranges from 40 to 55 AQI, with Dunga Beach currently recording the worst reading.\n\n## Extended Outlook\nExtended daily guidance beyond today was limited in this model run, suggesting settled conditions into tomorrow before subsequent model cycles refresh the multi-day outlook.\n\n## Severe Weather / Hazard Potential\nConvective guidance (CAPE) was unavailable this run. This is a gap in the data rather than an indication of stable conditions. Check local sky conditions if planning evening or overnight activities.\n\n## Detailed Discussion\n### Synoptic Overview\nThe large-scale synoptic pressure picture could not be assessed this run as synoptic pressure ring data was unavailable. Regional pressure at Kisumu stands at 1012.4 hPa, with airport observations (HKKI) reporting CAVOK conditions at 1013 hPa. At ground air quality stations, Dunga Beach reported an AQI of 42.\n\n### Forecaster Confidence Notes\nThe Kenya Meteorological Department (KMD) local bulletin predicts sunny intervals with light rain expected over a few places, aligning with its prediction of 30.0°C and wet conditions today. This agrees with numerical guidance from GFS seamless calling for 2.1 mm of rain. Rolling track record stats for Day+0 show GFS seamless at a 62.5% rain accuracy over 8 checks. Because the stored review record currently has 8 checks per model, no long-run model rankings are established. Guidance recency is current as of 12:00Z (2.3 hours old), providing fresh cycle input for this evening update.",
+      "whatsapp_summary": "🌇 Evening Update: Fresh guidance maintains a chance of light showers tonight (up to 2.1 mm). Lows near 17°C / 63°F. Air quality ranges 40-55 AQI (Dunga Beach highest). Convective data unavailable this run."
+    }
+  },
+  {
+    "case": "evening refresh — no newer model cycle since the morning",
+    "model": "gemini-3.6-flash",
+    "latency_s": 22.50336466706358,
+    "response": {
+      "yesterday_verification": "No new verification results since the morning issuance as yesterday's actuals do not change intra-day.",
+      "verification_notes": [
+        {
+          "lead_time_days": 0,
+          "note": "No new verification performed on later issuance."
+        }
+      ],
+      "skill_profile_summaries": [],
+      "today_properties": {
+        "rain_expected": "Isolated light showers",
+        "onset_window": null,
+        "peak_wind_kmh": null,
+        "temp_high_c": 30.0,
+        "temp_low_c": 20.0,
+        "rain": true,
+        "onset_hour": null,
+        "precip_mm": null,
+        "rain_probability_pct": 60,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": null
+      },
+      "extended_properties": [
+        {
+          "lead_time_days": 3,
+          "rain": true,
+          "rain_probability_pct": 55
+        }
+      ],
+      "today_narrative": "## Overview\nNo new model guidance has arrived since earlier today, and conditions remain unchanged as night falls. Light showers remain possible across isolated spots heading into the evening and overnight.\n\n## Today's Forecast\nLight showers and warm conditions continue into the evening hours. Temperatures cool from the daytime high of 30°C / 86°F down toward an overnight low of 20°C / 68°F. Daily precipitation totals are expected around 2.1 mm (0.08 in). Peak winds remain moderate around 15 km/h (8 kt). Air quality values range between 40 and 55 AQI, with Dunga Beach reporting the highest reading.\n\n## Extended Outlook\nNear-term guidance supports isolated shower potential over the next 3 days, before conditions settle through days 4 to 7.\n\n## Severe Weather / Hazard Potential\nConvective guidance (CAPE) was unavailable this run. Because convective guidance is missing, thunderstorm potential cannot be assessed directly from model data tonight; readers should observe local sky conditions.\n\n## Detailed Discussion\n### Synoptic Overview\nThe large-scale synoptic pressure pattern could not be assessed this run due to unavailable scale pressure guidance. Local surface pressure at Kisumu stands at 1012.4 hPa.\n\n### Forecaster Confidence Notes\nThe Kenya Meteorological Department (KMD) local bulletin forecasts sunny intervals with light rains expected over a few places, which aligns with numerical guidance for isolated shower activity. Guidance recency is 8.3 hours old, with models last aligned at 06:00Z and no updated cycle since the previous issuance. GFS seamless holds a 62.5% rolling rain accuracy at Day+0. Long-run review data currently shows 8 checks per model, which is insufficient to support model ranking or bias claims.",
+      "whatsapp_summary": "Evening Update 🌤️\nNo new model guidance since earlier today. Light isolated showers remain possible tonight. High 30°C / Low 20°C. Air quality AQI 40-55."
+    }
+  },
+  {
+    "case": "cold start — every optional input absent",
+    "model": "gemini-3.6-flash",
+    "latency_s": 90.90813558397349,
+    "response": {
+      "yesterday_verification": "No verification results were available for yesterday across any lead time.",
+      "verification_notes": [],
+      "skill_profile_summaries": [],
+      "today_properties": {
+        "rain_expected": "Unavailable",
+        "onset_window": null,
+        "peak_wind_kmh": null,
+        "temp_high_c": 0.0,
+        "temp_low_c": 0.0,
+        "rain": false,
+        "onset_hour": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": null
+      },
+      "extended_properties": [],
+      "today_narrative": "## Overview\nModel guidance and convective data were unavailable for this run.\n\n## Today's Forecast\nTemperature and weather guidance are unavailable for today as multi-model guidance was not received. No ground air quality stations reported data today.\n\n## Extended Outlook\nExtended outlook guidance is unavailable for this run.\n\n## Severe Weather / Hazard Potential\nConvective guidance was unavailable this run. Please check sky conditions and consult later issuances for updated hazard information.\n\n## Detailed Discussion\n### Synoptic Overview\nThe large-scale synoptic pressure picture could not be assessed this run as synoptic-scale pressure guidance was unavailable.\n### Forecaster Confidence Notes\nNo model track record or verification results were available for this run. The local met service bulletin was unavailable this run. Guidance recency could not be established as model cycle information was unavailable. No ground air quality stations reported data today.",
+      "whatsapp_summary": "Weather guidance is unavailable for today, 2026-08-19. Please check back later for updated model forecast data."
+    }
+  },
+  {
+    "case": "no ground stations configured — the blocks are absent",
+    "model": "gemini-3.6-flash",
+    "latency_s": 65.04749979195185,
+    "response": {
+      "yesterday_verification": "No verification data was available for yesterday's lead times during this run.",
+      "verification_notes": [],
+      "skill_profile_summaries": [],
+      "today_properties": {
+        "rain_expected": "Unavailable",
+        "onset_window": null,
+        "peak_wind_kmh": null,
+        "temp_high_c": 0.0,
+        "temp_low_c": 0.0,
+        "rain": false,
+        "onset_hour": null,
+        "precip_mm": null,
+        "rain_probability_pct": null,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": null
+      },
+      "extended_properties": [],
+      "today_narrative": "## Overview\nConvective guidance and general multi-model data were unavailable this run. Please check local conditions and await a later issuance.\n\n## Today's Forecast\nUncertain weather conditions prevail today across Example Town as numerical multi-model guidance was completely unavailable for this cycle. Specific hourly details for temperature, rainfall, wind, UV exposure, and air quality cannot be provided.\n\n## Extended Outlook\nMulti-model extended daily guidance was unavailable for this issuance, so specific temperature trends and precipitation calls out to 7 days cannot be determined.\n\n## Severe Weather / Hazard Potential\nConvective instability guidance was unavailable this run. This is a gap in data rather than an indication of calm or settled weather. Do not infer a lack of severe weather from missing inputs; observe local skies and consult subsequent issuances.\n\n## Detailed Discussion\n### Synoptic Overview\nThe large-scale synoptic pressure pattern and regional MSLP snapshot could not be assessed this run due to missing model inputs.\n\n### Forecaster Confidence Notes\nForecaster confidence is unrated due to the total absence of numerical model runs, guidance recency figures, and verification records for this cycle. The local met service bulletin was unavailable this run.",
+      "whatsapp_summary": "Model guidance was unavailable for today's forecast. Please check local skies and await later issuances."
+    }
+  },
+  {
+    "case": "no local met service configured — the bulletin block is absent",
+    "model": "gemini-3.6-flash",
+    "latency_s": 30.05439120810479,
+    "response": {
+      "yesterday_verification": "At Day+0 lead time, GFS Seamless correctly forecast rainfall occurrence. Verification for yesterday demonstrated accurate precipitation detection.",
+      "verification_notes": [
+        {
+          "lead_time_days": 0,
+          "note": "At Day+0, GFS Seamless correctly verified rainfall occurrence."
+        }
+      ],
+      "skill_profile_summaries": [
+        {
+          "model": "gfs_seamless",
+          "lead_time_days": 0,
+          "summary": "At Day+0, demonstrates accurate precipitation detection, though overall evaluation history remains short."
+        }
+      ],
+      "today_properties": {
+        "rain_expected": "Light rain expected",
+        "onset_window": null,
+        "peak_wind_kmh": null,
+        "temp_high_c": 30.0,
+        "temp_low_c": 22.0,
+        "rain": true,
+        "onset_hour": null,
+        "precip_mm": 2.1,
+        "rain_probability_pct": 65,
+        "mslp_trend_24h": null,
+        "synoptic_pattern": null,
+        "uv_index_max": null,
+        "air_quality_aqi": "55"
+      },
+      "extended_properties": [],
+      "today_narrative": "## Overview\nWarm conditions with light showers expected today. Convective guidance was unavailable this cycle.\n\n## Today's Forecast\nTemperatures reaching 30°C / 86°F today with light showers generating around 2.1 mm (0.08 in) of rainfall. Overnight lows will settle near 22°C / 72°F. Wind speeds will run around 15 km/h (8 kt). Ground air quality ranges from 40 to 55, with Dunga Beach recording the highest AQI level at 55, while model guidance indicates PM2.5 levels around 18.0 µg/m³.\n\n## Extended Outlook\nNear-term conditions maintain a potential for scattered precipitation. Extended confidence remains low as multi-model extended guidance is limited for Days 3 through 7.\n\n## Severe Weather / Hazard Potential\nConvective guidance was unavailable this run. The lack of convective data represents a gap in guidance and should not be interpreted as an assurance of stable overhead conditions.\n\n## Detailed Discussion\n### Synoptic Overview\nLarge-scale pressure pattern data was unavailable this cycle. Surface pressure observations locally show 1012.4 hPa at Kisumu, with the local airport METAR reporting Q1013.\n\n### Forecaster Confidence Notes\nThe guidance behind this issuance is 6.5 hours old. Data sufficiency currently stands at 8 checks per model at Day+0, which is insufficient to rank model performance or claim long-term bias. Historical notes from yesterday accurately anticipated precipitation.\n\nIndividual station readings:\n- Dunga Beach: AQI 42",
+      "whatsapp_summary": "🌤️ Today: High 30°C / 86°F, Low 22°C / 72°F. Chance of light rain (2.1 mm). Winds around 15 km/h (8 kt). Air quality AQI 40-55 (worst at Dunga Beach: 55)."
+    }
+  }
+]

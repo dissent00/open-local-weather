@@ -170,7 +170,7 @@ def test_a_provider_that_ignores_the_hook_is_reported_loudly(tmp_path, capsys):
     # directory on sys.path itself and the bare name resolves under both.
     from test_pipeline_run import LOCATION, FakeLLMProvider, make_deps
 
-    from openlocalweather.pipeline import _attach_spend_cap
+    from openlocalweather.pipeline import attach_spend_cap
 
     class SilentProvider(FakeLLMProvider):
         """Never calls before_attempt — a plausible third-party provider."""
@@ -179,7 +179,7 @@ def test_a_provider_that_ignores_the_hook_is_reported_loudly(tmp_path, capsys):
             return self.response
 
     deps = make_deps(tmp_path, llm=SilentProvider())
-    verify, _ = _attach_spend_cap(deps, LOCATION, purpose="forecast")
+    verify, _ = attach_spend_cap(deps, LOCATION, purpose="forecast")
     deps.llm_provider.generate("sys", "user", None)
     verify()
 
@@ -331,4 +331,103 @@ def test_the_duration_excludes_the_backoff_it_waited_afterwards(tmp_path, monkey
     assert sum(slept) > 0, "the loop really did back off between attempts"
     assert all(r.elapsed_s < 1.0 for r in read_ledger(tmp_path)), (
         "a sub-second fake request is recorded as sub-second"
+    )
+
+
+def test_a_replay_is_counted_like_any_other_call(tmp_path, monkeypatch):
+    """`olw replay` is the most expensive thing this tool does — one call per
+    frozen case, six of them today — and it announced, in its own output and
+    in its own docstring, that they were "counted against the spend cap".
+
+    They were not. `_run_replay` built its deps through `_build_pipeline_deps`
+    and then called `run_replay(deps.llm_provider, cases)` directly, so
+    `attach_spend_cap` never ran: nothing was recorded, nothing was counted,
+    and `assert_capacity` never asked whether there was budget left. Measured
+    2026-09-10 — a six-case replay made eight requests (two 503s retried) and
+    the ledger gained not one row.
+
+    Worse than an uncounted call: a replay could run with the cap already
+    exhausted and then leave the morning forecast to be refused.
+    """
+    from openlocalweather import replay as replay_mod
+    from openlocalweather.cli import _run_replay
+
+    calls: list[str] = []
+
+    class Recording:
+        model = "fake-model"
+        before_attempt = None
+        after_attempt = None
+        after_response = None
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            if self.before_attempt is not None:
+                self.before_attempt()
+            calls.append(system_prompt)
+            if self.after_attempt is not None:
+                self.after_attempt("http_200", 0.1)
+            from openlocalweather.llm.schema import (
+                GeminiForecastResponse,
+                TodayProperties,
+            )
+
+            return GeminiForecastResponse(
+                yesterday_verification="ok",
+                verification_notes=[],
+                skill_profile_summaries=[],
+                today_properties=TodayProperties(
+                    rain=False,
+                    rain_expected="Unlikely",
+                    temp_high_c=26.0,
+                    temp_low_c=18.0,
+                    temp_high_low="26°C / 79°F",
+                ),
+                today_narrative="## Overview\nDry.",
+                whatsapp_summary=None,
+            )
+
+    from argparse import Namespace
+    from pathlib import Path
+
+    from openlocalweather.config import LocationConfig, Point
+    from openlocalweather.pipeline import PipelineDeps
+
+    deps = PipelineDeps(
+        location=LocationConfig(
+            region_name="R",
+            primary_place_name="P",
+            timezone="UTC",
+            primary_point=Point(lat=0.0, lon=0.0),
+        ),
+        data_dir=Path(tmp_path),
+        llm_provider=Recording(),
+        public_webpage_url="",
+    )
+    monkeypatch.setattr("openlocalweather.cli._build_pipeline_deps", lambda *a, **k: deps)
+    monkeypatch.setattr(
+        replay_mod,
+        "frozen_cases",
+        lambda: [
+            replay_mod.ReplayCase(name="one", system_prompt="s1", user_prompt="u1"),
+            replay_mod.ReplayCase(name="two", system_prompt="s2", user_prompt="u2"),
+        ],
+    )
+
+    _run_replay(
+        Namespace(
+            config="config/location.yaml",
+            data_dir=str(tmp_path),
+            docs_dir=str(tmp_path / "docs"),
+            public_url="",
+            out=str(tmp_path / "out"),
+            yes=True,
+        )
+    )
+
+    assert len(calls) == 2, "the replay did not run"
+    rows = read_ledger(tmp_path)
+    assert len(rows) == 2, f"a replay spent {len(calls)} calls and recorded {len(rows)}"
+    assert {r.purpose for r in rows} == {"replay"}, (
+        "recorded under the wrong purpose — a ledger read later cannot tell a "
+        "replay from the forecast it was meant to be compared against"
     )
