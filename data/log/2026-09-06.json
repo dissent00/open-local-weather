@@ -49,6 +49,7 @@
         "wind_kmh": 23.0,
         "high_c": 35.2,
         "low_c": 19.2,
+        "cloud_cover_pct": null,
         "mslp_trend": 2.1000000000000227
       },
       {
@@ -60,6 +61,7 @@
         "wind_kmh": 27.4,
         "high_c": 32.3,
         "low_c": 20.5,
+        "cloud_cover_pct": null,
         "mslp_trend": 1.3999999999999773
       },
       {
@@ -71,6 +73,7 @@
         "wind_kmh": 32.4,
         "high_c": 30.2,
         "low_c": 21.9,
+        "cloud_cover_pct": null,
         "mslp_trend": 3.2000000000000455
       },
       {
@@ -82,6 +85,7 @@
         "wind_kmh": 30.2,
         "high_c": 32.1,
         "low_c": 18.1,
+        "cloud_cover_pct": null,
         "mslp_trend": 2.2999999999999545
       },
       {
@@ -93,6 +97,7 @@
         "wind_kmh": 37.8,
         "high_c": 32.2,
         "low_c": 20.5,
+        "cloud_cover_pct": null,
         "mslp_trend": 2.2000000000000455
       },
       {
@@ -104,6 +109,7 @@
         "wind_kmh": null,
         "high_c": 32.0,
         "low_c": 19.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -115,6 +121,7 @@
         "wind_kmh": 39.2,
         "high_c": 33.4,
         "low_c": 20.1,
+        "cloud_cover_pct": null,
         "mslp_trend": -1.599999999999909
       },
       {
@@ -126,6 +133,7 @@
         "wind_kmh": 38.57555555555556,
         "high_c": 30.04,
         "low_c": 18.204444444444444,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -137,6 +145,7 @@
         "wind_kmh": null,
         "high_c": 32.2,
         "low_c": 19.8,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     ],
@@ -150,6 +159,7 @@
         "wind_kmh": 19.4,
         "high_c": 33.2,
         "low_c": 19.3,
+        "cloud_cover_pct": null,
         "mslp_trend": -0.6000000000000227
       },
       {
@@ -161,6 +171,7 @@
         "wind_kmh": 33.8,
         "high_c": 32.6,
         "low_c": 19.2,
+        "cloud_cover_pct": null,
         "mslp_trend": -1.0
       },
       {
@@ -172,6 +183,7 @@
         "wind_kmh": 24.8,
         "high_c": 29.9,
         "low_c": 21.9,
+        "cloud_cover_pct": null,
         "mslp_trend": -0.1999999999999318
       },
       {
@@ -183,6 +195,7 @@
         "wind_kmh": 25.9,
         "high_c": 32.2,
         "low_c": 15.9,
+        "cloud_cover_pct": null,
         "mslp_trend": -0.5
       },
       {
@@ -194,6 +207,7 @@
         "wind_kmh": 48.2,
         "high_c": 32.0,
         "low_c": 19.3,
+        "cloud_cover_pct": null,
         "mslp_trend": -1.3000000000000682
       },
       {
@@ -205,6 +219,7 @@
         "wind_kmh": null,
         "high_c": 34.0,
         "low_c": 18.0,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -216,6 +231,7 @@
         "wind_kmh": 39.2,
         "high_c": 33.4,
         "low_c": 20.1,
+        "cloud_cover_pct": null,
         "mslp_trend": -1.599999999999909
       },
       {
@@ -227,6 +243,7 @@
         "wind_kmh": 38.57555555555556,
         "high_c": 30.04,
         "low_c": 18.204444444444444,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -238,6 +255,7 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     ],
@@ -251,6 +269,7 @@
         "wind_kmh": 22.3,
         "high_c": 33.8,
         "low_c": 17.6,
+        "cloud_cover_pct": null,
         "mslp_trend": -0.3000000000000682
       },
       {
@@ -262,6 +281,7 @@
         "wind_kmh": 28.8,
         "high_c": 27.7,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
         "mslp_trend": 0.2999999999999545
       },
       {
@@ -273,6 +293,7 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -284,6 +305,7 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -295,6 +317,7 @@
         "wind_kmh": 45.4,
         "high_c": 29.6,
         "low_c": 19.7,
+        "cloud_cover_pct": null,
         "mslp_trend": 0.7000000000000455
       },
       {
@@ -306,6 +329,7 @@
         "wind_kmh": 39.2,
         "high_c": 33.4,
         "low_c": 20.1,
+        "cloud_cover_pct": null,
         "mslp_trend": -1.599999999999909
       },
       {
@@ -317,6 +341,7 @@
         "wind_kmh": 38.57555555555556,
         "high_c": 30.04,
         "low_c": 18.204444444444444,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       },
       {
@@ -328,6 +353,7 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
         "mslp_trend": null
       }
     ]
@@ -338,8 +364,8 @@
       "note": "Day+0: All models accurately verified the dry target for September 6th. ECMWF (-0.6°C), Best Match (-0.5°C), and Kenya Met (-0.3°C) captured daytime highs with minimal error, while GFS exhibited a -3.5°C high temperature cold bias and persistent wind speed overestimation."
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: ECMWF and ICON successfully verified the dry target for September 6th, whereas GFS, UKMO, Best Match, and Kenya Met falsely predicted precipitation. Daytime high temperatures were over-forecasted by GFS by 3.0°C."
     },
     "day7": {
       "verified": false,
