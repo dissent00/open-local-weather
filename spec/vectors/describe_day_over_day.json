@@ -152,12 +152,12 @@
       "input": {
         "high_label": null,
         "wind_label": null,
-        "rain_contrast": "dry, after a thundery day",
+        "rain_contrast": "dry",
         "today_character": null,
         "rain_unchanged": false,
         "wind_warning_name": null
       },
-      "expected": "Dry, after a thundery day."
+      "expected": "Dry."
     },
     {
       "name": "nothing moved at all, so the lead says so",
@@ -188,12 +188,12 @@
       "input": {
         "high_label": "about the same",
         "wind_label": "similar winds",
-        "rain_contrast": "dry, after a thundery day",
+        "rain_contrast": "dry",
         "today_character": "dry",
         "rain_unchanged": false,
         "wind_warning_name": null
       },
-      "expected": "Dry, after a thundery day."
+      "expected": "Dry."
     },
     {
       "name": "a warning is not suppressed by sameness",

@@ -458,18 +458,25 @@ DayOverDayComparison? computeDayOverDay(
       // comparison, so appending ", like yesterday" said it twice.
       rainContrast = '$todayCharacter again';
     } else {
-      // ONE STATEMENT, NOT TWO — item 83. This was "X today; yesterday was
-      // Y", a second sentence smuggled into a slot that allows one, spending
-      // the reader's opening words on a day already over. "after a Y day"
-      // using the full character was tried and rejected because the phrases
-      // vary in shape: "after a dry until evening thunderstorms day" is not
-      // English. So YESTERDAY CONTRIBUTES ONE WORD, and thunder outranks the
-      // band — 2026-08-24 thundered over the city and was reported the next
-      // morning as "dry again", to readers who had stood in it.
-      final yesterdaySummary = yesterdayActual.thunder == true
-          ? 'thundery'
-          : dayRainBand(yesterdayActual.precipMm);
-      rainContrast = '$todayCharacter, after a $yesterdaySummary day';
+      // NOTHING ABOUT YESTERDAY HERE AT ALL. This slot has shed two backward
+      // glances: "X today; yesterday was Y" was a second sentence smuggled
+      // into a slot that allows one, and its replacement, ", after a Y day",
+      // was still spending the Overview's opening on a day already over.
+      //
+      // Raised by the operator 2026-09-10 from that morning's live Overview:
+      // "Much calmer than yesterday. Dry until evening thunderstorms, after a
+      // thundery day."
+      //
+      // AND THE TAIL NAMED THE WRONG DIMENSION. This branch is reached only
+      // when the days DIFFER, and that day they differed on the band —
+      // yesterday measurably wet, today dry until the evening. The summary
+      // word put thunder ahead of the band, so it named the one dimension
+      // where the days AGREED. The lead sentence already carries "than
+      // yesterday", and once per Overview is enough.
+      //
+      // Recurrence still reaches the reader through the "again" branch
+      // above, which is the one case where yesterday is the news.
+      rainContrast = todayCharacter;
     }
   }
 

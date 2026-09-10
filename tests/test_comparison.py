@@ -101,12 +101,19 @@ def test_the_2026_08_24_regression():
     # Yesterday thundered; today is genuinely dry. The old code said
     # "dry again" because both sides landed in the sub-1 mm band.
     #
-    # Reworded by item 83's one-statement rule, from "dry today; yesterday
-    # was dry but thundery". What the regression is ABOUT is unchanged and
-    # is what this asserts: the storm the reader stood in is still on the
-    # page the next morning.
+    # Reworded twice since: by item 83's one-statement rule, and again on
+    # 2026-09-10 when the operator asked for the backward glance to go.
+    #
+    # WHAT THE REGRESSION IS ABOUT IS THE WORD "again", and that is what
+    # this asserts. "dry again" is a false claim that yesterday was dry, to
+    # a reader who stood in the storm. "dry" claims nothing about yesterday
+    # at all — the same trade the both-dry branch already makes, for the
+    # same reason: silence makes no false claim, and yesterday's thunder is
+    # still carried by the structured field, the verification notes and the
+    # detailed discussion, which is where a reader goes to look it up.
     result = compute_day_over_day(actual(thunder=True), preds())
-    assert result.rain_contrast == "dry, after a thundery day"
+    assert result.rain_contrast == "dry"
+    assert "again" not in result.rain_contrast
     assert result.yesterday_thunder is True
 
 
@@ -340,24 +347,26 @@ def test_yesterday_is_said_once():
     assert text.count("yesterday") == 1
 
 
-def test_the_tail_is_gone_and_yesterday_keeps_its_thunder():
-    """Defect 3. "X today; yesterday was Y" was two statements in a slot that
-    allows one, and it spent the reader's first sentence on weather that had
-    already happened.
+def test_a_changed_day_describes_today_and_stops():
+    """Defect 3, twice over. "X today; yesterday was Y" was two statements in
+    a slot that allows one; ", after a Y day" was one statement that still
+    looked backwards. Both are gone — see
+    test_the_backward_glance_is_gone_from_the_rain_sentence for the live
+    Overview that settled it.
 
-    Yesterday now contributes one word. THUNDER OUTRANKS THE BAND, the same
-    rule describe_day_rain already uses and for the same measured reason —
-    2026-08-24 thundered and was reported the next morning as "dry again".
+    THE PHRASE IS THE SAME WHATEVER YESTERDAY DID, which is the point: this
+    branch is reached only when the days differ, and how they differed is
+    the lead sentence's job.
     """
     changed = compute_day_over_day(
         actual(precip_mm=20.0, thunder=False), preds(rain=True, precip_mm=0.1)
     )
-    assert changed.rain_contrast == "dry, after a wet day"
+    assert changed.rain_contrast == "dry"
 
     thundery = compute_day_over_day(
         actual(precip_mm=20.0, thunder=True), preds(rain=True, precip_mm=0.1)
     )
-    assert thundery.rain_contrast == "dry, after a thundery day"
+    assert thundery.rain_contrast == "dry"
 
 
 def test_much_like_yesterday_is_not_claimed_on_a_missing_measurement():
@@ -391,14 +400,17 @@ def test_today_can_be_thundery_too(preds_thunder=None):
     same = compute_day_over_day(y, today, today_convective=True)
     assert same.rain_contrast == "largely dry with thunderstorms again"
 
-    # A genuine change still reads as one — the 2026-08-24 lesson survives.
+    # A genuine change no longer says "again", which is the whole of the
+    # 2026-08-24 lesson. It no longer names yesterday either, since 2026-09-10.
     changed = compute_day_over_day(y, today, today_convective=False)
-    assert changed.rain_contrast == "largely dry, after a thundery day"
+    assert changed.rain_contrast == "largely dry"
 
-    # And the actionable direction, which was unreachable before.
+    # And the actionable direction, which was unreachable before: today's
+    # storms are today's news, and they are stated as such rather than as a
+    # contrast against a quiet yesterday.
     quiet_yesterday = actual(precip_mm=3.0, onset_hour=None, thunder=False)
     news = compute_day_over_day(quiet_yesterday, today, today_convective=True)
-    assert news.rain_contrast == "largely dry with thunderstorms, after a largely dry day"
+    assert news.rain_contrast == "largely dry with thunderstorms"
 
 
 def test_the_contrast_frame_needs_an_actual_contrast():
@@ -639,3 +651,38 @@ def test_a_record_with_no_provenance_carries_no_claim_about_sources():
         "today_rain_expected": False, "overview_comparison": "Dry again.",
     })
     assert "observed_from" not in view
+
+
+def test_the_backward_glance_is_gone_from_the_rain_sentence():
+    """Raised by the operator 2026-09-10 from that morning's live Overview:
+    "Much calmer than yesterday. Dry until evening thunderstorms, after a
+    thundery day." — "not so useful".
+
+    THE TAIL WAS ALSO SAYING THE WRONG THING. It is reached only when the
+    two days differ, and on this day they differed on the BAND — yesterday
+    measurably wet, today dry until the evening. But `yesterday_summary`
+    puts thunder ahead of the band, so the word it printed was the one
+    dimension where the two days AGREED. The sentence drew a contrast out
+    of the only thing that had not changed.
+
+    Fixing the word choice was the smaller option and was not taken. The
+    lead sentence already carries "than yesterday", and a second backward
+    reference in the next breath spends the Overview's opening on a day the
+    reader has already lived. The rain half describes TODAY.
+    """
+    yesterday_thundery = actual(precip_mm=12.0, onset_hour="15:00", thunder=True)
+    today_dry_until_storms = preds(rain=True, precip_mm=3.0, onset="18:00")
+
+    c = compute_day_over_day(
+        yesterday_thundery, today_dry_until_storms, today_convective=True
+    )
+    assert "after a" not in (c.rain_contrast or "")
+    assert "yesterday" not in (c.rain_contrast or "")
+
+    # The whole sentence, as the reader gets it: ONE backward glance, in the
+    # clause that owns the comparison.
+    text = describe_day_over_day(
+        "about the same", "much calmer", c.rain_contrast, cloud_label="similar cloud"
+    )
+    assert text.count("yesterday") == 1
+    assert "after a" not in text

@@ -703,7 +703,7 @@
       }
     },
     {
-      "name": "dry after a wet day",
+      "name": "a dry day following a wet one",
       "input": {
         "yesterday_actual": {
           "rain": true,
@@ -756,13 +756,13 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "dry, after a wet day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a wet day.",
+        "rain_contrast": "dry",
+        "overview_comparison": "Much calmer than yesterday. Dry.",
         "provenance": null
       }
     },
     {
-      "name": "wet after a dry day",
+      "name": "a wet day following a dry one",
       "input": {
         "yesterday_actual": {
           "rain": false,
@@ -815,13 +815,13 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "wet, after a dry day",
-        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day.",
+        "rain_contrast": "wet",
+        "overview_comparison": "Much calmer than yesterday. Wet.",
         "provenance": null
       }
     },
     {
-      "name": "evening showers after a wet day is NOT another wet day",
+      "name": "evening showers following a wet day is NOT another wet day",
       "input": {
         "yesterday_actual": {
           "rain": true,
@@ -874,8 +874,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "dry until evening showers, after a wet day",
-        "overview_comparison": "Much calmer than yesterday. Dry until evening showers, after a wet day.",
+        "rain_contrast": "dry until evening showers",
+        "overview_comparison": "Much calmer than yesterday. Dry until evening showers.",
         "provenance": null
       }
     },
@@ -992,8 +992,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "wet, after a dry day",
-        "overview_comparison": "Much calmer than yesterday. Wet, after a dry day.",
+        "rain_contrast": "wet",
+        "overview_comparison": "Much calmer than yesterday. Wet.",
         "provenance": null
       }
     },
@@ -1169,8 +1169,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "dry, after a showery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a showery day.",
+        "rain_contrast": "dry",
+        "overview_comparison": "Much calmer than yesterday. Dry.",
         "provenance": null
       }
     },
@@ -1382,8 +1382,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day.",
+        "rain_contrast": "dry",
+        "overview_comparison": "Much calmer than yesterday. Dry.",
         "provenance": null
       }
     },
@@ -1559,8 +1559,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Dry, after a thundery day.",
+        "rain_contrast": "dry",
+        "overview_comparison": "Much calmer than yesterday. Dry.",
         "provenance": null
       }
     },
@@ -2340,8 +2340,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "largely dry, after a thundery day",
-        "overview_comparison": "Much calmer than yesterday. Largely dry, after a thundery day.",
+        "rain_contrast": "largely dry",
+        "overview_comparison": "Much calmer than yesterday. Largely dry.",
         "provenance": null
       }
     },
@@ -2399,8 +2399,8 @@
         "high_label": "about the same",
         "wind_label": "much calmer",
         "cloud_label": null,
-        "rain_contrast": "largely dry with thunderstorms, after a largely dry day",
-        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms, after a largely dry day.",
+        "rain_contrast": "largely dry with thunderstorms",
+        "overview_comparison": "Much calmer than yesterday. Largely dry with thunderstorms.",
         "provenance": null
       }
     },

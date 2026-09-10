@@ -443,27 +443,31 @@ def compute_day_over_day(
             # - ... until evening showers again, like yesterday".
             rain_contrast = f"{today_character} again"
         else:
-            # ONE STATEMENT, NOT TWO. This was "X today; yesterday was Y",
-            # which is a second sentence smuggled into a slot that allows
-            # one, and it spent the reader's opening words on weather that
-            # had already happened — the complaint item 67 raised and the
-            # both_dry branch above already answers.
+            # NOTHING ABOUT YESTERDAY HERE AT ALL. This slot has now shed two
+            # backward glances in two days: "X today; yesterday was Y" was a
+            # second sentence smuggled into a slot that allows one, and its
+            # replacement, ", after a Y day", was still spending the
+            # Overview's opening on a day the reader has already lived.
             #
-            # "after a Y day" was tried first and rejected, correctly,
-            # because yesterday_character varies in shape: "after a dry
-            # until evening thunderstorms day" is not English. So YESTERDAY
-            # CONTRIBUTES ONE WORD, which always fits the frame, while the
-            # full phrase describes TODAY — the day the reader is walking
-            # into.
+            # Raised by the operator 2026-09-10, from that morning's live
+            # Overview: "Much calmer than yesterday. Dry until evening
+            # thunderstorms, after a thundery day."
             #
-            # Thunder outranks the band, the same rule describe_day_rain
-            # uses and for the same measured reason: 2026-08-24 thundered
-            # over the city and was reported the next morning as "dry
-            # again", to readers who had stood in it.
-            yesterday_summary = (
-                "thundery" if yesterday_actual.thunder else day_rain_band(yesterday_actual.precip_mm)
-            )
-            rain_contrast = f"{today_character}, after a {yesterday_summary} day"
+            # AND THE TAIL WAS PRINTING THE WRONG DIMENSION. This branch is
+            # reached only when the two days DIFFER, and on that day they
+            # differed on the band — yesterday measurably wet, today dry
+            # until the evening. But the summary word put thunder ahead of
+            # the band, so it named the one dimension where the days AGREED,
+            # and the sentence drew a contrast out of what had not changed.
+            # Choosing a better word was the smaller fix and is not the one
+            # taken: the lead sentence already carries "than yesterday", and
+            # once per Overview is enough.
+            #
+            # So the rain half simply describes TODAY — the day the reader is
+            # walking into. Recurrence still reaches them, through the
+            # "again" branch above, which is the one case where yesterday is
+            # the news.
+            rain_contrast = today_character
 
     high_label = _band_label(high_delta, TEMP_CHANGE_BANDS_C, "warmer", "cooler")
     cloud_label = _band_label(cloud_delta, CLOUD_CHANGE_BANDS_PCT, "cloudier", "clearer")

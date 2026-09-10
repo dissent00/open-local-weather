@@ -1912,12 +1912,12 @@ def export_day_over_day() -> None:
          actual(high_c=32.6), preds([33.5, 33.5, 33.5])),
         ("wind change below threshold is not remarked on", actual(peak_wind_kmh=25.0), preds([29.0], winds=[30.0])),
         ("big wind increase is called out", actual(peak_wind_kmh=15.0), preds([29.0], winds=[40.0])),
-        ("dry after a wet day", actual(rain=True), preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
-        ("wet after a dry day", actual(rain=False, precip_mm=0.0, onset_hour=None), preds([29.0], rains=[True])),
+        ("a dry day following a wet one", actual(rain=True), preds([29.0], rains=[False], mm=[0.0], onsets=[None])),
+        ("a wet day following a dry one", actual(rain=False, precip_mm=0.0, onset_hour=None), preds([29.0], rains=[True])),
         # THE CASE THAT PROMPTED ALL OF THIS. Kisumu, 2026-08-22: clear and
         # dry until evening convection, described to the reader as "another
         # wet day" because 0.5 mm in any hour made it one.
-        ("evening showers after a wet day is NOT another wet day",
+        ("evening showers following a wet day is NOT another wet day",
          actual(rain=True, precip_mm=19.0, onset_hour="07:00"),
          preds([29.0], rains=[True], mm=[2.4], onsets=["19:00"])),
         ("evening showers two days running",
@@ -2418,7 +2418,7 @@ def export_describe_day_over_day() -> None:
          "about the same", None, None),
         ("a quiet wind with no high measured claims nothing",
          None, "similar winds", None),
-        ("rain alone, with no labels at all", None, None, "dry, after a thundery day"),
+        ("rain alone, with no labels at all", None, None, "dry"),
         # Nothing moved on ANY dimension, so the lead says so and the rain
         # half drops its "again" rather than saying it twice.
         ("nothing moved at all, so the lead says so",
@@ -2428,7 +2428,7 @@ def export_describe_day_over_day() -> None:
          "noticeably cooler", "similar winds", "largely dry with thunderstorms again",
          "largely dry with thunderstorms", True),
         ("rain that genuinely changed forfeits the sameness claim",
-         "about the same", "similar winds", "dry, after a thundery day", "dry", False),
+         "about the same", "similar winds", "dry", "dry", False),
         ("a warning is not suppressed by sameness",
          "about the same", "similar winds", None, None, False, "gale force"),
         ("nor by a change leading",
