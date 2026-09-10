@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Callable
 
 import markdown
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 
 from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
@@ -38,9 +38,29 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 def _env() -> Environment:
+    # AUTOESCAPE IS UNCONDITIONAL, and that is a fix rather than a preference.
+    #
+    # This read `select_autoescape(["html"])` until 2026-09-10, which looks
+    # like the control is on and was not. select_autoescape matches the
+    # template FILENAME's extension, and every template here is
+    # `*.html.jinja` — extension `.jinja`, which is not in that list. It
+    # resolved to False for all four, and had done since the templates were
+    # written.
+    #
+    # It surfaced when a run put a 15,930-character repetition loop into
+    # uv_index_max and the published page came out carrying five raw </em>
+    # tags and a <td>, with not one escaped entity anywhere in it. What
+    # reached the page that day was nonsense; what reaches it in general is
+    # whatever the model emits, onto a public site.
+    #
+    # `True` rather than a corrected extension list because every template in
+    # this directory is HTML and always will be — a list is one more thing
+    # that can be right-looking and wrong. The single value that IS markup,
+    # the markdown-rendered narrative, carries `| safe` in the template, which
+    # is the shape the templates were written for.
     return Environment(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
-        autoescape=select_autoescape(["html"]),
+        autoescape=True,
         trim_blocks=True,
         lstrip_blocks=True,
     )

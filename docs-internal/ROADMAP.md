@@ -11877,3 +11877,98 @@ multi-model one — which is a real and slightly awkward asymmetry.
 Related: item 96 (the sandbox that should measure this), item 98 (why a cell
 is not a place), item 95 (the anomaly reference this needs and does not have),
 item 59, item 63.
+
+---
+
+## 100. A repetition loop was published, through three open gates · **Fixed 2026-09-10**
+
+The evening re-issue of 2026-09-10 put this on the front page, in the UV
+Index box:
+
+> 8.75 Registered Midday (Past Peak Environmentally Environmentally
+> Passtaken Passtaken Passtaken …
+
+**15,930 characters.** "Passtaken" some nine hundred times, then several
+kilobytes of unrelated recited text — voter-registration tables, fragments of
+a grading scale, stray HTML. It was stored in the log, rendered onto
+`docs/index.html` and `docs/archive/2026-09-10.html`, and mailed out. The full
+suite was green throughout, and stayed green.
+
+The morning run's value for the same field was `8.7 (Very High)`.
+
+### Three gates, all open, in series
+
+**1. Nothing asked why the model stopped talking.** `gemini.py` read
+`candidates[0].content.parts[0].text` and never looked at `finishReason`. A
+candidate that ran into the token ceiling mid-loop is, to code that only
+parses the text, identical to one that finished its sentence. Now checked
+BEFORE the content is read — permissive about the field being absent, strict
+about a value that is present and not `STOP`, because refusing a response for
+a missing field would turn a provider change into a total outage.
+
+The Anthropic provider already handled its half: it names `max_tokens`
+explicitly and even tells you which env var to raise. Gemini's was written
+without it. Nothing forced the two to agree, and nothing still does — worth
+remembering when a third provider is added.
+
+**2. Nothing bounded the field.** `uv_index_max` and its neighbours are
+`str | None` with no constraint, so a 15,930-character UV index validated
+perfectly. Now `MAX_DISPLAY_STRING = 200`, roughly four times the longest
+value ever observed, on the seven short display strings only — not on the
+narrative or the WhatsApp summary, which are long by design.
+
+Enforced on OUR side and deliberately not in the request: `_convert_node`
+emits type and description and drops everything else, so the bound never
+reaches the provider's schema. `test_the_display_bound_is_enforced_here_and_never_sent_to_the_provider`
+pins that, because otherwise it is only true by accident of the converter.
+
+**3. AND AUTOESCAPE HAS BEEN OFF SINCE THE TEMPLATES WERE WRITTEN.** This is
+the one that matters, and the loop is only how it was found.
+
+`pages.py` read `autoescape=select_autoescape(["html"])`. That looks like the
+control is on. `select_autoescape` matches the template FILENAME's extension,
+and every template here is `*.html.jinja` — extension `.jinja`, not in the
+list. It resolved to `False` for all four templates.
+
+Measured, not inferred: the published page carried five raw `</em>` tags and a
+`<td`, and `&lt;` appeared in it **zero times**. Nothing had ever been escaped.
+
+The templates themselves show it was never intended: `narrative_html` carries
+`| safe`, which is the only `| safe` in the whole directory and is meaningless
+unless everything else is escaped. Now `autoescape=True` unconditionally — a
+list of extensions is one more thing that can be right-looking and wrong.
+
+What reached the page this time was nonsense. What reaches it in general is
+whatever the model emits, onto a public site.
+
+### The record
+
+`uv_index_max` for the evening issuance is now null, and null is the honest
+value: the run never produced a UV reading. The morning issuance keeps its own
+`8.7 (Very High)` and was not touched. Both pages re-rendered from the repaired
+entry — 24KB to 8KB, and the only difference besides the removal is that
+apostrophes now escape, which is the fix showing up in the real render path
+rather than only in a test.
+
+### Still open, and NOT fixed here
+
+**The narrative passes raw HTML through into both the page and the email.**
+`markdown.markdown(..., extensions=["extra"])` does not strip embedded HTML —
+verified, `<script>alert(1)</script>` in a narrative survives the conversion
+intact — and the result is `| safe` in the template and interpolated into an
+f-string in `email_gmail.py`. Autoescape cannot help here, because this value
+is HTML on purpose.
+
+Closing it needs a sanitiser; neither `bleach` nor `nh3` is installed, so it is
+a dependency decision rather than a patch, and it belongs to whoever weighs
+that. The three gates above are shut; this one is named and open.
+
+### What made this expensive
+
+Each gate alone was survivable. The finish reason would have caught a
+truncation; the bound would have caught a loop that stopped cleanly; escaping
+would have made the worst case an ugly box rather than markup on a public
+page. All three were open, so a single bad generation went from the model to
+the reader with nothing in between — and the suite could not have caught any
+of it, because every one of the three was a property of code that no test
+exercised with hostile input.

@@ -263,6 +263,34 @@ class SkillProfileSummaryItem {
 
 /// The blended cross-model call. Genuine reasoning, not any single model's
 /// raw number.
+
+/// A generous ceiling on the SHORT display strings the forecaster writes.
+///
+/// These are one-line values a reader sees beside a number: the morning run of
+/// 2026-09-10 produced "8.7 (Very High)" for UV, fifteen characters. That
+/// evening the same field came back at 15,930 — a repetition loop that parsed,
+/// validated, stored and published, because a string field with no bound
+/// accepts anything at all.
+///
+/// Set at roughly four times the longest value ever observed: the job is to
+/// catch a runaway, not to police a wordy forecaster. Not applied to the
+/// narrative or the WhatsApp summary, which are long by design.
+/// Mirrors `MAX_DISPLAY_STRING` in the Python schema.
+const int maxDisplayString = 200;
+
+/// Throws rather than truncating. A value this long is not a long answer, it
+/// is a broken one, and the rest of the response was produced by the same
+/// generation — `parseForecast` turns this into an `LlmResponseError` and the
+/// run aborts, which is the right outcome.
+String? _bounded(Object? value, String field) {
+  final s = value as String?;
+  if (s != null && s.length > maxDisplayString) {
+    throw FormatException(
+        '$field is ${s.length} characters, over the $maxDisplayString limit for a display string');
+  }
+  return s;
+}
+
 class TodayProperties {
   final String rainExpected;
   final String? onsetWindow;
@@ -319,19 +347,19 @@ class TodayProperties {
   });
 
   factory TodayProperties.fromJson(Map<String, Object?> j) => TodayProperties(
-        rainExpected: j['rain_expected'] as String,
-        onsetWindow: j['onset_window'] as String?,
+        rainExpected: _bounded(j['rain_expected'], 'rain_expected')!,
+        onsetWindow: _bounded(j['onset_window'], 'onset_window'),
         peakWindKmh: _toDouble(j['peak_wind_kmh']),
         tempHighC: _toDouble(j['temp_high_c'])!,
         tempLowC: _toDouble(j['temp_low_c'])!,
         rain: j['rain'] as bool,
-        onsetHour: j['onset_hour'] as String?,
+        onsetHour: _bounded(j['onset_hour'], 'onset_hour'),
         precipMm: _toDouble(j['precip_mm']),
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
-        mslpTrend24h: j['mslp_trend_24h'] as String?,
-        synopticPattern: j['synoptic_pattern'] as String?,
-        uvIndexMax: j['uv_index_max'] as String?,
-        airQualityAqi: j['air_quality_aqi'] as String?,
+        mslpTrend24h: _bounded(j['mslp_trend_24h'], 'mslp_trend_24h'),
+        synopticPattern: _bounded(j['synoptic_pattern'], 'synoptic_pattern'),
+        uvIndexMax: _bounded(j['uv_index_max'], 'uv_index_max'),
+        airQualityAqi: _bounded(j['air_quality_aqi'], 'air_quality_aqi'),
       );
 
   /// The counterpart to [fromJson], using the SAME wire keys.

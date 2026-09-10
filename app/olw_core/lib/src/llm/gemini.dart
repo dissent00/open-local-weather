@@ -13,6 +13,12 @@ import 'schema.dart';
 /// That was established empirically against the live API, because the
 /// documented snake_case form is the Python SDK's, and the REST endpoint
 /// rejects it.
+/// The only stop reason that means "I finished the answer". Everything else —
+/// MAX_TOKENS, RECITATION, SAFETY, OTHER — means the text is not what was
+/// asked for, however well it parses. Mirrors `FINISH_REASON_COMPLETE` in the
+/// Python provider.
+const String finishReasonComplete = 'STOP';
+
 class GeminiProvider implements LlmProvider {
   static const String urlTemplate =
       'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent';
@@ -109,6 +115,27 @@ class GeminiProvider implements LlmProvider {
 
     final candidates = (body['candidates'] as List?) ?? const [];
     if (candidates.isEmpty) throw LlmResponseError('Gemini returned no candidates.');
+
+    // WHY THE STOP REASON IS CHECKED BEFORE THE CONTENT IS READ.
+    //
+    // On 2026-09-10 the pipeline's evening run published a UV index of 15,930
+    // characters: a plausible opening, then one word repeated some nine
+    // hundred times, then kilobytes of unrelated recited text. It parsed, it
+    // validated, it was stored and rendered, and every test stayed green,
+    // because nothing asked why the model stopped talking. A candidate that
+    // hit the token ceiling mid-loop is identical, to code that only reads
+    // parts[0].text, to one that finished its sentence.
+    //
+    // Permissive about absence, strict about a wrong value: refusing a
+    // response for a missing field would turn a provider change into a total
+    // outage. Mirrors the Python provider.
+    final finishReason = (candidates.first as Map)['finishReason'];
+    if (finishReason != null && finishReason != finishReasonComplete) {
+      throw LlmResponseError(
+        'Gemini stopped for $finishReason, not $finishReasonComplete \u2014 '
+        'the response is incomplete or is not the answer that was asked for.',
+      );
+    }
 
     final String text;
     try {

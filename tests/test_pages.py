@@ -698,7 +698,12 @@ def test_a_degraded_run_says_so_on_the_page():
 
     # Framed as a gap rather than as reassurance — the whole point of item 53.
     assert "less than usual" in html.lower()
-    assert "Part of tonight's data did not arrive" in html
+    # Apostrophes render as &#39; now that autoescape is on, so assert on the
+    # half that has none — and separately that the quote really is escaped,
+    # which is the check that would have caught the 2026-09-10 page.
+    assert "data did not arrive" in html
+    assert "tonight&#39;s" in html
+    assert "tonight's data" not in html
 
 
 def test_the_banner_is_plain_and_the_jargon_is_at_the_end():
@@ -710,7 +715,7 @@ def test_the_banner_is_plain_and_the_jargon_is_at_the_end():
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
     banner = html[html.index("run-degraded") : html.index("<h1>")]
-    assert "Part of tonight's data did not arrive" in banner
+    assert "data did not arrive" in banner
     assert "forward hourly window" not in banner
 
     notes = html[html.index('id="run-notes"') :]
@@ -793,3 +798,58 @@ def test_every_page_can_reach_the_glossary(tmp_path):
     for name in ("forecast", "accuracy", "archive_index", "glossary"):
         body = (templates / f"{name}.html.jinja").read_text()
         assert "nav.glossary" in body, f"{name} has no link to the glossary"
+
+
+# ---------------------------------------------------------------------------
+# Autoescape — 2026-09-10
+# ---------------------------------------------------------------------------
+#
+# The evening run put a 15,930-character repetition loop into uv_index_max,
+# and it reached docs/index.html carrying five raw </em> tags and a <td>. The
+# page had ZERO escaped entities in it: `&lt;` appeared not once.
+#
+# `_env()` reads `autoescape=select_autoescape(["html"])`, which looks like
+# the control is on. select_autoescape matches the template FILENAME's
+# extension, and every template here is `*.html.jinja` — extension `.jinja`.
+# So it resolved to False for all four templates, and had done since they
+# were written. The templates themselves show the intent: `narrative_html`
+# carries `| safe`, which is only meaningful if everything else is escaped.
+#
+# What reached the page this time was nonsense. What reaches it is whatever
+# the model emits, on a public site.
+
+
+def test_a_value_from_the_model_cannot_put_markup_on_the_page():
+    entry = make_entry(date(2026, 8, 11), uv_index_max='<script>alert("xss")</script>')
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "<script>alert" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_the_narrative_is_still_rendered_as_html():
+    """The other half. Autoescape must not break the one value that IS
+    markup — the narrative is markdown converted to HTML in code, and it is
+    the reason `| safe` exists in the template."""
+    entry = make_entry(date(2026, 8, 11))
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "<h2>Overview</h2>" in html
+    assert "&lt;h2&gt;" not in html
+
+
+def test_every_template_actually_escapes():
+    """Pins the mechanism rather than one page, because the failure was that
+    the setting LOOKED right. A template added later gets this for free; a
+    future change to `_env()` that silently disables it does not."""
+    from openlocalweather.publish.pages import TEMPLATES_DIR, _env
+
+    env = _env()
+    names = sorted(p.name for p in TEMPLATES_DIR.glob("*.jinja"))
+    assert names, "no templates found — this test would pass against nothing"
+
+    for name in names:
+        resolved = env.autoescape(name) if callable(env.autoescape) else env.autoescape
+        assert resolved is True, f"{name} renders unescaped"

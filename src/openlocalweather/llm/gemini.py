@@ -124,6 +124,12 @@ RETRY_BASE_DELAY_S = 30
 VALID_THINKING_LEVELS = frozenset({"minimal", "low", "medium", "high"})
 
 
+# The only stop reason that means "I finished the answer". Everything else —
+# MAX_TOKENS, RECITATION, SAFETY, OTHER — means the text is not what was
+# asked for, however well it parses.
+FINISH_REASON_COMPLETE = "STOP"
+
+
 class LLMResponseError(RuntimeError):
     """The LLM call failed outright (network/HTTP error, no candidates) or
     its response didn't validate against the requested schema. Either way
@@ -241,6 +247,30 @@ class GeminiProvider:
         candidates = body.get("candidates") or []
         if not candidates:
             raise LLMResponseError("Gemini returned no candidates.")
+
+        # WHY THE STOP REASON IS CHECKED BEFORE THE CONTENT IS READ.
+        #
+        # On 2026-09-10 the evening run published a UV index of 15,930
+        # characters: a plausible opening, then "Passtaken" some nine hundred
+        # times, then several kilobytes of unrelated recited text. The JSON
+        # parsed. It validated. It was stored, rendered onto the site and
+        # mailed out, and every test in this suite stayed green, because
+        # nothing here ever asked why the model stopped talking.
+        #
+        # A candidate that ran into the token ceiling mid-loop is, to code
+        # that only parses `parts[0].text`, identical to one that finished its
+        # sentence. So the reason is checked first: the content is not worth
+        # reading until the model says it meant to stop.
+        #
+        # PERMISSIVE ABOUT ABSENCE, strict about a wrong value. The field is
+        # not guaranteed on every response shape, and refusing a response for
+        # a missing field would turn a provider change into a total outage.
+        finish_reason = candidates[0].get("finishReason")
+        if finish_reason is not None and finish_reason != FINISH_REASON_COMPLETE:
+            raise LLMResponseError(
+                f"Gemini stopped for {finish_reason}, not {FINISH_REASON_COMPLETE} — "
+                "the response is incomplete or is not the answer that was asked for."
+            )
 
         try:
             text = candidates[0]["content"]["parts"][0]["text"]

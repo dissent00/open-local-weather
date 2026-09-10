@@ -74,6 +74,19 @@ String geminiEnvelope(Object payload) => jsonEncode({
       ]
     });
 
+String geminiEnvelopeFinishing(String? reason, Object payload) => jsonEncode({
+      'candidates': [
+        {
+          if (reason != null) 'finishReason': reason,
+          'content': {
+            'parts': [
+              {'text': jsonEncode(payload)}
+            ]
+          }
+        }
+      ]
+    });
+
 String anthropicEnvelope(Object input, {String stop = 'tool_use'}) => jsonEncode({
       'type': 'message',
       'stop_reason': stop,
@@ -133,6 +146,50 @@ void main() {
 
     test('no candidates throws', () {
       final cap = _Cap(jsonEncode({'candidates': []}));
+      expect(
+        () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
+            .generate(systemPrompt: 's', userPrompt: 'u'),
+        throwsA(isA<LlmResponseError>()),
+      );
+    });
+
+    // 2026-09-10: the pipeline published a UV index of 15,930 characters
+    // because nothing asked why the model stopped talking. Valid JSON is not
+    // evidence of a complete answer.
+    for (final reason in ['MAX_TOKENS', 'RECITATION', 'SAFETY', 'OTHER']) {
+      test('a candidate that stopped for $reason is refused', () {
+        final cap = _Cap(geminiEnvelopeFinishing(reason, validPayload));
+        expect(
+          () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
+              .generate(systemPrompt: 's', userPrompt: 'u'),
+          throwsA(isA<LlmResponseError>()),
+        );
+      });
+    }
+
+    test('a candidate that stopped cleanly is accepted', () async {
+      final cap = _Cap(geminiEnvelopeFinishing('STOP', validPayload));
+      final got = await GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
+          .generate(systemPrompt: 's', userPrompt: 'u');
+      expect(got.todayProperties.tempHighC, 26.0);
+    });
+
+    test('a candidate with no finish reason at all is accepted', () async {
+      // Deliberately permissive: refusing a response for a MISSING field would
+      // turn a provider change into a total outage.
+      final cap = _Cap(geminiEnvelopeFinishing(null, validPayload));
+      final got = await GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
+          .generate(systemPrompt: 's', userPrompt: 'u');
+      expect(got.todayProperties.tempHighC, 26.0);
+    });
+
+    test('a display string that ran away is refused', () {
+      // The second half, and not redundant: a degenerate loop that fits inside
+      // the token budget stops for a perfectly good reason.
+      final payload = jsonDecode(jsonEncode(validPayload)) as Map<String, Object?>;
+      (payload['today_properties'] as Map<String, Object?>)['uv_index_max'] =
+          '8.75 Registered Midday ${'Passtaken ' * 1600}';
+      final cap = _Cap(geminiEnvelopeFinishing('STOP', payload));
       expect(
         () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
             .generate(systemPrompt: 's', userPrompt: 'u'),

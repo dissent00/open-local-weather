@@ -217,3 +217,69 @@ def test_thinking_level_included_in_payload_when_set():
         provider.generate("s", "u", GeminiForecastResponse)
         body = m.last_request.json()
     assert body["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "high"}
+
+
+# ---------------------------------------------------------------------------
+# A candidate that stopped for the wrong reason — 2026-09-10
+# ---------------------------------------------------------------------------
+#
+# The evening run published a UV index of 15,930 characters: "8.75 Registered
+# Midday (Past Peak" followed by "Passtaken" some nine hundred times and then
+# several kilobytes of unrelated recited text. It validated, it was stored, and
+# it went out on the site and in the email.
+#
+# Nothing here looked at why the model stopped talking. A candidate that ran
+# into the token ceiling mid-loop is structurally identical, to this code, to
+# one that finished its sentence.
+
+
+def envelope_finishing(reason: str | None, payload: dict = VALID_PAYLOAD) -> dict:
+    candidate: dict = {"content": {"parts": [{"text": json.dumps(payload)}]}}
+    if reason is not None:
+        candidate["finishReason"] = reason
+    return {"candidates": [candidate]}
+
+
+@pytest.mark.parametrize("reason", ["MAX_TOKENS", "RECITATION", "SAFETY", "OTHER"])
+def test_a_candidate_that_did_not_finish_is_refused(reason):
+    """Valid JSON is not evidence of a complete answer. Each of these means
+    the text is not what was asked for, and the pipeline aborts rather than
+    publishing it — better no evening forecast than a corrupt one."""
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=envelope_finishing(reason))
+        with pytest.raises(LLMResponseError) as e:
+            GeminiProvider(api_key="k", model=MODEL).generate("s", "u", GeminiForecastResponse)
+    assert reason in str(e.value), "the reason belongs in the message, or nobody can act on it"
+
+
+def test_a_candidate_that_stopped_cleanly_is_accepted():
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=envelope_finishing("STOP"))
+        got = GeminiProvider(api_key="k", model=MODEL).generate("s", "u", GeminiForecastResponse)
+    assert got.today_properties.temp_high_c == 26.0
+
+
+def test_a_candidate_with_no_finish_reason_at_all_is_accepted():
+    """Deliberately permissive. The field is not guaranteed on every response
+    shape, and refusing a response because a field was absent would turn a
+    provider change into a total outage. The check is for a reason that is
+    present and wrong."""
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=envelope_finishing(None))
+        got = GeminiProvider(api_key="k", model=MODEL).generate("s", "u", GeminiForecastResponse)
+    assert got.today_properties.temp_high_c == 26.0
+
+
+def test_a_display_string_that_ran_away_is_refused():
+    """The second half, and it is not redundant. A degenerate loop that fits
+    inside the token budget stops for a perfectly good reason, so the check
+    above would pass it. These fields are short display strings — the morning
+    run's UV was "8.7 (Very High)", fifteen characters.
+    """
+    payload = json.loads(json.dumps(VALID_PAYLOAD))
+    payload["today_properties"]["uv_index_max"] = "8.75 Registered Midday " + "Passtaken " * 1600
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=envelope_finishing("STOP", payload))
+        with pytest.raises(LLMResponseError):
+            GeminiProvider(api_key="k", model=MODEL).generate("s", "u", GeminiForecastResponse)

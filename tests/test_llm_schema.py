@@ -1,3 +1,7 @@
+import json
+
+import pytest
+
 from openlocalweather.llm.schema import GeminiForecastResponse, to_gemini_schema
 
 
@@ -65,3 +69,38 @@ def test_no_unresolved_refs_anywhere_in_output():
             _walk(node["items"])
 
     _walk(schema)
+
+
+def test_the_display_bound_is_enforced_here_and_never_sent_to_the_provider():
+    """`MAX_DISPLAY_STRING` exists to catch a runaway generation on our side.
+    It must not appear in either provider dialect: a constraint in the
+    request is the provider's to enforce or ignore, and a model that trips it
+    upstream would fail in a way this code cannot see or report.
+
+    The schema vectors already pin both dialects byte-for-byte, so this
+    would show up there too — but as an unexplained diff rather than as the
+    rule it is.
+    """
+    from openlocalweather.llm.schema import (
+        GeminiForecastResponse,
+        to_gemini_schema,
+        to_strict_json_schema,
+    )
+
+    for dialect in (to_gemini_schema(GeminiForecastResponse), to_strict_json_schema(GeminiForecastResponse)):
+        rendered = json.dumps(dialect)
+        assert "maxLength" not in rendered
+        assert "max_length" not in rendered
+
+    # And the bound really is live on this side.
+    from pydantic import ValidationError
+    from openlocalweather.llm.schema import MAX_DISPLAY_STRING, TodayProperties
+
+    with pytest.raises(ValidationError):
+        TodayProperties(
+            rain_expected="Likely",
+            rain=False,
+            temp_high_c=26.0,
+            temp_low_c=18.0,
+            uv_index_max="x" * (MAX_DISPLAY_STRING + 1),
+        )

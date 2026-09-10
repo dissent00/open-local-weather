@@ -24,6 +24,28 @@ class SkillProfileSummaryItem(BaseModel):
     summary: str
 
 
+# A generous ceiling on the SHORT display strings the forecaster writes.
+#
+# These are one-line values a reader sees beside a number: the morning run of
+# 2026-09-10 produced "8.7 (Very High)" for UV and "-1.3 hPa (falling)" for
+# pressure, fifteen and eighteen characters. That evening the same field came
+# back at 15,930 — a repetition loop that parsed, validated, stored and
+# published, because a string field with no bound accepts anything at all.
+#
+# Set at roughly four times the longest value ever observed, because the job
+# here is to catch a runaway, not to police a wordy forecaster. It is enforced
+# on THIS side only: `_convert_node` emits type and description and nothing
+# else, so the bound never reaches the provider's schema and cannot make a
+# well-behaved response fail upstream. A value over it raises ValidationError,
+# which the providers turn into LLMResponseError, which aborts the run — the
+# right outcome, since a model looping in one field has not been careful in
+# the others either.
+#
+# NOT applied to the narrative or the WhatsApp summary: those are long by
+# design and the prompt already bounds the summary at 600 characters.
+MAX_DISPLAY_STRING = 200
+
+
 class TodayProperties(BaseModel):
     """The LLM's synthesized, BLENDED call across all models — genuine
     reasoning, not any one model's raw number. Only rain_expected, rain,
@@ -35,8 +57,8 @@ class TodayProperties(BaseModel):
     model to convert units is asking it to do arithmetic, which this project
     does in code."""
 
-    rain_expected: str
-    onset_window: str | None = None  # Day+0 only
+    rain_expected: str = Field(max_length=MAX_DISPLAY_STRING)
+    onset_window: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)  # Day+0 only
     peak_wind_kmh: float | None = None  # secondary point, if configured
     temp_high_c: float
     temp_low_c: float
@@ -52,7 +74,7 @@ class TodayProperties(BaseModel):
     rain: bool
     # "HH:MM" local, Day+0 only. None means no rain expected, or expected
     # without resolvable timing — never midnight.
-    onset_hour: str | None = None
+    onset_hour: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
     precip_mm: float | None = None
     # The forecaster's OWN chance of rain, percent — ROADMAP item 58, and the
     # field where that item's argument actually lands.
@@ -69,10 +91,10 @@ class TodayProperties(BaseModel):
     # Brier-scored, exactly like a numerical model that supplies no
     # probability. Absent is not 50.
     rain_probability_pct: int | None = None
-    mslp_trend_24h: str | None = None
-    synoptic_pattern: str | None = None
-    uv_index_max: str | None = None
-    air_quality_aqi: str | None = None
+    mslp_trend_24h: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
+    synoptic_pattern: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
+    uv_index_max: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
+    air_quality_aqi: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
 
 
 # ROADMAP item 72, minimal shape.
