@@ -32,18 +32,34 @@ class SkillProfileSummaryItem(BaseModel):
 # back at 15,930 — a repetition loop that parsed, validated, stored and
 # published, because a string field with no bound accepts anything at all.
 #
-# Set at roughly four times the longest value ever observed, because the job
-# here is to catch a runaway, not to police a wordy forecaster. It is enforced
-# on THIS side only: `_convert_node` emits type and description and nothing
-# else, so the bound never reaches the provider's schema and cannot make a
-# well-behaved response fail upstream. A value over it raises ValidationError,
-# which the providers turn into LLMResponseError, which aborts the run — the
-# right outcome, since a model looping in one field has not been careful in
-# the others either.
+# SIZED AGAINST THE WHOLE STORED RECORD, and it was wrong first. The original
+# 200 was set from two convenient samples — a replay's 22 characters and one
+# morning's 49 — and described in a comment as "roughly four times the longest
+# value ever observed". It was not. Measured properly across all 360 display
+# strings ever written: the longest is a `synoptic_pattern` of 155 characters,
+#
+#   "Broad pressure fall across basin with strong NE-to-SE gradient; local
+#    afternoon lake-breeze convergence supporting elevated..."
+#
+# which is an ordinary sentence about an ordinary day, and it sat 45 characters
+# from aborting a forecast.
+#
+# THE COST IS NOT SYMMETRIC, which is what decides the number. Too tight and a
+# wordy but correct forecast is refused and the day has none at all. Too loose
+# and an odd 800-character value is published, which is ugly and nothing worse
+# — the finish-reason check catches the truncation case and autoescape now
+# catches the markup case. So this errs long: 6.5x the longest real value, and
+# still 16x tighter than the 15,930 characters that caused it.
+#
+# Enforced on THIS side only: `_convert_node` emits type and description and
+# nothing else, so the bound never reaches the provider's schema and cannot
+# make a well-behaved response fail upstream. A value over it raises
+# ValidationError, which the providers turn into LLMResponseError, which
+# aborts the run.
 #
 # NOT applied to the narrative or the WhatsApp summary: those are long by
 # design and the prompt already bounds the summary at 600 characters.
-MAX_DISPLAY_STRING = 200
+MAX_DISPLAY_STRING = 1000
 
 
 class TodayProperties(BaseModel):

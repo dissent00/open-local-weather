@@ -272,11 +272,21 @@ class SkillProfileSummaryItem {
 /// validated, stored and published, because a string field with no bound
 /// accepts anything at all.
 ///
-/// Set at roughly four times the longest value ever observed: the job is to
-/// catch a runaway, not to police a wordy forecaster. Not applied to the
-/// narrative or the WhatsApp summary, which are long by design.
-/// Mirrors `MAX_DISPLAY_STRING` in the Python schema.
-const int maxDisplayString = 200;
+/// SIZED AGAINST THE WHOLE STORED RECORD, and it was wrong first. The original
+/// 200 came from two convenient samples and was described as four times the
+/// longest value ever seen. It was not: measured across all 360 display
+/// strings ever written, the longest is a 155-character `synoptic_pattern`
+/// describing an ordinary day, which sat 45 characters from aborting a
+/// forecast.
+///
+/// The cost is not symmetric. Too tight and a wordy but correct forecast is
+/// refused and the day has none; too loose and an odd 800-character value is
+/// published, which is ugly and nothing worse. So this errs long: 6.5x the
+/// longest real value, still 16x tighter than the 15,930 that caused it.
+///
+/// Not applied to the narrative or the WhatsApp summary, which are long by
+/// design. Mirrors `MAX_DISPLAY_STRING` in the Python schema.
+const int maxDisplayString = 1000;
 
 /// Throws rather than truncating. A value this long is not a long answer, it
 /// is a broken one, and the rest of the response was produced by the same
