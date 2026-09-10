@@ -11957,9 +11957,35 @@ remembering when a third provider is added.
 
 **2. Nothing bounded the field.** `uv_index_max` and its neighbours are
 `str | None` with no constraint, so a 15,930-character UV index validated
-perfectly. Now `MAX_DISPLAY_STRING = 200`, roughly four times the longest
-value ever observed, on the seven short display strings only — not on the
-narrative or the WhatsApp summary, which are long by design.
+perfectly. Now `MAX_DISPLAY_STRING = 1000`, on the seven short display strings
+only — not on the narrative or the WhatsApp summary, which are long by design.
+
+**AND THE FIRST NUMBER WAS WRONG**, found the same evening while checking what
+was left in the critical path before signing off. It was set to 200 from two
+convenient samples — a replay's 22 characters and one morning's 49 — and the
+comment beside it claimed "roughly four times the longest value ever observed".
+It was not. Measured properly across all 360 display strings in the record, the
+longest is a 155-character `synoptic_pattern`:
+
+> Broad pressure fall across basin with strong NE-to-SE gradient; local
+> afternoon lake-breeze convergence supporting elevated...
+
+An ordinary sentence about an ordinary day, sitting **45 characters** from
+aborting a forecast. A guard against losing a forecast would have started
+losing forecasts — most likely on a complicated synoptic day, which is when it
+matters most.
+
+The cost is not symmetric, and that is what sets the number. Too tight and a
+wordy but correct run is refused and the day has none at all. Too loose and an
+odd 800-character value is published, which is ugly and nothing worse now that
+the finish reason covers truncation and autoescape covers markup. So it errs
+long: 6.5x the longest real value, still 16x tighter than the 15,930 that
+caused the item.
+
+Two lessons, and the second is the expensive one. Sizing a threshold from the
+samples in front of you is not measuring. And the comment carried the word
+"observed" while being false, which this repo's own rules call worse than no
+comment at all — because the next reader would not have re-checked it.
 
 Enforced on OUR side and deliberately not in the request: `_convert_node`
 emits type and description and drops everything else, so the bound never
