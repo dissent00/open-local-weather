@@ -94,6 +94,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final prob = _series(hourly, 'precipitation_probability', model);
     final cloud = _series(hourly, 'cloud_cover', model);
     final cape = _series(hourly, 'cape', model);
+    final bearing = _series(hourly, 'wind_direction_10m', model);
 
     final hasPrecipData = precip.any((v) => v != null);
     // THE DAILY TOTAL, NOT THE WETTEST HOUR — ROADMAP item 97. This asked
@@ -113,6 +114,15 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
         : null;
 
     final windVals = wind.whereType<double>().toList();
+    // THE HOUR OF THIS MODEL'S OWN PEAK, so the bearing belongs to the gust
+    // being reported. First peak wins on a tie, matching Python.
+    int? peakI;
+    for (var i = 0; i < wind.length; i++) {
+      final v = wind[i];
+      if (v == null) continue;
+      if (peakI == null || v > wind[peakI]!) peakI = i;
+    }
+    final bearingAtPeak = (peakI != null && peakI < bearing.length) ? bearing[peakI] : null;
     final tempVals = temp.whereType<double>().toList();
     final pressVals = press.whereType<double>().toList();
     final probVals = prob.whereType<double>().toList();
@@ -124,6 +134,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       rain: rain,
       onset: onset,
       windKmh: windVals.isEmpty ? null : windVals.reduce((a, b) => a > b ? a : b),
+      windDirectionDeg: bearingAtPeak,
       highC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a > b ? a : b),
       lowC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a < b ? a : b),
       mslpTrend:

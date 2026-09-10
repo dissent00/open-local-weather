@@ -162,6 +162,22 @@ const double reviewCloudBiasThresholdPct = 15.0;
 /// is deliberately far past "slightly worse than the others": this finding
 /// says a model is not usable for the one question a reader most needs
 /// answered here, not that it ranks last of five good ones.
+/// How much the models must agree before a wind direction is named at all.
+///
+/// The resultant length of the unit vectors — see wind.vectorMean — where 1.0
+/// is identical bearings and 0.0 is a set that cancels out.
+///
+/// 0.75 is PROVISIONAL and set from seven days at one location. Measured
+/// 2026-09-10, agreement by hour ran 06:00 0.93, 09:00 0.71, 12:00 0.95,
+/// 15:00 0.83, 18:00 0.73, 19:00 0.48, 21:00 0.55 — so 0.75 names a direction
+/// while the lake breeze is driven and stays silent through the mid-morning
+/// turn and the evening collapse.
+const double windDirectionAgreementGate = 0.75;
+
+/// Two bearings can agree perfectly and mean nothing. A consensus needs a
+/// field to be a consensus of.
+const int windDirectionMinModels = 3;
+
 const int reviewMinStormDays = 10;
 const double reviewStormMissThreshold = 0.5;
 

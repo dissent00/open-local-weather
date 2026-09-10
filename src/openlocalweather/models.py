@@ -136,6 +136,18 @@ class ModelPrediction(BaseModel):
     # run into a value nothing stored, so no model could ever be checked
     # against whether a storm actually arrived.
     peak_cape_jkg: float | None = None
+    # The compass bearing, degrees, AT THIS MODEL'S OWN PEAK-GUST HOUR —
+    # ROADMAP item 59. Paired with wind_kmh, which is that same model's own
+    # day-maximum gust: a speed from one hour beside a bearing from another
+    # describes a wind that never blew.
+    #
+    # NOT SCORED, and not averaged by any caller. Bearings are circular and an
+    # arithmetic mean of them is meaningless — see wind.vector_mean, which is
+    # the only thing allowed to combine these.
+    #
+    # None, never 0.0, when the series is absent: due north is a confident
+    # bearing and no data is not.
+    wind_direction_deg: float | None = None
     mslp_trend: float | None = None
 
 

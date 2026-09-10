@@ -1,0 +1,98 @@
+{
+  "vector_format_version": 1,
+  "function": "vector_mean",
+  "description": "Bearing and agreement for a set of compass directions, as unit vectors. The agreement figure is the resultant length: 1.0 is identical bearings, 0.0 is a set that cancels out and genuinely has no mean direction. Includes the wrap-around cases an arithmetic mean gets exactly backwards.",
+  "cases": [
+    {
+      "name": "due north, where a naive mean returns due south",
+      "input": {
+        "degrees": [
+          350.0,
+          10.0
+        ]
+      },
+      "expected": {
+        "bearing": 0.0,
+        "agreement": 0.984807753012208
+      }
+    },
+    {
+      "name": "opposing winds cancel and have no bearing",
+      "input": {
+        "degrees": [
+          0.0,
+          180.0
+        ]
+      },
+      "expected": {
+        "bearing": 90.0,
+        "agreement": 6.123233995736766e-17
+      }
+    },
+    {
+      "name": "one northerly outlier against four southwesterlies",
+      "input": {
+        "degrees": [
+          11.0,
+          254.0,
+          264.0,
+          207.0,
+          225.0
+        ]
+      },
+      "expected": {
+        "bearing": 251.19059818779573,
+        "agreement": 0.6182301099121983
+      }
+    },
+    {
+      "name": "a tight southwesterly field",
+      "input": {
+        "degrees": [
+          225.0,
+          230.0,
+          220.0,
+          235.0
+        ]
+      },
+      "expected": {
+        "bearing": 227.49999999999997,
+        "agreement": 0.9952465414778341
+      }
+    },
+    {
+      "name": "scattered to all quarters",
+      "input": {
+        "degrees": [
+          22.0,
+          135.0,
+          275.0,
+          215.0
+        ]
+      },
+      "expected": {
+        "bearing": 223.63306651310947,
+        "agreement": 0.17682294695213724
+      }
+    },
+    {
+      "name": "a single bearing agrees with itself",
+      "input": {
+        "degrees": [
+          123.4
+        ]
+      },
+      "expected": {
+        "bearing": 123.4,
+        "agreement": 1.0
+      }
+    },
+    {
+      "name": "nothing to average",
+      "input": {
+        "degrees": []
+      },
+      "expected": null
+    }
+  ]
+}

@@ -44,6 +44,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": null,
@@ -65,6 +66,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -104,6 +106,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -153,6 +156,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -202,6 +206,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -251,6 +256,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -300,6 +306,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": 50.0,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -349,6 +356,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": 0.0,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -398,6 +406,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -447,6 +456,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": 50.0,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -496,6 +506,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 1860.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -545,6 +556,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 390.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -594,6 +606,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 390.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -643,6 +656,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 1860.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -692,6 +706,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 1860.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -741,6 +756,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -790,6 +806,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 1860.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -839,6 +856,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": 1860.0,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -888,6 +906,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -937,6 +956,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -986,6 +1006,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -1035,6 +1056,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -1084,6 +1106,7 @@
           "low_c": null,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": null
         },
         "actual": {
@@ -1133,6 +1156,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -1182,6 +1206,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -1231,6 +1256,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -1280,6 +1306,7 @@
           "low_c": 18.0,
           "cloud_cover_pct": null,
           "peak_cape_jkg": null,
+          "wind_direction_deg": null,
           "mslp_trend": -1.0
         },
         "actual": {

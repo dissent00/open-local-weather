@@ -100,7 +100,7 @@ absent values are `null`, never omitted keys.
 | `glossary.json` | `GLOSSARY` | 19 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
-| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 6 |
+| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 7 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
 | `llm_schema_gemini.json` | `to_gemini_schema` | 1 |
@@ -122,6 +122,9 @@ absent values are `null`, never omitted keys.
 | `aligned_cycle.json` | `aligned_cycle_at` | Which model run this project INFERS is aligned across all five models right now — a table lookup, not an observation, since nothing in an Open-Meteo response says which cycle produced it. |
 | `baselines.json` | `persistence_prediction` / `climatology_prediction` | The two trivial rules a real model has to beat. Persistence repeats the last observation available at issuance; climatology is the trailing base rate over the record strictly before it. Neither may ever see the day it is forecasting — a baseline that could peek would score near-perfectly and make every real model look hopeless, with nothing about the page appearing broken. |
 | `next_aligned_window.json` | `next_aligned_window` | When the next window opens and which cycle it will carry — the forward-looking half of the same table. Strictly after the given moment, so a reader on a boundary is pointed at the next window rather than the one they already have. Used to tell someone whose forecast was built on a narrowed window when waiting would help. |
+| `wind_vector_mean.json` | `vector_mean` | Bearing and agreement for a set of compass directions, combined as unit vectors. The one quantity in this project that cannot be averaged on a number line: 350° and 10° are twenty degrees apart and their arithmetic mean is due SOUTH of both. The agreement figure is the resultant length and falls out of the same arithmetic — 0.0 is a set that cancels out and genuinely has no mean direction, which is why this approach cannot invent a bearing no model holds. |
+| `wind_consensus_direction.json` | `consensus_direction` | The gated rose point, or null. Null is the correct and common answer here in the evening: measured 2026-09-10, model agreement runs 0.95 at midday while Lake Victoria's breeze is driven and 0.48 at 19:00 as it collapses. |
+| `wind_describe_shift.json` | `describe_wind_shift` | How the wind turns through the day, as one finished clause. The models disagree on a single daily bearing and agree on which way it turns — across-day agreement 0.98–0.99 at the anchor hours — so the shift is reported and the bearing usually is not. An anchor the models split on is dropped rather than guessed. |
 
 ### The cases that matter most
 

@@ -78,6 +78,8 @@ from openlocalweather.models import (
 from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
 from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.wind import consensus_direction, describe_wind_shift, vector_mean
+from openlocalweather.defaults import WIND_DIRECTION_AGREEMENT_GATE
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     to_gemini_schema,
@@ -451,7 +453,37 @@ def export_extract() -> None:
         }
     }
 
+    # ROADMAP item 59. The bearing must come from the hour of THIS model's own
+    # peak gust, so the two models here peak at different hours on purpose: a
+    # port that took the first bearing, the last, or the bearing at a fixed
+    # hour would pass on a fixture where the peak happens to sit there.
+    hourly_bearings = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_gfs_seamless": [10.0, 31.0, 15.0],
+            "wind_direction_10m_gfs_seamless": [10.0, 225.0, 300.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "windgusts_10m_ecmwf_ifs025": [8.0, 12.0, 40.0],
+            "wind_direction_10m_ecmwf_ifs025": [20.0, 90.0, 230.0],
+            # Third model: gusts but no bearing series at all. Null, not north.
+            "precipitation_icon_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_icon_seamless": [9.0, 14.0, 22.0],
+        }
+    }
+
     cases = [
+        {
+            "name": "the bearing comes from each model's own peak-gust hour",
+            "input": {
+                "hourly_multi_model": hourly_bearings,
+                "models": ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"],
+                "threshold": RAIN_THRESHOLD_MM,
+            },
+            "expected": dump(extract_day0_predictions_from_hourly(
+                hourly_bearings, ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"], RAIN_THRESHOLD_MM
+            )),
+        },
         {
             "name": "an all-null series is skipped, not latched onto",
             "input": {
@@ -1991,6 +2023,99 @@ def export_system_prompt() -> None:
 
 
 
+def export_wind_direction() -> None:
+    """Circular arithmetic, which is the single easiest thing here to port
+    wrong and have every test still pass.
+
+    A port that averages bearings on a number line agrees with this one on
+    every set that does not cross north, and disagrees catastrophically on
+    the ones that do — 350 and 10 degrees are twenty degrees apart and average
+    to due SOUTH. The wrap cases below exist to fail that port.
+    """
+    MODELS_HERE = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless"]
+
+    def hourly(per_hour):
+        hours = sorted(per_hour)
+        out = {"time": [f"2026-09-10T{h:02d}:00" for h in hours]}
+        for i, m in enumerate(MODELS_HERE):
+            out[f"wind_direction_10m_{m}"] = [per_hour[h][i] for h in hours]
+        return {"hourly": out}
+
+    mean_cases = [
+        ("due north, where a naive mean returns due south", [350.0, 10.0]),
+        ("opposing winds cancel and have no bearing", [0.0, 180.0]),
+        ("one northerly outlier against four southwesterlies", [11.0, 254.0, 264.0, 207.0, 225.0]),
+        ("a tight southwesterly field", [225.0, 230.0, 220.0, 235.0]),
+        ("scattered to all quarters", [22.0, 135.0, 275.0, 215.0]),
+        ("a single bearing agrees with itself", [123.4]),
+        ("nothing to average", []),
+    ]
+    write(
+        "wind_vector_mean.json",
+        "vector_mean",
+        "Bearing and agreement for a set of compass directions, as unit "
+        "vectors. The agreement figure is the resultant length: 1.0 is "
+        "identical bearings, 0.0 is a set that cancels out and genuinely has "
+        "no mean direction. Includes the wrap-around cases an arithmetic mean "
+        "gets exactly backwards.",
+        [{"name": n, "input": {"degrees": d},
+          "expected": (lambda r: None if r is None else {"bearing": r[0], "agreement": r[1]})(vector_mean(d))}
+         for n, d in mean_cases],
+    )
+
+    write(
+        "wind_consensus_direction.json",
+        "consensus_direction",
+        "The gated rose point: one direction the models actually share, or "
+        "null. Null is the correct and common answer in the evening at this "
+        "location, where agreement falls to 0.48 as the lake breeze collapses.",
+        [{"name": n, "input": {"degrees": d, "gate": WIND_DIRECTION_AGREEMENT_GATE},
+          "expected": consensus_direction(d)}
+         for n, d in mean_cases + [
+             ("exactly at the gate is named", [0.0, 41.0, 319.0]),
+             ("two bearings are not a consensus however well they agree", [225.0, 226.0]),
+         ]],
+    )
+
+    shift_cases = [
+        ("the lake breeze, all three anchors agreed", {
+            3: [30.0, 35.0, 25.0, 40.0],
+            12: [225.0, 220.0, 230.0, 218.0],
+            18: [270.0, 265.0, 275.0, 268.0]}),
+        ("the evening is scattered and is left out", {
+            3: [30.0, 35.0, 25.0, 40.0],
+            12: [225.0, 220.0, 230.0, 218.0],
+            18: [10.0, 200.0, 100.0, 280.0]}),
+        ("steady all day is said, not skipped", {
+            3: [225.0, 220.0, 230.0, 218.0],
+            12: [223.0, 228.0, 222.0, 226.0],
+            18: [220.0, 224.0, 219.0, 227.0]}),
+        ("one anchor is not a shift", {
+            3: [10.0, 200.0, 100.0, 280.0],
+            12: [225.0, 220.0, 230.0, 218.0],
+            18: [10.0, 200.0, 100.0, 280.0]}),
+        ("no hour agrees, so nothing is claimed", {
+            3: [10.0, 200.0, 100.0, 280.0],
+            12: [15.0, 190.0, 95.0, 300.0],
+            18: [20.0, 210.0, 110.0, 290.0]}),
+        ("an all-null day is not a calm one", {
+            3: [None, None, None, None],
+            12: [None, None, None, None]}),
+    ]
+    write(
+        "wind_describe_shift.json",
+        "describe_wind_shift",
+        "One finished clause for how the wind turns through the day. Measured "
+        "2026-09-10: the models' agreement on a single daily bearing swings "
+        "from 0.95 at midday to 0.48 at 19:00, while the DAYS agree with each "
+        "other at 0.98-0.99 — so the shift is far better supported than any "
+        "one bearing, and it is the shift that gets reported.",
+        [{"name": n, "input": {"hourly_multi_model": hourly(ph), "models": MODELS_HERE},
+          "expected": describe_wind_shift(hourly(ph), MODELS_HERE)}
+         for n, ph in shift_cases],
+    )
+
+
 def export_day_over_day() -> None:
     """The Overview's opening sentence. Vector-tested because a live run got
     it wrong when the LLM was left to subtract: it called a 0.1°C difference
@@ -3044,6 +3169,7 @@ def main() -> None:
     export_coverage()
     export_spend()
     export_verification()
+    export_wind_direction()
     export_day_over_day()
     export_extended_trend()
     export_describe_day_rain()

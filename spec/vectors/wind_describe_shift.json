@@ -1,0 +1,248 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_wind_shift",
+  "description": "One finished clause for how the wind turns through the day. Measured 2026-09-10: the models' agreement on a single daily bearing swings from 0.95 at midday to 0.48 at 19:00, while the DAYS agree with each other at 0.98-0.99 \u2014 so the shift is far better supported than any one bearing, and it is the shift that gets reported.",
+  "cases": [
+    {
+      "name": "the lake breeze, all three anchors agreed",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": "north-northeasterly overnight, turning southwest by midday and west into the evening"
+    },
+    {
+      "name": "the evening is scattered and is left out",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              10.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              200.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              100.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              280.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": "north-northeasterly overnight, turning southwest by midday"
+    },
+    {
+      "name": "steady all day is said, not skipped",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              225.0,
+              223.0,
+              220.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              220.0,
+              228.0,
+              224.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              230.0,
+              222.0,
+              219.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              218.0,
+              226.0,
+              227.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": "southwesterly throughout"
+    },
+    {
+      "name": "one anchor is not a shift",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              10.0,
+              225.0,
+              10.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              200.0,
+              220.0,
+              200.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              100.0,
+              230.0,
+              100.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              280.0,
+              218.0,
+              280.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "no hour agrees, so nothing is claimed",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              10.0,
+              15.0,
+              20.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              200.0,
+              190.0,
+              210.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              100.0,
+              95.0,
+              110.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              280.0,
+              300.0,
+              290.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "an all-null day is not a calm one",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              null,
+              null
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              null,
+              null
+            ],
+            "wind_direction_10m_icon_seamless": [
+              null,
+              null
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              null,
+              null
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": null
+    }
+  ]
+}

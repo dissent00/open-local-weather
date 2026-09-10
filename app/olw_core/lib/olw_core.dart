@@ -42,3 +42,4 @@ export 'src/solar.dart';
 export 'src/spend.dart';
 export 'src/synoptic.dart';
 export 'src/verify.dart';
+export 'src/wind.dart';

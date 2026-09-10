@@ -63,6 +63,7 @@ from openlocalweather.aqi import (
     summarize_ground_aqi,
 )
 from openlocalweather.instability import InstabilityOutlook, summarize_instability
+from openlocalweather.wind import consensus_direction, describe_wind_shift
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -1499,6 +1500,17 @@ def run_daily_pipeline(
     model_predictions_context = _model_predictions_prompt_payload(
         day0_predictions, day3_predictions, day7_predictions
     )
+    # ROADMAP item 59. TWO WIND FACTS, and the second is the better one.
+    #
+    # A bearing cannot be averaged — see wind.vector_mean — so the direction
+    # is a gated vector consensus and is absent whenever the models do not
+    # share one, which measured here is most of the evening. The SHIFT is
+    # what survives: the models argue about a single daily bearing and agree
+    # about which way it turns, so that is the fact worth publishing.
+    wind_direction = consensus_direction(
+        [p.wind_direction_deg for p in day0_predictions if p.wind_direction_deg is not None]
+    )
+    wind_shift = describe_wind_shift(primary_hourly, MODELS)
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
@@ -1520,6 +1532,8 @@ def run_daily_pipeline(
         # cache the verification pass already read.
         yesterday_actual=comparison_for_prompt(asdict(day_over_day) if day_over_day is not None else None),
         extended_trend=extended_trend,
+        wind_direction=wind_direction,
+        wind_shift=wind_shift,
         review_context=review_context,
         today_weather_data={
             "primary_today_hourly": primary_hourly,

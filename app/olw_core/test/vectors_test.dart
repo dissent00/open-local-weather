@@ -1099,6 +1099,49 @@ void main() {
     });
   });
 
+  group('wind direction', () {
+    // Circular arithmetic is the single easiest thing in this project to port
+    // wrong and have every hand-written test still pass: a port that averages
+    // bearings on a number line agrees on every set that does not cross
+    // north, and is catastrophically wrong on the ones that do.
+    test('vector mean matches Python, including the wrap cases', () {
+      for (final c in casesOf('wind_vector_mean.json')) {
+        final degrees = (c['input'] as Map)['degrees'] as List;
+        final got = vectorMean([for (final d in degrees) (d as num).toDouble()]);
+        final want = c['expected'];
+        final reason = 'case "${c['name']}"';
+        if (want == null) {
+          expect(got, isNull, reason: reason);
+          continue;
+        }
+        final w = want as Map<String, Object?>;
+        // The bearing at zero agreement is arbitrary — atan2 of two near-zero
+        // components — and is compared only so divergent arithmetic shows up.
+        expect(got!.bearing, closeTo((w['bearing'] as num).toDouble(), 1e-9), reason: reason);
+        expect(got.agreement, closeTo((w['agreement'] as num).toDouble(), 1e-12), reason: reason);
+      }
+    });
+
+    test('the gated direction matches Python', () {
+      for (final c in casesOf('wind_consensus_direction.json')) {
+        final i = c['input'] as Map;
+        final degrees = (i['degrees'] as List).map((d) => (d as num).toDouble()).toList();
+        expect(consensusDirection(degrees, gate: (i['gate'] as num).toDouble()),
+            equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
+    test('the day shape matches Python character for character', () {
+      for (final c in casesOf('wind_describe_shift.json')) {
+        final i = c['input'] as Map;
+        final hourly = (i['hourly_multi_model'] as Map).cast<String, Object?>();
+        final models = (i['models'] as List).cast<String>();
+        expect(describeWindShift(hourly, models), equals(c['expected']),
+            reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -1110,6 +1153,9 @@ void main() {
       'scoring_mean.json',
       'scoring_rain_pct_trend.json',
       'extract_day0.json',
+      'wind_vector_mean.json',
+      'wind_consensus_direction.json',
+      'wind_describe_shift.json',
       'extract_day_n.json',
       'extract_onset_hour.json',
       'aqi_staleness.json',

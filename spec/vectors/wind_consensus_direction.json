@@ -1,0 +1,110 @@
+{
+  "vector_format_version": 1,
+  "function": "consensus_direction",
+  "description": "The gated rose point: one direction the models actually share, or null. Null is the correct and common answer in the evening at this location, where agreement falls to 0.48 as the lake breeze collapses.",
+  "cases": [
+    {
+      "name": "due north, where a naive mean returns due south",
+      "input": {
+        "degrees": [
+          350.0,
+          10.0
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "opposing winds cancel and have no bearing",
+      "input": {
+        "degrees": [
+          0.0,
+          180.0
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "one northerly outlier against four southwesterlies",
+      "input": {
+        "degrees": [
+          11.0,
+          254.0,
+          264.0,
+          207.0,
+          225.0
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "a tight southwesterly field",
+      "input": {
+        "degrees": [
+          225.0,
+          230.0,
+          220.0,
+          235.0
+        ],
+        "gate": 0.75
+      },
+      "expected": "SW"
+    },
+    {
+      "name": "scattered to all quarters",
+      "input": {
+        "degrees": [
+          22.0,
+          135.0,
+          275.0,
+          215.0
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "a single bearing agrees with itself",
+      "input": {
+        "degrees": [
+          123.4
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "nothing to average",
+      "input": {
+        "degrees": [],
+        "gate": 0.75
+      },
+      "expected": null
+    },
+    {
+      "name": "exactly at the gate is named",
+      "input": {
+        "degrees": [
+          0.0,
+          41.0,
+          319.0
+        ],
+        "gate": 0.75
+      },
+      "expected": "N"
+    },
+    {
+      "name": "two bearings are not a consensus however well they agree",
+      "input": {
+        "degrees": [
+          225.0,
+          226.0
+        ],
+        "gate": 0.75
+      },
+      "expected": null
+    }
+  ]
+}

@@ -33,6 +33,11 @@ from openlocalweather.comparison import (  # noqa: E402
     wind_warning,
 )
 from openlocalweather.dates import weekday_name  # noqa: E402
+from openlocalweather.wind import (  # noqa: E402
+    consensus_direction,
+    describe_wind_shift,
+    vector_mean,
+)
 from openlocalweather.defaults import MODELS  # noqa: E402
 from openlocalweather.extract import (  # noqa: E402
     extract_day0_predictions_from_hourly,
@@ -109,6 +114,34 @@ def _mean(values):
     return mean(present) if present else None
 
 
+def _direction_agreement_by_hour(hourly: dict) -> dict[int, float]:
+    """How much the models agree on the bearing, hour by hour, ungated.
+
+    The raw material for setting WIND_DIRECTION_AGREEMENT_GATE from more than
+    one climate. Stored as {hour: agreement}, rounded — three decimals is far
+    past what a threshold will ever be set to and keeps the file readable.
+    """
+    hours = (hourly or {}).get("hourly") or {}
+    times = hours.get("time") or []
+    out: dict[int, float] = {}
+    for i, stamp in enumerate(times):
+        try:
+            hour = int(stamp.split("T")[1][:2])
+        except (IndexError, ValueError):
+            continue
+        bearings = [
+            hours[f"wind_direction_10m_{m}"][i]
+            for m in MODELS
+            if hours.get(f"wind_direction_10m_{m}")
+            and i < len(hours[f"wind_direction_10m_{m}"])
+            and hours[f"wind_direction_10m_{m}"][i] is not None
+        ]
+        mean = vector_mean([float(b) for b in bearings]) if len(bearings) >= 3 else None
+        if mean is not None:
+            out[hour] = round(mean[1], 3)
+    return out
+
+
 def observe(loc: SandboxLocation) -> dict:
     """Everything for one location. Raises nothing — a location that fails to
     fetch reports the failure and the sweep continues, because one bad
@@ -158,6 +191,23 @@ def observe(loc: SandboxLocation) -> dict:
         today_wind_kmh=_mean([p.wind_kmh for p in day0]),
         day_winds_kmh=[_mean([p.wind_kmh for p in d]) for d in extended],
     )
+    # ROADMAP item 59, added 2026-09-10 at the operator's request. The wind
+    # direction gate is set from SEVEN DAYS AT ONE LOCATION, and the pattern
+    # it was tuned against — Lake Victoria's land and lake breeze, which the
+    # models agree on at midday (0.95) and argue about as it collapses (0.48)
+    # — is a fact about a large lake, not about the atmosphere. Whether 0.75
+    # is right for Phoenix or Reykjavik is unknown, and guessing is how a
+    # threshold ends up encoding one deployment's climate.
+    #
+    # So the AGREEMENT ITSELF is recorded hourly for every fleet location,
+    # unfiltered by the gate. In a fortnight this answers whether the
+    # midday-reliable, evening-unreliable shape is general, and the gate can
+    # be set from evidence rather than from Kisumu.
+    out["wind_direction"] = consensus_direction(
+        [p.wind_direction_deg for p in day0 if p.wind_direction_deg is not None]
+    )
+    out["wind_shift"] = describe_wind_shift(hourly, MODELS)
+    out["direction_agreement_by_hour"] = _direction_agreement_by_hour(hourly)
     out["consensus_gust"] = _mean([p.wind_kmh for p in day0])
     out["wind_warning"] = wind_warning(out["consensus_gust"])
     out["high_delta"] = out["comparison"].high_delta_c if out["comparison"] else None

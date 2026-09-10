@@ -39,6 +39,7 @@
         "low_c": 20.0,
         "cloud_cover_pct": null,
         "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     },
@@ -78,6 +79,7 @@
         "low_c": 20.0,
         "cloud_cover_pct": null,
         "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     },
@@ -166,6 +168,7 @@
         "low_c": 15.0,
         "cloud_cover_pct": null,
         "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     },
@@ -245,6 +248,7 @@
         "low_c": 10.0,
         "cloud_cover_pct": null,
         "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     },
@@ -305,6 +309,7 @@
         "low_c": 15.0,
         "cloud_cover_pct": null,
         "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     },

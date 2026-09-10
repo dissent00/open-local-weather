@@ -45,6 +45,7 @@ def extract_day0_predictions_from_hourly(
         )
         cloud = pick_series(h, f"cloud_cover_{model}", "cloud_cover")
         cape = pick_series(h, f"cape_{model}", "cape")
+        bearing = pick_series(h, f"wind_direction_10m_{model}", "wind_direction_10m")
 
         # An entirely absent/all-null precip series means no data for this
         # model, which is not the same as a confident dry forecast — see
@@ -79,6 +80,20 @@ def extract_day0_predictions_from_hourly(
         onset = get_onset_hour(times, precip, threshold) if rain else None
 
         wind_vals = [v for v in wind if v is not None]
+        # THE HOUR OF THIS MODEL'S OWN PEAK, so the bearing belongs to the
+        # gust being reported. max() over (value, index) would break ties by
+        # index; enumerate-and-max on the value alone keeps the first peak,
+        # which is what get_onset_hour does for the same reason.
+        peak_i = max(
+            (i for i, v in enumerate(wind) if v is not None),
+            key=lambda i: wind[i],
+            default=None,
+        )
+        bearing_at_peak = (
+            bearing[peak_i]
+            if peak_i is not None and peak_i < len(bearing) and bearing[peak_i] is not None
+            else None
+        )
         temp_vals = [v for v in temp if v is not None]
         press_vals = [v for v in press if v is not None]
         prob_vals = [v for v in prob if v is not None]
@@ -99,6 +114,7 @@ def extract_day0_predictions_from_hourly(
                 # CAPE is a confident claim of stable air and no data is not.
                 peak_cape_jkg=max(cape_vals) if cape_vals else None,
                 wind_kmh=max(wind_vals) if wind_vals else None,
+                wind_direction_deg=bearing_at_peak,
                 high_c=max(temp_vals) if temp_vals else None,
                 low_c=min(temp_vals) if temp_vals else None,
                 mslp_trend=(press_vals[-1] - press_vals[0]) if len(press_vals) >= 2 else None,

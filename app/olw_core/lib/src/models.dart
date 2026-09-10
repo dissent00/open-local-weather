@@ -103,6 +103,17 @@ class ModelPrediction {
   /// never "stable".
   final double? peakCapeJkg;
 
+  /// The compass bearing, degrees, AT THIS MODEL'S OWN PEAK-GUST HOUR —
+  /// upstream item 59. Paired with [windKmh], which is that same model's own
+  /// day-maximum gust: a speed from one hour beside a bearing from another
+  /// describes a wind that never blew.
+  ///
+  /// NOT SCORED, and never averaged by a caller. Bearings are circular and an
+  /// arithmetic mean of them is meaningless — see wind.dart's vectorMean,
+  /// the only thing allowed to combine these. Null, never 0.0, when absent:
+  /// due north is a confident bearing and no data is not.
+  final double? windDirectionDeg;
+
   /// Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
   /// `rain` stays the boolean the accuracy record is built on, because
   /// changing what that means would make every stored day incomparable with
@@ -137,6 +148,7 @@ class ModelPrediction {
     this.mslpTrend,
     this.cloudCoverPct,
     this.peakCapeJkg,
+    this.windDirectionDeg,
     this.precipMm,
     this.rainProbabilityPct,
   });
@@ -153,6 +165,7 @@ class ModelPrediction {
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
         cloudCoverPct: _toDouble(j['cloud_cover_pct']),
         peakCapeJkg: _toDouble(j['peak_cape_jkg']),
+        windDirectionDeg: _toDouble(j['wind_direction_deg']),
       );
 
   Map<String, Object?> toJson() => {
@@ -165,6 +178,7 @@ class ModelPrediction {
         'mslp_trend': mslpTrend,
         'cloud_cover_pct': cloudCoverPct,
         'peak_cape_jkg': peakCapeJkg,
+        'wind_direction_deg': windDirectionDeg,
         'precip_mm': precipMm,
         'rain_probability_pct': rainProbabilityPct,
       };

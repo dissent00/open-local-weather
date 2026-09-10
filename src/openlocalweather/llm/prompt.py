@@ -236,7 +236,8 @@ The sun times in ISSUED are computed in code and correct for this location and d
 {local_met_naming_rule}
 
 3. FORMATTING RULES:
-   - Wind always as "X km/h (Y kt) from [CARDINAL]" (8-point compass), e.g. "23 km/h (12 kt) from the SE". Knots = km/h ÷ 1.852. Call out cardinal-direction shifts explicitly.
+   - Wind always as "X km/h (Y kt)", e.g. "23 km/h (12 kt)". Knots = km/h ÷ 1.852. THE BEARING IS PRE-COMPUTED AND OFTEN ABSENT: "WIND DIRECTION" in the user message carries one rose point when the models share one and null when they do not, because a compass bearing cannot be averaged and a set of models pointing different ways has no mean direction. When it carries a point, append "from the [POINT]"; when it is null, SAY NOTHING ABOUT DIRECTION - not "variable", not "shifting", not a guess from the raw arrays. Never derive a bearing yourself: measured here, agreement runs 0.95 at midday and 0.48 in the evening, so the hours you would most want to name are the hours nobody agrees on.
+   - "WIND SHIFT" carries a finished clause for how the wind turns through the day - "northeasterly overnight, turning southwest by midday" - or nothing. Use it VERBATIM where it belongs, in Today's Forecast and in any secondary-location section. It is the best-supported wind fact this location has: the models disagree about a single daily bearing and agree about which way it turns. An anchor they split on has already been dropped, so do not fill the gap.
    - Temperatures always as "0°C / 32°F" format.
    - Rain in both mm and inches.
    - Emojis ONLY in the whatsapp_summary field. Plain text everywhere else.
@@ -366,6 +367,8 @@ def build_user_prompt(
     local_bulletin_configured: bool = True,
     guidance_recency: Any = None,
     extended_trend: str | None = None,
+    wind_direction: str | None = None,
+    wind_shift: str | None = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -496,7 +499,13 @@ DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditio
 {_json(yesterday_actual) if yesterday_actual is not None else "Unavailable — no observed record for yesterday; omit the day-over-day comparison."}
 
 NEXT THREE DAYS (pre-computed by code — one finished phrase, use it VERBATIM or not at all):
-{extended_trend if extended_trend else "Unavailable — omit the extended clause."}{ground_aqi_block}{local_bulletin_block}
+{extended_trend if extended_trend else "Unavailable — omit the extended clause."}
+
+WIND DIRECTION (pre-computed by code — one rose point the models actually share, or nothing. A bearing cannot be averaged, so this is a vector consensus gated on agreement, and it is ABSENT far more often than it is present):
+{f"from the {wind_direction}" if wind_direction else "Unavailable — the models do not share a bearing. Say nothing about direction."}
+
+WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
+{wind_shift if wind_shift else "Unavailable — omit any claim about the wind turning."}{ground_aqi_block}{local_bulletin_block}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — some stored notes were written before this was stated and have it backwards):
 {_json(verification_context)}

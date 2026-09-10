@@ -6473,6 +6473,57 @@ Each is a rule about a number the record scores, sitting in a passage about
 how to write a sentence. That is exactly this item's "a change to either can
 silently move the other", and it is the argument for doing the item.
 
+### 2026-09-10: wind direction, and the one quantity that cannot be averaged
+
+The second cold reading found that `onset_hour` must be null when the models
+disagree while wind direction *"always"* takes a cardinal under the same
+disagreement, and that the escape valve it improvised satisfied neither rule.
+The operator's reply named the hazard exactly: *"what I don't want is a north
+wind in model A averaged with a south wind in model B to become east or west
+or some nonsense."*
+
+**That is what an arithmetic mean does to bearings**, and it was live: on
+2026-09-06 one model at 11° against four southwesterlies averages to SSW
+(192°), a bearing no model held. Directions are now combined as unit vectors
+in `wind.py`. The resultant's angle is the consensus and its LENGTH is the
+agreement, so the failure case is structurally impossible — two opposing winds
+sum to nothing, and nothing has no bearing.
+
+**Then the operator asked whether the diurnal shift was accounted for. It was
+not, and it was the whole story.** Nothing extracted direction at all. Measured
+over seven archived days, model agreement on a single daily bearing swings from
+0.95 at midday to 0.48 at 19:00 — but the DAYS agree with each other at
+0.98–0.99. Lake Victoria runs a land breeze overnight and a lake breeze from
+midday, and it is the same day every day:
+
+> NE overnight → E/SE mid-morning → SW by midday → W by evening
+
+So the shift is reported and the bearing usually is not. Asked for one
+direction the models argue; asked which way it turns, they do not. An earlier
+draft named only the first and last anchors and was corrected: that threw away
+midday, the hour the models agree on most and the one a boater on the Gulf is
+asking about.
+
+An earlier measurement sampling each model at its OWN peak-gust hour showed
+far worse agreement (median 0.56 against 0.83 at a common hour) — that was a
+TIMING artefact, models peaking at different hours. `wind_direction_deg` still
+takes each model's own peak, because pairing a speed from one hour with a
+bearing from another describes a wind that never blew; the gate handles the
+rest.
+
+**The gate does not travel, and the sandbox proved it the same day.** Hourly
+agreement is now recorded ungated for every fleet location (item 96). First
+run: Wellington and Reykjavik sit near 1.00 at almost every hour, because
+their wind is driven by large-scale systems every model resolves. Kisumu is
+the outlier. So `WIND_DIRECTION_AGREEMENT_GATE = 0.75` is close to a no-op in
+most climates and does real work exactly where it is needed — which is the
+right shape for a threshold, and was luck rather than judgement.
+
+**REVIEW THIS ON 2026-09-24.** Two weeks of fleet data, set against the same
+question: is 0.75 right, and is the midday-reliable/evening-unreliable shape
+general or lacustrine? Three locations on one day is an indication, not a
+finding. Do not tune the gate before then.
+
 ### The sequence this measurement implies
 
 1. **Unweld, without splitting.** Move those six rules out of STEP 2 into

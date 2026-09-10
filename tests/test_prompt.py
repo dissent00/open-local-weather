@@ -67,8 +67,11 @@ def test_system_prompt_mentions_key_design_principles():
     assert "do not treat it as live ground truth" in prompt
     # Day+3/+7 no-onset-timing prohibition present.
     assert "never state a specific onset time" in prompt.lower()
-    # Formatting rules present.
-    assert "km/h (Y kt) from [CARDINAL]" in prompt
+    # Formatting rules present. The bearing left this rule on 2026-09-10:
+    # it is pre-computed, gated on model agreement, and absent more often
+    # than not — see WIND DIRECTION in the user prompt.
+    assert '"X km/h (Y kt)"' in prompt
+    assert "SAY NOTHING ABOUT DIRECTION" in prompt
     assert "0°C / 32°F" in prompt
     assert "Emojis ONLY in the whatsapp_summary field" in prompt
 

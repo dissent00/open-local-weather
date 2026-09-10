@@ -373,3 +373,56 @@ def test_a_model_with_no_cape_series_stores_none_not_zero():
 
     assert by_model["gfs_seamless"].peak_cape_jkg is None, "an all-null series is not 0 J/kg"
     assert by_model["ecmwf_ifs025"].peak_cape_jkg is None, "an absent series is not 0 J/kg"
+
+
+def test_day0_stores_the_bearing_at_each_model_s_own_peak_gust():
+    """ROADMAP item 59. `wind_kmh` is each model's OWN day-maximum gust, so
+    its bearing has to be the one at that model's own peak hour. Pairing a
+    speed from one hour with a bearing from another describes a wind that
+    never blew.
+
+    That choice costs agreement and is still right: measured 2026-09-10,
+    sampling every model at its own peak gives a median cross-model agreement
+    of 0.56 against 0.83 at a common hour — because the models put the peak
+    at different hours. The gate is what handles that, not a quietly
+    mismatched pairing.
+    """
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_gfs_seamless": [10.0, 31.0, 15.0],
+            "wind_direction_10m_gfs_seamless": [10.0, 225.0, 300.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "windgusts_10m_ecmwf_ifs025": [8.0, 12.0, 40.0],
+            "wind_direction_10m_ecmwf_ifs025": [20.0, 90.0, 230.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+
+    # GFS peaks at 06:00, so its bearing is 06:00's — not 00:00's or 12:00's.
+    assert by_model["gfs_seamless"].wind_kmh == pytest.approx(31.0)
+    assert by_model["gfs_seamless"].wind_direction_deg == pytest.approx(225.0)
+
+    # ECMWF peaks at a different hour, and takes the bearing from ITS peak.
+    assert by_model["ecmwf_ifs025"].wind_kmh == pytest.approx(40.0)
+    assert by_model["ecmwf_ifs025"].wind_direction_deg == pytest.approx(230.0)
+
+
+def test_a_missing_bearing_is_none_not_north():
+    """0 degrees is due north, a real and confident bearing. An absent series
+    is no bearing at all, and the two must never be confused — the same rule
+    cloud, CAPE and rain already follow."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0],
+            "windgusts_10m_gfs_seamless": [10.0, 20.0],
+            "wind_direction_10m_gfs_seamless": [None, None],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0],
+            "windgusts_10m_ecmwf_ifs025": [8.0, 12.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+    assert by_model["gfs_seamless"].wind_direction_deg is None, "all-null is not north"
+    assert by_model["ecmwf_ifs025"].wind_direction_deg is None, "absent is not north"

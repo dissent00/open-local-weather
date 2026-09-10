@@ -397,6 +397,26 @@ REVIEW_CLOUD_BIAS_THRESHOLD_PCT = 15.0
 # question a reader most needs answered here, and it should fire on models
 # that are genuinely blind to convection rather than on the weakest of five
 # good ones.
+# How much the models must agree before a wind direction is named at all.
+#
+# The resultant length of the unit vectors — see wind.vector_mean — where 1.0
+# is identical bearings and 0.0 is a set that cancels out.
+#
+# 0.75 is PROVISIONAL and set from seven days at one location. Measured
+# 2026-09-10 over the archived prompts, agreement by hour ran: 06:00 0.93,
+# 09:00 0.71, 12:00 0.95, 15:00 0.83, 18:00 0.73, 19:00 0.48, 21:00 0.55.
+# 0.75 names a direction while Lake Victoria's breeze is driven and stays
+# silent through the mid-morning turn and the evening collapse, which is the
+# behaviour wanted. Whether that threshold travels to a location without a
+# lake is unknown, and item 96's sandbox is now recording the same figure
+# across the fleet so it can be set from evidence instead.
+WIND_DIRECTION_AGREEMENT_GATE = 0.75
+
+# Two bearings can agree perfectly and mean nothing. A consensus needs a
+# field to be a consensus of, and the same floor keeps a single surviving
+# model from speaking for all of them.
+WIND_DIRECTION_MIN_MODELS = 3
+
 REVIEW_MIN_STORM_DAYS = 10
 REVIEW_STORM_MISS_THRESHOLD = 0.5
 

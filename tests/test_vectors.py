@@ -27,6 +27,7 @@ from pathlib import Path
 
 import pytest
 
+from openlocalweather.wind import consensus_direction, describe_wind_shift, vector_mean
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
@@ -694,6 +695,9 @@ def test_every_vector_file_is_exercised():
         "aligned_cycle.json",
         "next_aligned_window.json",
         "baselines.json",
+        "wind_vector_mean.json",
+        "wind_consensus_direction.json",
+        "wind_describe_shift.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (
@@ -801,3 +805,33 @@ def test_vectors_daypart_forward_hours():
         i = c["input"]
         got = forward_hours(i["hourly_multi_model"], datetime.fromisoformat(i["now"]))
         check(c, got)
+
+
+def test_vectors_wind_vector_mean():
+    """Circular arithmetic, pinned because a port that averages bearings on a
+    number line agrees with this one on every set that does not cross north
+    and is catastrophically wrong on the ones that do."""
+    for case in load("wind_vector_mean.json")["cases"]:
+        got = vector_mean(case["input"]["degrees"])
+        want = case["expected"]
+        if want is None:
+            assert got is None, f"vector case failed: {case['name']}"
+            continue
+        bearing, agreement = got
+        # THE BEARING AT ZERO AGREEMENT IS ARBITRARY — atan2 of two near-zero
+        # components — and is pinned only so a port's arithmetic can be shown
+        # to diverge. Callers gate on the agreement and never read it.
+        assert bearing == pytest.approx(want["bearing"], abs=1e-9), case["name"]
+        assert agreement == pytest.approx(want["agreement"], abs=1e-12), case["name"]
+
+
+def test_vectors_wind_consensus_direction():
+    for case in load("wind_consensus_direction.json")["cases"]:
+        got = consensus_direction(case["input"]["degrees"], case["input"]["gate"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_wind_describe_shift():
+    for case in load("wind_describe_shift.json")["cases"]:
+        got = describe_wind_shift(case["input"]["hourly_multi_model"], case["input"]["models"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
