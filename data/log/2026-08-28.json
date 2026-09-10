@@ -313,15 +313,18 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0 (2026-08-28): All models correctly verified the dry precipitation call. High temperature estimates were tight, with OLW blend within -0.1°C, while GFS overestimated peak surface winds by 30.6 km/h."
+      "note": "Day+0 (2026-08-28): All models correctly verified the dry precipitation call. High temperature estimates were tight, with OLW blend within -0.1°C, while GFS under-forecast peak surface winds by 30.6 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
-      "note": "Day+3 (August 28 target) verified dry correctly across all numerical models and Kenya Met. ECMWF showed a minor daytime high cold bias (-1.8°C), while GFS wind speed overestimation persisted (+19.1 km/h)."
+      "note": "Day+3 (August 28 target) verified dry correctly across all numerical models and Kenya Met. ECMWF showed a minor daytime high warm bias (-1.8°C), while GFS wind speed under-forecasting persisted (+19.1 km/h).",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day7": {
       "verified": true,
-      "note": "Day+7: Numerical guidance failed the dry verification call for August 28th, whereas climatology correctly verified dry. ECMWF captured wind speed within 2.9 km/h, while GFS overpredicted peak wind by 26.6 km/h."
+      "note": "Day+7: Numerical guidance failed the dry verification call for August 28th, whereas climatology correctly verified dry. ECMWF captured wind speed within 2.9 km/h, while GFS under-forecast peak wind by 26.6 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": {

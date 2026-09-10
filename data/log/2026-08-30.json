@@ -317,7 +317,8 @@
     },
     "day3": {
       "verified": true,
-      "note": "Day+3 (2026-08-30 target): Verified dry across all models. High temperature errors were minimal for ECMWF (-2.1°C) and ICON (-0.2°C), though GFS showed a daytime cold bias (-3.4°C) and persistent wind overestimation (+18.7 km/h)."
+      "note": "Day+3 (2026-08-30 target): Verified dry across all models. High temperature errors were minimal for ECMWF (-2.1°C) and ICON (-0.2°C), though GFS showed a daytime warm bias (-3.4°C) and persistent wind under-forecasting (+18.7 km/h).",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day7": {
       "verified": true,

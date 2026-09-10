@@ -268,7 +268,8 @@
     },
     "day3": {
       "verified": true,
-      "note": "Day+3: Models accurately forecasted rainfall occurrence for August 11th, with GFS and ECMWF achieving high temperature errors under 0.7°C. UKMO again demonstrated significant surface wind overestimation (+23.8 km/h), while ECMWF and ICON exhibited an overnight minimum temperature cold bias."
+      "note": "Day+3: Models accurately forecasted rainfall occurrence for August 11th, with GFS and ECMWF achieving high temperature errors under 0.7°C. UKMO again demonstrated significant surface wind under-forecasting (+23.8 km/h), while ECMWF and ICON exhibited an overnight minimum temperature cold bias.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day7": {
       "verified": true,

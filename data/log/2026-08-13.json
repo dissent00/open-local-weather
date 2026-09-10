@@ -280,15 +280,18 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0: GFS, ICON, and UKMO accurately predicted rainfall for August 13th, whereas ECMWF incorrectly called dry conditions. High temperature guidance was exceptionally accurate for ECMWF (0.0°C error) and ICON (-0.1°C error), though ICON maintained its known nocturnal cold bias (-3.7°C) and GFS substantially overpredicted surface wind speeds by 21.6 km/h."
+      "note": "Day+0: GFS, ICON, and UKMO accurately predicted rainfall for August 13th, whereas ECMWF incorrectly called dry conditions. High temperature guidance was exceptionally accurate for ECMWF (0.0°C error) and ICON (-0.1°C error), though ICON maintained its known nocturnal warm bias (-3.7°C) and GFS substantially under-forecast surface wind speeds by 21.6 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
-      "note": "Day+3 (2026-08-13): ECMWF and UKMO accurately forecast the rainfall event, while GFS and ICON failed to verify. ICON provided the best high temperature alignment (-1.1°C error) and wind guidance (10.8 km/h error), whereas GFS showed a noticeable daytime cold bias (-2.5°C error) and wind overestimation (+36.3 km/h)."
+      "note": "Day+3 (2026-08-13): ECMWF and UKMO accurately forecast the rainfall event, while GFS and ICON failed to verify. ICON provided the best high temperature alignment (-1.1°C error) and wind guidance (10.8 km/h error), whereas GFS showed a noticeable daytime warm bias (-2.5°C error) and wind under-forecasting (+36.3 km/h).",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day7": {
       "verified": true,
-      "note": "Day+7 (2026-08-13): GFS and ECMWF both accurately verified the precipitation call for August 13th. ECMWF captured wind speeds within 13.7 km/h and high temperatures within 2.2°C, whereas GFS overestimated surface winds by 26.0 km/h."
+      "note": "Day+7 (2026-08-13): GFS and ECMWF both accurately verified the precipitation call for August 13th. ECMWF captured wind speeds within 13.7 km/h and high temperatures within 2.2°C, whereas GFS under-forecast surface winds by 26.0 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": null,

@@ -280,7 +280,8 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0: All models correctly verified the dry precipitation call for August 15th, with daytime high temperatures accurately predicted within 0.1°C to 0.6°C. GFS and UKMO substantially overpredicted surface wind speeds (by 27.4 km/h and 16.6 km/h respectively), whereas ICON delivered high-precision wind speed guidance (5.8 km/h error)."
+      "note": "Day+0: All models correctly verified the dry precipitation call for August 15th, with daytime high temperatures accurately predicted within 0.1°C to 0.6°C. GFS and UKMO substantially under-forecast surface wind speeds (by 27.4 km/h and 16.6 km/h respectively), whereas ICON delivered high-precision wind speed guidance (5.8 km/h error).",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
@@ -288,7 +289,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7: GFS and ECMWF both correctly verified the precipitation call for August 15th. ECMWF captured wind speeds within 12.2 km/h, whereas GFS overpredicted surface winds by 31.0 km/h."
+      "note": "Day+7: GFS and ECMWF both correctly verified the precipitation call for August 15th. ECMWF captured wind speeds within 12.2 km/h, whereas GFS under-forecast surface winds by 31.0 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": null,

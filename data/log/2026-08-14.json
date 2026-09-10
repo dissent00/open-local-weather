@@ -288,7 +288,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7 (2026-08-14 target): GFS accurately verified the dry precipitation call, whereas ECMWF and Best Match incorrectly predicted rainfall. Surface wind speeds were overestimated by GFS by 23.0 km/h."
+      "note": "Day+7 (2026-08-14 target): GFS accurately verified the dry precipitation call, whereas ECMWF and Best Match incorrectly predicted rainfall. Surface wind speeds were under-forecast by GFS by 23.0 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": null,

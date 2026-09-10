@@ -302,7 +302,8 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0 verified dry across all models for Sept 1 target, matching expectations. High temperatures were captured with extreme precision by Best Match and GFS (-0.1°C error), while GFS overestimated peak surface winds by 15.5 km/h."
+      "note": "Day+0 verified dry across all models for Sept 1 target, matching expectations. High temperatures were captured with extreme precision by Best Match and GFS (-0.1°C error), while GFS under-forecast peak surface winds by 15.5 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,

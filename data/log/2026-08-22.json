@@ -302,7 +302,8 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0: ECMWF and ICON successfully verified yesterday's precipitation call, with ECMWF catching onset precisely at 16:00 EAT while ICON showed a 7-hour early bias. GFS, UKMO, and Kenya Met failed to verify the rain event, while GFS over-forecasted surface wind speeds by 23.0 km/h."
+      "note": "Day+0: ECMWF and ICON successfully verified yesterday's precipitation call, with ECMWF catching onset precisely at 16:00 EAT while ICON showed a 7-hour early bias. GFS, UKMO, and Kenya Met failed to verify the rain event, while GFS under-forecast surface wind speeds by 23.0 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
@@ -310,7 +311,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7: GFS, ECMWF, and Best Match all correctly verified dry conditions for the August 22nd target date. ECMWF captured surface pressure (0.1 hPa error) and wind speeds (-3.6 km/h error) with high fidelity, whereas GFS overestimated peak surface winds (+23.8 km/h error)."
+      "note": "Day+7: GFS, ECMWF, and Best Match all correctly verified dry conditions for the August 22nd target date. ECMWF captured surface pressure (0.1 hPa error) and wind speeds (-3.6 km/h error) with high fidelity, whereas GFS under-forecast peak surface winds (+23.8 km/h error).",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": {

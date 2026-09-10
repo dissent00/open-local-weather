@@ -302,7 +302,8 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0 (2026-08-20): ECMWF, ICON, Kenya Met, and Best Match correctly predicted rainfall with exact onset timing, while GFS and UKMO failed to verify the rain event. ECMWF (+0.2°C high error) and ICON (+0.7°C high error) showed superior high temperature precision, whereas GFS had a -3.2°C daytime cold bias and ICON maintained a nocturnal cold bias (-2.6°C)."
+      "note": "Day+0 (2026-08-20): ECMWF, ICON, Kenya Met, and Best Match correctly predicted rainfall with exact onset timing, while GFS and UKMO failed to verify the rain event. ECMWF (+0.2°C high error) and ICON (+0.7°C high error) showed superior high temperature precision, whereas GFS had a -3.2°C daytime warm bias and ICON maintained a nocturnal warm bias (-2.6°C).",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
@@ -310,7 +311,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7: GFS, ECMWF, and Best Match all verified the rainfall call for August 20th, though GFS overpredicted peak wind speed by 21.6 km/h."
+      "note": "Day+7: GFS, ECMWF, and Best Match all verified the rainfall call for August 20th, though GFS under-forecast peak wind speed by 21.6 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": {

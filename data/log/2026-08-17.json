@@ -288,7 +288,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7: GFS, ECMWF, and Best Match failed to verify the dry target on August 17th. Severe wind over-prediction persisted on GFS (+23.0 km/h), while ECMWF showed a daytime warm bias (+3.9°C)."
+      "note": "Day+7: GFS, ECMWF, and Best Match failed to verify the dry target on August 17th. Severe wind under-forecasting persisted on GFS (+23.0 km/h), while ECMWF showed a daytime cold bias (+3.9°C).",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": null,

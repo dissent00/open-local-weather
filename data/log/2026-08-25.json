@@ -291,7 +291,8 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0: ECMWF, ICON, UKMO, Kenya Met, and Best Match accurately verified the dry call for August 25th, whereas GFS incorrectly predicted rain. High temperatures were captured within 0.2°C to 0.9°C across models, but GFS overpredicted surface winds by 18.7 km/h."
+      "note": "Day+0: ECMWF, ICON, UKMO, Kenya Met, and Best Match accurately verified the dry call for August 25th, whereas GFS incorrectly predicted rain. High temperatures were captured within 0.2°C to 0.9°C across models, but GFS under-forecast surface winds by 18.7 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     },
     "day3": {
       "verified": true,
@@ -299,7 +300,8 @@
     },
     "day7": {
       "verified": true,
-      "note": "Day+7 verified dry conditions across GFS and ECMWF for Aug 25 target, though Best Match incorrectly forecast precipitation. High temperature guidance remained within 0.6°C across models, while GFS overpredicted peak wind by 19.8 km/h."
+      "note": "Day+7 verified dry conditions across GFS and ECMWF for Aug 25 target, though Best Match incorrectly forecast precipitation. High temperature guidance remained within 0.6°C across models, while GFS under-forecast peak wind by 19.8 km/h.",
+      "note_sign_corrected_on": "2026-09-10"
     }
   },
   "local_bulletin": {

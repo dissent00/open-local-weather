@@ -449,6 +449,24 @@ class LeadTimeVerification(BaseModel):
 
     verified: bool = False
     note: str | None = None
+    # When this note's error-SIGN direction words were mechanically corrected,
+    # and nothing else about it — ROADMAP item 92, and `tools/fix_note_signs.py`
+    # for the rules.
+    #
+    # THE LEDGER SAYS IT WAS TOUCHED. The convention is observed minus
+    # forecast, so a positive error is a model that came in UNDER; the prompt
+    # says so now and did not when these were written, and 26 stored notes
+    # described the direction backwards — "GFS overpredicted surface wind
+    # speeds by 38.9 km/h" on a day GFS forecast 12.2 and 51.1 blew. The
+    # magnitude was always right and was never altered; only the word for its
+    # direction was, and only where the stored prediction and the stored
+    # observation for that exact date, model, lead and field said so.
+    #
+    # A corrected note is still an LLM's prose about numbers that are in the
+    # record anyway. This field exists so that a reader can tell a note that
+    # was edited from one that was written correctly, rather than the fix
+    # quietly making the record look like it was always clean.
+    note_sign_corrected_on: date | None = None
 
 
 class ModelPredictionsByLead(BaseModel):

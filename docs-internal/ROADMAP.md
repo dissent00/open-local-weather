@@ -10788,7 +10788,60 @@ not merely sit there, it makes a careful reader discard correct findings.**
 
 ---
 
-## 92. The payload never states its own error-sign convention · **Fixed 2026-09-09**
+## 92. The payload never states its own error-sign convention · **Convention stated 2026-09-09; the record it had already corrupted cleaned 2026-09-10**
+
+### The half the convention could not fix
+
+Stating the rule stopped new notes being written backwards. It did nothing
+about the ones already stored, and a cold reading on 2026-09-10 found them
+still being fed to the forecaster: the long-run review said GFS
+"under-forecasts peak wind here... +20.6 km/h" while a stored note for the
+same model said "GFS overpredicted surface wind speeds by 38.9 km/h". On that
+day GFS forecast 12.2 km/h and 51.1 blew. The magnitude was right and the
+word for its direction was exactly backwards.
+
+**43 notes corrected**, by `tools/fix_note_signs.py`. Nothing was rewritten on
+the strength of its wording: every edit was checked against the stored
+prediction and the stored observation for that exact date, model, lead and
+field, the magnitude in the prose had to match the recomputed error, and the
+direction word had to contradict its sign. The magnitude was never touched.
+
+Each corrected note carries `note_sign_corrected_on`. THE LEDGER SAYS IT WAS
+TOUCHED — a note without that marker has not been checked, and the fix does
+not get to make the record look as though it was always clean.
+
+### What the tool got wrong first, and why it is tested
+
+It edits the record, so every rule below came from a wrong edit it nearly
+made. `tests/test_fix_note_signs.py` pins them.
+
+- **A fixed character window** attributed "over-forecasted" from a wind clause
+  to a temperature figure beside it. Three of the first four hits were that.
+  Clause-level parsing replaced it.
+- **The wrong observation.** A note at lead k sits on the row that MADE the
+  prediction, so a Day+3 note on 2026-08-28 describes what happened on
+  2026-08-31. Comparing against the row's own date matched a different field
+  by coincidence to two decimal places.
+- **"cold bias" with no temperature named** cannot be checked at all; trying
+  both and taking whichever magnitude matched is how that coincidence
+  "confirmed" a false claim.
+- **One verb over two quantities.** "GFS overestimated winds by 25.9 km/h and
+  high temperatures by -4.5C" was wrong about the wind and RIGHT about the
+  temperature. Flipping it trades one false claim for another, so that clause
+  is refused and remains wrong in the record on purpose — the single
+  exception, and it is named here so nobody thinks it was missed.
+- **A split half prepended its inherited subject**, and the augmented string
+  then matched nothing in the note, so a verified-backwards wind claim was
+  found and silently never replaced. Attribution and replacement are
+  different strings.
+
+### What is still true
+
+A corrected note is still an LLM's prose about numbers that are in the record
+anyway. The prompt now says the direction lives in the error fields and
+nowhere else, that 43 notes were corrected and carry a marker, and that one
+was deliberately left. **The deeper fix is item 59's**: a note is rendering,
+and a rendering call should not be the thing a later run reasons from.
 
 **Two independent cold readers, on two separate harness runs, read every bias
 finding backwards.** Both concluded the code was inverted; both were wrong.
