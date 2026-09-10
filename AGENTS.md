@@ -126,7 +126,26 @@ Before committing:
   it.
 - **Say what you did not check.** Naming the gap costs a sentence, and it is
   the difference between a report and a claim.
+- **A threshold is measured against the record, not against the samples in
+  front of you.** 2026-09-10: a 200-character bound was added to stop a
+  runaway LLM field, sized from a replay's 22 characters and one morning's
+  49, and its comment claimed "roughly four times the longest value ever
+  observed". Swept over all 360 display strings in `data/log/`, the longest
+  real value was 155 — the guard sat 45 characters from refusing a correct
+  forecast, and it would have failed first on a complicated synoptic day,
+  which is when it matters most. The sweep is one command. Run it, and let
+  the cost asymmetry pick the number: losing a forecast is far worse than
+  publishing an ugly one.
 
 ## Bugs
 
 Write the failing test first. Watch it fail. Then fix. Then watch it pass.
+
+**Reverting a mutation: never `git checkout --` a file with uncommitted work
+in it.** Testing that a guard bites means breaking the code, running, and
+putting it back — and `git checkout -- <file>` puts it back to HEAD, not to
+what you had. It silently discarded uncommitted work three times on
+2026-09-10, each time in a file that had unstaged changes from the same
+session, and each time the tests then failed for a reason that had nothing to
+do with the mutation. Copy the file aside and copy it back, or apply the
+inverse edit.
