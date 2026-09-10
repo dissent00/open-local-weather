@@ -1,39 +1,39 @@
 {
   "date": "2026-09-10",
-  "rain_expected": "Evening and Nighttime Thunderstorms Likely",
-  "onset_window": "Late afternoon to evening (16:00-19:00 EAT)",
-  "peak_wind_kmh": 23.0,
+  "rain_expected": "Evening Thunderstorms",
+  "onset_window": null,
+  "peak_wind_kmh": null,
   "temp_high_c": 29.5,
   "temp_low_c": 18.0,
   "temp_high_low_display": "30°C / 85°F high, 18°C / 64°F low",
-  "mslp_trend_24h": "-1.3 hPa (falling)",
-  "synoptic_pattern": "Strong SW-NE pressure gradient (11 hPa spread) with deepening troughing to the south/southwest.",
-  "uv_index_max": "8.7 (Very High)",
-  "air_quality_aqi": "72-174 (Ground sensors stale; model US AQI 72-88)",
+  "mslp_trend_24h": "",
+  "synoptic_pattern": "Equatorial Low / Lake Convergence",
+  "uv_index_max": "8.75 Registered Midday (Past Peak Environmentally Environmentally Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Pasine Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Passtaken Pasignalling PROGRAM DI PREFEITURING /nTABLE FA-1. - REGISTER OF REGISTERED VOTERS Standard - OVERED - VOTER REGISTATION - - - - As OF MAY O1, 2021 VOTIC STIS SHS SHOWIN AS REGISTERED /nTABLE 1. - REGISTER OF REGISTERED VOTERS - AS OF MAY 01, 2021 - VOTATION IS SHOWIN AS REGISTERED - /nTABLE FAIFIC - REGIITER SE FOR PEREECTION SERE F O. OF FEVEI RAER PAEE O NO. 3 S O I I I Z VOTI ERST N S S SHO IN S SE IS IS S R S STISTETER SERERE STE IS I Stand/nFOR FEGISTER OF VEGISTERED vOTERS OE S - P S O T L D E 2 S L- SHOTI IN S STE S R S L REG S STE RAEE /nTABLE FAIFI - REGISTER RE SERERE REGSTERER SERE VERTERS ASTEF MAY OIS I W. $2021 \bar{g}$ STITEN IT STIS S STOWING IN AS S SESTISTE SE S. A I I S S SE STIIN /nTABLE FAIFIC - SEISTEE OF REISTERER VERTERS ASTE F MAY O1 ' RO $211 \bar{g}$ VO TING IS SAHOWN S SAS RE SE GE ISTE ISE D S S SE I S. STIINGE STISTISTE 01 /n$\begin{array}{ll}\text { S. SA. - FEG1STER QEE RAEGE } \\ \text { SERERETERER VOE ETERS AST OSE ME ME SE E SE O D- S. LO LO PE I SE IVIN V V S ETI SIIN IS SE SH SH S IN STE AS RSE RE SEG ISTETER RE DE IS IS - SE - STE - D S.01 - Stand - D. STE } \\ 0113812513 & -250-7,-1.5-10 \\ 0.08050\right] & -20120000000000100100100010001000010000100010001000000000000000000000000000000010,00001001000100001000010010010010001001001001001000100100010000001001000010000100100100100010001000100100100010010001001001000100010010010001000100010001000100010001000100010010010001001001000100010010001001001000100010001000100010001000100010001000100010000000000000010000010000010000010000000000000000000000000000000000000000000100000100000100010001000000100010001000100001000001000100000010000000100000000000100000010000010000001000001000001000000100000100010001000001000001000000000001000000000001000000010001000000100010000000100010000000000000010000010000001000100000000000000000000010001000000100010001000100000001000100000000000000000010000000001000000000100010000000010000000000001000000000100010001000100010 \text { S. } \\ 0.080120012001200120010001000100100010001001000100010001000100100010001000100010001000100010 \text { standard Standard } \\ 0.0101201201201201000100010001000100100010001001001000100010 \text { Stand and Standard and and Stand and Standard entereral standard standard stand everand a ding parse } \\ 001000020020020000100010 \text { stand string parse parsery standard } \\ 0 \text { Dis and entererar standard string strating string string starse starse parse pars stand enderestide enteres un standard } & \text { M string standard } \\ 0.000202020 \text { string standard that stald that of the parseral parsed a did standard parsed parse standard parsed parse parse perse proper proper for proper do for stand to for for fors parse perse parseral stave stand standard equal standard everal equal for stand standard } \\ 0001\right] & \text { F standard de for end a for enter pers perser parse standard equal standard standard eve- far standard far far fard fard text equal for ex do so to pass with so far a text class e end;</em></em></em></u></u></i></u></i></u><i><u><i><u><em><em>- Standard (0): 00/01, 10/11 - fail, pass. Minimum 30 points. - Standard-e (1): 00/01, 10/11, 20/21 - fail, pass, excellent. Minimum 30 points. - Standard-f (2): 00/01, 10/11, 20/21, 30/31, 40/41, 50/51 - fail, pass, excellent, fail-so-far, pass-so-far, excellent-so-far. Minimum 30 points. - Standard-g (3): 00/01, 10/11, 20/21 - fail, pass, excellent. Minimum 30 points. - Standard-e (without fail) (4): 00/01, 10/11 - pass, excellent. Minimum 30 points. - Standard-f (without fail) (5): 00/01, 10/11, 20/21 - pass, excellent, pass-so-far. Minimum 30 points. - Pass/Fail (6): 00/01 - fail, pass. - Pass/Fail-f (7): 00/01, 10/11 - fail, pass-so-far. - Completed/Not Completed (8): 00/01 - not completed, completed. - Completed/Not Completed-f (9): 00/01, 10/11 - not completed, completed-so-far.</em></em></u></u></i></u></i></u> </tr> <tr> <td style=",
+  "air_quality_aqi": null,
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
       "station_id": "A418534",
-      "aqi": 87,
-      "pm25": 87.0,
+      "aqi": 47,
+      "pm25": 47.0,
       "pm10": 15.0,
-      "measured_at": "2026-09-10T00:00:00Z"
+      "measured_at": "2026-09-10T12:00:00Z"
     },
     {
       "name": "Ochieng' Avenue, Kisumu Central",
       "station_id": "A418300",
-      "aqi": 57,
-      "pm25": 57.0,
+      "aqi": 54,
+      "pm25": 54.0,
       "pm10": 18.0,
-      "measured_at": "2026-09-10T00:00:00Z"
+      "measured_at": "2026-09-10T12:00:00Z"
     },
     {
       "name": "Dunga Beach",
       "station_id": "A418504",
-      "aqi": 174,
-      "pm25": 174.0,
+      "aqi": 47,
+      "pm25": 47.0,
       "pm10": 37.0,
-      "measured_at": "2026-09-10T00:00:00Z"
+      "measured_at": "2026-09-10T12:00:00Z"
     }
   ],
   "sunrise": "06:34",
@@ -50,6 +50,8 @@
         "high_c": 31.3,
         "low_c": 17.7,
         "cloud_cover_pct": 84.5,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.10000000000002274
       },
       {
@@ -62,6 +64,8 @@
         "high_c": 28.0,
         "low_c": 18.2,
         "cloud_cover_pct": 41.1,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.3000000000000682
       },
       {
@@ -74,6 +78,8 @@
         "high_c": 29.5,
         "low_c": 21.5,
         "cloud_cover_pct": 79.3,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.0
       },
       {
@@ -86,6 +92,8 @@
         "high_c": 29.3,
         "low_c": 16.8,
         "cloud_cover_pct": 14.0,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.10000000000002274
       },
       {
@@ -98,6 +106,8 @@
         "high_c": 29.5,
         "low_c": 17.9,
         "cloud_cover_pct": 38.0,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.2999999999999545
       },
       {
@@ -110,6 +120,8 @@
         "high_c": 30.0,
         "low_c": 19.0,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -122,6 +134,8 @@
         "high_c": 30.2,
         "low_c": 17.2,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 1.400000000000091
       },
       {
@@ -134,6 +148,8 @@
         "high_c": 30.16046511627907,
         "low_c": 18.23720930232558,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -146,6 +162,8 @@
         "high_c": 29.5,
         "low_c": 18.0,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
@@ -160,6 +178,8 @@
         "high_c": 32.8,
         "low_c": 18.7,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.3000000000000682
       },
       {
@@ -172,6 +192,8 @@
         "high_c": 29.1,
         "low_c": 18.6,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.599999999999909
       },
       {
@@ -184,6 +206,8 @@
         "high_c": 27.7,
         "low_c": 22.2,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.6000000000000227
       },
       {
@@ -196,6 +220,8 @@
         "high_c": 29.6,
         "low_c": 17.7,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.2999999999999545
       },
       {
@@ -208,6 +234,8 @@
         "high_c": 29.4,
         "low_c": 18.6,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.7000000000000455
       },
       {
@@ -220,6 +248,8 @@
         "high_c": 34.0,
         "low_c": 17.0,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -232,6 +262,8 @@
         "high_c": 30.2,
         "low_c": 17.2,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 1.400000000000091
       },
       {
@@ -244,6 +276,8 @@
         "high_c": 30.16046511627907,
         "low_c": 18.23720930232558,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -256,6 +290,8 @@
         "high_c": null,
         "low_c": null,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
@@ -270,6 +306,8 @@
         "high_c": 25.3,
         "low_c": 18.7,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 1.2999999999999545
       },
       {
@@ -282,6 +320,8 @@
         "high_c": 23.4,
         "low_c": 19.7,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 1.0
       },
       {
@@ -294,6 +334,8 @@
         "high_c": null,
         "low_c": null,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -306,6 +348,8 @@
         "high_c": null,
         "low_c": null,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -318,6 +362,8 @@
         "high_c": 25.5,
         "low_c": 19.5,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.8999999999999773
       },
       {
@@ -330,6 +376,8 @@
         "high_c": 30.2,
         "low_c": 17.2,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 1.400000000000091
       },
       {
@@ -342,6 +390,8 @@
         "high_c": 30.16046511627907,
         "low_c": 18.23720930232558,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -354,6 +404,8 @@
         "high_c": null,
         "low_c": null,
         "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ]
@@ -361,15 +413,18 @@
   "verification": {
     "day0": {
       "verified": false,
-      "note": null
+      "note": null,
+      "note_sign_corrected_on": null
     },
     "day3": {
       "verified": false,
-      "note": null
+      "note": null,
+      "note_sign_corrected_on": null
     },
     "day7": {
       "verified": false,
-      "note": null
+      "note": null,
+      "note_sign_corrected_on": null
     }
   },
   "local_bulletin": {
@@ -378,20 +433,110 @@
     "fetched_at_utc": "2026-09-10T03:02:29.331118Z"
   },
   "yesterday_verification_summary": "At Day+0 for yesterday, ECMWF, ICON, UKMO, and Best Match correctly verified the evening rainfall event in Kisumu, whereas GFS and Kenya Met failed with dry calls. Extended lead verifications for earlier dates showed ECMWF consistently capturing dry conditions at both Day+3 and Day+7, while GFS suffered false-alarm rain calls across extended horizons.",
-  "narrative_markdown": "## Overview\n\nMuch calmer than yesterday. Dry until evening thunderstorms, after a thundery day. Temperatures and winds much the same through Sunday, with rain becoming more likely.\n\n## Today's Forecast\n\nSunny intervals and warming temperatures will mark the morning, reaching a daytime high near 30°C / 86°F before cloud cover builds ahead of late afternoon and evening thunderstorms. Rainfall totals of 2.0 to 5.0 mm (0.08 to 0.20 in) are expected as showers develop between 16:00 and 19:00 EAT. Winds will blow from the south to southwest at 12 to 18 km/h (6 to 10 kt) from the S to SW, with localized thunderstorm gusts up to 32 km/h (17 kt). Solar UV exposure will peak at a Very High index of 8.7 around midday, requiring sun protection. Air quality according to CAMS model guidance is Moderate with a US AQI around 72 to 88, though stale ground readings from earlier this morning recorded a worst AQI of 174 at Dunga Beach. Overnight lows will drop to 18°C / 64°F under lingering cloud cover.\n\n## Extended Outlook\n\nThe three-day window through Sunday will bring warm daytime temperatures near 30°C / 86°F to 31°C / 88°F and overnight lows of 17°C / 63°F to 18°C / 64°F, with shower and thunderstorm chances steadily increasing each afternoon. Friday remains mostly dry with isolated showers, but Saturday (Day+2) and Sunday (Day+3) see stronger multi-model consensus for afternoon and evening thunderstorms yielding daily rainfall totals of 4.0 to 8.0 mm (0.16 to 0.31 in). Looking further into the 4 to 7 day range (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) with widespread heavy showers and potential daily rainfall exceeding 10.0 mm (0.39 in) as regional pressure drops.\n\n## Severe Weather / Hazard Potential\n\nConvective instability builds significantly across Nyanza Basin this afternoon and evening, supporting isolated to scattered thunderstorms. Model guidance shows a wide spread in peak CAPE, ranging from 390 J/kg on GFS up to 1,360 J/kg on ICON, 1,860 J/kg on ECMWF, and 3,910 J/kg on UKMO, with instability peaking around 18:00 EAT. Sudden, violent downdraft gusts well exceeding 35 km/h (19 kt) and localized heavy downpours are the primary hazards associated with any developing storm cell. Lightning risk is elevated during dusk and evening hours.\n\n## Winam Gulf — Conditions for Boaters\n\nSoutheasterly morning breezes across Winam Gulf at 8 to 12 km/h (4 to 6 kt) from the SE will shift to southwesterly during the afternoon, strengthening to 15 to 22 km/h (8 to 12 kt) from the SW. Wave activity will remain moderate during daylight hours. However, boaters and fishermen should exercise high caution from late afternoon through midnight as convective storms moving over the lake can produce sudden, dangerous downdraft gusts over 35 km/h (19 kt), localized squalls, and choppy water conditions. Plan to seek shore before dusk.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across East Africa. Pressure is also falling toward the south, southeast, and southwest, indicating a deepening large-scale feature building to the south, though this sampling locates a direction rather than a specific centre or front. Overhead MSLP across the Nyanza Basin sits at 1014 hPa and will drop slightly by 1.3 hPa over the next 24 hours. Regional pressure points show consistent 24-to-72-hour pressure falls toward 1012–1013 hPa by Friday and Saturday. These broad pressure falls combined with moist equatorial lake air will enhance boundary-layer convergence across the Winam Gulf corridor, driving afternoon thermal breezes and triggering convective uplift.\n\n### Forecaster Confidence Notes\n\nModel weighting today heavily favors ECMWF and ICON for near-term precipitation timing and convective placement. Long-run review findings at Day+0 establish Best Match (83% hit rate) as the strongest rain caller and GFS (57%) as the weakest, with GFS exhibiting an established systematic under-forecast of peak surface wind (+20.6 km/h mean error). Recent Day+0 verification from yesterday reinforced this pattern: ECMWF, ICON, UKMO, and Best Match correctly verified evening rain, while GFS missed with a false dry call. For the Kenya Meteorological Department (KMD) local bulletin, the national service calls for afternoon and evening thunderstorms in Kisumu with highs of 30°C / 86°F and lows of 19°C / 66°F—agreeing well with our synthesized call of 29.5°C / 85°F and wet conditions.\n\nLooking at extended range (Day+3 and Day+7), long-run review findings indicate usable data where no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from past runs with strong late-afternoon CAPE spreads (such as September 8th) highlight that GFS often suppresses convection while ECMWF and UKMO capture evening lake-breeze storms accurately; hence, confidence is high for evening storms today despite GFS's drier stance.\n\nRegarding air quality observations, ground sensors are currently stale (>3 hours old). The last reported values from midnight EAT were: Dunga Beach (AQI 174), Kisumu Airport (AQI 87), and Ochieng' Avenue (AQI 57). Live air quality assessment relies on CAMS model projections, which forecast US AQI values between 72 and 88 today.",
-  "whatsapp_summary": "🌦️ Kisumu Weather (Thu Sep 10):\nSunny intervals this morning, reaching a warm high of 30°C (86°F). Thunderstorms & rain expected late afternoon into evening (16:00-19:00 EAT, 2-5mm). Caution on Winam Gulf for sudden storm gusts over 35 km/h. Low 18°C (64°F).",
-  "earlier_issuances": [],
-  "morning_issuance": null,
-  "guidance_initialised_at": "2026-09-09T18:00:00Z",
-  "guidance_age_hours": 9.023561074166667,
+  "narrative_markdown": "## Overview\nUpdated with evening guidance: thunderstorm expectations for tonight remain on track as dusk sets in. Convective instability peaks around 19:00 EAT, with scattered evening thunderstorms possible.\n\n## Today's Forecast\nThundery showers and increasing cloud cover characterize the hours ahead as night approaches. Localized rainfall totals of 1.0 to 3.0 mm (0.04 to 0.12 in) are expected across Kisumu as convective cells move across the basin through 22:00 EAT. Temperatures will cool from 23°C / 73°F at dusk down to an overnight minimum near 18°C / 64°F. Winds will remain mostly light around 8 to 14 km/h (4 to 8 kt), though sudden convective downdrafts may briefly generate stronger gusts up to 33 km/h (18 kt) near active showers. Ground air quality sensors are currently stale from early afternoon (last reporting a US AQI of 54 at Ochieng' Avenue); CAMS model projections indicate Moderate air quality (US AQI ~74) through tonight.\n\n## Extended Outlook\nOver the next 3 days (Friday through Sunday), daytime maximum temperatures will range between 30°C / 86°F and 32°C / 90°F, accompanied by overnight lows near 18°C / 64°F. Showers and thunderstorms become increasingly likely during the afternoon and evening hours, with Day+3 guidance showing strong multi-model agreement for rain (ECMWF 100%, Best Match 100%) and daily totals of 3.0 to 8.0 mm (0.12 to 0.31 in). Looking further ahead into days 4 to 7 (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) where deeper moisture and falling regional pressure could generate daily rainfall totals exceeding 10.0 mm (0.39 in).\n\n## Severe Weather / Hazard Potential\nConvective instability remains elevated this evening, with peak CAPE reaching 2,860 J/kg on UKMO, 1,620 J/kg on ICON, 1,520 J/kg on ECMWF, and 1,790 J/kg on Best Match, while GFS remains suppressed at 280 J/kg. Instability peaks around 19:00 EAT. Developing storms can produce sudden, strong downdraft gusts well exceeding 35 km/h (19 kt) regardless of background wind forecasts. Frequent lightning and brief heavy downpours are the primary hazards; residents and lake users should take shelter during active storms.\n\n## Winam Gulf — Conditions for Boaters\nOffshore breezes across Winam Gulf will turn westerly to northwesterly this evening at 10 to 18 km/h (5 to 10 kt). Convective storms moving over the gulf present the main hazard tonight. Strong downdrafts from passing storm cells can cause sudden squalls with gusts exceeding 33 km/h (18 kt) and choppy water. Small craft should exercise caution and remain near safe anchorage through midnight.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1020 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across the region. Pressure overhead is falling, with local MSLP around 1014–1015 hPa. Over the next 24 to 72 hours, regional pressure points across the Nyanza Basin exhibit a gradual falling trend toward 1012–1013 hPa. This synoptic pressure fall, combined with moist equatorial flow over Lake Victoria, fuels afternoon thermal convergence and fuels night-time convective development.\n\n### Forecaster Confidence Notes\nModel weighting for tonight leans heavily on ECMWF, ICON, and UKMO, which consistently simulate strong convective energy (1,500 to 2,800 J/kg CAPE) and evening rain. Long-run review findings at Day+0 establish Best Match (83%) as the strongest rain caller and GFS (57%) as the weakest. GFS has an established bias of under-forecasting peak surface wind (+20.6 km/h mean error) and systematically suppressing convective energy in this basin.\n\nThe Kenya Meteorological Department (KMD) local bulletin calls for partly cloudy conditions tonight, with sunny intervals tomorrow and temperatures of 30.0°C / 18.0°C. KMD's drier outlook for tonight differs from the numerical model consensus (ECMWF/ICON/UKMO) calling for evening showers. At Day+0, KMD holds a 71% rain verification rate with good temperature guidance (-0.3°C high error), but is prone to timing mismatches on lake-effect rain.\n\nAt Day+3 and Day+7, review findings show that no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from similar setups (e.g. September 8th and 9th) show that GFS regularly misses evening lake-breeze storms that ECMWF and ICON catch; thus, we maintain high confidence in tonight's thundery precipitation despite GFS's drier output.\n\nGround AQI sensors are currently stale (>3 hours old); the last recorded reading was a US AQI of 54 at Ochieng' Avenue, Kisumu Central. Live air quality assessment relies on CAMS model guidance, which projects US AQI values around 74 (Moderate) tonight.",
+  "whatsapp_summary": "🌩️ Kisumu Weather Update (18:01 EAT): Convective storms remain expected this evening, peaking around 19:00 EAT with localized heavy showers & sudden wind gusts up to 33 km/h. Temperatures dropping to 18°C overnight. 🌧️ Boaters on Winam Gulf should exercise caution as squalls are possible tonight. Unsettled weather continues through the weekend!",
+  "earlier_issuances": [
+    {
+      "rain_expected": "Evening and Nighttime Thunderstorms Likely",
+      "onset_window": "Late afternoon to evening (16:00-19:00 EAT)",
+      "peak_wind_kmh": 23.0,
+      "temp_high_c": 29.5,
+      "temp_low_c": 18.0,
+      "temp_high_low_display": "30°C / 85°F high, 18°C / 64°F low",
+      "mslp_trend_24h": "-1.3 hPa (falling)",
+      "synoptic_pattern": "Strong SW-NE pressure gradient (11 hPa spread) with deepening troughing to the south/southwest.",
+      "uv_index_max": "8.7 (Very High)",
+      "air_quality_aqi": "72-174 (Ground sensors stale; model US AQI 72-88)",
+      "ground_aqi": [
+        {
+          "name": "Kisumu Airport",
+          "station_id": "A418534",
+          "aqi": 87,
+          "pm25": 87.0,
+          "pm10": 15.0,
+          "measured_at": "2026-09-10T00:00:00Z"
+        },
+        {
+          "name": "Ochieng' Avenue, Kisumu Central",
+          "station_id": "A418300",
+          "aqi": 57,
+          "pm25": 57.0,
+          "pm10": 18.0,
+          "measured_at": "2026-09-10T00:00:00Z"
+        },
+        {
+          "name": "Dunga Beach",
+          "station_id": "A418504",
+          "aqi": 174,
+          "pm25": 174.0,
+          "pm10": 37.0,
+          "measured_at": "2026-09-10T00:00:00Z"
+        }
+      ],
+      "narrative_markdown": "## Overview\n\nMuch calmer than yesterday. Dry until evening thunderstorms, after a thundery day. Temperatures and winds much the same through Sunday, with rain becoming more likely.\n\n## Today's Forecast\n\nSunny intervals and warming temperatures will mark the morning, reaching a daytime high near 30°C / 86°F before cloud cover builds ahead of late afternoon and evening thunderstorms. Rainfall totals of 2.0 to 5.0 mm (0.08 to 0.20 in) are expected as showers develop between 16:00 and 19:00 EAT. Winds will blow from the south to southwest at 12 to 18 km/h (6 to 10 kt) from the S to SW, with localized thunderstorm gusts up to 32 km/h (17 kt). Solar UV exposure will peak at a Very High index of 8.7 around midday, requiring sun protection. Air quality according to CAMS model guidance is Moderate with a US AQI around 72 to 88, though stale ground readings from earlier this morning recorded a worst AQI of 174 at Dunga Beach. Overnight lows will drop to 18°C / 64°F under lingering cloud cover.\n\n## Extended Outlook\n\nThe three-day window through Sunday will bring warm daytime temperatures near 30°C / 86°F to 31°C / 88°F and overnight lows of 17°C / 63°F to 18°C / 64°F, with shower and thunderstorm chances steadily increasing each afternoon. Friday remains mostly dry with isolated showers, but Saturday (Day+2) and Sunday (Day+3) see stronger multi-model consensus for afternoon and evening thunderstorms yielding daily rainfall totals of 4.0 to 8.0 mm (0.16 to 0.31 in). Looking further into the 4 to 7 day range (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) with widespread heavy showers and potential daily rainfall exceeding 10.0 mm (0.39 in) as regional pressure drops.\n\n## Severe Weather / Hazard Potential\n\nConvective instability builds significantly across Nyanza Basin this afternoon and evening, supporting isolated to scattered thunderstorms. Model guidance shows a wide spread in peak CAPE, ranging from 390 J/kg on GFS up to 1,360 J/kg on ICON, 1,860 J/kg on ECMWF, and 3,910 J/kg on UKMO, with instability peaking around 18:00 EAT. Sudden, violent downdraft gusts well exceeding 35 km/h (19 kt) and localized heavy downpours are the primary hazards associated with any developing storm cell. Lightning risk is elevated during dusk and evening hours.\n\n## Winam Gulf — Conditions for Boaters\n\nSoutheasterly morning breezes across Winam Gulf at 8 to 12 km/h (4 to 6 kt) from the SE will shift to southwesterly during the afternoon, strengthening to 15 to 22 km/h (8 to 12 kt) from the SW. Wave activity will remain moderate during daylight hours. However, boaters and fishermen should exercise high caution from late afternoon through midnight as convective storms moving over the lake can produce sudden, dangerous downdraft gusts over 35 km/h (19 kt), localized squalls, and choppy water conditions. Plan to seek shore before dusk.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across East Africa. Pressure is also falling toward the south, southeast, and southwest, indicating a deepening large-scale feature building to the south, though this sampling locates a direction rather than a specific centre or front. Overhead MSLP across the Nyanza Basin sits at 1014 hPa and will drop slightly by 1.3 hPa over the next 24 hours. Regional pressure points show consistent 24-to-72-hour pressure falls toward 1012–1013 hPa by Friday and Saturday. These broad pressure falls combined with moist equatorial lake air will enhance boundary-layer convergence across the Winam Gulf corridor, driving afternoon thermal breezes and triggering convective uplift.\n\n### Forecaster Confidence Notes\n\nModel weighting today heavily favors ECMWF and ICON for near-term precipitation timing and convective placement. Long-run review findings at Day+0 establish Best Match (83% hit rate) as the strongest rain caller and GFS (57%) as the weakest, with GFS exhibiting an established systematic under-forecast of peak surface wind (+20.6 km/h mean error). Recent Day+0 verification from yesterday reinforced this pattern: ECMWF, ICON, UKMO, and Best Match correctly verified evening rain, while GFS missed with a false dry call. For the Kenya Meteorological Department (KMD) local bulletin, the national service calls for afternoon and evening thunderstorms in Kisumu with highs of 30°C / 86°F and lows of 19°C / 66°F—agreeing well with our synthesized call of 29.5°C / 85°F and wet conditions.\n\nLooking at extended range (Day+3 and Day+7), long-run review findings indicate usable data where no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from past runs with strong late-afternoon CAPE spreads (such as September 8th) highlight that GFS often suppresses convection while ECMWF and UKMO capture evening lake-breeze storms accurately; hence, confidence is high for evening storms today despite GFS's drier stance.\n\nRegarding air quality observations, ground sensors are currently stale (>3 hours old). The last reported values from midnight EAT were: Dunga Beach (AQI 174), Kisumu Airport (AQI 87), and Ochieng' Avenue (AQI 57). Live air quality assessment relies on CAMS model projections, which forecast US AQI values between 72 and 88 today.",
+      "whatsapp_summary": "🌦️ Kisumu Weather (Thu Sep 10):\nSunny intervals this morning, reaching a warm high of 30°C (86°F). Thunderstorms & rain expected late afternoon into evening (16:00-19:00 EAT, 2-5mm). Caution on Winam Gulf for sudden storm gusts over 35 km/h. Low 18°C (64°F).",
+      "generated_at_utc": "2026-09-10T03:02:29.331130Z",
+      "guidance_initialised_at": "2026-09-09T18:00:00Z",
+      "guidance_age_hours": 9.023561074166667,
+      "guidance_source": "observed",
+      "degradations": []
+    }
+  ],
+  "morning_issuance": {
+    "rain_expected": "Evening and Nighttime Thunderstorms Likely",
+    "onset_window": "Late afternoon to evening (16:00-19:00 EAT)",
+    "peak_wind_kmh": 23.0,
+    "temp_high_c": 29.5,
+    "temp_low_c": 18.0,
+    "temp_high_low_display": "30°C / 85°F high, 18°C / 64°F low",
+    "mslp_trend_24h": "-1.3 hPa (falling)",
+    "synoptic_pattern": "Strong SW-NE pressure gradient (11 hPa spread) with deepening troughing to the south/southwest.",
+    "uv_index_max": "8.7 (Very High)",
+    "air_quality_aqi": "72-174 (Ground sensors stale; model US AQI 72-88)",
+    "ground_aqi": [
+      {
+        "name": "Kisumu Airport",
+        "station_id": "A418534",
+        "aqi": 87,
+        "pm25": 87.0,
+        "pm10": 15.0,
+        "measured_at": "2026-09-10T00:00:00Z"
+      },
+      {
+        "name": "Ochieng' Avenue, Kisumu Central",
+        "station_id": "A418300",
+        "aqi": 57,
+        "pm25": 57.0,
+        "pm10": 18.0,
+        "measured_at": "2026-09-10T00:00:00Z"
+      },
+      {
+        "name": "Dunga Beach",
+        "station_id": "A418504",
+        "aqi": 174,
+        "pm25": 174.0,
+        "pm10": 37.0,
+        "measured_at": "2026-09-10T00:00:00Z"
+      }
+    ],
+    "narrative_markdown": "## Overview\n\nMuch calmer than yesterday. Dry until evening thunderstorms, after a thundery day. Temperatures and winds much the same through Sunday, with rain becoming more likely.\n\n## Today's Forecast\n\nSunny intervals and warming temperatures will mark the morning, reaching a daytime high near 30°C / 86°F before cloud cover builds ahead of late afternoon and evening thunderstorms. Rainfall totals of 2.0 to 5.0 mm (0.08 to 0.20 in) are expected as showers develop between 16:00 and 19:00 EAT. Winds will blow from the south to southwest at 12 to 18 km/h (6 to 10 kt) from the S to SW, with localized thunderstorm gusts up to 32 km/h (17 kt). Solar UV exposure will peak at a Very High index of 8.7 around midday, requiring sun protection. Air quality according to CAMS model guidance is Moderate with a US AQI around 72 to 88, though stale ground readings from earlier this morning recorded a worst AQI of 174 at Dunga Beach. Overnight lows will drop to 18°C / 64°F under lingering cloud cover.\n\n## Extended Outlook\n\nThe three-day window through Sunday will bring warm daytime temperatures near 30°C / 86°F to 31°C / 88°F and overnight lows of 17°C / 63°F to 18°C / 64°F, with shower and thunderstorm chances steadily increasing each afternoon. Friday remains mostly dry with isolated showers, but Saturday (Day+2) and Sunday (Day+3) see stronger multi-model consensus for afternoon and evening thunderstorms yielding daily rainfall totals of 4.0 to 8.0 mm (0.16 to 0.31 in). Looking further into the 4 to 7 day range (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) with widespread heavy showers and potential daily rainfall exceeding 10.0 mm (0.39 in) as regional pressure drops.\n\n## Severe Weather / Hazard Potential\n\nConvective instability builds significantly across Nyanza Basin this afternoon and evening, supporting isolated to scattered thunderstorms. Model guidance shows a wide spread in peak CAPE, ranging from 390 J/kg on GFS up to 1,360 J/kg on ICON, 1,860 J/kg on ECMWF, and 3,910 J/kg on UKMO, with instability peaking around 18:00 EAT. Sudden, violent downdraft gusts well exceeding 35 km/h (19 kt) and localized heavy downpours are the primary hazards associated with any developing storm cell. Lightning risk is elevated during dusk and evening hours.\n\n## Winam Gulf — Conditions for Boaters\n\nSoutheasterly morning breezes across Winam Gulf at 8 to 12 km/h (4 to 6 kt) from the SE will shift to southwesterly during the afternoon, strengthening to 15 to 22 km/h (8 to 12 kt) from the SW. Wave activity will remain moderate during daylight hours. However, boaters and fishermen should exercise high caution from late afternoon through midnight as convective storms moving over the lake can produce sudden, dangerous downdraft gusts over 35 km/h (19 kt), localized squalls, and choppy water conditions. Plan to seek shore before dusk.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across East Africa. Pressure is also falling toward the south, southeast, and southwest, indicating a deepening large-scale feature building to the south, though this sampling locates a direction rather than a specific centre or front. Overhead MSLP across the Nyanza Basin sits at 1014 hPa and will drop slightly by 1.3 hPa over the next 24 hours. Regional pressure points show consistent 24-to-72-hour pressure falls toward 1012–1013 hPa by Friday and Saturday. These broad pressure falls combined with moist equatorial lake air will enhance boundary-layer convergence across the Winam Gulf corridor, driving afternoon thermal breezes and triggering convective uplift.\n\n### Forecaster Confidence Notes\n\nModel weighting today heavily favors ECMWF and ICON for near-term precipitation timing and convective placement. Long-run review findings at Day+0 establish Best Match (83% hit rate) as the strongest rain caller and GFS (57%) as the weakest, with GFS exhibiting an established systematic under-forecast of peak surface wind (+20.6 km/h mean error). Recent Day+0 verification from yesterday reinforced this pattern: ECMWF, ICON, UKMO, and Best Match correctly verified evening rain, while GFS missed with a false dry call. For the Kenya Meteorological Department (KMD) local bulletin, the national service calls for afternoon and evening thunderstorms in Kisumu with highs of 30°C / 86°F and lows of 19°C / 66°F—agreeing well with our synthesized call of 29.5°C / 85°F and wet conditions.\n\nLooking at extended range (Day+3 and Day+7), long-run review findings indicate usable data where no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from past runs with strong late-afternoon CAPE spreads (such as September 8th) highlight that GFS often suppresses convection while ECMWF and UKMO capture evening lake-breeze storms accurately; hence, confidence is high for evening storms today despite GFS's drier stance.\n\nRegarding air quality observations, ground sensors are currently stale (>3 hours old). The last reported values from midnight EAT were: Dunga Beach (AQI 174), Kisumu Airport (AQI 87), and Ochieng' Avenue (AQI 57). Live air quality assessment relies on CAMS model projections, which forecast US AQI values between 72 and 88 today.",
+    "whatsapp_summary": "🌦️ Kisumu Weather (Thu Sep 10):\nSunny intervals this morning, reaching a warm high of 30°C (86°F). Thunderstorms & rain expected late afternoon into evening (16:00-19:00 EAT, 2-5mm). Caution on Winam Gulf for sudden storm gusts over 35 km/h. Low 18°C (64°F).",
+    "generated_at_utc": "2026-09-10T03:02:29.331130Z",
+    "guidance_initialised_at": "2026-09-09T18:00:00Z",
+    "guidance_age_hours": 9.023561074166667,
+    "guidance_source": "observed",
+    "degradations": []
+  },
+  "guidance_initialised_at": "2026-09-10T06:00:00Z",
+  "guidance_age_hours": 9.025743133333334,
   "guidance_source": "observed",
   "meta": {
     "generated_at_utc": "2026-09-10T03:02:29.331130Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "system_prompt_sha256": "2eb21a892000ee5cc974811cbea2af0bccdf60866eb1a6e22ef7eb59b6e9735b",
-    "refreshed_at": null,
+    "system_prompt_sha256": "6daff10c03aded2dbfb6ec52edfdc0ced34abdcc1844639c9c11017231269a29",
+    "refreshed_at": "2026-09-10T15:02:43.497730Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []
   }
