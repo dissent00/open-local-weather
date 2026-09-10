@@ -6412,7 +6412,7 @@ here gets validated).
 
 ---
 
-## 59. One call writes the forecast and writes the prose · **Planned**
+## 59. One call writes the forecast and writes the prose · **Partly shipped**
 
 `llm/prompt.py` is 451 lines. Single instruction paragraphs run past 400
 words. It is at once a reasoning engine, a style guide and an incident log:
@@ -6528,11 +6528,91 @@ finding. Do not tune the gate before then.
 
 1. **Unweld, without splitting.** Move those six rules out of STEP 2 into
    their own labelled judgment section. One call, same cost, no app impact,
-   and it is a strict prerequisite for the split.
+   and it is a strict prerequisite for the split. **Done 2026-09-10**, for
+   the three `extended_properties` rules; see below for the three that
+   stayed and why.
 2. **Pin the seam in tests.** Assert that no rule naming a scored field
    appears inside the narrative section — the guard that stops it welding
-   back together. Only meaningful after step 1.
+   back together. Only meaningful after step 1. **Done 2026-09-10**, and
+   NOT as written — see below.
 3. **Split**, once 1 and 2 hold.
+
+### 2026-09-10: the guard, and why step 2's own wording was wrong
+
+`tests/test_prompt_seam.py`. Three tests, run against all seven pinned
+branches, and the result is identical in every one of them.
+
+**Step 2 as written above would have deleted three guardrails.** "No rule
+naming a scored field appears inside the narrative section" sounds right and
+is not: of the four scored-field mentions outside the judgment section, three
+exist precisely to PROTECT the seam, and removing them re-opens the bugs they
+were written for.
+
+- *"your own `rain` boolean is allowed to depart from it"* — the sentence that
+  lets the forecaster publish the code-composed comparison verbatim while
+  still making its own call. Without it the only way to reconcile the two is
+  to edit a locked value, which is the fault the composed comparison exists
+  to end.
+- *"`today_properties.temp_high_c` is the day's high; state it once"* — points
+  the prose at the field after a run published three highs for one day in one
+  section.
+- *"`today_properties` stays your blended call for the WHOLE calendar day"* —
+  a firewall stopping the surrounding "cover the hours AHEAD" rule from
+  narrowing a field scored against the whole day.
+
+So the guard checks AUTHORITY, not mention: the judgment section is the only
+place a scored field's value may be DECIDED, and every mention elsewhere is
+allowlisted with the reason it is deference rather than a rule. A new mention
+fails; a reworded one fails; a deleted allowlist entry fails too, so the list
+cannot rot.
+
+**The field list is derived, not typed.** The guard reads
+`_blend_prediction` and `_extended_blend_predictions` with `ast` and takes
+whatever they pull off `today_properties`/`extended_properties` as the scored
+set. Widen item 72's schema and the new field comes under the guard by
+itself. A hand-written list would have gone stale silently, which is the
+failure the file exists to prevent.
+
+**Watched fail four ways before shipping**: a scored-field rule planted in
+the narrative, a field removed from the judgment section, the blend builder
+renamed (the derivation must not empty itself into a vacuous pass), and an
+allowlisted snippet reworded.
+
+**THE FOURTH MENTION IS DEBT, and the guard names it as such.** In FORMATTING
+RULES: *"`onset_hour` is SCORED and must be null unless the models agree
+closely enough that you would defend one hour"*. That decides a scored value
+from inside a rendering section, and the judgment section already carries the
+same rule in nearly the same words — *"null there means 'not forecast', which
+is honest"* appears in both. One fact twice, which the prompt bans in its own
+Overview rules. Allowlisted so the guard could ship ahead of the fix; the fix
+deletes the entry.
+
+### 2026-09-10: two divergences the derivation exposed
+
+Deriving the scored set from the Python blend builders raised the question of
+what the DART ones commit. They do not commit the same thing, and nothing
+caught it because no Dart test names `blendPrediction` and no vector covers
+either builder.
+
+- **`blendPrediction` omits `rainProbabilityPct`.** Its docstring says
+  *"Mirrors `_blend_prediction` in the Python pipeline"* and it does not: the
+  Python function carries the forecaster's own probability into the scored
+  row for item 58's Brier, and the Dart one leaves it null. So on the app
+  path the probability is asked for in the prompt, parsed by the schema, and
+  never scored. `tests/test_brier.py` states the stake plainly — the
+  restraint rule 7 asks for in English is only paid for *"if the forecaster's
+  own probability is actually scored"*. Item 58 is marked closed in the
+  Ensemble owed table, but that closed the calibration DISPLAY; the app's own
+  blend will never appear in it.
+- **No Dart mirror of `_extended_blend_predictions` exists at all.** Python
+  appends the blend's own Day+3/Day+7 rain call (item 72); Dart's `day3`/
+  `day7` carry the extracted models only. The app records no forecaster call
+  at the leads where reconciling disagreeing models is worth the most — which
+  is the whole argument of item 72.
+
+Both change what the app STORES, so neither was fixed here. The first is a
+one-line fix behind a false comment; the second is item 72 unported and is
+not in the owed table.
 
 **Every one of those is a prompt change, and a prompt change is what this
 item says must be measured rather than assumed.** `olw replay` exists for
