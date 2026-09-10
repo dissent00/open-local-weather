@@ -552,3 +552,92 @@ def test_sufficiency_does_not_deny_a_ranking_the_review_itself_publishes():
         f"the review publishes {ranked[0].claim!r} and simultaneously tells the "
         f"forecaster the record cannot rank models at this lead"
     )
+
+
+def build_cloud_history(days: int, cloud_bias: float):
+    """`days` scoreable Day+0 rows where good_model reads the sky and
+    poor_model forecasts `cloud_bias` points less cloud than there was."""
+    logs, actuals = {}, {}
+    for i in range(days):
+        d = TODAY - timedelta(days=i + 1)
+        actuals[d] = DailyActual(
+            rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0,
+            cloud_cover_pct=60.0,
+        )
+        logs[d] = entry(d, [
+            ModelPrediction(model="good_model", rain=True, high_c=26.0, low_c=18.0, cloud_cover_pct=60.0),
+            ModelPrediction(
+                model="poor_model", rain=True, high_c=26.0, low_c=18.0,
+                cloud_cover_pct=60.0 - cloud_bias,
+            ),
+        ])
+    return logs, actuals
+
+
+def test_a_model_that_cannot_read_the_sky_is_named():
+    """The point of scoring cloud, and what the operator asked for on
+    2026-09-10: "as the data history improves it should begin to trust the
+    better models for cloud coverage... if 3 good models say AM clouds and 2
+    that aren't so good at that metric say none, we can say partly cloudy".
+
+    That judgement needs a NAMED, EVIDENCED finding the forecaster reads —
+    the same surface that already says which model runs warm. Measured that
+    morning: two of the five said there was no dawn cloud at all on a
+    morning that started partly cloudy, and nothing in the record could say
+    so, because until now cloud was stored and never scored.
+    """
+    logs, actuals = build_cloud_history(days=30, cloud_bias=35.0)
+    r = review_of(logs, actuals)
+
+    bias = [f for f in r.findings if f.kind == "bias" and "poor_model" in f.claim]
+    assert bias, "a consistent 35-point cloud error across 30 checks should be reported"
+    assert "cloud cover" in bias[0].claim
+    # Errors are observed minus forecast, so a model forecasting LESS cloud
+    # than there was comes in under — the same convention as every other row.
+    assert "under-forecasts" in bias[0].claim
+    assert bias[0].checks == 30
+
+    # And the model that read it right is not accused of anything.
+    assert not [f for f in r.findings if f.kind == "bias" and "good_model" in f.claim]
+
+
+def test_a_few_points_of_cloud_is_scatter_not_a_finding():
+    """Cloud is the noisiest field in the record — on 2026-09-10 the five
+    models spanned 0 to 98 percent on the same morning. A threshold that
+    fired on small differences would fill the review with findings about
+    nothing."""
+    logs, actuals = build_cloud_history(days=30, cloud_bias=5.0)
+    r = review_of(logs, actuals)
+    assert [f for f in r.findings if f.kind == "bias"] == []
+
+
+def test_a_cloud_finding_cannot_borrow_the_rain_record_s_sample_size():
+    """cloud_cover_pct started being stored on 2026-09-09, and every other
+    field has months of rows. So a model can hold 30 scored checks of which
+    3 say anything about the sky, and the bias loop reads `c.checks` — which
+    would put "across 30 checks" under a mean taken over 3.
+
+    THE SAME LESSON brier_checks ALREADY LEARNED, one field later: a count
+    presented for the whole row overstates the evidence behind any column
+    that is thinner than the row. Here it would overstate it tenfold, in the
+    one sentence a forecaster would act on.
+    """
+    logs, actuals = build_cloud_history(days=30, cloud_bias=35.0)
+    # Strip the sky from all but the three most recent days. Rain and
+    # temperature still score on all 30, exactly as in the real record.
+    for i, d in enumerate(sorted(logs, reverse=True)):
+        if i < 3:
+            continue
+        actuals[d] = DailyActual(
+            rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+        )
+        for p in logs[d].model_predictions.day0:
+            p.cloud_cover_pct = None
+
+    r = review_of(logs, actuals)
+    cloud = [f for f in r.findings if f.kind == "bias" and "cloud cover" in f.claim]
+
+    assert not cloud, (
+        "three days of sky is below the comparison floor and must not be "
+        "reported at all, let alone as thirty checks"
+    )

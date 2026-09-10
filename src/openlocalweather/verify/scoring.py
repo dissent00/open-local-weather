@@ -82,6 +82,13 @@ def score_prediction(
         high_error_c=_diff(predicted.high_c, actual.high_c),
         low_error_c=_diff(predicted.low_c, actual.low_c),
         mslp_error_hpa=_diff(predicted.mslp_trend, actual.mslp_trend),
+        # THE REANALYSIS DAY MEAN ON BOTH SIDES, like for like — the station's
+        # eighths sit beside it as a cross-check and are deliberately not the
+        # basis, exactly as the station's sustained wind sits beside the
+        # scored gust. A day mean is a blunt read of a sky that burns off by
+        # mid-morning, and it is still enough to separate a model that saw no
+        # cloud at all from one that did.
+        cloud_error_pct=_diff(predicted.cloud_cover_pct, actual.cloud_cover_pct),
     )
 
 
@@ -124,6 +131,13 @@ class RollingWindowResult:
     # matter least.
     rain_brier: float | None = None
     brier_checks: int = 0
+    # The sky, from 2026-09-10. cloud_checks is separate from checks_found
+    # for the same reason brier_checks is, and more sharply: cloud_cover_pct
+    # started being stored on 2026-09-09, so for weeks a window will hold
+    # thirty scored days and a handful with cloud. One count for both would
+    # present the figure as resting on evidence it does not have.
+    cloud_err: float | None = None
+    cloud_checks: int = 0
 
 
 def rescore_rolling_window(
@@ -170,6 +184,8 @@ def rescore_rolling_window(
         high_err=mean([s.high_error_c for s in scores]),
         low_err=mean([s.low_error_c for s in scores]),
         mslp_err=mean([s.mslp_error_hpa for s in scores]),
+        cloud_err=mean([s.cloud_error_pct for s in scores]),
+        cloud_checks=sum(1 for s in scores if s.cloud_error_pct is not None),
     )
 
 

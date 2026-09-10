@@ -140,6 +140,19 @@ const double reviewComparisonMinGapPct = 15.0;
 const double reviewTempBiasThresholdC = 1.0;
 const double reviewWindBiasThresholdKmh = 8.0;
 
+/// Mean signed cloud error large enough to call a systematic bias.
+///
+/// Cloud is the noisiest field in this record by a wide margin. Measured
+/// 2026-09-10: the five models spanned 0 to 98 percent on the same morning,
+/// a 70-point spread on the day mean, against 2.0 C on the day's high and
+/// 17.6 km/h on the gust. A threshold sized like the temperature one would
+/// report a finding about nothing every week.
+///
+/// 15 points also clears the 12.5-point band the day-over-day comparison
+/// calls "similar cloud", so a model flagged here forecast a different sky,
+/// not a shade of the same one.
+const double reviewCloudBiasThresholdPct = 15.0;
+
 /// Lead times, under a name that does not collide with the parameter it is
 /// the default for.
 const List<int> leadTimesDays_ = leadTimesDays;

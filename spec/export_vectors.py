@@ -240,6 +240,17 @@ def export_scoring() -> None:
             act(peak_wind_kmh=25.0, high_c=24.0, low_c=19.0, mslp_trend=0.5),
             0,
         ),
+        # THE SKY, from 2026-09-10. Same convention as every field above it,
+        # and the case that matters is the model which saw no cloud at all on
+        # a cloudy morning: that is the error the operator's own eyes caught
+        # on 2026-09-10, and until this was scored no model could lose
+        # standing for it.
+        ("cloud error is actual minus predicted", pred(cloud_cover_pct=50.0), act(cloud_cover_pct=42.0), 0),
+        ("a model that saw no cloud on a cloudy day scores worst",
+         pred(cloud_cover_pct=0.0), act(cloud_cover_pct=42.0), 0),
+        ("no cloud forecast is not zero error", pred(cloud_cover_pct=None), act(cloud_cover_pct=42.0), 0),
+        ("no cloud observed is not zero error either",
+         pred(cloud_cover_pct=50.0), act(cloud_cover_pct=None), 0),
         ("onset error at lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 0),
         ("onset error is never computed beyond lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 3),
         ("no onset error when actual stayed dry", pred(onset="14:00"), act(rain=False, onset_hour=None), 0),
@@ -1021,12 +1032,17 @@ def export_weekly_review() -> None:
     models = ["alpha", "beta"]
     today = date(2026, 8, 21)
 
-    def build(days: int, alpha_hits: int, beta_hits: int, alpha_high_bias: float = 0.0):
+    def build(days: int, alpha_hits: int, beta_hits: int, alpha_high_bias: float = 0.0,
+              alpha_cloud_bias: float | None = None):
         logs, actuals = {}, {}
         for i in range(days):
             d = today - timedelta(days=i + 1)
             actuals[d] = DailyActual(
-                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0,
+                # None unless a case asks for cloud, so every case written
+                # before 2026-09-10 stays byte-identical rather than gaining
+                # a scored sky it was not built to test.
+                cloud_cover_pct=None if alpha_cloud_bias is None else 60.0,
             )
             logs[d] = DailyLogEntry(
                 date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
@@ -1034,8 +1050,11 @@ def export_weekly_review() -> None:
                 narrative_markdown="n",
                 model_predictions=ModelPredictionsByLead(day0=[
                     ModelPrediction(model="alpha", rain=(i < alpha_hits),
-                                    high_c=26.0 - alpha_high_bias, low_c=18.0),
-                    ModelPrediction(model="beta", rain=(i < beta_hits), high_c=26.0, low_c=18.0),
+                                    high_c=26.0 - alpha_high_bias, low_c=18.0,
+                                    cloud_cover_pct=(None if alpha_cloud_bias is None
+                                                     else 60.0 - alpha_cloud_bias)),
+                    ModelPrediction(model="beta", rain=(i < beta_hits), high_c=26.0, low_c=18.0,
+                                    cloud_cover_pct=None if alpha_cloud_bias is None else 60.0),
                 ]),
                 meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
                                   llm_provider="t", llm_model="t", pipeline_version="0"),
@@ -1079,6 +1098,8 @@ def export_weekly_review() -> None:
                         "mean_wind_error_kmh": c.mean_wind_error_kmh,
                         "mean_onset_error_hrs": c.mean_onset_error_hrs,
                         "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
+                        "mean_cloud_error_pct": c.mean_cloud_error_pct,
+                        "cloud_checks": c.cloud_checks,
                         "earliest": _iso(c.earliest) if c.earliest else None,
                         "latest": _iso(c.latest) if c.latest else None,
                         "mean_rain_brier": c.mean_rain_brier,
@@ -1145,8 +1166,9 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
-    def case(name: str, days: int, a: int, b: int, bias: float = 0.0):
-        logs, actuals = build(days, a, b, bias)
+    def case(name: str, days: int, a: int, b: int, bias: float = 0.0,
+             cloud_bias: float | None = None):
+        logs, actuals = build(days, a, b, bias, cloud_bias)
         review = build_weekly_review(
             log_lookup=lambda d: logs.get(d),
             actuals=actuals,
@@ -1330,6 +1352,38 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
+    def thin_sky_case(name: str):
+        """Thirty scored days, three of which say anything about the sky.
+
+        The real shape of the record from 2026-09-10 onward: cloud_cover_pct
+        arrived months after rain and temperature, so every cell holds a
+        thick rain row and a thin cloud one. The bias loop read the CELL's
+        count, and a mean over three days was about to be published as
+        "across 30 checks" at confidence "established" — a tenfold
+        overstatement in the one sentence a forecaster acts on.
+
+        Locked because the two languages share that loop, and a port that
+        kept the old single count would publish a claim the site does not.
+        """
+        logs, actuals = build(30, 15, 15, 0.0, 35.0)
+        for i, d in enumerate(sorted(logs, reverse=True)):
+            if i < 3:
+                continue
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
+            )
+            for pred in logs[d].model_predictions.day0:
+                pred.cloud_cover_pct = None
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=["alpha", "beta"],
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, ["alpha", "beta"], review)
+
     def newcomer_case(name: str):
         """A model added today, with no verified checks at all.
 
@@ -1367,6 +1421,15 @@ def export_weekly_review() -> None:
             case("30 checks — a real gap is ranked", 30, 27, 9),
             case("30 checks — a narrow gap is explicitly declined", 30, 20, 18),
             case("30 checks — a systematic temperature bias is named", 30, 15, 15, 2.0),
+            # THE SKY, from 2026-09-10. A model that forecasts 35 points less
+            # cloud than there was is named, so the forecaster can discount
+            # it; five points is scatter and is not. Cloud's threshold is far
+            # wider than temperature's because the models disagree with each
+            # other by 70 points on the same morning, and a port that copied
+            # the temperature threshold would fill the review with noise.
+            case("30 checks — a model that cannot read the sky is named", 30, 15, 15, 0.0, 35.0),
+            case("30 checks — a few points of cloud is scatter", 30, 15, 15, 0.0, 5.0),
+            thin_sky_case("a thin sky in a thick row is not reported at all"),
             case("4 checks — insufficient for anything", 4, 4, 1),
             brier_case(
                 "Brier against climatology — a winner, a loser, and a partial column",

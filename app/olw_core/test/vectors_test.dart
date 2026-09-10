@@ -702,6 +702,12 @@ void main() {
           expect(got.rainPct, equals(want['rain_pct']), reason: reason);
           expect(got.meanHighErrorC, equals(want['mean_high_error_c']), reason: reason);
           expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
+          expect(got.meanCloudErrorPct, equals(want['mean_cloud_error_pct']), reason: reason);
+          expect(got.cloudChecks, equals(want['cloud_checks']),
+              reason: '$reason — the sky arrived months after rain and '
+                  'temperature, so a cell holds thirty checks of which three '
+                  'carry cloud; a port that reused `checks` for both would '
+                  'publish a mean over three days as evidence from thirty');
           // Compared exactly, not approximately. The vectors carry full
           // double precision on purpose: an approximate comparison here would
           // pass a port that accumulated the mean in a different order, and

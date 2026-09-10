@@ -370,6 +370,17 @@ REVIEW_COMPARISON_MIN_GAP_PCT = 15.0
 # scatter. Roughly the point where a forecast user would notice.
 REVIEW_TEMP_BIAS_THRESHOLD_C = 1.0
 REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0
+# Cloud is the noisiest field in this record by a wide margin. Measured on
+# 2026-09-10: the five models spanned 0 to 98 percent cloud on the same
+# morning, a 70-point spread on the day mean, against 2.0 C on the day's
+# high and 17.6 km/h on the gust. A threshold sized like the temperature one
+# would report a finding about nothing every week.
+#
+# 15 points is the smallest gap that clears the models' own disagreement and
+# is also a difference a reader would notice: it is more than the 12.5-point
+# band the day-over-day comparison calls "similar cloud", so a model flagged
+# here is one whose sky is a different sky, not a shade of the same one.
+REVIEW_CLOUD_BIAS_THRESHOLD_PCT = 15.0
 
 
 # --- Data-coverage watch (see coverage.py) ---

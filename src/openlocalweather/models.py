@@ -372,6 +372,18 @@ class VerificationScore(BaseModel):
     high_error_c: float | None = None  # actual - predicted
     low_error_c: float | None = None  # actual - predicted
     mslp_error_hpa: float | None = None  # actual - predicted
+    # actual - predicted, in percentage points of sky covered.
+    #
+    # ADDED 2026-09-10 so that the sky can earn a track record. cloud_cover_pct
+    # had been stored on both sides for a day — forecast and reanalysis — and
+    # scored against nothing, so no model could gain or lose standing on it
+    # however wrong it was. The operator asked for the Overview to come to
+    # trust the better models on cloud the way it already weighs them on rain;
+    # this is the row that has to exist first.
+    #
+    # None on most stored days, and that is the honest value: the field did
+    # not exist before 2026-09-09. Zero would be a claim of perfect skill.
+    cloud_error_pct: float | None = None
 
 
 # ---------------------------------------------------------------------------

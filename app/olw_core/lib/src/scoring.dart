@@ -58,6 +58,11 @@ VerificationScore? scorePrediction(
     highErrorC: diff(predicted.highC, actual.highC),
     lowErrorC: diff(predicted.lowC, actual.lowC),
     mslpErrorHpa: diff(predicted.mslpTrend, actual.mslpTrend),
+    // The reanalysis day mean on both sides, like for like — the station's
+    // eighths sit beside it as a cross-check and are deliberately not the
+    // basis, exactly as the station's sustained wind sits beside the scored
+    // gust.
+    cloudErrorPct: diff(predicted.cloudCoverPct, actual.cloudCoverPct),
   );
 }
 

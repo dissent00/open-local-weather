@@ -359,3 +359,70 @@ def test_onset_error_scored_on_a_thunder_day_that_had_rain_timing():
         0,
     )
     assert score.onset_error_hrs == 1.5
+
+
+def test_cloud_is_scored_so_the_record_can_learn_who_reads_the_sky():
+    """Raised by the operator 2026-09-10, asking that the forecast come to
+    "trust the better models for cloud coverage" the way it already weighs
+    the models on rain and temperature — "if 3 good models say AM clouds and
+    2 that aren't so good at that metric say none, we can say partly cloudy".
+
+    THAT IS BLOCKED ON THERE BEING A CLOUD RECORD AT ALL. cloud_cover_pct has
+    been stored on both sides since 2026-09-09 — forecast on ModelPrediction,
+    reanalysis on DailyActual — and nothing scored one against the other, so
+    no model could earn or lose standing on the sky however wrong it was.
+
+    Measured that morning, and the reason it matters here: the five models
+    split 3-2 on whether there was dawn cloud at all, and the two that said
+    none were the two the operator's own eyes contradicted. A mean over that
+    split lands on a number no model holds.
+    """
+    s = score_prediction(prediction(cloud_cover_pct=50.0), actual(cloud_cover_pct=42.0), 0)
+    # OBSERVED MINUS FORECAST, the same sign convention as every other error
+    # field here: negative means the model came in OVER what happened.
+    assert s.cloud_error_pct == -8.0
+
+    over = score_prediction(prediction(cloud_cover_pct=0.0), actual(cloud_cover_pct=42.0), 0)
+    assert over.cloud_error_pct == 42.0, "a model that saw no cloud on a cloudy day scores worst"
+
+    # Absent on either side is not zero error. Most stored days predate the
+    # field entirely, and scoring those as perfect would hand every model a
+    # skill it never demonstrated.
+    assert score_prediction(prediction(cloud_cover_pct=None), actual(cloud_cover_pct=42.0), 0).cloud_error_pct is None
+    assert score_prediction(prediction(cloud_cover_pct=50.0), actual(cloud_cover_pct=None), 0).cloud_error_pct is None
+
+
+def test_the_rolling_window_carries_the_sky_too():
+    """A per-day error nothing aggregates is a number nobody can act on. The
+    window is what the track record and the prompt read, so this is the step
+    that turns "who was right about the sky" from a stored field into a
+    fact the forecaster can weigh.
+
+    cloud_checks is reported separately from checks_found for the same reason
+    brier_checks is: the field started on 2026-09-09, so for weeks a window
+    will hold many scored days and few with cloud, and one count for both
+    would imply evidence the figure does not have.
+    """
+    from datetime import timedelta
+
+    yesterday = date(2026, 8, 15)
+    # Three scoreable days: two carry a cloud forecast, the third predates
+    # the field. Errors of -8.0 and +32.0, so a mean of +12.0 over the two —
+    # and the same +12.0 whether the third is skipped or the window is
+    # simply shorter, which is why cloud_checks is asserted as well.
+    clouds = [50.0, 10.0, None]
+    logs, actuals_by_date = {}, {}
+    for i, cloud in enumerate(clouds):
+        d = yesterday - timedelta(days=i)
+        logs[d] = log_entry(d, [prediction(cloud_cover_pct=cloud)])
+        actuals_by_date[d] = actual(cloud_cover_pct=42.0)
+
+    result = rescore_rolling_window(
+        "gfs_seamless", 0, window_size=10, yesterday=yesterday,
+        log_lookup=logs.get, actuals=actuals_by_date,
+    )
+    assert result.checks_found == 3, "all three days scored on rain and temperature"
+    assert result.cloud_checks == 2, "only two of them said anything about the sky"
+    assert result.cloud_err == 12.0, (
+        "the day with no cloud forecast must be skipped, not counted as zero"
+    )

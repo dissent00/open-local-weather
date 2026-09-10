@@ -41,6 +41,7 @@ from openlocalweather.defaults import (
     REVIEW_MIN_CHECKS_FOR_COMPARISON,
     REVIEW_TEMP_BIAS_THRESHOLD_C,
     REVIEW_WIND_BIAS_THRESHOLD_KMH,
+    REVIEW_CLOUD_BIAS_THRESHOLD_PCT,
 )
 from openlocalweather.models import DailyActual, VerificationScore
 from openlocalweather.verify.brier import brier_skill_score, mean_brier
@@ -69,6 +70,18 @@ class SkillCell:
     mean_low_error_c: float | None
     mean_wind_error_kmh: float | None
     mean_onset_error_hrs: float | None
+    # The sky, from 2026-09-10, aggregated the same day it was first scored:
+    # a per-day error nothing rolls up is a number no forecaster can weigh.
+    # See REVIEW_CLOUD_BIAS_THRESHOLD_PCT for why its threshold is so much
+    # wider than the others'.
+    mean_cloud_error_pct: float | None
+    # HOW MANY OF `checks` SAID ANYTHING ABOUT THE SKY. Separate from
+    # `checks` for the same reason `brier_checks` is, and more sharply:
+    # cloud_cover_pct started on 2026-09-09 while rain and temperature have
+    # months of rows, so a cell can hold 30 checks of which 3 carry cloud.
+    # Reporting a cloud mean "across 30 checks" would overstate its evidence
+    # tenfold in the one sentence a forecaster acts on.
+    cloud_checks: int
     # Pressure-trend error. Scored per-day and carried in the rolling track
     # record since the beginning, but not aggregated here until now — so the
     # one variable with a genuine physical lead on convection was the one
@@ -227,10 +240,12 @@ def build_weekly_review(
                     mean_wind_error_kmh=mean([s.wind_error_kmh for _, s in scored]),
                     mean_onset_error_hrs=mean([s.onset_error_hrs for _, s in scored]),
                     mean_mslp_error_hpa=mean([s.mslp_error_hpa for _, s in scored]),
+                    mean_cloud_error_pct=mean([s.cloud_error_pct for _, s in scored]),
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
                     mean_rain_brier=briers[model],
                     brier_checks=sum(1 for _, s in scored if s.rain_brier is not None),
+                    cloud_checks=sum(1 for _, s in scored if s.cloud_error_pct is not None),
                     **_paired_skill(scored, reference_by_date),
                 )
             )
@@ -310,12 +325,21 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
         for c in at_lead:
             if c.checks < REVIEW_MIN_CHECKS_FOR_COMPARISON:
                 continue
-            for value, threshold, label, unit in (
-                (c.mean_high_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "daytime highs", "°C"),
-                (c.mean_low_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "overnight lows", "°C"),
-                (c.mean_wind_error_kmh, REVIEW_WIND_BIAS_THRESHOLD_KMH, "peak wind", " km/h"),
+            # EACH FIELD CARRIES ITS OWN SAMPLE SIZE. Every row here used to
+            # be as old as the cell, so `c.checks` described them all. Cloud
+            # broke that on 2026-09-10 by arriving months late, and a mean
+            # over three days was about to be published "across 30 checks".
+            for value, threshold, label, unit, n in (
+                (c.mean_high_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "daytime highs", "°C", c.checks),
+                (c.mean_low_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "overnight lows", "°C", c.checks),
+                (c.mean_wind_error_kmh, REVIEW_WIND_BIAS_THRESHOLD_KMH, "peak wind", " km/h", c.checks),
+                (c.mean_cloud_error_pct, REVIEW_CLOUD_BIAS_THRESHOLD_PCT, "cloud cover", " points",
+                 c.cloud_checks),
             ):
                 if value is None or abs(value) < threshold:
+                    continue
+                # The floor applies to the FIELD's evidence, not the row's.
+                if n < REVIEW_MIN_CHECKS_FOR_COMPARISON:
                     continue
                 # Errors are actual - predicted, so a positive mean means the
                 # model came in UNDER what actually happened.
@@ -323,9 +347,11 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
                 findings.append(Finding(
                     kind="bias",
                     claim=f"At Day+{k}, {c.model} systematically {direction} {label} here.",
-                    evidence=f"Mean error {value:+.1f}{unit} across {c.checks} checks.",
-                    confidence=c.confidence,
-                    checks=c.checks,
+                    evidence=f"Mean error {value:+.1f}{unit} across {n} checks.",
+                    # Derived from THIS field's count, so a three-day sky
+                    # cannot inherit a thirty-day row's "established".
+                    confidence=confidence_for(n),
+                    checks=n,
                 ))
 
         # --- Does being best mean anything? --------------------------------

@@ -387,6 +387,15 @@ class VerificationScore {
   final double? lowErrorC;
   final double? mslpErrorHpa;
 
+  /// actual - predicted, in percentage points of sky covered.
+  ///
+  /// Added 2026-09-10 so the sky can earn a track record. cloudCoverPct had
+  /// been stored on both sides for a day and scored against nothing, so no
+  /// model could gain or lose standing on it however wrong it was. Null on
+  /// most stored days, and that is the honest value: zero would be a claim
+  /// of perfect skill on a day the field did not exist.
+  final double? cloudErrorPct;
+
   const VerificationScore({
     required this.rainCorrect,
     this.rainBrier,
@@ -395,6 +404,7 @@ class VerificationScore {
     this.highErrorC,
     this.lowErrorC,
     this.mslpErrorHpa,
+    this.cloudErrorPct,
   });
 
   Map<String, Object?> toJson() => {
@@ -405,6 +415,7 @@ class VerificationScore {
         'high_error_c': highErrorC,
         'low_error_c': lowErrorC,
         'mslp_error_hpa': mslpErrorHpa,
+        'cloud_error_pct': cloudErrorPct,
       };
 }
 

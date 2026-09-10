@@ -586,7 +586,8 @@ def _cell(model, checks, correct, high_err=None, conf="provisional", lead=0):
         model=model, lead_time_days=lead, checks=checks, correct=correct,
         rain_pct=(100 * correct / checks) if checks else None, confidence=conf,
         mean_high_error_c=high_err, mean_low_error_c=None,
-        mean_wind_error_kmh=None, mean_onset_error_hrs=None, mean_mslp_error_hpa=None,
+        mean_wind_error_kmh=None, mean_onset_error_hrs=None,
+        mean_cloud_error_pct=None, cloud_checks=0, mean_mslp_error_hpa=None,
         earliest=None, latest=None,
     )
 

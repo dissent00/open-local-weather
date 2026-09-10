@@ -50,6 +50,8 @@ class SkillCell {
     required this.meanWindErrorKmh,
     required this.meanOnsetErrorHrs,
     required this.meanMslpErrorHpa,
+    required this.meanCloudErrorPct,
+    required this.cloudChecks,
     required this.earliest,
     required this.latest,
     this.meanRainBrier,
@@ -69,6 +71,15 @@ class SkillCell {
   final double? meanWindErrorKmh;
   final double? meanOnsetErrorHrs;
   final double? meanMslpErrorHpa;
+
+  /// The sky, from 2026-09-10, aggregated the same day it was first scored:
+  /// a per-day error nothing rolls up is a number no forecaster can weigh.
+  final double? meanCloudErrorPct;
+
+  /// How many of [checks] said anything about the sky. Separate for the same
+  /// reason [brierChecks] is, and more sharply: cloudCoverPct started on
+  /// 2026-09-09 while rain and temperature have months of rows.
+  final int cloudChecks;
   final DateTime? earliest;
   final DateTime? latest;
 
@@ -235,6 +246,8 @@ WeeklyReview buildWeeklyReview({
         meanWindErrorKmh: mean([for (final e in scored) e.value.windErrorKmh]),
         meanOnsetErrorHrs: mean([for (final e in scored) e.value.onsetErrorHrs]),
         meanMslpErrorHpa: mean([for (final e in scored) e.value.mslpErrorHpa]),
+        meanCloudErrorPct: mean([for (final e in scored) e.value.cloudErrorPct]),
+        cloudChecks: scored.where((e) => e.value.cloudErrorPct != null).length,
         earliest: scored.isEmpty ? null : scored.last.key,
         latest: scored.isEmpty ? null : scored.first.key,
         meanRainBrier: briers[model],
@@ -369,22 +382,32 @@ List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
     // --- Systematic bias ---------------------------------------------------
     for (final c in atLead) {
       if (c.checks < reviewMinChecksForComparison) continue;
-      final candidates = <(double?, double, String, String)>[
-        (c.meanHighErrorC, reviewTempBiasThresholdC, 'daytime highs', '°C'),
-        (c.meanLowErrorC, reviewTempBiasThresholdC, 'overnight lows', '°C'),
-        (c.meanWindErrorKmh, reviewWindBiasThresholdKmh, 'peak wind', ' km/h'),
+      // EACH FIELD CARRIES ITS OWN SAMPLE SIZE. Every row here used to be as
+      // old as the cell, so `c.checks` described them all. Cloud broke that
+      // on 2026-09-10 by arriving months late, and a mean over three days
+      // was about to be published "across 30 checks".
+      final candidates = <(double?, double, String, String, int)>[
+        (c.meanHighErrorC, reviewTempBiasThresholdC, 'daytime highs', '°C', c.checks),
+        (c.meanLowErrorC, reviewTempBiasThresholdC, 'overnight lows', '°C', c.checks),
+        (c.meanWindErrorKmh, reviewWindBiasThresholdKmh, 'peak wind', ' km/h', c.checks),
+        (c.meanCloudErrorPct, reviewCloudBiasThresholdPct, 'cloud cover', ' points',
+            c.cloudChecks),
       ];
-      for (final (value, threshold, label, unit) in candidates) {
+      for (final (value, threshold, label, unit, n) in candidates) {
         if (value == null || value.abs() < threshold) continue;
+        // The floor applies to the FIELD's evidence, not the row's.
+        if (n < reviewMinChecksForComparison) continue;
         // Errors are actual - predicted, so a positive mean means the model
         // came in UNDER what actually happened.
         final direction = value > 0 ? 'under-forecasts' : 'over-forecasts';
         findings.add(Finding(
           kind: 'bias',
           claim: 'At Day+$k, ${c.model} systematically $direction $label here.',
-          evidence: 'Mean error ${_fmtSigned(value)}$unit across ${c.checks} checks.',
-          confidence: c.confidence,
-          checks: c.checks,
+          evidence: 'Mean error ${_fmtSigned(value)}$unit across $n checks.',
+          // Derived from THIS field's count, so a three-day sky cannot
+          // inherit a thirty-day row's "established".
+          confidence: confidenceFor(n),
+          checks: n,
         ));
       }
     }

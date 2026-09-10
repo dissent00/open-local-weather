@@ -9836,7 +9836,7 @@ sources filling one column), item 77 (the harness), item 74.
 
 ---
 
-## 87. The prompt bans four variables and then hands three of them over · **Cloud done 2026-09-09; dew point and visibility remain out**
+## 87. The prompt bans four variables and then hands three of them over · **Cloud parsed 2026-09-09 and scored 2026-09-10; dew point and visibility remain out**
 
 Found 2026-09-08 by a cold worker model, which reported visibility and cloud
 base in a forecast, suppressed dew point, and flagged the inconsistency
@@ -10071,11 +10071,64 @@ forecast — a different sentence, which should be written as one. Do that
 first; it costs a prompt edit and stops a careful reader reasoning from a
 false premise in the meantime.
 
+### 2026-09-10: the sky is now scored, because it disagreed with itself
+
+Conor, on the morning Overview: the sky should come to be read from "the
+better models for cloud coverage" — "if 3 good models say AM clouds and 2
+that aren't so good at that metric say none, we can say partly cloudy".
+
+MEASURED FIRST, and the measurement is the reason this item moved. Across
+seven days of archived prompts, the five models' MORNING cloud means (06–11)
+had a median spread of 55 percentage points and only one day in seven had
+them all within 30. On 2026-09-10 at 07:00 they said 16, 11, 74, 0 and 100.
+The day-mean spread that day was 70 points — against 2.0 °C on the day's
+high and 17.6 km/h on the gust. Cloud is by a wide margin the least agreed
+variable in this record.
+
+So no locked cloud phrase was added to the Overview, and none should be
+until the record can say whose sky to believe. A phrase built from that mean
+is true of the mean and false of every model, published verbatim as the
+reader's opening sentence.
+
+**A median was tried and rejected on measurement.** It is the natural
+reading of "3 say cloud, 2 say none", and against the one ground truth
+available — Conor's own 07:30 observation, partly cloudy at dawn and burning
+off — it was WORSE than the mean: median 92 at 06:00 where the mean said 61,
+and median 16 at 07:00 where the mean said 40. One observation is not a
+finding, but it is enough to stop a change that had nothing else behind it.
+
+**What shipped is the prerequisite.** `cloud_cover_pct` had been stored on
+both sides since 2026-09-09 and scored against nothing, so no model could
+gain or lose standing on the sky however wrong it was. Now:
+
+- `cloud_error_pct` on every `VerificationScore`, observed minus forecast,
+  the same convention as every other field.
+- `cloud_err` and `cloud_checks` on the rolling window.
+- A weekly-review bias finding: "At Day+0, X systematically under-forecasts
+  cloud cover here", which is the sentence the forecaster reads and weighs.
+  Threshold 15 points, far wider than temperature's 1.0 °C, because the
+  models disagree with each other by 70 and a narrower one would report a
+  finding about nothing every week.
+
+**And a defect that fix exposed, fixed with it.** The bias loop reported
+every field's evidence as `c.checks` — correct while every field was as old
+as the row, and wrong the moment cloud arrived months late. A cell holding
+30 scored checks of which 3 carry cloud was about to publish "Mean error
++35.0 points across 30 checks" at confidence "established". Each field now
+carries its own sample size and its own confidence, and is withheld below
+the comparison floor. The same lesson `brier_checks` already learned.
+
+FIRST PAIRED ROW LANDS 2026-09-11 — today's forecast against tomorrow's
+observation. The bias finding needs 10, so roughly a fortnight before the
+record can say anything, and 30 before it says it with confidence. Nothing
+about the Overview should change until then.
+
 Related: item 65 (the observed cloud this could supply), item 84 (the register
 that would make this a lookup), item 45 (the observation ladder, and the
 cross-check pattern a satellite product would later follow), item 83 (which
 needs a sky label), item 67 (why a stale point observation does not belong in
-a forecast section), item 73, item 77 (the harness that found it).
+a forecast section), item 73, item 77 (the harness that found it), item 58
+(brier_checks, the same sample-size lesson one field earlier).
 
 ---
 

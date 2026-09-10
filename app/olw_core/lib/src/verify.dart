@@ -40,6 +40,8 @@ class RollingWindowResult {
     required this.mslpErr,
     this.rainBrier,
     this.brierChecks = 0,
+    this.cloudErr,
+    this.cloudChecks = 0,
   });
 
   /// How many of the window actually had data. Load-bearing for cold-start
@@ -64,6 +66,15 @@ class RollingWindowResult {
   /// probability, and one count presented for both would imply the Brier
   /// rests on evidence it does not have.
   final int brierChecks;
+
+  /// The sky, from 2026-09-10. Mean cloud error over the checks in this
+  /// window that carried one.
+  final double? cloudErr;
+
+  /// Separate from [checksFound] for the same reason [brierChecks] is, and
+  /// more sharply: cloudCoverPct started being stored on 2026-09-09, so for
+  /// weeks a window holds thirty scored days and a handful with cloud.
+  final int cloudChecks;
 }
 
 /// Walks backward from [yesterday] collecting up to [windowSize] scoreable
@@ -116,6 +127,8 @@ RollingWindowResult rescoreRollingWindow({
     mslpErr: mean([for (final s in scores) s.mslpErrorHpa]),
     rainBrier: meanBrier([for (final s in scores) s.rainBrier]),
     brierChecks: scores.where((s) => s.rainBrier != null).length,
+    cloudErr: mean([for (final s in scores) s.cloudErrorPct]),
+    cloudChecks: scores.where((s) => s.cloudErrorPct != null).length,
   );
 }
 
