@@ -11950,18 +11950,85 @@ entry — 24KB to 8KB, and the only difference besides the removal is that
 apostrophes now escape, which is the fix showing up in the real render path
 rather than only in a test.
 
-### Still open, and NOT fixed here
+### The fourth gate: the narrative · **Closed 2026-09-10**
 
-**The narrative passes raw HTML through into both the page and the email.**
-`markdown.markdown(..., extensions=["extra"])` does not strip embedded HTML —
-verified, `<script>alert(1)</script>` in a narrative survives the conversion
-intact — and the result is `| safe` in the template and interpolated into an
-f-string in `email_gmail.py`. Autoescape cannot help here, because this value
-is HTML on purpose.
+Autoescape protects every other value on the page and cannot protect this one,
+because this one is HTML on purpose — the template marks it `| safe` so its
+`<h2>` renders as a heading. `markdown.markdown(..., extensions=["extra"])`
+passes embedded HTML through untouched (Python-Markdown dropped `safe_mode` in
+3.0 and says sanitising is the caller's job), so a `<script>` in a narrative
+reached `docs/index.html` AND the subscriber email intact.
 
-Closing it needs a sanitiser; neither `bleach` nor `nh3` is installed, so it is
-a dependency decision rather than a patch, and it belongs to whoever weighs
-that. The three gates above are shut; this one is named and open.
+`publish/narrative.py`, one function, both call sites. They each had their own
+`markdown.markdown(...)` before and were free to drift; sharing this is the
+only way "the narrative is sanitised" is true of the system rather than of one
+file. The email is the more exposed of the two — the page at least has
+autoescape around everything else, while `render_email_html` interpolates into
+an f-string with no escaping at all — so it is asserted at its own level
+rather than trusted to call the right helper.
+
+`nh3`, a runtime dependency: `bleach` is archived and its own README points
+there. It parses the HTML rather than matching patterns, which is the
+distinction that matters — a regex sanitiser is a long argument with an
+adversary who has read the same regex.
+
+**The default allowlist, deliberately.** Measured across the whole stored
+record, the only tags a narrative produces are `h2`, `h3` and `p`, all of them
+allowed. `test_the_real_stored_narrative_is_unchanged_by_sanitising` asserts
+every stored forecast renders byte-identically after sanitising, so the
+sanitiser is proven not to have cost anything. A hand-written allowlist would
+be a second thing to maintain and the first thing to get wrong the day the
+prompt asks for a table.
+
+Also pinned: `test_markdown_alone_really_does_pass_html_through`. If a future
+Markdown release starts escaping this by itself, the sanitiser stops being
+load-bearing and somebody should be told rather than left guessing.
+
+**No counterpart on the app side.** `today_screen.dart` renders through
+`MarkdownBody`, which builds Flutter widgets — there is no DOM and nothing to
+execute. The Dart gaps from this item were the finish reason and the length
+bound, and both are closed.
+
+### Was this a Gemini bug worth reporting? — analysed 2026-09-10
+
+The recited text raised the obvious question, so the string was measured
+rather than eyeballed. **It is a decoding failure, not a data leak**, and the
+distinction decides what to do with it.
+
+Structure of the 15,930 characters:
+
+| | |
+|---|---|
+| plausible prefix | 66 chars, already degrading — "Environmentally Environmentally" |
+| repetition loop | "Passtaken" × 1,196 — **75% of the string** |
+| tail | 3,898 chars wandering between a LaTeX array, an HTML table and a grading rubric |
+
+**Nothing personal is in it.** Swept for emails, SSN patterns, street
+addresses, phone numbers and long identifiers: zero, zero, zero. The seven
+"long digit" hits are degenerate runs — one is 716 characters of alternating
+0s and 1s — and the two "proper names" are both the phrase "Not Completed".
+
+**And it is not verbatim recall.** The words are corrupted, not reproduced:
+REGISTATION, PREFEITURING, SEISTEE, REGSTERER, SHOWIN, SERERETERER. Memorised
+text comes out clean; this came out mangled, with a 0.60 repetition ratio over
+a 151-word vocabulary. What it looks like is a sampler that collapsed and then
+walked through several document-shaped modes emitting plausible-looking
+non-text.
+
+So: a model-quality bug in `gemini-3.6-flash` under structured output, not a
+privacy incident. Reportable as the former if anyone wants to — the archived
+`data/prompts/2026-09-10.json` issuance 1 reproduces the exact input
+(158,420-char user prompt, system prompt sha `6daff10c`), and the call took
+54.5s against the morning's 45.9s.
+
+**WHAT COULD NOT BE ESTABLISHED, and why.** Whether the model hit the token
+ceiling. Nothing recorded `finishReason` or token usage — the ledger keeps
+provider, model, purpose, outcome and elapsed seconds and no more, and the
+provider returned a validated object with the metadata discarded. A recurrence
+is now caught and the abort message names the cause, but the offending text is
+still not captured anywhere. Capturing it means widening what the provider
+returns, which has a Dart mirror and an interface change in it — worth doing
+before anyone files a report that needs the evidence, and not done here.
 
 ### What made this expensive
 

@@ -27,9 +27,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import markdown
 
 from openlocalweather.models import DailyLogEntry
+from openlocalweather.publish.narrative import narrative_to_html
 
 GMAIL_SMTP_HOST = "smtp.gmail.com"
 GMAIL_SMTP_PORT = 587
@@ -79,7 +79,10 @@ class GmailSMTPSender:
 
 
 def render_email_html(entry: DailyLogEntry, location_name: str) -> str:
-    narrative_html = markdown.markdown(entry.narrative_markdown, extensions=["extra"])
+    # Same converter as the page, and for the same reason — see
+    # publish/narrative.py. This is interpolated into an f-string with no
+    # escaping of any kind, so it is the more exposed of the two call sites.
+    narrative_html = narrative_to_html(entry.narrative_markdown)
     return f"""
 <div style="font-family: -apple-system, Arial, sans-serif; line-height: 1.6; color: #222; max-width: 650px; margin: 0 auto;">
   <h2 style="color: #1a6fd1; margin-bottom: 4px;">{location_name} Daily Forecast</h2>

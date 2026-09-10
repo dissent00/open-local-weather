@@ -24,8 +24,9 @@ from datetime import date
 from pathlib import Path
 from typing import Callable
 
-import markdown
 from jinja2 import Environment, FileSystemLoader
+
+from openlocalweather.publish.narrative import narrative_to_html
 
 from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
@@ -67,7 +68,9 @@ def _env() -> Environment:
 
 
 def _narrative_html(entry: DailyLogEntry) -> str:
-    return markdown.markdown(entry.narrative_markdown, extensions=["extra"])
+    # Sanitised, because this is the one value on the page that autoescape
+    # cannot protect — see publish/narrative.py.
+    return narrative_to_html(entry.narrative_markdown)
 
 
 def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
