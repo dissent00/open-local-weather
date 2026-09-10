@@ -96,15 +96,15 @@ DEFERENCES: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "FORMATTING": (
         (
-            '"onset_hour" is SCORED and must be null unless the models agree '
-            "closely enough that you would defend one hour",
-            "DEBT, not deference — ROADMAP item 59. This decides a scored "
-            "value from inside a rendering section, and the judgment section "
-            "already carries the same rule in nearly the same words ('null "
-            "there means \"not forecast\", which is honest' appears in both). "
-            "One fact twice, which the prompt bans elsewhere in its own "
-            "Overview rules. Allowlisted so the guard can ship ahead of the "
-            "fix; the fix deletes this entry.",
+            '"onset_hour" is scored and cannot - whether it takes an hour at '
+            "all is decided under today_properties FIELDS below, not here",
+            "Deference, and it was debt until 2026-09-10. This sentence used "
+            "to DECIDE the field — 'must be null unless the models agree "
+            "closely enough that you would defend one hour' — repeating "
+            "section 4 in nearly the same words, one fact twice. What it says "
+            "now is the part that belongs in a rendering section: the prose "
+            "field may carry a range and the scored one may not. The decision "
+            "itself moved out.",
         ),
     ),
 }

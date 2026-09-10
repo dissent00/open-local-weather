@@ -6584,10 +6584,138 @@ closely enough that you would defend one hour"*. That decides a scored value
 from inside a rendering section, and the judgment section already carries the
 same rule in nearly the same words — *"null there means 'not forecast', which
 is honest"* appears in both. One fact twice, which the prompt bans in its own
-Overview rules. Allowlisted so the guard could ship ahead of the fix; the fix
-deletes the entry.
+Overview rules. Allowlisted so the guard could ship ahead of the fix.
 
-### 2026-09-10: two divergences the derivation exposed
+**Fixed the same day, and the guard caught the stale allowlist entry on the
+way through** — which is the behaviour it was written for. FORMATTING now
+reads *"'onset_window' is prose and may carry a range; 'onset_hour' is scored
+and cannot - whether it takes an hour at all is decided under
+today_properties FIELDS below, not here."* The mention stays and the entry
+stays, reclassified from debt to deference: the prose-versus-scored contrast
+is a rendering fact and belongs in a rendering section. What moved out is the
+DECISION. Section 4's version was already the more complete of the two — it
+alone carries the no-rain-expected case and the ban on defaulting to midnight
+— so nothing was lost by deleting the copy.
+
+### 2026-09-10: the harness run for the onset fix, triaged
+
+Item 77's manual form, on the archived 2026-09-10 payload. Production flags
+were established by hash rather than guessed: the archive's
+`system_prompt_sha256` matches commit `ac26867` with `is_reissue=False` and
+both `ground_stations_configured` and `local_bulletin_configured` true.
+
+**The onset edit landed.** The cold reader followed the pointer from FORMATTING
+to section 4, applied section 4's rule, set `onset_hour` null against a
+five-hour spread across the three models that give one, and wrote the range
+into `onset_window`. Asked where prose and structured fields blur, it named
+this pair as the counter-example: *"the one place the prompt draws this line
+explicitly and well"*.
+
+**14 notes, triaged: 2 real, 1 false, 2 harness artefacts, 9 structural
+observations.** The ratio is close to the 2026-09-08 run's, and the false one
+had the same cause both times — mis-pairing values across object boundaries in
+a 153k-character payload.
+
+- **REAL — `note_sign_corrected_on` never reached the prompt.** Item 92 has it.
+- **REAL — EXTRACTED PER-MODEL PREDICTIONS never said which location it
+  describes.** Fixed: the block now reads *"EVERY ONE OF THEM FOR Kisumu,
+  Kenya"*, and `peak_wind_kmh` now says it is the one number in the list you
+  must derive yourself, from `secondary_today_hourly` and nowhere else. Both
+  halves were missing, and the gap was expensive rather than cosmetic — see
+  the false note below.
+- **FALSE — "the wind values are Kisumu's, not the lake's, for 2 of 5
+  models".** The reader compared the EXTRACTED per-model `wind_kmh` (primary
+  point, and what the record scores) against the secondary point's raw arrays,
+  and reported an impossible conflict between two instructions. The values are
+  correct. But a careful reader reached that conclusion *because* nothing said
+  which location the extracted block covers, which is why the fix above is
+  worth its words: the ambiguity did not produce a wrong forecast, it produced
+  a confident false report about one.
+- **ARTEFACT — no WIND DIRECTION or WIND SHIFT block.** The archived payload
+  predates `e0d9541`, which added them. A limitation of replaying an old user
+  prompt against a new system prompt, and worth remembering: the harness cannot
+  exercise a change that adds a user-prompt block.
+- **ARTEFACT — "no schema was ever provided".** `gemini.py` supplies it through
+  `responseSchema`; a text-only replay cannot see it.
+
+The nine structural observations were not defects. Two are worth keeping: the
+prompt runs two independent 1-8 numbered lists, so *"rule 4"* and *"item 4"*
+name different instructions; and `air_quality_aqi` is named once in the field
+list with no guidance anywhere for what it should hold when every ground
+station is stale — the prose form for that case is fully specified and the
+structured one is not.
+
+### 2026-09-10: the second harness run, on the fixes from the first
+
+Same method, the same archived payload with the correction markers projected
+into it the way the fixed code now emits them. **Both fixes landed, and one of
+them was confirmed by a count the reader made itself**: it tallied 43 markers,
+matching the prompt's own claim exactly, then used the marked notes' direction
+language and refused the unmarked ones — *"I did not use their directional
+claims as evidence... where I discussed historical patterns I used only the
+verified booleans plus this run's own freshly-signed verification results"*.
+That is a behaviour change from the first run, which distrusted all 87.
+
+The location fix landed too. The reader took `peak_wind_kmh` from
+`secondary_today_hourly` and nowhere else, and filed no conflict: *"I did not
+at any point suspect the wind numbers themselves contradicted their stated
+source — the arithmetic checked out."* Its per-model lake gusts are the same
+numbers the FIRST reader quoted, which is the useful confirmation — the first
+reader's figures were right and only its conclusion was wrong, and naming the
+location is what turned one into the other.
+
+**20 notes. One real defect, in the fix itself.**
+
+- **REAL — five markers outlived the notes they belonged to.** Item 90 drops a
+  note naming a hidden model WHOLE rather than redacting it, because a gap is
+  already how the prompt says there is nothing to report. `_corrected_on` read
+  the log directly and so survived that drop: five null notes each carried a
+  date saying a note had been here and had been checked. That is the residue
+  shape item 90 exists to prevent, and it was introduced by the fix three
+  hours earlier. The marker now takes the visible note as an argument and
+  returns nothing when it was dropped, with
+  `test_a_dropped_note_takes_its_correction_marker_with_it` pinning it.
+- **And that test found a hole in its own siblings.** Asserting `"2026-09-10"
+  in user_prompt` passes whether or not a marker was emitted, because the same
+  date is a run timestamp elsewhere in the payload. All three tests now read a
+  scoped `notes_block()`, in the shape `predictions_block()` already
+  established for the same reason.
+
+**Gaps worth recording, none fixed — they are prompt edits and belong in one
+batch with one harness run rather than three:**
+
+- **`wind_kmh` in EXTRACTED PER-MODEL PREDICTIONS is the daily max GUST and
+  nothing says so.** The reader established it by diffing against the raw
+  arrays, and named the trap: for GFS the max gust is 18.7 and the max wind
+  SPEED is 18.8. A near-miss like that confirms the wrong column to anyone who
+  checks casually, and this is a scored field.
+- **`uv_index_max` names no source at all.** It appears exactly once in the
+  whole prompt — in the field list. It is not extracted per model and not a
+  pre-computed block, so the only way to produce it is from the raw hourly
+  arrays, which the document elsewhere works hard to prevent. Both readers did
+  exactly that and agreed on 8.65-8.7, so nothing broke; it is undocumented
+  rather than wrong.
+- **The secondary location has no HOURS AHEAD and no CONVECTIVE INSTABILITY of
+  its own.** Both are computed for the primary point only, so the boaters'
+  section — the safety-critical one — is written from raw arrays by hand. The
+  second reader derived lake CAPE itself and said so.
+- **"FORMATTING RULES" undersells about half its contents**, including the
+  INSTABILITY AND THUNDER paragraph about storm gusts on the water. Relevant
+  to step 3: that is a judgment rule filed under a rendering heading, and the
+  split has to put it somewhere.
+- **The "one clause deliberately left wrong" warning cannot be acted on.** It
+  names a landmine and gives no way to locate it; both unmarked and
+  deliberately-wrong notes present identically. The reader's only available
+  response was to downgrade the whole unmarked set, which it would have done
+  anyway.
+
+Two more were harness artefacts of a text-only replay: `skill_profile_summaries`
+and the field types both come from `responseSchema`, which a text replay cannot
+see. Worth noting all the same that both readers returned a NUMBER for
+`uv_index_max`, which the schema declares `str | None` — production is
+protected by the schema, and the prompt is silent.
+
+### 2026-09-10: three divergences, and the app's forecaster is the worst of them
 
 Deriving the scored set from the Python blend builders raised the question of
 what the DART ones commit. They do not commit the same thing, and nothing
@@ -6613,6 +6741,38 @@ either builder.
 Both change what the app STORES, so neither was fixed here. The first is a
 one-line fix behind a false comment; the second is item 72 unported and is
 not in the owed table.
+
+**And then the third, found by pulling the same thread.** `generateForecast`
+takes its context as optional named parameters. `forecast_runner.dart:146`
+passes six arguments and lets the rest default, so the app's forecaster runs
+with `verificationContext`, `trackRecordContext` and `historicalLogs` all
+`const <Object>[]`.
+
+Those three are rendered with `promptJson(...)`, so they reach the model as
+`[]` — NOT as "Unavailable". Rule 5 of the system prompt exists for exactly
+this: *"an unavailable block and a null field all mean 'not known' - never
+zero, never calm, never dry"*. An empty array does not say it is empty; it
+reads like a result. So the app asks a forecaster to write
+`yesterday_verification` and a per-lead `verification_notes` "from PRE-COMPUTED
+VERIFICATION RESULTS" that is `[]`, and to "explicitly say how the track record
+- INCLUDING its lead-time breakdown - influenced your model weighting today"
+against a track record that is `[]`. (`reviewContext` is the exception and is
+honest: null renders as "Unavailable — no review computed this run.")
+
+The app HAS the data. `history_store.dart` stores predictions and actuals and
+the accuracy page is built from them. It simply is not handed to the forecast.
+
+**This is the same bug as the app roadmap's item on `earlierToday`** — a
+`generateForecast` parameter the app never passed, which made every re-issue
+read as a first issuance. That one got its own entry and a fix. Four more
+parameters were sitting in the same position and nothing looked for them,
+because a defaulted named parameter is invisible at the call site. Whatever
+else is done here, the durable fix is to stop them being optional: a context
+the forecast is required to reason from should not have a default that
+silently means "none".
+
+Not fixed here — it is app work, in the Ensemble repo, and it is bigger than
+the two above.
 
 **Every one of those is a prompt change, and a prompt change is what this
 item says must be measured rather than assumed.** `olw replay` exists for
@@ -10889,6 +11049,34 @@ direction word had to contradict its sign. The magnitude was never touched.
 Each corrected note carries `note_sign_corrected_on`. THE LEDGER SAYS IT WAS
 TOUCHED — a note without that marker has not been checked, and the fix does
 not get to make the record look as though it was always clean.
+
+### The marker never reached the forecaster · **Fixed 2026-09-10**
+
+The prompt shipped that same day telling the forecaster the marker exists and
+that *"a note without that marker has not been checked"*. The marker was in
+the log and could not reach the prompt: `historical_logs` projects eight named
+fields per day by hand, and this was not one of them. So every note arrived
+unmarked, and an instruction written to rehabilitate 43 corrected notes
+condemned all 87 instead — a warning made strictly worse by being obeyed.
+
+**Found by the item 77 cold reading of that same commit**, on the run made for
+item 59's onset edit. It grepped all 30 entries for the field, found zero, and
+said what it did about it: *"I treated every stored note as unverified and did
+not lean on any of their onset/wind-sign language."* Exactly the behaviour the
+instruction asks for, and exactly the wrong outcome. Nothing in the suite could
+have caught it — the notes are projected into a dict by hand and no test read
+the projection.
+
+Fixed in BOTH pipelines, with the paired tests the last divergence here earned:
+`test_a_corrected_notes_marker_reaches_the_prompt` and
+`test_a_re_issue_carries_the_marker_too`. Watched fail with the field removed
+from both, and again with it removed from only the refresh pipeline — which is
+how this exact code broke the previous time. The payload built from the real
+record carries 43 markers, matching the 43 notes the tool corrected.
+
+**This is the same failure as writing an unverified comment**, in a file that
+happens to be a prompt: a claim about a mechanism, written without checking
+that the mechanism reaches the reader. The repo already has the rule for it.
 
 ### What the tool got wrong first, and why it is tested
 

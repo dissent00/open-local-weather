@@ -138,6 +138,7 @@ from openlocalweather.models import (
     DailyActual,
     DailyLogEntry,
     GroundAQIReading,
+    LeadTimeVerification,
     LogEntryMeta,
     ModelPrediction,
     ModelPredictionsByLead,
@@ -1006,6 +1007,37 @@ def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
     )
 
 
+def _corrected_on(lead: LeadTimeVerification, visible: str | None) -> str | None:
+    """Whether this note's error signs were checked against the record.
+
+    The prompt tells the forecaster that a note carrying this marker was
+    verified against the stored prediction and observation, and that a note
+    WITHOUT it has not been checked. That instruction shipped on 2026-09-10
+    reading off a field the payload did not carry: `historical_logs` projects
+    eight named fields per day and this was not one of them, so every note
+    arrived unmarked and the forecaster was told, in effect, to trust none of
+    them — including the 43 that had just been corrected. Found by the item 77
+    cold reading of the same commit, which duly refused to lean on any stored
+    note's sign language.
+
+    A date, not a boolean: which day the correction ran is worth keeping, and
+    it is what the log actually stores.
+
+    TAKES THE VISIBLE NOTE, not just the lead, and returns nothing when the
+    note was dropped. Item 90 drops a note naming a hidden model WHOLE rather
+    than redacting it, because a gap is already how this prompt says there is
+    nothing to report. The first version of this function read the log
+    directly and so outlived its own note: five markers stood beside a null
+    note, each one saying a note had been here and had been checked. That is
+    the residue shape item 90 exists to prevent, and the second cold reading
+    counted all five.
+    """
+    if visible is None or not lead.note_sign_corrected_on:
+        return None
+
+    return format_date(lead.note_sign_corrected_on)
+
+
 def _review_prompt_payload(review: WeeklyReview) -> dict[str, Any]:
     """The parts of a review the LLM should reason from — and no more.
 
@@ -1269,10 +1301,22 @@ def run_daily_pipeline(
                         "rain_expected": entry.rain_expected,
                         "day0_verified": entry.verification.day0.verified,
                         "day0_note": visible_note(entry.verification.day0.note),
+                        "day0_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day0,
+                            visible_note(entry.verification.day0.note),
+                        ),
                         "day3_verified": entry.verification.day3.verified,
                         "day3_note": visible_note(entry.verification.day3.note),
+                        "day3_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day3,
+                            visible_note(entry.verification.day3.note),
+                        ),
                         "day7_verified": entry.verification.day7.verified,
                         "day7_note": visible_note(entry.verification.day7.note),
+                        "day7_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day7,
+                            visible_note(entry.verification.day7.note),
+                        ),
                     }
                 )
 
@@ -1842,10 +1886,22 @@ def run_refresh_pipeline(
                         "rain_expected": entry.rain_expected,
                         "day0_verified": entry.verification.day0.verified,
                         "day0_note": visible_note(entry.verification.day0.note),
+                        "day0_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day0,
+                            visible_note(entry.verification.day0.note),
+                        ),
                         "day3_verified": entry.verification.day3.verified,
                         "day3_note": visible_note(entry.verification.day3.note),
+                        "day3_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day3,
+                            visible_note(entry.verification.day3.note),
+                        ),
                         "day7_verified": entry.verification.day7.verified,
                         "day7_note": visible_note(entry.verification.day7.note),
+                        "day7_note_sign_corrected_on": _corrected_on(
+                            entry.verification.day7,
+                            visible_note(entry.verification.day7.note),
+                        ),
                     }
                 )
 

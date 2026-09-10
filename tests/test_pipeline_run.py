@@ -2851,3 +2851,107 @@ def test_losing_today_is_still_fatal(tmp_path):
             run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_hourly_today = real
+
+
+def notes_block(user_prompt: str) -> str:
+    """Just the HISTORICAL NOTES section. The date the correction ran is also
+    a run timestamp elsewhere in the payload, so an unscoped assertion for it
+    passes whether or not a single marker was emitted — which is how the first
+    version of these tests passed."""
+    start = user_prompt.index("HISTORICAL NOTES")
+    return user_prompt[start : user_prompt.index("\nLONG-RUN REVIEW", start)]
+
+
+def _mark_a_note_corrected(tmp_path, d: date) -> str:
+    """Stamp one stored note the way tools/fix_note_signs.py does."""
+    entry = log_store.read_log_entry(tmp_path, d)
+    assert entry is not None and entry.verification.day0.note, (
+        "no Day+0 note on this day — the test would pass against nothing"
+    )
+    entry.verification.day0.note_sign_corrected_on = date(2026, 9, 10)
+    log_store.write_log_entry(tmp_path, entry)
+    return entry.verification.day0.note
+
+
+def test_a_corrected_notes_marker_reaches_the_prompt(tmp_path):
+    """The prompt tells the forecaster a note WITHOUT this marker has not had
+    its error signs checked. That instruction shipped on 2026-09-10 reading a
+    field the payload never carried — `historical_logs` projects eight named
+    fields per day and this was not one of them — so every note arrived
+    unmarked and the rule condemned all of them, the 43 just corrected
+    included.
+
+    Found by the item 77 cold reading of that same commit, which correctly
+    refused to lean on any stored note's sign language and said so. Nothing in
+    the suite could have caught it: the notes are projected by hand into a
+    dict and no test read the projection.
+    """
+    # A note lands on day D when D+1 runs, so 8/11 is the day that has one
+    # after these two — checked, not assumed; the helper refuses a day with
+    # no note rather than letting the test pass against nothing.
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    note = _mark_a_note_corrected(tmp_path, date(2026, 8, 11))
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+
+    _, user_prompt = llm.calls[-1]
+    # GUARD THE GUARD. Asserting only that the date appears would pass on a
+    # prompt that carried the note and no marker, or the marker and no note.
+    assert "HISTORICAL NOTES" in user_prompt
+    assert note in user_prompt
+    assert "day0_note_sign_corrected_on" in user_prompt
+    assert "2026-09-10" in user_prompt
+
+    # SELECTIVE, not blanket: an unmarked note must still read as unchecked,
+    # which is the whole point of the marker.
+    assert '"day3_note_sign_corrected_on": null' in user_prompt
+
+
+def test_a_re_issue_carries_the_marker_too(tmp_path):
+    """Both pipelines project HISTORICAL NOTES by hand from identical
+    literals, and the last rule to break here broke because only
+    run_daily_pipeline had it AND only run_daily_pipeline had the test."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
+    note = _mark_a_note_corrected(tmp_path, date(2026, 8, 12))
+
+    llm = FakeLLMProvider()
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False
+    )
+
+    notes = notes_block(llm.calls[-1][1])
+    assert note in notes
+    assert '"day0_note_sign_corrected_on": "2026-09-10"' in notes
+
+
+def test_a_dropped_note_takes_its_correction_marker_with_it(tmp_path):
+    """Item 90 drops a note naming a hidden model WHOLE rather than redacting
+    it, because a gap is already how this prompt says there is nothing to
+    report. A marker left standing beside the gap undoes that: it says a note
+    was here and that it was checked, which is a fact about the dropped note.
+
+    Measured on the real record — five of the 43 markers stood beside a null
+    note, and the second cold reading counted them.
+    """
+    # The note for day D is written by the run on D+1, so the contaminated
+    # provider has to be the one that VERIFIES 8/11, not the one that runs it.
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    run_daily_pipeline(
+        make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 12), dry_run=False
+    )
+    note = _mark_a_note_corrected(tmp_path, date(2026, 8, 11))
+    assert "OLW blend" in note, (
+        "this day's note is not contaminated, so the filter has nothing to drop "
+        "and the test would pass against nothing"
+    )
+
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+
+    notes = notes_block(llm.calls[-1][1])
+    assert "OLW blend" not in notes, "the note itself came back"
+    assert "2026-09-10" not in notes, "the marker outlived the note it belonged to"
