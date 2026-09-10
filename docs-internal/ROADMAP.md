@@ -6424,6 +6424,71 @@ not allowed to work that way and item 40 exists to hold it to AGENTS.md; the
 prompt is held to nothing, and item 27 — the harness that would judge a
 change — is still Planned.
 
+### Measured 2026-09-10, before designing anything
+
+**Two of the three premises above have moved, one worse and one better.**
+
+*Worse.* `prompt.py` is now **495 lines and 10,965 words**, of which 8,668
+reach the model. The single longest instruction paragraph — the Overview —
+is **1,130 words**, not the 400 this item was raised about. It has roughly
+tripled while the item sat.
+
+*Better.* "The prompt is held to nothing" is no longer true.
+`tests/test_prompt.py` carries **34 tests** that assert specific rules are
+present, and `spec/vectors/llm_system_prompt.json` pins the whole string
+byte-for-byte across both languages in 7 branches. What is still missing is
+not coverage but SEPARATION: nothing asserts which side of the split a rule
+belongs to, which is the only test that would make a split safe.
+
+**The 90/10 estimate holds.** Classifying the system prompt's own blocks:
+
+| | words | |
+|---|---|---|
+| Rendering | ~5,242 | STEP 2 narrative (2,814), formatting (1,306), STEP 1 verification prose (428), brevity/reissue (417), grammar (263) |
+| Judgment | ~831 | weighting evidence (154), past misses (159), review findings (287), data quality (231) |
+| Shared integrity | ~980 | the six NEVER rules (461), issuance time (183), what you left out (112), a missing block is not an all-clear (224) |
+
+So **86% rendering, 14% judgment**, and the judgment call really would be
+"small enough to read in one screen". The six NEVER rules are the wrinkle:
+they govern both sides and would have to be duplicated or shared.
+
+**THE OUTPUT SCHEMA ALREADY HAS THE SEAM.** `GeminiForecastResponse` splits
+cleanly today: `today_properties` and `extended_properties` are the judgment
+(and the only scored fields); `today_narrative`, `whatsapp_summary`,
+`yesterday_verification`, `verification_notes` and `skill_profile_summaries`
+are prose. Nothing about the response shape has to change. It is the
+INSTRUCTIONS that are welded.
+
+**And the weld is measurable.** Six rules governing SCORED fields live inside
+the 2,814-word prose block:
+
+- "your own `rain` boolean is allowed to depart from it"
+- "make your call in `today_properties`"
+- "`today_properties` stays your blended call for the WHOLE calendar day"
+- "COMMIT TO RAIN AT DAY+3 AND DAY+7, in `extended_properties`"
+- the two-entry shape rule for `extended_properties`
+- the `rain_probability_pct` meaning
+
+Each is a rule about a number the record scores, sitting in a passage about
+how to write a sentence. That is exactly this item's "a change to either can
+silently move the other", and it is the argument for doing the item.
+
+### The sequence this measurement implies
+
+1. **Unweld, without splitting.** Move those six rules out of STEP 2 into
+   their own labelled judgment section. One call, same cost, no app impact,
+   and it is a strict prerequisite for the split.
+2. **Pin the seam in tests.** Assert that no rule naming a scored field
+   appears inside the narrative section — the guard that stops it welding
+   back together. Only meaningful after step 1.
+3. **Split**, once 1 and 2 hold.
+
+**Every one of those is a prompt change, and a prompt change is what this
+item says must be measured rather than assumed.** `olw replay` exists for
+exactly this and spends real money on the operator's key, so the before/after
+is a deliberate act — see item 58, which has been waiting on the same
+decision since 2026-09-03.
+
 ### The split
 
 - **A judgment call.** Structured output only, no prose: the blended
