@@ -15,7 +15,65 @@ follows `spec/README.md`.
 
 ---
 
-## Working order, as of 2026-08-31
+## Working order, as of 2026-09-10
+
+**Nineteen items closed between 2026-09-04 and 2026-09-10** — 69, 79, 83,
+85, 86, 87 (twice), 89 through 97, 98's label and 51's first step. The block
+below has been rewritten around what that left; the 2026-08-31 ordering that
+stood here is preserved beneath it, because its reasoning is still good on
+the items it names.
+
+**TWO ITEMS ARE NOW WAITING ON ROWS, NOT ON WORK.** Neither can be built
+faster by working on it, and both are the highest-value things on the list:
+
+- **87's cloud weighting.** The sky was scored for the first time on
+  2026-09-10; the first paired row lands 2026-09-11. A bias finding needs 10
+  checks and confidence needs 30, so roughly 2026-09-24 before the record
+  can say whose sky to believe and 2026-10-10 before it says so with
+  confidence. Nothing about the Overview's cloud handling should change
+  before then — the measurement that day found the five models spanning 0 to
+  98 percent on the same morning, so anything built now would be built on a
+  mean no model holds.
+- **99's regional areas.** The sandbox fleet has been sweeping since
+  2026-09-09. The "one line or a paragraph per area" question was
+  deliberately left to the data; give it a fortnight from that date.
+
+**What is buildable today, in order:**
+
+1. **59 — split judgment from prose.** Needs 27, which shipped its blocking
+   half on 2026-09-01. Large, and it doubles a surface pinned across two
+   languages, so it is worth doing once and worth doing while nothing else
+   is competing for the prompt. The strongest candidate.
+2. **47 → 11 → 44.** Observing stations everywhere, then the catalog, then
+   the sources page. Item 98 has become the strongest argument for 63 and
+   for these: with two points you cannot tell patchy rain from a reanalysis
+   miss, and that is now a measured limit rather than a suspicion.
+3. **80's measurement half.** Approved, additive, Python-only, and still not
+   built: the ledger records when each attempt started and nothing else, so
+   every latency figure this project has quoted is arithmetic over start
+   timestamps. Standing diagnostic capability, not a precondition for 79.
+4. **20, then 60.** Backfill makes the archive queryable; analogues query
+   it. Forty days is not enough for either.
+
+**Status corrections found 2026-09-10, both stale rather than wrong:**
+
+- **35 is effectively shipped and still says Planned.**
+  `summarize_instability` takes the MAX across models, not the mean, and
+  hands the prompt `peak_cape_by_model` and `models_above_threshold` whole.
+  On 2026-09-10 the forecaster saw GFS at 390 J/kg against UKMO at 3910,
+  four of five above threshold — exactly the disagreement the item was
+  raised about, fully visible. What remains of 35 is a narrative question,
+  not a data one.
+- **51's step 1 shipped 2026-09-09 and its steps 2 and 3 turned out to
+  already exist**, built by 53.4. `check_recent_degradations` is generic
+  over codes, so every new degradation gets the blip/death rule for free.
+
+**Deliberately NOT next**, listed because they read as though they might be:
+54/55/56 (mailer and glossary), 41 (satellite — the right answer, not the
+cheap one), 40 (AGENTS.md cleanup), 98's Overview question (its own text
+says not to reach for it until more stations exist).
+
+### The ordering as of 2026-08-31, kept for its reasoning
 
 **The forward-fetch experiment was answered 2026-09-03 — neither hypothesis,
 and the confound is unresolved.** See item 53, "THE ANSWER". One open
@@ -3133,7 +3191,26 @@ before the pipeline did, which is why 34a describes it as the reference.
 
 ---
 
-## 35. Surface convective disagreement — the models argue about thunder and we do not say so · **Planned**
+## 35. Surface convective disagreement — the models argue about thunder and we do not say so · **Data half shipped; the narrative question is open**
+
+**Status corrected 2026-09-10.** This said Planned while the data half had
+already shipped. `summarize_instability` takes the MAX peak CAPE across
+models rather than a mean, and hands the prompt `peak_cape_by_model` and
+`models_above_threshold` whole — so the disagreement below is visible rather
+than averaged away. On 2026-09-10 the forecaster was shown GFS at 390 J/kg
+against UKMO at 3910, with four of five models above threshold.
+
+That is the pattern the operator later named as the one to copy for cloud:
+*"as with cape, as the data history improves it should begin to trust the
+better models."* Cloud got its scoring on 2026-09-10 (item 87) and CAPE has
+none — peak CAPE is surfaced but never verified against whether a storm
+actually happened, so "which model reads instability here" is still
+unanswerable. That is the real remainder of this item, and it is a bigger
+piece than the original complaint.
+
+What also remains is narrative: the prompt receives the spread and is not
+told what to DO when the models split three-to-two. The instability clause
+fires off `convective`, which is any model over the line.
 
 On 2026-08-22 the evening forecast said *"No severe weather hazards are
 expected for the remainder of tonight"* and *"mostly dry"*. It was thundering
