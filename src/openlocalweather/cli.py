@@ -434,57 +434,14 @@ def _days_since_last_commit() -> int:
     )
     last_commit = datetime.fromtimestamp(int(result.stdout.strip()), tz=timezone.utc)
     return (datetime.now(timezone.utc) - last_commit).days
-
-
-def _attach_spend_hook(provider, data_dir, *, purpose: str, max_calls: int) -> None:
-    """Make a provider report every HTTP request it makes to the ledger.
-
-    Set after construction rather than passed in, matching the pipeline: the
-    provider is built here and the ledger belongs to the data directory, and a
-    constructor knowing about both would couple them for no reason.
-
-    WHY THIS IS A FUNCTION RATHER THAN A LINE. It used to be a line, in
-    pipeline.py only — so `check-health` built a provider, called the model,
-    and recorded nothing. Its weekly deprecation check spends up to
-    MAX_ATTEMPTS billable requests, and the cap cannot bound what it cannot
-    see. Worse than uncapped: it also makes the ledger disagree with the
-    provider's own request count for reasons nobody can reconstruct, which is
-    the reconciliation that found it.
-    """
-
-    # The row _record opened and _complete is owed. See pipeline.py for why
-    # this is carried alongside rather than returned through the hook.
-    pending: dict[str, datetime | None] = {"at": None}
-
-    def _record() -> None:
-        pending["at"] = None
-        at = datetime.now(timezone.utc)
-        used = record_attempt(
-            data_dir,
-            provider=type(provider).__name__,
-            model=getattr(provider, "model", "unknown"),
-            purpose=purpose,
-            max_calls=max_calls,
-            now=at,
-        )
-        pending["at"] = at
-        print(f"LLM call {used}/{max_calls} in the last 24h")
-
-    def _complete(outcome: str, elapsed_s: float) -> None:
-        complete_attempt(
-            data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
-        )
-
-    provider.before_attempt = _record
-    provider.after_attempt = _complete
-
-
 def _run_check_health(args: argparse.Namespace) -> int:
     # No thinking_level: the deprecation check is a factual lookup, not the
     # multi-step reasoning the forecast pipeline asks for.
     llm = _build_llm_provider(thinking_level=None)
-    # Counted like any other call — see _attach_spend_hook for the gap this
-    # closes. The config is loaded here rather than further down because the
+    # Counted like any other call, through the SAME function the pipeline
+    # and the replay use. This had its own near-copy until 2026-09-10, which
+    # silently omitted the fail-closed check and the shout when a provider
+    # ignores the hook. The config is loaded here rather than further down because the
     # cap's size lives in it, and a hook attached after the call would be no
     # hook at all.
     #
@@ -492,9 +449,11 @@ def _run_check_health(args: argparse.Namespace) -> int:
     # right outcome: being out of budget is a real answer, not a reason to
     # spend anyway.
     location = load_location_config(args.config)
-    _attach_spend_hook(
-        llm, Path(args.data_dir), purpose="health-check",
+    attach_spend_cap(
+        llm,
+        Path(args.data_dir),
         max_calls=location.max_llm_calls_per_24h,
+        purpose="health-check",
     )
     model_name = llm.model
 
@@ -769,7 +728,12 @@ def _run_replay(args) -> int:
     #
     # `purpose="replay"` rather than "forecast" so a later read can tell a
     # harness run from the forecast it was meant to be compared against.
-    verify_spend, _ = attach_spend_cap(deps, deps.location, purpose="replay")
+    verify_spend, _ = attach_spend_cap(
+        deps.llm_provider,
+        deps.data_dir,
+        max_calls=deps.location.max_llm_calls_per_24h,
+        purpose="replay",
+    )
 
     results, failures = replay.run_replay(deps.llm_provider, cases)
     verify_spend()

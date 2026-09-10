@@ -179,7 +179,12 @@ def test_a_provider_that_ignores_the_hook_is_reported_loudly(tmp_path, capsys):
             return self.response
 
     deps = make_deps(tmp_path, llm=SilentProvider())
-    verify, _ = attach_spend_cap(deps, LOCATION, purpose="forecast")
+    verify, _ = attach_spend_cap(
+        deps.llm_provider,
+        deps.data_dir,
+        max_calls=LOCATION.max_llm_calls_per_24h,
+        purpose="forecast",
+    )
     deps.llm_provider.generate("sys", "user", None)
     verify()
 

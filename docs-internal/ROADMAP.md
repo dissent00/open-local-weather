@@ -12122,3 +12122,84 @@ page. All three were open, so a single bad generation went from the model to
 the reader with nothing in between — and the suite could not have caught any
 of it, because every one of the three was a property of code that no test
 exercised with hostile input.
+
+---
+
+## 101. Counting spend was a rule with no guard, broken once per caller · **Fixed 2026-09-10**
+
+`olw replay` spent eight requests and recorded none (item 100). That was the
+third time, and the first two were fixed the same way — locally, in whichever
+caller had just broken it.
+
+| | what broke | how it was fixed |
+|---|---|---|
+| 1 | `check-health` built a provider, called the model, recorded nothing | a SECOND hook-attaching function, in `cli.py` |
+| 2 | the hook fired once per forecast while providers retry up to MAX_ATTEMPTS inside one `generate()` — a cap of 10 permitted 40 billable requests | moved the hook to per-request |
+| 3 | `olw replay` reached the provider without the cap at all, while printing that it counted | attach the cap in `_run_replay` |
+
+Three fixes, no guard, so a fourth caller would have done it again. The
+operator said so plainly: *"we need to stay on top of that in all cases."*
+
+### One implementation, not two
+
+Fix 1 created the divergence the others hid behind. `cli._attach_spend_hook`
+was a near-copy of `pipeline._attach_spend_cap` that omitted **all three** of
+its protections — `assert_capacity` (fail closed before anything starts), the
+warning when a provider ignores the hook, and later the response capture from
+item 100. So `check-health` was counted but had none of the belt-and-braces
+the forecast path has.
+
+`attach_spend_cap` now takes a provider and a data directory rather than
+`PipelineDeps`, which is what let the duplicate exist: the pipeline is a
+CALLER here, not the owner. The copy is deleted, and all four paths —
+forecast, refresh, replay, health-check — go through the one function.
+
+**It was NOT uncapped, and the first draft of this entry said it was.**
+`record_attempt` raises `SpendCapExceeded` on its own, so the health check
+does stop; it just stops at the first request rather than before starting,
+and can be bypassed by an injected provider that ignores the hook. Checked
+before claiming.
+
+### The guard
+
+`tests/test_spend_coverage.py` walks the package's AST, finds every
+`.generate(` call, and requires the function around it to have attached the
+cap. Two functions take an already-capped provider as an argument
+(`run_replay`, `check_model_deprecation`); each is allowlisted with its
+reason, and a second test verifies THEIR callers, so the promise cannot
+quietly become false.
+
+Watched fail three ways: a new uncounted caller added, an existing caller
+losing its cap, and an allowlisted function's caller losing its cap.
+
+### The Dart side got a stronger guarantee, and it found a fourth instance
+
+A test cannot easily walk Dart's AST, but the app has one funnel —
+`buildLlmProvider` — so `beforeAttempt` is now **required** rather than
+optional. Omitting it is a compile error, which beats a test.
+
+The precedent was already there in the same file: `retryPolicy` has no
+default because *"a default here would silently give one of them the wrong
+answer, which is the state this parameter was added to end."* The argument is
+identical.
+
+**Making it required immediately produced six compile errors, and two were a
+real bug**: `test/live_forecast_test.dart` calls a real LLM on the operator's
+own key — its own header says *"costs one API call against the operator's own
+key"* and *"Spending should be a decision"* — and it passed no counting hook
+at all. Every live run had been invisible to the cap. It now counts, under
+`purpose: 'live-test'`.
+
+The second call site in that file is the one deliberate exception in the
+project: a fake key, rejected at the door, nothing billed. It gets an explicit
+no-op with the reason written beside it — which is the whole point of
+`required`. The exception is now a decision somebody wrote down rather than
+the accidental default.
+
+### What is still not guaranteed
+
+An injected provider that ignores the hook. `assert_capacity` covers the
+pipeline's own path and the warning shouts afterwards, but a third-party
+`LLMProvider` can still spend silently. That is inherent in the seam being
+open, and it is the reason `assert_capacity` exists on top of the hook rather
+than instead of it.

@@ -304,14 +304,20 @@ def _response_meta(holder: dict) -> ResponseMeta:
     return holder.get("meta") or ResponseMeta()
 
 
-def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
+def attach_spend_cap(provider, data_dir: Path, *, max_calls: int, purpose: str):
     """Make the cap count HTTP requests, which is what actually costs money.
 
-    PUBLIC because the pipeline is not the only thing that spends. `olw
-    replay` calls the model once per frozen case and went uncounted until
-    2026-09-10 precisely because this was private and the CLI reached past it
-    to the provider — see `_run_replay`. Anything that can reach
-    `deps.llm_provider` must come through here first.
+    PUBLIC, AND THE ONLY ONE. The pipeline is not the only thing that spends,
+    and every time a new caller appeared the rule was re-implemented locally
+    instead: `check-health` got its own near-copy in cli.py that omitted the
+    fail-closed check, the shout when a provider ignores the hook, and later
+    the response capture. `olw replay` got nothing at all and went uncounted
+    until 2026-09-10, while printing that it was counted.
+
+    Three callers, three outcomes, one rule. So this takes a provider and a
+    data directory rather than PipelineDeps: the pipeline is a caller here,
+    not the owner. `tests/test_spend_coverage.py` fails if a `.generate(`
+    appears anywhere that does not come through this.
 
     Recording once before generate() undercounted by up to a factor of
     MAX_ATTEMPTS: the providers retry transient failures inside a single
@@ -329,7 +335,7 @@ def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
     # the hook would sail straight past the cap, and a guard that a substituted
     # object can switch off is not a guard. This runs on the pipeline's own
     # path, where nothing can opt out.
-    assert_capacity(deps.data_dir, max_calls=location.max_llm_calls_per_24h)
+    assert_capacity(data_dir, max_calls=max_calls)
 
     recorded: list[int] = []
     # The row _record opened and _complete is owed. Held here rather than
@@ -343,20 +349,20 @@ def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
         pending["at"] = None
         at = datetime.now(timezone.utc)
         used = record_attempt(
-            deps.data_dir,
-            provider=type(deps.llm_provider).__name__,
-            model=getattr(deps.llm_provider, "model", "unknown"),
+            data_dir,
+            provider=type(provider).__name__,
+            model=getattr(provider, "model", "unknown"),
             purpose=purpose,
-            max_calls=location.max_llm_calls_per_24h,
+            max_calls=max_calls,
             now=at,
         )
         pending["at"] = at
         recorded.append(used)
-        print(f"LLM call {used}/{location.max_llm_calls_per_24h} in the last 24h")
+        print(f"LLM call {used}/{max_calls} in the last 24h")
 
     def _complete(outcome: str, elapsed_s: float) -> None:
         complete_attempt(
-            deps.data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
+            data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
         )
 
     # HOW THE CALL ENDED, kept for the log entry rather than the ledger —
@@ -375,11 +381,11 @@ def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
 
     # Set rather than passed to the constructor: the provider is built in
     # cli.py, which has no reason to know where the ledger lives.
-    deps.llm_provider.before_attempt = _record
-    deps.llm_provider.after_attempt = _complete
+    provider.before_attempt = _record
+    provider.after_attempt = _complete
     # Optional on the Protocol, so a provider that never reports one leaves
     # the fields None — which reads as "did not say", not as zero.
-    deps.llm_provider.after_response = _record_response
+    provider.after_response = _record_response
 
     def _verify_recorded() -> None:
         """Complain if the provider went and called a model without saying so.
@@ -393,7 +399,7 @@ def attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
         """
         if not recorded:
             print(
-                f"WARNING: {type(deps.llm_provider).__name__} completed a "
+                f"WARNING: {type(provider).__name__} completed a "
                 f"{purpose} without reporting any request to the spend cap. "
                 f"Its usage is NOT counted and the cap cannot bound it. A "
                 f"provider must call before_attempt() before every request.",
@@ -1633,7 +1639,12 @@ def run_daily_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = attach_spend_cap(deps, location, purpose="forecast")
+    _verify_spend, _last_response = attach_spend_cap(
+        deps.llm_provider,
+        deps.data_dir,
+        max_calls=location.max_llm_calls_per_24h,
+        purpose="forecast",
+    )
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
@@ -2067,7 +2078,12 @@ def run_refresh_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = attach_spend_cap(deps, location, purpose="refresh")
+    _verify_spend, _last_response = attach_spend_cap(
+        deps.llm_provider,
+        deps.data_dir,
+        max_calls=location.max_llm_calls_per_24h,
+        purpose="refresh",
+    )
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )

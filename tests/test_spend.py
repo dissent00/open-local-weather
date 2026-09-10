@@ -183,7 +183,7 @@ def test_the_health_check_records_its_llm_call(monkeypatch, tmp_path):
             raise RuntimeError("stop here; the hook is what is under test")
 
     spy = _Spy()
-    cli._attach_spend_hook(spy, tmp_path, purpose="health-check", max_calls=10)
+    cli.attach_spend_cap(spy, tmp_path, max_calls=10, purpose="health-check")
     assert spy.before_attempt is not None, "check-health must record what it spends"
 
     spy.before_attempt()
