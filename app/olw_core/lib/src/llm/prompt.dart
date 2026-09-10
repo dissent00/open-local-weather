@@ -193,12 +193,6 @@ $reissueBlock
 
    This governs the PROSE ONLY. today_properties stays your blended call for the WHOLE calendar day: temp_high_c is the day's high whether or not it has already happened. Those values are scored against the day's observations and compared against every other day in the record, so narrowing them to the hours ahead would silently break that comparison.)
 
-   COMMIT TO RAIN AT DAY+3 AND DAY+7, in "extended_properties". Two entries at most, one per lead time, each with "lead_time_days" (3 or 7), "rain" (your blended boolean call for that day) and "rain_probability_pct" (0-100, your own confidence, the same field and the same meaning as today_properties).
-
-   THESE ARE SCORED, against what actually happens on those days, beside every model in the record. That is the point of asking: until now your own call existed only at Day+0, which is where the free numerical models are already strongest and where there is least room to show anything. Reconciling models that disagree is worth most at the leads where they disagree most, and nothing measured whether you were any good at it.
-
-$extendedPropertiesRule
-
    ## Extended Outlook
 $extendedOutlookNote
 
@@ -231,6 +225,12 @@ $airQualityGuidance
    ALSO GIVE "rain_probability_pct": YOUR OWN CHANCE OF RAIN, 0-100, AND MAKE IT HONEST. This is a separate commitment from "rain", not a restatement of it, and it is scored differently. "rain" is checked for being right or wrong; this is checked for CALIBRATION - over many days, the days you call 60% should turn out wet about 60% of the time. The scoring rule used rewards saying what you actually believe: claiming 95% when you mean 60% is the single most expensive mistake available, and hedging to 50% on a day you genuinely have strong evidence about is nearly as costly in the other direction. So do not round toward confidence to sound authoritative, and do not round toward the middle to look careful. Where the models agree and the setup is clear, say 85 or 10. Where they split on convection, say so with a number near the middle - that is the honest answer and it is scored as such. It must not contradict "rain": a probability above 50 with "rain" false, or below 50 with "rain" true, is a forecast arguing with itself.
 
    Set "rain" by the same standard the models are scored on: whether measurable rain falls at the location during the day, not whether any is theoretically possible. "onset_hour" is null when no rain is expected OR when rain is expected but the models do not agree on timing closely enough to name an hour - null there means "not forecast", which is honest, and a guessed hour is scored as wrong just as confidently as a real one. Do NOT default it to midnight or to the start of the day.
+
+   COMMIT TO RAIN AT DAY+3 AND DAY+7, in "extended_properties". Two entries at most, one per lead time, each with "lead_time_days" (3 or 7), "rain" (your blended boolean call for that day) and "rain_probability_pct" (0-100, your own confidence, the same field and the same meaning as today_properties).
+
+   THESE ARE SCORED, against what actually happens on those days, beside every model in the record. That is the point of asking: until now your own call existed only at Day+0, which is where the free numerical models are already strongest and where there is least room to show anything. Reconciling models that disagree is worth most at the leads where they disagree most, and nothing measured whether you were any good at it.
+
+$extendedPropertiesRule
 
    Your own accuracy record is deliberately NOT in your context. Do not speculate about how you have scored historically, and do not describe yourself as a model in the narrative - write the forecast, and let the record speak for itself.
 
