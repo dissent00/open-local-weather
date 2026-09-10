@@ -118,6 +118,24 @@ class ModelPrediction(BaseModel):
     # question is what kind of day it was rather than what the worst hour did.
     # It is also what the observed side is, so the two compare like for like.
     cloud_cover_pct: float | None = None
+    # The day's HIGHEST hourly CAPE, J/kg — items 35 and 87. A PEAK where
+    # cloud is a mean, and deliberately: an afternoon that touches 2000 J/kg
+    # for one hour is convective, and a mean against a calm morning hides the
+    # one hour that matters. Same quantity summarize_instability shows the
+    # forecaster, so the record and the prompt cannot describe different air.
+    #
+    # WHOLE-DAY, where summarize_instability trims to the hours ahead. Every
+    # other Day+0 field is taken over the whole day, and a morning run's
+    # record has to be comparable with an evening one's.
+    #
+    # Day+0 ONLY. CAPE is hourly and the extended leads come from the daily
+    # endpoint, exactly like `onset` — a null here beyond Day+0 is "not
+    # fetched", never "stable".
+    #
+    # Fetched in HOURLY_FORECAST_VARS from the beginning and recomputed every
+    # run into a value nothing stored, so no model could ever be checked
+    # against whether a storm actually arrived.
+    peak_cape_jkg: float | None = None
     mslp_trend: float | None = None
 
 
@@ -384,6 +402,23 @@ class VerificationScore(BaseModel):
     # None on most stored days, and that is the honest value: the field did
     # not exist before 2026-09-09. Zero would be a claim of perfect skill.
     cloud_error_pct: float | None = None
+    # Did this model's INSTABILITY call match whether it actually thundered?
+    # ROADMAP item 35. True/False/None, and three-valued for two separate
+    # reasons: a model with no CAPE series made no call, and a day with no
+    # station report settled nothing.
+    #
+    # AGAINST THUNDER, NOT RAIN. CAPE predicts thunderstorms; a day of steady
+    # frontal rain with no lightning is not a hit for a model that called
+    # high instability. That is why this is its own column rather than a
+    # second input to `rain_correct`, which scores against
+    # observed_convection() and would credit exactly that case.
+    #
+    # A boolean against a boolean because there is no observed CAPE to
+    # subtract from. ERA5 carries a CAPE field, but agreeing with a
+    # reanalysis is not skill at anticipating storms.
+    #
+    # Day+0 only — CAPE is hourly and the extended leads have none.
+    convective_correct: bool | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -54,6 +54,7 @@
           "high_c": 21.0,
           "low_c": 19.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -2.0
         }
       ]
@@ -127,6 +128,7 @@
           "high_c": 26.5,
           "low_c": 21.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.2000000000000455
         },
         {
@@ -139,6 +141,7 @@
           "high_c": null,
           "low_c": null,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": null
         }
       ]
@@ -186,6 +189,7 @@
           "high_c": 22.0,
           "low_c": 20.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": 0.0
         }
       ]
@@ -233,6 +237,7 @@
           "high_c": 22.0,
           "low_c": 21.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -0.6000000000000227
         }
       ]
@@ -302,6 +307,7 @@
           "high_c": 23.0,
           "low_c": 21.0,
           "cloud_cover_pct": 84.0,
+          "peak_cape_jkg": null,
           "mslp_trend": -0.7999999999999545
         }
       ]

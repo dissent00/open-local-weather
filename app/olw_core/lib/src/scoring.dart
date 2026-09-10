@@ -2,6 +2,7 @@
 // Copyright 2026 dissent00
 import 'dates.dart';
 import 'brier.dart';
+import 'instability.dart';
 import 'models.dart';
 import 'sums.dart';
 
@@ -26,6 +27,19 @@ VerificationScore? scorePrediction(
   // cell recorded half a millimetre — see DailyActual.observedConvection.
   final observedRain = actual.observedConvection();
   final rainCorrect = predicted.rain == observedRain;
+
+  // THE INSTABILITY CALL, scored against the storm rather than the rain —
+  // see VerificationScore.convectiveCorrect. Day+0 only, because CAPE is
+  // hourly and the extended leads come from the daily endpoint; null on
+  // either side is a call nobody made or a day nobody observed, and neither
+  // is a miss.
+  bool? convectiveCorrect;
+  if (leadTimeDays == 0 &&
+      predicted.peakCapeJkg != null &&
+      actual.thunder != null) {
+    convectiveCorrect =
+        (predicted.peakCapeJkg! >= convectiveCapeThresholdJkg) == actual.thunder;
+  }
 
   double? onsetErrorHrs;
   // Onset error is Day+0 only: Day+3/+7 predictions carry no onset timing to
@@ -63,6 +77,7 @@ VerificationScore? scorePrediction(
     // basis, exactly as the station's sustained wind sits beside the scored
     // gust.
     cloudErrorPct: diff(predicted.cloudCoverPct, actual.cloudCoverPct),
+    convectiveCorrect: convectiveCorrect,
   );
 }
 

@@ -93,6 +93,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     // anything scores it.
     final prob = _series(hourly, 'precipitation_probability', model);
     final cloud = _series(hourly, 'cloud_cover', model);
+    final cape = _series(hourly, 'cape', model);
 
     final hasPrecipData = precip.any((v) => v != null);
     // THE DAILY TOTAL, NOT THE WETTEST HOUR — ROADMAP item 97. This asked
@@ -116,6 +117,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     final pressVals = press.whereType<double>().toList();
     final probVals = prob.whereType<double>().toList();
     final cloudVals = cloud.whereType<double>().toList();
+    final capeVals = cape.whereType<double>().toList();
 
     return ModelPrediction(
       model: model,
@@ -135,6 +137,11 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
           ? null
           : roundLikePython(
               cloudVals.fold<double>(0, (a, v) => a + v) / cloudVals.length, 1),
+      // THE PEAK, not a mean — see ModelPrediction.peakCapeJkg. An all-null
+      // series is null rather than 0.0, because zero CAPE is a confident
+      // claim of stable air and no data is not.
+      peakCapeJkg:
+          capeVals.isEmpty ? null : capeVals.reduce((a, b) => a > b ? a : b),
       // Summed over hours that reported a value. An all-null day gives
       // null rather than 0.0 — "no data" and "no rain" are different
       // answers and the summary must not conflate them.

@@ -251,6 +251,22 @@ def export_scoring() -> None:
         ("no cloud forecast is not zero error", pred(cloud_cover_pct=None), act(cloud_cover_pct=42.0), 0),
         ("no cloud observed is not zero error either",
          pred(cloud_cover_pct=50.0), act(cloud_cover_pct=None), 0),
+        # THE INSTABILITY CALL — item 35. Scored against THUNDER, never
+        # against rain: a day of steady frontal rain with no lightning is not
+        # a hit for a model that called high instability, and a port that
+        # scored this against observed_convection() would credit exactly that
+        # case. Threshold is CONVECTIVE_CAPE_THRESHOLD_JKG = 1000 J/kg.
+        ("high CAPE on a day it thundered is a hit", pred(peak_cape_jkg=1860.0), act(thunder=True), 0),
+        ("low CAPE on a day it thundered is a miss", pred(peak_cape_jkg=390.0), act(thunder=True), 0),
+        ("low CAPE on a calm day is a hit", pred(peak_cape_jkg=390.0), act(thunder=False), 0),
+        ("high CAPE on a calm day is a miss", pred(peak_cape_jkg=1860.0), act(thunder=False), 0),
+        # Rain without lightning must NOT credit an instability call — the
+        # case the whole thunder-not-rain decision exists for.
+        ("a wet day without thunder does not credit high CAPE",
+         pred(peak_cape_jkg=1860.0), act(rain=True, precip_mm=14.0, thunder=False), 0),
+        ("no CAPE forecast is not a stable call", pred(peak_cape_jkg=None), act(thunder=True), 0),
+        ("no thunder observation settles nothing", pred(peak_cape_jkg=1860.0), act(thunder=None), 0),
+        ("CAPE is never scored beyond lead 0", pred(peak_cape_jkg=1860.0), act(thunder=True), 3),
         ("onset error at lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 0),
         ("onset error is never computed beyond lead 0", pred(onset="14:00"), act(onset_hour="16:30"), 3),
         ("no onset error when actual stayed dry", pred(onset="14:00"), act(rain=False, onset_hour=None), 0),
@@ -1100,6 +1116,8 @@ def export_weekly_review() -> None:
                         "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
                         "mean_cloud_error_pct": c.mean_cloud_error_pct,
                         "cloud_checks": c.cloud_checks,
+                        "storm_days": c.storm_days,
+                        "storms_called": c.storms_called,
                         "earliest": _iso(c.earliest) if c.earliest else None,
                         "latest": _iso(c.latest) if c.latest else None,
                         "mean_rain_brier": c.mean_rain_brier,
@@ -1352,6 +1370,46 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
+    def storm_case(name: str, storm_days: int, alpha_calls: int, beta_calls: int):
+        """Item 35's incident, made checkable: a model whose CAPE stays below
+        the threshold on days the station observed thunder.
+
+        Locked because the finding is asymmetric on purpose — a false alarm
+        and a missed storm are not equally costly — and a port that reduced
+        it to a hit rate would average the two and go quiet on exactly the
+        case the item was raised about.
+        """
+        logs, actuals = {}, {}
+        for i in range(30):
+            d = today - timedelta(days=i + 1)
+            thundered = i < storm_days
+            actuals[d] = DailyActual(
+                rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0,
+                thunder=thundered,
+            )
+            logs[d] = DailyLogEntry(
+                date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                narrative_markdown="n",
+                model_predictions=ModelPredictionsByLead(day0=[
+                    ModelPrediction(model="alpha", rain=True, high_c=26.0, low_c=18.0,
+                                    peak_cape_jkg=1800.0 if (thundered and i < alpha_calls) else 300.0),
+                    ModelPrediction(model="beta", rain=True, high_c=26.0, low_c=18.0,
+                                    peak_cape_jkg=1800.0 if (thundered and i < beta_calls) else 300.0),
+                ]),
+                meta=LogEntryMeta(generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
+                                  llm_provider="t", llm_model="t", pipeline_version="0"),
+            )
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=["alpha", "beta"],
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, ["alpha", "beta"], review)
+
     def thin_sky_case(name: str):
         """Thirty scored days, three of which say anything about the sky.
 
@@ -1430,6 +1488,8 @@ def export_weekly_review() -> None:
             case("30 checks — a model that cannot read the sky is named", 30, 15, 15, 0.0, 35.0),
             case("30 checks — a few points of cloud is scatter", 30, 15, 15, 0.0, 5.0),
             thin_sky_case("a thin sky in a thick row is not reported at all"),
+            storm_case("a model blind to this location's storms is named", 12, 11, 3),
+            storm_case("two storms is not a record, and names nobody", 2, 2, 0),
             case("4 checks — insufficient for anything", 4, 4, 1),
             brier_case(
                 "Brier against climatology — a winner, a loser, and a partial column",

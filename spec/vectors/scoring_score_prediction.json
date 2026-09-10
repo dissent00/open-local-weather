@@ -43,6 +43,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": null,
@@ -63,6 +64,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -101,6 +103,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -132,7 +135,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -148,6 +152,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -179,7 +184,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -195,6 +201,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -226,7 +233,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -242,6 +250,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -273,7 +282,8 @@
         "high_error_c": -2.0,
         "low_error_c": 1.0,
         "mslp_error_hpa": 1.5,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -289,6 +299,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": 50.0,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -320,7 +331,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": -8.0
+        "cloud_error_pct": -8.0,
+        "convective_correct": null
       }
     },
     {
@@ -336,6 +348,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": 0.0,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -367,7 +380,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": 42.0
+        "cloud_error_pct": 42.0,
+        "convective_correct": null
       }
     },
     {
@@ -383,6 +397,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -414,7 +429,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -430,6 +446,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": 50.0,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -461,7 +478,400 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
+      }
+    },
+    {
+      "name": "high CAPE on a day it thundered is a hit",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 1860.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": true
+      }
+    },
+    {
+      "name": "low CAPE on a day it thundered is a miss",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 390.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": false
+      }
+    },
+    {
+      "name": "low CAPE on a calm day is a hit",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 390.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": false,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": true
+      }
+    },
+    {
+      "name": "high CAPE on a calm day is a miss",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 1860.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": false,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": false
+      }
+    },
+    {
+      "name": "a wet day without thunder does not credit high CAPE",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 1860.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": 14.0,
+          "thunder": false,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": false
+      }
+    },
+    {
+      "name": "no CAPE forecast is not a stable call",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null
+      }
+    },
+    {
+      "name": "no thunder observation settles nothing",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 1860.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null
+      }
+    },
+    {
+      "name": "CAPE is never scored beyond lead 0",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": 1860.0,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 3
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -477,6 +887,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -508,7 +919,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -524,6 +936,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -555,7 +968,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -571,6 +985,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -602,7 +1017,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -618,6 +1034,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -649,7 +1066,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -665,6 +1083,7 @@
           "high_c": null,
           "low_c": null,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": null
         },
         "actual": {
@@ -696,7 +1115,8 @@
         "high_error_c": null,
         "low_error_c": null,
         "mslp_error_hpa": null,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -712,6 +1132,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -743,7 +1164,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -759,6 +1181,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -790,7 +1213,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -806,6 +1230,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -837,7 +1262,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     },
     {
@@ -853,6 +1279,7 @@
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
           "mslp_trend": -1.0
         },
         "actual": {
@@ -884,7 +1311,8 @@
         "high_error_c": 0.0,
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
-        "cloud_error_pct": null
+        "cloud_error_pct": null,
+        "convective_correct": null
       }
     }
   ]

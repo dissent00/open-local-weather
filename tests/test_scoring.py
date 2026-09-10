@@ -426,3 +426,49 @@ def test_the_rolling_window_carries_the_sky_too():
     assert result.cloud_err == 12.0, (
         "the day with no cloud forecast must be skipped, not counted as zero"
     )
+
+
+def test_the_convective_call_is_scored_against_whether_it_thundered():
+    """ROADMAP item 35, and the gap left when its data half shipped. Peak
+    CAPE reaches the forecaster every run, showing the full per-model spread
+    — on 2026-09-10, GFS at 390 J/kg against UKMO at 3910 — and NOTHING
+    checked any of them against whether a storm arrived. "Which model reads
+    instability here" was unanswerable, which is the same gap cloud had
+    until it was scored.
+
+    SCORED AGAINST THUNDER, NOT RAIN, and that is the whole design decision.
+    CAPE predicts thunderstorms; a day of steady frontal rain with no
+    lightning is not a hit for a model that called high instability, and
+    scoring it against `observed_convection()` would credit exactly that. It
+    is also why this is a separate column from `rain_correct` rather than a
+    second input to it.
+
+    A BOOLEAN AGAINST A BOOLEAN, because there is no observed CAPE to
+    subtract from. The reanalysis has a CAPE field, but agreeing with a
+    reanalysis is not skill at anticipating storms, and the station's thunder
+    flag is the only record of what actually happened overhead.
+    """
+    stormy = actual(thunder=True)
+    calm = actual(thunder=False)
+
+    assert score_prediction(prediction(peak_cape_jkg=1860.0), stormy, 0).convective_correct is True
+    assert score_prediction(prediction(peak_cape_jkg=390.0), stormy, 0).convective_correct is False
+    assert score_prediction(prediction(peak_cape_jkg=390.0), calm, 0).convective_correct is True
+    assert score_prediction(prediction(peak_cape_jkg=1860.0), calm, 0).convective_correct is False
+
+
+def test_a_convective_call_needs_both_a_cape_figure_and_an_observation():
+    """Three-valued, like `thunder` itself. A model with no CAPE series made
+    no call, and a day with no station report settled nothing — neither is a
+    miss, and scoring either as one would invent skill data out of a gap.
+    """
+    # No CAPE forecast: the model said nothing about instability.
+    assert score_prediction(prediction(peak_cape_jkg=None), actual(thunder=True), 0).convective_correct is None
+
+    # No thunder observation: `thunder` is None when no station reported, and
+    # that is not the same as a quiet day — see DailyActual.thunder.
+    assert score_prediction(prediction(peak_cape_jkg=1860.0), actual(thunder=None), 0).convective_correct is None
+
+    # Beyond Day+0 there is no CAPE at all: the extended leads come from the
+    # daily endpoint. Same rule as onset.
+    assert score_prediction(prediction(peak_cape_jkg=1860.0), actual(thunder=True), 3).convective_correct is None

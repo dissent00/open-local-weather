@@ -62,8 +62,11 @@ faster by working on it, and both are the highest-value things on the list:
   hands the prompt `peak_cape_by_model` and `models_above_threshold` whole.
   On 2026-09-10 the forecaster saw GFS at 390 J/kg against UKMO at 3910,
   four of five above threshold — exactly the disagreement the item was
-  raised about, fully visible. What remains of 35 is a narrative question,
-  not a data one.
+  raised about, fully visible. Its remaining data gap, CAPE being surfaced
+  and never verified, was closed the same day: peak CAPE is now stored per
+  model and scored against whether the station observed thunder. What is
+  left of 35 is a narrative question, and it waits on 10 observed storm
+  days like everything else here.
 - **51's step 1 shipped 2026-09-09 and its steps 2 and 3 turned out to
   already exist**, built by 53.4. `check_recent_degradations` is generic
   over codes, so every new degradation gets the blip/death rule for free.
@@ -3191,7 +3194,7 @@ before the pipeline did, which is why 34a describes it as the reference.
 
 ---
 
-## 35. Surface convective disagreement — the models argue about thunder and we do not say so · **Data half shipped; the narrative question is open**
+## 35. Surface convective disagreement — the models argue about thunder and we do not say so · **Scored 2026-09-10; the narrative question is open**
 
 **Status corrected 2026-09-10.** This said Planned while the data half had
 already shipped. `summarize_instability` takes the MAX peak CAPE across
@@ -3200,17 +3203,59 @@ models rather than a mean, and hands the prompt `peak_cape_by_model` and
 than averaged away. On 2026-09-10 the forecaster was shown GFS at 390 J/kg
 against UKMO at 3910, with four of five models above threshold.
 
-That is the pattern the operator later named as the one to copy for cloud:
-*"as with cape, as the data history improves it should begin to trust the
-better models."* Cloud got its scoring on 2026-09-10 (item 87) and CAPE has
-none — peak CAPE is surfaced but never verified against whether a storm
-actually happened, so "which model reads instability here" is still
-unanswerable. That is the real remainder of this item, and it is a bigger
-piece than the original complaint.
+### Scored the same day, and against thunder rather than rain
 
-What also remains is narrative: the prompt receives the spread and is not
-told what to DO when the models split three-to-two. The instability clause
-fires off `convective`, which is any model over the line.
+Surfacing the spread showed the forecaster that the models disagreed. It
+could not say WHO HAD BEEN RIGHT here, because peak CAPE was recomputed every
+run into a value nothing stored. That is the same gap cloud had until item
+87's scoring, and it is what "as with cape, as the data history improves it
+should begin to trust the better models" actually requires.
+
+- `peak_cape_jkg` on every Day+0 `ModelPrediction` — the PEAK, matching
+  `summarize_instability`, because an afternoon touching 2000 J/kg for one
+  hour is convective and a mean against a calm morning hides that hour.
+  Whole-day rather than the forward window, so a morning run's record is
+  comparable with an evening one's. Day+0 only, like `onset`.
+- `convective_correct` on every score: did the threshold crossing match
+  whether the station observed thunder?
+- A `convective` finding: *"At Day+0, X does not see this location's
+  thunderstorms coming. Its CAPE stayed below the convective threshold on 9
+  of 12 days the station observed thunder."*
+
+**SCORED AGAINST THUNDER, NOT RAIN, and that is the load-bearing decision.**
+CAPE predicts thunderstorms. A day of steady frontal rain with no lightning
+is not a hit for a model that called high instability, and scoring against
+`observed_convection()` — which is rain OR thunder OR precipitation — would
+credit exactly that. It is why this is its own column rather than a second
+input to `rain_correct`, and a vector case pins the wet-day-without-thunder
+case so a port cannot quietly merge them.
+
+**The finding counts misses, not a hit rate**, and conditions on storm days
+only. A hit rate is hostage to the base rate — in a stormy fortnight a model
+that always calls instability scores well — and it averages a false alarm
+together with a missed storm, which are not equally costly to a reader
+deciding whether to be outdoors. Missing the storm is the error that produced
+this item: on 2026-08-22 the forecast said "no severe weather hazards are
+expected" while it was thundering. Floor is 10 observed storm days at a 50%
+miss rate; thunder comes from ONE station a few km away (item 98), so a
+handful of storm days is a handful of readings from one instrument.
+
+**Not watched for coverage, deliberately.** `WATCHED_VARIABLES` covers rain,
+wind, the temperatures and pressure — `onset` is Day+0-only and unwatched,
+and CAPE and cloud now follow it. The risk is real and named at the top of
+`coverage.py`: a correctly-named all-null series is how ECMWF lost every
+Day+0 wind score for months. Watching Day+0-only variables needs a per-lead
+restriction in the coverage scan, or it reports twenty deliberate nulls at
+Day+3 and Day+7 as faults. Worth doing; not done.
+
+### What is still open
+
+The narrative question. The prompt receives the spread and is not told what
+to DO when the models split three-to-two; the instability clause fires off
+`convective`, which is any model over the line. Once the record can say which
+models read instability here — 10 storm days, so weeks rather than days — the
+clause should weigh them rather than take the maximum. Do not write that rule
+before the record can support it.
 
 On 2026-08-22 the evening forecast said *"No severe weather hazards are
 expected for the remainder of tonight"* and *"mostly dry"*. It was thundering

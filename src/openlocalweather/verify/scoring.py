@@ -17,6 +17,7 @@ from datetime import date
 from typing import Callable
 
 from openlocalweather.dates import add_days, prediction_row_date_for_target
+from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG
 from openlocalweather.verify.brier import brier_score, mean_brier
 from openlocalweather.models import DailyActual, DailyLogEntry, ModelPrediction, VerificationScore
 
@@ -54,6 +55,21 @@ def score_prediction(
     observed_rain = actual.observed_convection()
     rain_correct = predicted.rain == observed_rain
 
+    # THE INSTABILITY CALL, scored against the storm rather than the rain —
+    # see VerificationScore.convective_correct. Day+0 only, because CAPE is
+    # hourly and the extended leads come from the daily endpoint; None on
+    # either side is a call nobody made or a day nobody observed, and neither
+    # is a miss.
+    convective_correct = None
+    if (
+        lead_time_days == 0
+        and predicted.peak_cape_jkg is not None
+        and actual.thunder is not None
+    ):
+        convective_correct = (
+            predicted.peak_cape_jkg >= CONVECTIVE_CAPE_THRESHOLD_JKG
+        ) == actual.thunder
+
     onset_error_hrs = None
     if lead_time_days == 0 and observed_rain and predicted.onset and actual.onset_hour:
         onset_error_hrs = _hour_diff(predicted.onset, actual.onset_hour)
@@ -89,6 +105,7 @@ def score_prediction(
         # mid-morning, and it is still enough to separate a model that saw no
         # cloud at all from one that did.
         cloud_error_pct=_diff(predicted.cloud_cover_pct, actual.cloud_cover_pct),
+        convective_correct=convective_correct,
     )
 
 

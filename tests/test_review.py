@@ -641,3 +641,63 @@ def test_a_cloud_finding_cannot_borrow_the_rain_record_s_sample_size():
         "three days of sky is below the comparison floor and must not be "
         "reported at all, let alone as thirty checks"
     )
+
+
+def build_storm_history(days: int, storm_days: int, good_calls: int, poor_calls: int):
+    """`storm_days` of the `days` actually thundered. good_model calls
+    instability on `good_calls` of them, poor_model on `poor_calls`. Both
+    stay below the threshold on the calm days, so the only thing that varies
+    is whether a real storm was anticipated."""
+    logs, actuals = {}, {}
+    for i in range(days):
+        d = TODAY - timedelta(days=i + 1)
+        thundered = i < storm_days
+        actuals[d] = DailyActual(
+            rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0,
+            thunder=thundered,
+        )
+        logs[d] = entry(d, [
+            ModelPrediction(
+                model="good_model", rain=True, high_c=26.0, low_c=18.0,
+                peak_cape_jkg=1800.0 if (thundered and i < good_calls) else 300.0,
+            ),
+            ModelPrediction(
+                model="poor_model", rain=True, high_c=26.0, low_c=18.0,
+                peak_cape_jkg=1800.0 if (thundered and i < poor_calls) else 300.0,
+            ),
+        ])
+    return logs, actuals
+
+
+def test_a_model_that_misses_storms_is_named():
+    """ROADMAP item 35, and the incident that raised it: on 2026-08-22 the
+    evening forecast said "no severe weather hazards are expected" while it
+    was thundering in Kisumu, because GFS saw essentially no instability and
+    the narrative resolved the disagreement silently toward the quiet answer.
+
+    MISSING A STORM IS THE ASYMMETRIC ERROR, which is why this finding is
+    about misses rather than about the overall hit rate. A hit rate is
+    hostage to the base rate — in a stormy fortnight a model that always
+    calls instability scores well — and it averages a false alarm together
+    with a missed storm, which are not equally costly to someone deciding
+    whether to be outdoors.
+    """
+    logs, actuals = build_storm_history(days=30, storm_days=12, good_calls=11, poor_calls=3)
+    r = review_of(logs, actuals)
+
+    missed = [f for f in r.findings if f.kind == "convective" and "poor_model" in f.claim]
+    assert missed, "a model that called 3 of 12 storms should be named"
+    assert "9 of 12" in missed[0].evidence
+    assert not [f for f in r.findings if f.kind == "convective" and "good_model" in f.claim], (
+        "a model that called 11 of 12 is not missing storms"
+    )
+
+
+def test_a_thin_run_of_storms_names_nobody():
+    """Two storms is not a record. The same floor every other comparative
+    claim here obeys, and it matters more for this one: thunder is observed
+    by a single station 3.8 km away, so a handful of days is a handful of
+    readings from one instrument."""
+    logs, actuals = build_storm_history(days=30, storm_days=2, good_calls=2, poor_calls=0)
+    r = review_of(logs, actuals)
+    assert [f for f in r.findings if f.kind == "convective"] == []

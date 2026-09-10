@@ -42,6 +42,8 @@ from openlocalweather.defaults import (
     REVIEW_TEMP_BIAS_THRESHOLD_C,
     REVIEW_WIND_BIAS_THRESHOLD_KMH,
     REVIEW_CLOUD_BIAS_THRESHOLD_PCT,
+    REVIEW_MIN_STORM_DAYS,
+    REVIEW_STORM_MISS_THRESHOLD,
 )
 from openlocalweather.models import DailyActual, VerificationScore
 from openlocalweather.verify.brier import brier_skill_score, mean_brier
@@ -82,6 +84,16 @@ class SkillCell:
     # Reporting a cloud mean "across 30 checks" would overstate its evidence
     # tenfold in the one sentence a forecaster acts on.
     cloud_checks: int
+    # The instability call — item 35. `storm_days` counts the days the
+    # station observed thunder AND this model had a CAPE figure to be judged
+    # on; `storms_called` how many of those it saw coming.
+    #
+    # COUNTED RATHER THAN RATED, because the useful claim is "missed 9 of 12"
+    # and a rate cannot be turned back into that. A hit rate over all days is
+    # also hostage to the base rate: in a stormy fortnight a model that always
+    # calls instability scores well.
+    storm_days: int
+    storms_called: int
     # Pressure-trend error. Scored per-day and carried in the rolling track
     # record since the beginning, but not aggregated here until now — so the
     # one variable with a genuine physical lead on convection was the one
@@ -246,6 +258,14 @@ def build_weekly_review(
                     mean_rain_brier=briers[model],
                     brier_checks=sum(1 for _, s in scored if s.rain_brier is not None),
                     cloud_checks=sum(1 for _, s in scored if s.cloud_error_pct is not None),
+                    storm_days=sum(
+                        1 for d, s in scored
+                        if s.convective_correct is not None and actuals[d].thunder
+                    ),
+                    storms_called=sum(
+                        1 for d, s in scored
+                        if s.convective_correct is True and actuals[d].thunder
+                    ),
                     **_paired_skill(scored, reference_by_date),
                 )
             )
@@ -353,6 +373,44 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
                     confidence=confidence_for(n),
                     checks=n,
                 ))
+
+        # --- Storms nobody saw coming --------------------------------------
+        #
+        # ITEM 35'S ORIGINAL INCIDENT, made checkable. On 2026-08-22 the
+        # evening forecast said "no severe weather hazards are expected"
+        # while it was thundering: GFS saw essentially no instability, ICON
+        # and ECMWF saw 700-1200 J/kg all evening, and the narrative resolved
+        # that silently toward the quiet answer. The spread has been visible
+        # to the forecaster since; what was missing is any record of which
+        # side of it had been right here.
+        #
+        # A SEPARATE KIND FROM "bias", because it is not a signed error and
+        # it is not symmetric. A false alarm costs a reader an umbrella; a
+        # missed storm costs them the thing this forecast exists to warn
+        # about, and averaging the two into one hit rate hides it.
+        for c in at_lead:
+            if c.storm_days < REVIEW_MIN_STORM_DAYS:
+                continue
+            missed = c.storm_days - c.storms_called
+            if missed / c.storm_days < REVIEW_STORM_MISS_THRESHOLD:
+                continue
+            findings.append(Finding(
+                kind="convective",
+                claim=(
+                    f"At Day+{k}, {c.model} does not see this location's "
+                    f"thunderstorms coming."
+                ),
+                evidence=(
+                    f"Its CAPE stayed below the convective threshold on "
+                    f"{missed} of {c.storm_days} days the station observed "
+                    f"thunder."
+                ),
+                # From the STORM days, not the cell's total: a model judged on
+                # twelve storms has twelve days of evidence about storms,
+                # whatever else the record holds.
+                confidence=confidence_for(c.storm_days),
+                checks=c.storm_days,
+            ))
 
         # --- Does being best mean anything? --------------------------------
         # ROADMAP item 57. A ranking says which model is best of those

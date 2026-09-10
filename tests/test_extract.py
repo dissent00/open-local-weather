@@ -323,3 +323,53 @@ def test_a_day_that_rained_without_a_heavy_hour_has_no_onset():
     }}
     p = extract_day0_predictions_from_hourly(hourly, ["m"])[0]
     assert p.rain is True and p.onset is None
+
+
+def test_day0_stores_each_model_s_peak_cape():
+    """ROADMAP items 35 and 87. `cape` has been fetched in
+    HOURLY_FORECAST_VARS from the beginning and reaches the prompt every run,
+    where `summarize_instability` shows the forecaster the full per-model
+    spread. NOTHING EVER STORED IT, so the peak was recomputed each run and
+    thrown away, and no model could be checked against whether a storm
+    actually arrived.
+
+    The peak, not a mean, matching summarize_instability — an afternoon that
+    touches 2000 J/kg for one hour is convective, and averaging it against a
+    calm morning hides exactly the hour that matters.
+
+    Whole-day here rather than the forward window that summarize_instability
+    trims to. Every other Day+0 field is taken over the whole day, and the
+    record has to be comparable between a morning run and an evening one.
+    """
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "cape_gfs_seamless": [50.0, 180.0, 1450.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "cape_ecmwf_ifs025": [20.0, 40.0, 310.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+
+    assert by_model["gfs_seamless"].peak_cape_jkg == pytest.approx(1450.0)
+    assert by_model["ecmwf_ifs025"].peak_cape_jkg == pytest.approx(310.0)
+
+
+def test_a_model_with_no_cape_series_stores_none_not_zero():
+    """Zero CAPE is a confident claim that the atmosphere is stable. A
+    missing series is no claim at all, and scoring it as stable would credit
+    a model for a call it never made — the same rule `rain` already follows.
+    """
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0],
+            "cape_gfs_seamless": [None, None],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+
+    assert by_model["gfs_seamless"].peak_cape_jkg is None, "an all-null series is not 0 J/kg"
+    assert by_model["ecmwf_ifs025"].peak_cape_jkg is None, "an absent series is not 0 J/kg"

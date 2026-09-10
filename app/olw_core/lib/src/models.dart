@@ -87,6 +87,22 @@ class ModelPrediction {
   /// mean too so the two compare like for like.
   final double? cloudCoverPct;
 
+  /// The day's HIGHEST hourly CAPE, J/kg — upstream items 35 and 87.
+  ///
+  /// A PEAK where cloud is a mean, and deliberately: an afternoon that
+  /// touches 2000 J/kg for one hour is convective, and a mean against a calm
+  /// morning hides the one hour that matters. Same quantity
+  /// [summarizeInstability] shows the forecaster.
+  ///
+  /// Whole-day, where summarizeInstability trims to the hours ahead: every
+  /// other Day+0 field is taken over the whole day, and a morning run's
+  /// record has to be comparable with an evening one's.
+  ///
+  /// Day+0 only — CAPE is hourly and the extended leads come from the daily
+  /// endpoint, exactly like `onset`. Null beyond Day+0 means "not fetched",
+  /// never "stable".
+  final double? peakCapeJkg;
+
   /// Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —
   /// `rain` stays the boolean the accuracy record is built on, because
   /// changing what that means would make every stored day incomparable with
@@ -120,6 +136,7 @@ class ModelPrediction {
     this.lowC,
     this.mslpTrend,
     this.cloudCoverPct,
+    this.peakCapeJkg,
     this.precipMm,
     this.rainProbabilityPct,
   });
@@ -135,6 +152,7 @@ class ModelPrediction {
         precipMm: _toDouble(j['precip_mm']),
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
         cloudCoverPct: _toDouble(j['cloud_cover_pct']),
+        peakCapeJkg: _toDouble(j['peak_cape_jkg']),
       );
 
   Map<String, Object?> toJson() => {
@@ -146,6 +164,7 @@ class ModelPrediction {
         'low_c': lowC,
         'mslp_trend': mslpTrend,
         'cloud_cover_pct': cloudCoverPct,
+        'peak_cape_jkg': peakCapeJkg,
         'precip_mm': precipMm,
         'rain_probability_pct': rainProbabilityPct,
       };
@@ -396,6 +415,16 @@ class VerificationScore {
   /// of perfect skill on a day the field did not exist.
   final double? cloudErrorPct;
 
+  /// Did this model's INSTABILITY call match whether it actually thundered?
+  /// Upstream item 35. Three-valued: a model with no CAPE series made no
+  /// call, and a day with no station report settled nothing.
+  ///
+  /// AGAINST THUNDER, NOT RAIN. CAPE predicts thunderstorms; a day of steady
+  /// frontal rain with no lightning is not a hit for a model that called
+  /// high instability, which is why this is its own column rather than a
+  /// second input to `rainCorrect`.
+  final bool? convectiveCorrect;
+
   const VerificationScore({
     required this.rainCorrect,
     this.rainBrier,
@@ -405,6 +434,7 @@ class VerificationScore {
     this.lowErrorC,
     this.mslpErrorHpa,
     this.cloudErrorPct,
+    this.convectiveCorrect,
   });
 
   Map<String, Object?> toJson() => {
@@ -416,6 +446,7 @@ class VerificationScore {
         'low_error_c': lowErrorC,
         'mslp_error_hpa': mslpErrorHpa,
         'cloud_error_pct': cloudErrorPct,
+        'convective_correct': convectiveCorrect,
       };
 }
 

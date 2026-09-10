@@ -703,6 +703,11 @@ void main() {
           expect(got.meanHighErrorC, equals(want['mean_high_error_c']), reason: reason);
           expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
           expect(got.meanCloudErrorPct, equals(want['mean_cloud_error_pct']), reason: reason);
+          expect(got.stormDays, equals(want['storm_days']),
+              reason: '$reason — the storm count conditions on days the '
+                  'station observed thunder, and a port that counted all '
+                  'scored days would dilute the miss rate');
+          expect(got.stormsCalled, equals(want['storms_called']), reason: reason);
           expect(got.cloudChecks, equals(want['cloud_checks']),
               reason: '$reason — the sky arrived months after rain and '
                   'temperature, so a cell holds thirty checks of which three '

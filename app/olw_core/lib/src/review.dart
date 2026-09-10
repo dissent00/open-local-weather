@@ -52,6 +52,8 @@ class SkillCell {
     required this.meanMslpErrorHpa,
     required this.meanCloudErrorPct,
     required this.cloudChecks,
+    required this.stormDays,
+    required this.stormsCalled,
     required this.earliest,
     required this.latest,
     this.meanRainBrier,
@@ -80,6 +82,18 @@ class SkillCell {
   /// reason [brierChecks] is, and more sharply: cloudCoverPct started on
   /// 2026-09-09 while rain and temperature have months of rows.
   final int cloudChecks;
+
+  /// The instability call — upstream item 35. [stormDays] counts the days the
+  /// station observed thunder AND this model had a CAPE figure to be judged
+  /// on; [stormsCalled] how many of those it saw coming.
+  ///
+  /// Counted rather than rated, because the useful claim is "missed 9 of 12"
+  /// and a rate cannot be turned back into that. A hit rate over all days is
+  /// also hostage to the base rate: in a stormy fortnight a model that always
+  /// calls instability scores well.
+  final int stormDays;
+  final int stormsCalled;
+
   final DateTime? earliest;
   final DateTime? latest;
 
@@ -248,6 +262,16 @@ WeeklyReview buildWeeklyReview({
         meanMslpErrorHpa: mean([for (final e in scored) e.value.mslpErrorHpa]),
         meanCloudErrorPct: mean([for (final e in scored) e.value.cloudErrorPct]),
         cloudChecks: scored.where((e) => e.value.cloudErrorPct != null).length,
+        stormDays: scored
+            .where((e) =>
+                e.value.convectiveCorrect != null &&
+                actualFor(e.key)?.thunder == true)
+            .length,
+        stormsCalled: scored
+            .where((e) =>
+                e.value.convectiveCorrect == true &&
+                actualFor(e.key)?.thunder == true)
+            .length,
         earliest: scored.isEmpty ? null : scored.last.key,
         latest: scored.isEmpty ? null : scored.first.key,
         meanRainBrier: briers[model],
@@ -410,6 +434,35 @@ List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
           checks: n,
         ));
       }
+    }
+
+    // --- Storms nobody saw coming ------------------------------------------
+    //
+    // ITEM 35'S ORIGINAL INCIDENT, made checkable. On 2026-08-22 the evening
+    // forecast said "no severe weather hazards are expected" while it was
+    // thundering: GFS saw essentially no instability, ICON and ECMWF saw
+    // 700-1200 J/kg all evening, and the narrative resolved that silently
+    // toward the quiet answer.
+    //
+    // A SEPARATE KIND FROM 'bias', because it is not a signed error and it is
+    // not symmetric. A false alarm costs a reader an umbrella; a missed storm
+    // costs them the thing this forecast exists to warn about, and averaging
+    // the two into one hit rate hides it.
+    for (final c in atLead) {
+      if (c.stormDays < reviewMinStormDays) continue;
+      final missed = c.stormDays - c.stormsCalled;
+      if (missed / c.stormDays < reviewStormMissThreshold) continue;
+      findings.add(Finding(
+        kind: 'convective',
+        claim: "At Day+$k, ${c.model} does not see this location's "
+            'thunderstorms coming.',
+        evidence: 'Its CAPE stayed below the convective threshold on $missed '
+            'of ${c.stormDays} days the station observed thunder.',
+        // From the STORM days, not the cell's total: a model judged on twelve
+        // storms has twelve days of evidence about storms.
+        confidence: confidenceFor(c.stormDays),
+        checks: c.stormDays,
+      ));
     }
 
     // --- Does being best mean anything? -----------------------------------

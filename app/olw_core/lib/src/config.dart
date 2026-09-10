@@ -153,6 +153,18 @@ const double reviewWindBiasThresholdKmh = 8.0;
 /// not a shade of the same one.
 const double reviewCloudBiasThresholdPct = 15.0;
 
+/// How many observed thunderstorm days a model must have been offered before
+/// "it misses storms here" is a claim rather than an anecdote, and the share
+/// of them it must miss.
+///
+/// Thunder is observed by ONE station a few km from the primary point, so a
+/// handful of storm days is a handful of readings from one instrument. Half
+/// is deliberately far past "slightly worse than the others": this finding
+/// says a model is not usable for the one question a reader most needs
+/// answered here, not that it ranks last of five good ones.
+const int reviewMinStormDays = 10;
+const double reviewStormMissThreshold = 0.5;
+
 /// Lead times, under a name that does not collide with the parameter it is
 /// the default for.
 const List<int> leadTimesDays_ = leadTimesDays;

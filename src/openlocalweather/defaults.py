@@ -382,6 +382,24 @@ REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0
 # here is one whose sky is a different sky, not a shade of the same one.
 REVIEW_CLOUD_BIAS_THRESHOLD_PCT = 15.0
 
+# How many observed thunderstorm days a model must have been offered before
+# "it misses storms here" is a claim rather than an anecdote, and the share
+# of them it must miss.
+#
+# Thunder is observed by ONE station 3.8 km from the primary point (item 98
+# measured the station and the reanalysis disagreeing on 4 of 14 days), so a
+# handful of storm days is a handful of readings from one instrument. Ten
+# matches REVIEW_MIN_CHECKS_FOR_COMPARISON rather than inventing a second
+# floor.
+#
+# Half is deliberately far past "slightly worse than the others". This
+# finding is not a ranking — it says a model is not usable for the one
+# question a reader most needs answered here, and it should fire on models
+# that are genuinely blind to convection rather than on the weakest of five
+# good ones.
+REVIEW_MIN_STORM_DAYS = 10
+REVIEW_STORM_MISS_THRESHOLD = 0.5
+
 
 # --- Data-coverage watch (see coverage.py) ---
 #

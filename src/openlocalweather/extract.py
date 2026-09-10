@@ -44,6 +44,7 @@ def extract_day0_predictions_from_hourly(
             h, f"precipitation_probability_{model}", "precipitation_probability"
         )
         cloud = pick_series(h, f"cloud_cover_{model}", "cloud_cover")
+        cape = pick_series(h, f"cape_{model}", "cape")
 
         # An entirely absent/all-null precip series means no data for this
         # model, which is not the same as a confident dry forecast — see
@@ -82,6 +83,7 @@ def extract_day0_predictions_from_hourly(
         press_vals = [v for v in press if v is not None]
         prob_vals = [v for v in prob if v is not None]
         cloud_vals = [v for v in cloud if v is not None]
+        cape_vals = [v for v in cape if v is not None]
 
         predictions.append(
             ModelPrediction(
@@ -92,6 +94,10 @@ def extract_day0_predictions_from_hourly(
                 # confident claim that it will not rain.
                 rain_probability_pct=int(max(prob_vals)) if prob_vals else None,
                 cloud_cover_pct=round(sum(cloud_vals) / len(cloud_vals), 1) if cloud_vals else None,
+                # THE PEAK, not a mean — see ModelPrediction.peak_cape_jkg.
+                # An all-null series is None rather than 0.0, because zero
+                # CAPE is a confident claim of stable air and no data is not.
+                peak_cape_jkg=max(cape_vals) if cape_vals else None,
                 wind_kmh=max(wind_vals) if wind_vals else None,
                 high_c=max(temp_vals) if temp_vals else None,
                 low_c=min(temp_vals) if temp_vals else None,
