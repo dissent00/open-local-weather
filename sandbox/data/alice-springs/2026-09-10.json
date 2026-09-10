@@ -1,0 +1,286 @@
+{
+  "date": "2026-09-10",
+  "labels": {
+    "comparison": {
+      "cloud_label": "similar cloud",
+      "high_delta_c": 1.8,
+      "high_label": "slightly warmer",
+      "low_delta_c": -1.9,
+      "overview_comparison": "Slightly warmer and calmer than yesterday.",
+      "provenance": {
+        "cloud_cover_pct": "era5_archive",
+        "high_c": "era5_archive",
+        "low_c": "era5_archive",
+        "mslp_trend": "era5_archive",
+        "peak_wind_kmh": "era5_archive",
+        "precip_mm": "era5_archive",
+        "rain": "era5_archive"
+      },
+      "rain_contrast": null,
+      "today_consensus_high_c": 21.6,
+      "today_consensus_low_c": 12.0,
+      "today_consensus_peak_wind_kmh": 44.4,
+      "today_rain_expected": false,
+      "wind_delta_kmh": -8.2,
+      "wind_label": "calmer",
+      "yesterday_high_c": 19.8,
+      "yesterday_low_c": 13.9,
+      "yesterday_peak_wind_kmh": 52.6,
+      "yesterday_rain": false,
+      "yesterday_thunder": null
+    },
+    "extended_trend": "warming and becoming calmer through Sunday",
+    "instability": {
+      "convective": false,
+      "models_above_threshold": [],
+      "peak_cape_by_model": {
+        "best_match": 10.0,
+        "ecmwf_ifs025": 10.0,
+        "gfs_seamless": 0.0,
+        "icon_seamless": 0.0,
+        "ukmo_seamless": 30.0
+      },
+      "peak_cape_jkg": 30.0,
+      "peak_hour": "10:00",
+      "peak_model": "ukmo_seamless"
+    },
+    "wind_warning": null
+  },
+  "location": {
+    "icao": "YBAS",
+    "lat": -23.698,
+    "lon": 133.8807,
+    "name": "Alice Springs",
+    "timezone": "Australia/Darwin"
+  },
+  "predictions": {
+    "day0": [
+      {
+        "cloud_cover_pct": 69.5,
+        "high_c": 23.9,
+        "low_c": 13.4,
+        "model": "gfs_seamless",
+        "mslp_trend": 0.10000000000013642,
+        "onset": null,
+        "peak_cape_jkg": 0.0,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 52.6
+      },
+      {
+        "cloud_cover_pct": 59.8,
+        "high_c": 19.2,
+        "low_c": 11.4,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": 0.5,
+        "onset": null,
+        "peak_cape_jkg": 10.0,
+        "precip_mm": 0.3,
+        "rain": false,
+        "rain_probability_pct": 4,
+        "wind_kmh": 38.5
+      },
+      {
+        "cloud_cover_pct": 81.9,
+        "high_c": 23.2,
+        "low_c": 12.3,
+        "model": "icon_seamless",
+        "mslp_trend": 0.5,
+        "onset": null,
+        "peak_cape_jkg": 0.0,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 8,
+        "wind_kmh": 43.6
+      },
+      {
+        "cloud_cover_pct": 36.7,
+        "high_c": 22.1,
+        "low_c": 11.4,
+        "model": "ukmo_seamless",
+        "mslp_trend": -0.10000000000013642,
+        "onset": null,
+        "peak_cape_jkg": 30.0,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": null,
+        "wind_kmh": 40.7
+      },
+      {
+        "cloud_cover_pct": 62.5,
+        "high_c": 19.6,
+        "low_c": 11.5,
+        "model": "best_match",
+        "mslp_trend": 0.7000000000000455,
+        "onset": null,
+        "peak_cape_jkg": 10.0,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 4,
+        "wind_kmh": 46.8
+      }
+    ],
+    "day3": [
+      {
+        "cloud_cover_pct": null,
+        "high_c": 31.5,
+        "low_c": 18.3,
+        "model": "gfs_seamless",
+        "mslp_trend": -1.6000000000000227,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 38.2
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 31.7,
+        "low_c": 14.5,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": -1.5,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 28.8
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 33.3,
+        "low_c": 14.5,
+        "model": "icon_seamless",
+        "mslp_trend": -1.7000000000000455,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 25.6
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 30.8,
+        "low_c": 15.6,
+        "model": "ukmo_seamless",
+        "mslp_trend": -0.20000000000004547,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": null,
+        "wind_kmh": 37.4
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 31.1,
+        "low_c": 15.0,
+        "model": "best_match",
+        "mslp_trend": -1.5,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 36.4
+      }
+    ],
+    "day7": [
+      {
+        "cloud_cover_pct": null,
+        "high_c": 29.0,
+        "low_c": 16.0,
+        "model": "gfs_seamless",
+        "mslp_trend": -1.5,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 43.9
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 25.7,
+        "low_c": 11.3,
+        "model": "ecmwf_ifs025",
+        "mslp_trend": -1.8999999999999773,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 40.3
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": null,
+        "low_c": null,
+        "model": "icon_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": null,
+        "low_c": null,
+        "model": "ukmo_seamless",
+        "mslp_trend": null,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": null,
+        "rain": null,
+        "rain_probability_pct": null,
+        "wind_kmh": null
+      },
+      {
+        "cloud_cover_pct": null,
+        "high_c": 25.5,
+        "low_c": 11.8,
+        "model": "best_match",
+        "mslp_trend": -2.099999999999909,
+        "onset": null,
+        "peak_cape_jkg": null,
+        "precip_mm": 0.0,
+        "rain": false,
+        "rain_probability_pct": 0,
+        "wind_kmh": 43.2
+      }
+    ]
+  },
+  "yesterday_observed": {
+    "cloud_cover_pct": 55.9,
+    "high_c": 19.8,
+    "lightning": null,
+    "low_c": 13.9,
+    "mslp_trend": 6.100000000000023,
+    "onset_hour": null,
+    "peak_wind_kmh": 52.6,
+    "precip_mm": 0.0,
+    "precipitation": null,
+    "precipitation_onset": null,
+    "provenance": {
+      "cloud_cover_pct": "era5_archive",
+      "high_c": "era5_archive",
+      "low_c": "era5_archive",
+      "mslp_trend": "era5_archive",
+      "peak_wind_kmh": "era5_archive",
+      "precip_mm": "era5_archive",
+      "rain": "era5_archive"
+    },
+    "rain": false,
+    "station_cloud_oktas": null,
+    "station_high_c": null,
+    "station_low_c": null,
+    "station_peak_wind_kmh": null,
+    "thunder": null
+  }
+}
