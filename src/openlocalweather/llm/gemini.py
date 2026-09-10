@@ -29,6 +29,8 @@ from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,
     AfterAttempt,
+    AfterResponse,
+    ResponseMeta,
     http_outcome,
     report_outcome,
 )
@@ -147,6 +149,7 @@ class GeminiProvider:
         thinking_level: str | None = None,
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
+        after_response: AfterResponse | None = None,
     ):
         if not api_key:
             raise ValueError("GeminiProvider requires a non-empty api_key.")
@@ -171,6 +174,7 @@ class GeminiProvider:
         # The other half: called after each request resolves, with what it
         # did and how long it took. See AfterAttempt in provider.py.
         self.after_attempt = after_attempt
+        self.after_response = after_response
 
     def _post_with_retry(self, url: str, payload: dict) -> requests.Response:
         """POSTs with bounded exponential backoff on transient failures.
@@ -279,6 +283,20 @@ class GeminiProvider:
             raise LLMResponseError(f"Gemini response did not contain the expected JSON payload: {e}") from e
 
         try:
-            return response_schema.model_validate(data)
+            validated = response_schema.model_validate(data)
         except ValidationError as e:
             raise LLMResponseError(f"Gemini response failed schema validation: {e}") from e
+
+        # AFTER validation, not before: a response that fails the schema
+        # produced no forecast, and the exception already carries the reason.
+        if self.after_response is not None:
+            usage = body.get("usageMetadata") or {}
+            self.after_response(
+                ResponseMeta(
+                    finish_reason=finish_reason,
+                    input_tokens=usage.get("promptTokenCount"),
+                    output_tokens=usage.get("candidatesTokenCount"),
+                )
+            )
+
+        return validated

@@ -598,6 +598,29 @@ class LogEntryMeta(BaseModel):
     # only the deploy timing in git says which one ran. A default of "" would
     # claim an identity those runs never had.
     system_prompt_sha256: str | None = None
+    # HOW THE CALL ENDED, and what it spent — ROADMAP item 100.
+    #
+    # `meta` already answers "what produced this entry" for everything except
+    # the generation itself. On 2026-09-10 a run returned HTTP 200 in 54.5s
+    # and published a UV Index of 15,930 characters, and when the question
+    # came — token ceiling, or a sampler that collapsed well inside it? — the
+    # record could not answer. The spend ledger had the status and the
+    # elapsed time, which is a different question, and the provider had
+    # discarded the rest.
+    #
+    # Kept here rather than in the ledger because the ledger is about spend
+    # and this is about the forecast: it belongs with the prompt hash, beside
+    # the other half of what a later reader needs to reconstruct a run.
+    #
+    # All three are None on an entry written before the field existed, and
+    # None also when the provider simply did not say. Neither is zero, and
+    # `finish_reason` is deliberately the provider's own word rather than a
+    # normalised one — "STOP", "tool_use" and "stop" mean the same thing to
+    # three different APIs, and flattening them would destroy the only
+    # evidence of which API answered.
+    finish_reason: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
     # — generated_at_utc stays the ORIGINAL morning creation time even after
     # a refresh, so the audit trail keeps showing when this entry first

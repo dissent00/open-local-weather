@@ -44,6 +44,10 @@ class AnthropicProvider implements LlmProvider {
   /// Used by the app to count spend against the user's own cap.
   final Future<void> Function()? beforeAttempt;
 
+  /// Optional. A provider that never reports one leaves the record's
+  /// fields null, which reads as "did not say" rather than as zero.
+  final OnResponse? onResponse;
+
   AnthropicProvider({
     required this.apiKey,
     required this.model,
@@ -52,6 +56,7 @@ class AnthropicProvider implements LlmProvider {
     http.Client? client,
     this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
+    this.onResponse,
   }) : _client = client ?? http.Client() {
     if (apiKey.isEmpty) throw ArgumentError('AnthropicProvider requires an api_key.');
     if (model.isEmpty) throw ArgumentError('AnthropicProvider requires a model id.');
@@ -125,10 +130,23 @@ class AnthropicProvider implements LlmProvider {
       throw LlmResponseError('Anthropic returned no tool_use block (stop_reason=$stop).');
     }
 
+    final ForecastResponse parsed;
     try {
-      return ForecastResponse.fromJson(toolInput);
+      parsed = ForecastResponse.fromJson(toolInput);
     } catch (e) {
       throw LlmResponseError('Anthropic response failed schema validation: $e');
     }
+
+    // 'tool_use' is the CLEAN stop here, not 'end_turn': the structured
+    // response arrives as a forced tool call, so a turn that ended normally
+    // would mean the model answered in prose instead.
+    final usage = (body['usage'] as Map?) ?? const {};
+    onResponse?.call(LlmResponseMeta(
+      finishReason: body['stop_reason'] as String?,
+      inputTokens: usage['input_tokens'] as int?,
+      outputTokens: usage['output_tokens'] as int?,
+    ));
+
+    return parsed;
   }
 }

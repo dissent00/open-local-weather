@@ -45,6 +45,8 @@ from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,
     AfterAttempt,
+    AfterResponse,
+    ResponseMeta,
     http_outcome,
     report_outcome,
 )
@@ -87,6 +89,7 @@ class OpenAICompatProvider:
         temperature: float | None = None,
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
+        after_response: AfterResponse | None = None,
     ):
         # api_key is intentionally NOT required to be non-empty: local
         # runtimes (Ollama, LM Studio) accept any value or none at all,
@@ -119,6 +122,7 @@ class OpenAICompatProvider:
         # The other half: called after each request resolves, with what it
         # did and how long it took. See AfterAttempt in provider.py.
         self.after_attempt = after_attempt
+        self.after_response = after_response
 
     @property
     def endpoint(self) -> str:
@@ -241,9 +245,21 @@ class OpenAICompatProvider:
             raise LLMResponseError(f"LLM response was not valid JSON: {text[:500]}") from e
 
         try:
-            return response_schema.model_validate(data)
+            validated = response_schema.model_validate(data)
         except ValidationError as e:
             raise LLMResponseError(f"LLM response failed schema validation: {e}") from e
+
+        if self.after_response is not None:
+            usage = body.get("usage") or {}
+            self.after_response(
+                ResponseMeta(
+                    finish_reason=choices[0].get("finish_reason"),
+                    input_tokens=usage.get("prompt_tokens"),
+                    output_tokens=usage.get("completion_tokens"),
+                )
+            )
+
+        return validated
 
 
 def _retry_after_seconds(resp: requests.Response) -> float | None:

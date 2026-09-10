@@ -40,6 +40,8 @@ from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,
     AfterAttempt,
+    AfterResponse,
+    ResponseMeta,
     http_outcome,
     report_outcome,
 )
@@ -88,6 +90,7 @@ class AnthropicProvider:
         temperature: float | None = None,
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
+        after_response: AfterResponse | None = None,
     ):
         if not api_key:
             raise ValueError("AnthropicProvider requires a non-empty api_key.")
@@ -110,6 +113,7 @@ class AnthropicProvider:
         # The other half: called after each request resolves, with what it
         # did and how long it took. See AfterAttempt in provider.py.
         self.after_attempt = after_attempt
+        self.after_response = after_response
 
     @property
     def endpoint(self) -> str:
@@ -223,9 +227,24 @@ class AnthropicProvider:
             )
 
         try:
-            return response_schema.model_validate(tool_input)
+            validated = response_schema.model_validate(tool_input)
         except ValidationError as e:
             raise LLMResponseError(f"Anthropic response failed schema validation: {e}") from e
+
+        # "tool_use" is the CLEAN stop here, not "end_turn": the structured
+        # response arrives as a forced tool call, so a turn that ended
+        # normally would mean the model answered in prose instead.
+        if self.after_response is not None:
+            usage = body.get("usage") or {}
+            self.after_response(
+                ResponseMeta(
+                    finish_reason=body.get("stop_reason"),
+                    input_tokens=usage.get("input_tokens"),
+                    output_tokens=usage.get("output_tokens"),
+                )
+            )
+
+        return validated
 
 
 def _retry_after_seconds(resp: requests.Response) -> float | None:

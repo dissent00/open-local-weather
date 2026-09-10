@@ -183,6 +183,55 @@ void main() {
       expect(got.todayProperties.tempHighC, 26.0);
     });
 
+    test('reports how the call ended, once, after the body parses', () async {
+      // The diagnostic half of item 100: the pipeline could not say whether a
+      // runaway response had hit the token ceiling, because nothing kept the
+      // finish reason or the token counts.
+      final body = jsonEncode({
+        'candidates': [
+          {
+            'finishReason': 'STOP',
+            'content': {
+              'parts': [
+                {'text': jsonEncode(validPayload)}
+              ]
+            }
+          }
+        ],
+        'usageMetadata': {'promptTokenCount': 41000, 'candidatesTokenCount': 2100},
+      });
+      final cap = _Cap(body);
+      final seen = <LlmResponseMeta>[];
+      await GeminiProvider(
+        apiKey: 'k',
+        model: 'm',
+        client: cap.client,
+        onResponse: seen.add,
+      ).generate(systemPrompt: 's', userPrompt: 'u');
+
+      expect(seen, hasLength(1), reason: 'once per generate, not once per attempt');
+      expect(seen.single.finishReason, 'STOP');
+      expect(seen.single.inputTokens, 41000);
+      expect(seen.single.outputTokens, 2100);
+    });
+
+    test('reports nothing when the call is refused', () {
+      // A run that aborted has no forecast to explain, and the error already
+      // carries the reason.
+      final cap = _Cap(geminiEnvelopeFinishing('MAX_TOKENS', validPayload));
+      final seen = <LlmResponseMeta>[];
+      expect(
+        () => GeminiProvider(
+              apiKey: 'k',
+              model: 'm',
+              client: cap.client,
+              onResponse: seen.add,
+            ).generate(systemPrompt: 's', userPrompt: 'u'),
+        throwsA(isA<LlmResponseError>()),
+      );
+      expect(seen, isEmpty);
+    });
+
     test('a display string that ran away is refused', () {
       // The second half, and not redundant: a degenerate loop that fits inside
       // the token budget stops for a perfectly good reason.

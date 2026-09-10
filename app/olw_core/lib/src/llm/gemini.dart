@@ -47,6 +47,10 @@ class GeminiProvider implements LlmProvider {
   /// Used by the app to count spend against the user's own cap.
   final Future<void> Function()? beforeAttempt;
 
+  /// Optional. A provider that never reports one leaves the record's
+  /// fields null, which reads as "did not say" rather than as zero.
+  final OnResponse? onResponse;
+
   GeminiProvider({
     required this.apiKey,
     required this.model,
@@ -54,6 +58,7 @@ class GeminiProvider implements LlmProvider {
     http.Client? client,
     this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
+    this.onResponse,
   })  : _client = client ?? http.Client() {
     if (apiKey.isEmpty) throw ArgumentError('GeminiProvider requires an api_key.');
     if (model.isEmpty) throw ArgumentError('GeminiProvider requires a model id.');
@@ -144,6 +149,17 @@ class GeminiProvider implements LlmProvider {
       throw LlmResponseError('Gemini response did not contain the expected payload: $e');
     }
 
-    return parseForecast(text, 'Gemini');
+    final parsed = parseForecast(text, 'Gemini');
+
+    // AFTER parsing, not before: a response that fails the schema produced no
+    // forecast, and the error already carries the reason.
+    final usage = (body['usageMetadata'] as Map?) ?? const {};
+    onResponse?.call(LlmResponseMeta(
+      finishReason: finishReason as String?,
+      inputTokens: usage['promptTokenCount'] as int?,
+      outputTokens: usage['candidatesTokenCount'] as int?,
+    ));
+
+    return parsed;
   }
 }

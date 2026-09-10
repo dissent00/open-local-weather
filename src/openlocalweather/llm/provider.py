@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
@@ -92,3 +93,45 @@ def report_outcome(
     if after_attempt is None:
         return
     after_attempt(outcome, time.monotonic() - started)
+
+
+# --- What the model did with the request -------------------------------------
+
+
+@dataclass(frozen=True)
+class ResponseMeta:
+    """How a call ENDED, as opposed to how its HTTP request resolved.
+
+    `after_attempt` above answers "did the server answer, and how fast" and
+    fires per request, before the body is parsed. That is a different question
+    from this one, and on 2026-09-10 the difference cost a published forecast:
+    the request returned HTTP 200 in 54.5s and the ledger recorded exactly
+    that, while the model had spent those seconds emitting "Passtaken" 1,196
+    times into a UV Index field.
+
+    Nothing recorded why it stopped or how many tokens it spent, so when the
+    question came — was this the token ceiling, or a sampler that collapsed
+    well inside it? — the record could not answer, and the archived prompt was
+    the only evidence left. See ROADMAP item 100.
+
+    EVERY FIELD IS OPTIONAL because every provider reports these differently
+    and some responses omit them entirely. A missing value means the provider
+    did not say, never zero — the same rule the forecast payload runs on.
+    """
+
+    finish_reason: str | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+AfterResponse = Callable[[ResponseMeta], None]
+"""Called once per successful `generate()`, after the body parses.
+
+Optional, like `after_attempt`. Fires ONCE per generate rather than once per
+HTTP attempt: a retried call has several attempts and one response, and it is
+the response that produced the forecast.
+
+Not called when `generate()` raises. A run that aborted has no forecast to
+explain, and the exception already carries the reason — including, since item
+100, the finish reason itself when that is what caused the abort.
+"""

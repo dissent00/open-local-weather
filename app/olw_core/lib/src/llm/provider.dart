@@ -23,6 +23,41 @@ abstract interface class LlmProvider {
   });
 }
 
+/// How a call ENDED, as opposed to how its HTTP request resolved.
+///
+/// `beforeAttempt` counts requests, which is what costs money, and fires per
+/// attempt before the body is parsed. That is a different question from this
+/// one, and on 2026-09-10 the difference cost the pipeline a published
+/// forecast: the request returned HTTP 200 and was recorded as such, while
+/// the model had spent the call emitting one word 1,196 times into a UV Index
+/// field. Nothing recorded why it stopped or what it spent, so the question
+/// "token ceiling, or a sampler that collapsed inside it?" had no answer.
+///
+/// EVERY FIELD IS OPTIONAL: providers report these differently and some
+/// responses omit them. A missing value means the provider did not say, never
+/// zero. Mirrors `ResponseMeta` in the Python provider.
+class LlmResponseMeta {
+  const LlmResponseMeta({this.finishReason, this.inputTokens, this.outputTokens});
+
+  final String? finishReason;
+  final int? inputTokens;
+  final int? outputTokens;
+
+  Map<String, Object?> toJson() => {
+        'finish_reason': finishReason,
+        'input_tokens': inputTokens,
+        'output_tokens': outputTokens,
+      };
+}
+
+/// Called once per successful `generate()`, after the body parses.
+///
+/// Once per GENERATE, not per attempt: a retried call has several attempts
+/// and one response, and it is the response that produced the forecast. Not
+/// called when generate() throws — a run that aborted has no forecast to
+/// explain, and the exception already carries the reason.
+typedef OnResponse = void Function(LlmResponseMeta meta);
+
 /// Raised when a provider call fails outright or returns something that
 /// doesn't validate.
 class LlmResponseError implements Exception {

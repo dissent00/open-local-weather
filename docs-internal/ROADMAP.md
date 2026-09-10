@@ -12024,11 +12024,50 @@ privacy incident. Reportable as the former if anyone wants to — the archived
 **WHAT COULD NOT BE ESTABLISHED, and why.** Whether the model hit the token
 ceiling. Nothing recorded `finishReason` or token usage — the ledger keeps
 provider, model, purpose, outcome and elapsed seconds and no more, and the
-provider returned a validated object with the metadata discarded. A recurrence
-is now caught and the abort message names the cause, but the offending text is
-still not captured anywhere. Capturing it means widening what the provider
-returns, which has a Dart mirror and an interface change in it — worth doing
-before anyone files a report that needs the evidence, and not done here.
+provider returned a validated object with the metadata discarded.
+
+### Capturing it · **Done 2026-09-10**
+
+`meta.finish_reason`, `meta.input_tokens`, `meta.output_tokens` on every entry
+from now on. In `LogEntryMeta` rather than the spend ledger because the ledger
+answers a different question — the ledger asked "did the server answer, and how
+fast" and got HTTP 200 in 54.5s, which was true and useless. This belongs beside
+`system_prompt_sha256`: the other half of what a later reader needs to
+reconstruct a run.
+
+**Reported through a hook, not a return value.** `AfterResponse` fires once per
+`generate()` after the body parses, mirroring the `before_attempt` /
+`after_attempt` pair the providers already carry, so `generate()`'s signature —
+and the Protocol every third-party provider implements — is untouched. It does
+NOT fire when `generate()` raises: a run that aborted has no forecast to
+explain, and the exception carries the reason.
+
+**All three providers, deliberately**, so the field means one thing whoever
+answered. `finish_reason` keeps the provider's own word — "STOP", "tool_use"
+and "stop" mean the same thing to three different APIs, and normalising them
+would destroy the only evidence of which API answered. Note "tool_use" is the
+CLEAN stop for Anthropic, not "end_turn": the structured response is a forced
+tool call, so a normally-ended turn would mean it answered in prose.
+
+**Wired in `_attach_spend_cap`**, the one function both pipelines already call.
+Two wiring sites would be free to drift, and this file has been bitten by
+exactly that twice — most recently over the historical-notes projection, where
+only `run_daily_pipeline` had the change AND only it had the test. Paired tests
+again, and the re-issue one was watched failing with the refresh path's capture
+removed.
+
+Mirrored in `olw_core` as `LlmResponseMeta` + `OnResponse` on all three Dart
+providers. **NOT surfaced on `ForecastRun`**, and that was tried and reverted:
+`generateForecast` takes the `LlmProvider` interface and does not construct the
+provider, so populating it would mean adding a member to an interface that
+third-party implementers would then have to add too — a breaking change for a
+diagnostic field. The app wires `onResponse` on the concrete provider it builds,
+the same way the pipeline does. **Owed app-side:** nothing persists it yet, and
+where it goes is a storage decision for whoever owns the forecast store.
+
+**Still not captured: the offending text itself.** A recurrence now aborts with
+the cause named, but the runaway value is not kept anywhere, so a report that
+needs the evidence still depends on re-running the archived prompt.
 
 ### What made this expensive
 

@@ -123,7 +123,7 @@ from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
 from openlocalweather.spend import assert_capacity, complete_attempt, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
-from openlocalweather.llm.provider import LLMProvider
+from openlocalweather.llm.provider import LLMProvider, ResponseMeta
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     summary_carries_a_figure,
@@ -293,6 +293,17 @@ class ForwardGuidance:
 
 
 
+def _response_meta(holder: dict) -> ResponseMeta:
+    """Whatever the provider reported about the last call, or an empty record.
+
+    Empty rather than None so the three call sites read one way: a provider
+    that reports nothing gives three Nones, exactly like a provider that was
+    never asked. The distinction does not exist downstream and inventing it
+    here would only make every reader handle it.
+    """
+    return holder.get("meta") or ResponseMeta()
+
+
 def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
     """Make the cap count HTTP requests, which is what actually costs money.
 
@@ -342,10 +353,27 @@ def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
             deps.data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
         )
 
+    # HOW THE CALL ENDED, kept for the log entry rather than the ledger —
+    # ROADMAP item 100. Wired HERE, in the one function both pipelines already
+    # go through, because the alternative is two wiring sites that are free to
+    # drift; this file has been bitten by exactly that twice, most recently
+    # over the historical-notes projection.
+    #
+    # Last write wins, and a forecast run makes one generate() call. A run
+    # that somehow made two would keep the second, which is the one whose
+    # response was published.
+    last_response: dict[str, ResponseMeta | None] = {"meta": None}
+
+    def _record_response(meta: ResponseMeta) -> None:
+        last_response["meta"] = meta
+
     # Set rather than passed to the constructor: the provider is built in
     # cli.py, which has no reason to know where the ledger lives.
     deps.llm_provider.before_attempt = _record
     deps.llm_provider.after_attempt = _complete
+    # Optional on the Protocol, so a provider that never reports one leaves
+    # the fields None — which reads as "did not say", not as zero.
+    deps.llm_provider.after_response = _record_response
 
     def _verify_recorded() -> None:
         """Complain if the provider went and called a model without saying so.
@@ -366,7 +394,7 @@ def _attach_spend_cap(deps: PipelineDeps, location, *, purpose: str):
                 file=sys.stderr,
             )
 
-    return _verify_recorded
+    return _verify_recorded, last_response
 
 
 def _issuances_for_prompt(entry: DailyLogEntry) -> list[dict]:
@@ -1599,7 +1627,7 @@ def run_daily_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend = _attach_spend_cap(deps, location, purpose="forecast")
+    _verify_spend, _last_response = _attach_spend_cap(deps, location, purpose="forecast")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
@@ -1671,6 +1699,9 @@ def run_daily_pipeline(
             llm_model=getattr(deps.llm_provider, "model", "unknown"),
             pipeline_version=deps.pipeline_version,
             system_prompt_sha256=prompt_archive.prompt_sha256(system_prompt),
+            finish_reason=_response_meta(_last_response).finish_reason,
+            input_tokens=_response_meta(_last_response).input_tokens,
+            output_tokens=_response_meta(_last_response).output_tokens,
             trigger_source=deps.trigger_source or None,
             degradations=guidance.degradations,
         ),
@@ -2030,7 +2061,7 @@ def run_refresh_pipeline(
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
     # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend = _attach_spend_cap(deps, location, purpose="refresh")
+    _verify_spend, _last_response = _attach_spend_cap(deps, location, purpose="refresh")
     llm_response: GeminiForecastResponse = deps.llm_provider.generate(
         system_prompt, user_prompt, GeminiForecastResponse
     )
@@ -2113,6 +2144,12 @@ def run_refresh_pipeline(
                     # and this field names the forecaster that wrote the
                     # narrative currently in the entry.
                     "system_prompt_sha256": prompt_archive.prompt_sha256(system_prompt),
+                    # THIS issuance's call, like the prompt hash above and
+                    # for the same reason: the entry describes the forecast
+                    # currently in it, not the one it replaced.
+                    "finish_reason": _response_meta(_last_response).finish_reason,
+                    "input_tokens": _response_meta(_last_response).input_tokens,
+                    "output_tokens": _response_meta(_last_response).output_tokens,
                 }
             ),
         }

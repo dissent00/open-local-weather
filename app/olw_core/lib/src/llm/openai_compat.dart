@@ -37,6 +37,10 @@ class OpenAiCompatProvider implements LlmProvider {
   /// Used by the app to count spend against the user's own cap.
   final Future<void> Function()? beforeAttempt;
 
+  /// Optional. A provider that never reports one leaves the record's
+  /// fields null, which reads as "did not say" rather than as zero.
+  final OnResponse? onResponse;
+
   OpenAiCompatProvider({
     required this.apiKey,
     required this.model,
@@ -45,6 +49,7 @@ class OpenAiCompatProvider implements LlmProvider {
     http.Client? client,
     this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
+    this.onResponse,
   }) : _client = client ?? http.Client() {
     // apiKey may legitimately be empty: Ollama and LM Studio need no key,
     // and refusing to construct without one would block the free local path.
@@ -121,6 +126,15 @@ class OpenAiCompatProvider implements LlmProvider {
           '${(choices.first as Map)['finish_reason']}).');
     }
 
-    return parseForecast(text as String, 'LLM');
+    final parsed = parseForecast(text as String, 'LLM');
+
+    final usage = (body['usage'] as Map?) ?? const {};
+    onResponse?.call(LlmResponseMeta(
+      finishReason: (choices.first as Map)['finish_reason'] as String?,
+      inputTokens: usage['prompt_tokens'] as int?,
+      outputTokens: usage['completion_tokens'] as int?,
+    ));
+
+    return parsed;
   }
 }

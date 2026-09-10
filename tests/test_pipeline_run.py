@@ -17,6 +17,7 @@ from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import NullBulletinFetcher
+from openlocalweather.llm.provider import ResponseMeta
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties, VerificationNote
 from openlocalweather.models import (
     DailyLogEntry,
@@ -106,10 +107,28 @@ class FakeLLMProvider:
     # survived: the tests could not see the seam they were meant to cover.
     before_attempt = None
 
+    # Same reasoning as before_attempt, for the other seam. Real providers
+    # report how the call ended once the body parses, and the pipeline stores
+    # it on the entry — ROADMAP item 100. A stub that stayed silent would
+    # leave every pipeline test blind to that field, so this reports the
+    # shape a real one does.
+    after_response = None
+    finish_reason = "STOP"
+    input_tokens = 41_000
+    output_tokens = 2_100
+
     def generate(self, system_prompt, user_prompt, response_schema):
         if self.before_attempt is not None:
             self.before_attempt()
         self.calls.append((system_prompt, user_prompt))
+        if self.after_response is not None:
+            self.after_response(
+                ResponseMeta(
+                    finish_reason=self.finish_reason,
+                    input_tokens=self.input_tokens,
+                    output_tokens=self.output_tokens,
+                )
+            )
         return self.response
 
 
@@ -2955,3 +2974,68 @@ def test_a_dropped_note_takes_its_correction_marker_with_it(tmp_path):
     notes = notes_block(llm.calls[-1][1])
     assert "OLW blend" not in notes, "the note itself came back"
     assert "2026-09-10" not in notes, "the marker outlived the note it belonged to"
+
+
+def test_the_entry_records_how_the_call_ended(tmp_path):
+    """ROADMAP item 100. A run returned HTTP 200 in 54.5s and published a UV
+    Index of 15,930 characters; the ledger recorded the status and the
+    elapsed time, which is a different question, and nothing recorded why the
+    model stopped or what it spent. When the question came the record could
+    not answer it."""
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert meta.finish_reason == "STOP"
+    assert meta.input_tokens == 41_000
+    assert meta.output_tokens == 2_100
+
+
+def test_a_re_issue_records_its_own_call_not_the_mornings(tmp_path):
+    """Both pipelines, and the values must be THIS issuance's — the same rule
+    the prompt hash follows one line above them, for the same reason: the
+    entry describes the forecast currently in it.
+
+    Paired because this file's divergences all look alike — the last one was
+    the historical-notes projection, where only run_daily_pipeline had the
+    change AND only run_daily_pipeline had the test.
+    """
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    morning = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert morning.output_tokens == 2_100
+
+    evening = FakeLLMProvider()
+    evening.finish_reason = "MAX_TOKENS"
+    evening.output_tokens = 8_192
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
+    )
+
+    meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert meta.finish_reason == "MAX_TOKENS", "the morning's value survived the re-issue"
+    assert meta.output_tokens == 8_192
+    # And the fields that are deliberately the MORNING's are still the
+    # morning's — the re-issue rewrites the narrative, not the day's history.
+    assert meta.generated_at_utc == morning.generated_at_utc
+
+
+def test_a_provider_that_reports_nothing_leaves_the_fields_unset(tmp_path):
+    """None means "did not say", never zero — a provider outside this repo
+    need not implement the hook, and an entry from before the field existed
+    reads identically."""
+    llm = FakeLLMProvider()
+    llm.after_response = None
+
+    class Silent(FakeLLMProvider):
+        def generate(self, system_prompt, user_prompt, response_schema):
+            if self.before_attempt is not None:
+                self.before_attempt()
+            self.calls.append((system_prompt, user_prompt))
+            return self.response
+
+    run_daily_pipeline(make_deps(tmp_path, llm=Silent()), today=date(2026, 8, 11), dry_run=False)
+
+    meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert meta.finish_reason is None
+    assert meta.input_tokens is None
+    assert meta.output_tokens is None
