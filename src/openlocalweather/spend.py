@@ -215,9 +215,10 @@ def assert_capacity(
     data_dir: str | Path,
     *,
     max_calls: int = DEFAULT_MAX_LLM_CALLS_PER_24H,
+    calls_needed: int = 1,
     now: datetime | None = None,
 ) -> None:
-    """Raises if the cap is already reached, WITHOUT recording anything.
+    """Raises if the work about to start does not FIT, WITHOUT recording anything.
 
     Belt and braces, and deliberately not redundant. Enforcement proper lives
     in the per-request hook the providers call, but a provider is an injected
@@ -227,19 +228,27 @@ def assert_capacity(
     nothing can opt out of it.
 
     It cannot replace the hook — it has no idea how many requests a single
-    generate() will end up sending — so the two do different jobs: this one
+    generate() will end up RETRYING — so the two do different jobs: this one
     refuses to START an over-budget run, the hook refuses to CONTINUE one.
+
+    `calls_needed` is what the work COSTS at minimum, and it matters because
+    a partial forecast is worth nothing. ROADMAP item 59 step 3 made a
+    forecast two calls: with one slot left, a run that checked for one would
+    make and pay for the judgment call and then have the rendering call
+    refused by the hook. The operator is billed for half a forecast and the
+    run fails anyway. Defaults to 1 because most callers do one thing.
     """
     now = now or datetime.now(timezone.utc)
     records = read_ledger(data_dir)
     used = calls_in_window(records, now)
-    if used >= max_calls:
+    if used + calls_needed > max_calls:
         oldest_in_window = min(
             (r.at for r in records if r.at > now - WINDOW), default=now
         )
+        needed = "" if calls_needed == 1 else f" (this run needs {calls_needed})"
         raise SpendCapExceeded(
             f"LLM call refused before starting: {used} of {max_calls} allowed "
-            f"calls already made in the last 24 hours. The oldest ages out at "
+            f"calls already made in the last 24 hours{needed}. The oldest ages out at "
             f"{(oldest_in_window + WINDOW).isoformat()}. Raise "
             f"max_llm_calls_per_24h in config/location.yaml if it is set too "
             f"low for this deployment."

@@ -105,14 +105,28 @@ class SpendDecision {
   int get remaining => maxCalls - used < 0 ? 0 : maxCalls - used;
 }
 
+/// Whether the work about to be started fits in what is left.
+///
+/// [callsNeeded] is what that work COSTS, and it defaults to 1 because most
+/// callers do one thing. A forecast costs [llmCallsPerForecast] since
+/// upstream ROADMAP item 59 step 3, and passing 1 for it was a real defect:
+/// the cap is enforced per REQUEST, so a reader with one call left was
+/// allowed to start, the judgment call was made and paid for, and the
+/// rendering call was refused mid-flight. They were charged for half a
+/// forecast and shown an error.
+///
+/// A PARTIAL FORECAST IS WORTH NOTHING, which is what makes this different
+/// from a cap that merely stops at the limit. Refusing before the first call
+/// spends nothing and says so.
 SpendDecision evaluateCap(
   List<SpendRecord> records,
   DateTime now, {
   required int maxCalls,
+  int callsNeeded = 1,
   Duration window = spendWindow,
 }) {
   final used = callsInWindow(records, now, window: window);
-  if (used < maxCalls) {
+  if (used + callsNeeded <= maxCalls) {
     return SpendDecision(allowed: true, used: used, maxCalls: maxCalls);
   }
   final cutoff = now.subtract(window);

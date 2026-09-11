@@ -12,6 +12,7 @@ import pytest
 from openlocalweather.spend import (
     DEFAULT_MAX_LLM_CALLS_PER_24H,
     SpendCapExceeded,
+    assert_capacity,
     SpendRecord,
     calls_in_window,
     complete_attempt,
@@ -160,6 +161,30 @@ def test_the_default_is_not_unlimited():
     assert worst_case == 16, "recount the default if this moved"
     assert DEFAULT_MAX_LLM_CALLS_PER_24H >= worst_case
     assert DEFAULT_MAX_LLM_CALLS_PER_24H < 100, "a cap this loose protects nobody"
+
+
+def test_a_run_is_refused_when_the_budget_cannot_cover_ALL_its_calls(tmp_path):
+    """ROADMAP item 59 step 3 made a forecast two calls.
+
+    The hook enforces per REQUEST, so a run that checked for one call would
+    make and pay for the judgment call and then have the rendering call
+    refused mid-flight — billing for half a forecast, which is worth nothing,
+    and failing anyway.
+    """
+    _attempt(tmp_path, NOW)
+
+    # One slot left. A single call still fits; a two-call forecast does not.
+    assert_capacity(tmp_path, max_calls=2, now=NOW)
+
+    with pytest.raises(SpendCapExceeded) as e:
+        assert_capacity(tmp_path, max_calls=2, calls_needed=2, now=NOW)
+
+    assert "this run needs 2" in str(e.value), "the message must say what it needed"
+    assert "1 of 2" in str(e.value)
+
+
+def test_an_exact_fit_is_allowed_because_a_cap_is_a_limit_not_a_margin(tmp_path):
+    assert_capacity(tmp_path, max_calls=2, calls_needed=2, now=NOW)
 
 
 def test_records_carry_enough_to_audit_a_bill(tmp_path):

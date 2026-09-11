@@ -129,7 +129,12 @@ from openlocalweather.llm.prompt import (
 from openlocalweather.store import prompt_archive
 from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
-from openlocalweather.spend import assert_capacity, complete_attempt, record_attempt
+from openlocalweather.spend import (
+    LLM_CALLS_PER_FORECAST,
+    assert_capacity,
+    complete_attempt,
+    record_attempt,
+)
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider, ResponseMeta
 from openlocalweather.llm.schema import (
@@ -406,7 +411,9 @@ def _generate_forecast(
     )
 
 
-def attach_spend_cap(provider, data_dir: Path, *, max_calls: int, purpose: str):
+def attach_spend_cap(
+    provider, data_dir: Path, *, max_calls: int, purpose: str, calls_needed: int = 1
+):
     """Make the cap count HTTP requests, which is what actually costs money.
 
     PUBLIC, AND THE ONLY ONE. The pipeline is not the only thing that spends,
@@ -437,7 +444,12 @@ def attach_spend_cap(provider, data_dir: Path, *, max_calls: int, purpose: str):
     # the hook would sail straight past the cap, and a guard that a substituted
     # object can switch off is not a guard. This runs on the pipeline's own
     # path, where nothing can opt out.
-    assert_capacity(data_dir, max_calls=max_calls)
+    #
+    # `calls_needed` is what the caller's whole job costs, so a budget that
+    # cannot cover it refuses BEFORE the first call rather than partway
+    # through — see assert_capacity, and ROADMAP item 59 step 3 for the
+    # half-a-forecast failure that prompted it.
+    assert_capacity(data_dir, max_calls=max_calls, calls_needed=calls_needed)
 
     recorded: list[int] = []
     # The row _record opened and _complete is owed. Held here rather than
@@ -1747,6 +1759,7 @@ def run_daily_pipeline(
         deps.data_dir,
         max_calls=location.max_llm_calls_per_24h,
         purpose="forecast",
+        calls_needed=LLM_CALLS_PER_FORECAST,
     )
     llm_response, _call_meta = _generate_forecast(
         deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
@@ -2192,6 +2205,9 @@ def run_refresh_pipeline(
         deps.data_dir,
         max_calls=location.max_llm_calls_per_24h,
         purpose="refresh",
+        # A refresh is a forecast too — same two calls, same reason to refuse
+        # before the first rather than between them.
+        calls_needed=LLM_CALLS_PER_FORECAST,
     )
     llm_response, _call_meta = _generate_forecast(
         deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
