@@ -6896,7 +6896,12 @@ cherry-picking.* The supporting numbers, all from 2026-09-11:
 - The fields that drop are named **once**, inside one enumeration at ~84%
   depth, governed by no paragraph. The four that never drop — `rain_expected`,
   `temp_high_c`, `temp_low_c`, `rain` — are exactly the four the Gemini
-  response schema marks `required`.
+  response schema marks `required`. **CORRECTED the same day — see "what does
+  NOT separate the six" below.** The first sentence is false: all six watched
+  fields sit in that one enumeration, and the two that never drop are as
+  deep and as ungoverned as the three that do. The second is true if
+  `required` is read as wire-level NULLABILITY. Neither correction touches
+  the conclusion below, and the first strengthens it.
 
 **If instruction load is the cause, this item is the remedy and delaying it
 prolongs the defect.** That is the whole argument for going now.
@@ -6923,10 +6928,102 @@ landed 2026-09-11, so the series starts there. A replay is then a supplement
 for prose regressions, not the gate. And if one is wanted, `run_replay` takes
 a list of cases: one case is one call, not six.
 
+### 2026-09-11: the pre-split baseline, taken
+
+Computed from the 32 committed log entries, `2026-08-11` … `2026-09-11`,
+using `coverage.py`'s own `_narrated_present` rather than a second
+implementation — the `""`-vs-`None` distinction is the trap that function
+exists for, and a private copy here could drift from the guard silently.
+Reproduces item 102's table exactly, which is the cross-check.
+
+| field | filled | rate | last 3 runs |
+|---|---|---|---|
+| `rain_expected` | 32/32 | 100.0% | 3/3 |
+| `synoptic_pattern` | 32/32 | 100.0% | 3/3 |
+| `uv_index_max` | 31/32 | 96.9% | 2/3 — the 09-10 null is item 100's manual repair, not a drop |
+| `peak_wind_kmh` | 29/32 | 90.6% | 0/3 |
+| `mslp_trend_24h` | 29/32 | 90.6% | 0/3 |
+| `air_quality_aqi` | 28/32 | 87.5% | 0/3 |
+
+Whole record: **181/192 field-instances = 94.3%**. Trailing windows:
+44.4% over the last 3 runs, 66.7% over 5, 73.8% over 7, 81.7% over 10.
+
+**Quote the regime, not the record.** 94.3% averages a healthy month against
+a broken week and would make any post-split number look like a regression.
+The comparison the split is judged against is the CURRENT regime, and it is
+not a percentage at all — it is a clean partition:
+
+> Three fields arrive on every run. Three arrive on none. Three runs
+> running, 09-09 through 09-11.
+
+**n=3, and that is the honest weakness of this gate.** Item 102 measured the
+same input produce different fields five hours apart, so each run is a draw,
+not a reading. Three draws distinguish "always" from "never" only because the
+partition is total; they would not support a claim about a shift from, say,
+90% to 70%. A post-split result that moves some fields some of the time is
+not measurable against this baseline, and should be reported as such rather
+than rounded into a win.
+
+### 2026-09-11: what does NOT separate the six, measured
+
+The "go now" section above argues from structure: the dropping fields are
+*"named once, inside one enumeration at ~84% depth, governed by no
+paragraph."* **Checked against the built 47,054-character production prompt,
+and that generalization does not hold.** Item 102's narrower version — about
+`mslp_trend_24h` alone — does.
+
+- **Depth separates nothing.** All six watched fields are named in the SAME
+  enumeration, rule 4, at 83–85% depth. `synoptic_pattern` (84%) and
+  `uv_index_max` (85%) survive; `mslp_trend_24h` (84%) and `air_quality_aqi`
+  (85%) drop. The enumeration even says so itself: *"The paragraphs below
+  govern several of these."*
+- **A governing paragraph predicts nothing.** `air_quality_aqi` has one of
+  the longest in the prompt — the `AIR QUALITY` block, 236 words, plus 11
+  `aqi` and 6 `air quality` mentions — and it drops. `synoptic_pattern`,
+  `uv_index_max` and `mslp_trend_24h` have no dedicated paragraph at all;
+  the first two survive and the third drops.
+- **Instruction density is, if anything, anti-correlated.** `peak_wind_kmh`
+  carries the heaviest qualification of any field in the list — a 51-word
+  inline parenthetical naming a different location and the one number the
+  model must derive itself — and drops. `uv_index_max` carries the least
+  (6 concept mentions, no paragraph) and survives.
+
+**The one property that does separate is wire-level nullability**, and the
+accurate word is nullable rather than "required": `to_gemini_schema` emits
+`nullable: true` for the five optional fields, while the top-level `required`
+list names only three OBJECTS. Non-nullable are `rain_expected`, `rain`,
+`temp_high_c`, `temp_low_c`.
+
+Counted rather than asserted, because the four do not share a denominator:
+`rain_expected`, `temp_high_c` and `temp_low_c` are top-level log fields —
+**96 instances across all 32 runs, zero absences.** The `rain` boolean is not
+a top-level field at all; it is the `olw_blend` row inside
+`model_predictions`, which starts 2026-08-28 — **15 instances, zero null.**
+So the honest figure is 111 non-nullable field-instances and no absence, not
+the 128 a uniform 4×32 would suggest. Every field that has ever dropped is
+nullable; two nullable fields never have. Nullable is necessary, not
+sufficient.
+
+**This strengthens the case for the split rather than weakening it.** If the
+cause were local — a badly-worded field, a field buried too deep — structure
+would predict which fields drop. It does not. What is left is a global cause
+acting selectively on whatever the schema lets it skip, which is the
+instruction-load reading, and the split is the remedy for that.
+
+**Not established, and cheap to confuse with the above.** Nullability is
+confounded with centrality: the four non-nullable fields are also the four a
+forecaster would always write. Nothing here separates "the schema permits
+absence" from "nobody would omit the temperature". The obvious experiment —
+make one dropping field non-nullable and watch it — is a **one-line schema
+change against a 47,000-character prompt change**, and it is not in this
+item's plan. Worth raising before the split rather than after, because if it
+works the split still has its own reasons but loses this one.
+
 ### Order
 
-**Superseded for step 3 by the two sections above** — go now, gate on field
-presence. What follows is the original reasoning and still holds for the rest.
+**Superseded for step 3 by the four `2026-09-11` sections above** — go now,
+gate on field presence, against the baseline they record. What follows is the
+original reasoning and still holds for the rest.
 
 **Item 27 comes first, and should always have.** Every prompt change made so
 far — item 48's pass, 53.3's rule 7 — is unvalidated for side effects. Not
