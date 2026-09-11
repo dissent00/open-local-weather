@@ -12229,3 +12229,203 @@ pipeline's own path and the warning shouts afterwards, but a third-party
 `LLMProvider` can still spend silently. That is inherent in the seam being
 open, and it is the reason `assert_capacity` exists on top of the hook rather
 than instead of it.
+
+---
+
+## 102. Nothing watches the fields the forecaster writes · **Measured 2026-09-11; the guard is Planned**
+
+Reading the 2026-09-11 run found `mslp_trend_24h` empty. It was empty on
+09-09 and 09-10 as well, and filled on all 29 entries before that.
+Nothing raised. Checking its neighbours found a second field with the same
+three-day break, and that one is published.
+
+| field | 08-11 … 09-08 | 09-09 | 09-10 | 09-11 | rendered? |
+|---|---|---|---|---|---|
+| `mslp_trend_24h` | filled 29/29 | empty | empty | empty | never, in the life of the repo |
+| `air_quality_aqi` | filled 28/29 (null 09-06) | null | null | null | **yes** — `forecast.html.jinja:63` |
+
+**The Air Quality tile has been missing from the published page for three
+days.** `{% if entry.air_quality_aqi %}` guards it, so a null renders no
+empty tile and no error — the tile is simply not there, and a reader who did
+not know it used to exist sees a complete-looking page. Today's page carries
+High/Low, Rain, UV Index, Sunrise, Sunset, and nothing else.
+
+### The mechanism
+
+Measured, not inferred. Gemini returns null: all six raw responses in
+`data/replay/2026-09-10/replay.json` carry `"mslp_trend_24h": null`. The
+schema permits it — `schema.py:110`, `str | None`, default `None`.
+`pipeline.py:1663` and `:2125` then write `tp.mslp_trend_24h or ""`, so for
+that field null becomes `""` and the record can no longer say which of the
+two happened.
+
+Every layer behaved correctly, which is the whole problem — and it is the
+sentence `coverage.py`'s own docstring already opens with.
+
+### `coverage.py` is the right module, pointed at the other half
+
+It reports exactly this, under exactly this name: a `regression` is "present
+before, absent now". It watches
+
+```python
+WATCHED_VARIABLES = ("rain", "wind_kmh", "high_c", "low_c", "mslp_trend")
+```
+
+per model, per lead time, derived from the committed log with no new storage.
+
+Those are the values **code** computes from the fetched arrays. The numeric
+`mslp_trend` — `press_vals[-1] - press_vals[0]`, `extract.py:120` — never
+broke, and is scored against observation at `verify/scoring.py:100`:
+
+```
+2026-09-08  gfs=1.4  ecmwf=-0.8 ukmo=0.4
+2026-09-09  gfs=-0.1 ecmwf=-0.1 ukmo=1.4
+2026-09-10  gfs=-0.1 ecmwf=-1.3 ukmo=-0.1
+2026-09-11  gfs=0.0  ecmwf=-2.3 ukmo=-0.8
+```
+
+What broke is the prose the LLM writes about that number. Nothing watches
+LLM-written fields at all.
+
+### The shape of the guard
+
+Same derivation as `detect_coverage` — walk the committed log backward over
+`COVERAGE_WINDOW_DAYS`, count absent runs, report past
+`COVERAGE_ABSENT_RUNS`. Two of the three kinds carry over; `peer_gap` does
+not, because there is one forecaster rather than five models to compare it
+against.
+
+Watchable: `rain_expected`, `mslp_trend_24h`, `synoptic_pattern`,
+`uv_index_max`, `air_quality_aqi`.
+
+`onset_window` must be **excluded**, for the reason `coverage.py` already
+excludes `onset`: it is populated only when rain onset is forecast, so its
+absence is a legitimate forecast outcome and not a data gap. It is null on 19
+of the 32 entries, and watching it would alert on every dry spell.
+
+Whether the `or ""` coercion should go at the same time is a separate
+question with the same answer as `rain_probability_pct`'s "Absent is not 50"
+— a null and an empty string are different answers and the record should
+keep them apart.
+
+### One obvious wrong reading, corrected before it is repeated
+
+`uv_index_max` is null on 09-10 and **is not an instance of this**. It is the
+manual repair after the repetition loop of item 100: `77548f4` stored
+`'8.7 (Very High)'`, the evening refresh `58cc481` stored 15,930 characters,
+and `0feb5a8` set it to null by hand. Checked against the three commits
+before writing this.
+
+### Not established
+
+**Why the model stopped.** The prompt names `mslp_trend_24h` exactly once, in
+the "today_properties FIELDS, ALL OF THEM" list at `prompt.py:255`, governed
+by no paragraph — unlike `synoptic_pattern`, `air_quality_aqi` and the
+temperatures, which all have one. The prompt grew substantially in the window
+between the two runs: hash-matching the archived `system_prompt_sha256`
+against rebuilt prompts puts 09-08's `fee7cea` last at `8fb9f0d` and 09-09's
+`65342dd` first at `1dc7c6c` (flags `is_reissue=False`,
+`ground_stations_configured=True`, `local_bulletin_configured=True`, matched
+rather than guessed, per item 77). Across that window the Overview paragraph
+roughly tripled and rule 8 was added. **That is correlation.** Proving it
+costs a replay — six calls, about four minutes.
+
+**Whether the `air_quality_aqi` nulls are legitimate.** All three ground
+stations reported on all three days, so thin data is not the explanation. The
+model may still be declining for a reason the AIR QUALITY block gives it.
+Not investigated.
+
+---
+
+## 103. The synoptic layer sees a still photograph, keeps nothing, and is never scored · **Planned, measure before designing**
+
+Raised by the operator, 2026-09-11: *"I have a feeling we'd miss an
+approaching storm system, even if we caught the approaching weather impacts."*
+
+Item 22 gave the Synoptic Overview real data — a nine-point ring at ±12°,
+where `region_points` had been a 125 × 55 km box describing a mesoscale
+gradient under a synoptic heading. This item asks the next question: can that
+ring see a system **move**, and would anyone know if it could not?
+
+### What the ring is, exactly
+
+| property | value | where |
+|---|---|---|
+| points | 9, at ±12° (~2,600 km span) | `synoptic_ring_points` |
+| variable | `pressure_msl_mean` — **daily means only** | `fetch_synoptic_pressure:356` |
+| horizon | `forecast_days=3` | same |
+| models | `best_match` only | same |
+| cost | one request, 1.16 s, 3,133 bytes | measured 2026-08-19, item 22 |
+| tendency | `_last - _first`, threshold 1.5 hPa / 72 h | `summarize_synoptic`, `defaults.py:452` |
+| stored? | **no** | the log entry has no synoptic field |
+| scored? | **no** | no reference in `verify/`, `coverage.py` or `review.py` |
+
+### It is better than the concern assumes, in one respect
+
+`_statements` already carries the approach signal, and the comment beside it
+names the case precisely: *"a system approaching from the west shows up as
+the west falling well before the west is the lowest point on the ring."* So
+the forecaster is told "pressure is also falling toward the west — a
+large-scale feature building in that direction, though this sampling cannot
+say how fast or whether it will reach here."
+
+That is the honest sentence, and the honesty limit is correct. The question
+is not whether to loosen it. It is whether the data behind it can be made to
+support more.
+
+### Six things it cannot currently do
+
+1. **See the middle of its own window.** `delta = later - now` uses `_first`
+   and `_last` only. Day 1 is fetched and discarded. A trough that arrives and
+   departs inside three days reads as "steady".
+2. **Distinguish deepening from approaching.** Tendency is computed per point,
+   independently. A low intensifying in place and a low translating toward
+   here produce the same falling pressure at the same point, and the same
+   sentence. The ring is one point per compass direction at a single radius
+   (`SYNOPTIC_RING`), so there is no "further out" to compare against — but
+   there is an opposite side. Translation across the domain should read as an
+   antisymmetric pattern, falling on one flank while the facing flank rises;
+   intensification in place should not. Whether that separates them in
+   practice is the first thing to measure, and it needs no new fetch.
+3. **Resolve anything fast.** Daily means. A feature crossing 1,000 km in a
+   day is smeared across the sample that is supposed to locate it.
+4. **See anything above the surface.** MSLP only — no 500 hPa heights, no
+   thickness, no vorticity, no wind field. Near the equator, where MSLP
+   gradients are weak, the synoptic signal may be carried better by low-level
+   convergence than by surface pressure. Nobody has looked — this is a
+   question to measure, not a finding.
+5. **Remember.** The ring is fetched, reduced to labels, put in the prompt and
+   thrown away. Yesterday's ring is unrecoverable. Day-over-day motion cannot
+   be derived even in principle, and *"did we see it coming?"* cannot be asked
+   retrospectively, because the evidence is discarded daily.
+6. **Be wrong in a way anyone would notice.** The layer asserts "a feature is
+   building toward the west" and nothing ever checks whether one was. This is
+   the weekly review's item 3 — never-verified variables — applied to a whole
+   subsystem rather than one field. The only synoptic condition currently
+   watched is total unavailability, via `DEGRADATION_SYNOPTIC`.
+
+### Measure before designing
+
+Point 5 gates most of the rest: until the ring is persisted there is no
+series to analyse and no way to score a claim after the fact. Storing nine
+points × three days is a few hundred bytes a day, and per item 69's reasoning
+about replayability, an input that is not stored is an input the record
+cannot be re-derived from.
+
+Then, in order:
+
+- Backfill or accumulate enough rings to ask whether cross-point pattern
+  separates translation from intensification (point 2). No new API surface.
+- Score the layer's existing claims against what the centre point actually
+  did (point 6).
+- Only then decide whether upper-air or wind-field data earns its request
+  (points 3 and 4).
+
+### What this item is not
+
+It is not a request to publish storm tracks. README's "no true storm-center
+or track forecasting" limitation, which item 22 narrowed rather than deleted,
+stays. The prompt's bound at `prompt.py:236` — *say lower pressure lies
+TOWARD a direction, never that a named low is centred over a named place* —
+is the correct guardrail for 12-degree sampling and should survive every
+change proposed here.
