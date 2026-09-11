@@ -1402,6 +1402,40 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
+    def thin_third_model_usable_case(name: str):
+        """The same shape as `thin_third_model_case`, one confidence band up.
+
+        That case sits in the `provisional` branch. The live 2026-09-11 prompt
+        sat in `usable` and read "22 check(s) per model — enough to compare
+        models" beside "the 31 check(s) the other models have" — a flat claim
+        that the very next clause denies. Two blind readers of an archived
+        prompt reported the pair as a contradiction independently.
+
+        Three of the six confidence branches named the least-covered model and
+        three asserted "per model"; no vector case exercised an UNEVEN record
+        at `usable`, which is why the defect survived item 85's fix. Locked
+        here so neither language can drift back.
+        """
+        models_here = ["alpha", "beta", "thin"]
+        logs, actuals = build(30, 28, 6)
+        # thin reaches 22 of 30 days, so it is scored, comfortably above the
+        # comparison floor, and still behind its peers — the production shape.
+        for i, d in enumerate(sorted(logs, reverse=True)):
+            if i < 22:
+                logs[d].model_predictions.day0 = [
+                    *logs[d].model_predictions.day0,
+                    ModelPrediction(model="thin", rain=True, high_c=26.0, low_c=18.0),
+                ]
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
     def storm_case(name: str, storm_days: int, alpha_calls: int, beta_calls: int):
         """Item 35's incident, made checkable: a model whose CAPE stays below
         the threshold on days the station observed thunder.
@@ -1520,6 +1554,9 @@ def export_weekly_review() -> None:
             case("30 checks — a model that cannot read the sky is named", 30, 15, 15, 0.0, 35.0),
             case("30 checks — a few points of cloud is scatter", 30, 15, 15, 0.0, 5.0),
             thin_sky_case("a thin sky in a thick row is not reported at all"),
+            thin_third_model_usable_case(
+                "uneven coverage at usable does not claim a flat per-model count"
+            ),
             storm_case("a model blind to this location's storms is named", 12, 11, 3),
             storm_case("two storms is not a record, and names nobody", 2, 2, 0),
             case("4 checks — insufficient for anything", 4, 4, 1),

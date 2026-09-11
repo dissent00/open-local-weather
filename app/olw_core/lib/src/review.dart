@@ -610,33 +610,42 @@ String _describeSufficiency(
     // eligibility rule the gate uses.
     final comparable =
         atLead.where((c) => c.checks >= reviewMinChecksForComparison).toList();
+
+    // "per model" asserts a figure EVERY model has. `checks` is the weakest
+    // scored model's coverage, so when coverage is uneven that claim is false
+    // — and the uneven-coverage clause below states a different per-model
+    // number in the same breath. Measured on the live 2026-09-11 prompt:
+    // "22 check(s) per model" beside "the 31 check(s) the other models have".
+    // When coverage IS even, "per model" is exactly true, so it stays.
+    final scope =
+        behind.isNotEmpty ? 'for the least-covered model' : 'per model';
     final conf = confidenceFor(checks);
     if (conf == 'insufficient') {
       final need = reviewConfidenceBands.first.$1 - checks;
       if (comparable.length >= 2) {
-        parts.add('Day+$k: $checks check(s) per model — not enough to say '
-            'anything about the least-covered model, though '
+        parts.add('Day+$k: $checks check(s) $scope — not enough to say '
+            'anything there, though '
             '${comparable.length} models have enough checks to compare. '
             'Any ranking below rests on those, not on this number.');
       } else {
-        parts.add('Day+$k: $checks check(s) per model — not enough to say anything; '
+        parts.add('Day+$k: $checks check(s) $scope — not enough to say anything; '
             'roughly $need more day(s) before even a provisional read.');
       }
     } else if (conf == 'provisional') {
       if (comparable.length >= 2) {
-        parts.add('Day+$k: $checks check(s) per model — directional only '
-            'for the least-covered model, though ${comparable.length} '
+        parts.add('Day+$k: $checks check(s) $scope — directional only, '
+            'though ${comparable.length} '
             'models have enough checks to compare. Any ranking below '
             'rests on those, not on this number.');
       } else {
-        parts.add('Day+$k: $checks check(s) per model — directional only, '
+        parts.add('Day+$k: $checks check(s) $scope — directional only, '
             'not yet enough to rank models against each other.');
       }
     } else if (conf == 'usable') {
-      parts.add('Day+$k: $checks check(s) per model — enough to compare models, '
+      parts.add('Day+$k: $checks check(s) $scope — enough to compare models, '
           'though differences smaller than about 15 points remain noise.');
     } else {
-      parts.add('Day+$k: $checks check(s) per model — a settled picture.');
+      parts.add('Day+$k: $checks check(s) $scope — a settled picture.');
     }
     if (behind.isNotEmpty) {
       parts.add('(Coverage at Day+$k is uneven: ${behind.join(', ')} '

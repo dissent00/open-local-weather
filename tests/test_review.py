@@ -210,8 +210,12 @@ def test_uneven_model_coverage_is_reported_not_averaged_away():
     counts = {c.model: c.checks for c in r.cells}
     assert counts == {"good_model": 12, "poor_model": 6}
 
-    assert "12 check(s) per model" not in r.data_sufficiency, "must not claim the richest count"
-    assert "6 check(s) per model" in r.data_sufficiency, "the weakest model sets confidence"
+    assert "12 check(s) for the least-covered model" not in r.data_sufficiency, (
+        "must not claim the richest count"
+    )
+    assert "6 check(s) for the least-covered model" in r.data_sufficiency, (
+        "the weakest model sets confidence"
+    )
     assert "Coverage at Day+0 is uneven" in r.data_sufficiency
     assert "poor_model has fewer" in r.data_sufficiency
     assert "not like-for-like" in r.data_sufficiency
@@ -701,3 +705,55 @@ def test_a_thin_run_of_storms_names_nobody():
     logs, actuals = build_storm_history(days=30, storm_days=2, good_calls=2, poor_calls=0)
     r = review_of(logs, actuals)
     assert [f for f in r.findings if f.kind == "convective"] == []
+
+
+def _drop_poor_model_after(logs, keep: int):
+    """poor_model stops reaching Day+0 after its `keep` most recent days."""
+    for i, d in enumerate(sorted(logs, reverse=True)):
+        if i >= keep:
+            preds = logs[d].model_predictions.day0
+            logs[d].model_predictions.day0 = [p for p in preds if p.model != "poor_model"]
+    return logs
+
+
+def test_the_headline_does_not_claim_a_uniform_count_when_coverage_is_uneven():
+    """`checks` is the WEAKEST scored model's coverage, deliberately — so "per
+    model" asserts a figure that no model need actually have, and the uneven
+    clause that follows states a DIFFERENT per-model number in the same breath.
+
+    Two blind readers of the archived 2026-09-09 prompt independently reported
+    the pair as a contradiction. This is ROADMAP item 85's defect at a site its
+    fix did not reach: three of the six confidence branches name the
+    least-covered model inline and three assert a flat "per model".
+    """
+    logs, actuals = build_history(days=12, good_hits=8, poor_hits=6)
+    s = review_of(_drop_poor_model_after(logs, 6), actuals).data_sufficiency
+
+    assert "check(s) per model" not in s, s
+    assert "6 check(s) for the least-covered model" in s, s
+    # The richest count still appears, but only where it is labelled as one
+    # model's own coverage rather than as everyone's.
+    assert "the 12 check(s) the other models have" in s, s
+
+
+def test_the_uneven_headline_is_fixed_at_every_confidence_level():
+    """The live 2026-09-11 prompt reads "22 check(s) per model — enough to
+    compare models" beside "the 31 check(s) the other models have". That is the
+    `usable` branch, a different one from the case above, and it carried the
+    same flat claim."""
+    logs, actuals = build_history(days=30, good_hits=20, poor_hits=15)
+    s = review_of(_drop_poor_model_after(logs, 22), actuals).data_sufficiency
+
+    assert "enough to compare models" in s, "expected the usable branch"
+    assert "check(s) per model" not in s, s
+    assert "22 check(s) for the least-covered model" in s, s
+
+
+def test_even_coverage_still_reads_per_model():
+    """When every model has the same count, "per model" is exactly true and
+    the qualifier would be noise. The fix must not blanket-apply."""
+    logs, actuals = build_history(days=12, good_hits=8, poor_hits=6)
+    s = review_of(logs, actuals).data_sufficiency
+
+    assert "12 check(s) per model" in s, s
+    assert "least-covered" not in s, s

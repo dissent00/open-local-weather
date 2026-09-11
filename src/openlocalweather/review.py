@@ -561,41 +561,53 @@ def _describe_sufficiency(
         richest = max((c.checks for c in at_lead), default=0)
         behind = sorted(c.model for c in at_lead if 0 < c.checks < richest)
         unscored = sorted(c.model for c in at_lead if c.checks == 0)
+
+        # "per model" asserts a figure EVERY model has. `checks` is the
+        # weakest scored model's coverage, so when coverage is uneven that
+        # claim is false — and the uneven-coverage clause below states a
+        # different per-model number in the same breath. Measured on the live
+        # 2026-09-11 prompt: "22 check(s) per model" beside "the 31 check(s)
+        # the other models have". Two blind readers reported that pair as a
+        # contradiction independently, which is also how item 85 — the same
+        # defect, at the sites that fix did not reach — was originally found.
+        # When coverage IS even, "per model" is exactly true and the qualifier
+        # would be noise, so it stays.
+        scope = "for the least-covered model" if behind else "per model"
         conf = confidence_for(checks)
         if conf == "insufficient":
             need = REVIEW_CONFIDENCE_BANDS[0][0] - checks
             if len(comparable) >= 2:
                 parts.append(
-                    f"Day+{k}: {checks} check(s) per model — not enough to say "
-                    f"anything about the least-covered model, though "
+                    f"Day+{k}: {checks} check(s) {scope} — not enough to say "
+                    f"anything there, though "
                     f"{len(comparable)} models have enough checks to compare. "
                     f"Any ranking below rests on those, not on this number."
                 )
             else:
                 parts.append(
-                    f"Day+{k}: {checks} check(s) per model — not enough to say anything; "
+                    f"Day+{k}: {checks} check(s) {scope} — not enough to say anything; "
                     f"roughly {need} more day(s) before even a provisional read."
                 )
         elif conf == "provisional":
             if len(comparable) >= 2:
                 parts.append(
-                    f"Day+{k}: {checks} check(s) per model — directional only "
-                    f"for the least-covered model, though {len(comparable)} "
+                    f"Day+{k}: {checks} check(s) {scope} — directional only, "
+                    f"though {len(comparable)} "
                     f"models have enough checks to compare. Any ranking below "
                     f"rests on those, not on this number."
                 )
             else:
                 parts.append(
-                    f"Day+{k}: {checks} check(s) per model — directional only, "
+                    f"Day+{k}: {checks} check(s) {scope} — directional only, "
                     "not yet enough to rank models against each other."
                 )
         elif conf == "usable":
             parts.append(
-                f"Day+{k}: {checks} check(s) per model — enough to compare models, "
+                f"Day+{k}: {checks} check(s) {scope} — enough to compare models, "
                 "though differences smaller than about 15 points remain noise."
             )
         else:
-            parts.append(f"Day+{k}: {checks} check(s) per model — a settled picture.")
+            parts.append(f"Day+{k}: {checks} check(s) {scope} — a settled picture.")
         if behind:
             parts.append(
                 f"(Coverage at Day+{k} is uneven: {', '.join(behind)} "
