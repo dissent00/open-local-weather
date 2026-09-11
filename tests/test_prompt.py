@@ -2,7 +2,24 @@ import re
 from datetime import date
 
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint, WaqiStation
-from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.llm.prompt import (
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_user_prompt,
+)
+
+
+def build_system_prompt(location, **kwargs) -> str:
+    """Both prompts of the split, joined — ROADMAP item 59 step 3.
+
+    THIS FILE ASKS WHETHER A RULE STILL EXISTS, not which call carries it.
+    Those are different questions and splitting them keeps both answerable:
+    34 assertions here would otherwise each have to guess a side, and a rule
+    that legitimately moved between the two calls would fail as though it had
+    been deleted. WHICH SIDE a rule belongs on is tests/test_prompt_seam.py's
+    question, and it is the one that can actually be got wrong.
+    """
+    return f"{build_judgment_prompt(location, **kwargs)}\n{build_narrative_prompt(location, **kwargs)}"
 
 KISUMU = LocationConfig(
     region_name="Nyanza Basin",
@@ -39,7 +56,15 @@ def test_heading_order_with_secondary_enabled():
         "Detailed Discussion",
     ]
     sub_level = [t for level, t in headings(prompt) if level == "###"]
-    assert sub_level == ["WORKFLOW & INSTRUCTIONS:", "Synoptic Overview", "Forecaster Confidence Notes"]
+    # "WORKFLOW & INSTRUCTIONS:" twice because BOTH prompts carry it and this
+    # helper joins them — the judgment call has a workflow too, it is just a
+    # much shorter one. The narrative headings are what this test is about.
+    assert sub_level == [
+        "WORKFLOW & INSTRUCTIONS:",
+        "WORKFLOW & INSTRUCTIONS:",
+        "Synoptic Overview",
+        "Forecaster Confidence Notes",
+    ]
 
 
 def test_secondary_section_omitted_when_disabled():
@@ -247,7 +272,11 @@ def test_the_time_aware_section_must_not_change_what_gets_scored():
     12 hours" would leave the record internally inconsistent — and silently,
     since every individual entry would still look reasonable."""
     prompt = build_system_prompt(KISUMU)
-    assert "today_properties stays your blended call for the WHOLE calendar day" in prompt
+    # Reworded by the split (ROADMAP item 59 step 3): the renderer is no
+    # longer the thing that made the call, so the firewall now points at a
+    # value it was GIVEN. The property being guarded is unchanged — a rule
+    # about the hours ahead must not narrow a field scored across the day.
+    assert "THE CALL YOU WERE GIVEN describes the WHOLE calendar day" in prompt
     assert "temp_high_c is the day's high whether or not it has already happened" in prompt
 
 

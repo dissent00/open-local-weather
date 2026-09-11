@@ -50,7 +50,9 @@ class _FakeProvider:
 
     def generate(self, system_prompt, user_prompt, response_schema):
         self.calls.append((system_prompt, user_prompt))
-        return _response(self._narrative)
+        # The shape that was asked for: a replay is two calls per case since
+        # ROADMAP item 59 step 3, and each gets its own half of the schema.
+        return response_schema.model_validate(_response(self._narrative).model_dump())
 
 
 def test_the_frozen_cases_come_from_the_committed_vectors():
@@ -62,7 +64,8 @@ def test_the_frozen_cases_come_from_the_committed_vectors():
     for c in cases:
         assert c.name
         assert "FORECAST DATA" in c.user_prompt or len(c.user_prompt) > 200
-        assert len(c.system_prompt) > 200
+        assert len(c.judgment_prompt) > 200
+        assert len(c.narrative_prompt) > 200
 
 
 def test_a_replay_calls_once_per_case_and_keeps_the_output():
@@ -70,7 +73,9 @@ def test_a_replay_calls_once_per_case_and_keeps_the_output():
     cases = frozen_cases()[:2]
     results, _ = run_replay(provider, cases)
 
-    assert len(provider.calls) == 2
+    # TWO PAID CALLS PER CASE since the split — a replay's cost doubled with
+    # the forecast's, and the CLI's six cases are now twelve calls.
+    assert len(provider.calls) == 2 * len(cases)
     assert [r.case for r in results] == [c.name for c in cases]
     assert all(r.response.today_narrative == "## Overview\n\nWarm." for r in results)
 
@@ -150,17 +155,17 @@ def test_each_case_is_paired_with_its_own_system_prompt():
 
     # The system prompt branches on configuration, so these must not be equal.
     assert (
-        by_name["no ground stations configured — the blocks are absent"].system_prompt
-        != by_name["fully populated"].system_prompt
+        by_name["no ground stations configured — the blocks are absent"].narrative_prompt
+        != by_name["fully populated"].narrative_prompt
     )
     assert (
-        by_name["no local met service configured — the bulletin block is absent"].system_prompt
-        != by_name["fully populated"].system_prompt
+        by_name["no local met service configured — the bulletin block is absent"].judgment_prompt
+        != by_name["fully populated"].judgment_prompt
     )
 
     # A re-issue is told it is one; a first run is not.
-    refresh = by_name["evening refresh carries the morning narrative"].system_prompt
-    first = by_name["fully populated"].system_prompt
+    refresh = by_name["evening refresh carries the morning narrative"].narrative_prompt
+    first = by_name["fully populated"].narrative_prompt
     assert refresh != first
     assert "LATER ISSUANCE" in refresh
     assert "LATER ISSUANCE" not in first
@@ -179,9 +184,13 @@ def test_a_failure_partway_through_does_not_discard_what_succeeded():
 
         def generate(self, system_prompt, user_prompt, response_schema):
             calls["n"] += 1
-            if calls["n"] == 2:
+            # Case N's calls are 2N-1 and 2N since the split. Failing on the
+            # 3rd fails the SECOND case's judgment call, which is what this
+            # test has always been about: one case dying must not discard the
+            # others.
+            if calls["n"] == 3:
                 raise RuntimeError("Gemini request failed after 4 attempts")
-            return _response("ok")
+            return response_schema.model_validate(_response("ok").model_dump())
 
     results, failures = run_replay(_FlakyProvider(), frozen_cases()[:3])
 

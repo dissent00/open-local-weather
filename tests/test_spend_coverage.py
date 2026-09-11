@@ -42,6 +42,17 @@ CAPPED_BY_CALLER = {
         "before calling it — which is exactly the seam that was broken, so the "
         "guard checks _run_replay below rather than trusting this."
     ),
+    "generate_forecast": (
+        "Takes the provider as an argument. The two calls of ROADMAP item 59 "
+        "step 3 live here so the pipeline and the replay cannot disagree "
+        "about what a forecast is; both callers attach the cap above it."
+    ),
+    "_generate_forecast": (
+        "Takes the provider as an argument. pipeline's wrapper around "
+        "generate_forecast, adding the per-call meta snapshot. "
+        "run_daily_pipeline and run_refresh_pipeline attach the cap before "
+        "calling it."
+    ),
 }
 
 
@@ -89,7 +100,12 @@ def test_every_call_to_a_model_is_counted():
     ]
     # The empty-input trap. If the scan stops finding call sites — a rename,
     # a refactor, a bad walk — every assertion below passes against nothing.
-    assert len(call_sites) >= 4, f"only found {len(call_sites)} generate() call sites"
+    # THREE since ROADMAP item 59 step 3, down from four: the pipeline and the
+    # replay used to hold a generate() each and now share the two inside
+    # `generate_forecast`. The floor is the empty-input trap — if the scan
+    # stops finding call sites, every assertion below passes against nothing —
+    # so it tracks the real number rather than sitting safely under it.
+    assert len(call_sites) >= 3, f"only found {len(call_sites)} generate() call sites"
 
     uncounted = []
     for path, fn_name, line in call_sites:
@@ -127,6 +143,13 @@ def test_the_functions_that_delegate_are_really_capped_by_their_caller():
 
         assert callers, f"nothing calls {delegated}() — the allowlist entry is stale"
         for path, caller in callers:
+            # A delegated function may be called by another delegated one —
+            # cli._run_replay -> run_replay -> generate_forecast is two links
+            # since ROADMAP item 59 step 3. The chain is capped as long as it
+            # ENDS at something that attaches the cap, and each link's own
+            # allowlist entry names who does it.
+            if caller.name in CAPPED_BY_CALLER:
+                continue
             assert CAP in _names_used(caller), (
                 f"{path.name}:{caller.name}() calls {delegated}() without attaching "
                 f"the cap, and {delegated} is allowlisted on the promise that it does"

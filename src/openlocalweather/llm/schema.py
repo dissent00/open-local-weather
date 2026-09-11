@@ -142,7 +142,49 @@ class ExtendedDayProperties(BaseModel):
     rain_probability_pct: int | None = None
 
 
+class GeminiJudgmentResponse(BaseModel):
+    """What the judgment call returns: the scored fields, and nothing else.
+
+    ROADMAP item 59 step 3. This half of the split is the point of it — the
+    forecaster deciding these numbers reads an 18,400-character prompt
+    instead of a 47,054-character one, and every instruction in it governs a
+    number.
+    """
+
+    today_properties: TodayProperties
+    # ROADMAP item 72. Empty is a legitimate answer and the default:
+    # a run that declines to commit at a lead scores nothing there,
+    # which is honest, where a guessed boolean is scored wrong exactly
+    # as confidently as a real one.
+    extended_properties: list[ExtendedDayProperties] = Field(default_factory=list)
+
+
+class GeminiNarrativeResponse(BaseModel):
+    """What the rendering call returns: prose, and only prose.
+
+    THE SEAM IS THIS CLASS. Nothing here is scored, and there is no field a
+    scored value could be written into, so the rendering call cannot revise
+    the forecast however its prompt is later edited. That separation used to
+    be a property of where a paragraph sat inside one string — see
+    tests/test_prompt_seam.py, which still checks the weaker claim because a
+    prompt can still be edited and this cannot.
+    """
+
+    yesterday_verification: str
+    verification_notes: list[VerificationNote] = Field(default_factory=list)
+    skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
+    today_narrative: str
+    whatsapp_summary: str | None = None
+
+
 class GeminiForecastResponse(BaseModel):
+    """The two calls merged, and the shape everything downstream still reads.
+
+    Kept deliberately: the pipeline, the store, the renderers and the Dart
+    port all consume this, and the split has no business reaching them. See
+    `merge_forecast_response`.
+    """
+
     yesterday_verification: str
     verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
@@ -154,6 +196,27 @@ class GeminiForecastResponse(BaseModel):
     extended_properties: list[ExtendedDayProperties] = Field(default_factory=list)
     today_narrative: str
     whatsapp_summary: str | None = None
+
+
+def merge_forecast_response(
+    judgment: GeminiJudgmentResponse, narrative: GeminiNarrativeResponse
+) -> GeminiForecastResponse:
+    """Puts the two calls back together in the shape everything downstream
+    already reads.
+
+    The merge is total and mechanical — every field of the result comes from
+    exactly one of the two inputs, and neither can supply a field the other
+    owns. That is what makes the split invisible below this line.
+    """
+    return GeminiForecastResponse(
+        yesterday_verification=narrative.yesterday_verification,
+        verification_notes=narrative.verification_notes,
+        skill_profile_summaries=narrative.skill_profile_summaries,
+        today_properties=judgment.today_properties,
+        extended_properties=judgment.extended_properties,
+        today_narrative=narrative.today_narrative,
+        whatsapp_summary=narrative.whatsapp_summary,
+    )
 
 
 # ---------------------------------------------------------------------------

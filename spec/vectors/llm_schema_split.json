@@ -1,59 +1,16 @@
 {
   "vector_format_version": 1,
-  "function": "to_gemini_schema",
-  "description": "Gemini's responseSchema dialect: uppercase type names, a `nullable` flag, and no $ref/$defs (inlined).",
+  "function": "to_gemini_schema(GeminiJudgmentResponse | GeminiNarrativeResponse)",
+  "description": "The two response schemas of the split \u2014 ROADMAP item 59 step 3. The narrative schema is pinned because its ABSENCES are the seam: it has no today_properties and no extended_properties, so the rendering call cannot return a scored value however its prompt is later edited.",
   "cases": [
     {
-      "name": "gemini responseSchema dialect",
+      "name": "judgment",
       "input": {
-        "model": "GeminiForecastResponse"
+        "model": "GeminiJudgmentResponse"
       },
       "expected": {
         "type": "OBJECT",
         "properties": {
-          "yesterday_verification": {
-            "type": "STRING"
-          },
-          "verification_notes": {
-            "type": "ARRAY",
-            "items": {
-              "type": "OBJECT",
-              "properties": {
-                "lead_time_days": {
-                  "type": "INTEGER"
-                },
-                "note": {
-                  "type": "STRING"
-                }
-              },
-              "required": [
-                "lead_time_days",
-                "note"
-              ]
-            }
-          },
-          "skill_profile_summaries": {
-            "type": "ARRAY",
-            "items": {
-              "type": "OBJECT",
-              "properties": {
-                "model": {
-                  "type": "STRING"
-                },
-                "lead_time_days": {
-                  "type": "INTEGER"
-                },
-                "summary": {
-                  "type": "STRING"
-                }
-              },
-              "required": [
-                "model",
-                "lead_time_days",
-                "summary"
-              ]
-            }
-          },
           "today_properties": {
             "type": "OBJECT",
             "properties": {
@@ -136,6 +93,64 @@
               ],
               "description": "Your own rain call for one day beyond today. Scored against what\nhappens. Omit a lead rather than guess at it."
             }
+          }
+        },
+        "required": [
+          "today_properties"
+        ],
+        "description": "What the judgment call returns: the scored fields, and nothing else.\n\nROADMAP item 59 step 3. This half of the split is the point of it \u2014 the\nforecaster deciding these numbers reads an 18,400-character prompt\ninstead of a 47,054-character one, and every instruction in it governs a\nnumber."
+      }
+    },
+    {
+      "name": "narrative",
+      "input": {
+        "model": "GeminiNarrativeResponse"
+      },
+      "expected": {
+        "type": "OBJECT",
+        "properties": {
+          "yesterday_verification": {
+            "type": "STRING"
+          },
+          "verification_notes": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "lead_time_days": {
+                  "type": "INTEGER"
+                },
+                "note": {
+                  "type": "STRING"
+                }
+              },
+              "required": [
+                "lead_time_days",
+                "note"
+              ]
+            }
+          },
+          "skill_profile_summaries": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "model": {
+                  "type": "STRING"
+                },
+                "lead_time_days": {
+                  "type": "INTEGER"
+                },
+                "summary": {
+                  "type": "STRING"
+                }
+              },
+              "required": [
+                "model",
+                "lead_time_days",
+                "summary"
+              ]
+            }
           },
           "today_narrative": {
             "type": "STRING"
@@ -147,10 +162,9 @@
         },
         "required": [
           "yesterday_verification",
-          "today_properties",
           "today_narrative"
         ],
-        "description": "The two calls merged, and the shape everything downstream still reads.\n\nKept deliberately: the pipeline, the store, the renderers and the Dart\nport all consume this, and the split has no business reaching them. See\n`merge_forecast_response`."
+        "description": "What the rendering call returns: prose, and only prose.\n\nTHE SEAM IS THIS CLASS. Nothing here is scored, and there is no field a\nscored value could be written into, so the rendering call cannot revise\nthe forecast however its prompt is later edited. That separation used to\nbe a property of where a paragraph sat inside one string \u2014 see\ntests/test_prompt_seam.py, which still checks the weaker claim because a\nprompt can still be edited and this cannot."
       }
     }
   ]

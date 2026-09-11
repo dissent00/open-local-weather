@@ -65,6 +65,31 @@ def prompt_sha256(prompt: str) -> str:
     return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
 
+def combined_prompt_sha256(*prompts: str) -> str:
+    """Identity of the INSTRUCTIONS a run used, when there is more than one.
+
+    ROADMAP item 59 step 3 made the forecast two calls, each with its own
+    system prompt. `system_prompt_sha256` still has to name one forecaster,
+    so it names the pair: the component hashes joined in call order and
+    hashed again.
+
+    ORDER-SENSITIVE ON PURPOSE. Swapping which prompt makes the judgment is
+    a different forecaster, and a commutative combination would record the
+    two as identical.
+
+    Item 77's recovery method still works — rebuild the candidate prompts and
+    hash-match — with the one change that both must be rebuilt and combined.
+    The archive also stores the two component hashes separately so a reader
+    does not have to know this rule to use them.
+
+    A single argument hashes to a different value than the prompt itself,
+    which is why entries written before the split are NOT re-derivable this
+    way and are not meant to be: their `system_prompt_sha256` is the plain
+    digest of the one prompt that existed.
+    """
+    return hashlib.sha256("\n".join(prompt_sha256(p) for p in prompts).encode("utf-8")).hexdigest()
+
+
 def prompt_archive_path(data_dir: str | Path, d: date) -> Path:
     return Path(data_dir) / "prompts" / f"{format_date(d)}.json"
 
@@ -90,7 +115,8 @@ def write_prompt_archive(
     d: date,
     *,
     issued_at: datetime,
-    system_prompt: str,
+    judgment_prompt: str,
+    narrative_prompt: str,
     user_prompt: str,
     llm_model: str,
 ) -> Path:
@@ -109,7 +135,13 @@ def write_prompt_archive(
         {
             _ISSUED_AT: stamp,
             "llm_model": llm_model,
-            "system_prompt_sha256": prompt_sha256(system_prompt),
+            # The pair's identity, and each half's own. Both are stored
+            # because the combined hash alone cannot tell a reader WHICH of
+            # the two prompts moved between two runs, and that is the first
+            # question anyone asks of this file.
+            "system_prompt_sha256": combined_prompt_sha256(judgment_prompt, narrative_prompt),
+            "judgment_prompt_sha256": prompt_sha256(judgment_prompt),
+            "narrative_prompt_sha256": prompt_sha256(narrative_prompt),
             "user_prompt": user_prompt,
         }
     )
@@ -119,8 +151,10 @@ def write_prompt_archive(
         "date": format_date(d),
         "note": (
             "Inputs a forecast was built from — ROADMAP item 69. The user "
-            "prompt verbatim; the system prompt by hash, recoverable from git "
-            "and from spec/vectors/llm_system_prompt.json."
+            "prompt verbatim; the two system prompts by hash, recoverable "
+            "from git and from spec/vectors/llm_system_prompt.json. The "
+            "forecast has been two calls — judgment, then narrative — since "
+            "ROADMAP item 59 step 3."
         ),
         "issuances": issuances,
     }

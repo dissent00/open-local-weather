@@ -34,7 +34,10 @@ from openlocalweather.fetch.open_meteo import (  # noqa: E402
     DAILY_FORECAST_VARS,
     HOURLY_FORECAST_VARS,
 )
-from openlocalweather.llm.prompt import build_system_prompt  # noqa: E402
+from openlocalweather.llm.prompt import (  # noqa: E402
+    build_judgment_prompt,
+    build_narrative_prompt,
+)
 from openlocalweather.models import DailyActual, ModelPrediction, VerificationScore  # noqa: E402
 
 OUT = ROOT / "docs-internal" / "OBSERVATION_REGISTER.md"
@@ -106,7 +109,11 @@ NOTES = {
 
 
 def main() -> None:
-    prompt = build_system_prompt(load_location_config(str(ROOT / "config/location.yaml")))
+    # Both calls' instructions. The register asks whether a variable is
+    # MENTIONED to the forecaster at all, which since ROADMAP item 59
+    # step 3 means either of the two prompts.
+    location = load_location_config(str(ROOT / "config/location.yaml"))
+    prompt = build_judgment_prompt(location) + "\n" + build_narrative_prompt(location)
     forecast_vars = HOURLY_FORECAST_VARS + "," + DAILY_FORECAST_VARS + "," + AIR_QUALITY_HOURLY_VARS
     labels = {f for f in DayOverDayComparison.__dataclass_fields__ if f.endswith("_label")}
 

@@ -217,9 +217,9 @@ def test_the_prompt_asks_for_a_probability_and_says_what_it_is_for():
     under a proper scoring rule that is true and the model has no way to know
     it otherwise."""
     from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-    from openlocalweather.llm.prompt import build_system_prompt
+    from openlocalweather.llm.prompt import build_judgment_prompt
 
-    sp = build_system_prompt(
+    sp = build_judgment_prompt(
         LocationConfig(
             region_name="R", primary_place_name="P", timezone="UTC",
             primary_point=Point(lat=0.0, lon=0.0),

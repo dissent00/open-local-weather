@@ -60,9 +60,15 @@ from openlocalweather.daypart import (
     summarize_daypart,
 )
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.llm.prompt import (
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_user_prompt,
+)
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
+    GeminiJudgmentResponse,
+    GeminiNarrativeResponse,
     to_gemini_schema,
     to_strict_json_schema,
 )
@@ -504,6 +510,14 @@ def test_vectors_llm_schemas():
     """Guards the structured-output contract sent to real provider APIs."""
     for case in load("llm_schema_gemini.json")["cases"]:
         assert to_gemini_schema(GeminiForecastResponse) == case["expected"]
+    # The two halves of the split carry their own pins: the merged shape above
+    # is what the record stores, but neither call ever sends it.
+    for case in load("llm_schema_split.json")["cases"]:
+        model = {
+            "judgment": GeminiJudgmentResponse,
+            "narrative": GeminiNarrativeResponse,
+        }[case["name"]]
+        assert to_gemini_schema(model) == case["expected"]
     for case in load("llm_schema_strict.json")["cases"]:
         assert to_strict_json_schema(GeminiForecastResponse) == case["expected"]
 
@@ -524,8 +538,7 @@ def test_vectors_system_prompt():
                 enabled=sec["enabled"], name=sec["name"], section_label=sec["section_label"]
             ),
         )
-        got = build_system_prompt(
-            location,
+        flags = dict(
             historical_lookback_days=i["historical_lookback_days"],
             rolling_window_short=i["rolling_window_short"],
             rolling_window_long=i["rolling_window_long"],
@@ -534,6 +547,13 @@ def test_vectors_system_prompt():
             local_bulletin_configured=i["local_bulletin_configured"],
             extended_outlook_available=i["extended_outlook_available"],
         )
+        # BOTH, because either one drifting changes the forecast. Pinning only
+        # the judgment call would let a port render from different narrative
+        # instructions and still pass.
+        got = {
+            "judgment": build_judgment_prompt(location, **flags),
+            "narrative": build_narrative_prompt(location, **flags),
+        }
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
@@ -700,6 +720,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_gemini.json",
         "llm_schema_strict.json",
         "llm_system_prompt.json",
+        "llm_schema_split.json",
         "llm_user_prompt.json",
         "weekly_review.json",
         "synoptic.json",

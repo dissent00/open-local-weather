@@ -122,6 +122,23 @@ class FakeLLMProvider:
     response_schema_sha256 = "a" * 64
     nullable_fields = ("/today_properties/mslp_trend_24h",)
 
+    @property
+    def system_prompts(self) -> str:
+        """Every system prompt this run sent, joined.
+
+        A forecast is two calls since ROADMAP item 59 step 3, and most tests
+        here ask whether the forecaster was TOLD something — not which of the
+        two calls told it. Which call carries a rule is
+        tests/test_prompt_seam.py's question.
+        """
+        return "\n".join(system for system, _user in self.calls)
+
+    @property
+    def user_prompts(self) -> str:
+        """Every user prompt this run sent, joined. The narrative call's is
+        the judgment call's with THE FORECASTER'S CALL appended."""
+        return "\n".join(user for _system, user in self.calls)
+
     def generate(self, system_prompt, user_prompt, response_schema):
         if self.before_attempt is not None:
             self.before_attempt()
@@ -136,7 +153,12 @@ class FakeLLMProvider:
                     nullable_fields=self.nullable_fields,
                 )
             )
-        return self.response
+        # Return the SHAPE that was asked for. The canned response is the
+        # merged GeminiForecastResponse, a superset of both halves of the
+        # split, so each call gets exactly the fields its own schema declares
+        # — which is what a real provider does, and what makes these tests
+        # exercise the split rather than route around it.
+        return response_schema.model_validate(self.response.model_dump())
 
 
 def sun_fixture(lat, lon, day, utc_offset_seconds):
@@ -533,8 +555,12 @@ def test_llm_receives_system_and_user_prompt(tmp_path):
     deps = make_deps(tmp_path, llm=llm)
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
 
-    assert len(llm.calls) == 1
-    system_prompt, user_prompt = llm.calls[0]
+    # Two calls since ROADMAP item 59 step 3: judgment, then narrative.
+    assert len(llm.calls) == 2
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "Test Town" in system_prompt
     assert "2026-08-11" in user_prompt
 
@@ -673,7 +699,10 @@ def test_no_stations_configured_says_nothing_about_ground_stations(tmp_path):
     )
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "GROUND AQI" not in user_prompt
     assert "no ground station reported data" not in user_prompt
     assert "GROUND AQI" not in system_prompt
@@ -695,7 +724,10 @@ def test_stations_configured_still_get_their_blocks(tmp_path, monkeypatch):
     )
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "GROUND AQI STATIONS" in user_prompt
     assert "no ground station reported data" in user_prompt, "configured but silent today"
     assert "Ground AQI stations may occasionally be offline" in system_prompt
@@ -716,7 +748,10 @@ def test_no_met_service_configured_is_a_state_not_a_missing_bulletin(tmp_path):
     llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "LOCAL BULLETIN" not in user_prompt
     assert "NAME THE LOCAL MET SERVICE" not in system_prompt
     assert "LOCAL MET SERVICE AS A MODEL" not in system_prompt
@@ -733,7 +768,10 @@ def test_a_configured_met_service_is_named_and_carried(tmp_path):
     )
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "LOCAL BULLETIN (Kenya Meteorological Department (KMD)):" in user_prompt
     assert "NAME THE LOCAL MET SERVICE EVERY TIME" in system_prompt
     assert "No national met service is configured" not in system_prompt
@@ -958,7 +996,7 @@ def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_pat
     evening_llm = FakeLLMProvider()
     run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = evening_llm.calls[0]
+    system_prompt, user_prompt = evening_llm.system_prompts, evening_llm.user_prompts
     assert "LATER ISSUANCE" in system_prompt
     assert "EARLIER TODAY" in user_prompt
     assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
@@ -1176,18 +1214,25 @@ def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch
     assert called == [], "the provider must never be reached once the cap is hit"
 
 
-def test_a_normal_run_records_exactly_one_call(tmp_path):
+def test_a_normal_run_records_exactly_two_calls(tmp_path):
     """Counting has to be accurate in the ordinary case too — an
-    over-counting cap would refuse legitimate forecasts."""
+    over-counting cap would refuse legitimate forecasts.
+
+    TWO SINCE ROADMAP ITEM 59 STEP 3, and the number is the point of the
+    test rather than an incidental. A forecast is a judgment call and then a
+    rendering call, so a cap sized for one forecast a day must be sized for
+    two calls a day — see item 26, where the reader's own cap is what this
+    doubling actually spends.
+    """
     from openlocalweather.spend import read_ledger
 
     deps = make_deps(tmp_path)
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
 
     ledger = read_ledger(tmp_path)
-    assert len(ledger) == 1
-    assert ledger[0].purpose == "forecast"
-    assert ledger[0].model
+    assert len(ledger) == 2
+    assert [e.purpose for e in ledger] == ["forecast", "forecast"]
+    assert all(e.model for e in ledger)
 
 
 def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
@@ -1198,7 +1243,7 @@ def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
 
     deps = make_deps(tmp_path)
     run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
-    assert len(read_ledger(tmp_path)) == 1
+    assert len(read_ledger(tmp_path)) == 2
 
 
 def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatch):
@@ -1270,7 +1315,8 @@ def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
     )
     assert result.log_entry is not None
-    assert len(llm.calls) == 1
+    # Two calls since ROADMAP item 59 step 3: judgment, then narrative.
+    assert len(llm.calls) == 2
 
 
 def test_sunrise_and_sunset_are_stored_from_code_not_the_narrative(tmp_path):
@@ -1532,7 +1578,7 @@ def test_a_forced_re_run_is_told_it_is_a_later_issuance(tmp_path):
     have already read, and emails it as though it were the day's first."""
     _, forced = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
-    system_prompt, user_prompt = forced.calls[-1]
+    system_prompt, user_prompt = forced.system_prompts, forced.user_prompts
     assert "LATER ISSUANCE" in system_prompt
     assert "Evening refresh." in user_prompt, "shown what has already been published"
 
@@ -2170,7 +2216,10 @@ def test_an_absent_cape_series_forbids_an_all_clear(tmp_path, monkeypatch):
     )
     llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
 
     assert "no model supplied a CAPE series" in user_prompt
     # The gap is stated AND the inference from it is refused, in the block
@@ -2430,7 +2479,10 @@ def test_no_baseline_reaches_the_prompt_through_any_block(tmp_path):
     llm = FakeLLMProvider()
     run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
-    system_prompt, user_prompt = llm.calls[0]
+    # Both calls' instructions. Whether a rule reached the forecaster is a
+    # question about the run; WHICH of the two calls carries it is
+    # tests/test_prompt_seam.py's.
+    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     for baseline in BASELINE_MODEL_IDS:
         assert baseline not in user_prompt, f"{baseline} leaked into the user prompt"
         assert baseline not in system_prompt, f"{baseline} leaked into the system prompt"
@@ -2746,7 +2798,10 @@ def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
         raise pipeline.open_meteo.OpenMeteoFetchError("Read timed out. (read timeout=30)")
 
     system_prompts = []
-    real_system = pipeline.build_system_prompt
+    # The narrative builder: the Extended Outlook section these tests read is
+    # a narrative one, and since ROADMAP item 59 step 3 the judgment call does
+    # not carry it at all.
+    real_system = pipeline.build_narrative_prompt
 
     def spy(*args, **kwargs):
         built = real_system(*args, **kwargs)
@@ -2754,12 +2809,12 @@ def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
         return built
 
     pipeline.open_meteo.fetch_forecast_daily_extended = fail_extended
-    pipeline.build_system_prompt = spy
+    pipeline.build_narrative_prompt = spy
     try:
         result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_daily_extended = real
-        pipeline.build_system_prompt = real_system
+        pipeline.build_narrative_prompt = real_system
 
     assert result is not None, "the run aborted rather than degrading"
     codes = {d.code for d in result.log_entry.meta.degradations}
@@ -2829,7 +2884,10 @@ def test_the_lake_losing_its_outlook_degrades_too(tmp_path):
         raise pipeline.open_meteo.OpenMeteoFetchError("Read timed out. (read timeout=30)")
 
     system_prompts = []
-    real_system = pipeline.build_system_prompt
+    # The narrative builder: the Extended Outlook section these tests read is
+    # a narrative one, and since ROADMAP item 59 step 3 the judgment call does
+    # not carry it at all.
+    real_system = pipeline.build_narrative_prompt
 
     def spy(*args, **kwargs):
         built = real_system(*args, **kwargs)
@@ -2837,12 +2895,12 @@ def test_the_lake_losing_its_outlook_degrades_too(tmp_path):
         return built
 
     pipeline.open_meteo.fetch_forecast_daily_extended = fail_secondary_only
-    pipeline.build_system_prompt = spy
+    pipeline.build_narrative_prompt = spy
     try:
         result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_daily_extended = real
-        pipeline.build_system_prompt = real_system
+        pipeline.build_narrative_prompt = real_system
 
     assert (location.secondary_point.lat, location.secondary_point.lon) in attempted, (
         "the secondary extended fetch was never attempted, so nothing was tested"

@@ -46,6 +46,7 @@ subscribers.
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timezone
@@ -117,14 +118,27 @@ from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
-from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.llm import forecast_call
+from openlocalweather.llm.forecast_call import generate_forecast
+from openlocalweather.llm.prompt import (
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_narrative_user_prompt,
+    build_user_prompt,
+)
 from openlocalweather.store import prompt_archive
 from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
 from openlocalweather.spend import assert_capacity, complete_attempt, record_attempt
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider, ResponseMeta
-from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
+from openlocalweather.llm.schema import (
+    GeminiForecastResponse,
+    GeminiJudgmentResponse,
+    GeminiNarrativeResponse,
+    TodayProperties,
+    merge_forecast_response,
+)
 from openlocalweather.models import (
     summary_carries_a_figure,
     DEGRADATION_HOURS_AHEAD_NARROWED,
@@ -323,6 +337,73 @@ def _nullable_fields(holder: dict) -> list[str] | None:
         return None
 
     return list(reported)
+
+
+def _combined_meta(judgment: ResponseMeta, narrative: ResponseMeta) -> ResponseMeta:
+    """One record for a forecast that now takes two calls — ROADMAP item 59.3.
+
+    `nullable_fields` is the UNION of what either call was allowed to omit,
+    which keeps the field answering the question it was added for: which
+    values was the model permitted not to give. The two schemas share no
+    field names — one holds the scored call, the other only prose — so the
+    union loses nothing and needs no disambiguation.
+
+    `response_schema_sha256` hashes the two schema hashes together, in call
+    order, so a change to EITHER schema moves it. Hashing only the judgment
+    call's would leave the narrative schema unrecorded, and it is the one
+    that makes the seam structural.
+
+    Tokens are summed because they are spend and the run spent both.
+    `finish_reason` is the narrative call's: a judgment call that ended any
+    other way raises inside the provider (see gemini.py, where the stop
+    reason is checked before the content is read), so a stored entry cannot
+    carry an abnormal one from the first call — it would have no entry.
+    """
+    both = [f for f in (judgment.nullable_fields, narrative.nullable_fields) if f is not None]
+    nullable = tuple(sorted({path for fields in both for path in fields})) if both else None
+
+    hashes = [judgment.response_schema_sha256, narrative.response_schema_sha256]
+    if any(h is None for h in hashes):
+        combined_sha = None
+    else:
+        combined_sha = hashlib.sha256("\n".join(hashes).encode("utf-8")).hexdigest()
+
+    def _sum(a: int | None, b: int | None) -> int | None:
+        if a is None and b is None:
+            return None
+        return (a or 0) + (b or 0)
+
+    return ResponseMeta(
+        finish_reason=narrative.finish_reason,
+        input_tokens=_sum(judgment.input_tokens, narrative.input_tokens),
+        output_tokens=_sum(judgment.output_tokens, narrative.output_tokens),
+        response_schema_sha256=combined_sha,
+        nullable_fields=nullable,
+    )
+
+
+def _generate_forecast(
+    provider, judgment_prompt: str, narrative_prompt: str, user_prompt: str, holder: dict
+) -> tuple[GeminiForecastResponse, ResponseMeta]:
+    """The two-call forecast, plus one meta describing both calls.
+
+    The call ORDER lives in llm/forecast_call.py, shared with replay. What
+    this adds is the snapshot: `holder` holds only the LAST response, so each
+    call's report has to be taken before the next one overwrites it.
+    """
+    metas: dict[str, ResponseMeta] = {}
+
+    def _snapshot(name: str) -> None:
+        metas[name] = _response_meta(holder)
+
+    response = generate_forecast(
+        provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
+    )
+
+    return response, _combined_meta(
+        metas.get(forecast_call.JUDGMENT, ResponseMeta()),
+        metas.get(forecast_call.NARRATIVE, ResponseMeta()),
+    )
 
 
 def attach_spend_cap(provider, data_dir: Path, *, max_calls: int, purpose: str):
@@ -1529,13 +1610,14 @@ def run_daily_pipeline(
     # A run on a day that already has an entry is a later issuance, whatever
     # verb was typed. Told otherwise it writes a fresh morning-style forecast
     # over one the readers have already had, and emails it as the day's first.
-    system_prompt = build_system_prompt(
-        location,
+    prompt_flags = dict(
         is_reissue=existing_entry is not None,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         extended_outlook_available=extended_outlook_available,
     )
+    judgment_prompt = build_judgment_prompt(location, **prompt_flags)
+    narrative_prompt = build_narrative_prompt(location, **prompt_flags)
     # THE FOURTH PLACE THE STANDING RULE HAS TO BE APPLIED, and the one it
     # was missing. per_model_scores is scored for EVERY model, the blend and
     # the two baselines included, and it went to the prompt unfiltered while
@@ -1666,8 +1748,8 @@ def run_daily_pipeline(
         max_calls=location.max_llm_calls_per_24h,
         purpose="forecast",
     )
-    llm_response: GeminiForecastResponse = deps.llm_provider.generate(
-        system_prompt, user_prompt, GeminiForecastResponse
+    llm_response, _call_meta = _generate_forecast(
+        deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
     )
     _verify_spend()
 
@@ -1736,7 +1818,9 @@ def run_daily_pipeline(
             llm_provider=type(deps.llm_provider).__name__,
             llm_model=getattr(deps.llm_provider, "model", "unknown"),
             pipeline_version=deps.pipeline_version,
-            system_prompt_sha256=prompt_archive.prompt_sha256(system_prompt),
+            system_prompt_sha256=prompt_archive.combined_prompt_sha256(
+                judgment_prompt, narrative_prompt
+            ),
             finish_reason=_response_meta(_last_response).finish_reason,
             input_tokens=_response_meta(_last_response).input_tokens,
             output_tokens=_response_meta(_last_response).output_tokens,
@@ -1797,7 +1881,8 @@ def run_daily_pipeline(
             deps.data_dir,
             today,
             issued_at=log_entry.meta.generated_at_utc,
-            system_prompt=system_prompt,
+            judgment_prompt=judgment_prompt,
+            narrative_prompt=narrative_prompt,
             user_prompt=user_prompt,
             llm_model=log_entry.meta.llm_model,
         )
@@ -2053,13 +2138,14 @@ def run_refresh_pipeline(
     extended_outlook_available = DEGRADATION_EXTENDED_OUTLOOK not in {
         d.code for d in guidance.degradations
     }
-    system_prompt = build_system_prompt(
-        location,
+    prompt_flags = dict(
         is_reissue=True,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         extended_outlook_available=extended_outlook_available,
     )
+    judgment_prompt = build_judgment_prompt(location, **prompt_flags)
+    narrative_prompt = build_narrative_prompt(location, **prompt_flags)
     user_prompt = build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
@@ -2107,8 +2193,8 @@ def run_refresh_pipeline(
         max_calls=location.max_llm_calls_per_24h,
         purpose="refresh",
     )
-    llm_response: GeminiForecastResponse = deps.llm_provider.generate(
-        system_prompt, user_prompt, GeminiForecastResponse
+    llm_response, _call_meta = _generate_forecast(
+        deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
     )
     _verify_spend()
 
@@ -2188,7 +2274,9 @@ def run_refresh_pipeline(
                     # is_reissue branch alone makes them different documents,
                     # and this field names the forecaster that wrote the
                     # narrative currently in the entry.
-                    "system_prompt_sha256": prompt_archive.prompt_sha256(system_prompt),
+                    "system_prompt_sha256": prompt_archive.combined_prompt_sha256(
+                        judgment_prompt, narrative_prompt
+                    ),
                     # THIS issuance's call, like the prompt hash above and
                     # for the same reason: the entry describes the forecast
                     # currently in it, not the one it replaced.
@@ -2215,7 +2303,8 @@ def run_refresh_pipeline(
             deps.data_dir,
             today,
             issued_at=updated_entry.meta.refreshed_at,
-            system_prompt=system_prompt,
+            judgment_prompt=judgment_prompt,
+            narrative_prompt=narrative_prompt,
             user_prompt=user_prompt,
             llm_model=updated_entry.meta.llm_model,
         )

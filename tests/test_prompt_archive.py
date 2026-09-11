@@ -11,7 +11,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openlocalweather.store import log_store, prompt_archive
-from openlocalweather.store.prompt_archive import prompt_sha256
+from openlocalweather.store.prompt_archive import combined_prompt_sha256, prompt_sha256
 
 # patch_fetches is autouse, but only in the module that DEFINES it — an
 # autouse fixture does not reach a module that merely imports its neighbour's
@@ -71,7 +71,8 @@ def test_a_second_issuance_is_added_not_overwritten(tmp_path):
             data_dir,
             TODAY,
             issued_at=issued_at,
-            system_prompt="system",
+            judgment_prompt="judgment",
+            narrative_prompt="narrative",
             user_prompt=user_prompt,
             llm_model="m",
         )
@@ -91,7 +92,8 @@ def test_re_archiving_one_instant_replaces_rather_than_duplicates(tmp_path):
             tmp_path,
             TODAY,
             issued_at=issued_at,
-            system_prompt="system",
+            judgment_prompt="judgment",
+            narrative_prompt="narrative",
             user_prompt=user_prompt,
             llm_model="m",
         )
@@ -126,7 +128,8 @@ def test_the_archived_set_is_the_backtestable_set(tmp_path):
             tmp_path,
             d,
             issued_at=datetime(d.year, d.month, d.day, 3, tzinfo=timezone.utc),
-            system_prompt="system",
+            judgment_prompt="judgment",
+            narrative_prompt="narrative",
             user_prompt="inputs",
             llm_model="m",
         )
@@ -173,9 +176,17 @@ def test_the_evening_refresh_archives_its_own_prompt_not_the_mornings(tmp_path):
     issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
     assert len(issuances) == 2, "the morning issuance must survive the refresh"
 
-    sent_system, sent_user = llm.calls[-1]
+    # The JUDGMENT call's user prompt is the archived one: the narrative call
+    # is sent that same message with THE FORECASTER'S CALL appended, so the
+    # judgment's is the input the issuance actually started from.
+    sent_judgment, sent_user = llm.calls[0]
+    sent_narrative, _ = llm.calls[-1]
     assert issuances[-1]["user_prompt"] == sent_user
-    assert issuances[-1]["system_prompt_sha256"] == prompt_sha256(sent_system)
+    assert issuances[-1]["judgment_prompt_sha256"] == prompt_sha256(sent_judgment)
+    assert issuances[-1]["narrative_prompt_sha256"] == prompt_sha256(sent_narrative)
+    assert issuances[-1]["system_prompt_sha256"] == combined_prompt_sha256(
+        sent_judgment, sent_narrative
+    )
 
     # The two issuances are genuinely different forecasters, and the record
     # now says so rather than carrying the morning's identity forward.

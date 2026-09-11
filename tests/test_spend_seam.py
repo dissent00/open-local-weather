@@ -413,8 +413,12 @@ def test_a_replay_is_counted_like_any_other_call(tmp_path, monkeypatch):
         replay_mod,
         "frozen_cases",
         lambda: [
-            replay_mod.ReplayCase(name="one", system_prompt="s1", user_prompt="u1"),
-            replay_mod.ReplayCase(name="two", system_prompt="s2", user_prompt="u2"),
+            replay_mod.ReplayCase(
+            name="one", judgment_prompt="j1", narrative_prompt="n1", user_prompt="u1"
+        ),
+            replay_mod.ReplayCase(
+            name="two", judgment_prompt="j2", narrative_prompt="n2", user_prompt="u2"
+        ),
         ],
     )
 
@@ -429,9 +433,12 @@ def test_a_replay_is_counted_like_any_other_call(tmp_path, monkeypatch):
         )
     )
 
-    assert len(calls) == 2, "the replay did not run"
+    # Two cases, two calls each since ROADMAP item 59 step 3 — and the
+    # doubling is the thing this file exists to notice, because every one
+    # of them spends against the same cap.
+    assert len(calls) == 4, "the replay did not run"
     rows = read_ledger(tmp_path)
-    assert len(rows) == 2, f"a replay spent {len(calls)} calls and recorded {len(rows)}"
+    assert len(rows) == 4, f"a replay spent {len(calls)} calls and recorded {len(rows)}"
     assert {r.purpose for r in rows} == {"replay"}, (
         "recorded under the wrong purpose — a ledger read later cannot tell a "
         "replay from the forecast it was meant to be compared against"

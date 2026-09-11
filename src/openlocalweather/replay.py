@@ -38,7 +38,12 @@ from pathlib import Path
 from typing import Any
 
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.llm.forecast_call import generate_forecast
+from openlocalweather.llm.prompt import (
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_user_prompt,
+)
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.llm.schema import GeminiForecastResponse
 
@@ -53,7 +58,11 @@ SCORED_PREFIX = "today_properties"
 @dataclass(frozen=True)
 class ReplayCase:
     name: str
-    system_prompt: str
+    # TWO system prompts since ROADMAP item 59 step 3, so ONE CASE IS NOW TWO
+    # PAID CALLS. The roadmap's "one case is one call, not six" still holds
+    # against the CLI's hardcoded six; it is now two per case.
+    judgment_prompt: str
+    narrative_prompt: str
     user_prompt: str
 
 
@@ -145,7 +154,13 @@ def frozen_cases() -> list[ReplayCase]:
         cases.append(
             ReplayCase(
                 name=case["name"],
-                system_prompt=build_system_prompt(
+                judgment_prompt=build_judgment_prompt(
+                    location,
+                    is_reissue=reissue,
+                    ground_stations_configured=ground,
+                    local_bulletin_configured=bulletin,
+                ),
+                narrative_prompt=build_narrative_prompt(
                     location,
                     is_reissue=reissue,
                     ground_stations_configured=ground,
@@ -187,8 +202,8 @@ def run_replay(
     for case in cases:
         started = time.monotonic()
         try:
-            response = provider.generate(
-                case.system_prompt, case.user_prompt, GeminiForecastResponse
+            response = generate_forecast(
+                provider, case.judgment_prompt, case.narrative_prompt, case.user_prompt
             )
         except Exception as e:  # noqa: BLE001 - a failed case must not cost the others
             failures.append(ReplayFailure(case=case.name, error=str(e)))
