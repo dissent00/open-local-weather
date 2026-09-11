@@ -177,14 +177,18 @@ class GeminiNarrativeResponse(BaseModel):
     whatsapp_summary: str | None = None
 
 
+# The two calls merged, and the shape everything downstream still reads.
+#
+# Kept deliberately: the pipeline, the store, the renderers and the Dart port
+# all consume this, and the split has no business reaching them. See
+# `merge_forecast_response`.
+#
+# A COMMENT RATHER THAN A DOCSTRING, unlike its two halves. Docstrings on
+# these classes are LIFTED INTO THE WIRE SCHEMA and shipped to the provider —
+# see the note above `to_gemini_schema`. No call ever sends this shape, so a
+# description here would be instructions nobody reads, and adding one churned
+# two pinned vectors in both languages before it was noticed.
 class GeminiForecastResponse(BaseModel):
-    """The two calls merged, and the shape everything downstream still reads.
-
-    Kept deliberately: the pipeline, the store, the renderers and the Dart
-    port all consume this, and the split has no business reaching them. See
-    `merge_forecast_response`.
-    """
-
     yesterday_verification: str
     verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)

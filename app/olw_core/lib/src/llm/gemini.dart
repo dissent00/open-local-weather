@@ -72,13 +72,14 @@ class GeminiProvider implements LlmProvider {
           .replace(queryParameters: {'key': apiKey});
 
   @override
-  Future<ForecastResponse> generate({
+  Future<T> generate<T>({
     required String systemPrompt,
     required String userPrompt,
+    required ResponseShape<T> shape,
   }) async {
     final generationConfig = <String, Object?>{
       'responseMimeType': 'application/json',
-      'responseSchema': geminiForecastSchema(),
+      'responseSchema': shape.geminiSchema(),
     };
     if (thinkingLevel != null) {
       generationConfig['thinkingConfig'] = {'thinkingLevel': thinkingLevel};
@@ -149,7 +150,7 @@ class GeminiProvider implements LlmProvider {
       throw LlmResponseError('Gemini response did not contain the expected payload: $e');
     }
 
-    final parsed = parseForecast(text, 'Gemini');
+    final parsed = parseResponse(text, 'Gemini', shape);
 
     // AFTER parsing, not before: a response that fails the schema produced no
     // forecast, and the error already carries the reason.

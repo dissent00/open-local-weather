@@ -342,6 +342,25 @@ void main() {
       final expected = casesOf('llm_schema_strict.json').single['expected'];
       expect(strictForecastSchema(), equals(expected));
     });
+
+    // The two halves of the split — upstream ROADMAP item 59 step 3. These
+    // ARE sent; the merged shape above is not. The narrative schema is
+    // pinned because its ABSENCES are the seam: no today_properties and no
+    // extended_properties, so a rendering call cannot return a scored value.
+    test('the split schemas match Python exactly', () {
+      final cases = {
+        for (final c in casesOf('llm_schema_split.json'))
+          c['name'] as String: c['expected']
+      };
+      expect(geminiJudgmentSchema(), equals(cases['judgment']));
+      expect(geminiNarrativeSchema(), equals(cases['narrative']));
+
+      final narrative =
+          (cases['narrative'] as Map)['properties'] as Map<String, Object?>;
+      expect(narrative.containsKey('today_properties'), isFalse,
+          reason: 'the renderer must have nowhere to put a scored field');
+      expect(narrative.containsKey('extended_properties'), isFalse);
+    });
   });
 
   group('system prompt', () {
@@ -353,8 +372,7 @@ void main() {
         final i = c['input'] as Map<String, Object?>;
         final loc = i['location'] as Map<String, Object?>;
         final sec = loc['secondary_point'] as Map<String, Object?>;
-        final got = buildSystemPrompt(
-          LocationConfig(
+        final location = LocationConfig(
             regionName: loc['region_name'] as String,
             primaryPlaceName: loc['primary_place_name'] as String,
             timezone: 'UTC',
@@ -365,16 +383,34 @@ void main() {
               name: sec['name'] as String,
               sectionLabel: sec['section_label'] as String,
             ),
-          ),
-          historicalLookbackDaysArg: i['historical_lookback_days'] as int,
-          rollingWindowShortArg: i['rolling_window_short'] as int,
-          rollingWindowLongArg: i['rolling_window_long'] as int,
-          isReissue: i['is_reissue'] as bool,
-          groundStationsConfigured: i['ground_stations_configured'] as bool,
-          localBulletinConfigured: i['local_bulletin_configured'] as bool,
-          extendedOutlookAvailable: i['extended_outlook_available'] as bool,
         );
-        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+        String build(String Function(LocationConfig, {
+          int historicalLookbackDaysArg,
+          int rollingWindowShortArg,
+          int rollingWindowLongArg,
+          bool isReissue,
+          bool groundStationsConfigured,
+          bool localBulletinConfigured,
+          bool extendedOutlookAvailable,
+        }) builder) =>
+            builder(
+              location,
+              historicalLookbackDaysArg: i['historical_lookback_days'] as int,
+              rollingWindowShortArg: i['rolling_window_short'] as int,
+              rollingWindowLongArg: i['rolling_window_long'] as int,
+              isReissue: i['is_reissue'] as bool,
+              groundStationsConfigured: i['ground_stations_configured'] as bool,
+              localBulletinConfigured: i['local_bulletin_configured'] as bool,
+              extendedOutlookAvailable: i['extended_outlook_available'] as bool,
+            );
+
+        // BOTH, and separately. Pinning their concatenation would let a rule
+        // moved from one call to the other cancel out and pass.
+        final expected = c['expected'] as Map<String, Object?>;
+        expect(build(buildJudgmentPrompt), equals(expected['judgment']),
+            reason: 'judgment prompt, case "${c['name']}"');
+        expect(build(buildNarrativePrompt), equals(expected['narrative']),
+            reason: 'narrative prompt, case "${c['name']}"');
       }
     });
   });
@@ -1200,6 +1236,7 @@ void main() {
       'extended_blend_predictions.json',
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
+      'llm_schema_split.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
       'llm_user_prompt.json',

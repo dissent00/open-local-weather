@@ -112,7 +112,7 @@ void main() {
         apiKey: 'k',
         model: 'gemini-test',
         client: cap.client,
-      ).generate(systemPrompt: 'SYS', userPrompt: 'USR');
+      ).generate(systemPrompt: 'SYS', userPrompt: 'USR', shape: forecastShape);
 
       expect(got.todayProperties.tempHighC, 26.0);
       expect(cap.uri!.queryParameters['key'], 'k');
@@ -128,13 +128,13 @@ void main() {
     test('thinkingLevel is nested camelCase, and omitted when unset', () async {
       var cap = _Cap(geminiEnvelope(validPayload));
       await GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-          .generate(systemPrompt: 's', userPrompt: 'u');
+          .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect((cap.body['generationConfig'] as Map).containsKey('thinkingConfig'), isFalse);
 
       cap = _Cap(geminiEnvelope(validPayload));
       await GeminiProvider(
               apiKey: 'k', model: 'm', thinkingLevel: 'high', client: cap.client)
-          .generate(systemPrompt: 's', userPrompt: 'u');
+          .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect((cap.body['generationConfig'] as Map)['thinkingConfig'],
           {'thinkingLevel': 'high'});
     });
@@ -148,7 +148,7 @@ void main() {
       final cap = _Cap(jsonEncode({'candidates': []}));
       expect(
         () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-            .generate(systemPrompt: 's', userPrompt: 'u'),
+            .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
     });
@@ -161,7 +161,7 @@ void main() {
         final cap = _Cap(geminiEnvelopeFinishing(reason, validPayload));
         expect(
           () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-              .generate(systemPrompt: 's', userPrompt: 'u'),
+              .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
           throwsA(isA<LlmResponseError>()),
         );
       });
@@ -170,7 +170,7 @@ void main() {
     test('a candidate that stopped cleanly is accepted', () async {
       final cap = _Cap(geminiEnvelopeFinishing('STOP', validPayload));
       final got = await GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-          .generate(systemPrompt: 's', userPrompt: 'u');
+          .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect(got.todayProperties.tempHighC, 26.0);
     });
 
@@ -179,7 +179,7 @@ void main() {
       // turn a provider change into a total outage.
       final cap = _Cap(geminiEnvelopeFinishing(null, validPayload));
       final got = await GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-          .generate(systemPrompt: 's', userPrompt: 'u');
+          .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect(got.todayProperties.tempHighC, 26.0);
     });
 
@@ -207,7 +207,7 @@ void main() {
         model: 'm',
         client: cap.client,
         onResponse: seen.add,
-      ).generate(systemPrompt: 's', userPrompt: 'u');
+      ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
 
       expect(seen, hasLength(1), reason: 'once per generate, not once per attempt');
       expect(seen.single.finishReason, 'STOP');
@@ -226,7 +226,7 @@ void main() {
               model: 'm',
               client: cap.client,
               onResponse: seen.add,
-            ).generate(systemPrompt: 's', userPrompt: 'u'),
+            ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
       expect(seen, isEmpty);
@@ -241,7 +241,7 @@ void main() {
       final cap = _Cap(geminiEnvelopeFinishing('STOP', payload));
       expect(
         () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
-            .generate(systemPrompt: 's', userPrompt: 'u'),
+            .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
     });
@@ -254,7 +254,7 @@ void main() {
         apiKey: 'ant',
         model: 'claude-test',
         client: cap.client,
-      ).generate(systemPrompt: 'SYS', userPrompt: 'USR');
+      ).generate(systemPrompt: 'SYS', userPrompt: 'USR', shape: forecastShape);
 
       expect(got.todayProperties.rainExpected, 'Likely');
       expect(cap.headers['x-api-key'], 'ant');
@@ -280,7 +280,7 @@ void main() {
       }));
       expect(
         () => AnthropicProvider(apiKey: 'k', model: 'm', client: cap.client)
-            .generate(systemPrompt: 's', userPrompt: 'u'),
+            .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>().having(
             (e) => e.message, 'message', contains('truncated at max_tokens'))),
       );
@@ -296,7 +296,7 @@ void main() {
       }));
       expect(
         () => AnthropicProvider(apiKey: 'k', model: 'm', client: cap.client)
-            .generate(systemPrompt: 's', userPrompt: 'u'),
+            .generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
     });
@@ -310,7 +310,7 @@ void main() {
         model: 'gpt-test',
         baseUrl: 'https://api.example.test/v1',
         client: cap.client,
-      ).generate(systemPrompt: 'SYS', userPrompt: 'USR');
+      ).generate(systemPrompt: 'SYS', userPrompt: 'USR', shape: forecastShape);
 
       expect(got.todayNarrative, contains('Overview'));
       expect(cap.uri.toString(), 'https://api.example.test/v1/chat/completions');
@@ -329,7 +329,7 @@ void main() {
         model: 'llama',
         baseUrl: 'http://localhost:11434/v1',
         client: cap.client,
-      ).generate(systemPrompt: 's', userPrompt: 'u');
+      ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect(cap.headers.containsKey('Authorization'), isFalse);
     });
 
@@ -341,7 +341,7 @@ void main() {
         baseUrl: 'https://x.test/v1',
         jsonMode: 'json_object',
         client: cap.client,
-      ).generate(systemPrompt: 'SYS', userPrompt: 'u');
+      ).generate(systemPrompt: 'SYS', userPrompt: 'u', shape: forecastShape);
 
       expect(cap.body['response_format'], {'type': 'json_object'});
       final system = (cap.body['messages'] as List).first['content'] as String;
@@ -365,7 +365,7 @@ void main() {
         baseUrl: 'https://x.test/v1',
         jsonMode: 'json_object',
         client: cap.client,
-      ).generate(systemPrompt: 's', userPrompt: 'u');
+      ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect(got.todayProperties.rainExpected, 'Likely');
     });
 
@@ -377,7 +377,7 @@ void main() {
           model: 'm',
           baseUrl: 'https://x.test/v1',
           client: cap.client,
-        ).generate(systemPrompt: 's', userPrompt: 'u'),
+        ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
     });
@@ -397,7 +397,7 @@ void main() {
         baseUrl: 'https://x.test/v1',
         client: client,
         retryPolicy: instantInteractive,
-      ).generate(systemPrompt: 's', userPrompt: 'u');
+      ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape);
       expect(got.todayProperties.tempLowC, 18.0);
       expect(calls, 2);
     });
@@ -415,7 +415,7 @@ void main() {
           baseUrl: 'https://x.test/v1',
           client: client,
           retryPolicy: instantInteractive,
-        ).generate(systemPrompt: 's', userPrompt: 'u'),
+        ).generate(systemPrompt: 's', userPrompt: 'u', shape: forecastShape),
         throwsA(isA<LlmResponseError>()),
       );
       expect(calls, 1, reason: 'retrying a bad request only burns quota');

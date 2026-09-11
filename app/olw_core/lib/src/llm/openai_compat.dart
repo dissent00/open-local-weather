@@ -64,11 +64,12 @@ class OpenAiCompatProvider implements LlmProvider {
       Uri.parse('${baseUrl.replaceAll(RegExp(r"/+$"), "")}/chat/completions');
 
   @override
-  Future<ForecastResponse> generate({
+  Future<T> generate<T>({
     required String systemPrompt,
     required String userPrompt,
+    required ResponseShape<T> shape,
   }) async {
-    final schema = strictForecastSchema();
+    final schema = shape.strictSchema();
     var system = systemPrompt;
     final Map<String, Object?> responseFormat;
 
@@ -126,7 +127,7 @@ class OpenAiCompatProvider implements LlmProvider {
           '${(choices.first as Map)['finish_reason']}).');
     }
 
-    final parsed = parseForecast(text as String, 'LLM');
+    final parsed = parseResponse(text as String, 'LLM', shape);
 
     final usage = (body['usage'] as Map?) ?? const {};
     onResponse?.call(LlmResponseMeta(

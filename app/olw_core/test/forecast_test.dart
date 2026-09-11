@@ -81,17 +81,28 @@ class _StubProvider implements LlmProvider {
   String? seenSystemPrompt;
   String? seenUserPrompt;
 
+  /// Every (system, user) pair this stub was sent, in order. A forecast is
+  /// two calls since upstream ROADMAP item 59 step 3, and the fields above
+  /// keep naming the LAST of them so existing assertions still read the
+  /// narrative call — the one that writes what a reader sees.
+  final List<(String, String)> calls = [];
+
   @override
   String get model => 'stub-model';
 
   @override
-  Future<ForecastResponse> generate({
+  Future<T> generate<T>({
     required String systemPrompt,
     required String userPrompt,
+    required ResponseShape<T> shape,
   }) async {
     seenSystemPrompt = systemPrompt;
     seenUserPrompt = userPrompt;
-    return ForecastResponse.fromJson(_payload ?? _llmPayload);
+    calls.add((systemPrompt, userPrompt));
+    // The shape that was asked for. The canned payload is a whole forecast,
+    // a superset of both halves, so each call gets exactly the fields its
+    // own schema declares — which is what a real provider does.
+    return shape.fromJson(_payload ?? _llmPayload);
   }
 }
 
@@ -727,6 +738,41 @@ void main() {
     expect(llm.seenUserPrompt, contains('"hours_old": 9.0'));
     expect(llm.seenUserPrompt, contains('"source": "derived"'));
     expect(llm.seenUserPrompt, contains('"newer_than_previous_issuance": null'));
+  });
+
+  test('a forecast is a judgment call and then a rendering call', () async {
+    // Upstream ROADMAP item 59 step 3. The order is not a detail: the
+    // renderer is HANDED the judgment's answer, so a run that called them the
+    // other way round would be rendering a call that had not been made.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+
+    expect(llm.calls, hasLength(2), reason: 'two calls, not one');
+
+    final (judgmentSystem, judgmentUser) = llm.calls[0];
+    final (narrativeSystem, narrativeUser) = llm.calls[1];
+
+    // Each call gets its OWN instructions, and neither gets the other's.
+    expect(judgmentSystem, contains('today_properties FIELDS, ALL OF THEM'));
+    expect(judgmentSystem, isNot(contains('STEP 2:')));
+    expect(narrativeSystem, contains('STEP 2:'));
+    expect(narrativeSystem, isNot(contains('today_properties FIELDS, ALL OF THEM')));
+
+    // The renderer is handed the call, on top of everything the judgment saw.
+    expect(narrativeUser, contains(judgmentUser),
+        reason: 'the renderer still needs the raw data for the Discussion');
+    expect(narrativeUser, contains("THE FORECASTER'S CALL"));
+    expect(narrativeUser, contains('"temp_high_c": 27.5'),
+        reason: "the judgment call's own number, handed to the renderer");
+    expect(judgmentUser, isNot(contains("THE FORECASTER'S CALL")),
+        reason: 'the judgment call cannot be shown its own answer');
   });
 
   test('guidance recency hours_old rounds half-to-even, matching Python', () async {

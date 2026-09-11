@@ -30,6 +30,7 @@ export 'src/models.dart';
 export 'src/comparison.dart';
 export 'src/config.dart';
 export 'src/llm/anthropic.dart';
+export 'src/llm/forecast_call.dart';
 export 'src/llm/gemini.dart';
 export 'src/llm/openai_compat.dart';
 export 'src/llm/prompt.dart';

@@ -66,9 +66,10 @@ class AnthropicProvider implements LlmProvider {
       Uri.parse('${baseUrl.replaceAll(RegExp(r"/+$"), "")}/v1/messages');
 
   @override
-  Future<ForecastResponse> generate({
+  Future<T> generate<T>({
     required String systemPrompt,
     required String userPrompt,
+    required ResponseShape<T> shape,
   }) async {
     final payload = {
       'model': model,
@@ -83,7 +84,7 @@ class AnthropicProvider implements LlmProvider {
           'description':
               'Return the complete forecast object. This is the only way to '
                   'answer; do not reply with prose.',
-          'input_schema': strictForecastSchema(),
+          'input_schema': shape.strictSchema(),
         }
       ],
       // Forces the tool call. Without this a model may answer in prose and
@@ -130,9 +131,9 @@ class AnthropicProvider implements LlmProvider {
       throw LlmResponseError('Anthropic returned no tool_use block (stop_reason=$stop).');
     }
 
-    final ForecastResponse parsed;
+    final T parsed;
     try {
-      parsed = ForecastResponse.fromJson(toolInput);
+      parsed = shape.fromJson(toolInput);
     } catch (e) {
       throw LlmResponseError('Anthropic response failed schema validation: $e');
     }

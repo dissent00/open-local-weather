@@ -17,9 +17,14 @@ abstract interface class LlmProvider {
   /// Model id, surfaced for cost/latency display and health checks.
   String get model;
 
-  Future<ForecastResponse> generate({
+  /// GENERIC OVER THE RESPONSE SHAPE since upstream ROADMAP item 59 step 3.
+  /// A forecast is a judgment call and then a rendering call, and the two ask
+  /// for different shapes — the Dart counterpart of Python's
+  /// `response_schema: type[T]` parameter.
+  Future<T> generate<T>({
     required String systemPrompt,
     required String userPrompt,
+    required ResponseShape<T> shape,
   });
 }
 
@@ -236,12 +241,12 @@ Map<String, Object?> decodeJsonBody(http.Response resp, String label) {
   }
 }
 
-/// Parses and validates a raw JSON string into a [ForecastResponse].
+/// Parses and validates a raw JSON string into the shape that was asked for.
 ///
 /// Validation is the real safety net: structured-output modes constrain
 /// generation but do not guarantee it, so every provider's output is checked
 /// against the expected shape before anything downstream sees it.
-ForecastResponse parseForecast(String text, String label) {
+T parseResponse<T>(String text, String label, ResponseShape<T> shape) {
   final Object? data;
   try {
     data = jsonDecode(stripCodeFence(text));
@@ -250,8 +255,9 @@ ForecastResponse parseForecast(String text, String label) {
     throw LlmResponseError('$label response was not valid JSON: $snippet');
   }
   try {
-    return ForecastResponse.fromJson(data as Map<String, Object?>);
+    return shape.fromJson(data as Map<String, Object?>);
   } catch (e) {
-    throw LlmResponseError('$label response failed schema validation: $e');
+    throw LlmResponseError(
+        '$label ${shape.name} response failed schema validation: $e');
   }
 }

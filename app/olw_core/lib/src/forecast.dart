@@ -9,6 +9,7 @@ import 'config.dart';
 import 'cycle.dart';
 import 'extract.dart';
 import 'instability.dart';
+import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
 import 'llm/provider.dart';
 import 'llm/schema.dart';
@@ -79,7 +80,8 @@ class ForecastRun {
     required this.day0Predictions,
     required this.day3Predictions,
     required this.day7Predictions,
-    required this.systemPrompt,
+    required this.judgmentPrompt,
+    required this.narrativePrompt,
     required this.userPrompt,
     required this.degradations,
   });
@@ -100,7 +102,17 @@ class ForecastRun {
 
   /// Retained so a run can be inspected or replayed. On a metered device this
   /// is also what makes "why did it say that?" answerable without a re-run.
-  final String systemPrompt;
+  ///
+  /// TWO SYSTEM PROMPTS since upstream ROADMAP item 59 step 3. Kept apart
+  /// rather than concatenated: the first question anyone asks of a surprising
+  /// forecast is which of the two calls produced it, and a joined string
+  /// cannot answer that.
+  ///
+  /// `userPrompt` is the JUDGMENT call's. The narrative call is sent this
+  /// same message with THE FORECASTER'S CALL appended, which is recoverable
+  /// from these three by `buildNarrativeUserPrompt`.
+  final String judgmentPrompt;
+  final String narrativePrompt;
   final String userPrompt;
 }
 
@@ -413,9 +425,16 @@ Future<ForecastRun> generateForecast({
     'newer_than_previous_issuance': null,
   };
 
-  final systemPrompt = buildSystemPrompt(
+  final isReissue = earlierToday != null && earlierToday.isNotEmpty;
+  final judgmentPrompt = buildJudgmentPrompt(
     location,
-    isReissue: earlierToday != null && earlierToday.isNotEmpty,
+    isReissue: isReissue,
+    groundStationsConfigured: groundStationsConfigured,
+    localBulletinConfigured: localBulletinSourceName.isNotEmpty,
+  );
+  final narrativePrompt = buildNarrativePrompt(
+    location,
+    isReissue: isReissue,
     groundStationsConfigured: groundStationsConfigured,
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
   );
@@ -464,7 +483,14 @@ Future<ForecastRun> generateForecast({
     extendedTrend: extendedTrend,
   );
 
-  final response = await llm.generate(systemPrompt: systemPrompt, userPrompt: userPrompt);
+  // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
+  // spend against the reader's own cap — see item 26.
+  final response = await generateForecastResponse(
+    provider: llm,
+    judgmentPrompt: judgmentPrompt,
+    narrativePrompt: narrativePrompt,
+    userPrompt: userPrompt,
+  );
   return ForecastRun(
     degradations: degradations,
     response: response,
@@ -486,7 +512,8 @@ Future<ForecastRun> generateForecast({
       ...day7,
       ...extendedBlendPredictions(response.extendedProperties, 7),
     ],
-    systemPrompt: systemPrompt,
+    judgmentPrompt: judgmentPrompt,
+    narrativePrompt: narrativePrompt,
     userPrompt: userPrompt,
   );
 }

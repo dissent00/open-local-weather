@@ -190,8 +190,7 @@
           "today_narrative",
           "whatsapp_summary"
         ],
-        "additionalProperties": false,
-        "description": "The two calls merged, and the shape everything downstream still reads.\n\nKept deliberately: the pipeline, the store, the renderers and the Dart\nport all consume this, and the split has no business reaching them. See\n`merge_forecast_response`."
+        "additionalProperties": false
       }
     }
   ]

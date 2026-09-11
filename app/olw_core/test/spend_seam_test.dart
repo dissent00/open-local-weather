@@ -91,7 +91,7 @@ void main() {
       beforeAttempt: () async => hookCalls++,
     );
 
-    await provider.generate(systemPrompt: 'sys', userPrompt: 'user');
+    await provider.generate(systemPrompt: 'sys', userPrompt: 'user', shape: forecastShape);
 
     expect(log, hasLength(3), reason: 'three requests really were sent');
     expect(hookCalls, 3,
@@ -117,7 +117,7 @@ void main() {
     );
 
     await expectLater(
-      provider.generate(systemPrompt: 'sys', userPrompt: 'user'),
+      provider.generate(systemPrompt: 'sys', userPrompt: 'user', shape: forecastShape),
       throwsA(isA<StateError>()),
     );
     expect(log, hasLength(2),
@@ -141,7 +141,7 @@ void main() {
     );
 
     await expectLater(
-      provider.generate(systemPrompt: 'sys', userPrompt: 'user'),
+      provider.generate(systemPrompt: 'sys', userPrompt: 'user', shape: forecastShape),
       throwsA(isA<LlmResponseError>()),
     );
     expect(order.first, 'hook');
@@ -159,7 +159,7 @@ void main() {
       client: flaky(0, log: log),
       retryPolicy: instantBatch,
     );
-    await provider.generate(systemPrompt: 'sys', userPrompt: 'user');
+    await provider.generate(systemPrompt: 'sys', userPrompt: 'user', shape: forecastShape);
     expect(log, hasLength(1));
   });
 }
