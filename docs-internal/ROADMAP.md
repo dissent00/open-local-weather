@@ -12236,19 +12236,29 @@ than instead of it.
 
 Reading the 2026-09-11 run found `mslp_trend_24h` empty. It was empty on
 09-09 and 09-10 as well, and filled on all 29 entries before that.
-Nothing raised. Checking its neighbours found a second field with the same
-three-day break, and that one is published.
+Nothing raised. Checking its neighbours found **two more fields with the
+same three-day break** — and the count is what makes the case, because one
+field looks like a quirk and three look like what they are.
 
-| field | 08-11 … 09-08 | 09-09 | 09-10 | 09-11 | rendered? |
-|---|---|---|---|---|---|
-| `mslp_trend_24h` | filled 29/29 | empty | empty | empty | never, in the life of the repo |
-| `air_quality_aqi` | filled 28/29 (null 09-06) | null | null | null | **yes** — `forecast.html.jinja:63` |
+| field | 08-11 … 09-08 | 09-09 | 09-10 | 09-11 | rendered? | scored? |
+|---|---|---|---|---|---|---|
+| `peak_wind_kmh` | filled 29/29 | null | null | null | not a tile; `pages.py:91` | **never** — item 6 |
+| `mslp_trend_24h` | filled 29/29 | empty | empty | empty | never, in the life of the repo | no — "prose" |
+| `air_quality_aqi` | filled 28/29 (null 09-06) | null | null | null | **yes** — `forecast.html.jinja:63` | no |
+
+`peak_wind_kmh` is the one that matters most. Item 6 calls it *"exactly the
+number boaters would act on"* and records that it is never scored — so its
+absence reaches no other check in the project, and it went quiet for three
+days. (Item 6 also calls it published in every forecast; it is not a stat
+tile on the current forecast page, and the two statements want reconciling.)
 
 **The Air Quality tile has been missing from the published page for three
-days.** `{% if entry.air_quality_aqi %}` guards it, so a null renders no
-empty tile and no error — the tile is simply not there, and a reader who did
-not know it used to exist sees a complete-looking page. Today's page carries
-High/Low, Rain, UV Index, Sunrise, Sunset, and nothing else.
+days**, verified against `docs/archive/` rather than only the log — present
+on 09-08, absent on all three since. `{% if entry.air_quality_aqi %}` guards
+it, so a null renders no empty tile and no error: the tile is simply not
+there, and a reader who did not know it used to exist sees a complete-looking
+page. Today's page carries High/Low, Rain, UV Index, Sunrise, Sunset, and
+nothing else.
 
 ### The mechanism
 
@@ -12295,8 +12305,10 @@ Same derivation as `detect_coverage` — walk the committed log backward over
 not, because there is one forecaster rather than five models to compare it
 against.
 
-Watchable: `rain_expected`, `mslp_trend_24h`, `synoptic_pattern`,
-`uv_index_max`, `air_quality_aqi`.
+Watched: `rain_expected`, `peak_wind_kmh`, `mslp_trend_24h`,
+`synoptic_pattern`, `uv_index_max`, `air_quality_aqi`. The scored fields
+(`rain`, `temp_high_c`, `temp_low_c`) need no watching — an absence there
+already surfaces as an unscored day.
 
 `onset_window` must be **excluded**, for the reason `coverage.py` already
 excludes `onset`: it is populated only when rain onset is forecast, so its

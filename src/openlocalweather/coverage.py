@@ -280,3 +280,156 @@ def detect_trigger_regression(
         runs_checked=len(runs),
         days_since_dispatch=(today - last).days if last else None,
     )
+
+
+# --- Coverage of the fields the forecaster writes ------------------------
+#
+# Everything above watches values CODE derives from the fetched arrays. This
+# watches the ones the MODEL writes, and it exists because the two fail
+# differently and only the first was covered.
+#
+# Measured 2026-09-11, and the count is what makes the case: THREE of these
+# went absent together on 09-09 and stayed absent for three runs, after 29
+# entries in which all three were filled.
+#
+#   peak_wind_kmh    37.4 on 09-08, None on 09-09, 09-10, 09-11
+#   mslp_trend_24h   "-0.2 hPa (Steady)" on 09-08, "" after
+#   air_quality_aqi  "88 US AQI (Moderate, CAMS Model)" on 09-08, None after
+#
+# Nothing raised for any of them. `air_quality_aqi` renders behind `{% if %}`,
+# so its tile LEFT THE PAGE rather than rendering empty. `peak_wind_kmh` is
+# the one that matters most — item 6 calls it "exactly the number boaters
+# would act on", and it is never scored, so an absence reaches no other
+# check. ROADMAP item 102.
+#
+# What is NOT here, and why. The scored fields — `rain`, `temp_high_c`,
+# `temp_low_c` — need no watching: an absence already surfaces as an unscored
+# day. `onset_window` is excluded for the reason `onset` is excluded above:
+# it is populated only when rain onset is forecast, and was null on 19 of the
+# record's first 32 entries, so watching it would alert on every dry spell.
+NARRATED_FIELDS = (
+    "rain_expected",
+    "peak_wind_kmh",
+    "mslp_trend_24h",
+    "synoptic_pattern",
+    "uv_index_max",
+    "air_quality_aqi",
+)
+
+
+@dataclass(frozen=True)
+class NarratedFieldFinding:
+    """One forecaster-written field worth reporting."""
+
+    kind: str  # "regression" | "never_published"
+    field: str
+    last_seen: date | None
+    absent_runs: int
+    checked_runs: int
+
+    @property
+    def message(self) -> str:
+        if self.kind == "never_published":
+            return (
+                f"`{self.field}` has not been filled in any of the last "
+                f"{self.checked_runs} runs. The forecaster is being asked for it "
+                "and has never supplied it — either the prompt does not really "
+                "ask, or the field is not wanted."
+            )
+        return (
+            f"`{self.field}` was last filled on {self.last_seen} and has been "
+            f"absent for {self.absent_runs} runs since. The forecaster stopped "
+            "supplying a field it used to supply; nothing else will notice, "
+            "because an absent display value renders as nothing rather than as "
+            "an error."
+        )
+
+
+def _narrated_present(entry, field: str) -> bool:
+    """Absent means None OR blank.
+
+    `pipeline.py` stores `tp.<field> or ""`, so a field the model declined to
+    answer reaches the record as an empty string, not as None. Treating "" as
+    present is the one mistake that would make this blind to the case it was
+    built for.
+    """
+    value = getattr(entry, field, None)
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    # Numeric fields are present at any value. `bool(value)` would read a
+    # peak_wind_kmh of 0.0 as absent, which is a real reading and not a gap.
+    return True
+
+
+def detect_narrated_coverage(
+    log_lookup: LogLookup,
+    today: date,
+    window_days: int = COVERAGE_WINDOW_DAYS,
+    absent_runs_threshold: int = COVERAGE_ABSENT_RUNS,
+) -> list[NarratedFieldFinding]:
+    """Walks the stored log backwards, newest first.
+
+    Reads the entries as they were STORED rather than re-deriving, for the
+    same reason `detect_coverage` does: what matters is what actually reached
+    the record, because that is what the page rendered from.
+    """
+    runs: list[tuple[date, object]] = []
+    cursor = add_days(today, -1)
+    earliest = add_days(today, -window_days)
+    while cursor >= earliest:
+        entry = log_lookup(cursor)
+        if entry is not None:
+            runs.append((cursor, entry))
+        cursor = add_days(cursor, -1)
+
+    if not runs:
+        return []
+
+    findings: list[NarratedFieldFinding] = []
+    for field in NARRATED_FIELDS:
+        present = [d for d, entry in runs if _narrated_present(entry, field)]
+        if not present:
+            findings.append(
+                NarratedFieldFinding(
+                    kind="never_published",
+                    field=field,
+                    last_seen=None,
+                    absent_runs=len(runs),
+                    checked_runs=len(runs),
+                )
+            )
+            continue
+
+        # Consecutive absences from the newest run backwards.
+        absent = 0
+        for _, entry in runs:
+            if _narrated_present(entry, field):
+                break
+            absent += 1
+
+        if absent >= absent_runs_threshold:
+            findings.append(
+                NarratedFieldFinding(
+                    kind="regression",
+                    field=field,
+                    last_seen=present[0],
+                    absent_runs=absent,
+                    checked_runs=len(runs),
+                )
+            )
+
+    return findings
+
+
+def actionable_narrated(
+    findings: list[NarratedFieldFinding],
+) -> list[NarratedFieldFinding]:
+    """Findings a human should look at — something changed.
+
+    `never_published` is excluded for the reason it is excluded above: there
+    is nothing to chase, and reporting both at equal volume is how monitoring
+    stops being read.
+    """
+    return [f for f in findings if f.kind == "regression"]

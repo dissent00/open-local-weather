@@ -20,7 +20,13 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
-from openlocalweather.coverage import actionable, detect_coverage, detect_trigger_regression
+from openlocalweather.coverage import (
+    actionable,
+    actionable_narrated,
+    detect_coverage,
+    detect_narrated_coverage,
+    detect_trigger_regression,
+)
 from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
     REVIEW_MIN_CHECKS_FOR_COMPARISON,
@@ -513,6 +519,29 @@ def _run_check_health(args: argparse.Namespace) -> int:
     inert = len(findings) - len(needs_attention)
     if inert:
         print(f"  ({inert} known or universal gap(s) not reported — see acknowledged_coverage_gaps.)")
+
+    # The other half of coverage: the fields the FORECASTER writes, which fail
+    # differently and were watched by nothing. A display value that stops
+    # arriving renders as no tile rather than as an error — see ROADMAP
+    # item 102, where the Air Quality tile left the page for three days.
+    print("Checking the fields the forecaster writes...")
+    narrated = detect_narrated_coverage(
+        make_log_lookup(data_path), today_in_tz(location.timezone)
+    )
+    narrated_attention = actionable_narrated(narrated)
+    if narrated_attention:
+        # Does NOT fail the check, for the same reason the data-coverage
+        # findings above do not: the forecast is produced and correct, and a
+        # missing display string is recorded as unknown rather than wrong.
+        # Flip this to `ok = False` if a vanished tile should be a red run.
+        print(f"  {len(narrated_attention)} item(s) worth checking:")
+        for f in narrated_attention:
+            print(f"    - {f.message}")
+    else:
+        print("  OK — every watched field is still being supplied.")
+    never = len(narrated) - len(narrated_attention)
+    if never:
+        print(f"  ({never} field(s) the forecaster has never once supplied.)")
 
     # Slow rot, like the staleness proxy below: the aligned-window table is
     # a hand measurement from 2026-08-11, every forecast that cannot observe

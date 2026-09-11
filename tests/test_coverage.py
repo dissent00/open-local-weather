@@ -7,7 +7,15 @@ handled the absence correctly.
 
 from datetime import date, datetime, timezone
 
-from openlocalweather.coverage import CoverageFinding, actionable, detect_coverage
+from openlocalweather.coverage import (
+    NARRATED_FIELDS,
+    CoverageFinding,
+    actionable,
+    actionable_narrated,
+    detect_coverage,
+    detect_narrated_coverage,
+)
+from openlocalweather.dates import add_days
 from openlocalweather.models import (
     DailyLogEntry,
     LogEntryMeta,
@@ -246,3 +254,147 @@ def test_reports_when_no_dispatch_has_ever_been_seen_but_some_run_reports_one():
     assert finding is not None
     assert finding.last_dispatch is None
     assert "not reaching GitHub" in finding.message
+
+
+# --- The fields the forecaster writes ------------------------------------
+#
+# The model half of this module watches values CODE computes from the fetched
+# arrays. Those never broke. mslp_trend_24h and air_quality_aqi both went
+# absent on 2026-09-09 and stayed absent for three runs, and the second is
+# published — the Air Quality tile vanished from the page and nothing said so.
+# See ROADMAP item 102.
+
+NARRATED_TODAY = date(2026, 9, 12)
+
+
+def _narrated_entry(d: date, **overrides) -> DailyLogEntry:
+    fields = {
+        "rain_expected": "Isolated Evening Thunderstorms",
+        "peak_wind_kmh": 22.4,
+        "mslp_trend_24h": "-0.4 hPa",
+        "synoptic_pattern": "Troughing to the northeast",
+        "uv_index_max": "9.4",
+        "air_quality_aqi": "88",
+        "onset_window": None,
+    }
+    fields.update(overrides)
+    return DailyLogEntry(
+        date=d, temp_high_c=26.0, temp_low_c=18.0, temp_high_low_display="26/18",
+        narrative_markdown="n",
+        model_predictions=ModelPredictionsByLead(day0=[]),
+        meta=LogEntryMeta(
+            generated_at_utc=datetime.now(timezone.utc),
+            llm_provider="t", llm_model="t", pipeline_version="0",
+        ),
+        **fields,
+    )
+
+
+def _narrated_history(days: int, per_run: dict):
+    """`per_run` maps field -> value, or callable(i) -> value. i=0 is newest."""
+    logs = {}
+    for i in range(days):
+        d = add_days(NARRATED_TODAY, -(i + 1))
+        overrides = {k: (v(i) if callable(v) else v) for k, v in per_run.items()}
+        logs[d] = _narrated_entry(d, **overrides)
+    return lambda dd: logs.get(dd)
+
+
+def _narrated(findings, field, kind=None):
+    for f in findings:
+        if f.field == field and (kind is None or f.kind == kind):
+            return f
+    return None
+
+
+def test_flags_a_narrated_field_that_used_to_arrive_and_stopped():
+    """The mslp_trend_24h case. Filled on 29 entries, then three runs of
+    nothing, and no layer raised."""
+    lookup = _narrated_history(10, {"mslp_trend_24h": lambda i: "" if i < 3 else "-0.4 hPa"})
+    findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
+
+    gap = _narrated(findings, "mslp_trend_24h")
+    assert gap is not None
+    assert gap.kind == "regression"
+    assert gap.absent_runs == 3
+    assert gap.last_seen == add_days(NARRATED_TODAY, -4)
+    assert gap in actionable_narrated(findings)
+    assert "mslp_trend_24h" in gap.message
+
+
+def test_an_empty_string_is_absent_because_the_pipeline_writes_one():
+    """`pipeline.py` stores `tp.mslp_trend_24h or ""`, so a field the model
+    declined to answer arrives as an empty string rather than None. Treating
+    "" as present is the single mistake that would make this whole detector
+    blind to the case it was built for."""
+    lookup = _narrated_history(10, {"mslp_trend_24h": "   "})
+    findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
+
+    assert _narrated(findings, "mslp_trend_24h") is not None
+
+
+def test_flags_a_published_field_going_quiet():
+    """air_quality_aqi is rendered behind `{% if %}`, so a null removes the
+    tile rather than showing an empty one. Stored as None, not ""."""
+    lookup = _narrated_history(10, {"air_quality_aqi": lambda i: None if i < 3 else "88"})
+    findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
+
+    gap = _narrated(findings, "air_quality_aqi")
+    assert gap is not None and gap.kind == "regression"
+
+
+def test_onset_window_is_not_watched():
+    """Null on 19 of the record's first 32 entries, because a day with no
+    forecast rain has no onset. Watching it would alert on every dry spell —
+    the same reason `onset` is absent from WATCHED_VARIABLES."""
+    assert "onset_window" not in NARRATED_FIELDS
+
+    lookup = _narrated_history(10, {"onset_window": None})
+    assert detect_narrated_coverage(lookup, NARRATED_TODAY) == []
+
+
+def test_two_missed_runs_are_noise_not_a_finding():
+    lookup = _narrated_history(10, {"mslp_trend_24h": lambda i: "" if i < 2 else "-0.4 hPa"})
+
+    assert _narrated(detect_narrated_coverage(lookup, NARRATED_TODAY), "mslp_trend_24h") is None
+
+
+def test_a_healthy_narrated_record_produces_nothing_actionable():
+    lookup = _narrated_history(10, {})
+
+    assert actionable_narrated(detect_narrated_coverage(lookup, NARRATED_TODAY)) == []
+
+
+def test_a_field_never_filled_is_counted_not_alerted():
+    """Nothing to chase — the forecaster has never supplied it, so this is a
+    standing property to count rather than a change to investigate."""
+    lookup = _narrated_history(10, {"uv_index_max": None})
+    findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
+
+    gap = _narrated(findings, "uv_index_max")
+    assert gap is not None
+    assert gap.kind == "never_published"
+    assert gap not in actionable_narrated(findings)
+
+
+def test_an_empty_record_yields_no_narrated_findings():
+    assert detect_narrated_coverage(lambda d: None, NARRATED_TODAY) == []
+
+
+def test_flags_the_wind_number_nobody_scores():
+    """peak_wind_kmh went None on the same three days as the other two, and it
+    is never scored — item 5 — so no other check in this project would ever
+    see it go. A float, not a string: the third shape this has to handle."""
+    lookup = _narrated_history(10, {"peak_wind_kmh": lambda i: None if i < 3 else 22.4})
+    findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
+
+    gap = _narrated(findings, "peak_wind_kmh")
+    assert gap is not None and gap.kind == "regression"
+
+
+def test_a_zero_reading_is_present_not_absent():
+    """`bool(0.0)` is False, so the obvious emptiness test would report a dead
+    calm as a data gap."""
+    lookup = _narrated_history(10, {"peak_wind_kmh": 0.0})
+
+    assert _narrated(detect_narrated_coverage(lookup, NARRATED_TODAY), "peak_wind_kmh") is None
