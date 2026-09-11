@@ -2981,6 +2981,52 @@ def export_blend_prediction() -> None:
     )
 
 
+def export_extended_blend_predictions() -> None:
+    """The forecaster's own call at Day+3 and Day+7 — ROADMAP item 72.
+
+    Locked because Dart has NO mirror of this at all: its day3/day7 lists
+    carry the extracted models only, so the app records no forecaster call at
+    exactly the leads where reconciling disagreeing models is worth the most,
+    which is item 72's whole argument.
+
+    An empty result is a legitimate answer, not a gap. A guessed boolean is
+    scored wrong exactly as confidently as a real one, so a run that declined
+    to call a lead should leave no row for it — and a port that emitted a
+    default row instead would fill the record with calls nobody made.
+    """
+    from openlocalweather.llm.schema import ExtendedDayProperties
+    from openlocalweather.pipeline import _extended_blend_predictions
+
+    def ext(lead, rain, pct=None):
+        return ExtendedDayProperties(lead_time_days=lead, rain=rain, rain_probability_pct=pct)
+
+    both = [ext(3, True, 70), ext(7, False, 20)]
+    cases = [
+        ("Day+3 is selected out of a two-lead answer", both, 3),
+        ("Day+7 is selected out of the same answer", both, 7),
+        ("a lead the run declined to call yields no row at all", [ext(3, True, 70)], 7),
+        ("nothing committed anywhere", [], 3),
+        ("no confidence stated leaves the Brier column empty", [ext(3, True)], 3),
+        ("a committed zero is a call, not a refusal", [ext(3, False, 0)], 3),
+    ]
+
+    write(
+        "extended_blend_predictions.json",
+        "_extended_blend_predictions",
+        "Rain only. Everything else is absent rather than zero: a field the "
+        "forecaster was not asked to commit to must not enter the record as a "
+        "value it never gave.",
+        [
+            {
+                "name": name,
+                "input": {"extended": [e.model_dump() for e in exts], "lead_time_days": lead},
+                "expected": [p.model_dump() for p in _extended_blend_predictions(exts, lead)],
+            }
+            for name, exts, lead in cases
+        ],
+    )
+
+
 def export_cycle() -> None:
     def at(y, m, d, h, minute=0, second=0):
         return datetime(y, m, d, h, minute, second, tzinfo=timezone.utc)
@@ -3267,6 +3313,7 @@ def main() -> None:
     export_cycle()
     export_round_hours()
     export_blend_prediction()
+    export_extended_blend_predictions()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

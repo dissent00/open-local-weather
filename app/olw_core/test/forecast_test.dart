@@ -74,7 +74,9 @@ final _llmPayload = {
 /// A stub provider. The real ones are covered against their own wire formats
 /// in llm_providers_test.dart; what matters here is the orchestration.
 class _StubProvider implements LlmProvider {
-  _StubProvider();
+  _StubProvider([this._payload]);
+
+  final Map<String, Object?>? _payload;
 
   String? seenSystemPrompt;
   String? seenUserPrompt;
@@ -89,7 +91,7 @@ class _StubProvider implements LlmProvider {
   }) async {
     seenSystemPrompt = systemPrompt;
     seenUserPrompt = userPrompt;
-    return ForecastResponse.fromJson(_llmPayload);
+    return ForecastResponse.fromJson(_payload ?? _llmPayload);
   }
 }
 
@@ -196,12 +198,52 @@ void main() {
     expect(blend.windKmh, isNull,
         reason: 'absent, never zero — peakWindKmh is the secondary point');
 
-    // Day+0 only: today_properties is a call about today, and an extended
-    // row for it would be an unscoreable placeholder in the record.
+    // today_properties is a call about TODAY, so it never produces an
+    // extended row — an unscoreable placeholder in the record. A blend row at
+    // Day+3 comes from extended_properties instead, and this payload commits
+    // nothing there, so declining to call is the correct answer and the
+    // record carries no row. See the extended_properties test below.
     expect(run.day3Predictions.map((p) => p.model), isNot(contains(blendModelId)));
     expect(run.day7Predictions.map((p) => p.model), isNot(contains(blendModelId)));
     expect(gfs.windKmh, 28.0);
     expect(gfs.highC, 27.5);
+  });
+
+  // ROADMAP items 59 and 72. Dart had no mirror of
+  // `_extended_blend_predictions`, so the app recorded no forecaster call at
+  // Day+3 or Day+7 — the leads where reconciling disagreeing models is worth
+  // the most, which is the whole argument for asking at all.
+  //
+  // The builder is vector-locked. This covers the WIRING, which a vector
+  // cannot reach: with the wiring removed and the builder intact, all 158
+  // tests stayed green.
+  test('the forecaster joins Day+3 and Day+7 when it commits to them', () async {
+    final payload = Map<String, Object?>.from(_llmPayload)
+      ..['extended_properties'] = [
+        {'lead_time_days': 3, 'rain': true, 'rain_probability_pct': 70},
+        {'lead_time_days': 7, 'rain': false, 'rain_probability_pct': 0},
+      ];
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: _StubProvider(payload),
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    final d3 = run.day3Predictions.singleWhere((p) => p.model == blendModelId);
+    expect(d3.rain, isTrue);
+    expect(d3.rainProbabilityPct, 70);
+    // Rain only: a field the forecaster was not asked to commit to must not
+    // enter the record as a value it never gave.
+    expect(d3.highC, isNull);
+    expect(d3.precipMm, isNull);
+
+    // A committed zero is a call, not a refusal. `0` is falsy in both
+    // languages, and the record cannot tell the two apart afterwards.
+    final d7 = run.day7Predictions.singleWhere((p) => p.model == blendModelId);
+    expect(d7.rain, isFalse);
+    expect(d7.rainProbabilityPct, 0);
   });
 
   // ROADMAP item 61's app half. The clause was shipped upstream on

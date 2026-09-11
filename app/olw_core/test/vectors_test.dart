@@ -224,6 +224,25 @@ void main() {
       }
     });
 
+    // Dart had NO mirror of this at all: day3/day7 carried the extracted
+    // models only, so the app recorded no forecaster call at exactly the leads
+    // where reconciling disagreeing models is worth the most — ROADMAP 59, 72.
+    test('extended_blend_predictions', () {
+      for (final c in casesOf('extended_blend_predictions.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final exts = (i['extended'] as List)
+            .map((e) => ExtendedDayProperties.fromJson(e as Map<String, Object?>))
+            .toList();
+        expectMatches(
+          extendedBlendPredictions(exts, (i['lead_time_days'] as num).toInt())
+              .map((p) => p.toJson())
+              .toList(),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+
     test('round_hours_to_tenths', () {
       for (final c in casesOf('round_hours_to_tenths.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1178,6 +1197,7 @@ void main() {
       'aqi_merge.json',
       'round_hours_to_tenths.json',
       'blend_prediction.json',
+      'extended_blend_predictions.json',
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_strict.json',

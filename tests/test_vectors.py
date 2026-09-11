@@ -235,6 +235,19 @@ def test_vectors_blend_prediction():
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_extended_blend_predictions():
+    """Dart has no mirror of this at all, so the app records no forecaster call
+    at Day+3 or Day+7 — ROADMAP items 59 and 72."""
+    from openlocalweather.llm.schema import ExtendedDayProperties
+    from openlocalweather.pipeline import _extended_blend_predictions
+
+    for case in load("extended_blend_predictions.json")["cases"]:
+        i = case["input"]
+        exts = [ExtendedDayProperties(**e) for e in i["extended"]]
+        got = [p.model_dump() for p in _extended_blend_predictions(exts, i["lead_time_days"])]
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_bucket_hourly_by_date():
     for case in load("bucket_hourly_by_date.json")["cases"]:
         i = case["input"]
@@ -682,6 +695,7 @@ def test_every_vector_file_is_exercised():
         "aqi_merge.json",
         "round_hours_to_tenths.json",
         "blend_prediction.json",
+        "extended_blend_predictions.json",
         "bucket_hourly_by_date.json",
         "llm_schema_gemini.json",
         "llm_schema_strict.json",

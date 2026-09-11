@@ -112,6 +112,38 @@ class ForecastRun {
 /// degrade to null rather than failing the run, matching the Python
 /// pipeline's treatment of air quality and the secondary point; the primary
 /// hourly and daily fetches are required, and a failure there aborts.
+/// The forecaster's own call at a lead beyond today — ROADMAP item 72.
+///
+/// RAIN ONLY: the one variable item 58's Brier can already score. Everything
+/// else is absent rather than zero, exactly as the Day+0 blend treats peak
+/// wind — a field the forecaster was not asked to commit to must not enter
+/// the record as a value it never gave.
+///
+/// An empty result is a legitimate answer and not a gap. A guessed boolean is
+/// scored wrong exactly as confidently as a real one, so a run that declined
+/// to call a lead leaves no row for it.
+///
+/// Mirrors `_extended_blend_predictions` in the Python pipeline, pinned by
+/// spec/vectors/extended_blend_predictions.json.
+List<ModelPrediction> extendedBlendPredictions(
+  List<ExtendedDayProperties> extended,
+  int leadTimeDays,
+) =>
+    extended
+        .where((e) => e.leadTimeDays == leadTimeDays)
+        .map((e) => ModelPrediction(
+              model: blendModelId,
+              rain: e.rain,
+              rainProbabilityPct: e.rainProbabilityPct,
+              onset: null,
+              precipMm: null,
+              windKmh: null,
+              highC: null,
+              lowC: null,
+              mslpTrend: null,
+            ))
+        .toList();
+
 /// The forecaster's own Day+0 call, in the form the record can score.
 ///
 /// Built from the STRUCTURED fields rather than parsed back out of the prose,
@@ -442,8 +474,18 @@ Future<ForecastRun> generateForecast({
     // a call about today, and there is no extended-range equivalent to score
     // until the outlook carries structured numbers too.
     day0Predictions: [...day0, blendPrediction(response.todayProperties)],
-    day3Predictions: day3,
-    day7Predictions: day7,
+    // And joins Day+3 and Day+7 the same way — ROADMAP item 72's minimal
+    // shape, rain and its probability, which is what Brier scores. Without
+    // these the app recorded no forecaster call at the leads where the models
+    // disagree most, which is the whole argument for asking at all.
+    day3Predictions: [
+      ...day3,
+      ...extendedBlendPredictions(response.extendedProperties, 3),
+    ],
+    day7Predictions: [
+      ...day7,
+      ...extendedBlendPredictions(response.extendedProperties, 7),
+    ],
     systemPrompt: systemPrompt,
     userPrompt: userPrompt,
   );

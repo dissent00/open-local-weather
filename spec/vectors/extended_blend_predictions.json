@@ -1,0 +1,155 @@
+{
+  "vector_format_version": 1,
+  "function": "_extended_blend_predictions",
+  "description": "Rain only. Everything else is absent rather than zero: a field the forecaster was not asked to commit to must not enter the record as a value it never gave.",
+  "cases": [
+    {
+      "name": "Day+3 is selected out of a two-lead answer",
+      "input": {
+        "extended": [
+          {
+            "lead_time_days": 3,
+            "rain": true,
+            "rain_probability_pct": 70
+          },
+          {
+            "lead_time_days": 7,
+            "rain": false,
+            "rain_probability_pct": 20
+          }
+        ],
+        "lead_time_days": 3
+      },
+      "expected": [
+        {
+          "model": "olw_blend",
+          "rain": true,
+          "onset": null,
+          "precip_mm": null,
+          "rain_probability_pct": 70,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ]
+    },
+    {
+      "name": "Day+7 is selected out of the same answer",
+      "input": {
+        "extended": [
+          {
+            "lead_time_days": 3,
+            "rain": true,
+            "rain_probability_pct": 70
+          },
+          {
+            "lead_time_days": 7,
+            "rain": false,
+            "rain_probability_pct": 20
+          }
+        ],
+        "lead_time_days": 7
+      },
+      "expected": [
+        {
+          "model": "olw_blend",
+          "rain": false,
+          "onset": null,
+          "precip_mm": null,
+          "rain_probability_pct": 20,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ]
+    },
+    {
+      "name": "a lead the run declined to call yields no row at all",
+      "input": {
+        "extended": [
+          {
+            "lead_time_days": 3,
+            "rain": true,
+            "rain_probability_pct": 70
+          }
+        ],
+        "lead_time_days": 7
+      },
+      "expected": []
+    },
+    {
+      "name": "nothing committed anywhere",
+      "input": {
+        "extended": [],
+        "lead_time_days": 3
+      },
+      "expected": []
+    },
+    {
+      "name": "no confidence stated leaves the Brier column empty",
+      "input": {
+        "extended": [
+          {
+            "lead_time_days": 3,
+            "rain": true,
+            "rain_probability_pct": null
+          }
+        ],
+        "lead_time_days": 3
+      },
+      "expected": [
+        {
+          "model": "olw_blend",
+          "rain": true,
+          "onset": null,
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ]
+    },
+    {
+      "name": "a committed zero is a call, not a refusal",
+      "input": {
+        "extended": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 0
+          }
+        ],
+        "lead_time_days": 3
+      },
+      "expected": [
+        {
+          "model": "olw_blend",
+          "rain": false,
+          "onset": null,
+          "precip_mm": null,
+          "rain_probability_pct": 0,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ]
+    }
+  ]
+}
