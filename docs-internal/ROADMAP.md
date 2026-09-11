@@ -6782,9 +6782,25 @@ either builder.
   at the leads where reconciling disagreeing models is worth the most — which
   is the whole argument of item 72.
 
-Both change what the app STORES, so neither was fixed here. The first is a
-one-line fix behind a false comment; the second is item 72 unported and is
-not in the owed table.
+Both change what the app STORES, so neither was fixed when they were found.
+**Both fixed 2026-09-11**, in that order, each with the vector first because
+nothing covered either builder:
+
+- `spec/vectors/blend_prediction.json`, 4 cases. The Dart test failed against
+  it before the fix, expecting 65 and reading null. The doc comment's claim to
+  mirror the Python is now true — the field sets match exactly.
+- `spec/vectors/extended_blend_predictions.json`, 6 cases, plus the port and
+  its call site. Two cases are the ones a port fails quietly: a lead the run
+  declined to call must yield NO row, and a committed zero must survive,
+  because `0` is falsy in both languages and the record cannot tell a refusal
+  from "no chance of rain" afterwards.
+
+**A vector could not have caught the second one alone, and nearly didn't.**
+With `extendedBlendPredictions` correct and its call site deleted, all 158
+Dart tests stayed green: the builder was locked and the thing that stores its
+output was not. `forecast_test.dart` now drives `generateForecast` with a
+response that commits to both leads. Worth generalising — every builder this
+project vector-locks has a call site no vector reaches.
 
 **And then the third, found by pulling the same thread.** `generateForecast`
 takes its context as optional named parameters. `forecast_runner.dart:146`
