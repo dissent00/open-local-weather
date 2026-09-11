@@ -304,6 +304,27 @@ def _response_meta(holder: dict) -> ResponseMeta:
     return holder.get("meta") or ResponseMeta()
 
 
+def _nullable_fields(holder: dict) -> list[str] | None:
+    """The provider's tuple as a list, or None when it did not report one.
+
+    The conversion is NOT redundant with pydantic's. The constructor coerces
+    a tuple to `list[str]`; `model_copy(update=...)` does not, and the
+    refresh path is built on `model_copy`. Checked rather than assumed: the
+    tuple survives into the model and pydantic then warns at serialization
+    time — `PydanticSerializationUnexpectedValue ... expected list[str]`.
+    The JSON happens to come out identical today, which is what would make
+    this rot quietly.
+
+    None is preserved rather than flattened to `[]` because the two mean
+    different things — see LogEntryMeta.nullable_fields.
+    """
+    reported = _response_meta(holder).nullable_fields
+    if reported is None:
+        return None
+
+    return list(reported)
+
+
 def attach_spend_cap(provider, data_dir: Path, *, max_calls: int, purpose: str):
     """Make the cap count HTTP requests, which is what actually costs money.
 
@@ -1719,6 +1740,8 @@ def run_daily_pipeline(
             finish_reason=_response_meta(_last_response).finish_reason,
             input_tokens=_response_meta(_last_response).input_tokens,
             output_tokens=_response_meta(_last_response).output_tokens,
+            response_schema_sha256=_response_meta(_last_response).response_schema_sha256,
+            nullable_fields=_nullable_fields(_last_response),
             trigger_source=deps.trigger_source or None,
             degradations=guidance.degradations,
         ),
@@ -2172,6 +2195,10 @@ def run_refresh_pipeline(
                     "finish_reason": _response_meta(_last_response).finish_reason,
                     "input_tokens": _response_meta(_last_response).input_tokens,
                     "output_tokens": _response_meta(_last_response).output_tokens,
+                    "response_schema_sha256": _response_meta(
+                        _last_response
+                    ).response_schema_sha256,
+                    "nullable_fields": _nullable_fields(_last_response),
                 }
             ),
         }

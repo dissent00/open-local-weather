@@ -7019,6 +7019,43 @@ change against a 47,000-character prompt change**, and it is not in this
 item's plan. Worth raising before the split rather than after, because if it
 works the split still has its own reasons but loses this one.
 
+### 2026-09-11: instrumented, so the split does not cost the other answer
+
+**Decided: split first, but record what the other experiment would need.**
+The two interventions compete for one meter. Field arrival is the gate, the
+baseline is n=3, and running a schema change and a prompt change in the same
+window leaves neither readable. Waiting a week to run the cheap one first was
+the alternative and was not taken.
+
+So `LogEntryMeta` now carries `response_schema_sha256` and `nullable_fields`
+beside `system_prompt_sha256`. The prompt hash records the instructions; these
+record the shape the answer had to fit. Both move, and only one was written
+down — which is why item 102 had to close its last open variable from the
+operator's knowledge of the deployment rather than from the record, and said
+so as its own finding.
+
+The nullable paths are stored as well as the hash. A hash alone answers
+nothing without the code that produced it, and item 77 is the precedent:
+recovering which prompt ran meant sweeping flag combinations until a hash
+matched. That worked and should not have been necessary.
+
+**Provider-owned, not pipeline-derived.** `gemini_schema_facts` sits beside
+`to_gemini_schema` and takes the built wire dict rather than the model, so it
+fingerprints the bytes that actually went out. The pipeline never sees the
+Gemini dialect, per `provider.py`'s contract. `openai_compat` reports neither
+and leaves both `None` — correct rather than missing, since it spells null as
+a type union and nothing has taught it this; production is Gemini.
+
+**Costs 387 bytes against a 17KB entry**, and every one of the record's 32
+existing entries still loads with both fields `None` — checked against the
+real files, not a fixture.
+
+**What this buys.** After the split, the nullability question is answerable
+from the committed record instead of from a fresh experiment: the schema that
+permitted each absence is recorded beside the absence. If the split moves the
+rate, the record also shows the schema did not move underneath it — which is
+the confound this instrumentation exists to rule out.
+
 ### Order
 
 **Superseded for step 3 by the four `2026-09-11` sections above** — go now,

@@ -116,6 +116,11 @@ class FakeLLMProvider:
     finish_reason = "STOP"
     input_tokens = 41_000
     output_tokens = 2_100
+    # The other half of what a real provider reports — ROADMAP items 59/102.
+    # Same reasoning as the three above: a stub that stayed silent would make
+    # every pipeline test blind to the field.
+    response_schema_sha256 = "a" * 64
+    nullable_fields = ("/today_properties/mslp_trend_24h",)
 
     def generate(self, system_prompt, user_prompt, response_schema):
         if self.before_attempt is not None:
@@ -127,6 +132,8 @@ class FakeLLMProvider:
                     finish_reason=self.finish_reason,
                     input_tokens=self.input_tokens,
                     output_tokens=self.output_tokens,
+                    response_schema_sha256=self.response_schema_sha256,
+                    nullable_fields=self.nullable_fields,
                 )
             )
         return self.response
@@ -3039,3 +3046,39 @@ def test_a_provider_that_reports_nothing_leaves_the_fields_unset(tmp_path):
     assert meta.finish_reason is None
     assert meta.input_tokens is None
     assert meta.output_tokens is None
+    assert meta.response_schema_sha256 is None
+    # None, NOT [] — "the provider did not say" and "the schema marked
+    # nothing nullable" are different answers, and the second is a real one.
+    assert meta.nullable_fields is None
+
+
+def test_the_entry_records_which_schema_permitted_the_answer(tmp_path):
+    """ROADMAP items 59 and 102. Three optional fields went empty for three
+    runs and filled on a re-run of the same input. Deciding whether the
+    schema had anything to do with it means reading what was SENT beside
+    what came back, and item 102 found the record could not say."""
+    llm = FakeLLMProvider()
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert meta.response_schema_sha256 == "a" * 64
+    assert meta.nullable_fields == ["/today_properties/mslp_trend_24h"]
+
+
+def test_a_re_issue_records_the_schema_it_used(tmp_path):
+    """Paired with the prompt hash and the finish reason for the reason this
+    file keeps pairing them: every divergence found here so far has been a
+    change that landed in run_daily_pipeline and not in run_refresh_pipeline,
+    with the test following the change rather than the pair."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    evening = FakeLLMProvider()
+    evening.response_schema_sha256 = "b" * 64
+    evening.nullable_fields = ("/today_properties/air_quality_aqi",)
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
+    )
+
+    meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
+    assert meta.response_schema_sha256 == "b" * 64, "the morning's schema survived the re-issue"
+    assert meta.nullable_fields == ["/today_properties/air_quality_aqi"]

@@ -34,7 +34,7 @@ from openlocalweather.llm.provider import (
     http_outcome,
     report_outcome,
 )
-from openlocalweather.llm.schema import to_gemini_schema
+from openlocalweather.llm.schema import gemini_schema_facts, to_gemini_schema
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -221,12 +221,15 @@ class GeminiProvider:
 
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:
         url = GEMINI_API_URL_TEMPLATE.format(model=self.model)
+        # Built once and held, so the facts reported below fingerprint the
+        # schema this call actually sent rather than a second build of it.
+        wire_schema = to_gemini_schema(response_schema)
         payload = {
             "system_instruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
             "generationConfig": {
                 "responseMimeType": "application/json",
-                "responseSchema": to_gemini_schema(response_schema),
+                "responseSchema": wire_schema,
             },
         }
         if self.thinking_level is not None:
@@ -291,11 +294,14 @@ class GeminiProvider:
         # produced no forecast, and the exception already carries the reason.
         if self.after_response is not None:
             usage = body.get("usageMetadata") or {}
+            schema_sha256, nullable_fields = gemini_schema_facts(wire_schema)
             self.after_response(
                 ResponseMeta(
                     finish_reason=finish_reason,
                     input_tokens=usage.get("promptTokenCount"),
                     output_tokens=usage.get("candidatesTokenCount"),
+                    response_schema_sha256=schema_sha256,
+                    nullable_fields=nullable_fields,
                 )
             )
 

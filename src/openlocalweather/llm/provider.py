@@ -122,6 +122,22 @@ class ResponseMeta:
     finish_reason: str | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # WHAT THE CALL WAS ALLOWED TO OMIT — ROADMAP items 59 and 102.
+    #
+    # These two describe the REQUEST, not how it ended, which is a real
+    # strain on this class's name. They ride here anyway because the
+    # question they exist to answer is about the PAIRING: three optional
+    # fields came back empty on three consecutive runs and filled on a
+    # re-run of the same input, and deciding whether the schema had anything
+    # to do with it means reading what was sent beside what came back. Split
+    # them out if a second request-side fact ever needs recording; one does
+    # not earn a class.
+    #
+    # Optional for the same reason every field above is: a provider that
+    # does not report them gives None, and None is not "the schema had no
+    # nullable fields" — which is a real and different answer, spelled `()`.
+    response_schema_sha256: str | None = None
+    nullable_fields: tuple[str, ...] | None = None
 
 
 AfterResponse = Callable[[ResponseMeta], None]

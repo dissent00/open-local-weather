@@ -621,6 +621,34 @@ class LogEntryMeta(BaseModel):
     finish_reason: str | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # WHICH RESPONSE SCHEMA produced this entry, and what it let the model
+    # skip — ROADMAP items 59 and 102.
+    #
+    # `system_prompt_sha256` above records the instructions; this records the
+    # shape the answer had to fit. Both move, and until now only one was
+    # written down, so a field that stopped arriving could not be checked
+    # against the schema that permitted it to stop. Item 102 ran into exactly
+    # that and had to close the question from the operator's memory of the
+    # deployment instead of from the record — which it recorded as its own
+    # finding.
+    #
+    # `nullable_fields` is stored as well as the hash because the two answer
+    # different questions and the hash alone answers neither without the
+    # code that produced it. Item 77 is the precedent: recovering which
+    # PROMPT ran meant sweeping flag combinations until a hash matched,
+    # which worked and should not have been necessary.
+    #
+    # Three-valued like `degradations`: None means the entry predates the
+    # field or the provider does not report one, and `[]` means the schema
+    # genuinely marked nothing nullable. Those are different facts and the
+    # record keeps them apart.
+    #
+    # Provider-specific by nature, and correctly empty for some. The Gemini
+    # dialect carries an explicit `nullable` flag; the OpenAI adapter spells
+    # the same thing as a type union, so a provider that has not been taught
+    # to report these leaves both None rather than guessing.
+    response_schema_sha256: str | None = None
+    nullable_fields: list[str] | None = None
     # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
     # — generated_at_utc stays the ORIGINAL morning creation time even after
     # a refresh, so the audit trail keeps showing when this entry first

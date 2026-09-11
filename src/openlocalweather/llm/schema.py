@@ -8,6 +8,8 @@ pipeline and prompt-building code only ever deal with this pydantic model.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -180,6 +182,62 @@ def to_gemini_schema(model: type[BaseModel]) -> dict:
     json_schema = model.model_json_schema()
     defs = json_schema.get("$defs", {})
     return _convert_node(json_schema, defs)
+
+
+def gemini_schema_facts(wire: dict) -> tuple[str, tuple[str, ...]]:
+    """Fingerprints the schema as SENT, and names the fields it let the model
+    skip — ROADMAP items 59 and 102.
+
+    Takes the built wire dict rather than the model, so it describes the
+    bytes that actually went out. Rebuilding from the model here would
+    fingerprint what a rebuild produces, which is the same thing right up
+    until the moment it is not — and that moment is exactly when this field
+    is being read.
+
+    WHY NULLABILITY IS WORTH STORING AT ALL. Measured 2026-09-11 over the
+    record's first 32 runs: every field that has ever gone missing from a
+    forecast is nullable here, and the non-nullable ones have never missed
+    once in 111 field-instances. That is not established as CAUSAL — the
+    non-nullable fields are also the four a forecaster would always write,
+    and nothing in the record separates the two explanations. The point of
+    recording it is that the next change to this schema makes the record
+    able to answer the question, which item 102 found it could not.
+
+    Returns the hash and the nullable paths separately because they answer
+    different questions: the hash says "did the schema move", the paths say
+    "which fields could be skipped on this run". A reader chasing a vanished
+    field wants the second without decoding the first.
+
+    Paths are `/a/b` for object properties and `/a[]/b` for array items —
+    `extended_properties` is an array, and a walk that followed only
+    `properties` would report this schema as half its real size.
+    """
+    nullable: list[str] = []
+
+    def walk(node: Any, path: str) -> None:
+        if not isinstance(node, dict):
+            return
+
+        for key, value in (node.get("properties") or {}).items():
+            child = f"{path}/{key}"
+            if isinstance(value, dict) and value.get("nullable"):
+                nullable.append(child)
+            walk(value, child)
+
+        if "items" in node:
+            walk(node["items"], f"{path}[]")
+
+    walk(wire, "")
+
+    # sort_keys because the hash must track the schema's CONTENT, not the
+    # order a dict happened to be built in. Without it an unrelated edit
+    # that reorders a field reads as a schema change, and the field stops
+    # being believed the first time that happens.
+    digest = hashlib.sha256(
+        json.dumps(wire, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+    return digest, tuple(sorted(nullable))
 
 
 def _convert_node(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:

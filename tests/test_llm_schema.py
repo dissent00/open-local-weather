@@ -1,8 +1,13 @@
+import copy
 import json
 
 import pytest
 
-from openlocalweather.llm.schema import GeminiForecastResponse, to_gemini_schema
+from openlocalweather.llm.schema import (
+    GeminiForecastResponse,
+    gemini_schema_facts,
+    to_gemini_schema,
+)
 
 
 def test_top_level_is_object_with_required_fields():
@@ -104,3 +109,57 @@ def test_the_display_bound_is_enforced_here_and_never_sent_to_the_provider():
             temp_low_c=18.0,
             uv_index_max="x" * (MAX_DISPLAY_STRING + 1),
         )
+
+
+# --- gemini_schema_facts — ROADMAP item 59/102 -------------------------------
+
+
+def test_schema_facts_names_every_nullable_field_by_path():
+    wire = to_gemini_schema(GeminiForecastResponse)
+    _, nullable = gemini_schema_facts(wire)
+
+    # The three fields that went quiet 2026-09-09..11 are all nullable, and
+    # the four that never dropped are not. That pairing is the whole reason
+    # this is recorded; see ROADMAP item 59's "what does NOT separate the six".
+    assert "/today_properties/mslp_trend_24h" in nullable
+    assert "/today_properties/peak_wind_kmh" in nullable
+    assert "/today_properties/air_quality_aqi" in nullable
+    assert "/today_properties/rain_expected" not in nullable
+    assert "/today_properties/temp_high_c" not in nullable
+
+
+def test_schema_facts_descends_into_array_items():
+    """`extended_properties` is an ARRAY, and a walk that only followed
+    `properties` would report it as having no fields at all — silently
+    recording a schema half its real size.
+    """
+    wire = to_gemini_schema(GeminiForecastResponse)
+    _, nullable = gemini_schema_facts(wire)
+
+    assert any(p.startswith("/extended_properties[]/") for p in nullable), nullable
+
+
+def test_schema_facts_hash_moves_when_nullability_moves():
+    """The fingerprint has to notice the one change it exists to detect:
+    flipping a field non-nullable. A hash over the model NAME, or over a
+    dict whose key order wanders, would not.
+    """
+    wire = to_gemini_schema(GeminiForecastResponse)
+    before, _ = gemini_schema_facts(wire)
+
+    flipped = copy.deepcopy(wire)
+    del flipped["properties"]["today_properties"]["properties"]["mslp_trend_24h"]["nullable"]
+    after, after_nullable = gemini_schema_facts(flipped)
+
+    assert before != after
+    assert "/today_properties/mslp_trend_24h" not in after_nullable
+
+
+def test_schema_facts_hash_is_stable_across_rebuilds():
+    """Two builds of the same model must fingerprint identically, or every
+    run looks like a schema change and the field is worthless.
+    """
+    a, _ = gemini_schema_facts(to_gemini_schema(GeminiForecastResponse))
+    b, _ = gemini_schema_facts(to_gemini_schema(GeminiForecastResponse))
+
+    assert a == b
