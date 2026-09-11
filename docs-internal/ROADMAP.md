@@ -12347,6 +12347,53 @@ stations reported on all three days, so thin data is not the explanation. The
 model may still be declining for a reason the AIR QUALITY block gives it.
 Not investigated.
 
+### Measured 2026-09-11: it is not the prompt, and not the schema
+
+Item 68's step 1, run for one case rather than six. The same model, the same
+system prompt — hash-verified to `27cc1e0a9c71` before spending — and the
+archived 161,820-character user message from that morning's own 03:01 UTC run.
+
+| field | production, 03:01 UTC | re-run, 08:29 UTC, same input |
+|---|---|---|
+| `peak_wind_kmh` | `None` | `22.0` |
+| `mslp_trend_24h` | `""` | `"-1.5 hPa"` |
+| `air_quality_aqi` | `None` | `"Moderate (US AQI 85)"` |
+
+`gemini-3.6-flash` filled all three from the input that had nulled all three
+five hours earlier. Every hypothesis this item had been chasing — a buried
+field list, an insufficiently emphatic instruction, an optional schema slot —
+predicts the same answer both times. So none of them is the cause.
+
+**The one variable not controlled** is `GEMINI_THINKING_LEVEL`. The workflow
+passes it from a GitHub repository variable; the re-run hardcoded `"high"`.
+If that variable is unset, `_env` treats the empty string as absent and
+production used `"high"` too, leaving non-determinism as the explanation. If
+it is set to anything else, that difference is the more likely cause and this
+table compares two different configurations.
+
+**The record cannot settle it, which is its own finding.** `LogEntryMeta`
+stores `llm_model` and `system_prompt_sha256` — item 70 — but nothing about
+the generation parameters. Two runs of the same model on the same prompt at
+different thinking levels are indistinguishable in the record, so a stored
+entry is not reproducible from what is stored beside it. That is the half of
+item 69's promise the prompt archive does not cover.
+
+**A run must be checked against the repository variable before this table is
+read as proof of anything.** Not done here: the token available could not read
+Actions variables (HTTP 403).
+
+### What this changes
+
+The guard above is now the whole of the fix rather than a stopgap. If the
+model's output varies run to run on identical input, no wording will remove
+the failure — it can only be detected, and it now is, within three runs.
+
+`gemini-3.8-flash` returned HTTP 503 on all four attempts over 290 seconds
+and produced nothing. That is not a verdict on 3.8: a 503 is as consistent
+with no access on this key as with a transient outage. It cost four of the
+seven calls in the window, every retry counted per request, which is item
+101's fix behaving exactly as designed.
+
 ---
 
 ## 103. The synoptic layer sees a still photograph, keeps nothing, and is never scored · **Planned, measure before designing**

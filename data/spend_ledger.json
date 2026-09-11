@@ -2,54 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-04T03:02:02.870914+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast"
-    },
-    {
-      "at": "2026-09-04T03:03:12.965782+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast"
-    },
-    {
-      "at": "2026-09-04T08:00:19.951503+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "replay"
-    },
-    {
-      "at": "2026-09-04T08:00:56.981554+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "replay"
-    },
-    {
-      "at": "2026-09-04T08:01:03.955266+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "replay"
-    },
-    {
-      "at": "2026-09-04T08:01:16.098607+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "replay"
-    },
-    {
-      "at": "2026-09-04T08:02:36.363258+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "replay"
-    },
-    {
-      "at": "2026-09-04T08:09:31.719827+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "timeout-probe"
-    },
-    {
       "at": "2026-09-04T15:01:52.822228+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -226,6 +178,46 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 51.357
+    },
+    {
+      "at": "2026-09-11T08:29:51.592288+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "model-ab",
+      "outcome": "http_200",
+      "elapsed_s": 45.472
+    },
+    {
+      "at": "2026-09-11T08:30:37.081904+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "model-ab",
+      "outcome": "http_503",
+      "elapsed_s": 9.747
+    },
+    {
+      "at": "2026-09-11T08:31:16.838801+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "model-ab",
+      "outcome": "http_503",
+      "elapsed_s": 7.404
+    },
+    {
+      "at": "2026-09-11T08:32:24.255653+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "model-ab",
+      "outcome": "http_503",
+      "elapsed_s": 17.578
+    },
+    {
+      "at": "2026-09-11T08:34:41.849051+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "model-ab",
+      "outcome": "http_503",
+      "elapsed_s": 45.107
     }
   ]
 }
