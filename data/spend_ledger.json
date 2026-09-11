@@ -218,6 +218,30 @@
       "purpose": "model-ab",
       "outcome": "http_503",
       "elapsed_s": 45.107
+    },
+    {
+      "at": "2026-09-11T11:46:35.053679+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "prompt-ab",
+      "outcome": "http_200",
+      "elapsed_s": 41.396
+    },
+    {
+      "at": "2026-09-11T11:47:16.460372+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "prompt-ab",
+      "outcome": "http_503",
+      "elapsed_s": 6.798
+    },
+    {
+      "at": "2026-09-11T11:47:53.268802+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "prompt-ab",
+      "outcome": "http_200",
+      "elapsed_s": 54.681
     }
   ]
 }

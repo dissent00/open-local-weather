@@ -7093,6 +7093,61 @@ prompts now match the original's spacing exactly in both branches.
 silent infinite recursion; and a parse-failure message escaped its own
 interpolations. Both suites were green with each in place.
 
+### 2026-09-11: the first real call, and what it does NOT establish
+
+Item 68 step 1 against the split. The archived 03:02 user message — the same
+161,820 characters that nulled three fields in production that morning — fed
+through `build_judgment_prompt` (`3189dfd0eee3`) and `build_narrative_prompt`
+(`17dc5f571505`) at `thinking_level="high"`, the production default.
+
+**The smoke test passed, and that is the part worth having.** Nothing had ever
+called these prompts; everything shipped today was verified with the socket
+faked. Both calls returned valid JSON against their own schemas,
+`finish_reason` was `STOP`, two `extended_properties` entries came back, and
+the narrative rendered at 5,016 characters.
+
+| field | production 03:01 | split re-run |
+|---|---|---|
+| `rain_expected` | `Isolated Evening Thunderstorms` | `Evening Thunderstorms` |
+| `peak_wind_kmh` | **null** | `28.0` |
+| `mslp_trend_24h` | **`""`** | `-2.3 hPa` |
+| `synoptic_pattern` | filled | filled |
+| `uv_index_max` | `9.4` | `9.4 (Very High)` |
+| `air_quality_aqi` | **null** | `91 (Moderate)` |
+
+**6/6 against 3/6 — AND IT ISOLATES NOTHING.** Item 102 ran this same input
+through the OLD single prompt on the same day and also got all three fields
+back. Two re-runs, two prompts, identical outcome. So this result is exactly
+as consistent with "re-runs succeed where the 03:01 slot does not" as with
+"the split fixed it", and quoting it as evidence for the split would be the
+2026-09-10 mistake again — sizing a claim from the samples in front of you.
+
+What would separate them is the daily record under the split, which is the
+gate the item already names. **This run is a smoke test that happened to
+produce a field count, not a measurement of the field count.**
+
+**Values differ from item 102's old-prompt re-run too** — `peak_wind_kmh`
+28.0 against 22.0, `mslp_trend_24h` `-2.3 hPa` against `-1.5 hPa`,
+`air_quality_aqi` `91 (Moderate)` against `Moderate (US AQI 85)`. Same
+non-determinism, now visible in the values as well as the presence.
+
+**Three format changes worth watching**, none checked by the field gate:
+
+- `uv_index_max` gained its band: `9.4` became `9.4 (Very High)`. Arguably
+  better and not asked for.
+- `air_quality_aqi` reversed its shape — number-first rather than
+  category-first.
+- The narrative ran 5,016 characters against production's 4,152, **21%
+  longer**. The brevity rules live in the narrative prompt and are now
+  unaccompanied by the judgment instructions that used to surround them.
+  Worth a look if it holds for a few days.
+
+**The narrative call 503'd once and recovered on its retry.** The pair cost
+THREE ledger entries, not two: judgment at 11:46:35 (200), narrative at
+11:47:16 (503), narrative at 11:47:53 (200). That is the failure window
+`DEGRADATION_NARRATIVE` was written for, firing on the very first real run of
+the split — and it fired on the rendering call, the recoverable side.
+
 ### Owed, and named
 
 - **No real call has been made against either prompt.** The two-call path was
