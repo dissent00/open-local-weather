@@ -125,6 +125,15 @@ ModelPrediction blendPrediction(TodayProperties tp) => ModelPrediction(
       highC: tp.tempHighC,
       lowC: tp.tempLowC,
       precipMm: tp.precipMm,
+      // The forecaster's own probability, carried into the scored row so it is
+      // Brier-scored as a peer of the models it synthesizes — ROADMAP item 58.
+      // This line was MISSING while the doc comment above claimed the function
+      // mirrored the Python, so on the app path the probability was asked for
+      // in the prompt, parsed by the schema, and never scored. Pinned now by
+      // spec/vectors/blend_prediction.json, including a committed zero: `0` is
+      // falsy in both languages, and a builder testing truthiness rather than
+      // nullness turns "no chance of rain" into "declined to answer".
+      rainProbabilityPct: tp.rainProbabilityPct,
       // Deliberately absent, not zero. peakWindKmh is the SECONDARY point's
       // and mslpTrend24h is prose; scoring either against the primary point's
       // observations would compare two different things, and a null reads as

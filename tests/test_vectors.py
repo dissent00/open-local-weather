@@ -223,6 +223,18 @@ def test_vectors_round_hours_to_tenths():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_blend_prediction():
+    """The Dart port dropped `rainProbabilityPct` here while its own doc
+    comment claimed it mirrored the Python. No vector covered either builder,
+    so nothing noticed — ROADMAP item 59."""
+    from openlocalweather.llm.schema import TodayProperties
+    from openlocalweather.pipeline import _blend_prediction
+
+    for case in load("blend_prediction.json")["cases"]:
+        got = _blend_prediction(TodayProperties(**case["input"])).model_dump()
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_bucket_hourly_by_date():
     for case in load("bucket_hourly_by_date.json")["cases"]:
         i = case["input"]
@@ -669,6 +681,7 @@ def test_every_vector_file_is_exercised():
         "aqi_summary.json",
         "aqi_merge.json",
         "round_hours_to_tenths.json",
+        "blend_prediction.json",
         "bucket_hourly_by_date.json",
         "llm_schema_gemini.json",
         "llm_schema_strict.json",

@@ -88,6 +88,7 @@ absent values are `null`, never omitted keys.
 | `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
 | `aqi_merge.json` | `merge_ground_aqi` | 9 |
 | `round_hours_to_tenths.json` | `round_hours_to_tenths` | 16 |
+| `blend_prediction.json` | `_blend_prediction` | 4 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 6 |
 | `coverage.json` | `detect_coverage` | 5 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |

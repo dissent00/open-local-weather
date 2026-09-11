@@ -2931,6 +2931,56 @@ def export_round_hours() -> None:
     )
 
 
+def export_blend_prediction() -> None:
+    """The forecaster's own Day+0 call, in the form the record scores.
+
+    Locked because the Dart port silently disagreed. `blendPrediction`'s own
+    doc comment claimed it mirrored `_blend_prediction`, and it dropped
+    `rainProbabilityPct` — so on the app path item 58's probability was asked
+    for in the prompt, parsed by the schema, and never scored. Nothing caught
+    it: no Dart test named the function and no vector covered either builder.
+
+    The zero case is the one a port fails quietly. `0` is falsy in both
+    languages, and a builder that tests truthiness rather than nullness turns
+    a forecaster who committed to "no chance of rain" into one who declined to
+    answer — which Brier scores differently and the record cannot distinguish
+    afterwards.
+    """
+    from openlocalweather.llm.schema import TodayProperties
+    from openlocalweather.pipeline import _blend_prediction
+
+    def tp(**over):
+        base = dict(
+            rain_expected="Evening showers", onset_window=None, peak_wind_kmh=24.0,
+            temp_high_c=30.0, temp_low_c=18.0, rain=True, onset_hour="16:00",
+            precip_mm=2.5, rain_probability_pct=65, mslp_trend_24h="-0.4 hPa",
+            synoptic_pattern="Troughing", uv_index_max="9.4", air_quality_aqi="88",
+        )
+        base.update(over)
+        return TodayProperties(**base)
+
+    cases = [
+        ("every field the blend carries", tp()),
+        ("no probability offered — absent is not 50", tp(rain_probability_pct=None)),
+        ("a committed zero survives, because 0 is falsy in both languages",
+         tp(rain=False, rain_probability_pct=0, precip_mm=0.0)),
+        ("no onset, because nothing crossed the threshold", tp(onset_hour=None)),
+    ]
+
+    write(
+        "blend_prediction.json",
+        "_blend_prediction",
+        "The blended forecaster's Day+0 row. peak_wind_kmh and mslp_trend_24h "
+        "are deliberately NOT carried — the first is the secondary point's and "
+        "the second is prose, so scoring either against the primary point's "
+        "observations would compare two different things.",
+        [
+            {"name": name, "input": t.model_dump(), "expected": _blend_prediction(t).model_dump()}
+            for name, t in cases
+        ],
+    )
+
+
 def export_cycle() -> None:
     def at(y, m, d, h, minute=0, second=0):
         return datetime(y, m, d, h, minute, second, tzinfo=timezone.utc)
@@ -3216,6 +3266,7 @@ def main() -> None:
     export_instability()
     export_cycle()
     export_round_hours()
+    export_blend_prediction()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

@@ -1,0 +1,135 @@
+{
+  "vector_format_version": 1,
+  "function": "_blend_prediction",
+  "description": "The blended forecaster's Day+0 row. peak_wind_kmh and mslp_trend_24h are deliberately NOT carried \u2014 the first is the secondary point's and the second is prose, so scoring either against the primary point's observations would compare two different things.",
+  "cases": [
+    {
+      "name": "every field the blend carries",
+      "input": {
+        "rain_expected": "Evening showers",
+        "onset_window": null,
+        "peak_wind_kmh": 24.0,
+        "temp_high_c": 30.0,
+        "temp_low_c": 18.0,
+        "rain": true,
+        "onset_hour": "16:00",
+        "precip_mm": 2.5,
+        "rain_probability_pct": 65,
+        "mslp_trend_24h": "-0.4 hPa",
+        "synoptic_pattern": "Troughing",
+        "uv_index_max": "9.4",
+        "air_quality_aqi": "88"
+      },
+      "expected": {
+        "model": "olw_blend",
+        "rain": true,
+        "onset": "16:00",
+        "precip_mm": 2.5,
+        "rain_probability_pct": 65,
+        "wind_kmh": null,
+        "high_c": 30.0,
+        "low_c": 18.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "no probability offered \u2014 absent is not 50",
+      "input": {
+        "rain_expected": "Evening showers",
+        "onset_window": null,
+        "peak_wind_kmh": 24.0,
+        "temp_high_c": 30.0,
+        "temp_low_c": 18.0,
+        "rain": true,
+        "onset_hour": "16:00",
+        "precip_mm": 2.5,
+        "rain_probability_pct": null,
+        "mslp_trend_24h": "-0.4 hPa",
+        "synoptic_pattern": "Troughing",
+        "uv_index_max": "9.4",
+        "air_quality_aqi": "88"
+      },
+      "expected": {
+        "model": "olw_blend",
+        "rain": true,
+        "onset": "16:00",
+        "precip_mm": 2.5,
+        "rain_probability_pct": null,
+        "wind_kmh": null,
+        "high_c": 30.0,
+        "low_c": 18.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "a committed zero survives, because 0 is falsy in both languages",
+      "input": {
+        "rain_expected": "Evening showers",
+        "onset_window": null,
+        "peak_wind_kmh": 24.0,
+        "temp_high_c": 30.0,
+        "temp_low_c": 18.0,
+        "rain": false,
+        "onset_hour": "16:00",
+        "precip_mm": 0.0,
+        "rain_probability_pct": 0,
+        "mslp_trend_24h": "-0.4 hPa",
+        "synoptic_pattern": "Troughing",
+        "uv_index_max": "9.4",
+        "air_quality_aqi": "88"
+      },
+      "expected": {
+        "model": "olw_blend",
+        "rain": false,
+        "onset": "16:00",
+        "precip_mm": 0.0,
+        "rain_probability_pct": 0,
+        "wind_kmh": null,
+        "high_c": 30.0,
+        "low_c": 18.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
+        "mslp_trend": null
+      }
+    },
+    {
+      "name": "no onset, because nothing crossed the threshold",
+      "input": {
+        "rain_expected": "Evening showers",
+        "onset_window": null,
+        "peak_wind_kmh": 24.0,
+        "temp_high_c": 30.0,
+        "temp_low_c": 18.0,
+        "rain": true,
+        "onset_hour": null,
+        "precip_mm": 2.5,
+        "rain_probability_pct": 65,
+        "mslp_trend_24h": "-0.4 hPa",
+        "synoptic_pattern": "Troughing",
+        "uv_index_max": "9.4",
+        "air_quality_aqi": "88"
+      },
+      "expected": {
+        "model": "olw_blend",
+        "rain": true,
+        "onset": null,
+        "precip_mm": 2.5,
+        "rain_probability_pct": 65,
+        "wind_kmh": null,
+        "high_c": 30.0,
+        "low_c": 18.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
+        "mslp_trend": null
+      }
+    }
+  ]
+}

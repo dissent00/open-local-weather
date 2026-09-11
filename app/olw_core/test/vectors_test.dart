@@ -209,6 +209,21 @@ void main() {
     // The cases that matter are the ties: a port using the language's own
     // rounding passes the plain values and fails these. See cycle.py's
     // round_hours_to_tenths for the 962-of-4801 measurement behind it.
+    // The Dart port dropped rainProbabilityPct here while its own doc comment
+    // claimed it mirrored _blend_prediction, so on the app path item 58's
+    // probability was asked for, parsed, and never scored. No Dart test named
+    // the function and no vector covered it — ROADMAP item 59.
+    test('blend_prediction', () {
+      for (final c in casesOf('blend_prediction.json')) {
+        final tp = TodayProperties.fromJson(c['input'] as Map<String, Object?>);
+        expectMatches(
+          blendPrediction(tp).toJson(),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+
     test('round_hours_to_tenths', () {
       for (final c in casesOf('round_hours_to_tenths.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1162,6 +1177,7 @@ void main() {
       'aqi_summary.json',
       'aqi_merge.json',
       'round_hours_to_tenths.json',
+      'blend_prediction.json',
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_strict.json',
