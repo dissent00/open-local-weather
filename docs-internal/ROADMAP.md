@@ -7163,6 +7163,21 @@ the split — and it fired on the rendering call, the recoverable side.
 - **`config/location.yaml` sits at 16**, which is exactly the new retry worst
   case with no headroom. The default rose to 20; the deployed value is the
   operator's call and was deliberately not changed.
+- **A CAP REFUSAL STILL LOSES THE JUDGMENT CALL.** `DEGRADATION_NARRATIVE`
+  catches `LLMResponseError` only, and `SpendCapExceeded` is its sibling, not
+  its subclass — so a narrative call refused mid-flight because retries ate
+  the budget aborts the run and discards the scored forecast, which is the
+  same half-a-forecast failure by a different route. Checked 2026-09-11, not
+  inferred. It needs the budget nearly exhausted at the moment the second
+  call starts, so it is narrow; the fix is one more `except` clause and the
+  question is whether a run stopped by the operator's own cap SHOULD publish
+  a degraded page, which is a policy call rather than a bug.
+- **The `is_reissue=True` narrative prompt has never been called.** The
+  judgment prompt is byte-identical across both branches (18,398 either way),
+  so the half that decides the scored fields is the half already smoke-tested.
+  What is untried is the ~3,400 characters of LATER ISSUANCE that only the
+  evening refresh sees — vector-pinned and moved verbatim, and on the
+  recoverable side of the split, but untried.
 
 ### Order
 
