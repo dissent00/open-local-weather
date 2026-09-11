@@ -49,6 +49,9 @@
         "wind_kmh": 25.6,
         "high_c": 33.6,
         "low_c": 19.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.5
       },
       {
@@ -60,6 +63,9 @@
         "wind_kmh": 32.4,
         "high_c": 28.0,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.6000000000000227
       },
       {
@@ -71,6 +77,9 @@
         "wind_kmh": 31.0,
         "high_c": 31.6,
         "low_c": 21.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.39999999999997726
       },
       {
@@ -82,6 +91,9 @@
         "wind_kmh": 33.8,
         "high_c": 31.6,
         "low_c": 17.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.6999999999999318
       },
       {
@@ -93,6 +105,9 @@
         "wind_kmh": 43.2,
         "high_c": 29.4,
         "low_c": 19.9,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.0
       },
       {
@@ -104,6 +119,9 @@
         "wind_kmh": null,
         "high_c": 30.0,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -115,6 +133,9 @@
         "wind_kmh": 41.0,
         "high_c": 31.7,
         "low_c": 20.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 3.300000000000068
       },
       {
@@ -126,6 +147,9 @@
         "wind_kmh": 38.785000000000004,
         "high_c": 30.172500000000003,
         "low_c": 18.2175,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -137,6 +161,9 @@
         "wind_kmh": null,
         "high_c": 30.0,
         "low_c": 20.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
@@ -150,6 +177,9 @@
         "wind_kmh": 25.2,
         "high_c": 33.5,
         "low_c": 19.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.39999999999997726
       },
       {
@@ -161,6 +191,9 @@
         "wind_kmh": 40.0,
         "high_c": 31.5,
         "low_c": 18.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.1999999999999318
       },
       {
@@ -172,6 +205,9 @@
         "wind_kmh": 23.4,
         "high_c": 30.2,
         "low_c": 21.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.0
       },
       {
@@ -183,6 +219,9 @@
         "wind_kmh": 28.1,
         "high_c": 30.4,
         "low_c": 16.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.0
       },
       {
@@ -194,6 +233,9 @@
         "wind_kmh": 43.6,
         "high_c": 32.3,
         "low_c": 18.4,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.1999999999999318
       },
       {
@@ -205,6 +247,9 @@
         "wind_kmh": null,
         "high_c": 34.0,
         "low_c": 18.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -216,6 +261,9 @@
         "wind_kmh": 41.0,
         "high_c": 31.7,
         "low_c": 20.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 3.300000000000068
       },
       {
@@ -227,6 +275,9 @@
         "wind_kmh": 38.785000000000004,
         "high_c": 30.172500000000003,
         "low_c": 18.2175,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -238,6 +289,9 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
@@ -251,6 +305,9 @@
         "wind_kmh": 28.8,
         "high_c": 33.4,
         "low_c": 18.4,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.1999999999999318
       },
       {
@@ -262,6 +319,9 @@
         "wind_kmh": 31.3,
         "high_c": 26.0,
         "low_c": 20.2,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.1999999999999318
       },
       {
@@ -273,6 +333,9 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -284,6 +347,9 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -295,6 +361,9 @@
         "wind_kmh": 50.8,
         "high_c": 28.0,
         "low_c": 19.5,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.10000000000002274
       },
       {
@@ -306,6 +375,9 @@
         "wind_kmh": 41.0,
         "high_c": 31.7,
         "low_c": 20.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 3.300000000000068
       },
       {
@@ -317,6 +389,9 @@
         "wind_kmh": 38.785000000000004,
         "high_c": 30.172500000000003,
         "low_c": 18.2175,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
@@ -328,6 +403,9 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ]
@@ -335,15 +413,18 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0 (2026-09-07): ECMWF, ICON, Kenya Met, Best Match, and OLW blend correctly verified the rain event, with ECMWF catching onset within 1 hour and Best Match showing zero high temperature error. GFS and UKMO failed the rain call, with GFS exhibiting a severe daytime cold bias (-4.2°C) and persistent wind overestimation (+22.6 km/h)."
+      "note": "Day+0 (2026-09-07): ECMWF, ICON, Kenya Met, Best Match, and OLW blend correctly verified the rain event, with ECMWF catching onset within 1 hour and Best Match showing zero high temperature error. GFS and UKMO failed the rain call, with GFS exhibiting a severe daytime cold bias (-4.2°C) and persistent wind overestimation (+22.6 km/h).",
+      "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "Day+3: All models correctly verified the rainfall event for September 7th target date. ECMWF and Best Match performed best on rain calibration, though GFS over-forecast daytime maximum temperatures by 4.9°C.",
+      "note_sign_corrected_on": null
     },
     "day7": {
       "verified": false,
-      "note": null
+      "note": null,
+      "note_sign_corrected_on": null
     }
   },
   "local_bulletin": {
@@ -455,6 +536,9 @@
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "bdb408ec1a755e9708c1134e108849955e435b75fdfa953bba0aaead27751c01",
+    "finish_reason": null,
+    "input_tokens": null,
+    "output_tokens": null,
     "refreshed_at": "2026-09-07T15:02:42.056163Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []

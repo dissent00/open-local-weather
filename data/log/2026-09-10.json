@@ -412,8 +412,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "Day+0: All models accurately verified the precipitation call for September 10th. ECMWF caught onset timing within 1 hour, while GFS under-forecast surface wind speeds by 15.9 km/h and ICON exhibited an overnight warm bias on minimum temperatures.",
       "note_sign_corrected_on": null
     },
     "day3": {
@@ -536,6 +536,9 @@
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "6daff10c03aded2dbfb6ec52edfdc0ced34abdcc1844639c9c11017231269a29",
+    "finish_reason": null,
+    "input_tokens": null,
+    "output_tokens": null,
     "refreshed_at": "2026-09-10T15:02:43.497730Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []
