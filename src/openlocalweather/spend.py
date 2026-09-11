@@ -45,14 +45,34 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Deliberately above the honest worst case rather than at it. The pipeline
-# nominally makes two calls a day (morning plus evening refresh) and up to
-# eight if every attempt retries to the limit. Ten leaves headroom for a bad
-# day while making a runaway loop impossible.
+# Deliberately above the honest worst case rather than at it.
+#
+# RECOUNTED FOR THE SPLIT, ROADMAP item 59 step 3. A forecast is now a
+# judgment call and then a rendering call, so the pipeline nominally makes
+# FOUR calls a day — two issuances, morning and evening refresh, two calls
+# each — and up to SIXTEEN if every attempt retries to the limit. The old
+# default of 10 was chosen as headroom over a worst case of 8; it is now
+# below the worst case, which would turn a bad network day into a refused
+# forecast rather than a slow one.
+#
+# Doubled rather than recomputed from scratch, because what changed is the
+# number of calls per forecast and nothing else: the same number of
+# forecasts costs twice as much, and the cap should still describe the same
+# number of forecasts.
+#
+# THIS IS THE DEFAULT, NOT THE DEPLOYED VALUE. A deployment that already set
+# `max_llm_calls_per_24h` keeps what it set, and its cap now buys half the
+# forecasts it used to — see `config/location.yaml`.
 #
 # A cap only protects operators who have one, so this default is NOT
 # unlimited — an unset cap protects nobody.
-DEFAULT_MAX_LLM_CALLS_PER_24H = 10
+DEFAULT_MAX_LLM_CALLS_PER_24H = 20
+
+# What one forecast costs, in calls. Named because three places reason about
+# it — the cap above, the app's settings screen, and anything that turns a
+# budget into a number of forecasts — and a bare 2 in any of them would be
+# the kind of constant nobody finds when it changes.
+LLM_CALLS_PER_FORECAST = 2
 
 WINDOW = timedelta(hours=24)
 

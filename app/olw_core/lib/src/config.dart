@@ -222,8 +222,26 @@ const Duration spendKeepHistory = Duration(days: 7);
 
 /// Mirrors DEFAULT_MAX_LLM_CALLS_PER_24H in the Python implementation.
 ///
+/// RECOUNTED FOR THE SPLIT, upstream ROADMAP item 59 step 3. A forecast is
+/// now a judgment call and then a rendering call, so the same number of
+/// forecasts costs twice as many calls. Doubled rather than recomputed,
+/// because that is exactly what changed.
+///
+/// THIS IS THE DEFAULT, NOT WHAT AN EXISTING READER HAS. A stored setting is
+/// left alone: it is their spend, and silently raising someone's cap is not
+/// a migration. What the app owes them instead is a settings screen that
+/// says what a forecast costs, so a reader who now gets half as many can see
+/// why and decide.
+///
 /// Deliberately not unlimited: a cap only protects people who have one.
-const int defaultMaxLlmCallsPer24h = 10;
+const int defaultMaxLlmCallsPer24h = 20;
+
+/// What one forecast costs, in calls — upstream ROADMAP item 59 step 3.
+///
+/// Named because the settings screen turns a budget into a number of
+/// forecasts, and a bare 2 there would be a constant nobody finds when the
+/// call count changes again.
+const int llmCallsPerForecast = 2;
 
 
 /// --- Rain-skill trend (see scoring.dart) ---

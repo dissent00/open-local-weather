@@ -142,10 +142,24 @@ def test_old_entries_are_pruned_but_a_week_is_kept(tmp_path):
 
 def test_the_default_is_not_unlimited():
     """A cap only protects operators who have one. Defaulting to unlimited
-    would protect nobody, and the pipeline's honest worst case is eight calls
-    a day with retries."""
-    assert DEFAULT_MAX_LLM_CALLS_PER_24H == 10
-    assert DEFAULT_MAX_LLM_CALLS_PER_24H >= 8
+    would protect nobody.
+
+    THE WORST CASE IS DERIVED, not typed. It was eight calls a day until
+    ROADMAP item 59 step 3 made a forecast two calls, and this assertion
+    said `>= 8` against a hardcoded 8 — which would have stayed green while
+    the default sat BELOW the real worst case, turning a bad network day
+    into a refused forecast. Deriving it means the next change to either
+    factor fails here instead.
+    """
+    from openlocalweather.llm.gemini import MAX_ATTEMPTS
+    from openlocalweather.spend import LLM_CALLS_PER_FORECAST
+
+    issuances_per_day = 2  # morning, plus the evening refresh
+    worst_case = issuances_per_day * LLM_CALLS_PER_FORECAST * MAX_ATTEMPTS
+
+    assert worst_case == 16, "recount the default if this moved"
+    assert DEFAULT_MAX_LLM_CALLS_PER_24H >= worst_case
+    assert DEFAULT_MAX_LLM_CALLS_PER_24H < 100, "a cap this loose protects nobody"
 
 
 def test_records_carry_enough_to_audit_a_bill(tmp_path):
