@@ -6456,7 +6456,7 @@ here gets validated).
 
 ---
 
-## 59. One call writes the forecast and writes the prose · **Partly shipped**
+## 59. One call writes the forecast and writes the prose · **Shipped 2026-09-11; unmeasured until the first real run**
 
 `llm/prompt.py` is 451 lines. Single instruction paragraphs run past 400
 words. It is at once a reasoning engine, a style guide and an incident log:
@@ -7055,6 +7055,59 @@ from the committed record instead of from a fresh experiment: the schema that
 permitted each absence is recorded beside the absence. If the split moves the
 rate, the record also shows the schema did not move underneath it — which is
 the confound this instrumentation exists to rule out.
+
+### 2026-09-11: shipped, and what is now owed
+
+Steps 1 and 2 landed 2026-09-10. **Step 3 landed 2026-09-11**, in both
+languages and the app, switched outright rather than shadowed.
+
+| | before | after |
+|---|---|---|
+| judgment call's prompt | 47,054 chars | **18,398** |
+| rendering call's prompt | — | 38,480 |
+| calls per forecast | 1 | **2** |
+| scored fields the renderer can return | all of them | **none** |
+
+**The last row is the part that cannot regress.**
+`GeminiNarrativeResponse` contains no `today_properties` and no
+`extended_properties`, so the rendering call has nowhere to put a scored
+value however its prompt is later edited. `tests/test_prompt_seam.py` keeps
+its prompt-level assertions because a prompt can still TELL the renderer to
+argue with the call it was handed — which the schema cannot prevent — and
+gained one for the structural claim.
+
+**The text was moved, not rewritten.** Every block of the old prompt was
+checked to appear verbatim in the prompt it was assigned to and in no other.
+Four deference sentences were reworded because they told a renderer to make a
+call it no longer makes; one of them stopped naming a scored field at all, so
+the seam guard's allowlist shrank from four entries to three.
+
+**What the cross-language pin caught that the suites did not.** The Python
+blocks kept two trailing blank lines the original prompt did not have, so the
+split had quietly added blank lines to the shipped instructions — invisible to
+1,053 Python tests and found by the byte-for-byte Dart comparison. Both
+prompts now match the original's spacing exactly in both branches.
+
+**Two defects found by reading the diff rather than by running it.** A Dart
+`generateForecast` collided with the public one and resolved to itself, a
+silent infinite recursion; and a parse-failure message escaped its own
+interpolations. Both suites were green with each in place.
+
+### Owed, and named
+
+- **No real call has been made against either prompt.** The two-call path was
+  driven end to end with the socket faked, so the prompts, schemas, merge and
+  hand-off are exercised and the model's behaviour under the new instructions
+  is not. The first production run is the measurement.
+- **The gate is the baseline above**, and it is n=3. Report a result that
+  moves some fields some of the time as unmeasurable rather than rounding it
+  into a win.
+- **The nullability experiment is still unrun**, and `meta.nullable_fields`
+  now records the union of both calls' schemas so it stays answerable from the
+  record.
+- **`config/location.yaml` sits at 16**, which is exactly the new retry worst
+  case with no headroom. The default rose to 20; the deployed value is the
+  operator's call and was deliberately not changed.
 
 ### Order
 
