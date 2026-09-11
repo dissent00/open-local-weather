@@ -12371,9 +12371,24 @@ environment defines no repository variables at all, so the workflow passed the
 empty string, `_env` treated it as absent, and production ran at `"high"` —
 the same level as the re-run.
 
-**So the cause is non-determinism.** Identical model, identical prompt,
-identical parameters, five hours apart, and three optional fields present in
-one answer and absent from the other.
+**So the output is not a deterministic function of the input.** Identical
+model, prompt and parameters, five hours apart, three optional fields present
+in one answer and absent from the other.
+
+**That is the mechanism, not the rate, and the distinction matters.** The
+paired comparison is n=1 against n=1. What it proves is that no property of
+the prompt or the schema can be the cause, since those were byte-identical.
+What it does NOT establish is why absence dominates: three consecutive
+production runs nulled all three fields, and a fair coin does not do that to
+nine field-instances. Something biases this heavily toward absent and one
+re-run escaped it. Treating a single success as a 50/50 process would repeat
+the 2026-09-10 mistake of sizing a claim from the samples in front of you
+rather than from the record.
+
+The sandbox fleet looks like free evidence here and is not: its entries carry
+no `meta`, no narrative and none of these fields, because that sweep makes no
+LLM call at all. Reading its nulls as declined answers is a key-absence error,
+and it was made once while writing this.
 
 **The record could not have settled it, which stands as its own finding.**
 `LogEntryMeta` stores `llm_model` and `system_prompt_sha256` — item 70 — but
