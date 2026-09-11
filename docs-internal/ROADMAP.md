@@ -6868,7 +6868,65 @@ can silently move the other.
 - **The prompt is pinned character-for-character across two languages.**
   Splitting it doubles that surface. Worth doing once, not twice.
 
+### 2026-09-11: go now, and measure it differently — the order is revised
+
+**Decision: do step 3 rather than wait for more data.** The reasoning below
+supersedes "Item 27 comes first" for THIS item. Item 27 is still worth
+building; it is no longer the blocker it was written as.
+
+**What changed is that the prompt stopped being a plausible cause of its own
+symptoms, and started being the plausible cause of a bigger one.** On
+2026-09-11 a re-run of the morning's own archived input — byte-identical
+system prompt, hash-verified to `27cc1e0a9c71`, same 161,820-character user
+message, same model, same thinking level — filled three optional fields the
+production run had left empty five hours earlier. Item 102 has the table.
+
+That kills the reading where a wording defect drops a field. It does not kill
+the reading the operator proposed on the same day, which fits everything
+measured: *the model is not keeping 47,054 characters straight and is
+cherry-picking.* The supporting numbers, all from 2026-09-11:
+
+- The system prompt is **47,054 chars**, up 34% in three days (35,020 on
+  09-08, 40,310 on 09-09). ~8,668 words reach the model, one paragraph is
+  1,130 of them.
+- Two independent blind worker models, each given the prompt and told nothing
+  about what was being tested, returned **10 and 14** items they found
+  ambiguous, self-contradictory, or impossible. A document a careful reader
+  cannot fully satisfy is one a model will satisfy selectively.
+- The fields that drop are named **once**, inside one enumeration at ~84%
+  depth, governed by no paragraph. The four that never drop — `rain_expected`,
+  `temp_high_c`, `temp_low_c`, `rain` — are exactly the four the Gemini
+  response schema marks `required`.
+
+**If instruction load is the cause, this item is the remedy and delaying it
+prolongs the defect.** That is the whole argument for going now.
+
+### 2026-09-11: measure field presence, not prose
+
+The measurement objection to step 3 was: output varies run to run, so a
+before/after replay diff cannot separate the split's effect from noise. True
+of a PROSE diff, and the `2026-09-10/` replay is one draw per case rather than
+a baseline.
+
+**It is not true of the metric that matters here.** Whether a field arrives is
+a countable binary, immune to the prose variance that makes a diff unreadable,
+and `detect_narrated_coverage` (item 102) already computes it from the
+committed log on every run, free and daily. So the split's success criterion
+is available without spending anything:
+
+> Does the rate at which `rain_expected`, `peak_wind_kmh`, `mslp_trend_24h`,
+> `synoptic_pattern`, `uv_index_max` and `air_quality_aqi` arrive go UP after
+> the split?
+
+Take a baseline rate from the record BEFORE changing the prompt — the guard
+landed 2026-09-11, so the series starts there. A replay is then a supplement
+for prose regressions, not the gate. And if one is wanted, `run_replay` takes
+a list of cases: one case is one call, not six.
+
 ### Order
+
+**Superseded for step 3 by the two sections above** — go now, gate on field
+presence. What follows is the original reasoning and still holds for the rest.
 
 **Item 27 comes first, and should always have.** Every prompt change made so
 far — item 48's pass, 53.3's rule 7 — is unvalidated for side effects. Not
