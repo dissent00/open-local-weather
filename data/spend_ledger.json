@@ -2,30 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-04T15:01:52.822228+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh"
-    },
-    {
-      "at": "2026-09-04T15:02:35.748593+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh"
-    },
-    {
-      "at": "2026-09-04T15:05:05.874000+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh"
-    },
-    {
-      "at": "2026-09-04T15:07:07.257891+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh"
-    },
-    {
       "at": "2026-09-05T03:01:45.292974+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -242,6 +218,62 @@
       "purpose": "prompt-ab",
       "outcome": "http_200",
       "elapsed_s": 54.681
+    },
+    {
+      "at": "2026-09-11T15:01:35.936978+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 15.83
+    },
+    {
+      "at": "2026-09-11T15:02:21.768230+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 4.44
+    },
+    {
+      "at": "2026-09-11T15:03:26.210076+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_200",
+      "elapsed_s": 26.218
+    },
+    {
+      "at": "2026-09-11T15:03:52.431663+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 16.929
+    },
+    {
+      "at": "2026-09-11T15:04:39.362066+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "timeout",
+      "elapsed_s": 90.124
+    },
+    {
+      "at": "2026-09-11T15:07:09.487991+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "timeout",
+      "elapsed_s": 90.05
+    },
+    {
+      "at": "2026-09-11T15:10:39.540110+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_200",
+      "elapsed_s": 31.955
     }
   ]
 }
