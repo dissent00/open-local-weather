@@ -541,6 +541,24 @@ DEGRADATION_EXTENDED_OUTLOOK = "extended_outlook_unavailable"
 # failing would suppress a perfectly good seven-day outlook for the town.
 # Splitting them also lets step two threshold each source on its own.
 DEGRADATION_SECONDARY_EXTENDED_OUTLOOK = "secondary_extended_outlook_unavailable"
+# THE WRITE-UP FAILED AND THE FORECAST DID NOT — ROADMAP item 59 step 3.
+#
+# The only degradation here that is not a missing INPUT. Everything above
+# names a block the prompt expected and did not get; this names the second of
+# the two LLM calls failing after the first had already succeeded.
+#
+# It exists because the alternative is losing the scored call. The judgment
+# call decides the numbers the record verifies against observations; the
+# rendering call only writes them up. Merging after both returned meant a
+# provider blip in the ~60s between them discarded a complete, paid-for
+# forecast and left the day unscored — and a hole in the accuracy record is
+# worse than a page with no prose, because the record is what every published
+# figure rests on.
+#
+# ONE-SIDED ON PURPOSE. The judgment call failing still aborts the run:
+# prose around numbers that were never decided is not a degraded forecast,
+# it is an invented one.
+DEGRADATION_NARRATIVE = "narrative_unavailable"
 
 
 class RunDegradation(BaseModel):

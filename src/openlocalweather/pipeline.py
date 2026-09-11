@@ -145,6 +145,7 @@ from openlocalweather.llm.schema import (
     merge_forecast_response,
 )
 from openlocalweather.models import (
+    DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
@@ -389,7 +390,7 @@ def _combined_meta(judgment: ResponseMeta, narrative: ResponseMeta) -> ResponseM
 
 def _generate_forecast(
     provider, judgment_prompt: str, narrative_prompt: str, user_prompt: str, holder: dict
-) -> tuple[GeminiForecastResponse, ResponseMeta]:
+) -> tuple[forecast_call.ForecastCall, ResponseMeta]:
     """The two-call forecast, plus one meta describing both calls.
 
     The call ORDER lives in llm/forecast_call.py, shared with replay. What
@@ -401,11 +402,11 @@ def _generate_forecast(
     def _snapshot(name: str) -> None:
         metas[name] = _response_meta(holder)
 
-    response = generate_forecast(
+    call = generate_forecast(
         provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
     )
 
-    return response, _combined_meta(
+    return call, _combined_meta(
         metas.get(forecast_call.JUDGMENT, ResponseMeta()),
         metas.get(forecast_call.NARRATIVE, ResponseMeta()),
     )
@@ -1761,10 +1762,37 @@ def run_daily_pipeline(
         purpose="forecast",
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
-    llm_response, _call_meta = _generate_forecast(
+    _call, _call_meta = _generate_forecast(
         deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
     )
     _verify_spend()
+    llm_response = _call.response
+
+    # The write-up failed and the scored call did not — ROADMAP item 59 step
+    # 3. Recorded rather than raised: the numbers below are real, and losing
+    # them to publish nothing would put a hole in the accuracy record.
+    if _call.narrative_error is not None:
+        print(
+            f"Narrative call failed ({_call.narrative_error}); publishing the "
+            "scored forecast without its write-up.",
+            file=sys.stderr,
+        )
+        guidance.degradations.append(
+            RunDegradation(
+                code=DEGRADATION_NARRATIVE,
+                summary=(
+                    "Today's figures are here, but the write-up that normally "
+                    "explains them could not be produced this time. The numbers "
+                    "are the same ones this forecast is scored on."
+                ),
+                detail=(
+                    "The rendering call failed after its retries while the "
+                    "judgment call had already succeeded, so the scored "
+                    "prediction was published without a narrative: "
+                    f"{_call.narrative_error}"
+                ),
+            )
+        )
 
     # --- Step 7: build today's log entry ---
     tp = llm_response.today_properties
@@ -2209,10 +2237,37 @@ def run_refresh_pipeline(
         # before the first rather than between them.
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
-    llm_response, _call_meta = _generate_forecast(
+    _call, _call_meta = _generate_forecast(
         deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
     )
     _verify_spend()
+    llm_response = _call.response
+
+    # The write-up failed and the scored call did not — ROADMAP item 59 step
+    # 3. Recorded rather than raised: the numbers below are real, and losing
+    # them to publish nothing would put a hole in the accuracy record.
+    if _call.narrative_error is not None:
+        print(
+            f"Narrative call failed ({_call.narrative_error}); publishing the "
+            "scored forecast without its write-up.",
+            file=sys.stderr,
+        )
+        guidance.degradations.append(
+            RunDegradation(
+                code=DEGRADATION_NARRATIVE,
+                summary=(
+                    "Today's figures are here, but the write-up that normally "
+                    "explains them could not be produced this time. The numbers "
+                    "are the same ones this forecast is scored on."
+                ),
+                detail=(
+                    "The rendering call failed after its retries while the "
+                    "judgment call had already succeeded, so the scored "
+                    "prediction was published without a narrative: "
+                    f"{_call.narrative_error}"
+                ),
+            )
+        )
 
     # --- Step 4: merge into the EXISTING entry — everything the accuracy
     # loop depends on (model_predictions, verification, meta.generated_at_utc,

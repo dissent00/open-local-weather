@@ -34,7 +34,12 @@ from openlocalweather.llm.provider import (
     http_outcome,
     report_outcome,
 )
+from openlocalweather.llm.errors import LLMResponseError
 from openlocalweather.llm.schema import gemini_schema_facts, to_gemini_schema
+
+# Re-exported: it lived here until 2026-09-11 and cli.py, the other
+# providers and several tests import it from this module.
+__all__ = ["GeminiProvider", "LLMResponseError"]
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -130,15 +135,6 @@ VALID_THINKING_LEVELS = frozenset({"minimal", "low", "medium", "high"})
 # MAX_TOKENS, RECITATION, SAFETY, OTHER — means the text is not what was
 # asked for, however well it parses.
 FINISH_REASON_COMPLETE = "STOP"
-
-
-class LLMResponseError(RuntimeError):
-    """The LLM call failed outright (network/HTTP error, no candidates) or
-    its response didn't validate against the requested schema. Either way
-    the pipeline should abort loudly rather than publish a malformed or
-    missing forecast — mirrors the original pipeline's "Critical Error:
-    Pipeline aborted due to Gemini API failure" behavior.
-    """
 
 
 class GeminiProvider:

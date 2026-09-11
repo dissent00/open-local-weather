@@ -202,9 +202,22 @@ def run_replay(
     for case in cases:
         started = time.monotonic()
         try:
-            response = generate_forecast(
+            call = generate_forecast(
                 provider, case.judgment_prompt, case.narrative_prompt, case.user_prompt
             )
+            # A DEGRADED NARRATIVE IS A FAILED CASE HERE, though it is a
+            # publishable forecast in the pipeline. The two callers want
+            # different things: production would rather keep the scored call
+            # than publish nothing, while a replay exists to diff PROSE, and
+            # a placeholder scored against a real narrative would report a
+            # change the prompt did not make.
+            if call.narrative_error is not None:
+                failures.append(
+                    ReplayFailure(case=case.name, error=call.narrative_error)
+                )
+                continue
+
+            response = call.response
         except Exception as e:  # noqa: BLE001 - a failed case must not cost the others
             failures.append(ReplayFailure(case=case.name, error=str(e)))
             continue

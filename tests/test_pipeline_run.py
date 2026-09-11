@@ -5,8 +5,14 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
+from openlocalweather.llm.gemini import LLMResponseError
+from openlocalweather.llm.schema import (
+    GeminiJudgmentResponse,
+    GeminiNarrativeResponse,
+)
 from openlocalweather.models import (
     DEGRADATION_EXTENDED_OUTLOOK,
+    DEGRADATION_NARRATIVE,
     DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
 )
 from openlocalweather.fetch.metar import StationWeather
@@ -121,6 +127,10 @@ class FakeLLMProvider:
     # every pipeline test blind to the field.
     response_schema_sha256 = "a" * 64
     nullable_fields = ("/today_properties/mslp_trend_24h",)
+    # Which half of the split to fail, for ROADMAP item 59 step 3's
+    # degraded-write-up path. None means answer normally.
+    fail_judgment: Exception | None = None
+    fail_narrative: Exception | None = None
 
     @property
     def system_prompts(self) -> str:
@@ -143,6 +153,10 @@ class FakeLLMProvider:
         if self.before_attempt is not None:
             self.before_attempt()
         self.calls.append((system_prompt, user_prompt))
+        if self.fail_judgment is not None and response_schema is GeminiJudgmentResponse:
+            raise self.fail_judgment
+        if self.fail_narrative is not None and response_schema is GeminiNarrativeResponse:
+            raise self.fail_narrative
         if self.after_response is not None:
             self.after_response(
                 ResponseMeta(
@@ -3108,6 +3122,66 @@ def test_a_provider_that_reports_nothing_leaves_the_fields_unset(tmp_path):
     # None, NOT [] — "the provider did not say" and "the schema marked
     # nothing nullable" are different answers, and the second is a real one.
     assert meta.nullable_fields is None
+
+
+def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
+    """ROADMAP item 59 step 3, and the cost the split introduced.
+
+    The judgment call decides the numbers the record SCORES; the rendering
+    call only writes them up. Losing the second used to lose the first too,
+    because the merge happened after both returned — so a provider blip in
+    the ~60s between them threw away a complete, paid-for forecast and left
+    the day unscored.
+
+    A day with numbers and no prose is a degraded forecast. A day with
+    neither is a hole in the accuracy record, and the record is the thing
+    this project is for.
+    """
+    llm = FakeLLMProvider()
+    llm.fail_narrative = LLMResponseError("Gemini request failed after 4 attempts")
+
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    # The scored call survived, in full — the stored entry flattens
+    # today_properties onto itself, so these ARE the judgment call's numbers.
+    assert entry.temp_high_c is not None
+    assert entry.rain_expected
+    assert entry.meta is not None
+
+    # And the record says the day is degraded rather than normal.
+    codes = {d.code for d in entry.meta.degradations or []}
+    assert DEGRADATION_NARRATIVE in codes, codes
+
+    # The prose says what happened instead of pretending to be a forecast.
+    assert entry.narrative_markdown, "an empty narrative reads as a missing section"
+    assert "could not be written" in entry.narrative_markdown.lower()
+
+    # AND THE DAY IS SCORED. This is the whole justification for degrading
+    # rather than aborting: the blend's row is in the record beside the
+    # models, so tomorrow's verification has something to check.
+    blend = [p for p in entry.model_predictions.day0 if p.model == BLEND_MODEL_ID]
+    assert len(blend) == 1, "the forecaster's own scored row is missing"
+    assert blend[0].rain is not None
+    assert blend[0].high_c is not None
+
+
+def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
+    """The degradation above is deliberately ONE-SIDED.
+
+    There is nothing to publish without the scored call — a page of prose
+    around numbers that were never decided is not a degraded forecast, it is
+    an invented one. So the judgment call failing aborts exactly as it did
+    before the split.
+    """
+    llm = FakeLLMProvider()
+    llm.fail_judgment = LLMResponseError("Gemini request failed after 4 attempts")
+
+    with pytest.raises(LLMResponseError):
+        run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
 
 
 def test_the_entry_records_which_schema_permitted_the_answer(tmp_path):

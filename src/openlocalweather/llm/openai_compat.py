@@ -40,7 +40,7 @@ from typing import TypeVar
 import requests
 from pydantic import BaseModel, ValidationError
 
-from openlocalweather.llm.gemini import LLMResponseError
+from openlocalweather.llm.errors import LLMResponseError
 from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,

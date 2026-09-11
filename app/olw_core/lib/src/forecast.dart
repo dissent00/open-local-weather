@@ -36,6 +36,13 @@ import 'synoptic.dart';
 /// silently stop matching rather than fail.
 const String degradationHoursAheadNarrowed = 'hours_ahead_narrowed';
 
+/// THE WRITE-UP FAILED AND THE FORECAST DID NOT — upstream ROADMAP item 59
+/// step 3. The only degradation that is not a missing INPUT: it names the
+/// second of the two LLM calls failing after the first had already
+/// succeeded. Losing the scored call because the prose blipped would put a
+/// hole in the accuracy record to avoid publishing a short page.
+const String degradationNarrative = 'narrative_unavailable';
+
 /// One block the prompt expects that arrived absent or narrower than usual.
 ///
 /// Port of `models.RunDegradation`; see that class for the full reasoning and
@@ -485,12 +492,30 @@ Future<ForecastRun> generateForecast({
 
   // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
   // spend against the reader's own cap — see item 26.
-  final response = await generateForecastResponse(
+  final call = await generateForecastResponse(
     provider: llm,
     judgmentPrompt: judgmentPrompt,
     narrativePrompt: narrativePrompt,
     userPrompt: userPrompt,
   );
+  final response = call.response;
+
+  // The write-up failed and the scored call did not. Recorded rather than
+  // rethrown: the numbers are real, and losing them to publish nothing would
+  // put a hole in the accuracy record — see [degradationNarrative].
+  if (call.narrativeError != null) {
+    degradations.add(RunDegradation(
+      code: degradationNarrative,
+      summary:
+          "Today's figures are here, but the write-up that normally explains "
+          'them could not be produced this time. The numbers are the same '
+          'ones this forecast is scored on.',
+      detail:
+          'The rendering call failed after its retries while the judgment '
+          'call had already succeeded, so the scored prediction was kept '
+          'without a narrative: ${call.narrativeError}',
+    ));
+  }
   return ForecastRun(
     degradations: degradations,
     response: response,

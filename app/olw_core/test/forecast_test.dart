@@ -87,6 +87,10 @@ class _StubProvider implements LlmProvider {
   /// narrative call — the one that writes what a reader sees.
   final List<(String, String)> calls = [];
 
+  /// Which half of the split to fail, for the degraded-write-up path.
+  bool failJudgment = false;
+  bool failNarrative = false;
+
   @override
   String get model => 'stub-model';
 
@@ -99,6 +103,12 @@ class _StubProvider implements LlmProvider {
     seenSystemPrompt = systemPrompt;
     seenUserPrompt = userPrompt;
     calls.add((systemPrompt, userPrompt));
+    if (failJudgment && shape.name == 'judgment') {
+      throw LlmResponseError('request failed after 4 attempts');
+    }
+    if (failNarrative && shape.name == 'narrative') {
+      throw LlmResponseError('request failed after 4 attempts');
+    }
     // The shape that was asked for. The canned payload is a whole forecast,
     // a superset of both halves, so each call gets exactly the fields its
     // own schema declares — which is what a real provider does.
@@ -773,6 +783,51 @@ void main() {
         reason: "the judgment call's own number, handed to the renderer");
     expect(judgmentUser, isNot(contains("THE FORECASTER'S CALL")),
         reason: 'the judgment call cannot be shown its own answer');
+  });
+
+  test('a failed write-up still keeps the scored call', () async {
+    // Upstream ROADMAP item 59 step 3, and the cost the split introduced. The
+    // judgment call decides the numbers the record SCORES; the rendering call
+    // only writes them up. Losing the second used to lose the first too.
+    final llm = _StubProvider()..failNarrative = true;
+
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+
+    // The scored call survived, and so did the row the record verifies.
+    expect(run.response.todayProperties.tempHighC, 27.5);
+    expect(run.day0Predictions.where((p) => p.model == 'olw_blend'), hasLength(1));
+
+    // And the run says it is degraded rather than normal.
+    expect(run.degradations.map((d) => d.code), contains(degradationNarrative));
+
+    // The prose says what happened rather than pretending to be a forecast.
+    expect(run.response.todayNarrative.toLowerCase(),
+        contains('could not be written'));
+  });
+
+  test('a failed judgment call still aborts the whole run', () async {
+    // One-sided on purpose: prose around numbers that were never decided is
+    // not a degraded forecast, it is an invented one.
+    final llm = _StubProvider()..failJudgment = true;
+
+    expect(
+      () => generateForecast(
+        client: mockClient(),
+        llm: llm,
+        location: _location,
+        today: DateTime.utc(2026, 8, 19),
+        publicWebpageUrl: 'https://example.com/',
+        nowLocal: DateTime(2026, 8, 19, 18, 15),
+      ),
+      throwsA(isA<LlmResponseError>()),
+    );
   });
 
   test('guidance recency hours_old rounds half-to-even, matching Python', () async {
