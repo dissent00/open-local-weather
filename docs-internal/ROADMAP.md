@@ -12364,23 +12364,28 @@ five hours earlier. Every hypothesis this item had been chasing — a buried
 field list, an insufficiently emphatic instruction, an optional schema slot —
 predicts the same answer both times. So none of them is the cause.
 
-**The one variable not controlled** is `GEMINI_THINKING_LEVEL`. The workflow
-passes it from a GitHub repository variable; the re-run hardcoded `"high"`.
-If that variable is unset, `_env` treats the empty string as absent and
-production used `"high"` too, leaving non-determinism as the explanation. If
-it is set to anything else, that difference is the more likely cause and this
-table compares two different configurations.
+**The one variable not controlled was `GEMINI_THINKING_LEVEL`, and it is now
+closed.** The workflow passes it from a GitHub repository variable and the
+re-run hardcoded `"high"`. The operator confirmed 2026-09-11 that this
+environment defines no repository variables at all, so the workflow passed the
+empty string, `_env` treated it as absent, and production ran at `"high"` —
+the same level as the re-run.
 
-**The record cannot settle it, which is its own finding.** `LogEntryMeta`
-stores `llm_model` and `system_prompt_sha256` — item 70 — but nothing about
-the generation parameters. Two runs of the same model on the same prompt at
-different thinking levels are indistinguishable in the record, so a stored
-entry is not reproducible from what is stored beside it. That is the half of
-item 69's promise the prompt archive does not cover.
+**So the cause is non-determinism.** Identical model, identical prompt,
+identical parameters, five hours apart, and three optional fields present in
+one answer and absent from the other.
 
-**A run must be checked against the repository variable before this table is
-read as proof of anything.** Not done here: the token available could not read
-Actions variables (HTTP 403).
+**The record could not have settled it, which stands as its own finding.**
+`LogEntryMeta` stores `llm_model` and `system_prompt_sha256` — item 70 — but
+nothing about the generation parameters. It took the operator's knowledge of
+the deployment to close this, because two runs of one model on one prompt at
+different thinking levels are indistinguishable in the record. A stored entry
+is not reproducible from what is stored beside it, which is the half of item
+69's promise the prompt archive does not cover.
+
+Not independently verified: the token available could not read Actions
+variables (HTTP 403), so the "no variables" fact is the operator's, not a
+reading of the API.
 
 ### What this changes
 
