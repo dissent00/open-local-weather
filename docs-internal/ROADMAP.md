@@ -12922,6 +12922,70 @@ score means for a forecast issued at dusk before it answers anything else.
   run silently overwriting an earlier issuance's published text — is
   independent of whether the later run is called a refresh.
 
+### 2026-09-12: discussion, not a decision
+
+**Operator's proposal: score an issuance when the INFORMATION moved** — new
+model data, new verification data — rather than because of where it sits in
+the day.
+
+*The signal already exists.* `_guidance_recency_payload` computes
+`newer_than_previous_issuance` by comparing this run's guidance cycle against
+the previous entry's, precisely so a re-issue can tell the model whether the
+cycle actually moved. It is `None` on a day's first run, which is "no basis
+for the comparison" rather than false. So "score when the guidance is new" is
+a rule the pipeline can already evaluate, and that is a real point in its
+favour — it is not a new mechanism, it is an existing computed field being
+promoted to a contract.
+
+*What it costs.* Rows per day become variable and data-dependent: one on a
+settled day, three on a churning one. Two consequences, neither fatal and
+both needing an answer:
+
+- **The record would over-weight unsettled days**, because those are the days
+  the guidance moves. A rolling average over ROWS would then be measuring
+  something different from an average over DAYS, and the project's windows
+  are currently named for checks — `ROLLING_WINDOW_SHORT` is 10 *checks*.
+  Whether a check is an issuance or a day stops being a distinction without
+  a difference the moment a day can hold three.
+- **Models must be scored at the same issuances as the blend**, from the same
+  cycle, or the comparison is against a different opportunity set. That part
+  is mechanical: they are extracted from the guidance the run already read.
+
+### The 10pm reader, and the thing this exposes
+
+**A reader checking before bed cares about overnight and then all of
+tomorrow. Tomorrow is not scored at all.** `LEAD_TIMES_DAYS` is `[0, 3, 7]`:
+there is no Day+1. So the forecast that matters most to that reader is the
+one the accuracy record says nothing about, and a 22:00 issuance under
+today's model spends its judgment call describing a calendar day that is
+nearly over.
+
+**The operator's separation is the right shape.** A forecast is time-aware and
+says so to the reader; verification is not, and does not care whether a period
+was day or night. Stated structurally, that is:
+
+- **Predictions are keyed by TARGET DATE, not by their relation to "today".**
+  `extended_properties` already works this way — it carries `lead_time_days`
+  per entry. `today_properties` is, under this reading, simply the entry whose
+  target date is the issuance date. The generalisation is already half-built.
+- **Prose is keyed by the clock.** At 22:00 it opens on tonight and tomorrow;
+  at 06:00 on today. That is a rendering rule, and after item 59 step 3 it
+  lives entirely in the rendering call — which is the first thing the split
+  makes easy rather than harder.
+
+**THE HAZARD, AND IT IS ALREADY LATENT.** Lead time measured in dates
+conflates forecasts of very different difficulty. A 22:00 issuance and an
+06:00 issuance both call tomorrow "Day+1", but one is about two hours from
+the target period and the other about eighteen. Scored as one lead, they
+average a hard call with an easy one.
+
+This defect exists today and is avoided **by accident**: only the first
+issuance of the day scores, so the record has never held two Day+0 rows of
+different difficulty. Making every issuance score would expose it
+immediately, which means the fix — recording hours-to-target, or at minimum
+the issuance hour, so the record can partition on it — is a prerequisite of
+option (2) rather than a later refinement.
+
 ### Order
 
 Decide the scoring contract FIRST. Everything else is mechanical once it is
@@ -12971,10 +13035,11 @@ should be argued on its own terms.
   row needs the deployment it came from, the same way item 24 requires a
   config version stamp — **this is the non-negotiable one**, for the same
   reason.
-- **How close is "my area"?** Item 99 is exactly this question and is still
-  `measure before designing`. A served forecast from 40 km away across a lake
-  shore is a different forecast, and the app has no way to know that without
-  item 99's answer.
+- **How close is "my area"?** Items 99 and 110 are exactly this question. A
+  served forecast from 40 km away across a lake shore is a different
+  forecast, and the app has no way to know that without item 110's answer —
+  which is per-variable, so a deployment may be close enough to serve a
+  temperature and not a thunderstorm.
 - **Staleness.** A deployment that stops publishing must read as stale rather
   than as calm weather — the same rule as every other absent input, and the
   one this project has broken before.
@@ -13010,6 +13075,18 @@ without touching anything else, and never the operator's personal PAT.
 
 Worth stating plainly because the convenient implementation is the dangerous
 one, and it is convenient enough to reach for without noticing.
+
+**Decided 2026-09-12: a narrowly scoped PAT, dispatching a workflow from the
+phone — the same shape as the existing cron trigger, and nothing more.** The
+phone runs no forecast and holds no Gemini key in this mode; it holds one
+credential whose entire capability is "start that run". That is the smallest
+thing that does the job, and it means a lost phone costs a revocation rather
+than an investigation.
+
+What this does NOT settle, and should be settled before it ships: GitHub's
+finest-grained token still carries more than "dispatch one workflow" —
+whatever is issued needs its actual permission set written down beside it, or
+the next reader will assume it was as narrow as this paragraph sounds.
 
 ### The rest
 
@@ -13066,6 +13143,25 @@ same prompt — and averaging them produces something that reads like ensemble
 skill and is not. Presenting that number as a consensus would be the most
 convincing wrong figure this project has ever published.
 
+### 2026-09-12: what is actually wanted from it
+
+The operator's answer, and it is narrower than the item's opening suggests:
+**not recursive LLM output at scale.** What a busy area would supply is
+
+- **more observations** — the thing item 60 needs and the thing a single
+  deployment accumulates one day at a time;
+- **more user reports** — "raining now", "it rained today" — which is item
+  46's closed-question feedback arriving from many people instead of one, and
+  is the only input here that is not derived from the same model guidance
+  everyone else already has;
+- **more temporal coverage**, because users refresh at different hours and a
+  deployment on a cron sees two moments a day.
+
+That third one is the quietly valuable one. Every deployment fetching the
+same cycle sees the same guidance; deployments observing at different HOURS
+see different weather, and the disagreement between them is information no
+single deployment can produce.
+
 ### The split that keeps it honest
 
 Observations and forecasts are different animals here and should be mirrored
@@ -13078,6 +13174,9 @@ under different rules:
 - **Forecasts are opinions, and opinions correlate.** Mirrored for display
   and for comparison, never into a prompt, and never averaged into a
   headline number without answering the independence question first.
+
+**Confirmed by the operator 2026-09-12.** Treat it as the rule this item is
+built on rather than as a recommendation inside it.
 
 ### Also unanswered
 
@@ -13096,3 +13195,190 @@ under different rules:
 Related: items 24 (recomputable from the committed record), 60 (the record as
 evidence — the reason to want this), 99 (whether two areas are the same
 area), 105 (where mirrored deployments would appear).
+
+---
+
+## 108. A forecast that never ran tells nobody · **Planned**
+
+On 2026-09-12 the 03:01 forecast was refused by the spend cap and readers got
+yesterday's page. The only trace was a red workflow run. Nobody was told, and
+the operator found out by looking.
+
+**The gap is not detection — it is notification.** The run failed loudly in
+the only place nobody reads. Every other slow rot in this project is caught by
+`check-health` printing into a weekly job; a missed ISSUANCE is different
+because it is time-critical in a way a stale table is not, and because the
+window to do anything about it is hours.
+
+### What it should say
+
+An admin email, on the same rails as the forecast mail that already ships.
+The useful content is not "a run failed" — the workflow already says that —
+but **why, and whether it will happen again in the next few hours**:
+
+- The cause, separated. Refused by the cap, exhausted its retries, or failed
+  before reaching the model at all are three different problems with three
+  different responses, and only the first is predictable in advance.
+- **What the budget looks like now**, and when the next slot frees. On
+  2026-09-12 the answer was "one free, second at 08:29" and that is exactly
+  the sentence that was missing.
+- Whether the NEXT scheduled issuance will also be refused. This is
+  computable at the moment of failure and is the single most useful line:
+  a cap refusal at 03:01 that will still be a refusal at 15:01 is a different
+  morning from one that clears.
+
+### The cheaper half, and it should come first
+
+**Nothing warns BEFORE the budget runs out.** Yesterday's exhaustion was
+visible at 15:11 the previous evening — seven calls spent on one refresh, nine
+already in the window — and the refusal at 03:01 was predictable for twelve
+hours. A line in the run's own output, and in `check-health`, saying how many
+calls remain and whether that covers the next issuance would have turned a
+missed forecast into a decision.
+
+That is strictly cheaper than the email, needs no new delivery path, and
+would have prevented the incident that prompted this item. **Ship the warning
+before the notification.**
+
+### Not established
+
+- **Whether an email is the right channel at all.** It is the one this
+  project already has. A reader-facing status on the page — "this forecast is
+  from yesterday" — may matter more than telling the operator, since the
+  operator can look and the reader cannot. Both, probably, and they are
+  different items.
+- **What counts as a miss.** A refused re-issue on a day that already
+  published is not a missed forecast; a refused FIRST issuance is. Under item
+  104 that distinction changes shape, which is a reason to settle 104 first.
+
+Related: items 26 (the cap), 51 (reason, then count, then report), 104
+(what an issuance is), 53.4 (degradations, the same reporting problem solved
+for a different failure).
+
+---
+
+## 109. Ask before you generate — the cooperative forecast · **Planned, and deliberately unargued**
+
+Proposed 2026-09-12, and the operator asked for it to be **debated
+separately** rather than folded into item 105. Recorded here so the debate has
+a document; nothing below is settled.
+
+**The mode.** Before spending an LLM call, Ensemble asks the shared record
+(item 107) whether a recent forecast already exists for this area. If one
+does, display it and make no call. If none does, generate one and submit it
+for the next person.
+
+**Why it is attractive.** Item 105's value is largest exactly where API calls
+are most precious — underserved areas, where detailed local forecasting does
+not exist and where a hundred readers currently make one Gemini call each for
+one answer. This is the version that scales that saving without anyone
+running a server.
+
+### What has to be argued
+
+- **Who pays?** First-asker-generates is a lottery in which one reader funds
+  everyone else that hour. That may be fine — it averages out, and the cost
+  is one call — but it should be a decision rather than an emergent property,
+  and a reader should probably be able to say "never generate for others"
+  without losing the ability to read.
+- **How recent is recent enough?** Guidance cycles land every few hours. A
+  five-hour-old forecast may predate the cycle this reader's phone can
+  already see, in which case the cached answer is worse than the one they
+  would have made. The freshness rule has to be expressed against the
+  GUIDANCE CYCLE, not against wall-clock age.
+- **Which prompt produced it?** A deployment three versions behind produces a
+  forecast from different instructions. Item 24's version stamp is not
+  optional here — without it the shared cache silently mixes forecasters, and
+  the accuracy record mixes with it.
+- **Asking is itself a disclosure.** A reader who only ever CONSUMES still
+  tells the service where they are, every time they open the app. Item 107's
+  privacy boundary was written for submission; this mode needs it for queries
+  too, and that is a harder problem because a query cannot be batched or
+  delayed the way a submission can.
+- **What happens when the service is unreachable?** Item 24's rule holds:
+  built-in defaults must be sufficient, so the answer is "generate locally as
+  though the mode were off". Worth stating because the failure mode of a
+  cache is usually to become load-bearing without anyone deciding it should.
+
+### The thing that makes it different from a cache
+
+A cache serves data that would have been identical anyway. **This serves one
+reader's forecaster to another reader**, and the two are not the same claim:
+the second reader's phone might have had fresher guidance, a different
+configured station set, or a different area. Whether that difference matters
+is item 110's question, and it is the reason this cannot be argued before
+"area" has a definition.
+
+Related: items 24 (version stamps, sufficient defaults), 99 and 110 (what an
+area is), 105 (the served-forecast mode this extends), 107 (the store it
+would query).
+
+---
+
+## 110. What is an area? · **Planned, measure before designing — and three items are blocked on it**
+
+Items 99, 105, 107 and 109 all ask the same question in different words: when
+are two places close enough that one forecast serves both? It has never been
+defined, and four items now need it.
+
+### The definition worth testing
+
+**Two points are in the same area, FOR A GIVEN VARIABLE, when the forecast
+difference between them is smaller than the forecast's own error for that
+variable.**
+
+That is operational rather than geographic, and it has the property a radius
+does not: it is falsifiable with data this project already holds. The
+project has both halves — guidance can be fetched at two points and
+differenced, and `verify/scoring.py` holds what the error actually is.
+
+If the Day+0 temperature error is ±1.5 C and two points 30 km apart differ by
+0.4 C, one forecast serves both and saying otherwise is false precision. If
+their afternoon rain calls disagree more often than either is right, they are
+not the same area however close they look.
+
+### Why it cannot be one number
+
+**An area is per-variable.** Temperature and pressure vary smoothly over
+tens of kilometres; convective rain does not vary smoothly over five. A
+shared forecast can be simultaneously correct about tomorrow's high across a
+county and wrong about this afternoon's storm two valleys over — which means
+a served forecast may need to be served PER FIELD, or carry an honest
+statement of which of its claims travel.
+
+**And it is per-regime.** Item 59 measured this without setting out to: wind
+direction agreement at Kisumu swings from 0.95 at midday to 0.48 at 19:00
+because of the lake breeze, while Wellington and Reykjavik sit near 1.00 all
+day because their weather is driven by systems every model resolves. The same
+30 km means different things in those three places, and on different days in
+one of them.
+
+**So the answer is a function, not a constant** — of variable, of terrain, of
+season, and of how unsettled the day is. Any design that reduces it to a
+kilometre radius will be right in the settled case and wrong exactly when
+being wrong costs something.
+
+### What to measure first, and it is cheap
+
+The fleet sweep built for item 96 already fetches guidance for several
+locations and records hourly agreement ungated. The same machinery pointed at
+a RING of points around one location — 5, 10, 20, 40 km — would produce, per
+variable and per hour, the distance at which model agreement falls below the
+forecast's own error. That is item 110's answer for one place, and repeating
+it across the existing fleet says whether the shape is general or lacustrine.
+
+No LLM calls. No new sources. It is the same question item 59 answered for
+wind direction, asked of distance instead of hour.
+
+### What this unblocks
+
+- **99** gets its threshold instead of a judgement call.
+- **105** can say whether a listed deployment is close enough to display, per
+  variable, rather than by a radius someone picked.
+- **107** learns whether two mirrored deployments are observing the same
+  weather — which decides whether their disagreement is signal or distance.
+- **109** cannot be argued at all until this exists, because "a recent
+  forecast for your area" is undefined without it.
+
+Related: items 59 (the same question asked of time), 96 (the fleet sweep that
+would measure it), 99, 105, 107, 109.
