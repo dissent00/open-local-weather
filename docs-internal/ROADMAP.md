@@ -12572,7 +12572,7 @@ than instead of it.
 
 ---
 
-## 102. Nothing watches the fields the forecaster writes · **Measured 2026-09-11; the guard is Planned**
+## 102. Nothing watches the fields the forecaster writes · **Guard shipped 2026-09-11**
 
 Reading the 2026-09-11 run found `mslp_trend_24h` empty. It was empty on
 09-09 and 09-10 as well, and filled on all 29 entries before that.
@@ -12636,6 +12636,14 @@ broke, and is scored against observation at `verify/scoring.py:100`:
 
 What broke is the prose the LLM writes about that number. Nothing watches
 LLM-written fields at all.
+
+### Shipped 2026-09-11
+
+`detect_narrated_coverage` and `actionable_narrated` in `coverage.py`, wired
+into `check-health` at `cli.py:528`, run against the real record rather than
+only fixtures. The status line said "the guard is Planned" for a day after it
+shipped — corrected 2026-09-12, and noted because a stale status line is the
+one kind of roadmap error a cold reader cannot detect.
 
 ### The shape of the guard
 
