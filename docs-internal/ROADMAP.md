@@ -13728,6 +13728,28 @@ audited for what it SAYS and never for what it COSTS.
 it changes the scored fields. Item 77's harness is the instrument, and the
 frozen vectors make it repeatable.
 
+### Operator's decision, 2026-09-12: not now, and not as a cost exercise
+
+**Do not go prompt-hacking to fit today's prices.** What is expensive this
+month may be free next month and the reverse, and a system tuned to one
+provider's current ceiling is tuned to something that will move. The numbers
+above are a snapshot and should be read as one.
+
+**What survives a price change is the part that was never really about
+price.** Item 59's premise is that a document a careful reader cannot fully
+satisfy is one a model satisfies selectively — and that argument was made
+about the INSTRUCTIONS while 85% of what is sent is DATA. Whether any of
+those 161,820 characters is never used is the same question asked of the
+other side of the prompt, and the answer is worth having at any price,
+including zero. So the measurement keeps its place here; what it does not
+have is urgency, and it must not be run as a token-shaving exercise.
+
+**And the binding constraint today is not dollars.** The deployment runs on
+Gemini's free tier, where the limit is a CALL CEILING — 2026-09-12's missed
+forecast was a refusal at 16 of 16, not a bill. Cost per call is the moving
+target; NUMBER of calls is architectural, and items 105 and 109 are already
+the work that addresses it. That is the durable half.
+
 Related: items 26 and 111 (budgets), 59 (the split whose input cost this
 prices), 77 (the harness that would measure it), 105 / 109 (fewer calls,
 where this is cheaper calls).
