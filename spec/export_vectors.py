@@ -3177,6 +3177,10 @@ def export_cycle() -> None:
         date(2026, 8, 2): _a(True, high=30.0, low=20.0, wind=30.0, onset="15:00"),
         date(2026, 8, 3): _a(True, high=28.0, low=None, wind=20.0),
     }
+    tie_record = {
+        date(2026, 8, 1) + timedelta(days=i): _a(i == 0, high=25.0)
+        for i in range(8)
+    }
 
     write(
         "baselines.json",
@@ -3258,6 +3262,15 @@ def export_cycle() -> None:
                 "name": "climatology on an empty record says nothing",
                 "input": {"fn": "climatology", "actuals": {}, "before": "2026-08-03"},
                 "expected": None,
+            },
+            {
+                "name": "climatology's 12.5 percent base rate rounds half-even",
+                "input": {
+                    "fn": "climatology",
+                    "actuals": {d.isoformat(): a.model_dump(mode="json") for d, a in tie_record.items()},
+                    "before": "2026-08-10",
+                },
+                "expected": climatology_prediction(tie_record, before=date(2026, 8, 10)).model_dump(mode="json"),
             },
         ],
     )

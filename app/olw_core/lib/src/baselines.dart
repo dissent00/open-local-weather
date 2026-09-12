@@ -20,6 +20,7 @@
 library;
 
 import 'models.dart';
+import 'rounding.dart';
 
 const String persistenceModelId = 'persistence';
 const String climatologyModelId = 'climatology';
@@ -96,7 +97,7 @@ ModelPrediction? climatologyPrediction(
     // probability this becomes the canonical REFERENCE forecast that a Brier
     // skill score is measured against. The two can disagree and that is
     // correct: at a 40% base rate the boolean says dry and this says 40.
-    rainProbabilityPct: (100 * wet / inScope.length).round(),
+    rainProbabilityPct: roundLikePython(100 * wet / inScope.length, 0).toInt(),
     // No view about WHEN, ever.
     onset: null,
     precipMm: _mean([for (final a in inScope) a.precipMm]),
