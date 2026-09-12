@@ -13866,7 +13866,7 @@ where this is cheaper calls).
 
 ---
 
-## 113. Four modes, and which items they already are · **Planning, 2026-09-12**
+## 113. Four modes, and the data hosting decision they turn on · **Planning; hosting is the open question**
 
 The operator set out the shape the project is heading for. Written down here
 because it renames work rather than adding much of it, and a cold reader
@@ -13884,33 +13884,107 @@ AGPLv3-or-later and `app/olw_core/` is Apache-2.0 — a proprietary paid app
 links the core and never the pipeline. The split was made for forks; it turns
 out to be what makes a paid mode possible.
 
-**And it constrains mode 4's backend: keep it a STORE, never a forecaster.**
-The moment anything "we" run executes the AGPL pipeline over a network,
-§13 obliges us to offer its source to the users of that service. Mode 4 as
-described has the CLIENT generate and the store only hold, which stays clear
-of that — but item 109's "generate one for the next person" must stay
-client-side for the same reason, and that is now a licensing constraint as
-well as a design preference.
+### The §13 boundary, and what is actually on the other side of it
+
+*Licence mechanics, not legal advice. If a paid product ends up resting on
+this line, it wants a lawyer's confirmation rather than this paragraph's.*
+
+AGPLv3 §13 fires on two conditions together: you **modify** the program, and
+you let users **interact with it over a network**. Either alone is not the
+trigger.
+
+**Server-side generation would engage it.** A central service that runs the
+pipeline to make forecasts is a modified program users interact with
+remotely. What that obliges is narrower than it first sounds — the pipeline is
+already public, so "offer the source" is nearly satisfied already. The real
+cost is that **private modifications stop being possible**: any tuning, prompt
+work or pipeline change made to run that service would have to be offered to
+its users.
+
+**Client-side generation never engages it**, for two independent reasons.
+Nothing central runs the pipeline, so the network-interaction condition is
+absent; and the app does not contain AGPL code at all — it links
+`app/olw_core/` under Apache-2.0, while the AGPL half is the Python in
+`src/`.
+
+**So the conclusion is not "AGPL forbids server-side generation".** It does
+not. It is that server-side generation **creates an obligation the project
+does not currently have**, and closes off an option it might later want. Item
+109's "generate one for the next person" staying client-side is therefore a
+licensing convenience as well as a design preference — and it is easier not
+to create the obligation than to manage it.
+
+### The data hosting question, which is now the central one
+
+Mode 4 needs somewhere to put submissions, and that decision gates mode 3's
+supply, which is the free app. It is not an implementation detail to be
+settled later.
+
+**Two data shapes, with OPPOSITE permanence requirements.**
+
+| | the index | submissions |
+|---|---|---|
+| what | which deployments exist, and where | forecasts from mode-4 users |
+| volume | one row per deployment | many per user per day |
+| churn | rare | constant |
+| written by | almost nobody | everybody |
+| must be | public, versioned, auditable | **deletable** |
+
+**The index belongs in git, and its permanence is a feature.** A static JSON
+file, read-only, CDN-cached, changes arriving as pull requests that can be
+reviewed. It costs nothing and scales to anyone.
+
+**Submissions in git would break a promise item 107 already made.** That item
+says opt-in must mean revocable, and "off" must mean the contribution can be
+WITHDRAWN rather than merely stopped. In git it cannot: every submission is a
+commit, `delete` is a revert, and the data stays in published history for
+ever. The same property makes spam immortal — moderation would be reverting,
+not removing. Add that Pages rebuilds on every push, that a hundred sharers is
+two hundred commits a day, and that writing needs a credential anyway, and the
+"no backend" version turns out to be a backend with worse properties.
+
+**"Somewhere that can forget" means a store whose DELETE is real.** Which
+technology matters much less than that one property, and than being able to
+prune without rewriting anything public.
+
+**The trap is the framing.** Telling yourself this is "just GitHub, no
+backend" leads to putting submissions in git, and the promise in item 107
+becomes unkeepable — discovered after people have relied on it.
+
+### The self-publish alternative, which is a genuine fork
+
+There is a third shape that keeps mode 4 free of central writes entirely:
+**a sharer publishes to their OWN GitHub Pages, exactly as an OLW deployment
+does, and the index merely points at them.** No central submission store, no
+central privacy liability, and withdrawal means deleting your own repository.
+
+It trades in both directions and neither is obviously better:
+
+- **Against:** it puts a GitHub account and a repository in the setup path,
+  which is most of what mode 1 already asks and undercuts the "free app, no
+  server" proposition that made mode 4 distinct from it.
+- **Against, and less obvious:** a GitHub account is a REAL IDENTITY. Publishing
+  under it is meaningfully *less* anonymous than a random rotating token, so
+  this trades unlinkability for self-custody. Some people will prefer that
+  trade and some will not, and it is not the project's to make for them.
+- **For:** every hard question in the identifier section below simply
+  evaporates, along with the moderation problem and the deletion problem.
+
+**This collapses mode 4 toward "mode 1, lite"** — which is worth noticing,
+because if the answer is self-publish then mode 4 is not really a fourth mode
+but an easier on-ramp to the first.
 
 ### Reads scale on GitHub. Writes do not.
 
 **Mode 3 needs no backend at all.** An OLW deployment already publishes to
 Pages, the mailer already reads published output, and the only shared thing is
-an INDEX of which deployments exist — a static file in a repo, fetched
-read-only, cached by a CDN, costing nothing and scaling to anyone.
+an INDEX of which deployments exist.
 
-**Mode 4 is a write path, and that is a different animal.** Every alternative
-on GitHub has a defect:
-
-- a token per submitter puts item 106's credential problem on every free user;
-- one service-held token is a backend by another name, just an awkward one;
-- every submission becomes a **commit** — permanent, public, unprunable,
-  rebuilding Pages on each push, and an open write endpoint into git history
-  is a spam target where the spam cannot be deleted, only reverted.
-
-So the honest split is **index in git, submissions somewhere that can forget**.
-That is still small, but it is not "no backend", and calling it one is how it
-gets designed badly.
+**Mode 4 is a write path, and that is a different animal.** Each option on
+GitHub has a defect: a token per submitter puts item 106's credential problem
+on every free user; one service-held token is a backend by another name; and
+every submission becomes a permanent public commit. The shapes and the
+consequences are worked through above.
 
 ### The identifier protects against the wrong threat
 
@@ -13949,6 +14023,28 @@ That is a coherent model and it is worth saying out loud, because it means
 Building the viewer before anyone shares produces an app with nothing to show,
 in the underserved areas that motivated the whole thing. Which order these
 ship in matters more than how either is built.
+
+### Order, and why hosting stops being a detail
+
+**The data hosting decision is now upstream of most of this**, which was not
+obvious when the modes were first written down. The chain is short:
+
+> mode 3 (the free viewer) is only useful if deployments exist to read →
+> most of them would come from mode 4 → mode 4 cannot be built before its
+> submissions have somewhere to live → and the self-publish alternative would
+> mean mode 4 barely exists as a separate mode at all.
+
+So the choice is not between storage technologies. **It decides whether mode 4
+is a product or an on-ramp**, and therefore what mode 3 has to show. Deciding
+it late means building the viewer against a supply that may not arrive, which
+item 110's per-variable answer would then make worse — a viewer with few
+deployments AND a per-variable rule about which are near enough has very
+little left to display.
+
+Nothing here needs building yet. What it needs is the hosting decision made
+deliberately rather than by default, because the default — "it is just
+GitHub" — is the one option that quietly breaks item 107's withdrawal
+promise.
 
 Related: items 24 (the feed, and the thin-client line), 105, 106, 107, 109,
 110 (whether a listed deployment is near enough to be worth reading).
