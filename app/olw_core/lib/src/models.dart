@@ -66,6 +66,22 @@ int _roundHalfEven(double v) {
 class ModelPrediction {
   final String model;
 
+  /// WHAT THIS PREDICTION IS ABOUT — upstream ROADMAP item 104, C1.
+  ///
+  /// The target was implicit until 2026-09-12: a prediction sat on the
+  /// issuance's row and the lead time said how far forward it pointed, so
+  /// `target = rowDate + lead`. That arithmetic is correct and stays correct,
+  /// but only while a day holds exactly ONE issuance — the assumption item
+  /// 104 removes.
+  ///
+  /// Three-valued: `null` means the row predates the field, NOT that it
+  /// targets nothing. Every entry committed before 2026-09-12 loads that way.
+  ///
+  /// A DATE, not a DateTime. It names a calendar day at the location, and a
+  /// timestamp here would invite a timezone to creep into a value that has
+  /// none — the same reason `DailyLogEntry.date` is a date.
+  final DateTime? targetDate;
+
   /// `null` means the model had NO DATA at this lead time — which is not the
   /// same as a confident dry forecast, and must never be scored as one.
   /// UKMO's horizon stops around 7.2 days, so it genuinely has no Day+7.
@@ -140,6 +156,7 @@ class ModelPrediction {
 
   const ModelPrediction({
     required this.model,
+    this.targetDate,
     this.rain,
     this.onset,
     this.windKmh,
@@ -155,6 +172,9 @@ class ModelPrediction {
 
   factory ModelPrediction.fromJson(Map<String, Object?> j) => ModelPrediction(
         model: j['model'] as String,
+        targetDate: j['target_date'] == null
+            ? null
+            : DateTime.parse(j['target_date'] as String),
         rain: j['rain'] as bool?,
         onset: j['onset'] as String?,
         windKmh: _toDouble(j['wind_kmh']),
@@ -170,6 +190,11 @@ class ModelPrediction {
 
   Map<String, Object?> toJson() => {
         'model': model,
+        // ISO date, no time component — matches Python's `date` serialization
+        // exactly, which the shared vectors compare against.
+        'target_date': targetDate == null
+            ? null
+            : targetDate!.toIso8601String().substring(0, 10),
         'rain': rain,
         'onset': onset,
         'wind_kmh': windKmh,

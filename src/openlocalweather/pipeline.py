@@ -1128,6 +1128,25 @@ def _extended_blend_predictions(
     ]
 
 
+def _targeting(
+    predictions: list[ModelPrediction], issued_for: date, lead_time_days: int
+) -> list[ModelPrediction]:
+    """Stamps each prediction with the date it is about — ROADMAP item 104, C1.
+
+    `issued_for + lead` is exactly what `resolve_target_date` falls back to
+    for older rows, so this changes no scoring today. What it changes is that
+    the record stops DERIVING the target from where a prediction sits, which
+    is the assumption that breaks once a day holds more than one issuance.
+
+    Copies rather than mutates: these lists contain objects the caller also
+    holds, and stamping in place would reach further than this function is
+    allowed to.
+    """
+    target = add_days(issued_for, lead_time_days)
+
+    return [p.model_copy(update={"target_date": target}) for p in predictions]
+
+
 def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
     """The forecaster's own Day+0 call, in the form the record can score.
 
@@ -1827,15 +1846,31 @@ def run_daily_pipeline(
             # own rain call too since ROADMAP item 72's minimal shape — rain
             # and its probability, which is what Brier scores; the rest of the
             # extended schema waits for real data to design against.
-            day0=[*day0_predictions, _blend_prediction(tp)],
-            day3=[
-                *day3_predictions,
-                *_extended_blend_predictions(llm_response.extended_properties, 3),
-            ],
-            day7=[
-                *day7_predictions,
-                *_extended_blend_predictions(llm_response.extended_properties, 7),
-            ],
+            #
+            # STAMPED WITH WHAT THEY TARGET — ROADMAP item 104, C1. Done here
+            # at assembly rather than inside `extract`, deliberately: the
+            # extractors are pinned byte-for-byte by spec/vectors, and the
+            # target is a property of the ISSUANCE that collected them rather
+            # than of the extraction. Stamping here keeps the vectors and
+            # their Dart mirror untouched by a change that is about the
+            # record's shape.
+            day0=_targeting([*day0_predictions, _blend_prediction(tp)], today, 0),
+            day3=_targeting(
+                [
+                    *day3_predictions,
+                    *_extended_blend_predictions(llm_response.extended_properties, 3),
+                ],
+                today,
+                3,
+            ),
+            day7=_targeting(
+                [
+                    *day7_predictions,
+                    *_extended_blend_predictions(llm_response.extended_properties, 7),
+                ],
+                today,
+                7,
+            ),
         ),
         # Stored verbatim, and stored even when it says "unavailable" — see
         # LocalBulletinRecord. A met service's forecast cannot be re-fetched

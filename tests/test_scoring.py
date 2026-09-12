@@ -3,7 +3,13 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openlocalweather.models import DailyActual, DailyLogEntry, LogEntryMeta, ModelPrediction, ModelPredictionsByLead
-from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, rescore_rolling_window, score_prediction
+from openlocalweather.verify.scoring import (
+    compute_rain_pct_trend,
+    mean,
+    rescore_rolling_window,
+    resolve_target_date,
+    score_prediction,
+)
 
 
 def prediction(**overrides) -> ModelPrediction:
@@ -472,3 +478,44 @@ def test_a_convective_call_needs_both_a_cape_figure_and_an_observation():
     # Beyond Day+0 there is no CAPE at all: the extended leads come from the
     # daily endpoint. Same rule as onset.
     assert score_prediction(prediction(peak_cape_jkg=1860.0), actual(thunder=True), 3).convective_correct is None
+
+
+# --- ROADMAP item 104, C1: a prediction says what it targets ----------------
+
+
+def test_a_prediction_records_the_date_it_targets():
+    """C1. Lead time is derived from the target, not the other way round.
+
+    Today the target is implicit — a prediction sits on the issuance's row and
+    the lead says how far forward it points, so `target = row + lead`. That
+    works only while a day holds exactly one issuance, which is the assumption
+    item 104 removes.
+    """
+    p = ModelPrediction(model="gfs_seamless", rain=True, target_date=date(2026, 9, 13))
+
+    assert p.target_date == date(2026, 9, 13)
+
+
+def test_a_prediction_written_before_the_field_existed_still_loads():
+    """Three-valued, like every other field added to this record.
+
+    None means "this row predates the field", NOT "it targets nothing". Every
+    one of the entries committed before 2026-09-12 loads this way, and the
+    verification pass has to keep scoring them from the row arithmetic.
+    """
+    p = ModelPrediction.model_validate({"model": "gfs_seamless", "rain": True})
+
+    assert p.target_date is None
+
+
+def test_the_target_is_what_the_row_arithmetic_says_when_absent():
+    """The bridge that lets the old record and the new one be read by one
+    pass. `resolve_target_date` is the single place the fallback lives, so a
+    later change can delete it in one edit once no unmarked rows remain."""
+    old = ModelPrediction(model="gfs_seamless", rain=True)
+    new = ModelPrediction(model="gfs_seamless", rain=True, target_date=date(2026, 9, 20))
+
+    # Row dated the 10th, lead 3 -> targets the 13th.
+    assert resolve_target_date(old, row_date=date(2026, 9, 10), lead_time_days=3) == date(2026, 9, 13)
+    # An explicit target wins, and is NOT required to agree with the arithmetic.
+    assert resolve_target_date(new, row_date=date(2026, 9, 10), lead_time_days=3) == date(2026, 9, 20)

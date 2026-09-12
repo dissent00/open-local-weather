@@ -30,6 +30,7 @@
       },
       "expected": {
         "model": "persistence",
+        "target_date": null,
         "rain": true,
         "onset": "15:00",
         "precip_mm": null,
@@ -70,6 +71,7 @@
       },
       "expected": {
         "model": "persistence",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -159,6 +161,7 @@
       },
       "expected": {
         "model": "climatology",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -239,6 +242,7 @@
       },
       "expected": {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": null,
@@ -300,6 +304,7 @@
       },
       "expected": {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": null,

@@ -72,6 +72,21 @@ class ModelPrediction(BaseModel):
     """
 
     model: str
+    # WHAT THIS PREDICTION IS ABOUT — ROADMAP item 104, C1.
+    #
+    # The target was implicit until 2026-09-12: a prediction sat on the
+    # issuance's row and the lead time said how far forward it pointed, so
+    # `target = row_date + lead`. That arithmetic is correct and stays
+    # correct — but only while a day holds exactly ONE issuance, which is the
+    # assumption item 104 removes. Two issuances on one day would put two
+    # predictions on one row with no way to say which targeted what.
+    #
+    # Three-valued, like every other field added to this record: None means
+    # the row predates the field, NOT that it targets nothing. Every entry
+    # committed before 2026-09-12 loads that way, and `resolve_target_date`
+    # is the single place that bridges the two — so the fallback can be
+    # deleted in one edit once no unmarked rows remain.
+    target_date: date | None = None
     # None means "this model had no data at this lead time" — NOT "no rain".
     # The distinction is load-bearing: not every model reaches Day+7 (UKMO
     # tops out around 7.2 days, so it has no Day+7 value at all). Recording

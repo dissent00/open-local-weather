@@ -28,6 +28,31 @@ from openlocalweather.models import DailyActual, DailyLogEntry, ModelPrediction,
 LogLookup = Callable[[date], DailyLogEntry | None]
 
 
+def resolve_target_date(
+    prediction: ModelPrediction, *, row_date: date, lead_time_days: int
+) -> date:
+    """What date this prediction is about — ROADMAP item 104, C1.
+
+    THE SINGLE PLACE THE FALLBACK LIVES. A prediction written since
+    2026-09-12 says what it targets; every one written before is on a row
+    whose date plus its lead time IS the target, because a day held exactly
+    one issuance. Both are read by one pass so the committed record does not
+    have to be rewritten to be readable.
+
+    An explicit target WINS and is not required to agree with the arithmetic.
+    That is the point: once a day can hold several issuances, the row date
+    stops determining the target, and a prediction that disagrees with
+    `row_date + lead` is the normal case rather than a corruption.
+
+    Deletable in one edit once no unmarked rows remain in the window any
+    verification pass reads.
+    """
+    if prediction.target_date is not None:
+        return prediction.target_date
+
+    return add_days(row_date, lead_time_days)
+
+
 def score_prediction(
     predicted: ModelPrediction | None,
     actual: DailyActual | None,
