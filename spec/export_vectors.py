@@ -1582,6 +1582,7 @@ def export_weekly_review() -> None:
             case("30 checks — a real gap is ranked", 30, 27, 9),
             case("30 checks — a narrow gap is explicitly declined", 30, 20, 18),
             case("30 checks — a systematic temperature bias is named", 30, 15, 15, 2.0),
+            case("30 checks — a half-even mean bias is named", 30, 15, 15, 2.25),
             # THE SKY, from 2026-09-10. A model that forecasts 35 points less
             # cloud than there was is named, so the forecaster can discount
             # it; five points is scatter and is not. Cloud's threshold is far

@@ -5,6 +5,7 @@ import 'brier.dart';
 import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
+import 'rounding.dart';
 import 'scoring.dart';
 
 /// Weekly review: what the daily loop structurally cannot see.
@@ -306,7 +307,7 @@ WeeklyReview buildWeeklyReview({
 String _fmtPct(double v) => v.toStringAsFixed(0);
 
 String _fmtSigned(double v) {
-  final rounded = (v * 10).round() / 10 + 0.0;
+  final rounded = roundLikePython(v, 1) + 0.0;
   return '${rounded >= 0 ? '+' : ''}${rounded.toStringAsFixed(1)}';
 }
 
