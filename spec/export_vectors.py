@@ -76,12 +76,23 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
+from openlocalweather.disagreement import (
+    ObservedSoFar,
+    StandingCall,
+    observation_disagreements,
+)
 from openlocalweather.config import LocationConfig, Point, SecondaryPoint
-from openlocalweather.llm.prompt import build_system_prompt, build_user_prompt
+from openlocalweather.llm.prompt import (
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_user_prompt,
+)
 from openlocalweather.wind import consensus_direction, describe_wind_shift, vector_mean
 from openlocalweather.defaults import WIND_DIRECTION_AGREEMENT_GATE
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
+    GeminiJudgmentResponse,
+    GeminiNarrativeResponse,
     to_gemini_schema,
     to_strict_json_schema,
 )
@@ -117,7 +128,7 @@ def write(filename: str, function: str, description: str, cases: list[dict]) -> 
     }
     path = OUT_DIR / filename
     path.write_text(json.dumps(payload, indent=2, sort_keys=False) + "\n")
-    print(f"  {path.relative_to(Path(__file__).resolve().parents[1])}: {len(cases)} cases")
+    print(f"  spec/vectors/{filename}: {len(cases)} cases")
 
 
 # ---------------------------------------------------------------------------
@@ -895,6 +906,32 @@ def export_llm_schemas() -> None:
         "input_schema require: lowercase types, null as a type union, "
         "additionalProperties false, and EVERY property listed in required.",
         strict_cases,
+    )
+
+    # The split's two schemas — ROADMAP item 59 step 3. Written by hand into
+    # spec/vectors on 2026-09-11 because this exporter could not run; see
+    # tests/test_export_vectors.py for how that went unnoticed.
+    split_cases = [
+        {
+            "name": "judgment",
+            "input": {"model": "GeminiJudgmentResponse"},
+            "expected": to_gemini_schema(GeminiJudgmentResponse),
+        },
+        {
+            "name": "narrative",
+            "input": {"model": "GeminiNarrativeResponse"},
+            "expected": to_gemini_schema(GeminiNarrativeResponse),
+        },
+    ]
+    write(
+        "llm_schema_split.json",
+        "to_gemini_schema(GeminiJudgmentResponse | GeminiNarrativeResponse)",
+        "The two response schemas of the split \u2014 ROADMAP item 59 step 3. "
+        "The narrative schema is pinned because its ABSENCES are the seam: it "
+        "has no today_properties and no extended_properties, so the rendering "
+        "call cannot return a scored value however its prompt is later "
+        "edited.",
+        split_cases,
     )
 
 
@@ -2040,24 +2077,78 @@ def export_system_prompt() -> None:
                     "is_reissue": is_reissue,
                     **kwargs,
                 },
-                "expected": build_system_prompt(loc, is_reissue=is_reissue, **kwargs),
+                "expected": {
+                    "judgment": build_judgment_prompt(
+                        loc, is_reissue=is_reissue, **kwargs
+                    ),
+                    "narrative": build_narrative_prompt(
+                        loc, is_reissue=is_reissue, **kwargs
+                    ),
+                },
             }
         )
     write(
         "llm_system_prompt.json",
-        "build_system_prompt",
-        "The full system prompt, verbatim. Covers the secondary-point branch "
-        "(present/absent), refresh mode, window-size interpolation, and a "
-        "deployment with no ground AQI stations, where every ground-station "
-        "passage is omitted rather than reworded, and one with no local met "
-        "service, where the peer-model guidance goes but the absence is still "
-        "stated once so no forecast gets attributed to a service that was "
-        "never consulted. The last case is a run that published today after "
-        "its seven-day fetch timed out: the Extended Outlook heading stays "
-        "and its instruction is replaced with one that reports the gap.",
+        "build_judgment_prompt + build_narrative_prompt",
+        "The instruction sets behind every forecast, pinned verbatim so a "
+        "port cannot quietly reason from different instructions. TWO PROMPTS "
+        "since ROADMAP item 59 step 3: the judgment call decides the scored "
+        "fields, the narrative call is handed that decision and writes the "
+        "prose. Both are pinned because either one drifting changes the "
+        "forecast.",
         cases,
     )
 
+
+
+def export_observation_disagreements() -> None:
+    """ROADMAP item 104, C2's third trigger, and it decides whether an LLM
+    call is made rather than what one says.
+
+    That is why it is vector-locked: a port that fired on the symmetric case
+    would re-forecast every dry morning of a wet day, spending the reader's
+    own budget on it, and nothing about the forecast it produced would look
+    wrong. The margin and the asymmetry are the cases that matter — see
+    disagreement.py for why a maximum only rises.
+    """
+    scenarios = [
+        ("rain observed while the call said dry", (False, 30.0), (True, None)),
+        ("no rain YET does not contradict a rain call", (True, 30.0), (False, None)),
+        ("the observed high has already passed the call", (False, 30.0), (False, 33.0)),
+        ("a high below the call is not a contradiction", (False, 30.0), (False, 24.0)),
+        ("just under the margin does not fire", (False, 30.0), (False, 31.9)),
+        ("exactly at the margin fires", (False, 30.0), (False, 32.0)),
+        ("absent observations contradict nothing", (False, 30.0), (None, None)),
+        ("absent standing call contradicts nothing", (None, None), (True, 99.0)),
+        ("both fire, in a stable order", (False, 30.0), (True, 35.0)),
+    ]
+
+    cases = []
+    for name, (rain, high_call), (precipitation, high_obs) in scenarios:
+        standing = StandingCall(rain=rain, temp_high_c=high_call)
+        observed = ObservedSoFar(precipitation=precipitation, high_c=high_obs)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "standing": {"rain": rain, "temp_high_c": high_call},
+                    "observed": {"precipitation": precipitation, "high_c": high_obs},
+                },
+                "expected": observation_disagreements(standing, observed),
+            }
+        )
+
+    write(
+        "observation_disagreements.json",
+        "observation_disagreements",
+        "ROADMAP item 104, C2's third trigger: does what the station has "
+        "already observed contradict the standing call? Governed throughout "
+        "by an asymmetry -- a mid-day observation can only prove a forecast "
+        "too LOW, never too high, because rain that has fallen has fallen "
+        "and a maximum only rises. The margin is sized above the station's "
+        "measured +0.43 C offset against the reanalysis.",
+        cases,
+    )
 
 
 def export_wind_direction() -> None:
@@ -3302,6 +3393,7 @@ def main() -> None:
     export_coverage()
     export_spend()
     export_verification()
+    export_observation_disagreements()
     export_wind_direction()
     export_day_over_day()
     export_extended_trend()

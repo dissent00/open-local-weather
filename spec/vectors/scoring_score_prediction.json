@@ -35,6 +35,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -57,6 +58,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": null,
           "onset": "14:00",
           "precip_mm": null,
@@ -97,6 +99,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -147,6 +150,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": false,
           "onset": "14:00",
           "precip_mm": null,
@@ -197,6 +201,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -247,6 +252,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -297,6 +303,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -347,6 +354,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -397,6 +405,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -447,6 +456,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -497,6 +507,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -547,6 +558,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -597,6 +609,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -647,6 +660,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -697,6 +711,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -747,6 +762,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -797,6 +813,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -847,6 +864,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -897,6 +915,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -947,6 +966,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -997,6 +1017,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -1047,6 +1068,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": null,
           "precip_mm": null,
@@ -1097,6 +1119,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": "14:00",
           "precip_mm": null,
@@ -1147,6 +1170,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": null,
           "precip_mm": null,
@@ -1197,6 +1221,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": true,
           "onset": null,
           "precip_mm": null,
@@ -1247,6 +1272,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": false,
           "onset": null,
           "precip_mm": null,
@@ -1297,6 +1323,7 @@
       "input": {
         "predicted": {
           "model": "gfs_seamless",
+          "target_date": null,
           "rain": false,
           "onset": null,
           "precip_mm": null,
