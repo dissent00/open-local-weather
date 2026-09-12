@@ -10994,7 +10994,7 @@ a forecast section), item 73, item 77 (the harness that found it), item 58
 
 ---
 
-## 88. A fix ships with a vector case, or the other language never gets it · **Rule written 2026-09-08; the sweep is Planned**
+## 88. A fix ships with a vector case, or the other language never gets it · **Swept 2026-09-12; ten divergences found, fixes Planned**
 
 Three divergences were found on 2026-09-08, all the same shape, none caught
 by either test suite:
@@ -11006,6 +11006,76 @@ by either test suite:
 | item 85's sufficiency wording | since the wording was written |
 
 Every one was invisible for the same reason, and it is not carelessness.
+
+### Swept 2026-09-12 — the rule works, and the backlog is real
+
+A read-only sweep of every shared-logic pair. **Ten divergences, none caught
+by either suite**, all the shape this item predicts: a Python fix with a
+Python test, a vector whose cases cannot reach the fixed behaviour, and a
+Dart port that kept the old one.
+
+**The arithmetic claims were re-verified by RUNNING both languages**, because
+the sweep itself ran nothing and modelled Dart's behaviour in Python. The
+mechanism holds:
+
+| input | Dart | Python |
+|---|---|---|
+| `2.25` to 1 dp | **2.3** | 2.2 |
+| `-2.15` to 1 dp | **-2.2** | -2.1 |
+| `1/8` as a percentage | **13** | 12 |
+| `62.5` to 0 dp | **63** | 62 |
+| 24 x `0.1` summed | `2.400000000000001` | `2.4000000000000004` |
+
+Ordered by what reaches a reader:
+
+1. **`review.dart:308` formats mean errors half-away-from-zero.** Python uses
+   `%+.1f`, which is half-to-even. `rounding.dart`'s own header calls this
+   form "wrong twice over", and the day-over-day comparison already replaced
+   it after it disagreed on 600 of 32,001 swept values. Every bias finding in
+   `weekly_review.json` is an exact value, so no case can reach a tie.
+2. **`review.dart:306` `_fmtPct` uses `toStringAsFixed(0)`.** `synoptic.dart`
+   carries a hand-written `_fmt0` with a comment explaining precisely this
+   trap; `review.dart` never got it. Needs a check count divisible by 8, so
+   it is intermittent rather than rare.
+3. **`baselines.dart:99` rounds climatology's base rate half away from zero.**
+   That rate is the reference every Brier skill score is divided by, so a
+   one-point shift moves a published number. `models.dart` already has
+   `_roundHalfEven`; this line does not use it.
+4. **`extract.dart:150` accumulates cloud with `fold`** where Python's `sum()`
+   is Neumaier-compensated, and `sums.dart` exists for exactly this. Cloud
+   feeds a day-over-day label whose band edges are 12.5 and 37.5, so a 0.1
+   shift can change published words. The rain boolean and `precip_mm` share
+   the pattern and appear latent.
+5. **`comparison_for_prompt` has no Dart counterpart at all.** Python narrows
+   the stored comparison to four fields and rebuilds `observed_from`;
+   `DayOverDayComparison.toJson()` emits all seventeen plus `provenance` and
+   never `observed_from`. **Checked against the app: it passes no
+   `yesterdayActual` today, so this is LATENT rather than live** — a trap set
+   for whoever wires the app's day-over-day block, who would hand the
+   forecaster the two fields deleted on 2026-09-05 precisely because a rule
+   could not beat a payload supplying its own counter-example.
+6. **`coverage.dart:180` reconstructs `last_seen` from a loop index** rather
+   than carrying the stored date. Correct only where the window has no gaps;
+   the server's log has none today, but the app's record has no reason to be
+   contiguous.
+7. **`extract.dart` Day+N uses `pickSeries` where Python still uses an `or`
+   chain**, so an all-null per-model array falls through in Dart and is used
+   in Python. Python is the source of truth and is the side still carrying
+   the un-fixed form.
+
+8-10. `baselines.dart:117` `reduce` rather than a compensated sum;
+   `synoptic.dart:162`'s round-scale-round; `wind.dart:126` falling back on a
+   missing key where Python falls back on a falsy one. All real, all last-bit
+   or unreachable today.
+
+**Every one is a missing VECTOR CASE, not a missing test.** Each rounding
+finding sits behind a vector whose values happen to carry no tie. That is
+this item's thesis with ten instances behind it, and the fix for each is one
+case plus one line.
+
+**What the sweep did not cover**, stated so the gap is known: the two prompt
+builders clause by clause, `fetch/open_meteo.py` against `open_meteo.dart`,
+and case selection in `solar`/`spend`/`daypart`/`verify`.
 
 ### The mechanism
 
