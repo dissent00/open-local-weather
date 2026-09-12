@@ -14125,6 +14125,47 @@ than out of any control. **It is also fragile to one obvious future request:**
 letting a paid user also share would create exactly the link that does not
 currently exist. If that is ever wanted, it needs its own argument.
 
+### DECIDED 2026-09-12: separate store listings
+
+**Mode 2 ships as one app — paid, private, no sharing. Modes 3 and 4 ship as
+another — free, shares.** Two listings rather than one app with a toggle.
+
+**This strengthens the disjointness rather than merely expressing it.** Two
+apps have no shared identity, no shared install, and no account to join them
+on; the store holds the payment relationship for one and knows nothing about
+the other. The property from the payments section stops depending on a
+promise and starts depending on there being nothing to promise about.
+
+**Precision worth keeping, because the shorthand loses it:** what gets
+authenticated is the **APP**, not the user. Attestation says "a genuine
+install of this software sent this", which is what makes abuse control
+possible without identity. Saying "we authenticate" invites a reader to
+assume there is an account somewhere, and there is not.
+
+**Two costs, neither fatal, both real:**
+
+- **Two listings is two review processes**, two release cadences and two sets
+  of store metadata, for software that shares almost all its code.
+- **There is no in-place upgrade.** A free sharing user who later wants the
+  paid private app installs a different app, and their on-device forecast
+  history does not come with it. That history is the accuracy record they
+  have accumulated, so losing it is not cosmetic — **an export/import path is
+  owed the moment both listings exist**, and it should be designed before
+  either ships rather than bolted on after someone asks.
+
+**And one honest limit on "free users cannot be identified."** True of the
+stored record: no address, no account, no stable token, and IP dropped at the
+edge. Not true of INFERENCE — item 107's thin-crowd hazard stands, and in a
+cell with three submitters a location plus a daily rhythm narrows to one of
+three without anything being stored. The claim to make is "we hold nothing
+that identifies you", which is defensible, rather than "you cannot be
+identified", which is not.
+
+*"Drop IP addresses quickly" needs a number and a place: discarded at the
+edge, before anything is written, with the rate-limit counter keyed on a hash
+that expires in minutes. Written down because "quickly" is the kind of
+intention that becomes "we meant to".*
+
 ### Three rules that make the privacy policy writable
 
 **Design first, policy second.** A policy promising what the architecture
@@ -14282,3 +14323,72 @@ holding an address.
 
 Related: items 107 and 113 (what the project deliberately does not hold),
 53.4 (the notification path the app already has).
+
+---
+
+## 116. Emailing forecasts for the regions we hold · **Planned — and it is the one thing that reintroduces PII**
+
+Item 115 concluded that a phone app cannot send scheduled mail, and that a
+server doing it would need an address. **This is that item**, wanted for
+regions where item 113's store already holds a forecast.
+
+### Why it is worth the cost it carries
+
+**Email is the lowest-common-denominator delivery channel**, and this project
+exists for places underserved by detailed local forecasting. An app needs a
+smartphone, a store account, a download and an update path. **Email needs an
+address and reaches anything.** For the mission, that is the widest reach
+available at zero marginal cost per recipient.
+
+### What it reintroduces, and how to keep it contained
+
+An address is PII — the first in the design, exactly as item 115 said. But
+the containment trick that works for payments works here too:
+
+> The list holds **(address, region)** and nothing else. It reads the forecast
+> from the same store a viewer reads. **It never touches submissions.**
+
+A subscriber need not submit; a submitter need not subscribe. Keep the two
+systems apart and there is still no key that joins a forecast to a person —
+one system knows places, the other knows addresses, and neither knows both.
+
+### The existing mailer is not this, and its own README explains why
+
+`mailer/AppsScriptMailer.gs` already sends a daily forecast, already fetches
+it as structured JSON from a CDN rather than scraping a page, and is the right
+shape to copy. **It is not the right scale.** Its README records the reason
+it exists in that form: real subscriber email needs either a verified custom
+domain under the 2024 Google/Yahoo/Microsoft bulk-sender rules, or an app
+password not available on all accounts — and `MailApp` sidesteps both by
+sending through Google's own infrastructure under one person's OAuth.
+
+**That sidestep is exactly what does not generalise.** It works because it is
+the operator's account mailing the operator's subscribers. Sending to
+strangers, in several regions, means becoming a bulk sender: a verified
+domain, SPF/DKIM/DMARC, and an ESP — the thing the current design was
+deliberately built to avoid.
+
+### The discipline that comes with being a sender
+
+None of this is optional and all of it is someone else's rules:
+
+- **Confirmed (double) opt-in.** An unconfirmed form is a spam vector: anyone
+  can subscribe a victim's address to a daily email. This is the one that
+  gets skipped and the one that causes the complaints.
+- **One-click unsubscribe that works**, honoured immediately, with the address
+  dropped rather than flagged.
+- **Bounce and complaint handling.** Hard bounces pruned, complaints acted on.
+  A sender who ignores these stops being delivered — reputation is the whole
+  asset and it is lost faster than it is built.
+- **Jurisdiction.** A list of strangers across countries engages CAN-SPAM,
+  GDPR, PECR and their relatives, and the consent record is part of the data.
+
+### Order
+
+Downstream of item 113's store — there is nothing to mail where no forecast
+is held. Plausibly the FIRST thing built on that store, because it needs no
+app, no index UI and no item 110 answer: one region with a forecast and a
+handful of confirmed subscribers is a complete product.
+
+Related: items 113 (the store, and the disjointness this copies), 115 (why the
+app cannot do it), and `mailer/README.md` for the prior art and the trap.
