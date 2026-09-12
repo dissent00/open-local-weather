@@ -109,6 +109,7 @@ absent values are `null`, never omitted keys.
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
 | `llm_system_prompt.json` | `build_judgment_prompt` + `build_narrative_prompt` | 7 |
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
+| `observation_disagreements.json` | `observation_disagreements` | 9 |
 | `llm_user_prompt.json` | `build_user_prompt` | 6 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |

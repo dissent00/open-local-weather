@@ -363,6 +363,30 @@ void main() {
     });
   });
 
+  group('observation disagreements', () {
+    // Upstream ROADMAP item 104, C2's third trigger. Pinned across both
+    // languages because it decides whether an LLM call is made — a drift
+    // here spends the reader's money, or fails to.
+    test('matches Python exactly', () {
+      for (final c in casesOf('observation_disagreements.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final s = i['standing'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final got = observationDisagreements(
+          StandingCall(
+            rain: s['rain'] as bool?,
+            tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
+          ),
+          ObservedSoFar(
+            precipitation: o['precipitation'] as bool?,
+            highC: (o['high_c'] as num?)?.toDouble(),
+          ),
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   group('system prompt', () {
     // Compared VERBATIM. This string is the instruction set behind every
     // forecast; a drift here means the app and the pipeline reason
@@ -1237,6 +1261,7 @@ void main() {
       'bucket_hourly_by_date.json',
       'llm_schema_gemini.json',
       'llm_schema_split.json',
+      'observation_disagreements.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
       'llm_user_prompt.json',

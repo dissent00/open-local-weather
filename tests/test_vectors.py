@@ -557,6 +557,23 @@ def test_vectors_system_prompt():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_observation_disagreements():
+    """ROADMAP item 104, C2's third trigger — pinned across both languages
+    because it decides whether an LLM call is made."""
+    from openlocalweather.disagreement import (
+        ObservedSoFar,
+        StandingCall,
+        observation_disagreements,
+    )
+
+    for case in load("observation_disagreements.json")["cases"]:
+        i = case["input"]
+        got = observation_disagreements(
+            StandingCall(**i["standing"]), ObservedSoFar(**i["observed"])
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_day_over_day():
     """The Overview's opening sentence — the one a live run got wrong."""
     for case in load("day_over_day.json")["cases"]:
@@ -721,6 +738,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_strict.json",
         "llm_system_prompt.json",
         "llm_schema_split.json",
+        "observation_disagreements.json",
         "llm_user_prompt.json",
         "weekly_review.json",
         "synoptic.json",

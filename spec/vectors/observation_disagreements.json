@@ -1,0 +1,142 @@
+{
+  "vector_format_version": 1,
+  "function": "observation_disagreements",
+  "description": "ROADMAP item 104, C2's third trigger: does what the station has already observed contradict the standing call? Governed throughout by an asymmetry -- a mid-day observation can only prove a forecast too LOW, never too high, because rain that has fallen has fallen and a maximum only rises. The margin is sized above the station's measured +0.43 C offset against the reanalysis.",
+  "cases": [
+    {
+      "name": "rain observed while the call said dry",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null
+        }
+      },
+      "expected": [
+        "rain_observed_while_dry_called"
+      ]
+    },
+    {
+      "name": "no rain YET does not contradict a rain call",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": null
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "the observed high has already passed the call",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 33.0
+        }
+      },
+      "expected": [
+        "high_already_exceeded"
+      ]
+    },
+    {
+      "name": "a high below the call is not a contradiction",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 24.0
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "just under the margin does not fire",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 31.9
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "exactly at the margin fires",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 32.0
+        }
+      },
+      "expected": [
+        "high_already_exceeded"
+      ]
+    },
+    {
+      "name": "absent observations contradict nothing",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "absent standing call contradicts nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": 99.0
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "both fire, in a stable order",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": 35.0
+        }
+      },
+      "expected": [
+        "rain_observed_while_dry_called",
+        "high_already_exceeded"
+      ]
+    }
+  ]
+}
