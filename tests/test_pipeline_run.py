@@ -5,6 +5,7 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
+from openlocalweather.disagreement import DISAGREEMENT_RAIN_WHILE_DRY
 from openlocalweather.llm.gemini import LLMResponseError
 from openlocalweather.llm.schema import (
     GeminiJudgmentResponse,
@@ -3182,6 +3183,124 @@ def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
         run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
+
+
+def test_a_first_issuance_records_that_it_had_nothing_to_move_from(tmp_path):
+    """ROADMAP item 104, C2 — stage 2b records the signals, acts on none.
+
+    The day's first run IS the trigger, so the other two have no basis: there
+    is no previous cycle to be newer than and no standing call to contradict.
+    Recorded as None rather than False, the same three-valued rule the rest of
+    this record follows.
+    """
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
+    assert moved is not None, "the signals must be recorded even on a first run"
+    assert moved.first_issuance_of_day is True
+    assert moved.guidance_is_newer is None, "no previous issuance to compare against"
+    # None, not []. This fixture's station does not answer, and the two mean
+    # different things: None is "nothing was looked at", [] is "looked, and
+    # nothing contradicts the call". Recording the second on the strength of
+    # the first is the error class that cost a published forecast on
+    # 2026-08-29.
+    assert moved.observation_disagreements is None
+
+
+def test_a_later_issuance_records_all_three_signals(tmp_path):
+    """And a re-issue has a basis for all of them."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False
+    )
+
+    moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
+    assert moved is not None
+    assert moved.first_issuance_of_day is False
+    # The fixture's guidance does not advance between the two runs, so this is
+    # the interesting value rather than an incidental one: nothing moved.
+    assert moved.guidance_is_newer is False
+
+
+def test_a_station_that_answers_and_agrees_records_an_EMPTY_list(tmp_path, monkeypatch):
+    """The distinction the record has to keep, and the one an empty fixture
+    cannot prove.
+
+    Every other pipeline test here runs with a station that does not answer,
+    so `observation_disagreements` is None in all of them and the computation
+    never actually runs. That is the shape of guard this project has been
+    burned by before — one that passes because its input was empty. This test
+    makes the station answer.
+    """
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz: (
+            {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
+            None,
+        ),
+    )
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
+    assert moved.observation_disagreements == [], "looked, and nothing contradicted"
+
+
+def test_rain_seen_while_the_standing_call_said_dry_is_recorded(tmp_path, monkeypatch):
+    """C2's third trigger firing end to end, through the real pipeline.
+
+    The morning call has to say dry for this to mean anything, which the
+    fixture's canned response does, and the station then reports rain.
+    """
+    # Flipped between the two runs rather than patched once: the morning must
+    # see a dry station (or it would have no reason to call dry), and the
+    # evening must see rain. Patching only before the refresh would leave the
+    # morning making a real HTTP call.
+    raining = {"now": False}
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz: (
+            {
+                d: StationWeather(thunder=False, precipitation=raining["now"])
+                for d in (start, end)
+            },
+            None,
+        ),
+    )
+
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+
+    raining["now"] = True
+    refresh = make_deps(tmp_path)
+    refresh.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    pipeline.run_refresh_pipeline(refresh, today=date(2026, 8, 11), dry_run=False)
+
+    moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
+    assert DISAGREEMENT_RAIN_WHILE_DRY in (moved.observation_disagreements or [])
+
+
+def test_the_signals_change_nothing_yet(tmp_path):
+    """Stage 2b is deliberately inert. The refresh still runs, still spends,
+    and still publishes, whatever the signals say — so that the record can
+    show how often each fires BEFORE anything is decided on them."""
+    from openlocalweather.spend import read_ledger
+
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    before = len(read_ledger(tmp_path))
+
+    pipeline.run_refresh_pipeline(
+        make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False
+    )
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.information_moved.guidance_is_newer is False
+    assert len(read_ledger(tmp_path)) == before + 2, "the refresh still made both calls"
+    assert entry.meta.refreshed_at is not None, "and still published"
 
 
 def test_the_entry_records_which_schema_permitted_the_answer(tmp_path):

@@ -144,7 +144,13 @@ from openlocalweather.llm.schema import (
     TodayProperties,
     merge_forecast_response,
 )
+from openlocalweather.disagreement import (
+    ObservedSoFar,
+    StandingCall,
+    observation_disagreements,
+)
 from openlocalweather.models import (
+    InformationMoved,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
     DEGRADATION_HOURS_AHEAD_NARROWED,
@@ -1246,6 +1252,89 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
+    """What the previous issuance committed to — ROADMAP item 104, C2.
+
+    `rain` comes from the BLEND'S OWN Day+0 row rather than from the prose.
+    `rain_expected` may hedge and the record does not: the boolean is what
+    tomorrow scores, so it is the boolean an observation should be allowed to
+    contradict.
+    """
+    if entry is None:
+        return StandingCall()
+
+    blend = next(
+        (p for p in entry.model_predictions.day0 if p.model == BLEND_MODEL_ID), None
+    )
+
+    return StandingCall(
+        rain=blend.rain if blend is not None else None,
+        temp_high_c=entry.temp_high_c,
+    )
+
+
+def _observed_so_far(location: LocationConfig, today: date) -> ObservedSoFar | None:
+    """What the station has already reported today.
+
+    BEST EFFORT, and None on every failure path. A station that did not answer
+    is not a station reporting agreement — returning an empty ObservedSoFar
+    would say "nothing contradicts the call" on the strength of having not
+    looked, which is the error class that cost a published forecast on
+    2026-08-29.
+    """
+    if not location.metar_station_icao:
+        return None
+
+    try:
+        weather, readings = metar_fetch.observed_station_data(
+            location.metar_station_icao, today, today, location.timezone
+        )
+    except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
+        print(f"Station observations unavailable ({e}); no disagreement check.", file=sys.stderr)
+        return None
+
+    # Returns a pair of Nones rather than raising when the station has no
+    # data — a shape worth guarding explicitly, because the tuple unpacks
+    # fine and only fails at the .get() two lines later.
+    if weather is None and readings is None:
+        return None
+
+    seen = weather.get(today) if weather else None
+    measured = readings.get(today) if readings else None
+    if seen is None and measured is None:
+        return None
+
+    return ObservedSoFar(
+        precipitation=seen.precipitation if seen is not None else None,
+        high_c=measured.high_c if measured is not None else None,
+    )
+
+
+def _information_moved(
+    guidance: ForwardGuidance,
+    existing_entry: DailyLogEntry | None,
+    observed: ObservedSoFar | None,
+) -> InformationMoved:
+    """C2's three triggers, computed and recorded — and acted on by nothing.
+
+    Stage 2b of item 104. The point of writing them down before wiring them to
+    a spending decision is that the record then shows how often each fires
+    against real weather, so the rule is sized against that rather than
+    against the first few days anyone happens to look at.
+    """
+    recency = _guidance_recency_payload(guidance, existing_entry) or {}
+
+    return InformationMoved(
+        first_issuance_of_day=existing_entry is None,
+        guidance_is_newer=recency.get("newer_than_previous_issuance"),
+        observation_disagreements=(
+            None
+            if observed is None
+            else observation_disagreements(_standing_call(existing_entry), observed)
+        ),
+    )
+
+
 def _guidance_recency_payload(guidance: ForwardGuidance, previous: DailyLogEntry | None) -> dict | None:
     """How old the guidance behind this run is, as the prompt sees it.
 
@@ -1902,6 +1991,9 @@ def run_daily_pipeline(
             output_tokens=_response_meta(_last_response).output_tokens,
             response_schema_sha256=_response_meta(_last_response).response_schema_sha256,
             nullable_fields=_nullable_fields(_last_response),
+            information_moved=_information_moved(
+                guidance, existing_entry, _observed_so_far(location, today)
+            ),
             trigger_source=deps.trigger_source or None,
             degradations=guidance.degradations,
         ),
@@ -2393,6 +2485,9 @@ def run_refresh_pipeline(
                         _last_response
                     ).response_schema_sha256,
                     "nullable_fields": _nullable_fields(_last_response),
+                    "information_moved": _information_moved(
+                        guidance, existing_entry, _observed_so_far(location, today)
+                    ),
                 }
             ),
         }

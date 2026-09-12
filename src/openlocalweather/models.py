@@ -612,6 +612,39 @@ class RunDegradation(BaseModel):
     detail: str
 
 
+class InformationMoved(BaseModel):
+    """Whether this issuance had anything new to say — ROADMAP item 104, C2.
+
+    RECORDED BEFORE IT IS ACTED ON, deliberately. The contract says a judgment
+    call is made when the information moved, and stage 2b writes the three
+    triggers down without letting them decide anything. That order exists so
+    the record can show how often each fires against real weather BEFORE a
+    rule spends money on them — this project has sized a threshold from
+    convenient samples once (item 100) and does not intend to again.
+
+    Three-valued throughout, and the middle value is the point: `None` means
+    there was no BASIS for the comparison, which is different from a
+    comparison that came back negative.
+    """
+
+    # The day's first run is itself a trigger, so the other two have nothing
+    # to compare against on it.
+    first_issuance_of_day: bool
+
+    # Whether a new guidance cycle has landed since the previous issuance.
+    # `None` on a first run, and on a re-issue of an entry written before this
+    # was recorded — both mean "no basis", never False. Computed by
+    # `_guidance_recency_payload`, which has fed the prompt with it since long
+    # before it was stored.
+    guidance_is_newer: bool | None = None
+
+    # Codes from `disagreement.observation_disagreements` — what the station
+    # has already seen that contradicts the standing call. Empty means nothing
+    # seen contradicts it; `None` means nothing was looked at, which happens
+    # when the station did not report or the lookup failed.
+    observation_disagreements: list[str] | None = None
+
+
 class LogEntryMeta(BaseModel):
     generated_at_utc: datetime
     llm_provider: str
@@ -682,6 +715,9 @@ class LogEntryMeta(BaseModel):
     # to report these leaves both None rather than guessing.
     response_schema_sha256: str | None = None
     nullable_fields: list[str] | None = None
+    # Whether this issuance had anything new to say — ROADMAP item 104, C2.
+    # None on entries written before 2026-09-12; see InformationMoved.
+    information_moved: InformationMoved | None = None
     # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
     # — generated_at_utc stays the ORIGINAL morning creation time even after
     # a refresh, so the audit trail keeps showing when this entry first
