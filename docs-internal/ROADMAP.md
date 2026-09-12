@@ -13057,11 +13057,31 @@ INFORMATION moved.** Three triggers, any of which suffices:
   computed);
 - **fresh observations contradict the standing call.**
 
-Otherwise the issuance makes NO judgment call: it re-renders prose around the
-call that already stands. This is one rule answering two questions — which
-issuances score, and which ones cost a second LLM call — and it settles the
-2026-09-12 finding that the evening run currently spends a judgment call on
-numbers nothing verifies.
+Otherwise the issuance makes NO judgment call. This is one rule answering two
+questions — which issuances score, and which ones cost a second LLM call — and
+it settles the 2026-09-12 finding that the evening run currently spends a
+judgment call on numbers nothing verifies.
+
+**THREE TIERS, NOT TWO.** Added the same day, prompted by the operator asking
+what stops someone refreshing twenty times:
+
+| what moved | judgment call | narrative call |
+|---|---|---|
+| information (C2's three triggers) | yes | yes |
+| only the clock, enough to restale the framing | no | yes |
+| nothing | **no** | **no** — show the stored forecast |
+
+The bottom row is the one the contract was missing. "Otherwise re-render the
+prose" would have made twenty refreshes cost twenty narrative calls, which is
+barely better than twenty judgment calls. **If neither the information nor the
+clock has moved, there is nothing to say differently and the honest answer is
+the forecast already on the device.**
+
+The middle row is real and should not be collapsed into the bottom one: prose
+is clock-keyed by C1, so a forecast written at 06:00 genuinely goes stale as a
+DOCUMENT by evening — "this morning" becomes wrong — even when every number
+in it still stands. What counts as "enough" is a measurement, not a guess; a
+plausible first cut is a change of daypart.
 
 **The third trigger is the operator's correction, and the item was wrong
 without it.** "Information moved" is not "the guidance cycle moved".
@@ -13843,3 +13863,123 @@ the work that addresses it. That is the durable half.
 Related: items 26 and 111 (budgets), 59 (the split whose input cost this
 prices), 77 (the harness that would measure it), 105 / 109 (fewer calls,
 where this is cheaper calls).
+
+---
+
+## 113. Four modes, and which items they already are · **Planning, 2026-09-12**
+
+The operator set out the shape the project is heading for. Written down here
+because it renames work rather than adding much of it, and a cold reader
+should be able to see that.
+
+| mode | what it is | cost | key | shares | **existing items** |
+|---|---|---|---|---|---|
+| 1. **OLW** | the pipeline, self-hosted, emails a forecast | free | own | no | unchanged |
+| 2. **Ensemble** | the app, self-contained, forecasts on device | paid | own | **no** | the app as built |
+| 3. **Ensemble viewer** | displays a forecast from any OLW deployment | free | **none** | n/a | **105** |
+| 4. **Ensemble shared** | forecasts on device, submits them so viewers have something to read | free | own | yes | **107**, partly **109** |
+
+**Mode 2 is legal because of a decision already made.** The pipeline is
+AGPLv3-or-later and `app/olw_core/` is Apache-2.0 — a proprietary paid app
+links the core and never the pipeline. The split was made for forks; it turns
+out to be what makes a paid mode possible.
+
+**And it constrains mode 4's backend: keep it a STORE, never a forecaster.**
+The moment anything "we" run executes the AGPL pipeline over a network,
+§13 obliges us to offer its source to the users of that service. Mode 4 as
+described has the CLIENT generate and the store only hold, which stays clear
+of that — but item 109's "generate one for the next person" must stay
+client-side for the same reason, and that is now a licensing constraint as
+well as a design preference.
+
+### Reads scale on GitHub. Writes do not.
+
+**Mode 3 needs no backend at all.** An OLW deployment already publishes to
+Pages, the mailer already reads published output, and the only shared thing is
+an INDEX of which deployments exist — a static file in a repo, fetched
+read-only, cached by a CDN, costing nothing and scaling to anyone.
+
+**Mode 4 is a write path, and that is a different animal.** Every alternative
+on GitHub has a defect:
+
+- a token per submitter puts item 106's credential problem on every free user;
+- one service-held token is a backend by another name, just an awkward one;
+- every submission becomes a **commit** — permanent, public, unprunable,
+  rebuilding Pages on each push, and an open write endpoint into git history
+  is a spam target where the spam cannot be deleted, only reverted.
+
+So the honest split is **index in git, submissions somewhere that can forget**.
+That is still small, but it is not "no backend", and calling it one is how it
+gets designed badly.
+
+### The identifier protects against the wrong threat
+
+Mode 4's plan is an identifier re-seeded and randomised on arrival, so it
+cannot be reverse-derived but can still be tracked.
+
+**Re-randomising on arrival changes nothing about what actually identifies
+someone.** What identifies a submitter is their LOCATION and their CADENCE —
+item 107's first hazard, and it is untouched by rehashing the token that
+accompanies them. To "keep track" at all, the server's mapping must be
+deterministic, which makes the result a stable PSEUDONYM rather than an
+anonymisation, and a stable pseudonym plus a location plus a daily rhythm is
+re-identifiable in a thin crowd.
+
+Two things that would actually help, neither of them rehashing:
+
+- **Never derive the client identifier from anything real.** Random at
+  creation on-device, never a device or install id. Then there is nothing for
+  a rehash to protect, which is the point — server-side rehashing is
+  defence-in-depth against a mistake, not the defence.
+- **Decide what it is FOR, then rotate it on a matching schedule.** Dedup
+  within a day needs a daily identifier. Excluding a bad node needs a
+  longer-lived one, and that is the quality-control tension item 107 already
+  names. A permanent identifier because it is convenient is the version to
+  avoid.
+
+### The modes are coupled, and one of them is the supply
+
+**Mode 3's value is produced entirely by mode 4's users**, and mode 2 is
+explicitly the option that does not contribute. So the free viewer is useful
+only if enough people choose the free sharing mode over the paid private one —
+and the paid mode's proposition is, precisely, not sharing.
+
+That is a coherent model and it is worth saying out loud, because it means
+**mode 3's viability is a supply question rather than an engineering one.**
+Building the viewer before anyone shares produces an app with nothing to show,
+in the underserved areas that motivated the whole thing. Which order these
+ship in matters more than how either is built.
+
+Related: items 24 (the feed, and the thin-client line), 105, 106, 107, 109,
+110 (whether a listed deployment is near enough to be worth reading).
+
+---
+
+## 114. Nothing stops a reader refreshing twenty times · **Planned**
+
+The app's spend cap is a 24-hour ceiling. Below it, nothing discourages
+tapping refresh repeatedly, and a reader who does not know a forecast costs
+two calls can spend their day's budget in a minute.
+
+**Item 104's C2 already removes most of the harm** — a refresh that brings no
+new information and no material clock change now costs ZERO calls and shows
+the stored forecast, so twenty taps are twenty reads. That makes this item a
+backstop rather than the mechanism, and it should be built after C2 rather
+than instead of it.
+
+What is still wanted:
+
+- **A minimum interval between calls that actually spend**, so a pathological
+  loop cannot outpace the cap.
+- **A count for the day, visible before the tap**, not only after. The cap
+  card already says what remains; a reader about to spend needs it at the
+  moment of spending.
+- **A refusal that reads as sensible rather than broken.** "Nothing has
+  changed since 06:12; here is that forecast" is a better answer than a
+  disabled button, and it is true.
+
+**Not a new cap.** It is the existing one made legible at the moment of
+decision — the same argument item 108 makes for the server: the warning
+before the failure is cheaper than the report after it.
+
+Related: items 26 (the cap), 104 (C2, which does most of this), 108, 111.
