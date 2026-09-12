@@ -12986,6 +12986,63 @@ immediately, which means the fix — recording hours-to-target, or at minimum
 the issuance hour, so the record can partition on it — is a prerequisite of
 option (2) rather than a later refinement.
 
+### 2026-09-12: the separation, dialled in
+
+Confirmed as the direction. The shape:
+
+**A prediction is keyed by TARGET DATE, and carries the issuance that made
+it.** Not by its relation to "today", which is a property of when you ask.
+`extended_properties` already works this way; `today_properties` is the entry
+whose target date equals the issuance date. So the record becomes a list of
+`(issued_at, target_date, values)` and `Day+N` stops being stored and starts
+being derived.
+
+**Verification is date-keyed and time-blind.** It compares a prediction for
+2026-09-13 against what 2026-09-13 actually did — daily max, min, rain total
+— and does not care whether the forecast was made at dawn or at bedtime. That
+is the operator's point exactly, and it is the half that gets simpler.
+
+**Prose is clock-keyed**, and after item 59 step 3 that rule lives entirely
+in the rendering call. At 22:00 it opens on tonight and tomorrow; at 06:00 on
+today. The judgment call does not change at all — it is asked for dated
+predictions either way — which is the split paying off a second time.
+
+### The scoring hazard this creates, and it is sharp
+
+**A lead-0 prediction made at 22:00 is not a forecast. It is largely a
+report.** The day's maximum has already happened; the rain has already fallen
+or not. Scoring it beside a lead-0 made at 06:00 would put a near-certainty
+and a real forecast in the same bucket and **inflate the record** — and it
+would inflate it most for the models and issuances that wait longest, which
+is precisely backwards.
+
+This is the date-arithmetic hazard from the previous section in its most
+concrete form, and it is currently avoided by accident: only the day's first
+issuance scores, so the record has never held a late lead-0.
+
+**So the contract needs two things the current one does not:**
+
+1. **Hours-to-target recorded, not derived from dates.** The natural quantity
+   is how much of the target period was still ahead at issuance — 100% for a
+   forecast issued before the day starts, near 0% at 22:00 on the day itself.
+   It is computable from `issued_at` and the target date in the location's
+   timezone, both of which are already stored.
+2. **A floor below which a target is not predicted at all.** An issuance at
+   22:00 should decline lead 0 rather than hindcast it, and the forecaster
+   should be told to. Where the floor sits is a measurement — plausibly "less
+   than a quarter of the day remains" — and it should be chosen against the
+   record rather than picked, per the threshold rule this project already
+   learned the hard way.
+
+### What it fixes
+
+**Day+1 becomes scorable**, which is the gap the 10pm reader exposed:
+`LEAD_TIMES_DAYS` is `[0, 3, 7]` and the thing that reader cares most about
+is verified by nothing today. Under a date-keyed record, a prediction for
+tomorrow is scored on arrival like any other — no new lead-time constant, no
+new column, because "tomorrow" stops being a special case and becomes a
+target date one day out.
+
 ### Order
 
 Decide the scoring contract FIRST. Everything else is mechanical once it is
@@ -13178,6 +13235,71 @@ under different rules:
 **Confirmed by the operator 2026-09-12.** Treat it as the rule this item is
 built on rather than as a recommendation inside it.
 
+### 2026-09-12: "don't remember who" — the operator's proposal, sharpened
+
+> *I can share with you my forecast, including location: if you don't record
+> or remember who I am, then there's not an issue. We can choose not to
+> remember anything but the forecast.*
+
+**The instinct is right and the strongest version of it is stronger than
+stated.** Build it so identity is never COLLECTED, rather than collected and
+discarded. A store with no user table cannot leak one, cannot be subpoenaed
+for one, and cannot grow one later because a feature wanted it. That is an
+architectural property; "we delete it" is a policy, and policies are one
+pull request from not being true.
+
+For this project that is unusually easy, because **the domain genuinely has
+no use for identity.** Observations and forecasts are about places. Nothing
+the shared record is for — item 60's past analogues, more observations, more
+user reports — needs to know who sent what.
+
+**But "unnamed" is not "unlinkable", and three things bring identity back
+without anyone deciding to.**
+
+1. **In a thin crowd, the location IS the identifier.** A coarse cell with
+   three users in it narrows to one of three. And this cuts exactly the wrong
+   way: item 105's value is largest in underserved areas, which are precisely
+   the areas where the crowd is smallest. **The privacy protection is weakest
+   where the product is most useful**, and that tension should be designed
+   for rather than discovered.
+2. **The pattern is an identifier even when the payload is not.** Submissions
+   carrying a location and a timestamp form a fingerprint — same cell, same
+   hours, every day. Nothing needs to be linked deliberately; the cadence
+   links it. Defeating that means jitter, batching or delay, none of which a
+   real-time query can use.
+3. **The transport carries what the payload does not.** An IP address arrives
+   whether or not it is stored. "We do not record it" is again a policy; not
+   RECEIVING it is a design, and the honest middle is discarding at the edge
+   before anything is written.
+
+### The granularity falls out of item 110, which is a happy result
+
+The grid audit answers "how coarse is coarse enough" without anyone picking a
+number. **Precipitation is identical across an entire ECMWF cell** — 7.1 mm
+at four points spanning 20 km — so reporting rain at CELL granularity
+discards nothing the model could express. The privacy unit and the physical
+unit are the same unit, for that variable.
+
+**Temperature is the exception, and it is instructive.** It varies within the
+cell with elevation, 28.6 C to 25.7 C across the same 20 km, so cell
+granularity does lose real information there. Which means the coarsening is
+per-variable too — the same shape item 110 found everywhere else.
+
+### The tension that has no clean answer yet
+
+**Quality control wants a notion of "the same submitter" and privacy wants
+none.** A node sending nonsense — broken sensor, mischief, a bug — cannot be
+excluded without remembering something about it, and every standard remedy
+(rate limits keyed to an address, issued tokens, proof of work) reintroduces
+an identifier or a cost.
+
+Worth naming now because it is the requirement most likely to arrive late,
+after the schema is set, and be satisfied by quietly adding a device id.
+Plausible directions, none chosen: validate submissions against each other
+rather than against their sender, so a lone outlier is outvoted by its
+neighbours without anyone knowing who it was; or accept short-lived
+linkability within a session and never across days.
+
 ### Also unanswered
 
 - **Which record is authoritative?** The project's central claim is that
@@ -13290,11 +13412,16 @@ running a server.
   forecast from different instructions. Item 24's version stamp is not
   optional here — without it the shared cache silently mixes forecasters, and
   the accuracy record mixes with it.
-- **Asking is itself a disclosure.** A reader who only ever CONSUMES still
-  tells the service where they are, every time they open the app. Item 107's
-  privacy boundary was written for submission; this mode needs it for queries
-  too, and that is a harder problem because a query cannot be batched or
-  delayed the way a submission can.
+- **Asking is itself a disclosure, and it is the harder half.** A reader who
+  only ever CONSUMES still tells the service where they are, every time they
+  open the app. Item 107's `2026-09-12` section argues that identity should
+  never be collected rather than discarded, and that the pattern of
+  submissions is itself an identifier — **a query is worse on both counts**.
+  It needs an answer in real time, so it cannot be jittered, batched or
+  delayed; and it happens on every open rather than once per forecast, so the
+  cadence it reveals is finer. A consume-only reader is the most exposed
+  participant in the whole design, which is the opposite of what anyone would
+  guess.
 - **What happens when the service is unreachable?** Item 24's rule holds:
   built-in defaults must be sufficient, so the answer is "generate locally as
   though the mode were off". Worth stating because the failure mode of a
@@ -13358,6 +13485,85 @@ season, and of how unsettled the day is. Any design that reduces it to a
 kilometre radius will be right in the settled case and wrong exactly when
 being wrong costs something.
 
+### Measured 2026-09-12: the grid is the first answer, and it is not the one expected
+
+The operator asked the right question — *do rings overlap nicely, adding data
+rather than changing it?* — and it is answerable with no LLM calls, because
+Open-Meteo returns **the grid point it actually served**, not the point
+requested. A ring around Kisumu, ECMWF `ifs025`, daily variables:
+
+| requested | served cell | elevation | Tmax | precip_sum |
+|---|---|---|---|---|
+| centre | `0.00, 34.75` | 1187 m | 28.6 | **7.1** |
+| 5 km N | `0.00, 34.75` | 1364 m | 27.4 | **7.1** |
+| 10 km N | `0.00, 34.75` | 1335 m | 27.6 | **7.1** |
+| 20 km N | `0.00, 34.75` | 1632 m | 25.7 | **7.1** |
+
+**Four points spanning 20 km were served ONE grid cell.** The nearest ECMWF
+grid point to the configured location is 10.4 km away from it.
+
+**Precipitation is identical to the digit. Temperature is not**, and the
+spread tracks elevation exactly — 1187 m to 1632 m, 28.6 C to 25.7 C, which
+is 6.5 C/km and therefore the standard atmospheric lapse rate. Open-Meteo
+downscales temperature against a terrain model and does not downscale
+precipitation.
+
+**This inverts the intuition the item was written with.** Rain is the local,
+patchy thing and temperature the smooth one — in the WEATHER. In the
+FORECAST at this resolution the opposite holds: rain is constant across the
+cell and temperature varies continuously.
+
+### The trap this exposes, and it would have been easy to walk into
+
+**Identical precipitation across 20 km is not evidence of a large area. It is
+evidence that the grid cannot resolve the difference.** A design that reads
+"the forecasts agree" as "one forecast serves both" would be reading a model
+limitation as meteorological agreement, and would do it most confidently
+exactly where the grid is coarsest.
+
+So the definition proposed above needs a third case. Two points can be:
+
+1. **different areas** — the forecast difference exceeds the forecast's error;
+2. **the same area** — it does not;
+3. **indistinguishable to the model** — the difference is zero by
+   construction, which is not case 2 and must never be recorded as it.
+
+Precipitation across this cell is case 3. Temperature is case 1: a 2.9 C
+spread against a Day+0 `avg_temp_high_error_c_10` of −0.37 (ECMWF) and −0.78
+(the blend), so the terrain difference is several times the model's own
+error. *Those stored figures are signed means and so understate typical
+absolute error; the comparison is stark enough to survive that, but it should
+be redone against absolute error before anything is built on it.*
+
+### And each model is describing a different place
+
+Same request, four models:
+
+| model | served cell | distance from request | precip_sum |
+|---|---|---|---|
+| `ecmwf_ifs025` | `0.000, 34.750` | 10.4 km | 7.1 |
+| `gfs_seamless` | `-0.059, 34.805` | ~5 km | 12.7 |
+| `icon_seamless` | `-0.125, 34.750` | ~4 km | 8.5 |
+| `ukmo_seamless` | `-0.094, 34.734` | ~2 km | 4.2 |
+
+**The multi-model spread this project blends and scores is partly a spatial
+artefact.** When the forecaster is told to reconcile models that disagree,
+some of that disagreement is that they are forecasting different patches of
+ground up to 10 km apart. Elevation comes back as 1187 m for all four, so the
+DEM correction is common; the cells are not.
+
+This does not invalidate the blend — models genuinely disagree as well — but
+**nobody has measured how much of the disagreement is geography**, and it
+will be worst in exactly the complex terrain where local forecasting is worth
+most. It is a finding about the project's central mechanic, arrived at while
+asking a question about sharing.
+
+**The experiment that separates them:** for each model, measure how much its
+OWN precipitation varies across 10 km (spatial), and compare that to how much
+the models differ at one point (physics). If the two are comparable, the
+blend is partly averaging geography and the review findings are partly about
+the grid.
+
 ### What to measure first, and it is cheap
 
 The fleet sweep built for item 96 already fetches guidance for several
@@ -13382,3 +13588,65 @@ wind direction, asked of distance instead of hour.
 
 Related: items 59 (the same question asked of time), 96 (the fleet sweep that
 would measure it), 99, 105, 107, 109.
+
+---
+
+## 111. One budget cannot express "spend less per forecast" · **Planned**
+
+`max_llm_calls_per_24h` is the only lever, and it answers one question: how
+much may be spent in total. It cannot say **how much any single forecast may
+spend**, which is the other half and the one that failed on 2026-09-12.
+
+That morning the 03:01 forecast was refused because the previous evening's
+refresh had taken SEVEN requests on a bad provider night — judgment succeeded
+on attempt 3, narrative on attempt 4, two 90-second timeouts in between. It
+published, correctly. But one issuance consumed 44% of the day's ceiling, and
+nothing could have stopped it, because nothing expresses "this run has had
+enough".
+
+**The operator's shape: `X` calls per forecast, `Y` per 24 hours.** The
+second exists; the first does not.
+
+### The window is rolling, and deliberately
+
+Recorded because the operator raised it as a possible refinement and it is
+already settled: `WINDOW = timedelta(hours=24)` in `spend.py` and
+`spendWindow` in `config.dart` are both ROLLING, never a clock reset — *"a
+midnight reset would permit a full budget on either side of it"*, so a cap of
+10 would allow 20 within a few hours. No change wanted; the note is here so
+the question is not reopened from memory.
+
+A per-forecast cap needs no window at all, which is the nice part. It is a
+counter that starts at zero when the run starts.
+
+### What it interacts with, and the interaction is the design
+
+- **The retry policy already spends up to `MAX_ATTEMPTS` per CALL**, and
+  after item 59 step 3 a forecast is two calls — so the per-forecast ceiling
+  and the retry budget are two names for overlapping things. `X` has to be
+  expressed against whichever is more honest: "this forecast may send 6
+  requests" is checkable, "each call may retry 4 times" is what the code
+  currently does, and 2 × 4 = 8 is the number that surprised everyone.
+- **Measured, retrying is worth it.** Over 42 pre-split runs, 38% needed a
+  retry and attempts 3 and 4 rescued half of those — cutting to two attempts
+  would have failed 8 runs that succeeded, and a failed run wastes what it
+  already spent. **So `X` must not be set low enough to defeat the retries**,
+  which means the honest default is close to the worst case rather than close
+  to the nominal, and its job is to stop a pathological run rather than to
+  economise on a normal one.
+- **What happens at the ceiling** is the same question item 59 step 3 already
+  answered once: a forecast stopped partway is worth nothing unless the
+  scored call survived. `DEGRADATION_NARRATIVE` covers the rendering half;
+  a per-forecast cap hit during the JUDGMENT call has nothing to keep.
+
+### The half that should ship first, again
+
+Item 108 argues the warning before the notification. The same ordering
+applies here: **a run that reports what it spent** is cheaper than a run that
+limits it, and the project cannot currently answer "how many requests did
+yesterday's forecast take?" without reconstructing it from the ledger by
+hand — which is how the 2026-09-12 analysis was done.
+
+Related: items 26 (the cap that exists), 59 (why a forecast is two calls),
+80 (the timeout outcome, two of which were spent that evening), 108 (the
+reporting half).
