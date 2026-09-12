@@ -11028,11 +11028,28 @@ mechanism holds:
 
 Ordered by what reaches a reader:
 
-1. **`review.dart:308` formats mean errors half-away-from-zero.** Python uses
-   `%+.1f`, which is half-to-even. `rounding.dart`'s own header calls this
-   form "wrong twice over", and the day-over-day comparison already replaced
-   it after it disagreed on 600 of 32,001 swept values. Every bias finding in
-   `weekly_review.json` is an exact value, so no case can reach a tie.
+1. ~~**`review.dart:308` formats mean errors half-away-from-zero.**~~
+   **Fixed 2026-09-12**, `40fa656`. Python uses `%+.1f`, which is
+   half-to-even. `rounding.dart`'s own header calls this form "wrong twice
+   over", and the day-over-day comparison already replaced it after it
+   disagreed on 600 of 32,001 swept values. Every bias finding in
+   `weekly_review.json` was an exact value, so no case could reach a tie; the
+   new one passes a bias of 2.25 and was watched failing against the
+   un-ported Dart first — `+2.3` where Python says `+2.2`.
+
+   **The sweep found a residual, and it is unreachable.** 32,001 values at
+   0.005 steps from −80 to +80: 523 disagreements before, 9 after. All nine
+   are the band −0.045 to −0.005, where Python's `%+.1f` prints `-0.0` and
+   Dart's `+ 0.0` normalisation prints `+0.0`. The `+ 0.0` is load-bearing —
+   without it `toStringAsFixed` renders a bare `-0.0` — and the band cannot
+   be reached: `_fmtSigned` has ONE call site, guarded by
+   `value.abs() < threshold`, and the lowest of the three thresholds is 1.0.
+   Restricted to `|v| >= 1.0` the sweep is 508 disagreements before and zero
+   after.
+
+   Recorded rather than fixed because the fix would be a change to a line
+   nothing can execute, and because the next person to sweep this function
+   will find the same nine and needs to know they were looked at.
 2. **`review.dart:306` `_fmtPct` uses `toStringAsFixed(0)`.** `synoptic.dart`
    carries a hand-written `_fmt0` with a comment explaining precisely this
    trap; `review.dart` never got it. Needs a check count divisible by 8, so
