@@ -12851,7 +12851,7 @@ change proposed here.
 
 ---
 
-## 104. The refresh is a leftover from a twice-a-day tool · **Planned, and it decides item 105's shape**
+## 104. The refresh is a leftover from a twice-a-day tool · **Contract settled 2026-09-12; the build is Planned**
 
 `run_refresh_pipeline` exists because OLW ran on a cron twice a day and the
 second run had to explain itself to a reader who had already read the first.
@@ -13042,6 +13042,96 @@ is verified by nothing today. Under a date-keyed record, a prediction for
 tomorrow is scored on arrival like any other — no new lead-time constant, no
 new column, because "tomorrow" stops being a special case and becomes a
 target date one day out.
+
+### SETTLED 2026-09-12: the scoring contract
+
+**C1. A prediction is keyed by `(issuance, target_date)`.** Lead time is
+derived, never stored. `extended_properties` already works this way;
+`today_properties` becomes the entry whose target date is the issuance date.
+
+**C2. A judgment call is made — and a scored row written — when the
+INFORMATION moved.** Three triggers, any of which suffices:
+
+- it is the day's first issuance;
+- a new guidance cycle has landed (`newer_than_previous_issuance`, already
+  computed);
+- **fresh observations contradict the standing call.**
+
+Otherwise the issuance makes NO judgment call: it re-renders prose around the
+call that already stands. This is one rule answering two questions — which
+issuances score, and which ones cost a second LLM call — and it settles the
+2026-09-12 finding that the evening run currently spends a judgment call on
+numbers nothing verifies.
+
+**The third trigger is the operator's correction, and the item was wrong
+without it.** "Information moved" is not "the guidance cycle moved".
+Observations are truth where models are opinion, so an observation that
+contradicts the standing call is a STRONGER reason to re-forecast than a new
+cycle — and local sensors update on their own schedule. The catch is that
+judging contradiction is itself judgment, which is the call being decided on,
+so the test must be **computable in code**: the call says dry and a station
+reports rain; observed temperature has already passed the predicted high;
+observed peak wind has already passed the predicted peak. Same shape as
+`newer_than_previous_issuance` — a precomputed boolean the prompt and the
+pipeline can both read.
+
+**C3. Models and the blend are scored together, from the same guidance, at
+every scored issuance.** Identical opportunity set, so each scored issuance is
+a paired comparison.
+
+**C4. A target date is DECLINED below a floor of remaining period.** At 23:30
+the day's high and rain are settled; asking for them is asking for a report
+and scoring them would credit a forecaster for reading a thermometer. The
+prose still covers the remaining hours — that is the horizon/verification
+separation doing its job.
+
+**C5. How much of the target remained at issuance is RECORDED per
+prediction**, so the record can partition a dawn call from a dusk one. Without
+it, lead-in-dates silently averages a two-hour call with an eighteen-hour one.
+
+**C6. Rolling windows and the sample-size gate count DISTINCT TARGET DATES,
+not rows.** The review gate already does (`variable_days = max(v.days ...)`);
+the track record's `N-check` windows do not, and three correlated checks from
+one day would shrink the sampling-noise floor and fire rankings too eagerly.
+*This is the corrected form of an argument this item made badly on
+2026-09-12: re-scoring identical model rows does NOT bias the mean against
+the blend — more draws of a noisy forecaster estimate its skill better, not
+worse. What it breaks is independence, and only the gate depends on that.*
+
+### Measured, so C4 is not guesswork
+
+Where the floor sits cannot be measured yet — only first issuances score, so
+the record holds no late ones. What IS measured, from 40 days of hourly
+archive at the reference location:
+
+**The daily minimum fell at or before 08:00 on 39 of 40 days** (05:00 twice,
+06:00 eleven times, 07:00 twenty-six times; once at 23:00).
+
+Two consequences:
+
+- **An overnight reader is served by date-keying, not harmed by it.** At 23:30
+  the forecast declines today and predicts tomorrow, and "tonight's low" IS
+  tomorrow's scored `temp_low_c`, because the minimum arrives at dawn. The
+  number that reader cares about most is scored. What remains unscored is
+  sub-daily timing — "will it rain before I wake" — which is prose, and is no
+  worse off than it is today.
+- **The 1-in-40 exception is the right kind of wrong.** On that day the
+  minimum fell at 23:00, so a late issuance would decline a field that had not
+  quite resolved. It errs toward declining rather than hindcasting, which is
+  the safe direction.
+
+### Still open, and deliberately
+
+- **The floor value in C4.** Measure once late issuances exist; this project
+  sizes thresholds against the record, not against convenient samples. Ship
+  conservative and revisit.
+- **The exact disagreement tests in C2.** Each one is cheap; which set earns
+  its place is a measurement, and the tests must not be so sensitive that
+  every hourly METAR triggers a call.
+- **Whether Day+1 joins the published lead times.** Under C1 it is scored
+  automatically — `LEAD_TIMES_DAYS` is `[0, 3, 7]` today and tomorrow is
+  verified by nothing — but what gets PUBLISHED on the accuracy page is a
+  separate decision.
 
 ### Order
 
