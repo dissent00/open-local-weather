@@ -1580,6 +1580,7 @@ def export_weekly_review() -> None:
         [
             case("8 checks — a large apparent gap must still yield no ranking", 8, 8, 2),
             case("30 checks — a real gap is ranked", 30, 27, 9),
+            case("24 checks — percentage ties round half-even", 24, 3, 0),
             case("30 checks — a narrow gap is explicitly declined", 30, 20, 18),
             case("30 checks — a systematic temperature bias is named", 30, 15, 15, 2.0),
             case("30 checks — a half-even mean bias is named", 30, 15, 15, 2.25),

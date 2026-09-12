@@ -304,7 +304,7 @@ WeeklyReview buildWeeklyReview({
   return review;
 }
 
-String _fmtPct(double v) => v.toStringAsFixed(0);
+String _fmtPct(double v) => roundLikePython(v, 0).toStringAsFixed(0);
 
 String _fmtSigned(double v) {
   final rounded = roundLikePython(v, 1) + 0.0;
