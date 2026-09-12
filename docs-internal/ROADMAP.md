@@ -2245,6 +2245,15 @@ Everything else the app already computes itself, and should keep computing
 itself — a feed that supplied *forecasts* rather than *inputs* would quietly
 turn the app into a thin client and give up the standalone property.
 
+**PARTLY REVERSED 2026-09-12 — see item 105.** A served forecast is now
+wanted, as an optional MODE, because the duplication cost this paragraph did
+not weigh turns out to be large: a hundred readers in one town currently make
+the same Gemini call a hundred times for one answer. The sentence above is
+still right about the risk and still binds — standalone must keep working
+with no feed reachable, and a mode where the app CANNOT forecast on its own
+is the thin client this item refused. Item 105 carries the argument; do not
+widen this paragraph quietly to cover it.
+
 ### Remote configuration: useful, and the trap is auditability
 
 The instinct is sound and comes from a real event. Open-Meteo's
@@ -12839,3 +12848,251 @@ stays. The prompt's bound at `prompt.py:236` — *say lower pressure lies
 TOWARD a direction, never that a named low is centred over a named place* —
 is the correct guardrail for 12-degree sampling and should survive every
 change proposed here.
+
+---
+
+## 104. The refresh is a leftover from a twice-a-day tool · **Planned, and it decides item 105's shape**
+
+`run_refresh_pipeline` exists because OLW ran on a cron twice a day and the
+second run had to explain itself to a reader who had already read the first.
+That framing is now the odd one out. The app issues a forecast when someone
+asks for it, at whatever hour that is, and nothing about that run is a
+"refresh" of anything — it is a forecast, issued when it was issued.
+
+**Operator's decision, 2026-09-12: one forecast type.** The forecaster
+already knows the local time and what part of the day it is; it should
+forecast the rest of today, tonight and the extended range from wherever the
+clock happens to be. OLW keeps running on a schedule in normal use. What goes
+is the idea that the second run of a day is a different KIND of run.
+
+### What actually dies
+
+- `run_refresh_pipeline` as a separate path. Two pipelines that must be kept
+  in step have diverged repeatedly — see the `_combined_meta` and prompt-hash
+  sites, where every divergence found so far landed in one and not the other.
+- The `is_reissue` prompt branch, ~3,400 characters of LATER ISSUANCE that
+  only the evening run sees and that nothing has ever verified end to end.
+- "This replaces the day-over-day opening" and the rest of the second-issuance
+  framing, which the operator judges not worth the instructions it costs.
+
+### What does NOT die, and is the whole difficulty
+
+**WHICH ISSUANCE IS SCORED.** Today the answer is implicit and nobody chose
+it: `model_predictions` is written by the morning run and a refresh never
+touches it. Measured 2026-09-12 — `run_refresh_pipeline` writes
+`today_properties` but makes no `_blend_prediction` call — so **the evening
+run currently spends a judgment call whose numbers are displayed and never
+verified.** Under the split that is a whole LLM call, up to four requests, for
+display only.
+
+Three answers, and they are not equivalent:
+
+1. **First issuance of the day scores.** Status quo, renamed. Later issuances
+   then need no judgment call at all, which is the cheapest option and turns
+   today's waste into a saving.
+2. **Every issuance scores separately.** Richest record, and the one that
+   makes issuance-time a real variable — but see the hazard below.
+3. **Last issuance before a cutoff scores.** Worst of both: still pays for
+   every judgment call, and the record's meaning depends on when someone
+   happened to tap a button.
+
+**THE HAZARD IN (2), AND IT IS NOT SMALL.** An 18:00 issuance forecasting the
+rest of the day is making a different claim from an 06:00 issuance forecasting
+all of it, and scoring both against the same daily observation compares two
+different claims as though they were one. Item 97 already records that `rain`
+means different things at different lead times; this is the same defect along
+the issuance-time axis. The rule that currently protects against it is the
+firewall sentence in the narrative prompt — *the call you were given describes
+the WHOLE calendar day* — which exists precisely so a late issuance cannot
+narrow a scored field. **If issuances become uniform that rule gets MORE
+load-bearing, not less**, and any move toward (2) has to answer what a Day+0
+score means for a forecast issued at dusk before it answers anything else.
+
+### Also to be decided, and cheaper
+
+- **`yesterday_verification` and the stored notes** run once a day today,
+  on the first run. Every issuance re-verifying would rewrite the record's
+  learning loop several times a day against unchanged observations. Almost
+  certainly: first issuance of the day only, which is a property of the RUN
+  rather than of a pipeline.
+- **The day-over-day comparison** is a first-issuance frame for the same
+  reason and should follow the same rule.
+- **`earlier_issuances` and `IssuanceSnapshot` stay.** They are how a reader
+  sees what they were told earlier, and the bug that produced them — a later
+  run silently overwriting an earlier issuance's published text — is
+  independent of whether the later run is called a refresh.
+
+### Order
+
+Decide the scoring contract FIRST. Everything else is mechanical once it is
+settled, and building the uniform pipeline before choosing (1), (2) or (3)
+would bake the choice in by accident — which is how the current implicit
+answer got there.
+
+Related: items 26 (what a run costs), 59 (the two calls), 97 (a boolean that
+means different things at different leads), 105 (a served forecast is an
+issuance someone else made).
+
+---
+
+## 105. Ensemble as a display for someone else's OLW · **Planned — and it reverses part of item 24**
+
+An OLW deployment already publishes to GitHub Pages. A reader in the same
+area who installs Ensemble currently re-derives that forecast on their own
+phone, against their own API key, from the same guidance — and in a town with
+a hundred users that is the same Gemini call made a hundred times for one
+answer.
+
+**The proposal: a mode.** A deployment that tells the project it exists gets
+listed; the app offers it as an optional source; the app fetches the
+published JSON the way the mailer already reads published output, and
+displays it. Standalone phone mode is untouched.
+
+### This contradicts item 24, deliberately
+
+Item 24 says, in terms: *"a feed that supplied forecasts rather than inputs
+would quietly turn the app into a thin client and give up the standalone
+property."* That reasoning was right about the risk and did not weigh the
+duplication cost, because at one user there was none.
+
+What reconciles them is that this is an ADDITIONAL mode rather than a
+replacement, and item 24's constraints survive intact — a build that can
+never reach any feed still produces forecasts. **Do not resolve this by
+quietly widening item 24.** If the project ever ships a mode where the app
+CANNOT forecast on its own, that is the thin client item 24 refused, and it
+should be argued on its own terms.
+
+### What has to be answered before this ships
+
+- **Whose accuracy record is it?** A displayed forecast was made by someone
+  else's forecaster against their guidance. If the app scores it locally
+  against local observations that is a legitimate verification, but it is not
+  an independent forecaster and must never be presented as one. Every stored
+  row needs the deployment it came from, the same way item 24 requires a
+  config version stamp — **this is the non-negotiable one**, for the same
+  reason.
+- **How close is "my area"?** Item 99 is exactly this question and is still
+  `measure before designing`. A served forecast from 40 km away across a lake
+  shore is a different forecast, and the app has no way to know that without
+  item 99's answer.
+- **Staleness.** A deployment that stops publishing must read as stale rather
+  than as calm weather — the same rule as every other absent input, and the
+  one this project has broken before.
+- **Trust.** The app would render a stranger's LLM output to its user. A
+  curated list is a governance surface, not just a config file, and the
+  project takes on something it has never had: responsibility for text it did
+  not generate.
+
+Related: items 24 (the feed, and why it said no), 44 (a sources screen),
+99 (where "significantly different" is), 106 (the same link, authenticated).
+
+---
+
+## 106. Ensemble as an authenticated frontend for your OWN OLW · **Planned — the credential is the whole problem**
+
+Item 105 is read-only and public. This is the other half: someone runs OLW,
+points their app at it, and can ask it for a fresh forecast from the phone —
+but the forecast is produced on the SERVER, against the server's key and the
+server's cap. The phone stays a display.
+
+The mechanism partly exists. This deployment already fires
+`workflow_dispatch` from an external host, and `meta.trigger_source` records
+which path produced a run precisely so the dispatch path dying is visible.
+
+### The credential is the item
+
+A GitHub token with permission to dispatch a workflow, living on a phone, is
+a different class of secret from a Gemini API key. The Gemini key spends
+money; this one runs code in a repository. **Anything shipped here should
+assume the phone is lost**, which argues for the narrowest possible
+mechanism — a token that can dispatch one workflow and nothing else, revocable
+without touching anything else, and never the operator's personal PAT.
+
+Worth stating plainly because the convenient implementation is the dangerous
+one, and it is convenient enough to reach for without noticing.
+
+### The rest
+
+- **Whose budget?** The server's cap applies and the phone's does not. A
+  button that spends someone else's budget needs to show what is left before
+  it is tapped, which the app already does for its own cap and would need to
+  read remotely here.
+- **What happens when it is refused?** Item 26's refusal path is local. A
+  remote refusal has to travel back to the phone as something better than a
+  failed HTTP call.
+- **This is where item 104 pays off.** "Ask the server for a forecast now" is
+  incoherent while the server has two kinds of run and one of them is defined
+  as following the other. It is obvious once every run is just an issuance.
+
+Related: items 26 (the cap), 104 (one kind of run), 105 (the unauthenticated
+half).
+
+---
+
+## 107. An opt-in shared record, and the loop it must never close · **Planned, and the hazard is the design**
+
+Any OLW or Ensemble user could choose to mirror their data to one place:
+forecast AREA — never a GPS fix from a phone — plus the forecast data and the
+LLM outputs. Mirrored deployments appear in item 105's source list, and the
+aggregate becomes something no single deployment has: many days, many areas,
+many forecasters over the same ground.
+
+**For item 60 this is a large prize.** That item wants the record used as
+evidence — nearest neighbour over past days, handing the forecaster the three
+archived days that most resemble today with what actually happened on them.
+A single deployment accumulates that at one day per day. A shared record
+accumulates it much faster, and across areas that share a climate.
+
+### The loop, and why it is worse here than it looks
+
+The standing rule is that `olw_blend` is scored and published but never
+reaches its own prompt — *output becomes record becomes output*, and the
+cheapest way to protect a score you can see is to stop making independent
+calls. Decided 2026-08-27, and it has leaked through four separate prompt
+blocks since, twice found by something other than the test suite.
+
+A shared store makes that rule harder in a way the original reasoning did not
+have to consider. The rule's escape clause is that seeing ANOTHER model's
+record closes no loop. **That clause weakens when the other model is the same
+model, on the same area, a few hours earlier.** Deployment B's forecaster
+reading deployment A's mirrored blend is not reading a peer; it is reading
+Gemini's opinion of the same afternoon, and the loop it closes is only one
+step longer than the one the rule forbids.
+
+**And the aggregate is not what it looks like.** A hundred mirrored
+deployments in one town are not a hundred independent forecasts. They are
+close to one forecast sampled a hundred times — same model, same guidance,
+same prompt — and averaging them produces something that reads like ensemble
+skill and is not. Presenting that number as a consensus would be the most
+convincing wrong figure this project has ever published.
+
+### The split that keeps it honest
+
+Observations and forecasts are different animals here and should be mirrored
+under different rules:
+
+- **Observations are facts.** What the temperature did, whether it rained,
+  what a station reported. Shared freely, usable as evidence, and the thing
+  item 60 actually needs. Two deployments observing the same town should
+  agree, and where they disagree that is itself worth seeing.
+- **Forecasts are opinions, and opinions correlate.** Mirrored for display
+  and for comparison, never into a prompt, and never averaged into a
+  headline number without answering the independence question first.
+
+### Also unanswered
+
+- **Which record is authoritative?** The project's central claim is that
+  every published number is recomputable from the committed record. A shared
+  store is a second record, and a forecast that cites it is reproducible only
+  if that store is versioned and retained as carefully as the git history is.
+- **"Forecast area, not a GPS fix" needs a definition**, not an intention.
+  The coarsening has to happen on the device before anything is sent, and the
+  granularity has to be coarse enough that a home address cannot be inferred
+  from a week of submissions.
+- **Opt-in means revocable.** Someone who turns it off should be able to have
+  what they contributed removed, and that is a retention design rather than a
+  checkbox.
+
+Related: items 24 (recomputable from the committed record), 60 (the record as
+evidence — the reason to want this), 99 (whether two areas are the same
+area), 105 (where mirrored deployments would appear).
