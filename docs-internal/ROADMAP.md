@@ -13650,3 +13650,84 @@ hand — which is how the 2026-09-12 analysis was done.
 Related: items 26 (the cap that exists), 59 (why a forecast is two calls),
 80 (the timeout outcome, two of which were spent that evening), 108 (the
 reporting half).
+
+---
+
+## 112. The user message is 85% of the bill, and caching cannot touch it · **Measured 2026-09-12**
+
+Prompted by the operator asking what a subscription could support and whether
+Apple's on-device stack could avoid a Gemini key at all. Both questions have
+the same answer, and it is not about the provider.
+
+### Measured, from the real paired run
+
+| | chars | |
+|---|---|---|
+| user message | 161,820 | sent **twice**, once per call |
+| judgment system prompt | 18,398 | |
+| narrative system prompt | 38,480 | |
+| **total over two calls** | **380,518** | 155,106 input tokens measured |
+
+**The user message is 85% of everything sent.** The judgment call is 90% user
+message; the narrative call 81%. The instruction set — the thing item 59 spent
+a day splitting — is a seventh of the traffic.
+
+### Prompt caching cannot recover the split's doubled input
+
+The obvious repair is to cache the user message across the two calls, since
+it is byte-identical in both. **It does not work**, and the reason is
+structural rather than a tuning problem: cache matching is a PREFIX match and
+the render order is `tools` → `system` → `messages`. The two calls have
+different system prompts, so the prefix diverges before the messages block is
+reached, and nothing after it can be reused.
+
+So item 59 step 3's cost is ~2× input tokens **permanently**, not until
+someone configures caching properly. That was not weighed when the split was
+decided, and it does not reverse the decision — but it belongs beside it.
+
+### What it costs, per region
+
+At the measured 155,106 in / 3,060 out, two issuances a day:
+
+| model | $/forecast | $/region/month | regions per $100/month |
+|---|---|---|---|
+| Haiku 4.5 | 0.170 | 10.22 | ~10 |
+| Sonnet 5 | 0.341 | 20.45 | ~5 |
+| Opus 5 | 0.852 | 51.12 | ~2 |
+
+**A paid Claude subscription does not supply this.** Anthropic's support
+documentation is explicit that a Pro/Max plan "doesn't include access to the
+Claude API or Console" — they are separately billed products. Any
+subscription-backed credit that may exist is metered at list price, so the
+per-region figures above are the arithmetic either way.
+
+### Apple's Foundation Models: blocked by the same number
+
+The Private Cloud Compute model reachable from third-party apps has a
+**32,000-token context window**. The judgment call is ~73,000 tokens and the
+narrative call ~82,000 — **2.3× and 2.6× too large**. It is also gated to App
+Store Small Business Program apps under 2 million downloads and carries a
+daily usage limit.
+
+So "Apple users might not need a Gemini key" is not available at the current
+prompt size, and would not be at half the current size either.
+
+### The convergent lever
+
+Three separate goals — more regions per dollar, a phone-local option, and the
+sharing work in items 105/107/109 — **all reduce to shrinking the user
+message**, and none of them is about which model is called.
+
+That reframes the efficiency question the operator opened with. Avoiding
+duplicate calls (items 105/109) reduces how MANY forecasts are made; this
+reduces what EACH one costs, and the two multiply. Nothing has ever measured
+which blocks of the 161,820 characters earn their place — the prompt has been
+audited for what it SAYS and never for what it COSTS.
+
+**Measure before designing**: per block, tokens sent against whether removing
+it changes the scored fields. Item 77's harness is the instrument, and the
+frozen vectors make it repeatable.
+
+Related: items 26 and 111 (budgets), 59 (the split whose input cost this
+prices), 77 (the harness that would measure it), 105 / 109 (fewer calls,
+where this is cheaper calls).
