@@ -13866,7 +13866,7 @@ where this is cheaper calls).
 
 ---
 
-## 113. Four modes, and the data hosting decision they turn on · **Planning; hosting is the open question**
+## 113. Four modes, and the data hosting they turn on · **Hosting decided 2026-09-12; the build is Planned**
 
 The operator set out the shape the project is heading for. Written down here
 because it renames work rather than adding much of it, and a cold reader
@@ -14024,10 +14024,84 @@ Building the viewer before anyone shares produces an app with nothing to show,
 in the underserved areas that motivated the whole thing. Which order these
 ship in matters more than how either is built.
 
+### DECIDED 2026-09-12: both paths, one index
+
+**If a mode-4 sharer has GitHub, they publish to their own Pages. If not,
+they publish to ours, under a stated privacy policy.** The index points at a
+URL either way.
+
+**This is cheap because the index is the interface.** A viewer fetches a URL
+and never learns which kind of host answered. Hosting stops being a product
+fork and becomes a per-publisher detail — and mode 1's deployments are
+already URLs in that same index, so the read side supports all three without
+knowing the difference.
+
+### What the self-publish path actually costs
+
+Not nothing, and the cost is one this roadmap has already met. **Publishing
+from the app to a GitHub repository is a WRITE FROM THE PHONE**, which needs a
+token with contents access to that repo — item 106's credential problem
+arriving by a different road.
+
+It is narrower than 106's: one repository, contents only, and a lost phone
+costs a revocation. But it is the same class of secret and should be built
+with the same assumption — **assume the phone is lost** — rather than treated
+as free because GitHub is free. The two paths should share whatever
+narrow-credential machinery 106 settles on.
+
+### What the hosted path has to be
+
+**Not a publicly writable bucket.** Anonymous clients cannot be given direct
+write access to object storage: anyone could overwrite another submitter's
+objects or fill the account. So the shape is **object storage plus a minimal
+write endpoint** that validates and writes on the client's behalf. That
+endpoint is the whole backend, and it should stay that small.
+
+Object storage suits this better than it first appears, because the KEY can
+do the indexing: `{area}/{date}/{id}.json` lets a viewer read a prefix without
+a query engine. **Where it stops being right** is when prefix listing becomes
+the bottleneck — that is a volume this project is nowhere near, and the note
+exists so the limit is recognised rather than discovered.
+
+Real deletion, lifecycle rules and cheap public reads are exactly the
+properties the previous section said git lacks, so the requirement is met by
+construction rather than by policy.
+
+### Three rules that make the privacy policy writable
+
+**Design first, policy second.** A policy promising what the architecture
+cannot deliver is the failure mode, and item 107's withdrawal promise is
+already written.
+
+1. **The DEVICE keeps its own token history; the server never links tokens.**
+   This resolves a tension the rotation idea creates: if the identifier
+   rotates, a user cannot prove yesterday's submissions were theirs, and
+   withdrawal reaches only today. Let the device retain the tokens it has
+   used and present them when withdrawing. The server stays unable to link
+   them to each other, and withdrawal still covers everything — the linkage
+   lives on the only machine entitled to hold it.
+2. **Raw submissions expire; aggregates keep, without an identifier.**
+   Forecasts are perishable and a three-month-old one is worth little to a
+   viewer, so a short TTL costs nothing and bounds exposure by default.
+   Observations are the opposite — item 60 wants them accumulated for years —
+   so merge them into a per-area record at ingest and drop the token. What
+   remains is about a PLACE rather than a person, and can be kept
+   indefinitely without carrying the question with it.
+3. **Coarsen on the device, at the grid cell.** Item 110 measured the
+   granularity that loses nothing: precipitation is identical across an
+   entire ECMWF cell, so cell-level reporting discards no forecast
+   information for that variable. Temperature does vary within a cell by
+   elevation, so that one is a real trade rather than a free one.
+
+*Hosting user data as a company is a compliance surface as well as an
+engineering one, and jurisdiction decides much of it. The three rules above
+make that conversation shorter; they do not replace it.*
+
 ### Order, and why hosting stops being a detail
 
-**The data hosting decision is now upstream of most of this**, which was not
-obvious when the modes were first written down. The chain is short:
+**Hosting was upstream of most of this, and is now settled** — both paths,
+one index. What remains downstream of it is unchanged, and the chain is why
+it had to be settled first:
 
 > mode 3 (the free viewer) is only useful if deployments exist to read →
 > most of them would come from mode 4 → mode 4 cannot be built before its
@@ -14041,10 +14115,14 @@ item 110's per-variable answer would then make worse — a viewer with few
 deployments AND a per-variable rule about which are near enough has very
 little left to display.
 
-Nothing here needs building yet. What it needs is the hosting decision made
-deliberately rather than by default, because the default — "it is just
-GitHub" — is the one option that quietly breaks item 107's withdrawal
-promise.
+**With hosting settled, mode 4 is a product rather than an on-ramp**, so mode
+3 has a supply that does not depend on readers owning a GitHub account. The
+viewer can be built against that.
+
+What is still not decided is the ORDER of building, and the supply argument
+above still applies: a viewer shipped before anyone shares has nothing to
+show. The cheapest first move remains item 110's ring measurement, which
+decides what "near enough to display" means and needs no hosting at all.
 
 Related: items 24 (the feed, and the thin-client line), 105, 106, 107, 109,
 110 (whether a listed deployment is near enough to be worth reading).
