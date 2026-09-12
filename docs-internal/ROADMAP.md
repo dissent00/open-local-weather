@@ -14487,3 +14487,139 @@ handful of confirmed subscribers is a complete product.
 
 Related: items 113 (the store, and the disjointness this copies), 115 (why the
 app cannot do it), and `mailer/README.md` for the prior art and the trap.
+
+---
+
+## 117. A late first issuance forecasts weather that has already happened · **Planned — the payload already holds the answer**
+
+Raised by the operator 2026-09-12 against that day's published run, which
+they judged "not bad, not wrong, but a fine tune". It is worse than that in
+one specific place, and the evidence is in `data/prompts/2026-09-12.json`.
+
+### What happened
+
+The day's FIRST issuance was `workflow_dispatch` at 15:03Z — **18:01 local,
+39 minutes before sunset.** `information_moved` reads
+`first_issuance_of_day: true`, so nothing had been published earlier.
+
+It opened: **"Dry until evening thunderstorms"**, and said onset was
+"anticipated between 18:00 and 21:00 EAT". The operator was standing in
+Kisumu and it had been raining and thundering off and on for hours.
+
+### The forecaster was handed the contradiction and nothing asked it to look
+
+`primary_today_hourly` carries all 24 hours of the local day, and **four of
+the five models had already put rain on the ground before 18:00**:
+
+| model | precipitation before 18:00 local |
+|---|---|
+| gfs_seamless | 0.2 mm at 14:00, **3.5 mm at 15:00**, 2.5 at 16:00, 1.4 at 17:00 |
+| ecmwf_ifs025 | 0.1–0.2 mm hourly from 10:00, then 1.9 mm at 16:00 and 17:00 |
+| ukmo_seamless | 0.1 mm at 16:00 and 17:00 |
+| best_match | 0.2 mm at 17:00 |
+| icon_seamless | none |
+
+So "dry until evening" was contradicted by the block directly above it.
+
+**The blocks that govern timing all point forward, and that is the defect.**
+`HOURS AHEAD` is labelled "hour-by-hour multi-model guidance **from the
+current hour forward** — reason from THIS for near-term timing", and it
+begins at 18:00. The `ISSUED` line says "WHAT MATTERS NOW: tonight (dusk,
+evening and overnight through to dawn), then tomorrow." Both are correct
+instructions for what to forecast. **Neither asks what has already
+happened**, and `primary_today_hourly` is framed as the day's aggregate
+source — where the scored high, low and totals come from — not as a record of
+hours that are now behind the reader.
+
+A reader at 18:01 knows whether it rained at 15:00. The forecast is the only
+party in the conversation that does not mention it.
+
+### Its one observation said the opposite, and that is not a tie-break
+
+Exactly ONE METAR reached the prompt:
+
+```
+METAR HKKI 121430Z 08006KT 9999 FEW023CB BKN080 23/17 Q1016
+```
+
+1430Z is 17:30 local. Cumulonimbus at 2300 ft, broken at 8000 — and **no
+weather group and no RE group**, so the station reported neither present nor
+recent precipitation, with 10 km visibility. The airport was not being rained
+on at 17:30.
+
+That is item 98 along the intra-day axis and item 53.1 in reverse: a 9 km
+reanalysis-scale cell and one runway disagree, both honestly, and here the
+models said wet while the station said dry. A forecaster with a model
+analysis, a contradicting station report, and no instruction about either
+picked the tidier sentence. **The fix is not to believe one of them** — it is
+to say that the day so far is uncertain and that convection was around,
+which is both true and more useful than either.
+
+**And the snapshot is a choice, not a limit.** `fetch_metar` calls
+aviationweather.gov with `{"ids": icao, "format": "json"}` and no `hours`
+parameter, so it returns the latest report only. `metar.py`'s own header
+records that `hours` is "verified to work up to 48". Six hours of reports
+would have shown whether the airport logged TS or RA during the afternoon —
+the one instrument that could have settled this — and it is a one-parameter
+change to the fetch this project already wrote.
+
+### Tomorrow had thirty hours of guidance and no home in the output
+
+`HOURS AHEAD` spans **18:00 today to 23:00 tomorrow — 30 hours**, hour by
+hour, all five models. Tomorrow's daily block: rain probability 100% on
+best_match and ECMWF, 87% GFS, with 4.9 mm and 6.8 mm on ECMWF and GFS.
+
+The output gave tomorrow one clause in the Overview ("Temperatures and winds
+much the same through Tuesday, with rain becoming more likely") and then
+folded it into a band: "Over the next three days (Day 1 to Day 3), daytime
+high temperatures will hold near…", quoting Day+3's probability.
+
+**For an 18:00 reader, tomorrow is the forecast.** Item 104 says so in its
+own words — "a reader checking before bed cares about overnight and then all
+of tomorrow" — and the hourly data to write it was in the payload. The
+Extended Outlook's structure is inherited from a 06:00 run, where Day+1 is
+genuinely a lower-stakes horizon than today.
+
+### What to change, and what not to
+
+Three changes, all in the prompt except the last:
+
+1. **A THE DAY SO FAR block, built in code from the hours already elapsed.**
+   Not a new fetch — `primary_today_hourly` already holds it. Per-model
+   precipitation to the current hour, with the spread stated, and the station
+   report beside it. Pre-computed, because "which hours are behind me" is
+   arithmetic and the prompt should not be asked to subset an array.
+2. **The ISSUED line should ask for the day so far as well as what is next.**
+   Its "WHAT MATTERS NOW" list is forward-only. One clause — what has already
+   happened today, where the models and the station disagree about it — and
+   an instruction never to call a day dry when the guidance shows rain in its
+   elapsed hours.
+3. **Day+1 gets its own paragraph when the issuance is late.** Prose is
+   clock-keyed under item 104's C1, and this is that rule with a concrete
+   trigger: past some part of the day, the Extended Outlook's "Day 1 to Day 3"
+   band is the wrong shape and tomorrow deserves the treatment today gets in
+   the morning. Where the boundary sits is a measurement, not a guess.
+4. **`fetch_metar` should ask for `hours`.** Cheapest of the four, outside the
+   prompt, and it is the only one that adds an instrument rather than
+   re-framing what is already there.
+
+**What NOT to do: do not suppress the onset window.** "Onset anticipated
+between 18:00 and 21:00" issued at 18:01 reads oddly, but the convective
+evening genuinely was ahead and the window was right. The bug is the missing
+first half of the sentence, not the window.
+
+### This is also item 104's C4 floor, measured live
+
+That run scored Day+0 at 18:01 with about six hours of the day left, and the
+day's high of 29.8 °C had already occurred — so its scored `temp_high_c` is a
+report, not a forecast. Item 104's C4 says a target below a floor of
+remaining period should be DECLINED and that the floor has to be measured
+because the record holds no late issuances. **It now holds one.** Anyone
+sizing that floor should start here.
+
+Related: items 104 (C1's clock-keyed prose, C4's floor, C2's third trigger),
+98 (two instruments, two answers), 53.1 and 53.5 (the METAR's nowcasting
+role, and why a station that sees a storm the cell missed matters), 61 (the
+Overview's horizon), 67 (a later issuance narrating what is already over —
+the mirror image of this), and `docs-internal/ROADMAP.md` item 48 for the
+standing practice these findings are recorded under.
