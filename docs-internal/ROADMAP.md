@@ -14067,6 +14067,64 @@ Real deletion, lifecycle rules and cheap public reads are exactly the
 properties the previous section said git lacks, so the requirement is met by
 construction rather than by policy.
 
+### The spam hole, and a correction to "never collect"
+
+**The operator caught a real gap 2026-09-12:** if the server cannot
+authenticate a self-asserted token, the token stops nothing. Anyone can mint
+one, so there is no per-identity rate limit and no way to exclude a bad node.
+The design as written was open to flooding.
+
+**The fix requires correcting an over-absolute rule.** Item 107 says identity
+should never be COLLECTED rather than discarded, and that is right about the
+stored record and wrong as stated. The accurate version:
+
+> Never collect identity **into the stored record**. Transient verification
+> state is a different thing with a different lifetime, and refusing it
+> outright buys no privacy while giving up all abuse control.
+
+Four layers, none of which writes an identifier beside a submission:
+
+1. **App attestation** — iOS App Attest, Android Play Integrity. The OS vouches
+   that a request came from a genuine install of this app, **authenticating
+   the APP rather than the person**, which is exactly the primitive wanted.
+   It defeats scripted flooding outright, because a spammer cannot produce
+   valid attestations without real devices. *Caveat: an attestation carries a
+   per-install key id, which IS a stable identifier — verify it and discard
+   it; never write it beside the submission.*
+2. **Edge rate limiting**, keyed on a hashed address or attestation id with a
+   short TTL. Received, not retained — the same distinction as above.
+3. **Validate the CONTENT, not the sender**, and this project is unusually
+   well placed to: **the server can fetch the same Open-Meteo guidance the
+   client did.** A submission wildly inconsistent with the models for that
+   cell is rejectable without knowing who sent it. Ground truth is public and
+   cheap, so trust in the sender is not required.
+4. **Cross-submission agreement** — item 107's idea, now with a job: in a cell
+   with several submitters, a lone outlier is outvoted without anyone
+   learning who it was.
+
+**The honest trade is that anti-abuse and unlinkability pull against each
+other, and the resolution is TTL rather than absence.** An identifier held for
+sixty seconds to refuse a flood is a different object from one written beside
+a forecast for a year, and the earlier framing collapsed the two.
+
+### Payment PII: the join does not exist
+
+The operator asked whether the project needs to know which purchase came from
+where. **It does not, and the structure already prevents the question.**
+
+- For app-store purchases the STORE is the merchant of record. It holds the
+  payment details; a developer receives territory-level aggregates for
+  reporting, not per-buyer identities.
+- And the modes make the populations disjoint: **mode 2 pays and does not
+  share; mode 4 shares and does not pay.** The people money is taken from
+  never submit, and the people who submit never pay — so the join that would
+  turn a submission into a person has no key to join on.
+
+That is a real privacy property and it falls out of the product shape rather
+than out of any control. **It is also fragile to one obvious future request:**
+letting a paid user also share would create exactly the link that does not
+currently exist. If that is ever wanted, it needs its own argument.
+
 ### Three rules that make the privacy policy writable
 
 **Design first, policy second.** A policy promising what the architecture
@@ -14124,6 +14182,20 @@ above still applies: a viewer shipped before anyone shares has nothing to
 show. The cheapest first move remains item 110's ring measurement, which
 decides what "near enough to display" means and needs no hosting at all.
 
+**But mode 3 is not actually supply-blocked for a first build**, which the
+operator pointed out and this item had missed: **the Kisumu deployment already
+exists.** It is a mode 1 URL, it is already in the shape the index would
+carry, and a viewer can be built and tested against it today with no hosting,
+no submissions and no beta users.
+
+**Mode 4's submission path can be exercised without a beta user too**, using
+the sandbox fleet that already fetches guidance for several locations. One
+trap, recorded in item 102 and easy to walk into twice: **fleet entries carry
+no LLM output at all**, because that sweep makes no model call. They are fine
+for testing transport, storage, retention and deletion; they cannot test
+anything about forecast CONTENT, and reading their nulls as declined answers
+is the exact mistake item 102 made once.
+
 Related: items 24 (the feed, and the thin-client line), 105, 106, 107, 109,
 110 (whether a listed deployment is near enough to be worth reading).
 
@@ -14157,3 +14229,56 @@ decision — the same argument item 108 makes for the server: the warning
 before the failure is cheaper than the report after it.
 
 Related: items 26 (the cap), 104 (C2, which does most of this), 108, 111.
+
+---
+
+## 115. Can the app email you your forecast? · **Planned — and mostly answered by the platforms**
+
+Asked 2026-09-12: OLW mails a forecast each morning; can Ensemble do the same
+from the phone, essentially email-to-self?
+
+**Not automatically, and this is a platform rule rather than a difficulty.**
+Both stores require a human in the loop: iOS offers
+`MFMailComposeViewController` and Android an intent, and each opens the user's
+own mail composer pre-filled — **neither can send without a tap.** That is
+deliberate anti-spam design and there is no entitlement that lifts it. So "a
+forecast arrives in my inbox each morning without me doing anything" is not
+available from a phone app at all.
+
+### What the underlying want actually is, and what already serves it
+
+If the want is *the forecast reaches me each morning without opening the app*,
+the phone's own answer is a notification, and **the app already has one**:
+`flutter_local_notifications` with `alarm_scheduler.dart`. No new
+infrastructure, no address, nothing to collect.
+
+If the want is *send this to someone else*, the share sheet does it —
+user-initiated, works to mail, messaging or anything else installed, and again
+costs nothing.
+
+If the want is genuinely EMAIL, arriving on a schedule, that is a server
+sending it, and the server needs an address.
+
+### The reason this is worth an item rather than a shrug
+
+**An email address is the first genuinely identifying thing anywhere in this
+design.** Everything item 113 settled rests on the project holding a place and
+a rotating token and nothing else — the reason the payment join does not exist,
+the reason the privacy policy is short, the reason withdrawal is a device
+presenting its own history.
+
+Collecting addresses changes all of that: it is PII by any definition, it
+needs storage, consent, deletion-on-request and a lawful basis, and it creates
+exactly the stable per-person key that the rest of the design carefully avoids.
+
+**So this is not a feature to weigh on its own merits. It is a feature whose
+cost is paid by the privacy posture**, and it should be argued that way or not
+built.
+
+**And mode 1 already does it.** A user who wants a daily email can run OLW,
+which mails from a server that already has their address because it is their
+own. The path exists; what does not exist is a way to have it without someone
+holding an address.
+
+Related: items 107 and 113 (what the project deliberately does not hold),
+53.4 (the notification path the app already has).
