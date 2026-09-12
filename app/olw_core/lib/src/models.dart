@@ -308,10 +308,24 @@ class DailyActual {
   /// apart from the models getting worse. Item 53.1 moved every model about
   /// five points in a day purely by adding a source.
   ///
-  /// Carried here so the app's own record can answer the same question. The
-  /// app does not yet WRITE it — it has no station of its own to attribute —
-  /// but a value read back from storage must survive the round trip rather
-  /// than being silently dropped.
+  /// Carried here so the app's own record can answer the same question, and
+  /// THE APP DOES WRITE IT. `bucketHourlyByDate` stamps `rain` plus one key
+  /// per field that came back non-null, so a device with no station of its own
+  /// still attributes every reanalysis value it stores. Verified by running
+  /// that function on 2026-09-12: eight keys, all `era5_archive`.
+  ///
+  /// This paragraph said the opposite until then — "the app does not yet WRITE
+  /// it" — and had said it since the commit that ALSO taught
+  /// `bucketHourlyByDate` to stamp (2026-09-03). It was load-bearing: a first
+  /// design pass at ROADMAP item 74, the app screen that displays this, was
+  /// built around showing no provenance at all because of it. Corrected from
+  /// the app side, which is where it was caught.
+  ///
+  /// A field that came back null is left UNSTAMPED rather than stamped with an
+  /// absence, so "no key" already means "nothing observed this" and a consumer
+  /// needs no separate signal for it.
+  final Map<String, String>? provenance;
+
   /// Did anything DETECT lightning on this local day — ROADMAP item 65.
   ///
   /// THREE-VALUED, like [thunder] and [precipitation] before it: null means
@@ -329,8 +343,6 @@ class DailyActual {
   /// "a wet day". A test asserts the omission, because it reads as an obvious
   /// completion to anyone who finds the field and not the reasoning.
   final bool? lightning;
-
-  final Map<String, String>? provenance;
 
   const DailyActual({
     required this.rain,
