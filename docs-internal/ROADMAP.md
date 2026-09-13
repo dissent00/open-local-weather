@@ -14858,3 +14858,120 @@ candidate, and the honest way to take them is as a sweep with the clock as the
 question — not one bug report at a time. Worth doing once, deliberately, when
 104's build starts, and worth remembering that this was the first and was
 found by a reader standing outside rather than by any test.
+
+---
+
+## 118. Every locked sentence, audited against the clock · **Planned — the audit is done, the fix is not**
+
+Item 117b found one code-composed sentence asserting a day was dry through
+hours that had already rained. The operator's call, 2026-09-13: fix the class,
+not the case, and do not prioritise by impact. This is the audit that makes
+that possible.
+
+### What counts as a locked sentence
+
+`llm/prompt.py` names them in one place — "NEVER RECOMPUTE A PRE-COMPUTED
+VALUE. Blocks labelled 'pre-computed by code' are final" — and three are
+locked word for word: `overview_comparison`, the NEXT THREE DAYS phrase, and
+the WIND SHIFT clause, each "used VERBATIM or not at all". The rest are
+"state as given".
+
+**These are the only strings in the forecast the model is forbidden to
+repair**, which is why every prompt rule about spent hours and past tense
+passes over them. The audit is therefore exactly this list.
+
+### The audit
+
+| composer | how locked | does it claim something about a time period? | verdict |
+|---|---|---|---|
+| `describe_day_rain` → `overview_comparison` | VERBATIM | the whole calendar day, **including elapsed hours** | **BROKEN — observed 2026-09-12** |
+| `describe_wind_shift` → WIND SHIFT | VERBATIM | anchors at **03:00, 12:00, 18:00** | **BROKEN — latent** |
+| `describe_extended_trend` → NEXT THREE DAYS | VERBATIM | days 1–3 ahead, today as the baseline | safe; see the note below |
+| `summarize_instability` → convective flag | pre-computed | peak CAPE and its hour | **already correct** |
+| `summarize_synoptic` → `statements` | as given | spatial, plus a three-day tendency | safe |
+| `summarize_ground_aqi` / last known | as given | reading age in hours | safe — takes `now` |
+| `sun_times` | pre-computed | fixed times for the date | safe |
+| verification, track record, review findings | pre-computed | the stored record, not today | safe |
+
+**`describe_wind_shift` is the second instance and nothing gates it.**
+`SHIFT_ANCHORS = ((3, "overnight"), (12, "by midday"), (18, "into the
+evening"))`. At an 18:01 issuance two of the three are already over, and the
+clause — "northeasterly overnight, turning southwest by midday and southerly
+into the evening" — is two-thirds a description of hours the reader lived
+through, placed in Today's Forecast and locked. It did not bite on 2026-09-12
+only because fewer than two anchors cleared the agreement gate and the value
+came through as Unavailable. That is luck, not a guard.
+
+**`summarize_instability` is already correct, and it shows the pattern.** It
+is not clock-aware; it is fed a clock-aware INPUT, with the reason written at
+the call site:
+
+> "From the trimmed forward window, never the calendar day: a CAPE peak that
+> already passed this morning is not a reason to warn about tonight."
+
+So this project has already solved this exact problem once, for one composer,
+by trimming the input rather than passing a time. Nobody generalised it.
+
+**The note on NEXT THREE DAYS.** It is not broken — it describes days ahead —
+but its BASELINE is today's high, which at a late issuance has already
+happened. That is a defensible comparison and it is left alone. It is listed
+so the next audit does not have to re-reason it.
+
+### The principle, and it is one line
+
+**A composer that names an hour or a part of a day must take the issuance, and
+may not assert a period that has already elapsed.**
+
+Not "check whether it actually rained" — that needs observations the composer
+does not have. The rule is narrower and needs nothing new: *do not make a
+claim about hours you cannot see.* Same discipline as "unknown is not false",
+one layer up.
+
+### Making it structural rather than remembered
+
+**The issuance is a REQUIRED argument, never a defaulted one.** A new composer
+then cannot be written without confronting the question, and an existing call
+site cannot quietly keep the old behaviour. This is the argument Ensemble's
+item 13 settled for the spend hook, in those words: `required` buys an
+exception that is written down instead of being the accidental default.
+
+Two shapes are available and both are already in the codebase:
+
+- **Trim the input** — `summarize_instability`'s solution. Right where the
+  composer reasons over a series, which is `describe_wind_shift`: give it the
+  forward window, let anchors that have passed fall out, and let it return
+  None when fewer than two remain. The prompt already handles that null.
+- **Pass the hour and suppress the form** — right where the composer reasons
+  over a scalar, which is `describe_day_rain`: when `onset` is at or before
+  the issuance hour, the "dry until X" forms are unavailable and it falls back
+  to the form that makes no claim about elapsed time.
+
+### What this costs
+
+Both are shared logic, so both follow `spec/README.md`: Python first, vector
+cases at the boundary — onset before the issuance hour, at it, after it; wind
+anchors before and after — regenerate, watch the case fail against the
+un-ported Dart, port, both suites green. `describe_day_rain.json` (17 cases),
+`day_over_day.json` (42) and `wind_describe_shift.json` all move.
+
+**And the app is a third surface.** `olw_core` composes these for the phone
+too, and Ensemble issues a forecast whenever someone taps — so it is where a
+late issuance is normal rather than exceptional, and it gets the fix through
+the pin rather than separately.
+
+### Sequencing
+
+Do not wait for item 104. 117b established that this is live under the current
+design — the 2026-09-12 run was a `workflow_dispatch` first issuance, and the
+two-slot design assumes a morning run rather than guaranteeing one. 104 makes
+the class routine; it does not create it.
+
+Do wait for item 88's divergence 5, or rather do it BEFORE: that divergence
+ports `comparison_for_prompt`, a consumer of `compute_day_over_day`'s output,
+and this changes that function's signature. Porting against a shape about to
+move is how item 88's whole backlog was created.
+
+Related: items 117 and 117b (the case that found it), 83 (code-written phrases
+and the contract nobody wrote), 104 (which makes this routine), 88 (the vector
+discipline and the ordering constraint), and Ensemble item 13 for the
+`required` argument.
