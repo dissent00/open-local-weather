@@ -13238,7 +13238,7 @@ those two disagreed on 4 of 14 days measured — the disagreement the prompt
 already tells the forecaster never to reconcile. One instrument for a
 dimension across the whole window, or that dimension is withheld.
 
-### How to finish it — steps 1 and 2 shipped 2026-09-13, two left
+### How to finish it — steps 1-3 shipped 2026-09-13, one left
 
 Ordered so the step that can corrupt the accuracy record comes last, and each
 one is provable on its own.
@@ -13291,17 +13291,57 @@ than assumed.** The vectors regenerate to zero diff and `dart analyze
 --fatal-infos` and 173 Dart tests are clean: `olw_core` ports the
 deterministic forecast math, and pipeline orchestration is not in it.
 
-**3. One entry construction, and this is the dangerous one.** Create-or-update
-in one place. THE WRITE-ONCE `model_predictions` INVARIANT LIVES HERE and it is
-what makes the accuracy record trustworthy — the numbers tomorrow scores must
-be the ones the first run of the day committed, byte for byte.
+**3. One entry construction. SHIPPED (`9677b20`).** `_compose_log_entry` is
+the only place a `DailyLogEntry` is built, and the write-once rules are one
+list inside it. The required diff holds on a real re-issue: `model_predictions`,
+`verification`, `yesterday_verification_summary` and `generated_at_utc`
+identical, `narrative_markdown`, `earlier_issuances` and `refreshed_at` moved,
+the blend's Day+0 row byte for byte.
 
-Do not prove this with mocks. Drive a real first issuance and a real re-issue
-against a copy of `data/`, then diff the stored entry: `model_predictions` and
-`verification` identical, `narrative_markdown`, `earlier_issuances` and
-`meta.refreshed_at` moved. A suite of mocks proves the wiring, not the
-behaviour, and it is exactly how a re-issue once archived every issuance under
-the first one's timestamp while the suite stayed green.
+**Seven divergences, and the finding is that the drift went BOTH ways.** The
+ordinary fixtures cannot see any of them — same provider, same deps, a sun
+computation that always works — so the two paths were driven against
+conditions a real deployment meets: the model changes between morning and
+evening, the sun computation throws, the bulletin is re-fetched.
+
+| field | refresh | `run-daily` re-issue | kept |
+|---|---|---|---|
+| `sunrise` / `sunset` | falls back to stored | **overwrites with null** | refresh |
+| `meta.llm_model` | **the morning's** | this run's | daily |
+| `meta.pipeline_version` | **the morning's** | this run's | daily |
+| `meta.trigger_source` | **the morning's** | this run's | daily |
+| `local_bulletin` | the morning's | overwrites | refresh, see below |
+| prompt archive key | `refreshed_at` | **`generated_at_utc`** | `last_issued_at` |
+
+The archive one is the bug this item named by name — "a re-issue once archived
+every issuance under the first one's timestamp while the suite stayed green".
+It was still live on the `run-daily` path: two runs, ONE archived issuance,
+the morning's prompt destroyed. `DailyLogEntry.last_issued_at` already existed
+for exactly this distinction and `to_issuance_snapshot` already used it; both
+paths now key on it.
+
+`meta.llm_model` mattered twice, because `write_prompt_archive` copies it onto
+the archived prompt — so the evening archive named the model that wrote the
+MORNING's narrative, and answering that question is what the archive is for.
+
+**`local_bulletin` is the one pick that is not clearly right, and it is the
+operator's.** The entry holds a single record, so a bulletin that genuinely
+changed mid-day loses one copy whichever way this goes. Kept as the refresh
+had it — the morning's — because that is what the production evening run has
+always done, so the merge changes nothing that has ever run. Storing both, or
+carrying the bulletin into `IssuanceSnapshot`, is the alternative and is not
+built.
+
+**Ground AQI is an eighth, and it is deliberately left for step 4.**
+`_with_merged_ground_aqi` is applied to the GUIDANCE before the prompt is
+built, so it is not entry construction — a `run-daily` re-issue still skips
+it, and a re-fetch that comes back empty would erase the morning's readings.
+It is gated on the same "is this a later issuance" question step 4 collapses.
+
+Four tests, each confirmed to fail on the preceding commit. Two dead
+`historical_logs` assignments left by step 1 went too; their call-site
+comments held the only copy of item 90's reasoning, which moved onto
+`_visible_note`.
 
 **4. Collapse the bodies.** Gate the first-run-only work on
 `existing_entry is None` rather than on which function the caller chose —
