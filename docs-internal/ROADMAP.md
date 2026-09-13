@@ -15849,3 +15849,101 @@ Related: items 102 (the guard on the scored fields, and why this is a different
 one), 104 (the divergence class), 111 (why a retry was not bought), 9 (the
 WhatsApp field removed the same day for a related reason — nobody was reading
 what it produced either).
+
+---
+
+## 120. C2's tiers are one policy, and the operator cannot state a different one · **Planned — and its precondition is a gap, measured**
+
+Raised by the operator 2026-09-13 while C2's call-gating was being built:
+
+> "the app owner or OLW admin could decide to run refreshes often, but not ask
+> for new prose unless there's a new cycle, or ask for prose when there's new
+> data."
+
+Item 104's C2 settles ONE answer to "what earns a call": information moved →
+both calls; only the daypart moved → narrative only; nothing moved → neither.
+That answer is defensible and is being built. What it is not is **a policy the
+operator can change**, and there are at least two deployments that want a
+different one.
+
+### The case C2 cannot express, and it is the operator's
+
+C2's third trigger is observations that **CONTRADICT** the standing call — the
+call says dry and a station reports rain, observed temperature has already
+passed the predicted high, observed peak wind has already passed the predicted
+peak. All three are contradictions.
+
+**There is no trigger for observations that are merely NEW.** A station that
+has reported all morning, agreeing with the forecast the whole way, moves
+nothing under C2 and its readings earn no call. An operator who wants "tell me
+what the sensors have seen, whether or not it contradicts us" cannot say so,
+and for a deployment whose value IS the local sensor network that is the main
+thing they would want to say.
+
+Note this is not a gap in C2's reasoning. C2 is about when to spend a JUDGMENT
+call, and an observation that agrees with the call genuinely does not change
+it. The gap is that the same switch also gates the NARRATIVE call, where fresh
+agreeing observations are worth a sentence.
+
+### Its precondition, and this is the part that is a defect
+
+**`_observed_so_far` is computed once, stored on the record, and never reaches
+the prompt.** Verified 2026-09-13: `pipeline._observed_so_far` has exactly one
+caller, `_information_moved`, which puts it in `meta.information_moved`. It is
+not in any prompt block.
+
+So today C2's third trigger can fire — the observed temperature has already
+passed the predicted high — cause a full re-forecast, and **the forecaster is
+never shown the observation that triggered it.** It re-reasons from the same
+model guidance and has no reason to produce a different call. The only current
+observation in the prompt is `airport_metar`, which is one instant at one
+place and which item 87's rules are careful to keep the forecaster from
+reporting.
+
+That makes this a precondition rather than a related item: acting on trigger 3
+buys little until the run that trigger 3 causes can see what caused it.
+
+### The gate is about issuance frequency, not about which side runs it
+
+Measured 2026-09-13: the deployment's two scheduled slots are 12 hours apart
+and Open-Meteo's cycles are 6-hourly, so the evening run ALWAYS reads a
+strictly newer cycle than the morning — 18Z then 06Z on the day measured.
+`guidance_is_newer` is true every evening, so the cron hits C2's top tier every
+time and the gating changes nothing for it.
+
+**That is a property of the spacing, not of the server.** An operator running
+hourly cron would have five of every six runs sharing a cycle, and C2's lower
+tiers would fire there exactly as they do in the app. The same is true in
+reverse: an app used twice a day would rarely see them. So "this is an app
+concern" is wrong, and a policy layer belongs where both can reach it.
+
+### What is wanted
+
+- **A declared policy, per deployment**, over the same signals C2 already
+  computes and stores: which of `first_issuance_of_day`, `guidance_is_newer`,
+  `observation_disagreements` and a daypart change earn a judgment call, and
+  which earn a narrative call. C2's tiers become the default value, not the
+  only value.
+- **A trigger for new-but-agreeing observations**, which C2 has no room for.
+- **The observed record in the prompt**, per the precondition above.
+- **Sized against the record, not guessed.** The signals have been stored since
+  2026-09-13 and the record held TWO issuances carrying them when this was
+  written. Item 100 is why that sentence is here.
+
+### Its relationship to the three items it sits between
+
+- **111** asks for `X` calls per forecast beside `Y` per 24 hours. That is a
+  CEILING on spend; this is a RULE about which runs deserve to spend at all.
+  Both are answers to "one budget is not enough levers" and neither replaces
+  the other.
+- **114** is refresh spam, and already records that C2 removes most of the
+  harm. This item is what makes that removal configurable rather than fixed.
+- **109** asks before generating. A policy that says "this tap would cost
+  nothing, because nothing has moved" is the same question answered before the
+  dialog rather than in it.
+
+Related: items 104 (C2, whose single policy this generalises), 111 (the other
+missing lever), 114 (the backstop C2 makes mostly unnecessary), 109, 87 (why
+the METAR is the only observation the prompt carries, and what it may be used
+for), 98 ("did it rain yesterday" has no single answer — the same instrument
+question one day back).
