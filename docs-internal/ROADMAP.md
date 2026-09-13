@@ -16163,3 +16163,69 @@ implements), 120 (what is left of the policy layer afterwards), 117 and 117b
 (the late issuance, and code-composed sentences), 118 (bounding them by the
 issuance), 87 (why the METAR is the only observation the prompt carries
 today), 114 and 109 (the spend this removes rather than rations).
+
+## 122. The station's onset is recorded and never scored, while the reanalysis's is · **Planned — raised 2026-09-13**
+
+Raised while answering a different question. The operator asked whether a
+day's observation readings should all be kept, so that the record could catch
+the forecaster's onset timing drifting:
+
+> "So if it consistently predicts rain starting at 1800 and it's starting at
+> 1500, we'd start catching that. This turns frequent refreshes into low-cost
+> improvements to the whole dataset."
+
+**The goal is already half-built, and the half that is missing is not the one
+it looked like.** Onset error IS scored: `verify/scoring.py` computes
+`onset_error_hrs = _hour_diff(predicted.onset, actual.onset_hour)` at Day+0
+whenever rain was observed, and `verify/pipeline.py` rolls it into
+`avg_onset_error_hrs_10`. A forecaster that says 18:00 on a day that starts at
+15:00 already lands as +3.0 h in a rolling mean.
+
+**Hourly polling would add nothing to it.** `observed_station_data` fetches a
+DATE RANGE from the archive and buckets every report in it, so
+`precipitation_onset` is "the first report that saw precipitation" recovered
+retrospectively at full resolution. One fetch tomorrow gives today's true
+onset exactly as precisely as twenty-four hourly fetches would. That is why
+item 121 stores the latest reading only.
+
+### The actual gap
+
+**Two onset fields exist and the wrong one is scored.**
+
+| field | source | scored? |
+|---|---|---|
+| `DailyActual.onset_hour` | Open-Meteo hourly reanalysis, first hour over the rain threshold | **yes** |
+| `DailyActual.precipitation_onset` | the METAR station, first report that saw precipitation | no |
+
+The station is the INSTRUMENT and the reanalysis is model output with
+observations assimilated into it. `models.py` already says why they were kept
+apart — `onset_hour` is scored, so quietly filling it from the station "would
+change what every stored onset error means" — and that reasoning is right. It
+argues for a SECOND scored quantity, not for a swap.
+
+### Why this is worth doing
+
+- It is the one dimension where this project holds a genuine ground-truth
+  instrument reading and declines to score against it.
+- It costs no new fetch. Both numbers are already stored on every entry.
+- It is checkable against the existing figure: two onset errors per day, from
+  two sources, is also a measurement of how far the reanalysis's onset sits
+  from the station's — which nothing currently knows.
+
+### What it must not do
+
+**Not touch `onset_hour` or `avg_onset_error_hrs_10`.** Every stored onset
+error was computed against the reanalysis, and re-pointing the existing field
+would make the record's history incomparable with itself — the same rule item
+104 applies to `rain` and the same one `precip_mm` was added under.
+
+### Sized against the record, not guessed
+
+`coverage.py` already records that `onset` "was null on 19 of the record's
+first 32 entries", because it is populated only when rain onset is forecast.
+So the sample this can score against is thin and grows slowly, and the first
+question to ask of it is how many days actually carry both numbers. Item 100
+is why that sentence is here.
+
+Related: items 121 (which raised it), 104 (C7 and C9, and the write-once rule
+this must respect), 102, 100.
