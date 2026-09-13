@@ -816,6 +816,13 @@ void main() {
     expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
     expect(llm.seenUserPrompt, isNot(contains('omit the extended clause')),
         reason: 'the extended trend was not wired into this path');
+
+    expect(llm.seenUserPrompt, contains('CALENDAR'));
+    expect(llm.seenUserPrompt, isNot(contains('name no weekday and no date')),
+        reason: 'the calendar was not wired into this path');
+    // The pairing itself, not just the block: 2026-08-19 is a Wednesday, and
+    // a port a day out would render the block and still be wrong.
+    expect(llm.seenUserPrompt, contains('"day_name": "Wednesday"'));
   });
 
   test('generateForecast computes the derived guidance recency floor', () async {

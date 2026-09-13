@@ -1,0 +1,247 @@
+{
+  "vector_format_version": 1,
+  "function": "forward_calendar",
+  "description": "Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. Both languages must agree on every pairing.",
+  "cases": [
+    {
+      "name": "mid-month \u2014 2026-09-13",
+      "input": {
+        "today": "2026-09-13"
+      },
+      "expected": [
+        {
+          "lead_time_days": 0,
+          "date": "2026-09-13",
+          "day_name": "Sunday"
+        },
+        {
+          "lead_time_days": 1,
+          "date": "2026-09-14",
+          "day_name": "Monday"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-09-15",
+          "day_name": "Tuesday"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-09-16",
+          "day_name": "Wednesday"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2026-09-17",
+          "day_name": "Thursday"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2026-09-18",
+          "day_name": "Friday"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2026-09-19",
+          "day_name": "Saturday"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2026-09-20",
+          "day_name": "Sunday"
+        }
+      ]
+    },
+    {
+      "name": "crosses a month end \u2014 2026-08-28",
+      "input": {
+        "today": "2026-08-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 0,
+          "date": "2026-08-28",
+          "day_name": "Friday"
+        },
+        {
+          "lead_time_days": 1,
+          "date": "2026-08-29",
+          "day_name": "Saturday"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-08-30",
+          "day_name": "Sunday"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-08-31",
+          "day_name": "Monday"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2026-09-01",
+          "day_name": "Tuesday"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2026-09-02",
+          "day_name": "Wednesday"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2026-09-03",
+          "day_name": "Thursday"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2026-09-04",
+          "day_name": "Friday"
+        }
+      ]
+    },
+    {
+      "name": "crosses a year end \u2014 2026-12-29",
+      "input": {
+        "today": "2026-12-29"
+      },
+      "expected": [
+        {
+          "lead_time_days": 0,
+          "date": "2026-12-29",
+          "day_name": "Tuesday"
+        },
+        {
+          "lead_time_days": 1,
+          "date": "2026-12-30",
+          "day_name": "Wednesday"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-12-31",
+          "day_name": "Thursday"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2027-01-01",
+          "day_name": "Friday"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2027-01-02",
+          "day_name": "Saturday"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2027-01-03",
+          "day_name": "Sunday"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2027-01-04",
+          "day_name": "Monday"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2027-01-05",
+          "day_name": "Tuesday"
+        }
+      ]
+    },
+    {
+      "name": "leap year February \u2014 2028-02-26",
+      "input": {
+        "today": "2028-02-26"
+      },
+      "expected": [
+        {
+          "lead_time_days": 0,
+          "date": "2028-02-26",
+          "day_name": "Saturday"
+        },
+        {
+          "lead_time_days": 1,
+          "date": "2028-02-27",
+          "day_name": "Sunday"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2028-02-28",
+          "day_name": "Monday"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2028-02-29",
+          "day_name": "Tuesday"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2028-03-01",
+          "day_name": "Wednesday"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2028-03-02",
+          "day_name": "Thursday"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2028-03-03",
+          "day_name": "Friday"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2028-03-04",
+          "day_name": "Saturday"
+        }
+      ]
+    },
+    {
+      "name": "non-leap February \u2014 2026-02-25",
+      "input": {
+        "today": "2026-02-25"
+      },
+      "expected": [
+        {
+          "lead_time_days": 0,
+          "date": "2026-02-25",
+          "day_name": "Wednesday"
+        },
+        {
+          "lead_time_days": 1,
+          "date": "2026-02-26",
+          "day_name": "Thursday"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-02-27",
+          "day_name": "Friday"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-02-28",
+          "day_name": "Saturday"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2026-03-01",
+          "day_name": "Sunday"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2026-03-02",
+          "day_name": "Monday"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2026-03-03",
+          "day_name": "Tuesday"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2026-03-04",
+          "day_name": "Wednesday"
+        }
+      ]
+    }
+  ]
+}

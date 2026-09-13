@@ -94,6 +94,7 @@ from openlocalweather.cycle import (
 from openlocalweather.dates import (
     add_days,
     format_date,
+    forward_calendar,
     now_in_tz,
     today_in_tz,
     utc_offset_seconds,
@@ -680,6 +681,10 @@ def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: dat
         # item 104. Derived from the issuance's own horizon, so the prompt
         # cannot name a period the phase did not call for.
         "forecast_windows": [w.to_json() for w in _issuance_windows(guidance.issuance, today)],
+        # Every day this forecast can speak about, with its day name already
+        # attached. The model was deriving these and getting them wrong — see
+        # dates.forward_calendar for the count.
+        "forward_calendar": forward_calendar(today),
         "extended_trend": describe_extended_trend(
             today_high_c=_mean_of([p.high_c for p in day0_predictions]),
             day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],

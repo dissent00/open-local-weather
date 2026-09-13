@@ -594,6 +594,7 @@ def build_user_prompt(
     wind_direction: str | None = None,
     wind_shift: str | None = None,
     forecast_windows: Any = None,
+    forward_calendar: Any = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -703,6 +704,9 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
 Today's Date: {today.isoformat()} | Yesterday: {yesterday.isoformat()} | Public Webpage: {public_webpage_url}
 
 ISSUED: {_issued_line(issuance)}
+
+CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 4 of the 24 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
+{_json(forward_calendar) if forward_calendar else "Unavailable — name no weekday and no date beyond what other blocks give you verbatim."}
 
 FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
 {_forecast_windows_block(forecast_windows)}

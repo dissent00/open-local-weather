@@ -871,6 +871,9 @@ void main() {
           forecastWindows: (i['forecast_windows'] as List?)
               ?.map((e) => (e as Map).cast<String, Object?>())
               .toList(),
+          forwardCalendar: (i['forward_calendar'] as List?)
+              ?.map((e) => (e as Map).cast<String, Object?>())
+              .toList(),
           forwardHourly: i['forward_hourly'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
@@ -1170,6 +1173,14 @@ void main() {
       }
     });
 
+    test('the calendar pairs each date with the day Python names', () {
+      for (final c in loadVectors('forward_calendar.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = forwardCalendar(DateTime.parse(i['today'] as String));
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('the horizon windows carry the bounds Python gives them', () {
       for (final c in loadVectors('forecast_windows.json')['cases'] as List) {
         final i = (c as Map)['input'] as Map;
@@ -1336,6 +1347,7 @@ void main() {
       'instability.json',
       'daypart.json',
       'forecast_windows.json',
+      'forward_calendar.json',
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',

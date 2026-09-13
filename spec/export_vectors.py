@@ -177,6 +177,45 @@ def export_weekday_name() -> None:
     )
 
 
+def export_forward_calendar() -> None:
+    """The date/day-name pairings the prompt hands over finished.
+
+    Pinned because the model was deriving these and getting them wrong — 4 of
+    24 published pairings false, measured 2026-09-13 — so the whole point is
+    that both languages produce the SAME pairing for the same date. A port
+    that was a day out would reintroduce the defect the block exists to close.
+
+    Cases cross a month end, a leap-year February and a year end, which is
+    where naive day arithmetic breaks.
+    """
+    from openlocalweather.dates import forward_calendar
+
+    cases = []
+    for label, start in [
+        ("mid-month", "2026-09-13"),
+        ("crosses a month end", "2026-08-28"),
+        ("crosses a year end", "2026-12-29"),
+        ("leap year February", "2028-02-26"),
+        ("non-leap February", "2026-02-25"),
+    ]:
+        d = date.fromisoformat(start)
+        cases.append(
+            {
+                "name": f"{label} — {start}",
+                "input": {"today": start},
+                "expected": forward_calendar(d),
+            }
+        )
+    write(
+        "forward_calendar.json",
+        "forward_calendar",
+        "Every day from today to Day+7 with its date and day name, handed to "
+        "the prompt finished so the forecaster never maps one to the other "
+        "itself. Both languages must agree on every pairing.",
+        cases,
+    )
+
+
 def export_dates() -> None:
     cases = []
     for target, lead in [
@@ -1058,6 +1097,15 @@ def export_user_prompt() -> None:
         # a real list any way it liked and still pass the set. Two entries so
         # the separator is exercised, and the second is named by weekday
         # exactly as forecast_windows names it at a dusk issuance.
+        # The calendar the narrative writes its Extended Outlook from. Pinned
+        # populated for the same reason the windows are: every other case
+        # renders the unavailable text, and a port could format a real one
+        # however it liked and still pass.
+        forward_calendar=[
+            {"lead_time_days": 0, "date": "2026-08-19", "day_name": "Wednesday"},
+            {"lead_time_days": 1, "date": "2026-08-20", "day_name": "Thursday"},
+            {"lead_time_days": 2, "date": "2026-08-21", "day_name": "Friday"},
+        ],
         forecast_windows=[
             {
                 "name": "tonight (dusk, evening and overnight through to dawn)",
@@ -3734,6 +3782,7 @@ def main() -> None:
     export_solar()
     export_dates()
     export_weekday_name()
+    export_forward_calendar()
     export_scoring()
     export_extract()
     export_aqi()

@@ -32,7 +32,7 @@ from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summariz
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 from openlocalweather.cycle import round_hours_to_tenths
-from openlocalweather.dates import weekday_name, add_days, prediction_row_date_for_target
+from openlocalweather.dates import add_days, forward_calendar, prediction_row_date_for_target, weekday_name
 from openlocalweather.extract import (
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
@@ -735,6 +735,7 @@ def test_every_vector_file_is_exercised():
     covered = {
         "dates.json",
         "weekday_name.json",
+        "forward_calendar.json",
         "dates_add_days.json",
         "scoring_score_prediction.json",
         "scoring_mean.json",
@@ -851,6 +852,12 @@ def test_vectors_solar():
             i["lat"], i["lon"], date.fromisoformat(i["day"]), i["utc_offset_seconds"]
         )
         assert got.to_json() == c["expected"], c["name"]
+
+
+def test_vectors_forward_calendar():
+    for c in load("forward_calendar.json")["cases"]:
+        got = forward_calendar(date.fromisoformat(c["input"]["today"]))
+        check(c, got)
 
 
 def test_vectors_daypart():

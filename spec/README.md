@@ -94,6 +94,7 @@ absent values are `null`, never omitted keys.
 | `coverage.json` | `detect_coverage` | 6 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
+| `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 44 |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |

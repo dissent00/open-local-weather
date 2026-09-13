@@ -60,3 +60,32 @@ const _weekdayNames = <String>[
 /// derived from the device's own `DateTime.now()` would be yesterday's.
 String weekdayName(DateTime d) =>
     _weekdayNames[DateTime.utc(d.year, d.month, d.day).weekday - 1];
+
+/// How far the calendar block runs. Seven, because the extended daily fetch
+/// reaches Day+7 and the narrative's Extended Outlook is written from it — a
+/// calendar stopping at Day+3 would leave the model deriving the dates it
+/// actually writes about, which is the whole failure this exists to remove.
+const int calendarDays = 7;
+
+/// Each day from today forward, with its date and its day name.
+///
+/// THE MODEL WAS DOING THIS ARITHMETIC AND GETTING IT WRONG. Measured across
+/// the upstream published record on 2026-09-13: of 24 weekday/date pairings
+/// the narratives assert, 4 are false — two runs each published "Sunday,
+/// August 17" and "Monday, August 18" when the 17th was a Monday and the 18th
+/// a Tuesday, both off by exactly one day, and nothing noticed.
+///
+/// The dates were never missing; the daily payload carries them as ISO strings
+/// out to Day+7. What the model had to do was map a date to a weekday, and
+/// that is arithmetic, which in this project lives in code.
+List<Map<String, Object?>> forwardCalendar(DateTime today,
+    [int days = calendarDays]) {
+  return [
+    for (var lead = 0; lead <= days; lead++)
+      {
+        'lead_time_days': lead,
+        'date': formatDate(addDays(today, lead)),
+        'day_name': weekdayName(addDays(today, lead)),
+      }
+  ];
+}

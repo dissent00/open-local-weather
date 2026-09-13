@@ -510,6 +510,9 @@ Future<ForecastRun> generateForecast({
     windShift: describeWindShift(hourly, models,
         issuedHour: issuedHourOf(resolvedIssuance)),
     forecastWindows: issuanceWindows(resolvedIssuance, today),
+    // The day names the Extended Outlook writes with, handed over finished so
+    // the model never maps a date to a weekday itself — see forwardCalendar.
+    forwardCalendar: forwardCalendar(today),
   );
 
   // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
