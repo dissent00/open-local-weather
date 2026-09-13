@@ -949,6 +949,56 @@ void main() {
     expect(llm.seenUserPrompt, isNot(contains('"hours_old": 12.3')));
   });
 
+  test('a station reading supplied by the caller reaches the prompt', () async {
+    // Upstream ROADMAP item 121. This library has no station fetch and the
+    // standalone app has no station source, so the block would be untestable
+    // on this side if generateForecast baked the absence in. It takes the
+    // record instead, which is how a harness mirrors what OLW composes — the
+    // values below are the ones the Python side's own live check produced.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      observedSoFar: const ObservedSoFar(
+        precipitation: true,
+        precipitationOnset: '13:00',
+        thunder: true,
+        highC: 27.4,
+        lowC: 18.1,
+        peakWindKmh: 31.4,
+        cloudOktas: 5.5,
+      ),
+    );
+
+    expect(
+      llm.seenUserPrompt,
+      contains('rain from 13:00; thunder; high so far 27°C / 81°F; '
+          'low so far 18°C / 65°F; peak gust 31 km/h; sky 6/8.'),
+    );
+    // Stamped with THIS issuance's clock, not the device's — the block and
+    // the ISSUED line have to agree about when "so far" ended.
+    expect(llm.seenUserPrompt, contains('OBSERVED SO FAR TODAY'));
+    expect(llm.seenUserPrompt, isNot(contains('the station reported nothing measurable')));
+  });
+
+  test('no station reading prints the gap rather than a quiet day', () async {
+    // The distinction the whole record is built on, at the prompt boundary: a
+    // deployment with no station has not observed a calm day.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+    );
+
+    expect(llm.seenUserPrompt, contains('the station reported nothing measurable today'));
+  });
+
   test('the GUIDANCE RECENCY block falls back to Unavailable, ported verbatim', () {
     // buildUserPrompt keeps this fallback for parity with the Python port
     // even though generateForecast itself never triggers it — the app always

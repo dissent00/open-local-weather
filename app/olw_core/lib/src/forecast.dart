@@ -11,6 +11,8 @@ import 'extract.dart';
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
+import 'disagreement.dart';
+import 'observed.dart';
 import 'llm/provider.dart';
 import 'wind.dart';
 import 'llm/schema.dart';
@@ -237,6 +239,26 @@ Future<ForecastRun> generateForecast({
   /// Previous issuances today, oldest first. Empty or null means this is
   /// the day's first run.
   List<Map<String, Object?>>? earlierToday,
+
+  /// What the station has ALREADY measured today — upstream ROADMAP item 121.
+  ///
+  /// A PARAMETER RATHER THAN A NULL BAKED IN HERE, which is what it was for
+  /// an hour on 2026-09-13. This library has no station fetch and the
+  /// standalone app has no station source, but "this deployment has none" is
+  /// the CALLER's fact, not olw_core's, and hardcoding it here would have
+  /// made the absence unreachable for every caller that does have one:
+  ///
+  ///  - a test harness mirroring what OLW composes, which is how the block's
+  ///    rendering is provable on this side without a live station;
+  ///  - item 105's mode, where the app displays a deployment's published
+  ///    output and that deployment's station reading comes with it;
+  ///  - a standalone build that later fetches aviationweather.gov itself,
+  ///    which needs no key.
+  ///
+  /// Composed here rather than accepted pre-composed, so the sentence a
+  /// reader sees is built in exactly one place and a caller cannot word it
+  /// differently — see [describeObservedSoFar].
+  ObservedSoFar? observedSoFar,
 
   /// Where this run sits in the day — see `daypart` in the Python pipeline.
   ///
@@ -513,18 +535,15 @@ Future<ForecastRun> generateForecast({
     // The day names the Extended Outlook writes with, handed over finished so
     // the model never maps a date to a weekday itself — see forwardCalendar.
     forwardCalendar: forwardCalendar(today),
-    // NULL, AND STATED RATHER THAN OMITTED — upstream ROADMAP item 121.
-    //
-    // This app has no station source: `airport_metar` above is null for the
-    // same reason, so there is nothing to compose an observed block from and
-    // the prompt will print its gap line. Passing it explicitly is the point.
-    // An optional argument nobody passes renders exactly like a legitimate
-    // absence, which is how describeWindShift sat here ported, exported and
-    // vector-tested with no caller while every forecast went out without it
-    // — fixed in b68570d, and not repeated here by accident.
-    //
-    // Wiring a station for the app is item 121's remaining half on this side.
-    observedSoFar: null,
+    // Composed HERE from the caller's record, with this issuance's own
+    // clock, so the block and the ISSUED line can never disagree about when
+    // "so far" ended. Null in the standalone app today, which has no station
+    // source — `airport_metar` above is null for the same reason — and the
+    // prompt prints its gap line.
+    observedSoFar: describeObservedSoFar(
+      observedSoFar,
+      asOf: _localTimeOf(resolvedIssuance),
+    ),
   );
 
   // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
@@ -603,6 +622,25 @@ String _isoLikePython(DateTime value) {
 /// Absence is not permission — a phrase saying a day was dry until the evening
 /// is a claim about elapsed hours, and a run that cannot say what hour it is
 /// has no business making it.
+/// The issuance's local "HH:MM", or null when the moment cannot be read.
+///
+/// Same extraction as [issuedHourOf] beside it, and null for the same reason
+/// that returns 24: a run that cannot say what hour it is must not stamp an
+/// observation block with one. [describeObservedSoFar] then opens with "So
+/// far today" rather than naming a clock it does not have.
+String? _localTimeOf(Object? issuance) {
+  if (issuance == null) return null;
+
+  try {
+    final d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+    return d['local_time'] as String?;
+  } catch (_) {
+    return null;
+  }
+}
+
 int issuedHourOf(Object? issuance) {
   if (issuance == null) return 24;
 
