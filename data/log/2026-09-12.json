@@ -423,8 +423,8 @@
   },
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "At Day+0, all models successfully verified the rain occurrence for September 12th. Temperature highs were predicted accurately by Best Match (0.0°C error) and UKMO (-0.2°C error), while GFS ran warm (-1.0°C error) and ECMWF ran cool (+0.9°C error). Surface wind speeds were under-forecasted across most models, led by UKMO (+13.3 km/h error) and ICON (+11.5 km/h error).",
       "note_sign_corrected_on": null
     },
     "day3": {

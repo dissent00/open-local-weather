@@ -42,6 +42,7 @@
     "day0": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -49,10 +50,14 @@
         "wind_kmh": 25.6,
         "high_c": 35.2,
         "low_c": 18.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.1000000000000227
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -60,10 +65,14 @@
         "wind_kmh": 30.2,
         "high_c": 33.4,
         "low_c": 21.2,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.8999999999999773
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -71,10 +80,14 @@
         "wind_kmh": 25.9,
         "high_c": 33.3,
         "low_c": 21.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.7000000000000455
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -82,10 +95,14 @@
         "wind_kmh": 27.4,
         "high_c": 33.0,
         "low_c": 17.8,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.09999999999990905
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -93,10 +110,14 @@
         "wind_kmh": 42.8,
         "high_c": 33.1,
         "low_c": 20.9,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -1.2999999999999545
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": null,
@@ -104,10 +125,14 @@
         "wind_kmh": null,
         "high_c": 32.0,
         "low_c": 19.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.5,
@@ -115,10 +140,14 @@
         "wind_kmh": 41.4,
         "high_c": 30.4,
         "low_c": 19.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.3000000000000682
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.18,
@@ -126,10 +155,14 @@
         "wind_kmh": 38.47333333333333,
         "high_c": 29.96,
         "low_c": 18.18,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -137,12 +170,16 @@
         "wind_kmh": null,
         "high_c": 33.6,
         "low_c": 19.9,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
     "day3": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.6,
@@ -150,10 +187,14 @@
         "wind_kmh": 25.2,
         "high_c": 35.4,
         "low_c": 19.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.3000000000000682
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 4.2,
@@ -161,10 +202,14 @@
         "wind_kmh": 36.7,
         "high_c": 31.5,
         "low_c": 19.7,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.3000000000000682
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.9,
@@ -172,10 +217,14 @@
         "wind_kmh": 21.2,
         "high_c": 30.5,
         "low_c": 22.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.2999999999999545
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.2,
@@ -183,10 +232,14 @@
         "wind_kmh": 28.1,
         "high_c": 31.8,
         "low_c": 17.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.40000000000009095
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.9,
@@ -194,10 +247,14 @@
         "wind_kmh": 44.3,
         "high_c": 30.6,
         "low_c": 19.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.1999999999999318
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": null,
@@ -205,10 +262,14 @@
         "wind_kmh": null,
         "high_c": 33.0,
         "low_c": 19.0,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.5,
@@ -216,10 +277,14 @@
         "wind_kmh": 41.4,
         "high_c": 30.4,
         "low_c": 19.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.3000000000000682
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.18,
@@ -227,12 +292,16 @@
         "wind_kmh": 38.47333333333333,
         "high_c": 29.96,
         "low_c": 18.18,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ],
     "day7": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 4.5,
@@ -240,10 +309,14 @@
         "wind_kmh": 29.2,
         "high_c": 32.3,
         "low_c": 18.4,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.8000000000000682
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 5.0,
@@ -251,10 +324,14 @@
         "wind_kmh": 41.4,
         "high_c": 28.2,
         "low_c": 20.1,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.5
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -262,10 +339,14 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -273,10 +354,14 @@
         "wind_kmh": null,
         "high_c": null,
         "low_c": null,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 5.4,
@@ -284,10 +369,14 @@
         "wind_kmh": 44.6,
         "high_c": 29.1,
         "low_c": 20.5,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": 0.7999999999999545
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.5,
@@ -295,10 +384,14 @@
         "wind_kmh": 41.4,
         "high_c": 30.4,
         "low_c": 19.6,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": -0.3000000000000682
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.18,
@@ -306,6 +399,9 @@
         "wind_kmh": 38.47333333333333,
         "high_c": 29.96,
         "low_c": 18.18,
+        "cloud_cover_pct": null,
+        "peak_cape_jkg": null,
+        "wind_direction_deg": null,
         "mslp_trend": null
       }
     ]
@@ -313,15 +409,18 @@
   "verification": {
     "day0": {
       "verified": true,
-      "note": "Day+0: All numerical models and Kenya Met successfully verified the dry precipitation call for September 5th. High temperatures were captured within 1.8°C error across all models, while GFS continued to over-forecast peak wind speeds."
+      "note": "Day+0: All numerical models and Kenya Met successfully verified the dry precipitation call for September 5th. High temperatures were captured within 1.8°C error across all models, while GFS continued to over-forecast peak wind speeds.",
+      "note_sign_corrected_on": null
     },
     "day3": {
       "verified": true,
-      "note": "Day+3: All models correctly verified precipitation for the September 5th target date. ECMWF and Best Match demonstrated superior rain calibration (Brier 0.0016), while GFS over-forecasted daytime high temperature by 5.0°C."
+      "note": "Day+3: All models correctly verified precipitation for the September 5th target date. ECMWF and Best Match demonstrated superior rain calibration (Brier 0.0016), while GFS over-forecasted daytime high temperature by 5.0°C.",
+      "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
-      "note": null
+      "verified": true,
+      "note": "At Day+7, GFS, ECMWF, and Best Match all correctly verified the rainfall event for September 5th. GFS displayed a daytime warm bias (-2.5°C error) and under-forecasted surface winds (+7.5 km/h error), whereas ECMWF over-forecasted peak wind speed (-4.7 km/h error).",
+      "note_sign_corrected_on": null
     }
   },
   "local_bulletin": {
@@ -433,6 +532,12 @@
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "bdb408ec1a755e9708c1134e108849955e435b75fdfa953bba0aaead27751c01",
+    "finish_reason": null,
+    "input_tokens": null,
+    "output_tokens": null,
+    "response_schema_sha256": null,
+    "nullable_fields": null,
+    "information_moved": null,
     "refreshed_at": "2026-09-05T15:02:53.565615Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []
