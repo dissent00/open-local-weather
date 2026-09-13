@@ -14623,3 +14623,162 @@ role, and why a station that sees a storm the cell missed matters), 61 (the
 Overview's horizon), 67 (a later issuance narrating what is already over —
 the mirror image of this), and `docs-internal/ROADMAP.md` item 48 for the
 standing practice these findings are recorded under.
+
+---
+
+## 117b. Correction: item 117 blamed the prompt, and the prompt was not at fault
+
+Written 2026-09-12, corrected 2026-09-13 after tracing the sentence instead of
+inferring where it came from. **The headline above is wrong** and is kept
+rather than rewritten, because the wrong version is the useful record: it is
+what "the forecaster wasn't told to look at the elapsed hours" looks like when
+you have read the payload and not the code.
+
+### "Dry until evening thunderstorms" is not prose. It is a string.
+
+The archived prompt carries it as a field:
+
+```
+overview_comparison: 'Dry until evening thunderstorms.'
+```
+
+and the DAY-OVER-DAY block instructs that `overview_comparison` is "finished
+sentences, used VERBATIM or not at all". **The forecaster did exactly as it
+was told.** No instruction it could have followed differently would have
+changed that opening.
+
+### Where it actually comes from
+
+`comparison.py`, `describe_day_rain(precip_mm, onset, thunder)`, reached as
+`today_character` in `compute_day_over_day`:
+
+```python
+today_character = describe_day_rain(today_precip, today_onset, thunder=today_convective)
+...
+if thunder:
+    ...
+    if when == "evening":
+        return "dry until evening thunderstorms"
+```
+
+The inputs on the day were the BLEND's Day+0 row — `precip_mm 5.9`, `onset
+18:00` — with the convective flag true. So the phrase is composed from a
+forecast onset of 18:00, at an issuance of 18:01.
+
+### And the models did not agree with that onset
+
+From the same run's `model_predictions.day0`:
+
+| model | onset | precip_mm |
+|---|---|---|
+| gfs_seamless | **15:00** | 9.7 |
+| ecmwf_ifs025 | **16:00** | 6.9 |
+| best_match | 18:00 | 5.9 |
+| icon_seamless | 21:00 | 3.1 |
+| ukmo_seamless | none | 0.7 |
+| **olw_blend** | **18:00** | 5.9 |
+
+The extraction was right: GFS and ECMWF put onset in the afternoon, and the
+elapsed hours of `primary_today_hourly` carry their rain. The blend followed
+`best_match`, which is defensible on Day+0 rain skill and is a forecasting
+choice, not a bug.
+
+**The bug is what the code then did with it.** `describe_day_rain` has no idea
+what time it is. At 06:00 "dry until evening thunderstorms" is a forecast. At
+18:01 its first two words are a claim about hours that have already happened,
+and the function cannot check it, because the issuance is not one of its
+arguments.
+
+### Why nothing downstream caught it
+
+This is item 83's thesis with a new instance. The prompt is *careful* about
+late issuances — carefully enough that the first draft of item 117 accused it
+wrongly. It already carries:
+
+- "Do not re-narrate hours that have already passed except where they explain
+  what is coming: someone reading at 18:15 lived through the afternoon and is
+  asking about tonight."
+- "OPEN ON WHAT IS STILL AHEAD. ... Do not spend it on what is over."
+- "NEVER THE FUTURE TENSE FOR SOMETHING PAST. Issued at 16:45, 'peak UV index
+  will reach 9.0 around noon' is wrong twice."
+- "do not use [the full calendar day] to describe the day as though it were
+  all still ahead."
+
+**Every one of those governs prose the model writes, and the phrase is not
+prose the model writes.** A code-composed string handed over as "verbatim or
+not at all" is exempt from all of them by construction. That exemption is the
+defect, and it is general: any finished sentence this project composes in code
+and requires verbatim is outside every rule the prompt spends its length on.
+
+### The fix
+
+**1. `describe_day_rain` must not assert a dry stretch that is already over.**
+Give it the issuance hour — `compute_day_over_day` is called from the pipeline
+at a point where the daypart is already computed, so nothing new is fetched —
+and when `onset` is at or before that hour, the "dry until X" forms are not
+available. Fall back to the form that makes no claim about elapsed time:
+`"{band} with thunderstorms"` where thunder holds, the band alone otherwise.
+
+The rule to implement is NOT "check whether it actually rained". It is **a
+phrase may not assert what the day was like during hours the composer cannot
+see.** Same discipline as "unknown is not false", one layer up. It needs no
+new data and it changes nothing for a morning run, which is every run in the
+record until 2026-09-12.
+
+**2. Ports and vectors.** `comparison.dart` carries `describeDayRain` and the
+signature changes on both sides, so this is `spec/README.md`'s order, and
+`describe_day_rain.json` needs cases at the boundary: onset before the
+issuance hour, onset at it, onset after it. Per item 88, add the case, watch
+it fail against the un-ported Dart, then port.
+
+**3. One prompt change, and it is small.** The existing no-re-narration rule
+earns an exception, because the case it names is precisely the case that
+misfires — "someone reading at 18:15 lived through the afternoon" is this run.
+Proposed addition to `issuance_time`, after the existing sentence:
+
+> THE ONE EXCEPTION IS WEATHER THE READER STOOD IN. If HOURS AHEAD begins
+> after rain has already fallen today — the elapsed hours of TODAY'S
+> MULTI-MODEL GUIDANCE will show it — say so in one clause before you forecast
+> more of it. A reader who was rained on at 15:00 and is told the day was dry
+> until this evening stops believing the rest. One clause, in the past tense,
+> and never a re-narration of the afternoon.
+
+**4. Day+1 for a late issuance.** Unchanged from item 117 and still worth
+doing: HOURS AHEAD carried 30 hours to 23:00 tomorrow, and tomorrow was one
+clause folded into a Day 1-3 band. Proposed addition to the Extended Outlook
+note, conditional on a late issuance:
+
+> WHEN THE ISSUANCE IS LATE, TOMORROW IS THE FORECAST. Past mid-afternoon
+> local, most of what a reader can act on is tomorrow, and HOURS AHEAD carries
+> it hour by hour rather than as a daily aggregate. Give tomorrow its own
+> paragraph, with timing, before the Day+2 to Day+3 band. Do not fold it into
+> a multi-day range: "Day 1 to Day 3" answers nobody's question at 18:00.
+
+Where "late" sits is a measurement, not a guess, and item 104's C4 floor is
+the same boundary — size them together.
+
+**5. `fetch_metar` should ask for `hours`.** Unchanged from item 117, and now
+the only one of the five that adds an instrument rather than constraining a
+claim. One METAR at 1430Z reported cumulonimbus and no weather group; six
+hours of reports would have said whether the airport logged TS or RA that
+afternoon, and `metar.py`'s own header records that `hours` works up to 48.
+
+### What item 117 got right, and keeps
+
+The three prompt-side observations stand: tomorrow had thirty hours of
+guidance and one clause of output; the METAR was a snapshot by choice; and
+this is the first late issuance the record has ever held, so item 104's C4
+floor can be sized against something real. Only the diagnosis of the opening
+sentence was wrong.
+
+**And the method is the lesson.** Item 117 was written from the archived
+prompt and the published output, which is where this project's prompt reviews
+are told to start. Both were read correctly and the conclusion was still
+wrong, because a string in the payload looks identical whether the model wrote
+it or the code did. `data/prompts/*.json` shows what the model was given; it
+does not show what was already decided for it. The next review should grep the
+composer for any sentence it is about to blame the model for.
+
+Related: items 117 (the version this corrects), 83 (code-written phrases and
+the contract nobody wrote), 104 (C4's floor, and prose keyed to the clock),
+97, 98, 88 (the vector case this fix needs), and 48 for the standing practice.
