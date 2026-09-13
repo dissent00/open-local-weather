@@ -13176,13 +13176,76 @@ Archived hourly supports it and item 97 is the precedent — "make `rain` mean
 one thing at every lead, and re-derive". A frozen legacy series would leave a
 discontinuity in the skill numbers that has to be explained forever.
 
-**4. One row per issuance; the weighting is derived at read time.** Scoring
+**4. One row per issuance; the weighting is derived at read time. CONTAINER SHIPPED (`3971c5b`) — see below.** Scoring
 every issuance over-weights unsettled days, because those are the days guidance
 moves. Do not answer that in the schema: per-issuance and per-day averages are
 both computable from per-issuance rows, and neither is recoverable from the
 other once day-weighting is baked into storage. `ROLLING_WINDOW_SHORT` being
 "10 checks" stops being a distinction without a difference here, and gets named
 for whichever it is.
+
+### Contract item 4's container, shipped 2026-09-13
+
+`DailyLogEntry.prediction_rows` holds one `IssuancePredictions` per issuance,
+stamped with the instant that made it. Before this, a DAY held one set: the
+first run wrote `model_predictions` and every later issuance's numbers were
+discarded, so the record could not say what a 22:00 call had been.
+
+**Rows are append-only and row 0 is immutable**, which is the write-once rule
+stated in its general form — and the guard is now the append itself rather
+than a swap that read like one but was not it.
+
+**Scoring did not change, deliberately.** `verify.scoring.scored_predictions`
+names row 0 as the set tomorrow scores, so "which issuance is scored" is
+answerable by grepping one identifier. Making every row scored belongs with
+C2/C3, where the series is re-derived; landing it here would have changed the
+storage shape and the accuracy record at once, and a divergence in either
+would have been unattributable.
+
+**Migration follows `resolve_target_date`'s precedent**: one bridge,
+`resolve_prediction_rows`, under which an entry written before this reads as a
+single row stamped `generated_at_utc` — exactly the moment that wrote it,
+since no later run touched it. The committed record is not rewritten.
+`model_predictions` became `None` rather than an empty set on purpose: a
+reader not yet moved to the bridge fails loudly instead of quietly seeing a
+day with no predictions in it, which is the failure mode this whole item
+exists to stop. That caught nineteen call sites.
+
+**EVERY ISSUANCE NOW EXTRACTS ITS OWN MODELS, and that was the decision that
+was not mechanical.** The obvious row content — the day's stored model
+numbers, which a re-issue deliberately did not re-extract, beside that
+issuance's own blend — is mixed provenance, and C3 requires the models and the
+blend to come from the SAME guidance or the comparison is not paired.
+Measured 2026-09-13: the 06:02 issuance read the 18Z cycle and the 18:02 read
+the 06Z, both 9.0 hours old. So the swap that kept the day's first set is
+gone. Its premise — "re-deriving would leave the narrative describing values
+the record doesn't contain" — was true only while a day held one set, and
+contract item 4 dissolves it, the same way it dissolved C4.
+
+One test was INVERTED rather than deleted, with the old expectation kept
+beside it, and the assertion that earns the inversion is that the value the
+evening was shown is in the evening's own row. Without that it would be a test
+bent to fit the code.
+
+**Proof.** Row 0 byte-identical to the old `model_predictions`; verification
+and the published fields unchanged; and the real 34-entry record re-derives to
+the same numbers model for model and check for check. Making the append read
+`.prediction_rows` instead of the bridge fails exactly ONE of 1088 tests — the
+legacy re-issue, which is the case that would have written a day whose scored
+numbers were the evening's and whose morning call was gone, silently.
+
+**Cost, measured:** an entry roughly doubles, 12.0 KB to 23.7 KB for two
+issuances. On a re-issue most model rows repeat, because consecutive cycles
+mostly agree rather than because anything is duplicated by design.
+
+**Still open, and it is the app.** `HistoryStore.savePredictions` in Ensemble
+returns early when the date already exists — "a re-issue. It may rewrite the
+narrative; the numbers are the first run's and stay that way" — so every
+issuance after the first has its numbers DROPPED, not stored under another
+key. The app is on-demand, so it already lives in the multi-issuance world
+this contract is built for, and it needs this container more than the server
+does. `olw_core` carries no entry model, so nothing was ported with this
+change and the vectors did not move.
 
 **5. The blend produces a +24 h call.** `today_properties` becomes a
 forward-window call and that is what is scored. The alternative — keep the
