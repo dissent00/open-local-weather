@@ -681,6 +681,21 @@ def _visible_note(note: str | None, hidden_model_id: str | None) -> str | None:
     over `location`. See `models_visible_to_the_forecaster` for why the blend
     and the baselines are withheld — a note that names one leaks a model the
     prompt has just been told does not exist.
+
+    THE LEAK SEEDED THE NOTES IT IS FED — item 90. Filtering the scores block
+    stops NEW contamination and does nothing about the notes written while the
+    forecaster could see those scores; one of them tells it its own blend
+    called a rain event correctly.
+
+    DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
+    correctly verified the rain event" is worse than a gap, and a gap is
+    already how this prompt says there is nothing to report. The log itself is
+    untouched, so the archive stays true to what was written.
+
+    (That reasoning sat as a comment on a call site in EACH pipeline. Step 1
+    moved the payload into `_build_forecast_prompt` and left both calls behind
+    computing a value nothing read; deleting them would have deleted the only
+    copy of the above, so it lives here, beside the rule it explains.)
     """
     if note_names_a_hidden_model(note, hidden_model_id):
         return None
@@ -1825,6 +1840,176 @@ def _with_merged_ground_aqi(
     )
 
 
+def _compose_log_entry(
+    deps: PipelineDeps,
+    guidance: ForwardGuidance,
+    existing_entry: DailyLogEntry | None,
+    today: date,
+    llm_response: Any,
+    *,
+    fresh_predictions: ModelPredictionsByLead | None,
+    judgment_prompt: str,
+    narrative_prompt: str,
+    last_response: Any,
+) -> DailyLogEntry:
+    """The day's entry, built in the one place it is built.
+
+    ROADMAP item 104 step 3, and the half of it that matters. Two
+    constructions meant a rule could be written into one and not the other,
+    and measured 2026-09-13 by driving both re-issue paths against identical
+    fixtures, SIX fields disagreed — each path holding a fix the other was
+    missing:
+
+      - `sunrise`/`sunset` fell back to the stored value on the refresh and
+        were overwritten with null by a `run-daily` re-issue, so a run whose
+        sun computation threw erased times the morning had captured. The
+        refresh had the fallback and a comment explaining why; the other
+        path had neither.
+      - `meta.llm_model`, `meta.pipeline_version` and `meta.trigger_source`
+        were THIS run's on a `run-daily` re-issue and the MORNING's on a
+        refresh — so an evening narrative was stamped with the model that
+        wrote the morning's, and `write_prompt_archive` copied that stamp
+        onto the archived evening prompt, which exists to answer exactly
+        that question.
+      - `local_bulletin` was the morning's on a refresh and overwritten by a
+        `run-daily` re-issue.
+
+    None of them was a hard failure and the suite was green throughout, for
+    the reason the whole item records: two bodies of code cannot be made to
+    agree by anything except being one body.
+
+    THE WRITE-ONCE RULES LIVE BELOW, AND ONLY BELOW. What a later issuance
+    may not rewrite is one list in one place, so a new field is either in it
+    or it is not, rather than being in it on one path.
+    """
+    location = deps.location
+    tp = llm_response.today_properties
+    response_meta = _response_meta(last_response)
+
+    issuance = DailyLogEntry(
+        date=today,
+        rain_expected=tp.rain_expected,
+        onset_window=tp.onset_window,
+        peak_wind_kmh=tp.peak_wind_kmh,
+        temp_high_c=tp.temp_high_c,
+        temp_low_c=tp.temp_low_c,
+        temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
+        mslp_trend_24h=tp.mslp_trend_24h or "",
+        synoptic_pattern=tp.synoptic_pattern or "",
+        uv_index_max=tp.uv_index_max,
+        air_quality_aqi=tp.air_quality_aqi,
+        ground_aqi=guidance.ground_aqi_readings,
+        # From code, not from the narrative. Empty strings mean the sun times
+        # were unavailable — see daypart_without_sun — and are stored as None
+        # so an absent value is never rendered as an empty clock.
+        sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
+        sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
+        # What THIS issuance extracted, or an empty set when it extracted
+        # none. Whether it is kept is decided once, below: a date that
+        # already holds predictions keeps those, byte for byte.
+        model_predictions=fresh_predictions or ModelPredictionsByLead(),
+        # Stored verbatim, and stored even when it says "unavailable" — see
+        # LocalBulletinRecord. A met service's forecast cannot be re-fetched
+        # for a past day once its weekly bulletin is replaced, so a run that
+        # doesn't write this down destroys the only copy there will ever be.
+        local_bulletin=LocalBulletinRecord(
+            source_name=location.local_bulletin_source_name,
+            text=guidance.bulletin_text,
+            fetched_at_utc=datetime.now(timezone.utc),
+        )
+        if location.local_bulletin_source_name
+        else None,
+        yesterday_verification_summary=llm_response.yesterday_verification,
+        narrative_markdown=llm_response.today_narrative,
+        guidance_initialised_at=guidance.guidance_cycle.initialised_at,
+        guidance_age_hours=guidance.guidance_cycle.age_hours,
+        guidance_source=guidance.guidance_cycle.source,
+        meta=LogEntryMeta(
+            generated_at_utc=datetime.now(timezone.utc),
+            llm_provider=type(deps.llm_provider).__name__,
+            llm_model=getattr(deps.llm_provider, "model", "unknown"),
+            pipeline_version=deps.pipeline_version,
+            system_prompt_sha256=prompt_archive.combined_prompt_sha256(
+                judgment_prompt, narrative_prompt
+            ),
+            finish_reason=response_meta.finish_reason,
+            input_tokens=response_meta.input_tokens,
+            output_tokens=response_meta.output_tokens,
+            response_schema_sha256=response_meta.response_schema_sha256,
+            nullable_fields=_nullable_fields(last_response),
+            narrative_findings=_narrative_findings(llm_response, today),
+            information_moved=_information_moved(
+                guidance, existing_entry, _observed_so_far(location, today)
+            ),
+            trigger_source=deps.trigger_source or None,
+            degradations=guidance.degradations,
+        ),
+    )
+
+    if existing_entry is None:
+        return issuance
+
+    # WHAT A LATER ISSUANCE MUST NOT REWRITE.
+    #
+    # Traced on a real sequence — morning run, evening refresh, forced
+    # run-daily: the third run built a brand-new entry, which wiped
+    # morning_issuance (the only copy of what was published this morning),
+    # reset generated_at_utc so the entry claimed to have been created hours
+    # after it was, and cleared refreshed_at — which re-opened the refresh
+    # gate, so the NEXT refresh would snapshot the forced narrative as that
+    # day's morning issuance.
+    #
+    # model_predictions is the one that makes the accuracy record
+    # trustworthy: the numbers tomorrow scores must be the ones the day's
+    # first run committed. `_predictions_already_recorded` returns None for
+    # an empty set on purpose, so a first run that stored none can still be
+    # given them — a date with no predictions is unscoreable for ever
+    # otherwise.
+    #
+    # verification and yesterday_verification_summary are carried for a
+    # related reason: this run is told it is a later issuance, so the model
+    # returns a PLACEHOLDER for the verification fields (by design — see the
+    # LATER ISSUANCE block). Storing that would overwrite the real
+    # verification the day's first run wrote. `verification` itself is
+    # written a day later, when the actuals exist, so losing it here loses
+    # scores that cannot be recomputed from this entry.
+    #
+    # sunrise/sunset fall back rather than overwrite: a sun computation that
+    # threw on a re-issue must not erase a good value the morning captured.
+    #
+    # local_bulletin keeps the morning's. A met service replaces its bulletin
+    # and the stored copy is the only one there will ever be, so the rule is
+    # not to lose one — but the entry holds a single record, so a bulletin
+    # that genuinely changed mid-day loses the other copy whichever way this
+    # goes. Kept as the refresh had it, which is what the production evening
+    # run has always done; ROADMAP item 104 records it as the operator's to
+    # settle.
+    snapshot = existing_entry.to_issuance_snapshot()
+
+    return issuance.model_copy(
+        update={
+            "model_predictions": _predictions_already_recorded(existing_entry)
+            or issuance.model_predictions,
+            "verification": existing_entry.verification,
+            "yesterday_verification_summary": existing_entry.yesterday_verification_summary,
+            "sunrise": issuance.sunrise or existing_entry.sunrise,
+            "sunset": issuance.sunset or existing_entry.sunset,
+            "local_bulletin": existing_entry.local_bulletin or issuance.local_bulletin,
+            # Snapshotted exactly ONCE, by whichever run first finds it unset,
+            # so it keeps the day's TRUE morning content. Re-snapshotting on a
+            # later issuance would replace it with an already-updated version.
+            "morning_issuance": existing_entry.morning_issuance or snapshot,
+            "earlier_issuances": [*existing_entry.earlier_issuances, snapshot],
+            "meta": issuance.meta.model_copy(
+                update={
+                    "generated_at_utc": existing_entry.meta.generated_at_utc,
+                    "refreshed_at": datetime.now(timezone.utc),
+                }
+            ),
+        }
+    )
+
+
 def run_daily_pipeline(
     deps: PipelineDeps, today: date | None = None, dry_run: bool = False
 ) -> ForecastRunResult:
@@ -1908,23 +2093,6 @@ def run_daily_pipeline(
         today=today,
         yesterday=yesterday,
         models=scored_models(location.local_bulletin_model_id),
-    )
-
-    # --- Step 4: historical notes context for the LLM ---
-    # The leak seeded the notes it is fed — item 90. Filtering the scores
-    # block stops NEW contamination and does nothing about the notes written
-    # while the forecaster could see those scores; one of them tells it its
-    # own blend called a rain event correctly.
-    #
-    # DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
-    # correctly verified the rain event" is worse than a gap, and a gap is
-    # already how this prompt says there is nothing to report. The log itself
-    # is untouched, so the archive stays true to what was written.
-    #
-    # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
-    # time this rule was broken, and only run_daily_pipeline had the test.
-    historical_logs = _historical_logs_payload(
-        deps.data_dir, today, location.local_bulletin_model_id
     )
 
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
@@ -2192,31 +2360,17 @@ def run_daily_pipeline(
 
     # --- Step 7: build today's log entry ---
     tp = llm_response.today_properties
-    log_entry = DailyLogEntry(
-        date=today,
-        rain_expected=tp.rain_expected,
-        onset_window=tp.onset_window,
-        peak_wind_kmh=tp.peak_wind_kmh,
-        temp_high_c=tp.temp_high_c,
-        temp_low_c=tp.temp_low_c,
-        temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
-        mslp_trend_24h=tp.mslp_trend_24h or "",
-        synoptic_pattern=tp.synoptic_pattern or "",
-        uv_index_max=tp.uv_index_max,
-        air_quality_aqi=tp.air_quality_aqi,
-        ground_aqi=guidance.ground_aqi_readings,
-        # From code, not from the narrative. Empty strings mean the sun times
-        # were unavailable — see daypart_without_sun — and are stored as None
-        # so an absent value is never rendered as an empty clock.
-        sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
-        sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
-        # Whatever this date already holds, byte-for-byte, or the freshly
-        # extracted set on the day's first run — see the write-once note in
-        # Step 5. This run's own blend is not appended to a kept set either:
-        # it is a prediction like any other and the day's belongs to the run
-        # that made it first.
-        model_predictions=recorded_predictions
-        or ModelPredictionsByLead(
+    log_entry = _compose_log_entry(
+        deps,
+        guidance,
+        existing_entry,
+        today,
+        llm_response,
+        # The freshly extracted set, which the composer keeps only when this
+        # date holds none. Built even on a re-issue and discarded there, as
+        # it always was — the day's numbers belong to the run that made them
+        # first.
+        fresh_predictions=ModelPredictionsByLead(
             # The blend joins Day+0 as a peer of the models it synthesizes, so
             # tomorrow scores the forecast this run actually published and not
             # only the guidance that fed it. Day+3 and Day+7 carry the blend's
@@ -2249,76 +2403,10 @@ def run_daily_pipeline(
                 7,
             ),
         ),
-        # Stored verbatim, and stored even when it says "unavailable" — see
-        # LocalBulletinRecord. A met service's forecast cannot be re-fetched
-        # for a past day once its weekly bulletin is replaced, so a run that
-        # doesn't write this down destroys the only copy there will ever be.
-        local_bulletin=LocalBulletinRecord(
-            source_name=location.local_bulletin_source_name,
-            text=guidance.bulletin_text,
-            fetched_at_utc=datetime.now(timezone.utc),
-        )
-        if location.local_bulletin_source_name
-        else None,
-        yesterday_verification_summary=llm_response.yesterday_verification,
-        narrative_markdown=llm_response.today_narrative,
-        guidance_initialised_at=guidance.guidance_cycle.initialised_at,
-        guidance_age_hours=guidance.guidance_cycle.age_hours,
-        guidance_source=guidance.guidance_cycle.source,
-        meta=LogEntryMeta(
-            generated_at_utc=datetime.now(timezone.utc),
-            llm_provider=type(deps.llm_provider).__name__,
-            llm_model=getattr(deps.llm_provider, "model", "unknown"),
-            pipeline_version=deps.pipeline_version,
-            system_prompt_sha256=prompt_archive.combined_prompt_sha256(
-                judgment_prompt, narrative_prompt
-            ),
-            finish_reason=_response_meta(_last_response).finish_reason,
-            input_tokens=_response_meta(_last_response).input_tokens,
-            output_tokens=_response_meta(_last_response).output_tokens,
-            response_schema_sha256=_response_meta(_last_response).response_schema_sha256,
-            nullable_fields=_nullable_fields(_last_response),
-            narrative_findings=_narrative_findings(llm_response, today),
-            information_moved=_information_moved(
-                guidance, existing_entry, _observed_so_far(location, today)
-            ),
-            trigger_source=deps.trigger_source or None,
-            degradations=guidance.degradations,
-        ),
+        judgment_prompt=judgment_prompt,
+        narrative_prompt=narrative_prompt,
+        last_response=_last_response,
     )
-
-    # A later run of the day rewrites the narrative. It must not rewrite the
-    # day's own history with it.
-    #
-    # Traced on a real sequence — morning run, evening refresh, forced
-    # run-daily: the third run built a brand-new entry, which wiped
-    # morning_issuance (the only copy of what was published this morning),
-    # reset generated_at_utc so the entry claimed to have been created hours
-    # after it was, and cleared refreshed_at — which re-opened
-    # evening_refresh's gate, so the NEXT refresh would snapshot the forced
-    # narrative as that day's morning issuance.
-    #
-    # yesterday_verification_summary and verification are carried for a
-    # related reason: this run is now told it is a later issuance, so the
-    # model returns a PLACEHOLDER for the verification fields (by design —
-    # see the LATER ISSUANCE block). Storing that would overwrite the real
-    # verification the day's first run wrote.
-    if existing_entry is not None:
-        current_snapshot = existing_entry.to_issuance_snapshot()
-        log_entry = log_entry.model_copy(
-            update={
-                "morning_issuance": existing_entry.morning_issuance or current_snapshot,
-                "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
-                "verification": existing_entry.verification,
-                "yesterday_verification_summary": existing_entry.yesterday_verification_summary,
-                "meta": log_entry.meta.model_copy(
-                    update={
-                        "generated_at_utc": existing_entry.meta.generated_at_utc,
-                        "refreshed_at": datetime.now(timezone.utc),
-                    }
-                ),
-            }
-        )
 
     published = False
     emailed = False
@@ -2336,7 +2424,13 @@ def run_daily_pipeline(
         prompt_archive.write_prompt_archive(
             deps.data_dir,
             today,
-            issued_at=log_entry.meta.generated_at_utc,
+            # THIS issuance's instant, not the day's first. The archive is
+            # keyed on it, and a re-issue deliberately carries
+            # generated_at_utc from the first run — so stamping with that
+            # overwrote the morning's archived prompt at the same key and
+            # destroyed the only copy of it. Measured 2026-09-13: two
+            # `run-daily` runs, one archived issuance.
+            issued_at=log_entry.last_issued_at,
             judgment_prompt=judgment_prompt,
             narrative_prompt=narrative_prompt,
             user_prompt=user_prompt,
@@ -2472,23 +2566,6 @@ def run_refresh_pipeline(
     # --- Step 1: fresh forward-looking guidance (later model cycle) ---
     guidance = _fetch_forward_guidance(deps)
     guidance = _with_merged_ground_aqi(guidance, existing_entry.ground_aqi)
-
-    # --- Step 2: historical notes context, same as the morning run ---
-    # The leak seeded the notes it is fed — item 90. Filtering the scores
-    # block stops NEW contamination and does nothing about the notes written
-    # while the forecaster could see those scores; one of them tells it its
-    # own blend called a rain event correctly.
-    #
-    # DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
-    # correctly verified the rain event" is worse than a gap, and a gap is
-    # already how this prompt says there is nothing to report. The log itself
-    # is untouched, so the archive stays true to what was written.
-    #
-    # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
-    # time this rule was broken, and only run_daily_pipeline had the test.
-    historical_logs = _historical_logs_payload(
-        deps.data_dir, today, location.local_bulletin_model_id
-    )
 
     # --- Step 3: call the LLM in refresh mode ---
     # No new verification happened (yesterday's actuals don't change during
@@ -2653,85 +2730,19 @@ def run_refresh_pipeline(
     # meta.refreshed_at already being set — but the guard costs nothing and
     # matches this project's existing belt-and-suspenders idempotency
     # style, e.g. last_verified_target_date in verify/pipeline.py.)
-    current_snapshot = existing_entry.to_issuance_snapshot()
-    morning_snapshot = existing_entry.morning_issuance or current_snapshot
-
-    tp = llm_response.today_properties
-    updated_entry = existing_entry.model_copy(
-        update={
-            "rain_expected": tp.rain_expected,
-            "onset_window": tp.onset_window,
-            "peak_wind_kmh": tp.peak_wind_kmh,
-            "temp_high_c": tp.temp_high_c,
-            "temp_low_c": tp.temp_low_c,
-            "temp_high_low_display": format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
-            "mslp_trend_24h": tp.mslp_trend_24h or "",
-            "synoptic_pattern": tp.synoptic_pattern or "",
-            "uv_index_max": tp.uv_index_max,
-            "air_quality_aqi": tp.air_quality_aqi,
-            "ground_aqi": guidance.ground_aqi_readings,
-            # Set here too, not only on the day's first run.
-            #
-            # Missed when sunrise/sunset were added: only run_daily_pipeline
-            # set them, so any day whose entry was refreshed carried nulls
-            # from that point on — the site simply stopped showing sun times
-            # after the evening run, which nothing would have flagged.
-            #
-            # Falls back to what is already stored rather than overwriting
-            # with None: a failed sun fetch on a re-issue must not erase a
-            # good value the morning run captured.
-            "sunrise": (guidance.issuance.sunrise or None if guidance.issuance else None)
-            or existing_entry.sunrise,
-            "sunset": (guidance.issuance.sunset or None if guidance.issuance else None)
-            or existing_entry.sunset,
-            "narrative_markdown": llm_response.today_narrative,
-            # This issuance's own recency, not the morning's — current_snapshot
-            # above (built from existing_entry, before this overwrite) is what
-            # carries the morning's guidance_* values into earlier_issuances.
-            "guidance_initialised_at": guidance.guidance_cycle.initialised_at,
-            "guidance_age_hours": guidance.guidance_cycle.age_hours,
-            "guidance_source": guidance.guidance_cycle.source,
-            "morning_issuance": morning_snapshot,
-            "earlier_issuances": [*existing_entry.earlier_issuances, current_snapshot],
-            # THIS issuance's gaps, not the morning's — the same split as
-            # guidance_* above. current_snapshot was built from
-            # existing_entry before this overwrite, so the morning's own list
-            # has already been carried into earlier_issuances; leaving the
-            # morning's here as well would report a clean evening as degraded
-            # for ever.
-            "meta": existing_entry.meta.model_copy(
-                update={
-                    "refreshed_at": datetime.now(timezone.utc),
-                    "degradations": guidance.degradations,
-                    # The refresh's own prompt, not the morning's. The
-                    # is_reissue branch alone makes them different documents,
-                    # and this field names the forecaster that wrote the
-                    # narrative currently in the entry.
-                    "system_prompt_sha256": prompt_archive.combined_prompt_sha256(
-                        judgment_prompt, narrative_prompt
-                    ),
-                    # THIS issuance's call, like the prompt hash above and
-                    # for the same reason: the entry describes the forecast
-                    # currently in it, not the one it replaced.
-                    "finish_reason": _response_meta(_last_response).finish_reason,
-                    "input_tokens": _response_meta(_last_response).input_tokens,
-                    "output_tokens": _response_meta(_last_response).output_tokens,
-                    "response_schema_sha256": _response_meta(
-                        _last_response
-                    ).response_schema_sha256,
-                    "nullable_fields": _nullable_fields(_last_response),
-                    # THIS issuance's prose, checked. The morning's findings
-                    # travelled into earlier_issuances with its narrative, and
-                    # leaving them here would report an evening that is clean
-                    # as false for ever — the same split degradations get
-                    # three fields up.
-                    "narrative_findings": _narrative_findings(llm_response, today),
-                    "information_moved": _information_moved(
-                        guidance, existing_entry, _observed_so_far(location, today)
-                    ),
-                }
-            ),
-        }
+    updated_entry = _compose_log_entry(
+        deps,
+        guidance,
+        existing_entry,
+        today,
+        llm_response,
+        # None, and required rather than defaulted: a later issuance extracts
+        # no predictions of its own, and the composer carries the day's
+        # forward. A path that genuinely has none has to say so.
+        fresh_predictions=None,
+        judgment_prompt=judgment_prompt,
+        narrative_prompt=narrative_prompt,
+        last_response=_last_response,
     )
 
     published = False
@@ -2744,7 +2755,10 @@ def run_refresh_pipeline(
         prompt_archive.write_prompt_archive(
             deps.data_dir,
             today,
-            issued_at=updated_entry.meta.refreshed_at,
+            # The same expression as the daily path, which is the point of
+            # step 3: refreshed_at is what last_issued_at resolves to here,
+            # so the two agree by construction rather than by coincidence.
+            issued_at=updated_entry.last_issued_at,
             judgment_prompt=judgment_prompt,
             narrative_prompt=narrative_prompt,
             user_prompt=user_prompt,

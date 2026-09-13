@@ -194,3 +194,30 @@ def test_the_evening_refresh_archives_its_own_prompt_not_the_mornings(tmp_path):
 
     entry = log_store.read_log_entry(tmp_path, TODAY)
     assert entry.meta.system_prompt_sha256 == issuances[-1]["system_prompt_sha256"]
+
+
+def test_a_run_daily_re_issue_archives_its_own_prompt_too(tmp_path):
+    """Every issuance is one archive entry, whichever verb re-issued it.
+
+    The archive is keyed on the instant, and a `run-daily` re-issue stamped
+    itself with `meta.generated_at_utc` — which a re-issue deliberately
+    carries from the day's FIRST run, so the second issuance overwrote the
+    first at the same key and the morning's prompt was gone. Measured
+    2026-09-13: two runs, one archived issuance.
+
+    `last_issued_at` is the entry's own answer to "when did this SAY
+    something" and already existed for exactly this distinction. ROADMAP
+    item 104 step 3.
+    """
+    from tests.test_pipeline_run import FakeLLMProvider
+
+    run_daily_pipeline(make_deps(tmp_path), today=TODAY, dry_run=False)
+
+    llm = FakeLLMProvider()
+    llm.response = llm.response.model_copy(
+        update={"today_narrative": "## Overview\nSecond issuance."}
+    )
+    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
+
+    issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
+    assert len(issuances) == 2, "the morning's prompt must survive a re-issue"

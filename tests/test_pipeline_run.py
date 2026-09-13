@@ -1632,6 +1632,65 @@ def test_a_refresh_with_no_sun_data_keeps_the_mornings(tmp_path, monkeypatch):
     assert entry.sunrise == "06:40", "the morning's value survives a failed re-fetch"
 
 
+def test_a_run_daily_re_issue_also_keeps_the_mornings_sun_times(tmp_path, monkeypatch):
+    """The same rule as the refresh above, on the other path into an existing
+    day. It had the rule and a comment explaining it; this one had neither, so
+    a forced re-run whose sun computation threw erased times the morning had
+    captured and the site simply stopped showing them.
+
+    Measured 2026-09-13 by driving both re-issue paths against identical
+    fixtures: six fields disagreed and each path held a fix the other lacked.
+    ROADMAP item 104 step 3."""
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    monkeypatch.setattr(
+        solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+    )
+    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.sunrise == "06:40", "the morning's value survives a failed re-compute"
+    assert entry.sunset == "18:47"
+
+
+def test_a_re_issue_is_stamped_with_the_model_that_wrote_it(tmp_path):
+    """The entry describes the forecast currently IN it, which is the rule the
+    refresh path already applied to the prompt hash, the finish reason and the
+    token counts — and did not apply to the model that produced them.
+
+    It mattered twice over: `write_prompt_archive` copies `meta.llm_model` onto
+    the archived evening prompt, and answering "which model wrote this" is what
+    that archive is for. ROADMAP item 104 step 3."""
+    morning = make_deps(tmp_path, llm=FakeLLMProvider())
+    morning.llm_provider.model = "morning-model"
+    run_daily_pipeline(morning, today=date(2026, 8, 11), dry_run=False)
+
+    evening = make_deps(tmp_path, llm=FakeLLMProvider())
+    evening.llm_provider.model = "evening-model"
+    run_refresh_pipeline(evening, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_model == "evening-model"
+
+
+def test_a_re_issue_records_the_trigger_and_version_that_ran_it(tmp_path):
+    """Same rule, two more fields that were the morning's on a refresh. A
+    pipeline_version naming the release that wrote the PREVIOUS narrative makes
+    the record's own provenance wrong in the direction nobody checks."""
+    morning = make_deps(tmp_path)
+    morning.trigger_source = "schedule"
+    morning.pipeline_version = "1.0.0"
+    run_daily_pipeline(morning, today=date(2026, 8, 11), dry_run=False)
+
+    evening = make_deps(tmp_path)
+    evening.trigger_source = "workflow_dispatch"
+    evening.pipeline_version = "2.0.0"
+    run_refresh_pipeline(evening, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.trigger_source == "workflow_dispatch"
+    assert entry.meta.pipeline_version == "2.0.0"
+
+
 # ---------------------------------------------------------------------------
 # The Overview's convective flag, the last-known AQI reading, and observed
 # thunder all reach the places that use them. Each of these defaults to None,

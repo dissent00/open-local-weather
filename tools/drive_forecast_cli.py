@@ -138,7 +138,18 @@ TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(\+00:00|
 # Derived from the clock rather than printed from it, so the timestamp
 # pattern does not reach it: two runs seconds apart compute guidance ages
 # that differ in the fourth decimal.
-CLOCK_DERIVED = re.compile(r'("guidance_age_hours":\s*)[0-9.]+')
+# Two spellings of the same clock-derived quantity: the entry stores
+# `guidance_age_hours` at full precision and the prompt embeds `hours_old`
+# rounded to one decimal. Masking only the first let a capture six minutes
+# later tick 9.8 -> 9.9 and show up as a prompt change, which is exactly the
+# false positive this file exists to avoid.
+#
+# The backslashes are load-bearing: the prompt archive stores the prompt as an
+# ESCAPED JSON string, so the same key appears as \"hours_old\" there and as
+# "guidance_age_hours" in the log entry. Matching only the unescaped spelling
+# masked the entry and left the prompt ticking, which showed up as a prompt
+# change twice before it was understood.
+CLOCK_DERIVED = re.compile(r'(\\?"(?:guidance_age_hours|hours_old)\\?":\s*)[0-9.]+')
 
 # The EARLIER TODAY header in a re-issue's prompt, rendered HH:MM with no
 # seconds from the first run's generated_at_utc — which the frozen seams above
