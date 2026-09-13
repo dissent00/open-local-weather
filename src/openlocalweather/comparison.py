@@ -182,6 +182,47 @@ def _onset_phrase(onset: str | None) -> str | None:
     return "from the morning"
 
 
+def _onset_is_ahead(onset: str | None, issued_hour: int | None) -> bool:
+    """Whether a timing qualifier is still a FORECAST at the issuance hour.
+
+    ROADMAP item 118. Every timing phrase this module composes says, in
+    effect, "and not before" — "dry until evening showers" asserts that the
+    hours before the evening were dry. That is a forecast at 06:00 and a claim
+    about the past at 18:00, and until this existed nothing checked which one
+    it was.
+
+    THE RULE IS NOT "DID IT ACTUALLY RAIN". This module has no observations of
+    a day in progress and cannot acquire any here. It is the narrower one: do
+    not assert what a period was like when that period has already elapsed.
+    Same discipline as "unknown is not false", one layer up.
+
+    Measured case, 2026-09-12: the day's FIRST issuance went out at 18:01
+    local with the blend's onset at 18:00, and this function composed "dry
+    until evening thunderstorms" for a day on which GFS had already put 3.5 mm
+    on the ground at 15:00 and the reader had been rained on for hours. Four
+    of the five models carried afternoon rain. The phrase is locked VERBATIM
+    by the prompt, so no instruction the forecaster could have followed would
+    have repaired it.
+
+    `issued_hour` is None for a day that is OVER and described from
+    observations — yesterday's side of the comparison — where a timing phrase
+    is a report rather than a claim and is always allowed. That case is passed
+    explicitly rather than defaulted, so a new caller has to decide which day
+    it is holding.
+    """
+    if onset is None:
+        return False
+    if issued_hour is None:
+        return True
+
+    try:
+        onset_hour = int(onset.split(":")[0])
+    except (ValueError, IndexError):
+        return False
+
+    return onset_hour > issued_hour
+
+
 def day_rain_band(precip_mm: float | None) -> str | None:
     """The amount band alone — "dry", "largely dry", "showery", "wet".
 
@@ -204,7 +245,11 @@ def day_rain_band(precip_mm: float | None) -> str | None:
 
 
 def describe_day_rain(
-    precip_mm: float | None, onset: str | None, thunder: bool | None = None
+    precip_mm: float | None,
+    onset: str | None,
+    thunder: bool | None = None,
+    *,
+    issued_hour: int | None,
 ) -> str | None:
     """One phrase for the rain character of a day: how much, when, and
     whether it thundered.
@@ -220,7 +265,7 @@ def describe_day_rain(
         return None
 
     band = day_rain_band(precip_mm)
-    when = _onset_phrase(onset)
+    when = _onset_phrase(onset) if _onset_is_ahead(onset, issued_hour) else None
 
     # Thunder outranks the amount. A storm that passes over the city and
     # drops half a millimetre is the thing the reader remembers about the
@@ -298,6 +343,8 @@ def compute_day_over_day(
     yesterday_actual: DailyActual | None,
     today_day0_predictions: list[ModelPrediction],
     today_convective: bool | None = None,
+    *,
+    issued_hour: int | None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
     as a gap, not as a day with unremarkable weather."""
@@ -381,7 +428,12 @@ def compute_day_over_day(
     # is making anyway, and it is far better than comparing a value against
     # nothing. THE RULE IS GENERAL: a dimension may enter this comparison only
     # if BOTH days can be measured on it.
-    today_character = describe_day_rain(today_precip, today_onset, thunder=today_convective)
+    # ROADMAP item 118. Today is a day IN PROGRESS and its phrase is composed
+    # from a forecast, so a timing qualifier whose hour has passed is a claim
+    # about hours nobody here can see — see _onset_is_ahead.
+    today_character = describe_day_rain(
+        today_precip, today_onset, thunder=today_convective, issued_hour=issued_hour
+    )
     # observed_onset(), not onset_hour: a shower the reanalysis missed
     # entirely leaves onset_hour None, and the dry band's shower phrases are
     # reached by TIMING. Without this the description says "dry" for a day
@@ -391,6 +443,9 @@ def compute_day_over_day(
         yesterday_actual.precip_mm,
         yesterday_actual.observed_onset(),
         yesterday_actual.thunder,
+        # The day is OVER and this is built from observations, so its timing
+        # is a report rather than a claim and is never suppressed.
+        issued_hour=None,
     )
 
     if today_character and yesterday_character:

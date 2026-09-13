@@ -119,7 +119,7 @@ def test_the_lake_breeze_is_described_as_a_shift():
             18: [270.0, 265.0, 275.0, 268.0],  # W into the evening, tight
         }, MODELS),
         MODELS,
-    )
+     issued_hour=0)
     assert shift == (
         "north-northeasterly overnight, turning southwest by midday "
         "and west into the evening"
@@ -138,7 +138,7 @@ def test_an_hour_the_models_split_on_is_left_out_not_guessed():
             18: [10.0, 200.0, 100.0, 280.0],     # scattered: no bearing exists
         }, MODELS),
         MODELS,
-    )
+     issued_hour=0)
     assert shift == "north-northeasterly overnight, turning southwest by midday", shift
     assert "evening" not in shift, "the scattered hour was named anyway"
 
@@ -153,7 +153,7 @@ def test_a_day_with_no_shift_says_so_rather_than_inventing_one():
             18: [220.0, 224.0, 219.0, 227.0],
         }, MODELS),
         MODELS,
-    )
+     issued_hour=0)
     assert steady is not None
     assert "southwesterly" in steady
     assert "then" not in steady, "nothing turned, so nothing should be reported as turning"
@@ -167,10 +167,10 @@ def test_no_shift_is_claimed_when_the_models_never_agree():
             18: [20.0, 210.0, 110.0, 290.0],
         }, MODELS),
         MODELS,
-    ) is None
+     issued_hour=0) is None
 
 
 def test_an_empty_input_is_not_a_calm_day():
-    assert describe_wind_shift({}, MODELS) is None
-    assert describe_wind_shift({"hourly": None}, MODELS) is None
-    assert describe_wind_shift(_hourly({3: [None] * 4, 12: [None] * 4}, MODELS), MODELS) is None
+    assert describe_wind_shift({}, MODELS, issued_hour=0) is None
+    assert describe_wind_shift({"hourly": None}, MODELS, issued_hour=0) is None
+    assert describe_wind_shift(_hourly({3: [None] * 4, 12: [None] * 4}, MODELS), MODELS, issued_hour=0) is None

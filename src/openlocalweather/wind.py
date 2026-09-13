@@ -149,7 +149,9 @@ def _hour_of(stamp: str) -> int | None:
         return None
 
 
-def describe_wind_shift(hourly: dict, models: list[str]) -> str | None:
+def describe_wind_shift(
+    hourly: dict, models: list[str], *, issued_hour: int
+) -> str | None:
     """One finished clause for how the wind turns through the day, or None.
 
     ROADMAP item 59, and the operator's question on 2026-09-10: "winds shift
@@ -170,14 +172,40 @@ def describe_wind_shift(hourly: dict, models: list[str]) -> str | None:
 
     None when fewer than two anchors clear the agreement gate — one bearing
     is not a shift, and none is not a calm day.
+
+    AND None WHEN EVERY ANCHOR IS ALREADY BEHIND THE READER — ROADMAP item
+    118. The anchors are 03:00, 12:00 and 18:00, so a run issued at 18:01
+    would compose "northeasterly overnight, turning southwest by midday and
+    southerly into the evening" and the prompt would place that clause,
+    locked verbatim, in Today's Forecast. Every hour in it has gone. That is
+    not a forecast of how the wind will turn; it is a description of a day the
+    reader has finished, and it is exactly the defect item 117b found in the
+    rain phrase.
+
+    THE TEST IS "IS ANY OF IT STILL AHEAD", NOT "DROP WHAT HAS PASSED." The
+    first anchor is usually behind a 06:00 run too, and "northeasterly
+    overnight, turning southwest by midday" is a good clause for a reader at
+    breakfast: it says which way the day rotates and most of it is still
+    coming. Dropping elapsed anchors would have rewritten every morning
+    forecast this project publishes to fix a case that only arises in the
+    evening. So the composition is untouched and only the wholly retrospective
+    clause is withheld.
     """
     named: list[tuple[str, str]] = []
+    # The hour each named anchor came from, kept only for the check below.
+    hours: list[int] = []
     for hour, when in SHIFT_ANCHORS:
         point = consensus_direction(_directions_at(hourly, models, hour))
         if point is not None:
             named.append((point, when))
+            hours.append(hour)
 
     if len(named) < 2:
+        return None
+
+    # See the docstring: a clause with nothing still ahead is a retrospective,
+    # and the prompt would place it in Today's Forecast as though it were not.
+    if all(hour <= issued_hour for hour in hours):
         return None
 
     # Nothing turned. Said rather than skipped: a steady wind all day is a

@@ -906,7 +906,8 @@ void main() {
             .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
             .toList();
         final got = computeDayOverDay(y, preds,
-            todayConvective: i['today_convective'] as bool?);
+            todayConvective: i['today_convective'] as bool?,
+            issuedHour: i['issued_hour'] as int?);
         expectMatches(got?.toJson(), c['expected'], c['name'] as String);
       }
     });
@@ -922,6 +923,7 @@ void main() {
           (i['precip_mm'] as num?)?.toDouble(),
           i['onset'] as String?,
           i['thunder'] as bool?,
+          issuedHour: i['issued_hour'] as int?,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -1230,7 +1232,10 @@ void main() {
         final i = c['input'] as Map;
         final hourly = (i['hourly_multi_model'] as Map).cast<String, Object?>();
         final models = (i['models'] as List).cast<String>();
-        expect(describeWindShift(hourly, models), equals(c['expected']),
+        expect(
+            describeWindShift(hourly, models,
+                issuedHour: i['issued_hour'] as int),
+            equals(c['expected']),
             reason: 'case "${c['name']}"');
       }
     });

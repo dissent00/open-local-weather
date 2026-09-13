@@ -72,7 +72,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -164,7 +165,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 27.0,
@@ -256,7 +258,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 34.0,
@@ -348,7 +351,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 39.0,
@@ -440,7 +444,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 27.5,
@@ -532,7 +537,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 32.3,
@@ -624,7 +630,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 32.6,
@@ -686,7 +693,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -748,7 +756,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -810,7 +819,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -872,7 +882,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -934,7 +945,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -996,7 +1008,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1058,7 +1071,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1120,7 +1134,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1182,7 +1197,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1244,7 +1260,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1306,7 +1323,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1413,7 +1431,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1475,7 +1494,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1537,7 +1557,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1599,7 +1620,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1661,7 +1683,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1798,7 +1821,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1890,7 +1914,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 50.0,
@@ -1982,7 +2007,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 40.9,
@@ -2074,7 +2100,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 41.0,
@@ -2136,7 +2163,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2198,7 +2226,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2260,7 +2289,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2322,7 +2352,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2384,7 +2415,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2446,7 +2478,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": true
+        "today_convective": true,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2508,7 +2541,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": false
+        "today_convective": false,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2570,7 +2604,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": true
+        "today_convective": true,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2632,7 +2667,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": false
+        "today_convective": false,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2694,7 +2730,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2756,7 +2793,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2818,7 +2856,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2883,7 +2922,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": true
+        "today_convective": true,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2930,7 +2970,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": null
     },
@@ -2988,7 +3029,8 @@
             "mslp_trend": null
           }
         ],
-        "today_convective": null
+        "today_convective": null,
+        "issued_hour": 0
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3008,6 +3050,132 @@
         "cloud_label": null,
         "rain_contrast": null,
         "overview_comparison": null,
+        "provenance": null
+      }
+    },
+    {
+      "name": "evening thunder, issued in the morning",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "17:00",
+            "precip_mm": 8.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": true,
+        "issued_hour": 6
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "dry until evening thunderstorms",
+        "overview_comparison": "Much calmer than yesterday. Dry until evening thunderstorms.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "evening thunder, issued after the onset",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "17:00",
+            "precip_mm": 8.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": true,
+        "issued_hour": 18
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 29.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "high_delta_c": -0.6,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "about the same",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "showery with thunderstorms",
+        "overview_comparison": "Much calmer than yesterday. Showery with thunderstorms.",
         "provenance": null
       }
     }

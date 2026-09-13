@@ -558,6 +558,26 @@ def _clock(value) -> str | None:
         return None
 
 
+def _issued_hour(issuance: DayPart | None) -> int:
+    """The local hour a run went out — ROADMAP item 118.
+
+    24 WHEN THE MOMENT COULD NOT BE ESTABLISHED, which is later than any
+    onset and therefore suppresses every timing qualifier. Absence is not
+    permission: a phrase saying a day was dry until the evening is a claim
+    about elapsed hours, and a run that cannot say what hour it is has no
+    business making it. In practice `issuance` is always present — the
+    pipeline falls back to daypart_without_sun — so this is the guard for a
+    path that does not exist rather than one that does.
+    """
+    if issuance is None:
+        return 24
+
+    try:
+        return int(issuance.local_time.split(":")[0])
+    except (AttributeError, ValueError, IndexError):
+        return 24
+
+
 def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[DayPart, datetime]:
     """Sunrise/sunset for today and tomorrow, reduced to the issuance moment.
 
@@ -1602,6 +1622,7 @@ def run_daily_pipeline(
         today_convective=(
             guidance.instability.convective if guidance.instability is not None else None
         ),
+        issued_hour=_issued_hour(guidance.issuance),
     )
     # The local met service's own forecast, scored as another model. Its
     # prediction comes from the same bulletin fetch that already happened for
@@ -1818,7 +1839,11 @@ def run_daily_pipeline(
     wind_direction = consensus_direction(
         [p.wind_direction_deg for p in day0_predictions if p.wind_direction_deg is not None]
     )
-    wind_shift = describe_wind_shift(primary_hourly, MODELS)
+    # ROADMAP item 118: the anchors are hours of the day, so a clause with
+    # none of them still ahead is a description of a day the reader finished.
+    wind_shift = describe_wind_shift(
+        primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+    )
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
@@ -2253,6 +2278,10 @@ def run_refresh_pipeline(
         today_convective=(
             guidance.instability.convective if guidance.instability is not None else None
         ),
+        # And it is the run this item was raised about: an evening issuance
+        # reusing the morning's onset would compose "dry until evening" after
+        # the evening had begun.
+        issued_hour=_issued_hour(guidance.issuance),
     )
     refresh_yesterday_actual = comparison_for_prompt(
         asdict(_refresh_comparison) if _refresh_comparison is not None else None

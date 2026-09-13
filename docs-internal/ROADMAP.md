@@ -14861,7 +14861,7 @@ found by a reader standing outside rather than by any test.
 
 ---
 
-## 118. Every locked sentence, audited against the clock · **Planned — the audit is done, the fix is not**
+## 118. Every locked sentence, audited against the clock · **Both fixes shipped 2026-09-13**
 
 Item 117b found one code-composed sentence asserting a day was dry through
 hours that had already rained. The operator's call, 2026-09-13: fix the class,
@@ -14970,6 +14970,42 @@ Do wait for item 88's divergence 5, or rather do it BEFORE: that divergence
 ports `comparison_for_prompt`, a consumer of `compute_day_over_day`'s output,
 and this changes that function's signature. Porting against a shape about to
 move is how item 88's whole backlog was created.
+
+### Shipped 2026-09-13
+
+`describe_day_rain` and `describe_wind_shift` both take the issuance, required
+and never defaulted, on both sides. Three vector files carry the boundary and
+each new case was watched failing against the un-ported Dart first:
+`describe_day_rain` returned "dry until evening thunderstorms" where the case
+expects "showery with thunderstorms"; the day-over-day case failed through the
+composed Overview; and the wind case returned the full clause where the case
+expects null.
+
+**The two rules came out different, and the difference is the judgement in
+this item.** The rain phrase suppresses its timing qualifier the moment the
+onset hour arrives, because "dry until X" is a claim about everything before
+X. The wind clause does NOT drop elapsed anchors — it is withheld only when
+NONE of its anchors is still ahead. Dropping them would have rewritten every
+morning forecast this project publishes: the 03:00 anchor is behind a 06:00
+run too, and "northeasterly overnight, turning southwest by midday" is a good
+clause at breakfast. One defect in the evening is not a reason to change the
+morning.
+
+**Dart needed a second pass to match the guard.** The port first gave
+`issuedHour` as an optional positional, which let the vector reader omit it
+and silently keep the old behaviour — the exact failure `required` exists to
+prevent, reproduced inside the commit that was fixing it. It is
+`{required int? issuedHour}` on both sides now, and `thunder` moved to a plain
+positional to allow it.
+
+**Hand-computed tests accompany the vectors**, per `spec/README.md`'s three
+layers: the vectors prove the two implementations agree, and
+`test_a_timing_phrase_is_not_composed_once_its_hour_has_passed` proves Python
+is right in the first place.
+
+The app composes neither function today — `forecast.dart` calls no
+`describeDayRain`, `computeDayOverDay` or `describeWindShift` — so the re-pin
+carries the signature change with no app edit. Checked, not assumed.
 
 Related: items 117 and 117b (the case that found it), 83 (code-written phrases
 and the contract nobody wrote), 104 (which makes this routine), 88 (the vector

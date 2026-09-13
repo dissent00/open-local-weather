@@ -36,60 +36,106 @@ def preds(**overrides) -> list[ModelPrediction]:
 
 
 def test_no_amount_reads_as_a_gap():
-    assert describe_day_rain(None, None) is None
+    assert describe_day_rain(None, None, issued_hour=None) is None
 
 
 def test_plain_dry_day():
-    assert describe_day_rain(0.0, None) == "dry"
+    assert describe_day_rain(0.0, None, issued_hour=None) == "dry"
 
 
 def test_thunder_never_reads_as_dry():
     # 2026-08-24: 0.5 mm in the reanalysis, TS at the airport for an hour.
     # The forecast told readers the following morning it had been "dry again".
-    assert describe_day_rain(0.5, None, thunder=True) == "dry but thundery"
+    assert describe_day_rain(0.5, None, thunder=True, issued_hour=None) == "dry but thundery"
 
 
 def test_thunder_false_still_reads_as_dry():
-    assert describe_day_rain(0.5, None, thunder=False) == "dry"
+    assert describe_day_rain(0.5, None, thunder=False, issued_hour=None) == "dry"
 
 
 def test_thunder_none_still_reads_as_dry():
     # No observation available must behave exactly as before thunder existed.
-    assert describe_day_rain(0.5, None, thunder=None) == "dry"
+    assert describe_day_rain(0.5, None, thunder=None, issued_hour=None) == "dry"
 
 
 def test_evening_thunder_on_a_showery_day():
-    assert describe_day_rain(8.0, "17:00", thunder=True) == "dry until evening thunderstorms"
+    assert describe_day_rain(8.0, "17:00", thunder=True, issued_hour=None) == "dry until evening thunderstorms"
 
+
+
+def test_a_timing_phrase_is_not_composed_once_its_hour_has_passed():
+    """ROADMAP item 118, hand-computed.
+
+    "dry until evening thunderstorms" asserts the hours before the evening
+    were dry. Composed at 06:00 that is a forecast; composed at 18:00 it is a
+    claim about a day the reader has already lived, and on 2026-09-12 it was
+    published to someone who had been rained on since mid-afternoon.
+    """
+    # Still ahead: unchanged, which is every run this project has published.
+    assert (
+        describe_day_rain(8.0, "17:00", thunder=True, issued_hour=6)
+        == "dry until evening thunderstorms"
+    )
+    # The boundary is the onset hour itself. At 17:00 the evening has begun,
+    # so the phrase can no longer claim what came before it.
+    assert (
+        describe_day_rain(8.0, "17:00", thunder=True, issued_hour=17)
+        == "showery with thunderstorms"
+    )
+    assert (
+        describe_day_rain(8.0, "17:00", thunder=True, issued_hour=18)
+        == "showery with thunderstorms"
+    )
+    # The dry band loses its shower qualifier for the same reason: "dry apart
+    # from a brief evening shower" says the rest of the day was dry.
+    assert describe_day_rain(0.9, "17:00", issued_hour=18) == "dry"
+    assert (
+        describe_day_rain(0.9, "17:00", issued_hour=6)
+        == "dry apart from a brief evening shower"
+    )
+
+
+def test_a_completed_day_keeps_its_timing_because_it_was_observed():
+    """`issued_hour=None` is yesterday's side of the comparison.
+
+    The distinction is not cosmetic: yesterday's phrase is built from what the
+    station and the reanalysis actually recorded, so its timing is a report.
+    Today's is built from a forecast, and the elapsed part of it is unverified
+    by anything this module can see.
+    """
+    assert (
+        describe_day_rain(8.0, "17:00", thunder=True, issued_hour=None)
+        == "dry until evening thunderstorms"
+    )
 
 def test_afternoon_thunder_names_the_band():
-    assert describe_day_rain(8.0, "13:00", thunder=True) == "showery with afternoon thunderstorms"
+    assert describe_day_rain(8.0, "13:00", thunder=True, issued_hour=None) == "showery with afternoon thunderstorms"
 
 
 def test_morning_thunder_names_the_band():
-    assert describe_day_rain(20.0, "07:00", thunder=True) == "wet with thunderstorms"
+    assert describe_day_rain(20.0, "07:00", thunder=True, issued_hour=None) == "wet with thunderstorms"
 
 
 def test_dry_band_no_longer_swallows_a_timed_shower():
     # The band edge used to be a cliff: 0.9 mm at 17:00 read "dry" while
     # 1.1 mm at 17:00 read "dry until evening showers". A fifth of a
     # millimetre changed the whole description of the day.
-    assert describe_day_rain(0.9, "17:00") == "dry apart from a brief evening shower"
-    assert describe_day_rain(1.1, "17:00") == "dry until evening showers"
+    assert describe_day_rain(0.9, "17:00", issued_hour=None) == "dry apart from a brief evening shower"
+    assert describe_day_rain(1.1, "17:00", issued_hour=None) == "dry until evening showers"
 
 
 def test_dry_band_timed_shower_afternoon_and_morning():
-    assert describe_day_rain(0.9, "13:00") == "dry apart from a brief afternoon shower"
-    assert describe_day_rain(0.9, "07:00") == "dry apart from an early shower"
+    assert describe_day_rain(0.9, "13:00", issued_hour=None) == "dry apart from a brief afternoon shower"
+    assert describe_day_rain(0.9, "07:00", issued_hour=None) == "dry apart from an early shower"
 
 
 def test_existing_bands_unchanged():
-    assert describe_day_rain(3.0, None) == "largely dry"
-    assert describe_day_rain(3.0, "17:00") == "dry until evening showers"
-    assert describe_day_rain(8.0, "17:00") == "dry until evening showers"
-    assert describe_day_rain(20.0, "17:00") == "dry until heavy evening rain"
-    assert describe_day_rain(8.0, "13:00") == "showery from the afternoon"
-    assert describe_day_rain(20.0, "07:00") == "wet"
+    assert describe_day_rain(3.0, None, issued_hour=None) == "largely dry"
+    assert describe_day_rain(3.0, "17:00", issued_hour=None) == "dry until evening showers"
+    assert describe_day_rain(8.0, "17:00", issued_hour=None) == "dry until evening showers"
+    assert describe_day_rain(20.0, "17:00", issued_hour=None) == "dry until heavy evening rain"
+    assert describe_day_rain(8.0, "13:00", issued_hour=None) == "showery from the afternoon"
+    assert describe_day_rain(20.0, "07:00", issued_hour=None) == "wet"
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +157,7 @@ def test_the_2026_08_24_regression():
     # same reason: silence makes no false claim, and yesterday's thunder is
     # still carried by the structured field, the verification notes and the
     # detailed discussion, which is where a reader goes to look it up.
-    result = compute_day_over_day(actual(thunder=True), preds())
+    result = compute_day_over_day(actual(thunder=True), preds(), issued_hour=0)
     assert result.rain_contrast == "dry"
     assert "again" not in result.rain_contrast
     assert result.yesterday_thunder is True
@@ -131,7 +177,7 @@ def test_two_quiet_days_say_nothing_about_rain_at_all():
     genuinely recurring, which on a pair of dry days is usually the
     instability rather than the rain.
     """
-    result = compute_day_over_day(actual(thunder=False), preds())
+    result = compute_day_over_day(actual(thunder=False), preds(), issued_hour=0)
     assert result.rain_contrast is None
 
 
@@ -139,13 +185,13 @@ def test_a_day_never_asked_about_thunder_is_not_a_day_that_thundered():
     """thunder=None is "never observed", not False. It must not be read as a
     reason to keep the rain clause — the three-valued field decides whether
     the record KNOWS, and an unknown is not an event."""
-    result = compute_day_over_day(actual(thunder=None), preds())
+    result = compute_day_over_day(actual(thunder=None), preds(), issued_hour=0)
     assert result.rain_contrast is None
     assert result.yesterday_thunder is None
 
 
 def test_gap_when_yesterday_unobserved():
-    assert compute_day_over_day(None, preds()) is None
+    assert compute_day_over_day(None, preds(), issued_hour=0) is None
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +211,7 @@ def test_station_rain_the_reanalysis_missed_is_not_described_as_dry():
         rain=False, precip_mm=0.0, onset_hour=None,
         thunder=False, precipitation=True, precipitation_onset="19:00",
     )
-    comparison = compute_day_over_day(yesterday, preds())
+    comparison = compute_day_over_day(yesterday, preds(), issued_hour=0)
 
     # NOT in the Overview any more, and not as "dry again" either — see
     # compute_day_over_day. "dry again" would tell someone who stood in that
@@ -177,7 +223,7 @@ def test_station_rain_the_reanalysis_missed_is_not_described_as_dry():
     assert comparison.yesterday_rain is False
     assert describe_day_rain(
         yesterday.precip_mm, yesterday.observed_onset(), yesterday.thunder
-    ) == "dry apart from a brief evening shower", "the description itself is unchanged"
+    , issued_hour=None) == "dry apart from a brief evening shower", "the description itself is unchanged"
 
 
 def test_the_reanalysis_onset_still_wins_when_it_has_one():
@@ -234,7 +280,7 @@ def test_one_model_of_six_does_not_get_to_name_the_day():
     prose, saying so in as many words. That is the forecaster quietly
     choosing, which is the judgement this whole design exists to remove.
     """
-    result = compute_day_over_day(actual(precip_mm=2.0), real_2026_09_08_day0())
+    result = compute_day_over_day(actual(precip_mm=2.0), real_2026_09_08_day0(), issued_hour=0)
 
     assert result.today_rain_expected is False
     assert "evening showers" not in result.rain_contrast
@@ -254,8 +300,8 @@ def test_a_frontal_passage_does_not_read_like_a_mild_afternoon():
     passes. Kisumu is not the best place for this." The deployment hid the
     defect — it has never once fired here — which is exactly why it survived.
     """
-    mild = compute_day_over_day(actual(high_c=31.5), preds(high_c=25.0))
-    front = compute_day_over_day(actual(high_c=31.5), preds(high_c=6.5))
+    mild = compute_day_over_day(actual(high_c=31.5), preds(high_c=25.0), issued_hour=0)
+    front = compute_day_over_day(actual(high_c=31.5), preds(high_c=6.5), issued_hour=0)
 
     assert mild.high_delta_c == -6.5
     assert front.high_delta_c == -25.0
@@ -270,8 +316,8 @@ def test_a_gale_does_not_read_like_a_freshening_breeze():
     all one word. Not named in item 83; it is the same defect and shipped in
     the same pass rather than paying the two-language port twice.
     """
-    ordinary = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=35.8))
-    collapse = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=9.0))
+    ordinary = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=35.8), issued_hour=0)
+    collapse = compute_day_over_day(actual(peak_wind_kmh=49.3), preds(wind_kmh=9.0), issued_hour=0)
 
     assert ordinary.wind_delta_kmh == -13.5
     assert collapse.wind_delta_kmh == -40.3
@@ -360,12 +406,12 @@ def test_a_changed_day_describes_today_and_stops():
     """
     changed = compute_day_over_day(
         actual(precip_mm=20.0, thunder=False), preds(rain=True, precip_mm=0.1)
-    )
+    , issued_hour=0)
     assert changed.rain_contrast == "dry"
 
     thundery = compute_day_over_day(
         actual(precip_mm=20.0, thunder=True), preds(rain=True, precip_mm=0.1)
-    )
+    , issued_hour=0)
     assert thundery.rain_contrast == "dry"
 
 
@@ -397,19 +443,19 @@ def test_today_can_be_thundery_too(preds_thunder=None):
     y = actual(precip_mm=3.0, onset_hour=None, thunder=True)
     today = preds(rain=False, precip_mm=2.0)
 
-    same = compute_day_over_day(y, today, today_convective=True)
+    same = compute_day_over_day(y, today, today_convective=True, issued_hour=0)
     assert same.rain_contrast == "largely dry with thunderstorms again"
 
     # A genuine change no longer says "again", which is the whole of the
     # 2026-08-24 lesson. It no longer names yesterday either, since 2026-09-10.
-    changed = compute_day_over_day(y, today, today_convective=False)
+    changed = compute_day_over_day(y, today, today_convective=False, issued_hour=0)
     assert changed.rain_contrast == "largely dry"
 
     # And the actionable direction, which was unreachable before: today's
     # storms are today's news, and they are stated as such rather than as a
     # contrast against a quiet yesterday.
     quiet_yesterday = actual(precip_mm=3.0, onset_hour=None, thunder=False)
-    news = compute_day_over_day(quiet_yesterday, today, today_convective=True)
+    news = compute_day_over_day(quiet_yesterday, today, today_convective=True, issued_hour=0)
     assert news.rain_contrast == "largely dry with thunderstorms"
 
 
@@ -420,7 +466,7 @@ def test_the_contrast_frame_needs_an_actual_contrast():
 
     The test now runs on exactly what the summary reports."""
     y = actual(precip_mm=3.0, onset_hour="17:00", thunder=False)
-    result = compute_day_over_day(y, preds(rain=False, precip_mm=2.0), today_convective=False)
+    result = compute_day_over_day(y, preds(rain=False, precip_mm=2.0), today_convective=False, issued_hour=0)
 
     assert "after a largely dry day" not in (result.rain_contrast or "")
     assert result.rain_contrast == "largely dry again"
@@ -582,7 +628,7 @@ def test_a_changed_sky_is_a_changed_day():
     overcast = actual(cloud_cover_pct=90.0)
     clear = preds(cloud_cover_pct=10.0)
 
-    result = compute_day_over_day(overcast, clear)
+    result = compute_day_over_day(overcast, clear, issued_hour=0)
     assert result.cloud_label == "much clearer"
     assert result.overview_comparison == "Much clearer than yesterday."
 
@@ -591,7 +637,7 @@ def test_a_sky_that_held_still_is_not_news():
     """One okta, 12.5 percentage points, is the smallest change the standard's
     own bands distinguish — below it the sky did not change category and
     saying so would be enumeration."""
-    result = compute_day_over_day(actual(cloud_cover_pct=40.0), preds(cloud_cover_pct=48.0))
+    result = compute_day_over_day(actual(cloud_cover_pct=40.0), preds(cloud_cover_pct=48.0), issued_hour=0)
     assert result.cloud_label == "similar cloud"
     assert result.overview_comparison == "Much like yesterday."
 
@@ -599,14 +645,14 @@ def test_a_sky_that_held_still_is_not_news():
 def test_the_sky_joins_the_other_measurements_rather_than_replacing_them():
     result = compute_day_over_day(
         actual(high_c=25.0, cloud_cover_pct=20.0), preds(high_c=29.0, cloud_cover_pct=70.0)
-    )
+    , issued_hour=0)
     assert result.overview_comparison == "Noticeably warmer and much cloudier than yesterday."
 
 
 def test_no_sky_measurement_withholds_the_sameness_claim():
     """"Much like yesterday" is a claim about every measured dimension, so a
     missing one withholds it — the same rule the wind label already follows."""
-    result = compute_day_over_day(actual(cloud_cover_pct=None), preds(cloud_cover_pct=None))
+    result = compute_day_over_day(actual(cloud_cover_pct=None), preds(cloud_cover_pct=None), issued_hour=0)
     assert result.cloud_label is None
     assert result.overview_comparison is None
 
@@ -675,7 +721,7 @@ def test_the_backward_glance_is_gone_from_the_rain_sentence():
 
     c = compute_day_over_day(
         yesterday_thundery, today_dry_until_storms, today_convective=True
-    )
+    , issued_hour=0)
     assert "after a" not in (c.rain_contrast or "")
     assert "yesterday" not in (c.rain_contrast or "")
 

@@ -580,7 +580,7 @@ def test_vectors_day_over_day():
         i = case["input"]
         y = DailyActual.model_validate(i["yesterday_actual"]) if i["yesterday_actual"] else None
         preds = [ModelPrediction.model_validate(p) for p in i["today_day0_predictions"]]
-        got = compute_day_over_day(y, preds, today_convective=i.get("today_convective"))
+        got = compute_day_over_day(y, preds, today_convective=i.get("today_convective"), issued_hour=i["issued_hour"])
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
 
@@ -605,7 +605,7 @@ def test_vectors_describe_day_rain():
     thunder override that stops an observed storm reading as "dry"."""
     for case in load("describe_day_rain.json")["cases"]:
         i = case["input"]
-        assert describe_day_rain(i["precip_mm"], i["onset"], i["thunder"]) == case["expected"], (
+        assert describe_day_rain(i["precip_mm"], i["onset"], i["thunder"], issued_hour=i["issued_hour"]) == case["expected"], (
             f"vector case failed: {case['name']}"
         )
 
@@ -899,5 +899,5 @@ def test_vectors_wind_consensus_direction():
 
 def test_vectors_wind_describe_shift():
     for case in load("wind_describe_shift.json")["cases"]:
-        got = describe_wind_shift(case["input"]["hourly_multi_model"], case["input"]["models"])
+        got = describe_wind_shift(case["input"]["hourly_multi_model"], case["input"]["models"], issued_hour=case["input"]["issued_hour"])
         assert got == case["expected"], f"vector case failed: {case['name']}"

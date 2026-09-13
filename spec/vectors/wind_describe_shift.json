@@ -40,7 +40,8 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
       },
       "expected": "north-northeasterly overnight, turning southwest by midday and west into the evening"
     },
@@ -81,7 +82,8 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
       },
       "expected": "north-northeasterly overnight, turning southwest by midday"
     },
@@ -122,7 +124,8 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
       },
       "expected": "southwesterly throughout"
     },
@@ -163,7 +166,8 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
       },
       "expected": null
     },
@@ -204,7 +208,8 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
       },
       "expected": null
     },
@@ -240,7 +245,50 @@
           "ecmwf_ifs025",
           "icon_seamless",
           "ukmo_seamless"
-        ]
+        ],
+        "issued_hour": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "every anchor is behind an evening issuance",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 18
       },
       "expected": null
     }

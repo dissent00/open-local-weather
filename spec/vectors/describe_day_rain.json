@@ -8,7 +8,8 @@
       "input": {
         "precip_mm": null,
         "onset": null,
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": null
     },
@@ -17,7 +18,8 @@
       "input": {
         "precip_mm": 0.0,
         "onset": null,
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry"
     },
@@ -26,7 +28,8 @@
       "input": {
         "precip_mm": 0.5,
         "onset": null,
-        "thunder": true
+        "thunder": true,
+        "issued_hour": null
       },
       "expected": "dry but thundery"
     },
@@ -35,7 +38,8 @@
       "input": {
         "precip_mm": 0.5,
         "onset": null,
-        "thunder": false
+        "thunder": false,
+        "issued_hour": null
       },
       "expected": "dry"
     },
@@ -44,7 +48,8 @@
       "input": {
         "precip_mm": 0.5,
         "onset": null,
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry"
     },
@@ -53,7 +58,8 @@
       "input": {
         "precip_mm": 0.9,
         "onset": "17:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry apart from a brief evening shower"
     },
@@ -62,7 +68,8 @@
       "input": {
         "precip_mm": 0.9,
         "onset": "13:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry apart from a brief afternoon shower"
     },
@@ -71,7 +78,8 @@
       "input": {
         "precip_mm": 0.9,
         "onset": "07:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry apart from an early shower"
     },
@@ -80,7 +88,8 @@
       "input": {
         "precip_mm": 1.1,
         "onset": "17:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry until evening showers"
     },
@@ -89,7 +98,8 @@
       "input": {
         "precip_mm": 3.0,
         "onset": null,
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "largely dry"
     },
@@ -98,7 +108,8 @@
       "input": {
         "precip_mm": 3.0,
         "onset": "17:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry until evening showers"
     },
@@ -107,7 +118,8 @@
       "input": {
         "precip_mm": 8.0,
         "onset": "13:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "showery from the afternoon"
     },
@@ -116,7 +128,8 @@
       "input": {
         "precip_mm": 8.0,
         "onset": "17:00",
-        "thunder": true
+        "thunder": true,
+        "issued_hour": null
       },
       "expected": "dry until evening thunderstorms"
     },
@@ -125,7 +138,8 @@
       "input": {
         "precip_mm": 8.0,
         "onset": "13:00",
-        "thunder": true
+        "thunder": true,
+        "issued_hour": null
       },
       "expected": "showery with afternoon thunderstorms"
     },
@@ -134,7 +148,8 @@
       "input": {
         "precip_mm": 20.0,
         "onset": "07:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "wet"
     },
@@ -143,7 +158,8 @@
       "input": {
         "precip_mm": 20.0,
         "onset": "07:00",
-        "thunder": true
+        "thunder": true,
+        "issued_hour": null
       },
       "expected": "wet with thunderstorms"
     },
@@ -152,9 +168,40 @@
       "input": {
         "precip_mm": 20.0,
         "onset": "17:00",
-        "thunder": null
+        "thunder": null,
+        "issued_hour": null
       },
       "expected": "dry until heavy evening rain"
+    },
+    {
+      "name": "evening onset, issued in the morning",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "17:00",
+        "thunder": true,
+        "issued_hour": 6
+      },
+      "expected": "dry until evening thunderstorms"
+    },
+    {
+      "name": "evening onset, issued at the onset hour",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "17:00",
+        "thunder": true,
+        "issued_hour": 17
+      },
+      "expected": "showery with thunderstorms"
+    },
+    {
+      "name": "evening onset, issued after it \u2014 the 2026-09-12 case",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "17:00",
+        "thunder": true,
+        "issued_hour": 18
+      },
+      "expected": "showery with thunderstorms"
     }
   ]
 }

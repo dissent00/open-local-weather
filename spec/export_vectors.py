@@ -2223,26 +2223,36 @@ def export_wind_direction() -> None:
         ("the lake breeze, all three anchors agreed", {
             3: [30.0, 35.0, 25.0, 40.0],
             12: [225.0, 220.0, 230.0, 218.0],
-            18: [270.0, 265.0, 275.0, 268.0]}),
+            18: [270.0, 265.0, 275.0, 268.0]}, 0),
         ("the evening is scattered and is left out", {
             3: [30.0, 35.0, 25.0, 40.0],
             12: [225.0, 220.0, 230.0, 218.0],
-            18: [10.0, 200.0, 100.0, 280.0]}),
+            18: [10.0, 200.0, 100.0, 280.0]}, 0),
         ("steady all day is said, not skipped", {
             3: [225.0, 220.0, 230.0, 218.0],
             12: [223.0, 228.0, 222.0, 226.0],
-            18: [220.0, 224.0, 219.0, 227.0]}),
+            18: [220.0, 224.0, 219.0, 227.0]}, 0),
         ("one anchor is not a shift", {
             3: [10.0, 200.0, 100.0, 280.0],
             12: [225.0, 220.0, 230.0, 218.0],
-            18: [10.0, 200.0, 100.0, 280.0]}),
+            18: [10.0, 200.0, 100.0, 280.0]}, 0),
         ("no hour agrees, so nothing is claimed", {
             3: [10.0, 200.0, 100.0, 280.0],
             12: [15.0, 190.0, 95.0, 300.0],
-            18: [20.0, 210.0, 110.0, 290.0]}),
+            18: [20.0, 210.0, 110.0, 290.0]}, 0),
         ("an all-null day is not a calm one", {
             3: [None, None, None, None],
-            12: [None, None, None, None]}),
+            12: [None, None, None, None]}, 0),
+        # ROADMAP item 118. The same agreeing day, issued at 18:01: every
+        # anchor is 03:00, 12:00 or 18:00, so none of the clause is still
+        # ahead and a locked phrase in Today's Forecast would be a pure
+        # retrospective. Issued at 06:00 the same day still reads normally —
+        # the first case above — because the test is whether ANY of it is
+        # ahead, not whether all of it is.
+        ("every anchor is behind an evening issuance", {
+            3: [30.0, 35.0, 25.0, 40.0],
+            12: [225.0, 220.0, 230.0, 218.0],
+            18: [270.0, 265.0, 275.0, 268.0]}, 18),
     ]
     write(
         "wind_describe_shift.json",
@@ -2252,9 +2262,11 @@ def export_wind_direction() -> None:
         "from 0.95 at midday to 0.48 at 19:00, while the DAYS agree with each "
         "other at 0.98-0.99 — so the shift is far better supported than any "
         "one bearing, and it is the shift that gets reported.",
-        [{"name": n, "input": {"hourly_multi_model": hourly(ph), "models": MODELS_HERE},
-          "expected": describe_wind_shift(hourly(ph), MODELS_HERE)}
-         for n, ph in shift_cases],
+        [{"name": n,
+          "input": {"hourly_multi_model": hourly(ph), "models": MODELS_HERE,
+                    "issued_hour": issued},
+          "expected": describe_wind_shift(hourly(ph), MODELS_HERE, issued_hour=issued)}
+         for n, ph, issued in shift_cases],
     )
 
 
@@ -2442,19 +2454,32 @@ def export_day_over_day() -> None:
         ("model with no data doesn't poison the consensus", actual(), 
          [ModelPrediction(model="a", rain=True, high_c=29.5, low_c=18.0, wind_kmh=37.0),
           ModelPrediction(model="b", rain=None, high_c=None, low_c=None, wind_kmh=None)]),
+        # ROADMAP item 118, end to end: the same day composed at 06:00 and at
+        # 18:00. The first keeps "dry until evening thunderstorms"; the second
+        # may not, because by then it is a claim about hours that have gone.
+        ("evening thunder, issued in the morning", actual(),
+         preds([29.0], rains=[True], mm=[8.0], onsets=["17:00"]), True, 6),
+        ("evening thunder, issued after the onset", actual(),
+         preds([29.0], rains=[True], mm=[8.0], onsets=["17:00"]), True, 18),
     ]
 
     cases = []
     for scenario in scenarios:
         name, y, ps = scenario[0], scenario[1], scenario[2]
         convective = scenario[3] if len(scenario) > 3 else None
-        result = compute_day_over_day(y, ps, today_convective=convective)
+        # Issued at midnight unless the scenario says otherwise, so every
+        # onset is still ahead and these keep the behaviour the record has.
+        issued = scenario[4] if len(scenario) > 4 else 0
+        result = compute_day_over_day(
+            y, ps, today_convective=convective, issued_hour=issued
+        )
         cases.append({
             "name": name,
             "input": {
                 "yesterday_actual": dump(y),
                 "today_day0_predictions": [dump(p) for p in ps],
                 "today_convective": convective,
+                "issued_hour": issued,
             },
             "expected": dump(result),
         })
@@ -2878,13 +2903,30 @@ def export_describe_day_rain() -> None:
         ("wet day with thunder", 20.0, "07:00", True),
         ("heavy evening rain", 20.0, "17:00", None),
     ]
+    # ROADMAP item 118. Every case above describes a day that is OVER, which
+    # is `issued_hour=None`, and those are the phrases the record has always
+    # produced. The three below are the boundary the item turned on: a timing
+    # qualifier says "and not before", so it may only be composed while the
+    # hour it names is still ahead.
+    timed = [
+        ("evening onset, issued in the morning", 8.0, "17:00", True, 6),
+        ("evening onset, issued at the onset hour", 8.0, "17:00", True, 17),
+        ("evening onset, issued after it — the 2026-09-12 case", 8.0, "17:00", True, 18),
+    ]
     cases = [
         {
             "name": name,
-            "input": {"precip_mm": precip, "onset": onset, "thunder": thunder},
-            "expected": describe_day_rain(precip, onset, thunder),
+            "input": {
+                "precip_mm": precip,
+                "onset": onset,
+                "thunder": thunder,
+                "issued_hour": issued,
+            },
+            "expected": describe_day_rain(precip, onset, thunder, issued_hour=issued),
         }
-        for name, precip, onset, thunder in scenarios
+        for name, precip, onset, thunder, issued in (
+            [(n, p_, o, t, None) for n, p_, o, t in scenarios] + timed
+        )
     ]
     write(
         "describe_day_rain.json",

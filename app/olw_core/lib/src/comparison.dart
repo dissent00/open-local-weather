@@ -281,11 +281,42 @@ String? _onsetPhrase(String? onset) {
 ///
 /// Null when there is no amount to reason from, so the caller omits the
 /// comparison rather than guessing.
-String? describeDayRain(double? precipMm, String? onset, [bool? thunder]) {
+/// Whether a timing qualifier is still a FORECAST at [issuedHour].
+///
+/// Upstream ROADMAP item 118. Every timing phrase here says, in effect, "and
+/// not before" — "dry until evening showers" asserts the hours before the
+/// evening were dry. That is a forecast at 06:00 and a claim about the past
+/// at 18:00, and nothing checked which one it was.
+///
+/// NOT "did it actually rain": this module holds no observations of a day in
+/// progress. The rule is narrower — do not assert what a period was like once
+/// that period has elapsed. Same discipline as "unknown is not false".
+///
+/// Measured case, 2026-09-12: the day's first issuance went out at 18:01 with
+/// the blend's onset at 18:00, and this composed "dry until evening
+/// thunderstorms" for a day GFS had already given 3.5 mm at 15:00. The prompt
+/// locks the phrase VERBATIM, so no instruction could have repaired it.
+///
+/// [issuedHour] is null for a day that is OVER and described from
+/// observations — yesterday's side — where the timing is a report rather than
+/// a claim. Passed explicitly rather than defaulted so a caller must decide
+/// which day it holds.
+bool _onsetIsAhead(String? onset, int? issuedHour) {
+  if (onset == null) return false;
+  if (issuedHour == null) return true;
+
+  final onsetHour = int.tryParse(onset.split(':').first);
+  if (onsetHour == null) return false;
+
+  return onsetHour > issuedHour;
+}
+
+String? describeDayRain(double? precipMm, String? onset, bool? thunder,
+    {required int? issuedHour}) {
   if (precipMm == null) return null;
 
   final band = dayRainBand(precipMm)!;
-  final when = _onsetPhrase(onset);
+  final when = _onsetIsAhead(onset, issuedHour) ? _onsetPhrase(onset) : null;
 
   // Thunder outranks the amount. A storm that passes over the city and drops
   // half a millimetre is what the reader remembers about the day, and calling
@@ -352,6 +383,7 @@ DayOverDayComparison? computeDayOverDay(
   DailyActual? yesterdayActual,
   List<ModelPrediction> todayDay0Predictions, {
   bool? todayConvective,
+  required int? issuedHour,
 }) {
   if (yesterdayActual == null) return null;
 
@@ -405,7 +437,12 @@ DayOverDayComparison? computeDayOverDay(
   // Today does have a thunder signal: the convective flag. THE RULE IS
   // GENERAL — a dimension may enter this comparison only if BOTH days can be
   // measured on it.
-  final todayCharacter = describeDayRain(todayPrecip, todayOnset, todayConvective);
+  // Upstream ROADMAP item 118. Today is a day IN PROGRESS and its phrase is
+  // composed from a forecast, so a timing qualifier whose hour has passed is
+  // a claim about hours nobody here can see — see _onsetIsAhead.
+  final todayCharacter =
+      describeDayRain(todayPrecip, todayOnset, todayConvective,
+          issuedHour: issuedHour);
   final yesterdayCharacter = describeDayRain(
       yesterdayActual.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed
@@ -414,7 +451,10 @@ DayOverDayComparison? computeDayOverDay(
       // the record scores as wet — the same contradiction, one layer down,
       // that item 42 was raised to fix.
       yesterdayActual.observedOnset(),
-      yesterdayActual.thunder);
+      yesterdayActual.thunder,
+      // The day is OVER and this is built from observations, so its timing is
+      // a report rather than a claim and is never suppressed.
+      issuedHour: null);
 
   String? rainContrast;
   // Hoisted because the keys are computed inside the block below and the

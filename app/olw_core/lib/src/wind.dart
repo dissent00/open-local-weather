@@ -142,14 +142,32 @@ List<double> _directionsAt(Map<String, Object?> hourly, List<String> models, int
 /// Lowercase and unpunctuated, for the same reason describeExtendedTrend ships
 /// a clause: the prompt uses it verbatim, so anything left to phrase is
 /// something that can be phrased wrong.
-String? describeWindShift(Map<String, Object?> hourly, List<String> models) {
+String? describeWindShift(Map<String, Object?> hourly, List<String> models,
+    {required int issuedHour}) {
   final named = <(String, String)>[];
+  // The hour each named anchor came from, kept only for the check below.
+  final hours = <int>[];
   for (final (hour, label) in shiftAnchors) {
     final point = consensusDirection(_directionsAt(hourly, models, hour));
-    if (point != null) named.add((point, label));
+    if (point != null) {
+      named.add((point, label));
+      hours.add(hour);
+    }
   }
 
   if (named.length < 2) return null;
+
+  // Upstream ROADMAP item 118. The anchors are 03:00, 12:00 and 18:00, so a
+  // run issued at 18:01 would compose a clause every hour of which has gone,
+  // and the prompt would place it in Today's Forecast locked verbatim.
+  //
+  // THE TEST IS "IS ANY OF IT STILL AHEAD", NOT "DROP WHAT HAS PASSED." The
+  // first anchor is behind a 06:00 run too, and "northeasterly overnight,
+  // turning southwest by midday" is a good clause at breakfast. Dropping
+  // elapsed anchors would rewrite every morning forecast to fix an evening
+  // case, so the composition is untouched and only the wholly retrospective
+  // clause is withheld.
+  if (hours.every((h) => h <= issuedHour)) return null;
 
   // Nothing turned. Said rather than skipped: a steady wind all day is a real
   // planning answer, exactly as a steady temperature spell is.
