@@ -13654,11 +13654,11 @@ pipeline can both read.
 every scored issuance.** Identical opportunity set, so each scored issuance is
 a paired comparison.
 
-**C4. A target date is DECLINED below a floor of remaining period.** At 23:30
-the day's high and rain are settled; asking for them is asking for a report
-and scoring them would credit a forecaster for reading a thermometer. The
-prose still covers the remaining hours — that is the horizon/verification
-separation doing its job.
+**C4. ~~A target date is DECLINED below a floor of remaining period.~~
+WITHDRAWN 2026-09-13 — see "C1-C6 reconciled" below.** It read: "At 23:30 the
+day's high and rain are settled; asking for them is asking for a report and
+scoring them would credit a forecaster for reading a thermometer." True, and
+about a frame that no longer exists.
 
 **C5. How much of the target remained at issuance is RECORDED per
 prediction**, so the record can partition a dawn call from a dusk one. Without
@@ -13673,15 +13673,91 @@ one day would shrink the sampling-noise floor and fire rankings too eagerly.
 the blend — more draws of a noisy forecaster estimate its skill better, not
 worse. What it breaks is independence, and only the gate depends on that.*
 
-### Measured, so C4 is not guesswork
+### C1-C6 reconciled against the contract settled the next day
 
-**2026-09-13: the floor was measurable after all, and it is not one number.**
-"Measure once late issuances exist" conflated two questions. Where the floor
-sits does not depend on when this project happens to issue — it depends on
-when the WEATHER stops moving, and the hourly archive has always said that.
+**The operator's observation, 2026-09-13:** C4's wording was set while the
+forecast-update concept still existed, so in a world where "forecasts are just
+issued when they are issued and the comparison window is moving, we probably
+need to rethink how this is used."
+
+That is right, and it is the same class of leftover as `run_refresh_pipeline`
+itself: a rule that was correct under the frame it was written in, carried
+forward into a frame where its premise is gone. The dates make it plain — this
+C1-C6 list is headed **SETTLED 2026-09-12**, and "The contract, settled
+2026-09-13" replaced Day+0 with a rolling +24 h the following day.
+
+**C4 does not need rewording. It has no job left.** Its premise is that a
+scored quantity can be about hours the reader has already lived. Under the
+reframe the Day+0 window STARTS at the issuance, so every hour in it is ahead
+by construction — there is nothing to decline. Day+3 and Day+7 were never
+exposed to this and contract item 1 says so in as many words: a claim made at
+06:00 or at 22:00 about day D+3 describes a period that has not begun either
+way. So the floor has no dimension left to apply to, at any lead.
+
+| | survives the reframe? |
+|---|---|
+| C1, keying by `(issuance, target_date)` | **half.** The keying survives and C5 depends on it. "`today_properties` becomes the entry whose target date is the issuance date" is superseded by contract item 2. |
+| C2, score when the INFORMATION moved | yes, unchanged — and its third trigger matters more, since observations are what decline a rain call (below). |
+| C3, models and blend scored together | yes, unchanged. |
+| C4, decline below a floor | **no. Withdrawn.** |
+| C5, record how much of the target remained | yes, but SMALLER. Its stated motivation — "lead-in-dates silently averages a two-hour call with an eighteen-hour one" — was a Day+0 problem and dissolves with Day+0. For Day+3 the spread between an 06:00 and a 22:00 issuance is 16 h against a 66-90 h lead, so roughly 20% rather than an order of magnitude. Worth recording, no longer urgent. |
+| C6, windows count distinct target dates | yes, and it matters more once a day holds several issuances. |
+
+**What the settling measurement actually sized.** It was gathered to size C4's
+floor and it does not, because there is no floor. It sizes **C7** — the
+published structure stays day-shaped (contract item 6), so "today's high" is
+still a header a reader sees, and at 18:01 that number is an observation
+rather than a forecast. The numbers below are re-attached to C7 and the
+finding that `rain` cannot be declined by a clock belongs there too: it is a
+rule about what the DISPLAY may assert, answered by the station via
+`_observed_so_far`, not about what the record scores.
+
+**Measured: what re-deriving Day+0 as a rolling window actually does.**
+Contract item 3 re-derives rather than freezes, so the size of the change is
+what a reader watches move on the accuracy page. 120 days at the reference
+location, window from each issuance hour against the calendar day it starts
+in:
+
+| issued | high moves | low moves |
+|---|---|---|
+| 00:00 | 0/119 | 0/119 |
+| 06:00 | **0/119** | **39/119** |
+| 09:00 | 0/119 | 110/119 |
+| 15:00 | 66/119 | 110/119 |
+| 18:00 | 116/119 (median −0.20 °C) | 110/119 |
+
+**Every issuance in the record so far is an 06:00 one** — the first slot fires
+at 03:02Z, 06:02 local — so re-deriving the stored series changes
+`temp_high_c` on NO day and `temp_low_c` on about a third, where the dawn
+minimum had already passed and the window takes tomorrow's instead. That is a
+cheap re-derivation, and it is one dimension.
+
+The comparability precondition holds by construction: 24 consecutive hours
+always span one diurnal cycle, so the window always contains a maximum and a
+minimum whatever hour it starts at. Checked rather than assumed, because
+"obviously" is how a rounding divergence got past 4801 values here once.
+
+**And the −0.20 °C is Kisumu, not the design.** The shift is small because
+consecutive days' peaks are close at this location. Somewhere with real
+day-to-day variation, scoring tomorrow's peak instead of today's is a much
+larger change, and `sandbox/`'s fleet is where that gets measured before the
+numbers above are generalised.
+
+### Measured for C7, and the method reproduces this item's own control
+
+**Gathered for C4, and it belongs to C7.** The scan was run to size C4's
+floor, before the reconciliation above established there is no floor to size.
+The numbers are unchanged and the question they answer is now C7's: the
+published structure stays day-shaped, so "today's high" is a header a reader
+sees, and it says when that header stops being a forecast and becomes a report
+of something they already lived through.
+
+Worth keeping the method note, because "measure once late issuances exist" was
+wrong for a second reason independent of the reframe: when a quantity settles
+does not depend on when this project happens to issue. It depends on when the
+WEATHER stops moving, and the hourly archive has always said that.
 `tools/scan_settling_hours.py` asks it directly: a quantity is settled at hour
-h when its whole-day value equals its value over the hours up to h, which is
-exactly the condition under which a forecast for it is a report.
+h when its whole-day value equals its value over the hours up to h.
 
 120 days of hourly archive at the reference location, local time. Percentage
 of days on which the answer is already fixed:
@@ -13700,7 +13776,7 @@ Median settling hour: high 15:00, low 07:00, peak gust 15:00, onset 13:00.
 the daily minimum at or before 08:00 on 39 of 40 days (97.5%); this scan finds
 118 of 120 (98.3%) over a different and longer window.
 
-**THE FLOOR IS PER DIMENSION, exactly as C9's observed instrument is.** At
+**THE ANSWER IS PER DIMENSION, exactly as C9's observed instrument is.** At
 18:00 the high is settled on every one of 120 days and the peak gust is still
 live on one day in fifteen. A single floor either declines a field that has
 not resolved or scores one that has, and which error it makes depends on the
@@ -13708,8 +13784,7 @@ dimension rather than on the hour. Wind, not temperature, sets the latest
 clock-based floor — which is the opposite of what "the day's high and rain are
 settled" assumes.
 
-**`rain` CANNOT BE DECLINED BY A CLOCK AT ALL, and this is the finding that
-changes C4's shape.** It settles the moment measurable rain falls, so a day
+**`rain` CANNOT BE LABELLED BY A CLOCK AT ALL.** It settles the moment measurable rain falls, so a day
 that has rained is fixed early — median 13:00 — and a day that has NOT is open
 until midnight, because "no rain today" is a claim about every remaining hour.
 The 25% that never settle are not noise; they are the dry days, and they are
@@ -13751,9 +13826,8 @@ Two consequences:
 
 ### Still open, and deliberately
 
-- **The floor value in C4.** Measure once late issuances exist; this project
-  sizes thresholds against the record, not against convenient samples. Ship
-  conservative and revisit.
+- ~~**The floor value in C4.**~~ Withdrawn with C4 — see the reconciliation
+  above. What replaced it is a C7 display question, and it is measured.
 - **The exact disagreement tests in C2.** Each one is cheap; which set earns
   its place is a measurement, and the tests must not be so sensitive that
   every hourly METAR triggers a call.

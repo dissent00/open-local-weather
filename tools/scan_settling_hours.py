@@ -104,10 +104,70 @@ def _settles_at(hours: list[tuple[int, dict]], dimension: str) -> int | None:
     raise ValueError(dimension)
 
 
+def _report_windows(complete: dict) -> int:
+    """What a rolling +24h window holds, against the calendar day it starts in.
+
+    ROADMAP item 104's contract replaces Day+0 with this window, on the
+    argument that every issuance then makes the same KIND of claim, so an
+    06:00 row and a 22:00 row are directly comparable. That argument has a
+    structural precondition: the window has to CONTAIN a diurnal maximum and
+    minimum whatever hour it starts at, or the quantity is not the same one.
+    Twenty-four consecutive hours does, but "obviously" is how this project
+    got a rounding divergence past 4801 values, so it is checked.
+
+    The second column is what re-deriving the existing Day+0 series will
+    actually do to it — contract item 3 re-derives rather than freezes, and
+    the size of the change is what a reader will see move on the accuracy
+    page.
+    """
+    ordered = sorted(complete)
+    hours_by_day = {d: {h: v for h, v in complete[d]} for d in ordered}
+
+    print("A rolling +24h window from each issuance hour, against the CALENDAR")
+    print("day it starts in. 'moves' = the window's value differs from the")
+    print("calendar day's by more than 0.05.\n")
+    print("  issued   window high vs day high      window low vs day low")
+    print("           moves      median shift      moves      median shift")
+
+    for issued in (0, 6, 9, 12, 15, 18, 21):
+        high_shifts, low_shifts = [], []
+        for i, d in enumerate(ordered[:-1]):
+            nxt = ordered[i + 1]
+            if (nxt - d).days != 1:
+                continue
+            window = [hours_by_day[d][h]["temperature_2m"] for h in range(issued, 24)]
+            window += [hours_by_day[nxt][h]["temperature_2m"] for h in range(0, issued)]
+            window = [t for t in window if t is not None]
+            day = [v["temperature_2m"] for _, v in complete[d] if v["temperature_2m"] is not None]
+            if not window or not day:
+                continue
+            high_shifts.append(max(window) - max(day))
+            low_shifts.append(min(window) - min(day))
+
+        def summarise(shifts):
+            moved = sum(1 for x in shifts if abs(x) > 0.05)
+            median = sorted(shifts)[len(shifts) // 2] if shifts else 0.0
+            return f"{moved:3d}/{len(shifts):3d}   {median:+6.2f} C"
+
+        print(f"   {issued:02d}:00   {summarise(high_shifts)}   {summarise(low_shifts)}")
+
+    print("\nA 24-hour window always spans one full diurnal cycle, so it always")
+    print("contains a maximum and a minimum — the comparability precondition")
+    print("holds by construction and the numbers above only say by how much the")
+    print("re-derived series will differ from the stored one.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=int, default=120, help="How far back to look.")
     parser.add_argument("--config", default=str(ROOT / "config" / "location.yaml"))
+    parser.add_argument(
+        "--window",
+        action="store_true",
+        help="Instead of settling hours, report what a rolling +24h window from "
+             "each issuance hour holds, against the calendar day it starts in.",
+    )
     args = parser.parse_args()
 
     location = load_location_config(args.config)
@@ -122,6 +182,9 @@ def main() -> int:
     days = _series(payload)
     complete = {d: h for d, h in days.items() if len(h) == 24}
     print(f"{len(complete)} complete days of hourly archive\n")
+
+    if args.window:
+        return _report_windows(complete)
 
     for dimension in DIMENSIONS:
         settled = {d: _settles_at(h, dimension) for d, h in complete.items()}
