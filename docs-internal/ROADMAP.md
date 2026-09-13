@@ -13675,9 +13675,63 @@ worse. What it breaks is independence, and only the gate depends on that.*
 
 ### Measured, so C4 is not guesswork
 
-Where the floor sits cannot be measured yet — only first issuances score, so
-the record holds no late ones. What IS measured, from 40 days of hourly
-archive at the reference location:
+**2026-09-13: the floor was measurable after all, and it is not one number.**
+"Measure once late issuances exist" conflated two questions. Where the floor
+sits does not depend on when this project happens to issue — it depends on
+when the WEATHER stops moving, and the hourly archive has always said that.
+`tools/scan_settling_hours.py` asks it directly: a quantity is settled at hour
+h when its whole-day value equals its value over the hours up to h, which is
+exactly the condition under which a forecast for it is a report.
+
+120 days of hourly archive at the reference location, local time. Percentage
+of days on which the answer is already fixed:
+
+| by | `temp_high_c` | `temp_low_c` | `peak_wind_kmh` | `rain` / `onset_hour` |
+|---|---|---|---|---|
+| 08:00 | 0.0% | 98.3% | 0.0% | 32.5% |
+| 15:00 | 95.0% | 98.3% | 51.7% | 64.2% |
+| 17:00 | **100%** | 98.3% | 79.2% | 72.5% |
+| 18:00 | **100%** | 98.3% | 93.3% | 72.5% |
+| 22:00 | **100%** | 98.3% | **100%** | 75.0% |
+
+Median settling hour: high 15:00, low 07:00, peak gust 15:00, onset 13:00.
+
+*Control:* the method reproduces this item's own published figure. It reports
+the daily minimum at or before 08:00 on 39 of 40 days (97.5%); this scan finds
+118 of 120 (98.3%) over a different and longer window.
+
+**THE FLOOR IS PER DIMENSION, exactly as C9's observed instrument is.** At
+18:00 the high is settled on every one of 120 days and the peak gust is still
+live on one day in fifteen. A single floor either declines a field that has
+not resolved or scores one that has, and which error it makes depends on the
+dimension rather than on the hour. Wind, not temperature, sets the latest
+clock-based floor — which is the opposite of what "the day's high and rain are
+settled" assumes.
+
+**`rain` CANNOT BE DECLINED BY A CLOCK AT ALL, and this is the finding that
+changes C4's shape.** It settles the moment measurable rain falls, so a day
+that has rained is fixed early — median 13:00 — and a day that has NOT is open
+until midnight, because "no rain today" is a claim about every remaining hour.
+The 25% that never settle are not noise; they are the dry days, and they are
+the whole difficulty. So `rain` is declined against an OBSERVATION, never
+against the hour: if the station has already seen rain, the call is a report;
+if it has not, the call is still a forecast at 23:30. `_observed_so_far`
+already reads exactly that, for C2's triggers.
+
+**And C7 is measured, not assumed.** The current evening slot issues at 18:01
+local, past the high's settling hour on 120 days out of 120. "A high that has
+already happened is reported as observed, then dropped" is not an edge case at
+that slot; it is every day.
+
+**What this does NOT measure.** One location, and ERA5 reanalysis rather than
+the station — the record's `rain` and `temp_high_c` are ERA5 with station
+observations applied over the top (`_apply_station_observations`), so a
+station-based scan could settle at different hours. Kisumu is also mild and
+consistent, which is what `sandbox/` exists to say: a fleet run of this scan
+would show whether a frontal climate settles later. Ship conservative, per the
+note below, and re-measure per location before generalising the numbers.
+
+### The earlier measurement, from 40 days of hourly archive at the reference location
 
 **The daily minimum fell at or before 08:00 on 39 of 40 days** (05:00 twice,
 06:00 eleven times, 07:00 twenty-six times; once at 23:00).
