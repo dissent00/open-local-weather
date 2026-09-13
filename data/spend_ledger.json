@@ -270,6 +270,22 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 44.815
+    },
+    {
+      "at": "2026-09-13T15:01:33.312108+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_200",
+      "elapsed_s": 31.718
+    },
+    {
+      "at": "2026-09-13T15:02:05.033974+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_200",
+      "elapsed_s": 43.425
     }
   ]
 }

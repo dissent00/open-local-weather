@@ -1,39 +1,39 @@
 {
   "date": "2026-09-13",
-  "rain_expected": "Scattered showers and thunderstorms expected late afternoon and evening",
-  "onset_window": "Late afternoon through evening",
-  "peak_wind_kmh": 41.4,
+  "rain_expected": "Showers and thunderstorms expected this evening and tonight",
+  "onset_window": "Evening and overnight",
+  "peak_wind_kmh": 28.6,
   "temp_high_c": 29.2,
   "temp_low_c": 18.0,
   "temp_high_low_display": "29°C / 85°F high, 18°C / 64°F low",
-  "mslp_trend_24h": "+0.5 hPa",
-  "synoptic_pattern": "Strong regional pressure gradient (SE high to NE low) with high convective instability (peak CAPE 3540 J/kg)",
+  "mslp_trend_24h": "+0.8 hPa",
+  "synoptic_pattern": "Strong NE-SE gradient (1006-1017 hPa)",
   "uv_index_max": "9.4",
-  "air_quality_aqi": "Moderate (CAMS model peak US AQI 78; ground stations stale)",
+  "air_quality_aqi": "78",
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
       "station_id": "A418534",
-      "aqi": 99,
-      "pm25": 99.0,
+      "aqi": 72,
+      "pm25": 72.0,
       "pm10": 15.0,
-      "measured_at": "2026-09-13T00:00:00Z"
+      "measured_at": "2026-09-13T12:00:00Z"
     },
     {
       "name": "Ochieng' Avenue, Kisumu Central",
       "station_id": "A418300",
-      "aqi": 136,
-      "pm25": 136.0,
+      "aqi": 66,
+      "pm25": 66.0,
       "pm10": 18.0,
-      "measured_at": "2026-09-13T00:00:00Z"
+      "measured_at": "2026-09-13T12:00:00Z"
     },
     {
       "name": "Dunga Beach",
       "station_id": "A418504",
-      "aqi": 106,
-      "pm25": 106.0,
+      "aqi": 47,
+      "pm25": 47.0,
       "pm10": 37.0,
-      "measured_at": "2026-09-13T00:00:00Z"
+      "measured_at": "2026-09-13T12:00:00Z"
     }
   ],
   "sunrise": "06:33",
@@ -429,32 +429,121 @@
     "fetched_at_utc": "2026-09-13T03:02:45.961362Z"
   },
   "yesterday_verification_summary": "Overall verification across available lead times showed strong performance on precipitation calls for yesterday, September 12th. At Day+0, all numerical models successfully predicted rainfall occurrence with minimal onset timing errors. At Day+3 and Day+7, models demonstrated solid skill on rainfall trends, though GFS maintained its persistent daytime warm bias and surface wind under-forecasting.",
-  "narrative_markdown": "## Overview\nCloudier than yesterday. Dry until evening thunderstorms. Temperatures and winds much the same through Wednesday, with rain becoming more likely.\n\n## Today's Forecast\nTemperatures peaking at 29.2°C / 84.6°F will bring warm conditions through the day, with overnight lows settling near 18.0°C / 64.4°F. Wind conditions will follow a distinct pattern, north-northeasterly overnight, turning south-southwest by midday, with speeds reaching peak gusts of 41.4 km/h (22 kt) in the late afternoon. Solar UV exposure will reach a Very High peak index of 9.4 around midday before cloud cover increases. Scattered showers and thunderstorms are expected during the late afternoon and evening, producing roughly 5.2 mm (0.20 in) of rain. Air quality ground sensors are currently stale, with the most recent reading recorded 3 hours ago at Ochieng' Avenue, Kisumu Central (136 US AQI); model guidance indicates moderate conditions today with a peak US AQI of 78.\n\n## Extended Outlook\nOver the next three days (Monday through Wednesday), daily maximum temperatures will hold steady between 29°C / 84°F and 32°C / 89°F with overnight lows around 18°C / 64°F to 19°C / 66°F. Rainfall probability remains high across models, with showers and thunderstorms becoming increasingly likely during afternoon and evening hours.\n\nLooking ahead to days four through seven (Thursday through Sunday), guidance points toward a cooler and significantly wetter trend. Daytime maximum temperatures are expected to drop into the 26°C / 79°F to 28°C / 82°F range under widespread cloud cover and repeated rainfall episodes. Extended lead-time confidence is moderate; while ECMWF and Best Match have established strong track records at Day+3 and Day+7, models show divergence on total rainfall amounts by late weekend.\n\n## Severe Weather / Hazard Potential\nHigh convective instability is forecast across the Nyanza Basin this afternoon and evening. UKMO models extreme CAPE peaking at 3540 J/kg around 19:00 EAT and ECMWF reaches 2070 J/kg, while GFS remains much more suppressed at 680 J/kg. This high instability supports localized severe thunderstorms capable of producing heavy rain (5.2 mm / 0.20 in expected locally), frequent cloud-to-ground lightning, and sudden, violent wind squalls. Any developing thunderstorm can produce intense localized wind gusts far exceeding the background forecast wind speeds, creating immediate hazards on land and open water regardless of ambient conditions.\n\n## Winam Gulf — Conditions for Boaters\nBoating conditions on Winam Gulf will turn hazardous late today. Winds will start light and north-northeasterly early, turning south-southwesterly by midday and strengthening to 22.5 km/h (12 kt) with peak gusts near 41.4 km/h (22 kt) during the afternoon. Extreme convective instability over the lake (CAPE exceeding 2000 to 3000 J/kg) will trigger scattered thunderstorms late afternoon and evening. Sudden convective wind shifts, squalls, rough lake choppy waves, and reduced visibility represent significant dangers for small craft. Lake users are strongly advised to complete operations and seek shelter before late afternoon storm development.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the southeast (1017 hPa) — a 10 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is near-steady.\n\nOn the local basin scale, mean sea-level pressure ranges from 1013.4 hPa across western Nyanza lowlands to 1015.7 hPa over the southeastern highlands. This regional gradient promotes strong afternoon lake-breeze convergence off Lake Victoria into the Winam Gulf basin, interacting with abundant atmospheric instability to fuel evening convective storms.\n\n### Forecaster Confidence Notes\nModel weighting today is strongly guided by verified track records. At Day+0, Best Match is the top-ranked rain caller in the stored record (85% accuracy) and forms the baseline for precipitation and wind timing. ECMWF maintains solid overall skill across precipitation and temperature, though its peak wind speeds historically run low. GFS exhibits a well-established daytime warm bias (-1.0°C at Day+0, -2.2°C at Day+3) and wind under-forecasting (+19.6 km/h at Day+0); its higher high temperature call (30.9°C) was accordingly discounted in favor of the consensus call at 29.2°C. UKMO and ICON highlight significant atmospheric instability, though both carry early onset timing biases.\n\nThe Kenya Meteorological Department (KMD) official bulletin calls for sunny intervals in the morning and afternoon, with moderate showers and thunderstorms expected over a few places later in the day, alongside a temperature range of 20.0°C / 68°F to 28.0°C / 82°F. This aligns closely with the numerical consensus regarding storm timing, though calling for a slightly cooler high.\n\nGround AQI station monitoring indicates that all local sensors are currently stale (3 hours old). The last actual readings from 00:00 UTC were:\n- Kisumu Airport: 99 US AQI (PM2.5: 99.0 µg/m³)\n- Ochieng' Avenue, Kisumu Central: 136 US AQI (PM2.5: 136.0 µg/m³)\n- Dunga Beach: 106 US AQI (PM2.5: 106.0 µg/m³)\n\nDue to stale ground data, current air quality assessment relies on CAMS atmospheric modeling, which indicates moderate conditions today peaking at 78 US AQI.",
+  "narrative_markdown": "## Overview\nUpdated model guidance confirms showers and thunderstorms remain on track for this evening and overnight. Thunderstorms are possible this evening, with instability peaking around 18:00. Temperatures and winds much the same through Wednesday, with rain becoming more likely.\n\n## Today's Forecast\nShowers and thunderstorms are expected across Kisumu this evening and overnight, bringing an estimated 5.2 mm (0.20 in) of precipitation with an 85% probability of rain. With daytime highs having reached 29.2°C / 84.6°F, temperatures will drop overnight to a low near 18.0°C / 64.4°F. Peak wind gusts will reach 28.6 km/h (15 kt) tonight. There is no current ground AQI data available; the most recent reading was 72 US AQI at Kisumu Airport, recorded 3 hours ago (3 stations reported at that time). Model guidance indicates air quality will remain moderate tonight with a peak US AQI of 78.\n\n## Extended Outlook\nOver the next three days (Monday through Wednesday), maximum temperatures will range between 29.9°C / 85.8°F and 32.3°C / 90.1°F, with overnight lows holding near 18.0°C / 64.4°F to 19.9°C / 67.8°F. Rain probabilities remain elevated across all models (75% call on Wednesday), with afternoon and evening thunderstorms remaining likely. At Day+3, no model is3 meaningfully better than the others here yet in stored verification, though guidance points toward a consistent wet mid-week pattern.\n\nLooking ahead to days four through seven (Thursday through Sunday), guidance indicates a cooler and significantly wetter weather regime, with daytime highs dropping into the 27.1°C / 80.8°F to 29.3°C / 84.7°F range. Precipitation probability at Day+7 stands at 55%. Long-run verification at Day+7 shows usable skill across major models, though confidence in exact daily rainfall totals decreases toward the end of the 7-day window.\n\n## Severe Weather / Hazard Potential\nAtmospheric instability is high across the Nyanza Basin this evening, supporting thunderstorm development. UKMO models extreme CAPE peaking at 3540 J/kg at 18:00 EAT, with ECMWF reaching 2280 J/kg, ICON at 1950 J/kg, and Best Match at 2560 J/kg, while GFS remains lower at 880 J/kg. This significant spread in model convective energy highlights high potential for severe local storms. Thunderstorms tonight carry risks of heavy localized rainfall (5.2 mm / 0.20 in expected), cloud-to-ground lightning, and sudden, strong wind gusts. Because thunderstorm downdrafts generate intense, localized wind squalls that global model wind forecasts do not resolve, sudden gale-force gusts remain a threat with any developing storm regardless of ambient background wind speeds.\n\n## Winam Gulf — Conditions for Boaters\nConditions over Winam Gulf will be hazardous for boaters and fishermen tonight. Convective instability over the lake remains high, with CAPE values exceeding 2000 J/kg, triggering scattered showers and thunderstorms across the water. Secondary location guidance indicates peak winds reaching 28.6 km/h (15 kt) with localized gusts up to 54.7 km/h (30 kt) near storm cells. Developing storms present severe risks including sudden wind shifts, violent squalls, rough choppy waves, and reduced visibility. Small craft operators are strongly advised to exercise extreme caution and seek safe harbor before storm cells build over the Gulf tonight and during Monday afternoon convective periods.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the southeast (1017 hPa) — a 10 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north, northwest — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is near-steady.\n\nAcross the Nyanza Basin, mean sea-level pressure daily averages range from 1013.7 hPa to 1015.9 hPa across regional points, showing a slight 24-hour rising trend (+0.8 hPa). This regional pressure configuration maintains strong lake-land breeze circulations that interact with high convective energy over Winam Gulf to trigger evening atmospheric convergence and thunderstorm activity.\n\n### Forecaster Confidence Notes\nModel guidance behind this forecast is at least 9.0 hours old (last aligned at 06:00Z). A newer model cycle has landed since this morning's issuance, updating the near-term precipitation timing and convective parameters. Model weighting is informed by long-run track record statistics. At Day+0, Best Match is established as the strongest rain caller in the stored record (85% accuracy), forming the primary baseline for precipitation timing. ECMWF shows strong rain verification skill (76% accuracy), though its surface wind speeds run lower than observed (+10.9 km/h mean error). GFS exhibits an established daytime warm bias (-1.0°C at Day+0, -2.2°C at Day+3) and wind speed under-forecasting (+19.6 km/h at Day+0); its higher maximum temperature call was discounted in favor of the multi-model consensus call of 29.2°C / 84.6°F. At Day+3 and Day+7, no model is3 meaningfully better than the others here yet in the stored verification record.\n\nThe Kenya Meteorological Department (KMD) official bulletin for Monday forecasts sunny intervals in the morning and afternoon, with moderate showers and thunderstorms expected over a few places later in the day, with temperatures between 20.0°C / 68.0°F and 28.0°C / 82.4°F. KMD's call aligns closely with numerical guidance on precipitation, though predicting a slightly cooler daytime high than the multi-model consensus call.\n\nGround AQI station monitoring indicates that all local sensors are currently stale (3 hours old). The last reported values from 12:00 UTC were:\n- Kisumu Airport: 72 US AQI (PM2.5: 72.0 µg/m³, PM10: 15.0 µg/m³)\n- Ochieng' Avenue, Kisumu Central: 66 US AQI (PM2.5: 66.0 µg/m³, PM10: 18.0 µg/m³)\n- Dunga Beach: 47 US AQI (PM2.5: 47.0 µg/m³, PM10: 37.0 µg/m³)\nBecause ground readings are stale, current air quality assessment relies on CAMS model guidance, which estimates moderate conditions tonight peaking at 78 US AQI.",
   "whatsapp_summary": "⛅ Kisumu Weather Update (Sun 13 Sep): Warm today with highs near 29°C (85°F). Dry through early afternoon, then scattered showers & thunderstorms developing late afternoon and evening ⛈️. Winds turning SSW by midday, gusting to 41 km/h in storms. Boaters on Winam Gulf should return to shore before late afternoon squalls!",
-  "earlier_issuances": [],
-  "morning_issuance": null,
-  "guidance_initialised_at": "2026-09-12T18:00:00Z",
-  "guidance_age_hours": 9.022379000833334,
+  "earlier_issuances": [
+    {
+      "rain_expected": "Scattered showers and thunderstorms expected late afternoon and evening",
+      "onset_window": "Late afternoon through evening",
+      "peak_wind_kmh": 41.4,
+      "temp_high_c": 29.2,
+      "temp_low_c": 18.0,
+      "temp_high_low_display": "29°C / 85°F high, 18°C / 64°F low",
+      "mslp_trend_24h": "+0.5 hPa",
+      "synoptic_pattern": "Strong regional pressure gradient (SE high to NE low) with high convective instability (peak CAPE 3540 J/kg)",
+      "uv_index_max": "9.4",
+      "air_quality_aqi": "Moderate (CAMS model peak US AQI 78; ground stations stale)",
+      "ground_aqi": [
+        {
+          "name": "Kisumu Airport",
+          "station_id": "A418534",
+          "aqi": 99,
+          "pm25": 99.0,
+          "pm10": 15.0,
+          "measured_at": "2026-09-13T00:00:00Z"
+        },
+        {
+          "name": "Ochieng' Avenue, Kisumu Central",
+          "station_id": "A418300",
+          "aqi": 136,
+          "pm25": 136.0,
+          "pm10": 18.0,
+          "measured_at": "2026-09-13T00:00:00Z"
+        },
+        {
+          "name": "Dunga Beach",
+          "station_id": "A418504",
+          "aqi": 106,
+          "pm25": 106.0,
+          "pm10": 37.0,
+          "measured_at": "2026-09-13T00:00:00Z"
+        }
+      ],
+      "narrative_markdown": "## Overview\nCloudier than yesterday. Dry until evening thunderstorms. Temperatures and winds much the same through Wednesday, with rain becoming more likely.\n\n## Today's Forecast\nTemperatures peaking at 29.2°C / 84.6°F will bring warm conditions through the day, with overnight lows settling near 18.0°C / 64.4°F. Wind conditions will follow a distinct pattern, north-northeasterly overnight, turning south-southwest by midday, with speeds reaching peak gusts of 41.4 km/h (22 kt) in the late afternoon. Solar UV exposure will reach a Very High peak index of 9.4 around midday before cloud cover increases. Scattered showers and thunderstorms are expected during the late afternoon and evening, producing roughly 5.2 mm (0.20 in) of rain. Air quality ground sensors are currently stale, with the most recent reading recorded 3 hours ago at Ochieng' Avenue, Kisumu Central (136 US AQI); model guidance indicates moderate conditions today with a peak US AQI of 78.\n\n## Extended Outlook\nOver the next three days (Monday through Wednesday), daily maximum temperatures will hold steady between 29°C / 84°F and 32°C / 89°F with overnight lows around 18°C / 64°F to 19°C / 66°F. Rainfall probability remains high across models, with showers and thunderstorms becoming increasingly likely during afternoon and evening hours.\n\nLooking ahead to days four through seven (Thursday through Sunday), guidance points toward a cooler and significantly wetter trend. Daytime maximum temperatures are expected to drop into the 26°C / 79°F to 28°C / 82°F range under widespread cloud cover and repeated rainfall episodes. Extended lead-time confidence is moderate; while ECMWF and Best Match have established strong track records at Day+3 and Day+7, models show divergence on total rainfall amounts by late weekend.\n\n## Severe Weather / Hazard Potential\nHigh convective instability is forecast across the Nyanza Basin this afternoon and evening. UKMO models extreme CAPE peaking at 3540 J/kg around 19:00 EAT and ECMWF reaches 2070 J/kg, while GFS remains much more suppressed at 680 J/kg. This high instability supports localized severe thunderstorms capable of producing heavy rain (5.2 mm / 0.20 in expected locally), frequent cloud-to-ground lightning, and sudden, violent wind squalls. Any developing thunderstorm can produce intense localized wind gusts far exceeding the background forecast wind speeds, creating immediate hazards on land and open water regardless of ambient conditions.\n\n## Winam Gulf — Conditions for Boaters\nBoating conditions on Winam Gulf will turn hazardous late today. Winds will start light and north-northeasterly early, turning south-southwesterly by midday and strengthening to 22.5 km/h (12 kt) with peak gusts near 41.4 km/h (22 kt) during the afternoon. Extreme convective instability over the lake (CAPE exceeding 2000 to 3000 J/kg) will trigger scattered thunderstorms late afternoon and evening. Sudden convective wind shifts, squalls, rough lake choppy waves, and reduced visibility represent significant dangers for small craft. Lake users are strongly advised to complete operations and seek shelter before late afternoon storm development.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the southeast (1017 hPa) — a 10 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is near-steady.\n\nOn the local basin scale, mean sea-level pressure ranges from 1013.4 hPa across western Nyanza lowlands to 1015.7 hPa over the southeastern highlands. This regional gradient promotes strong afternoon lake-breeze convergence off Lake Victoria into the Winam Gulf basin, interacting with abundant atmospheric instability to fuel evening convective storms.\n\n### Forecaster Confidence Notes\nModel weighting today is strongly guided by verified track records. At Day+0, Best Match is the top-ranked rain caller in the stored record (85% accuracy) and forms the baseline for precipitation and wind timing. ECMWF maintains solid overall skill across precipitation and temperature, though its peak wind speeds historically run low. GFS exhibits a well-established daytime warm bias (-1.0°C at Day+0, -2.2°C at Day+3) and wind under-forecasting (+19.6 km/h at Day+0); its higher high temperature call (30.9°C) was accordingly discounted in favor of the consensus call at 29.2°C. UKMO and ICON highlight significant atmospheric instability, though both carry early onset timing biases.\n\nThe Kenya Meteorological Department (KMD) official bulletin calls for sunny intervals in the morning and afternoon, with moderate showers and thunderstorms expected over a few places later in the day, alongside a temperature range of 20.0°C / 68°F to 28.0°C / 82°F. This aligns closely with the numerical consensus regarding storm timing, though calling for a slightly cooler high.\n\nGround AQI station monitoring indicates that all local sensors are currently stale (3 hours old). The last actual readings from 00:00 UTC were:\n- Kisumu Airport: 99 US AQI (PM2.5: 99.0 µg/m³)\n- Ochieng' Avenue, Kisumu Central: 136 US AQI (PM2.5: 136.0 µg/m³)\n- Dunga Beach: 106 US AQI (PM2.5: 106.0 µg/m³)\n\nDue to stale ground data, current air quality assessment relies on CAMS atmospheric modeling, which indicates moderate conditions today peaking at 78 US AQI.",
+      "whatsapp_summary": "⛅ Kisumu Weather Update (Sun 13 Sep): Warm today with highs near 29°C (85°F). Dry through early afternoon, then scattered showers & thunderstorms developing late afternoon and evening ⛈️. Winds turning SSW by midday, gusting to 41 km/h in storms. Boaters on Winam Gulf should return to shore before late afternoon squalls!",
+      "generated_at_utc": "2026-09-13T03:02:45.961375Z",
+      "guidance_initialised_at": "2026-09-12T18:00:00Z",
+      "guidance_age_hours": 9.022379000833334,
+      "guidance_source": "observed",
+      "degradations": []
+    }
+  ],
+  "morning_issuance": {
+    "rain_expected": "Scattered showers and thunderstorms expected late afternoon and evening",
+    "onset_window": "Late afternoon through evening",
+    "peak_wind_kmh": 41.4,
+    "temp_high_c": 29.2,
+    "temp_low_c": 18.0,
+    "temp_high_low_display": "29°C / 85°F high, 18°C / 64°F low",
+    "mslp_trend_24h": "+0.5 hPa",
+    "synoptic_pattern": "Strong regional pressure gradient (SE high to NE low) with high convective instability (peak CAPE 3540 J/kg)",
+    "uv_index_max": "9.4",
+    "air_quality_aqi": "Moderate (CAMS model peak US AQI 78; ground stations stale)",
+    "ground_aqi": [
+      {
+        "name": "Kisumu Airport",
+        "station_id": "A418534",
+        "aqi": 99,
+        "pm25": 99.0,
+        "pm10": 15.0,
+        "measured_at": "2026-09-13T00:00:00Z"
+      },
+      {
+        "name": "Ochieng' Avenue, Kisumu Central",
+        "station_id": "A418300",
+        "aqi": 136,
+        "pm25": 136.0,
+        "pm10": 18.0,
+        "measured_at": "2026-09-13T00:00:00Z"
+      },
+      {
+        "name": "Dunga Beach",
+        "station_id": "A418504",
+        "aqi": 106,
+        "pm25": 106.0,
+        "pm10": 37.0,
+        "measured_at": "2026-09-13T00:00:00Z"
+      }
+    ],
+    "narrative_markdown": "## Overview\nCloudier than yesterday. Dry until evening thunderstorms. Temperatures and winds much the same through Wednesday, with rain becoming more likely.\n\n## Today's Forecast\nTemperatures peaking at 29.2°C / 84.6°F will bring warm conditions through the day, with overnight lows settling near 18.0°C / 64.4°F. Wind conditions will follow a distinct pattern, north-northeasterly overnight, turning south-southwest by midday, with speeds reaching peak gusts of 41.4 km/h (22 kt) in the late afternoon. Solar UV exposure will reach a Very High peak index of 9.4 around midday before cloud cover increases. Scattered showers and thunderstorms are expected during the late afternoon and evening, producing roughly 5.2 mm (0.20 in) of rain. Air quality ground sensors are currently stale, with the most recent reading recorded 3 hours ago at Ochieng' Avenue, Kisumu Central (136 US AQI); model guidance indicates moderate conditions today with a peak US AQI of 78.\n\n## Extended Outlook\nOver the next three days (Monday through Wednesday), daily maximum temperatures will hold steady between 29°C / 84°F and 32°C / 89°F with overnight lows around 18°C / 64°F to 19°C / 66°F. Rainfall probability remains high across models, with showers and thunderstorms becoming increasingly likely during afternoon and evening hours.\n\nLooking ahead to days four through seven (Thursday through Sunday), guidance points toward a cooler and significantly wetter trend. Daytime maximum temperatures are expected to drop into the 26°C / 79°F to 28°C / 82°F range under widespread cloud cover and repeated rainfall episodes. Extended lead-time confidence is moderate; while ECMWF and Best Match have established strong track records at Day+3 and Day+7, models show divergence on total rainfall amounts by late weekend.\n\n## Severe Weather / Hazard Potential\nHigh convective instability is forecast across the Nyanza Basin this afternoon and evening. UKMO models extreme CAPE peaking at 3540 J/kg around 19:00 EAT and ECMWF reaches 2070 J/kg, while GFS remains much more suppressed at 680 J/kg. This high instability supports localized severe thunderstorms capable of producing heavy rain (5.2 mm / 0.20 in expected locally), frequent cloud-to-ground lightning, and sudden, violent wind squalls. Any developing thunderstorm can produce intense localized wind gusts far exceeding the background forecast wind speeds, creating immediate hazards on land and open water regardless of ambient conditions.\n\n## Winam Gulf — Conditions for Boaters\nBoating conditions on Winam Gulf will turn hazardous late today. Winds will start light and north-northeasterly early, turning south-southwesterly by midday and strengthening to 22.5 km/h (12 kt) with peak gusts near 41.4 km/h (22 kt) during the afternoon. Extreme convective instability over the lake (CAPE exceeding 2000 to 3000 J/kg) will trigger scattered thunderstorms late afternoon and evening. Sudden convective wind shifts, squalls, rough lake choppy waves, and reduced visibility represent significant dangers for small craft. Lake users are strongly advised to complete operations and seek shelter before late afternoon storm development.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1006 hPa) and highest toward the southeast (1017 hPa) — a 10 hPa spread, a strong large-scale gradient. Pressure is also falling toward the north — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is near-steady.\n\nOn the local basin scale, mean sea-level pressure ranges from 1013.4 hPa across western Nyanza lowlands to 1015.7 hPa over the southeastern highlands. This regional gradient promotes strong afternoon lake-breeze convergence off Lake Victoria into the Winam Gulf basin, interacting with abundant atmospheric instability to fuel evening convective storms.\n\n### Forecaster Confidence Notes\nModel weighting today is strongly guided by verified track records. At Day+0, Best Match is the top-ranked rain caller in the stored record (85% accuracy) and forms the baseline for precipitation and wind timing. ECMWF maintains solid overall skill across precipitation and temperature, though its peak wind speeds historically run low. GFS exhibits a well-established daytime warm bias (-1.0°C at Day+0, -2.2°C at Day+3) and wind under-forecasting (+19.6 km/h at Day+0); its higher high temperature call (30.9°C) was accordingly discounted in favor of the consensus call at 29.2°C. UKMO and ICON highlight significant atmospheric instability, though both carry early onset timing biases.\n\nThe Kenya Meteorological Department (KMD) official bulletin calls for sunny intervals in the morning and afternoon, with moderate showers and thunderstorms expected over a few places later in the day, alongside a temperature range of 20.0°C / 68°F to 28.0°C / 82°F. This aligns closely with the numerical consensus regarding storm timing, though calling for a slightly cooler high.\n\nGround AQI station monitoring indicates that all local sensors are currently stale (3 hours old). The last actual readings from 00:00 UTC were:\n- Kisumu Airport: 99 US AQI (PM2.5: 99.0 µg/m³)\n- Ochieng' Avenue, Kisumu Central: 136 US AQI (PM2.5: 136.0 µg/m³)\n- Dunga Beach: 106 US AQI (PM2.5: 106.0 µg/m³)\n\nDue to stale ground data, current air quality assessment relies on CAMS atmospheric modeling, which indicates moderate conditions today peaking at 78 US AQI.",
+    "whatsapp_summary": "⛅ Kisumu Weather Update (Sun 13 Sep): Warm today with highs near 29°C (85°F). Dry through early afternoon, then scattered showers & thunderstorms developing late afternoon and evening ⛈️. Winds turning SSW by midday, gusting to 41 km/h in storms. Boaters on Winam Gulf should return to shore before late afternoon squalls!",
+    "generated_at_utc": "2026-09-13T03:02:45.961375Z",
+    "guidance_initialised_at": "2026-09-12T18:00:00Z",
+    "guidance_age_hours": 9.022379000833334,
+    "guidance_source": "observed",
+    "degradations": []
+  },
+  "guidance_initialised_at": "2026-09-13T06:00:00Z",
+  "guidance_age_hours": 9.021169946111112,
   "guidance_source": "observed",
   "meta": {
     "generated_at_utc": "2026-09-13T03:02:45.961375Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "pipeline_version": "0.1.0",
-    "system_prompt_sha256": "00dce732f4679bc0946c9282a9d58de3acfd14605d83d6dc0e55f57ce2e2616d",
+    "system_prompt_sha256": "9721f0bad56d97b8283bdec7a2c937ff2f1c582ec7f4c358773e6942aa8c932e",
     "finish_reason": "STOP",
-    "input_tokens": 79396,
-    "output_tokens": 2934,
-    "response_schema_sha256": "976e4b88ae418fbc125372e11fc11299cd03754810876d52587aabdc054792fb",
-    "nullable_fields": [
-      "/whatsapp_summary"
-    ],
+    "input_tokens": 80061,
+    "output_tokens": 1891,
+    "response_schema_sha256": "a222b1a6e43a5f1d0747b1e32764660cb0dc9b024f9be21580cc0ea85c757f5c",
+    "nullable_fields": [],
+    "narrative_findings": [],
     "information_moved": {
-      "first_issuance_of_day": true,
-      "guidance_is_newer": null,
-      "observation_disagreements": []
+      "first_issuance_of_day": false,
+      "guidance_is_newer": true,
+      "observation_disagreements": null
     },
-    "refreshed_at": null,
+    "refreshed_at": "2026-09-13T15:02:48.461836Z",
     "trigger_source": "workflow_dispatch",
     "degradations": []
   }
