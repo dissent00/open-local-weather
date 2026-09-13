@@ -13050,7 +13050,7 @@ change proposed here.
 
 ---
 
-## 104. The refresh is a leftover from a twice-a-day tool · **Contract settled 2026-09-12; the build is Planned**
+## 104. The refresh is a leftover from a twice-a-day tool · **Contract settled 2026-09-12; the build is Planned — and the drift is published, measured 2026-09-13**
 
 `run_refresh_pipeline` exists because OLW ran on a cron twice a day and the
 second run had to explain itself to a reader who had already read the first.
@@ -13073,6 +13073,68 @@ is the idea that the second run of a day is a different KIND of run.
   only the evening run sees and that nothing has ever verified end to end.
 - "This replaces the day-over-day opening" and the rest of the second-issuance
   framing, which the operator judges not worth the instructions it costs.
+
+### The drift already reaches the reader — measured 2026-09-13
+
+The divergence bullet above cites `_combined_meta` and the prompt hashes,
+which are record-keeping. There is a third class, and it is published.
+
+**Three pre-computed blocks are composed only in `run_daily_pipeline`.**
+`build_user_prompt` takes `extended_trend`, `wind_direction` and `wind_shift`
+as keyword arguments defaulting to `None`, and the call at pipeline.py:1847
+passes all three while the one at pipeline.py:2346 passes none. The daily path
+passes 26 keyword arguments; the refresh passes 23, and the three missing ones
+are exactly these. Nothing marks the omission — no comment, no degradation
+entry — because `None` is also what a legitimate absence looks like.
+
+So every evening run tells its reader:
+
+- `Unavailable — omit the extended clause.`
+- `Unavailable — the models do not share a bearing. Say nothing about direction.`
+- `Unavailable — omit any claim about the wind turning.`
+
+**Measured over the whole prompt archive**, on every day holding two issuances
+where the block existed at both: the extended trend was real at the first
+issuance and Unavailable at the refresh on 2026-09-07, 09-10 and 09-11; the
+wind shift was `northeasterly overnight, turning south by midday` at 03:02Z on
+09-11 and Unavailable at 15:11Z the same day. Three issuances in which the
+evening reader was told the models have no three-day trend, and one in which
+they were told nothing could be said about the wind turning. Each is false, and
+the morning reader was told otherwise from the same data.
+
+**`wind_direction` is the one to be careful about, and it makes the point.**
+It was Unavailable at BOTH issuances on every day measured — the models
+genuinely did not share a bearing on 09-10 or 09-11 — so the omission is real
+in the code and has not yet been shown to change a single published word. That
+is not reassurance. It is the failure mode stated exactly: an unwired block and
+a true absence render identically, so this one is waiting for the first day the
+models agree, and nothing in the run will report it when that day comes.
+
+**The inputs are already in the refresh's hand.** `ForwardGuidance` carries
+`primary_hourly` and `primary_daily` as required fields and
+`_fetch_forward_guidance` is its only constructor, called by both paths.
+Verified 2026-09-13 by calling that fetch and composing the blocks off its
+result: `describe_wind_shift` returned
+`north-northeasterly overnight, turning south-southwest by midday`, and
+`extract_day_n_predictions_from_daily` returned 5 predictions at each of
+Day+1, +2 and +3 — everything `describe_extended_trend` needs. The refresh
+could publish all three today at zero additional requests. It never asks.
+
+**This is the argument against fixing it with a shared struct, because that
+was already tried.** `ForwardGuidance`'s own docstring says it is "shared
+verbatim between the morning and evening-refresh runs so the two can never
+silently drift apart", and the `ground_aqi_last_known` and `instability`
+fields carry "both live here rather than in each run's own code so the morning
+and the refresh cannot drift". The struct did what it promised — the two paths
+fetch identically — and they drifted anyway, one layer up, on what each
+COMPOSES from the identical inputs. A shared input type cannot constrain two
+bodies of code; only one body can.
+
+**Do not patch the three call sites as a stopgap without deciding this item
+first.** Three more keyword arguments at pipeline.py:2346 would fix the
+published defect this week and add three more lines to the path this item
+deletes. That trade is the operator's to make, not a detail to settle in
+passing.
 
 ### What does NOT die, and is the whole difficulty
 
