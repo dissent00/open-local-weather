@@ -15064,7 +15064,9 @@ two calls can spend their day's budget in a minute.
 new information and no material clock change now costs ZERO calls and shows
 the stored forecast, so twenty taps are twenty reads. That makes this item a
 backstop rather than the mechanism, and it should be built after C2 rather
-than instead of it.
+than instead of it. Item 120 is what makes C2's answer an operator's choice
+rather than a constant, and it matters here: a deployment that opts into a
+looser policy re-opens exactly the harm this item backstops.
 
 What is still wanted:
 
