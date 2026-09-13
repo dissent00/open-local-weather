@@ -13238,6 +13238,60 @@ those two disagreed on 4 of 14 days measured — the disagreement the prompt
 already tells the forecaster never to reconcile. One instrument for a
 dimension across the whole window, or that dimension is withheld.
 
+### How to finish it — step 1 shipped 2026-09-13, three left
+
+Ordered so the step that can corrupt the accuracy record comes last, and each
+one is provable on its own.
+
+**1. One prompt call site. SHIPPED (`c71bad0`).** `_build_forecast_prompt` is
+now the only caller of `build_user_prompt`, and the five values a path
+genuinely decides are required keyword arguments. That closes the class rather
+than fixing instances: a new prompt field has one place to be wired.
+
+Three duplications went with it — `_historical_logs_payload` (character for
+character identical in both), `_track_record_payload` (a nested
+`visible_summary` on one side, the same rule inline on the other) and
+`_visible_note` (an identical nested copy in each).
+
+Proved by capturing a real 18:01 prompt before and after against the same
+stored day: 164 KB, zero differing lines but the five `_server_date` headers,
+which tick because the two fetches were seconds apart. The suite proves
+nothing here — it was green throughout the weeks the three blocks were
+missing.
+
+**2. One result type.** `PipelineRunResult` and `RefreshRunResult` force every
+caller to branch on type. One result carrying `first_issuance: bool` replaces
+both. Mechanical, and it is what lets step 4 return from one function.
+
+**3. One entry construction, and this is the dangerous one.** Create-or-update
+in one place. THE WRITE-ONCE `model_predictions` INVARIANT LIVES HERE and it is
+what makes the accuracy record trustworthy — the numbers tomorrow scores must
+be the ones the first run of the day committed, byte for byte.
+
+Do not prove this with mocks. Drive a real first issuance and a real re-issue
+against a copy of `data/`, then diff the stored entry: `model_predictions` and
+`verification` identical, `narrative_markdown`, `earlier_issuances` and
+`meta.refreshed_at` moved. A suite of mocks proves the wiring, not the
+behaviour, and it is exactly how a re-issue once archived every issuance under
+the first one's timestamp while the suite stayed green.
+
+**4. Collapse the bodies.** Gate the first-run-only work on
+`existing_entry is None` rather than on which function the caller chose —
+which is what `run_forecast` already decides, one level up. Then delete the
+`is_reissue` prompt branch: ~3,400 characters of LATER ISSUANCE that only the
+evening run has ever seen and that nothing has verified end to end.
+
+**What is actually left, measured 2026-09-13.** `run_daily_pipeline` is 331
+non-comment lines and `run_refresh_pipeline` 182, down from 389 and 240. The
+refresh calls exactly THREE things the daily path does not: `RefreshRunResult`,
+`RefreshWithoutMorningRunError` and `_with_merged_ground_aqi`. The daily path
+calls 32 the refresh does not, and every one is first-run-only work —
+verification, scoring, baselines, the track record, the actuals cache.
+
+That asymmetry is the whole finding: this was never two pipelines. It is one
+pipeline and a subset of it, and the subset drifted because nothing made the
+two agree.
+
 ### What does NOT die, and is the whole difficulty
 
 **SETTLED BY THE CONTRACT ABOVE — kept because the reasoning is what makes the
