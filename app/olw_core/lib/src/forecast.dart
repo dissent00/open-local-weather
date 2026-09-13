@@ -513,6 +513,18 @@ Future<ForecastRun> generateForecast({
     // The day names the Extended Outlook writes with, handed over finished so
     // the model never maps a date to a weekday itself — see forwardCalendar.
     forwardCalendar: forwardCalendar(today),
+    // NULL, AND STATED RATHER THAN OMITTED — upstream ROADMAP item 121.
+    //
+    // This app has no station source: `airport_metar` above is null for the
+    // same reason, so there is nothing to compose an observed block from and
+    // the prompt will print its gap line. Passing it explicitly is the point.
+    // An optional argument nobody passes renders exactly like a legitimate
+    // absence, which is how describeWindShift sat here ported, exported and
+    // vector-tested with no caller while every forecast went out without it
+    // — fixed in b68570d, and not repeated here by accident.
+    //
+    // Wiring a station for the app is item 121's remaining half on this side.
+    observedSoFar: null,
   );
 
   // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is

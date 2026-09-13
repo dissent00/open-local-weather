@@ -593,6 +593,10 @@ def build_user_prompt(
     extended_trend: str | None = None,
     wind_direction: str | None = None,
     wind_shift: str | None = None,
+    # What the station has ALREADY measured today — ROADMAP item 121.
+    # Composed in code because an observation is a fact, and facts are not
+    # asked of the model here.
+    observed_so_far: str | None = None,
     forecast_windows: Any = None,
     forward_calendar: Any = None,
 ) -> str:
@@ -736,7 +740,10 @@ WIND DIRECTION (pre-computed by code — one rose point the models actually shar
 {f"from the {wind_direction}" if wind_direction else "Unavailable — the models do not share a bearing. Say nothing about direction."}
 
 WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
-{wind_shift if wind_shift else "Unavailable — omit any claim about the wind turning."}{ground_aqi_block}{local_bulletin_block}
+{wind_shift if wind_shift else "Unavailable — omit any claim about the wind turning."}
+
+OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — MEASURED, not forecast, and the only block here that describes hours the reader has already lived. Use it VERBATIM or not at all. IT IS NOT A FORECAST AND MUST NOT BE WEIGHED AGAINST ONE: where it and the call disagree, the observation happened and the forecast did not, so say what was measured and do not reconcile them. A NEGATIVE IN IT IS A MEASUREMENT — "no rain" means the station reported and saw none, which is worth telling a reader at midday; a dimension that is simply absent was not measured and you may say nothing about it. This is the one place you may write in the PAST TENSE about today, and the clause it earns is short: a reader who was rained on at 15:00 and is told the day was dry stops believing the rest):
+{observed_so_far if observed_so_far else "Unavailable — the station reported nothing measurable today. Say nothing about what has already happened."}{ground_aqi_block}{local_bulletin_block}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — the direction lives in these fields and nowhere else. Most stored notes that had it backwards were corrected on 2026-09-10 and say so; the ones that could not be verified mechanically were left alone rather than guessed at):
 {_json(verification_context)}

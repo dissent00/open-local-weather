@@ -153,6 +153,7 @@ from openlocalweather.llm.schema import (
     TodayProperties,
     merge_forecast_response,
 )
+from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.disagreement import (
     ObservedSoFar,
     StandingCall,
@@ -781,6 +782,7 @@ def _build_forecast_prompt(
     today: date,
     *,
     day0_predictions: list,
+    observed_so_far: ObservedSoFar | None,
     verification_context: Any,
     model_predictions_context: Any,
     track_record_context: Any,
@@ -840,7 +842,7 @@ def _build_forecast_prompt(
         ),
         guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=yesterday_actual,
-        **_locked_blocks(guidance, day0_predictions, today),
+        **_locked_blocks(guidance, day0_predictions, today, observed_so_far),
         review_context=review_context,
         today_weather_data={
             "primary_today_hourly": guidance.primary_hourly,
@@ -865,7 +867,12 @@ def _build_forecast_prompt(
     )
 
 
-def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: date) -> dict:
+def _locked_blocks(
+    guidance: ForwardGuidance,
+    day0_predictions: list,
+    today: date,
+    observed: ObservedSoFar | None,
+) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
     ROADMAP item 104. THESE THREE WERE COMPOSED ON ONE PATH AND NOT THE OTHER,
@@ -910,6 +917,18 @@ def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: dat
     ]
 
     return {
+        # What the station has already measured today — ROADMAP item 121.
+        #
+        # HERE, WITH THE OTHER LOCKED BLOCKS, for the reason this function
+        # exists: a block composed on one path and not the other renders as a
+        # legitimate absence and nobody can tell. It is also what makes C2's
+        # third trigger worth acting on — that trigger fires when an
+        # observation contradicts the standing call, and until now the run it
+        # caused was never shown the observation that caused it.
+        "observed_so_far": describe_observed_so_far(
+            observed,
+            as_of=guidance.issuance.local_time if guidance.issuance else None,
+        ),
         # The periods this issuance covers, each with the hours it means —
         # item 104. Derived from the issuance's own horizon, so the prompt
         # cannot name a period the phase did not call for.
@@ -1832,6 +1851,7 @@ def _compose_log_entry(
     today: date,
     llm_response: Any,
     *,
+    observed_so_far: ObservedSoFar | None,
     fresh_predictions: ModelPredictionsByLead | None,
     judgment_prompt: str,
     narrative_prompt: str,
@@ -1934,9 +1954,11 @@ def _compose_log_entry(
             response_schema_sha256=response_meta.response_schema_sha256,
             nullable_fields=_nullable_fields(last_response),
             narrative_findings=_narrative_findings(llm_response, today),
-            information_moved=_information_moved(
-                guidance, existing_entry, _observed_so_far(location, today)
-            ),
+            # THE SAME READING THE PROMPT WAS BUILT FROM, passed in rather
+            # than re-fetched. Two calls to the station would be two answers
+            # on a day it changed between them, and the record would then
+            # describe an observation the forecaster never saw.
+            information_moved=_information_moved(guidance, existing_entry, observed_so_far),
             trigger_source=deps.trigger_source or None,
             degradations=guidance.degradations,
         ),
@@ -2320,6 +2342,11 @@ def _issue_forecast(
         issued_hour=_issued_hour(guidance.issuance),
     )
 
+    # ONE READING OF THE STATION PER RUN, taken before the prompt because
+    # item 121 puts it IN the prompt, and shared with the record below so the
+    # two cannot describe different observations.
+    observed_so_far = _observed_so_far(location, today)
+
     # --- Step 6: call the LLM ---
     # A location with no WAQI stations gets a prompt with no ground-station
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
@@ -2429,6 +2456,7 @@ def _issue_forecast(
         existing_entry,
         today,
         day0_predictions=day0_predictions,
+        observed_so_far=observed_so_far,
         verification_context=verification_context,
         model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,
@@ -2490,6 +2518,7 @@ def _issue_forecast(
         existing_entry,
         today,
         llm_response,
+        observed_so_far=observed_so_far,
         # The freshly extracted set, which the composer keeps only when this
         # date holds none. Built even on a re-issue and discarded there, as
         # it always was — the day's numbers belong to the run that made them
