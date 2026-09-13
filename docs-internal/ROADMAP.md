@@ -13238,7 +13238,7 @@ those two disagreed on 4 of 14 days measured — the disagreement the prompt
 already tells the forecaster never to reconcile. One instrument for a
 dimension across the whole window, or that dimension is withheld.
 
-### How to finish it — step 1 shipped 2026-09-13, three left
+### How to finish it — steps 1 and 2 shipped 2026-09-13, two left
 
 Ordered so the step that can corrupt the accuracy record comes last, and each
 one is provable on its own.
@@ -13259,9 +13259,37 @@ which tick because the two fetches were seconds apart. The suite proves
 nothing here — it was green throughout the weeks the three blocks were
 missing.
 
-**2. One result type.** `PipelineRunResult` and `RefreshRunResult` force every
-caller to branch on type. One result carrying `first_issuance: bool` replaces
-both. Mechanical, and it is what lets step 4 return from one function.
+**2. One result type. SHIPPED (`9843f58`).** `ForecastRunResult` carries
+`first_issuance: bool` and both paths return it, so no caller branches on a
+result's class. It is what lets step 4 return from one function.
+
+Mechanical, with one thing that was not. `run_daily_pipeline` reads
+`existing_entry is None` rather than asserting True: `olw run-daily` is
+reachable for a day that already has an entry, and that body ALREADY treats
+that as a later issuance — it is where the prompt's `is_reissue` comes from,
+and where the scored predictions are preserved instead of rewritten. A
+constant there would have made the result disagree with the entry the same
+run had just written. Nothing in 1081 tests covered it; mutating the
+predicate to True now fails exactly one.
+
+`updated_track_record` and `newly_verified` are `None` on a later issuance
+rather than empty, so "did not verify" cannot read as "verified nothing" —
+the same conflation this item is here to clean up.
+
+Proved by driving the REAL CLI through all three outcomes — first issuance,
+forced re-issue, skipped repeat — against a copy of `data/`, before and
+after: stdout identical including the `run-kind:` lines `forecast.yml` greps
+for a commit subject, and the written log entry, prompt archive, track
+record, actuals cache and spend ledger identical. Two runs of the unchanged
+code were diffed against each other first, so "identical" means something;
+that control is also what caught the only genuine clock leak, a re-issue's
+EARLIER TODAY header rendered `Issued HH:MM` from the first run's
+`generated_at_utc`, which neither `now_in_tz` nor `reconcile_now` reaches.
+
+**The two-repo order collapsed to Python only, and that was checked rather
+than assumed.** The vectors regenerate to zero diff and `dart analyze
+--fatal-infos` and 173 Dart tests are clean: `olw_core` ports the
+deterministic forecast math, and pipeline orchestration is not in it.
 
 **3. One entry construction, and this is the dangerous one.** Create-or-update
 in one place. THE WRITE-ONCE `model_predictions` INVARIANT LIVES HERE and it is
