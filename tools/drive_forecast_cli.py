@@ -25,9 +25,21 @@ repo three times — AGENTS.md, "Reverting a mutation"):
     OLW_ROOT=/tmp/olw-head .venv/bin/python tools/drive_forecast_cli.py /tmp/a
     OLW_ROOT=/tmp/olw-head .venv/bin/python tools/drive_forecast_cli.py /tmp/a2
     .venv/bin/python tools/drive_forecast_cli.py /tmp/b
-    diff -r /tmp/a /tmp/a2   # the control: unchanged vs unchanged
-    diff -r /tmp/a /tmp/b    # the comparison
+    for f in transcript.txt transcript.json data_dump.json; do
+        diff /tmp/a/$f /tmp/a2/$f    # the control: unchanged vs unchanged
+        diff /tmp/a/$f /tmp/b/$f     # the comparison
+    done
     git worktree remove /tmp/olw-head
+
+DIFF THE THREE MASKED ARTIFACTS, NOT THE OUTPUT DIRECTORY. This used to say
+`diff -r /tmp/a /tmp/a2` and that instruction is wrong: the out_dir also
+contains `data/`, which is the RAW tree the run wrote, with its real
+`generated_at_utc`, `refreshed_at`, `issued_at` and spend-ledger stamps
+unmasked. Two runs a second apart always differ there, so the documented
+control could never come back identical and the reader is left unable to tell
+a harness artefact from a real change. `data_dump.json` is that same tree with
+the clocks masked, which is why it exists. Cost the 2026-09-13 session a
+confusing control before the cause was spotted.
 
 RUN THE CONTROL. Two captures of the UNCHANGED code, diffed against each
 other, is what makes "identical" mean something rather than "never equal",
