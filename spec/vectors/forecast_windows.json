@@ -1,0 +1,342 @@
+{
+  "vector_format_version": 1,
+  "function": "forecast_windows",
+  "description": "The horizon's named periods given explicit, contiguous, non-overlapping clock bounds, each starting where the previous ended and the first at the issuance itself. Labels reach the reader verbatim, and a day is named by weekday whenever it is not the issuance's own date or the run is at night \u2014 so two issuances either side of midnight name one day the same way.",
+  "cases": [
+    {
+      "name": "pre-dawn",
+      "input": {
+        "now": "2026-09-14T02:30",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "the remaining hours until dawn",
+          "start": "02:30",
+          "end": "06:33",
+          "crosses_midnight": false,
+          "label": "the remaining hours until dawn (02:30-06:33)"
+        },
+        {
+          "name": "Monday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Monday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "dawn",
+      "input": {
+        "now": "2026-09-14T06:01",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "today",
+          "start": "06:01",
+          "end": "17:10",
+          "crosses_midnight": false,
+          "label": "today (06:01-17:10)"
+        },
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "17:10",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (17:10 to 06:33 next day)"
+        }
+      ]
+    },
+    {
+      "name": "afternoon, three windows",
+      "input": {
+        "now": "2026-09-14T15:00",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "the rest of today",
+          "start": "15:00",
+          "end": "17:10",
+          "crosses_midnight": false,
+          "label": "the rest of today (15:00-17:10)"
+        },
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "17:10",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (17:10 to 06:33 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "dusk \u2014 the 18:01 run",
+      "input": {
+        "now": "2026-09-14T18:01",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "18:01",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (18:01 to 06:33 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "evening",
+      "input": {
+        "now": "2026-09-14T22:01",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "22:01",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (22:01 to 06:33 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "Monday 23:00 \u2014 names Tuesday",
+      "input": {
+        "now": "2026-09-14T23:00",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "the remaining hours until dawn",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "the remaining hours until dawn",
+          "start": "23:00",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "the remaining hours until dawn (23:00 to 06:33 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "Tuesday 01:00 \u2014 names Tuesday",
+      "input": {
+        "now": "2026-09-15T01:00",
+        "sunrise": "2026-09-15T06:33",
+        "sunset": "2026-09-15T18:40",
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ],
+        "next_sunrise": "2026-09-16T06:33"
+      },
+      "expected": [
+        {
+          "name": "the remaining hours until dawn",
+          "start": "01:00",
+          "end": "06:33",
+          "crosses_midnight": false,
+          "label": "the remaining hours until dawn (01:00-06:33)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "exactly at dusk",
+      "input": {
+        "now": "2026-09-14T17:10",
+        "sunrise": "2026-09-14T06:33",
+        "sunset": "2026-09-14T18:40",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T06:33"
+      },
+      "expected": [
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "17:10",
+          "end": "06:33",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (17:10 to 06:33 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "exactly at midnight",
+      "input": {
+        "now": "2026-09-15T00:00",
+        "sunrise": "2026-09-15T06:33",
+        "sunset": "2026-09-15T18:40",
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ],
+        "next_sunrise": "2026-09-16T06:33"
+      },
+      "expected": [
+        {
+          "name": "the remaining hours until dawn",
+          "start": "00:00",
+          "end": "06:33",
+          "crosses_midnight": false,
+          "label": "the remaining hours until dawn (00:00-06:33)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "06:33",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (06:33-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "18:00 far north in summer",
+      "input": {
+        "now": "2026-09-14T18:00",
+        "sunrise": "2026-09-14T03:30",
+        "sunset": "2026-09-14T22:30",
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T03:30"
+      },
+      "expected": [
+        {
+          "name": "the rest of today",
+          "start": "18:00",
+          "end": "21:00",
+          "crosses_midnight": false,
+          "label": "the rest of today (18:00-21:00)"
+        },
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "21:00",
+          "end": "03:30",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (21:00 to 03:30 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "03:30",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (03:30-24:00)"
+        }
+      ]
+    },
+    {
+      "name": "18:00 far north in winter",
+      "input": {
+        "now": "2026-09-14T18:00",
+        "sunrise": "2026-09-14T09:30",
+        "sunset": "2026-09-14T15:15",
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "next_sunrise": "2026-09-15T09:30"
+      },
+      "expected": [
+        {
+          "name": "tonight (dusk, evening and overnight through to dawn)",
+          "start": "18:00",
+          "end": "09:30",
+          "crosses_midnight": true,
+          "label": "tonight (dusk, evening and overnight through to dawn) (18:00 to 09:30 next day)"
+        },
+        {
+          "name": "Tuesday",
+          "start": "09:30",
+          "end": "24:00",
+          "crosses_midnight": false,
+          "label": "Tuesday (09:30-24:00)"
+        }
+      ]
+    }
+  ]
+}

@@ -35,6 +35,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
+from openlocalweather.dates import weekday_name
+
 # How long before sunset the light starts visibly going. Not an astronomical
 # quantity — civil twilight is defined after sunset — but the point at which
 # a person outdoors would say the evening is coming on.
@@ -171,19 +173,35 @@ TOMORROW = "tomorrow"
 UNTIL_DAWN = "the remaining hours until dawn"
 
 
-def _horizon_for(phase: str) -> tuple[str, ...]:
+def _horizon_for(phase: str, now: datetime, sunrise: datetime | None = None) -> tuple[str, ...]:
     """What matters most to someone reading at this hour.
 
     Ordered, and deliberately short. At dawn the whole day is ahead and the
     day is the story; by dusk most of it has happened and no amount of
     describing it helps anyone decide anything.
+
+    "NIGHT" IS TWO SITUATIONS AND USED TO RETURN ONE ANSWER. `classify_phase`
+    labels both 23:00 and 02:30 "night", but the day a reader is waiting for is
+    the NEXT one before midnight and the CURRENT one after it. Returning
+    (UNTIL_DAWN, TODAY) for both meant that before midnight the second entry
+    named the hour or so already ending, which is not a forecast of anything —
+    measured while giving the windows explicit bounds, it left 80 minutes a
+    night in which a run said what the hours to dawn held and nothing at all
+    about the day that followed.
+
+    `sunrise` absent means the sun could not be placed, and the pre-midnight
+    reading is the safe one: it promises a day still wholly ahead rather than
+    one that may already be over.
     """
+    if phase == "night":
+        after_midnight = sunrise is not None and now < sunrise
+        return (UNTIL_DAWN, TODAY) if after_midnight else (UNTIL_DAWN, TOMORROW)
+
     return {
         "polar_morning": (TODAY, TONIGHT),
         "polar_midday": (REST_OF_TODAY, TONIGHT),
         "polar_afternoon": (REST_OF_TODAY, TONIGHT, TOMORROW),
         "polar_night": (TODAY, TONIGHT),
-        "night": (UNTIL_DAWN, TODAY),
         "dawn": (TODAY, TONIGHT),
         "morning": (TODAY, TONIGHT),
         "midday": (REST_OF_TODAY, TONIGHT),
@@ -286,9 +304,243 @@ def summarize_daypart(
         sunset=_hhmm(sunset),
         daylight_hours_left=int(daylight_left.total_seconds() // 3600),
         statement=_statement(phase, now, sunrise, sunset, next_sunrise),
-        horizon=_horizon_for(phase),
+        horizon=_horizon_for(phase, now, sunrise),
     )
 
+
+# --- Named windows with explicit clock bounds — ROADMAP item 104 -------------
+#
+# The horizon above says WHICH periods matter; it does not say when they start
+# and stop, and a locked sentence that says "today" at 22:01 means two hours
+# while the same word at 06:01 means eighteen. The operator's frame is that a
+# run can happen at any time and the forecast is a look at what is ahead, so
+# every named period the prompt uses now carries the clock range it covers.
+#
+# THE FIRST WINDOW STARTS AT THE ISSUANCE, NEVER EARLIER. That is the whole
+# point: a window is a period still to come, and one that began at dusk is
+# reported from now rather than from dusk when the reader is standing in it at
+# 22:01.
+#
+# THE WINDOWS ARE CONTIGUOUS AND DO NOT OVERLAP, which is a decision and not
+# an accident of the arithmetic. "The rest of today" and "tonight" genuinely
+# overlap in ordinary speech — dusk to midnight belongs to both — and so do
+# "tonight" and "tomorrow", because tonight runs past midnight to dawn.
+# Printed with explicit bounds, overlapping windows invite a reader to count
+# the same rain twice. So each window begins where the previous one ended, and
+# only the first is anchored to the clock: "the rest of today" stops at dusk
+# when tonight follows it, and "tomorrow" starts at sunrise when tonight
+# precedes it, which is what a reader already means by the word once they have
+# been told about the night.
+
+
+@dataclass(frozen=True)
+class ForecastWindow:
+    """One named period still ahead, with the clock range it covers."""
+
+    name: str
+    start: str
+    end: str
+
+    # True when `end` falls on a later local date than `start`. The label
+    # needs it, and so does any caller deciding whether to name a date.
+    crosses_midnight: bool
+
+    # The finished phrase, composed here so the prompt never has to assemble
+    # one and two callers cannot word it differently.
+    label: str
+
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "start": self.start,
+            "end": self.end,
+            "crosses_midnight": self.crosses_midnight,
+            "label": self.label,
+        }
+
+
+def _midnight_after(moment: datetime) -> datetime:
+    return moment.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+
+
+def _natural_end(
+    name: str,
+    next_name: str | None,
+    start: datetime,
+    now: datetime,
+    sunrise: datetime | None,
+    sunset: datetime | None,
+    next_sunrise: datetime | None,
+) -> datetime | None:
+    """Where a named period ends, given what follows it.
+
+    None when this module cannot place the end — the night periods without a
+    `next_sunrise`, or a daylight period that must stop at a dusk it was not
+    given a sunset for. A window whose end is unknown is dropped rather than
+    guessed: "tonight (22:01 to ??)" is worse than saying nothing.
+
+    `next_name` is what makes the daylight windows come out right, and getting
+    it wrong is not subtle. "The rest of today" runs to midnight when it is the
+    last thing said, but when TONIGHT follows it, it must stop at dusk instead
+    — otherwise a 15:00 run reports "the rest of today (15:00-24:00)" and then
+    "tonight (00:00-06:33)", which hands the evening to the day and leaves
+    "tonight" meaning the small hours. TONIGHT is defined two screens up as
+    dusk, evening and overnight together, and the bounds have to agree with the
+    name.
+    """
+    if name in (TODAY, REST_OF_TODAY):
+        if next_name in (TONIGHT, UNTIL_DAWN):
+            return None if sunset is None else sunset - DUSK_LEAD
+        return _midnight_after(now)
+
+    # The no-sun variant says "through to midnight" in so many words, so it
+    # ends there whatever follows — there is no dusk to hand over at.
+    if name == REST_OF_TODAY_TO_MIDNIGHT:
+        return _midnight_after(now)
+
+    if name in (TONIGHT, UNTIL_DAWN):
+        # THE FIRST SUNRISE AFTER THE WINDOW STARTS, which is not always
+        # tomorrow's and is not decided by `now`.
+        #
+        # `classify_phase` returns "night" both before midnight and after it —
+        # 23:00 and 02:30 carry the same label — so the phase cannot answer
+        # this. Nor can the issuance moment: at 06:01, before sunrise, TONIGHT
+        # is the night still to COME and ends at tomorrow's dawn, while
+        # UNTIL_DAWN at 02:30 ends at today's. Both are "before sunrise" and
+        # they want different answers. What separates them is where each
+        # window BEGINS — 17:10 for the first, 02:30 for the second — so the
+        # cursor decides and the clock does not.
+        #
+        # Measured while writing this: keying on `now` dropped the night
+        # window from every pre-dawn run, because today's sunrise had already
+        # passed the cursor and the window came out empty.
+        if sunrise is not None and start < sunrise:
+            return sunrise
+        return next_sunrise
+
+    if name == TOMORROW:
+        # Through to the end of tomorrow. Anchored on `now` rather than on the
+        # window's own start, so a window that begins at tomorrow's sunrise
+        # still ends at tomorrow's midnight rather than the one after it.
+        return _midnight_after(now) + timedelta(days=1)
+
+    return None
+
+
+def _crosses_midnight(start: datetime, end: datetime) -> bool:
+    """Whether the window runs past the end of the day it began in.
+
+    NOT `end.date() > start.date()`, which is wrong for the commonest window
+    there is. A window closing at midnight is stored as 00:00 of the NEXT
+    date, so that test called "06:33-24:00" a crossing — one daylight day,
+    reported to the reader as though it ran into tomorrow.
+    """
+    return end > _midnight_after(start)
+
+
+def _end_text(end: datetime) -> str:
+    """Midnight reads as the end of the day it closes, not the start of the
+    next one: "22:01-24:00" is one evening, "22:01-00:00" looks like a window
+    of no length."""
+    return "24:00" if end.hour == 0 and end.minute == 0 else _hhmm(end)
+
+
+def _display_name(name: str, start: datetime, now: datetime, night: bool) -> str:
+    """The period's name as the reader sees it.
+
+    THE RULE IS TO NAME THE DAY WHENEVER THE RELATIVE WORD COULD BE READ
+    AGAINST A DIFFERENT ONE, and there are two ways that happens.
+
+    AROUND MIDNIGHT THE RELATIVE WORDS STOP AGREEING WITH EACH OTHER. A run at
+    23:00 on Monday calls the coming day "tomorrow" and a run at 01:00 on
+    Tuesday calls the same day "today" — two issuances two hours apart, naming
+    one calendar day two different ways, and "today" at 1 am is the more
+    treacherous of the two because a reader awake then usually means the day
+    that just ended. Both say "Tuesday" instead.
+
+    A FORECAST OUTLIVES THE DAY IT WAS WRITTEN ON. In the app a reader may not
+    open it for days, and the last issuance stays on their screen; on the site
+    the archive keeps every issuance forever. "Tomorrow" is wrong the moment
+    the day turns and nothing in the text says so, while "Tuesday" stays true
+    for as long as anyone can read it. Same reasoning that kept the day-over-day
+    comparison off the previous issuance — see ROADMAP item 104.
+
+    So a day window is named by weekday whenever it falls on a date other than
+    the issuance's, and always at night. What is left with a relative word is
+    the period the reader is standing in — "the rest of today", "tonight",
+    "the remaining hours until dawn" — which are anchored to now by their own
+    clock bounds and cannot drift.
+    """
+    if name not in (TODAY, TOMORROW):
+        return name
+
+    if night or start.date() != now.date():
+        return weekday_name(start.date())
+
+    return name
+
+
+def _window_label(name: str, start: datetime, end: datetime) -> str:
+    if _crosses_midnight(start, end):
+        return f"{name} ({_hhmm(start)} to {_end_text(end)} next day)"
+    return f"{name} ({_hhmm(start)}-{_end_text(end)})"
+
+
+def forecast_windows(
+    now: datetime,
+    sunrise: datetime | None,
+    sunset: datetime | None,
+    horizon: tuple[str, ...],
+    next_sunrise: datetime | None = None,
+) -> tuple[ForecastWindow, ...]:
+    """The horizon's named periods, given explicit non-overlapping bounds.
+
+    `horizon` comes from a DayPart, so the caller cannot pick a set of periods
+    the phase does not call for. Local times throughout, matching
+    summarize_daypart.
+
+    Returns an empty tuple rather than raising when nothing can be placed, for
+    the same reason every other block here reports absence: the prompt already
+    knows how to say a thing is unavailable, and a forecast does not abort
+    because it could not name a window.
+    """
+    # Night is one of the two conditions that force a weekday — see
+    # _display_name. A sun-less run cannot establish the phase, so it falls
+    # back to the date test alone, which needs no sun.
+    night = (
+        sunrise is not None
+        and sunset is not None
+        and classify_phase(now, sunrise, sunset) == "night"
+    )
+
+    windows: list[ForecastWindow] = []
+    cursor = now
+
+    for position, name in enumerate(horizon):
+        next_name = horizon[position + 1] if position + 1 < len(horizon) else None
+        end = _natural_end(name, next_name, cursor, now, sunrise, sunset, next_sunrise)
+        if end is None:
+            continue
+
+        # A period wholly behind the reader is not a forecast. Dropped rather
+        # than clamped to zero width, so nothing downstream has to decide what
+        # an empty window means.
+        if end <= cursor:
+            continue
+
+        shown = _display_name(name, cursor, now, night)
+        windows.append(
+            ForecastWindow(
+                name=shown,
+                start=_hhmm(cursor),
+                end=_end_text(end),
+                crosses_midnight=_crosses_midnight(cursor, end),
+                label=_window_label(shown, cursor, end),
+            )
+        )
+        cursor = end
+
+    return tuple(windows)
 
 # How far ahead a forecast issued now should look.
 #

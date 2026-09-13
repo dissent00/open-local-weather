@@ -21,6 +21,9 @@ library;
 /// How long before sunset the light starts visibly going. Not an astronomical
 /// quantity — civil twilight is defined after sunset — but the point at which
 /// a person outdoors would say the evening is coming on.
+
+import 'dates.dart' show weekdayName;
+
 const Duration duskLead = Duration(minutes: 90);
 
 /// Sunrise is a moment; "early morning" is the stretch around it.
@@ -156,19 +159,40 @@ String classifyPhase(DateTime now, DateTime sunrise, DateTime sunset) {
   return 'night';
 }
 
-List<String> _horizonFor(String phase) => const {
-      'polar_morning': [today, tonight],
-      'polar_midday': [restOfToday, tonight],
-      'polar_afternoon': [restOfToday, tonight, tomorrow],
-      'polar_night': [today, tonight],
-      'night': [untilDawn, today],
-      'dawn': [today, tonight],
-      'morning': [today, tonight],
-      'midday': [restOfToday, tonight],
-      'afternoon': [restOfToday, tonight, tomorrow],
-      'dusk': [tonight, tomorrow],
-      'evening': [tonight, tomorrow],
-    }[phase]!;
+/// What matters most to someone reading at this hour.
+///
+/// "NIGHT" IS TWO SITUATIONS AND USED TO RETURN ONE ANSWER. `classifyPhase`
+/// labels both 23:00 and 02:30 "night", but the day a reader is waiting for is
+/// the NEXT one before midnight and the CURRENT one after it. Returning
+/// [untilDawn, today] for both meant that before midnight the second entry
+/// named the hour or so already ending, which is not a forecast of anything —
+/// measured while giving the windows explicit bounds, it left 80 minutes a
+/// night in which a run said what the hours to dawn held and nothing at all
+/// about the day that followed.
+///
+/// A null [sunrise] means the sun could not be placed, and the pre-midnight
+/// reading is the safe one: it promises a day still wholly ahead rather than
+/// one that may already be over.
+List<String> _horizonFor(String phase, DateTime now, [DateTime? sunrise]) {
+  if (phase == 'night') {
+    final afterMidnight = sunrise != null && now.isBefore(sunrise);
+    return afterMidnight
+        ? const [untilDawn, today]
+        : const [untilDawn, tomorrow];
+  }
+  return const {
+    'polar_morning': [today, tonight],
+    'polar_midday': [restOfToday, tonight],
+    'polar_afternoon': [restOfToday, tonight, tomorrow],
+    'polar_night': [today, tonight],
+    'dawn': [today, tonight],
+    'morning': [today, tonight],
+    'midday': [restOfToday, tonight],
+    'afternoon': [restOfToday, tonight, tomorrow],
+    'dusk': [tonight, tomorrow],
+    'evening': [tonight, tomorrow],
+  }[phase]!;
+}
 
 /// One plain sentence placing the reader in the day.
 ///
@@ -242,8 +266,208 @@ DayPart summarizeDaypart(
     sunset: _hhmm(sunset),
     daylightHoursLeft: daylightLeft.inHours,
     statement: _statement(phase, now, sunrise, sunset, nextSunrise),
-    horizon: _horizonFor(phase),
+    horizon: _horizonFor(phase, now, sunrise),
   );
+}
+
+// --- Named windows with explicit clock bounds — ROADMAP item 104 ------------
+//
+// The horizon says WHICH periods matter; it does not say when they start and
+// stop, and a locked sentence that says "today" at 22:01 means two hours while
+// the same word at 06:01 means eighteen. A run can happen at any time and the
+// forecast is a look at what is ahead, so every named period the prompt uses
+// carries the clock range it covers.
+//
+// THE FIRST WINDOW STARTS AT THE ISSUANCE, NEVER EARLIER. A window is a period
+// still to come, and one that began at dusk is reported from now rather than
+// from dusk when the reader is standing in it at 22:01.
+//
+// THE WINDOWS ARE CONTIGUOUS AND DO NOT OVERLAP, which is a decision and not
+// an accident of the arithmetic. "The rest of today" and "tonight" genuinely
+// overlap in ordinary speech — dusk to midnight belongs to both — and so do
+// "tonight" and "tomorrow", because tonight runs past midnight to dawn.
+// Printed with explicit bounds, overlapping windows invite a reader to count
+// the same rain twice. So each window begins where the previous one ended.
+
+/// One named period still ahead, with the clock range it covers.
+class ForecastWindow {
+  const ForecastWindow({
+    required this.name,
+    required this.start,
+    required this.end,
+    required this.crossesMidnight,
+    required this.label,
+  });
+
+  final String name;
+  final String start;
+  final String end;
+
+  /// True when [end] falls past the close of the day [start] began in.
+  final bool crossesMidnight;
+
+  /// The finished phrase, composed here so the prompt never has to assemble
+  /// one and two callers cannot word it differently.
+  final String label;
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'start': start,
+        'end': end,
+        'crosses_midnight': crossesMidnight,
+        'label': label,
+      };
+}
+
+DateTime _midnightAfter(DateTime moment) =>
+    DateTime(moment.year, moment.month, moment.day).add(const Duration(days: 1));
+
+/// Whether the window runs past the end of the day it began in.
+///
+/// NOT a date comparison, which is wrong for the commonest window there is. A
+/// window closing at midnight is held as 00:00 of the NEXT date, so that test
+/// called "06:33-24:00" a crossing — one daylight day, reported to the reader
+/// as though it ran into tomorrow.
+bool _crossesMidnight(DateTime start, DateTime end) =>
+    end.isAfter(_midnightAfter(start));
+
+/// Midnight reads as the end of the day it closes, not the start of the next
+/// one: "22:01-24:00" is one evening, "22:01-00:00" looks like a window of no
+/// length.
+String _endText(DateTime end) =>
+    (end.hour == 0 && end.minute == 0) ? '24:00' : _hhmm(end);
+
+/// Where a named period ends, given what follows it.
+///
+/// Null when the end cannot be placed — the night periods without a
+/// [nextSunrise], or a daylight period that must stop at a dusk it was not
+/// given a sunset for. A window whose end is unknown is dropped rather than
+/// guessed: "tonight (22:01 to ??)" is worse than saying nothing.
+///
+/// [nextName] is what makes the daylight windows come out right, and getting
+/// it wrong is not subtle. "The rest of today" runs to midnight when it is the
+/// last thing said, but when [tonight] follows it, it must stop at dusk instead
+/// — otherwise a 15:00 run reports "the rest of today (15:00-24:00)" and then
+/// "tonight (00:00-06:33)", which hands the evening to the day and leaves
+/// "tonight" meaning the small hours.
+DateTime? _naturalEnd(
+  String name,
+  String? nextName,
+  DateTime start,
+  DateTime now,
+  DateTime? sunrise,
+  DateTime? sunset,
+  DateTime? nextSunrise,
+) {
+  if (name == today || name == restOfToday) {
+    if (nextName == tonight || nextName == untilDawn) {
+      return sunset == null ? null : sunset.subtract(duskLead);
+    }
+    return _midnightAfter(now);
+  }
+
+  // The no-sun variant says "through to midnight" in so many words, so it ends
+  // there whatever follows — there is no dusk to hand over at.
+  if (name == restOfTodayToMidnight) return _midnightAfter(now);
+
+  if (name == tonight || name == untilDawn) {
+    // THE FIRST SUNRISE AFTER THE WINDOW STARTS, which is not always
+    // tomorrow's and is not decided by `now`. At 06:01, before sunrise,
+    // [tonight] is the night still to COME and ends at tomorrow's dawn, while
+    // [untilDawn] at 02:30 ends at today's. Both are "before sunrise" and they
+    // want different answers; what separates them is where each window BEGINS.
+    if (sunrise != null && start.isBefore(sunrise)) return sunrise;
+    return nextSunrise;
+  }
+
+  if (name == tomorrow) {
+    // Through to the end of tomorrow. Anchored on `now` rather than on the
+    // window's own start, so a window beginning at tomorrow's sunrise still
+    // ends at tomorrow's midnight rather than the one after it.
+    return _midnightAfter(now).add(const Duration(days: 1));
+  }
+
+  return null;
+}
+
+/// The period's name as the reader sees it.
+///
+/// THE RULE IS TO NAME THE DAY WHENEVER THE RELATIVE WORD COULD BE READ
+/// AGAINST A DIFFERENT ONE, and there are two ways that happens.
+///
+/// AROUND MIDNIGHT THE RELATIVE WORDS STOP AGREEING WITH EACH OTHER. A run at
+/// 23:00 on Monday calls the coming day "tomorrow" and a run at 01:00 on
+/// Tuesday calls the same day "today" — one calendar day named two ways, and
+/// "today" at 1 am is the more treacherous because a reader awake then usually
+/// means the day that just ended. Both say "Tuesday" instead.
+///
+/// A FORECAST OUTLIVES THE DAY IT WAS WRITTEN ON. In the app a reader may not
+/// open it for days and the last issuance stays on their screen; the archive
+/// keeps every issuance forever. "Tomorrow" is wrong the moment the day turns
+/// and nothing in the text says so, while "Tuesday" stays true.
+String _displayName(String name, DateTime start, DateTime now, bool night) {
+  if (name != today && name != tomorrow) return name;
+
+  final differentDay = start.year != now.year ||
+      start.month != now.month ||
+      start.day != now.day;
+  if (night || differentDay) return weekdayName(start);
+
+  return name;
+}
+
+String _windowLabel(String name, DateTime start, DateTime end) =>
+    _crossesMidnight(start, end)
+        ? '$name (${_hhmm(start)} to ${_endText(end)} next day)'
+        : '$name (${_hhmm(start)}-${_endText(end)})';
+
+/// The horizon's named periods, given explicit non-overlapping bounds.
+///
+/// Returns an empty list rather than throwing when nothing can be placed: the
+/// prompt already knows how to say a thing is unavailable, and a forecast does
+/// not abort because it could not name a window.
+List<ForecastWindow> forecastWindows(
+  DateTime now,
+  DateTime? sunrise,
+  DateTime? sunset,
+  List<String> horizon, [
+  DateTime? nextSunrise,
+]) {
+  // Night is one of the two conditions that force a weekday — see
+  // [_displayName]. A sun-less run cannot establish the phase, so it falls back
+  // to the date test alone, which needs no sun.
+  final night = sunrise != null &&
+      sunset != null &&
+      classifyPhase(now, sunrise, sunset) == 'night';
+
+  final windows = <ForecastWindow>[];
+  var cursor = now;
+
+  for (var position = 0; position < horizon.length; position++) {
+    final name = horizon[position];
+    final nextName =
+        position + 1 < horizon.length ? horizon[position + 1] : null;
+    final end =
+        _naturalEnd(name, nextName, cursor, now, sunrise, sunset, nextSunrise);
+    if (end == null) continue;
+
+    // A period wholly behind the reader is not a forecast. Dropped rather than
+    // clamped to zero width, so nothing downstream has to decide what an empty
+    // window means.
+    if (!end.isAfter(cursor)) continue;
+
+    final shown = _displayName(name, cursor, now, night);
+    windows.add(ForecastWindow(
+      name: shown,
+      start: _hhmm(cursor),
+      end: _endText(end),
+      crossesMidnight: _crossesMidnight(cursor, end),
+      label: _windowLabel(shown, cursor, end),
+    ));
+    cursor = end;
+  }
+
+  return windows;
 }
 
 /// The issuance moment when sunrise and sunset could not be fetched.

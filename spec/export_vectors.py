@@ -2739,6 +2739,7 @@ def export_daypart() -> None:
 
     from openlocalweather.daypart import (
         daypart_without_sun,
+        forecast_windows,
         forward_hours,
         reconcile_now,
         summarize_daypart,
@@ -2833,6 +2834,84 @@ def export_daypart() -> None:
         "into the prompt verbatim, so the two implementations must agree "
         "character for character.",
         cases,
+    )
+
+
+    # --- forecast_windows — ROADMAP item 104 ---------------------------------
+    #
+    # THE CASES ARE CHOSEN TO BREAK A CLOCK TABLE, same discipline as the
+    # summarize_daypart set above. Every bound here is sun-relative (dusk is
+    # sunset minus 90 minutes, the day windows end at the coming sunrise), so a
+    # port that hard-codes "the evening starts at 17:10" passes Kisumu and
+    # fails both high-latitude sets.
+    #
+    # The midnight pair is the reason the weekday naming exists: 23:00 Monday
+    # and 01:00 Tuesday describe ONE calendar day, and before this the first
+    # called it "tomorrow" and the second "today".
+    window_cases = []
+    for label, now, rise, set_, nxt in [
+        # Kisumu, across the whole day.
+        ("pre-dawn", "2026-09-14T02:30", "2026-09-14T06:33", "2026-09-14T18:40",
+         "2026-09-15T06:33"),
+        ("dawn", "2026-09-14T06:01", "2026-09-14T06:33", "2026-09-14T18:40",
+         "2026-09-15T06:33"),
+        ("afternoon, three windows", "2026-09-14T15:00", "2026-09-14T06:33",
+         "2026-09-14T18:40", "2026-09-15T06:33"),
+        ("dusk — the 18:01 run", "2026-09-14T18:01", "2026-09-14T06:33",
+         "2026-09-14T18:40", "2026-09-15T06:33"),
+        ("evening", "2026-09-14T22:01", "2026-09-14T06:33", "2026-09-14T18:40",
+         "2026-09-15T06:33"),
+        # The pair that must agree. Monday night and Tuesday morning, one day
+        # between them, named once.
+        ("Monday 23:00 — names Tuesday", "2026-09-14T23:00", "2026-09-14T06:33",
+         "2026-09-14T18:40", "2026-09-15T06:33"),
+        ("Tuesday 01:00 — names Tuesday", "2026-09-15T01:00", "2026-09-15T06:33",
+         "2026-09-15T18:40", "2026-09-16T06:33"),
+        # Exactly at dusk and exactly at midnight: the two bounds the windows
+        # are built from, where an inclusive/exclusive slip shows up.
+        ("exactly at dusk", "2026-09-14T17:10", "2026-09-14T06:33",
+         "2026-09-14T18:40", "2026-09-15T06:33"),
+        ("exactly at midnight", "2026-09-15T00:00", "2026-09-15T06:33",
+         "2026-09-15T18:40", "2026-09-16T06:33"),
+        # Same clock hour, three sun positions — a clock table cannot pass all
+        # three.
+        ("18:00 far north in summer", "2026-09-14T18:00", "2026-09-14T03:30",
+         "2026-09-14T22:30", "2026-09-15T03:30"),
+        ("18:00 far north in winter", "2026-09-14T18:00", "2026-09-14T09:30",
+         "2026-09-14T15:15", "2026-09-15T09:30"),
+    ]:
+        now_dt = _dt.fromisoformat(now)
+        rise_dt = _dt.fromisoformat(rise)
+        set_dt = _dt.fromisoformat(set_)
+        nxt_dt = _dt.fromisoformat(nxt)
+        horizon = summarize_daypart(now_dt, rise_dt, set_dt, nxt_dt).horizon
+        window_cases.append(
+            {
+                "name": label,
+                "input": {
+                    "now": now,
+                    "sunrise": rise,
+                    "sunset": set_,
+                    "horizon": list(horizon),
+                    "next_sunrise": nxt,
+                },
+                "expected": [
+                    w.to_json()
+                    for w in forecast_windows(now_dt, rise_dt, set_dt, horizon, nxt_dt)
+                ],
+            }
+        )
+
+    write(
+        "forecast_windows.json",
+        "forecast_windows",
+        "The horizon's named periods given explicit, contiguous, "
+        "non-overlapping clock bounds, each starting where the previous ended "
+        "and the first at the issuance itself. Labels reach the reader "
+        "verbatim, and a day is named by weekday whenever it is not the "
+        "issuance's own date or the run is at night — so two issuances either "
+        "side of midnight name one day the same way.",
+        window_cases,
     )
 
     no_sun = [

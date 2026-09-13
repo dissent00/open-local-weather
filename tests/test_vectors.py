@@ -55,6 +55,7 @@ from openlocalweather.instability import summarize_instability
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
     daypart_without_sun,
+    forecast_windows,
     forward_hours,
     reconcile_now,
     summarize_daypart,
@@ -769,6 +770,7 @@ def test_every_vector_file_is_exercised():
         "aqi_last_known.json",
         "instability.json",
         "daypart.json",
+        "forecast_windows.json",
         "daypart_without_sun.json",
         "daypart_clock.json",
         "daypart_forward_hours.json",
@@ -862,6 +864,20 @@ def test_vectors_daypart():
             datetime.fromisoformat(nxt) if nxt else None,
         )
         check(c, got.to_json())
+
+
+def test_vectors_forecast_windows():
+    for c in load("forecast_windows.json")["cases"]:
+        i = c["input"]
+        nxt = i.get("next_sunrise")
+        got = forecast_windows(
+            datetime.fromisoformat(i["now"]),
+            datetime.fromisoformat(i["sunrise"]),
+            datetime.fromisoformat(i["sunset"]),
+            tuple(i["horizon"]),
+            datetime.fromisoformat(nxt) if nxt else None,
+        )
+        check(c, [w.to_json() for w in got])
 
 
 def test_vectors_daypart_without_sun():

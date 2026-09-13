@@ -1167,6 +1167,21 @@ void main() {
       }
     });
 
+    test('the horizon windows carry the bounds Python gives them', () {
+      for (final c in loadVectors('forecast_windows.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final next = i['next_sunrise'] as String?;
+        final got = forecastWindows(
+          DateTime.parse(i['now'] as String),
+          DateTime.parse(i['sunrise'] as String),
+          DateTime.parse(i['sunset'] as String),
+          (i['horizon'] as List).cast<String>(),
+          next == null ? null : DateTime.parse(next),
+        ).map((w) => w.toJson()).toList();
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('computed sunrise and sunset match Python', () {
       String iso(DateTime t) =>
           t.toIso8601String().replaceFirst(RegExp(r'\.\d+$'), '');
@@ -1317,6 +1332,7 @@ void main() {
       'aqi_last_known.json',
       'instability.json',
       'daypart.json',
+      'forecast_windows.json',
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',
