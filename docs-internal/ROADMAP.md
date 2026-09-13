@@ -13713,6 +13713,36 @@ observed peak wind has already passed the predicted peak. Same shape as
 `newer_than_previous_issuance` — a precomputed boolean the prompt and the
 pipeline can both read.
 
+### Two C2 decisions taken 2026-09-13, and neither is built
+
+**An UNREADABLE station does not fire the third trigger.** Operator's call.
+`observation_disagreements` is three-valued and `None` means "could not look",
+which is not "nothing found" — but it is not evidence of movement either, and
+firing on it would mean an offline station forces a full run every time, so
+the gate would never fire at all. Measured on the day: the 18:02 issuance had
+`None` there, because `_observed_so_far` returns None on every failure path.
+
+Read it with item 120, which should let an operator override this: a
+deployment whose value is its sensor network may well want an unreadable
+station to force a run, and that is exactly the kind of thing C2 fixes as a
+constant today.
+
+**Tier 2 reads the PRIOR JUDGMENT from the row, stored verbatim.** Operator's
+call, and NOT BUILT — `IssuancePredictions` has no `judgment` field yet. Tier
+2 makes the narrative call only, and that call must be handed the judgment it
+is rendering; nothing stores one today, because the prompt archive keeps
+inputs and not responses.
+
+Every `TodayProperties` field IS recoverable — the prose half from
+`IssuanceSnapshot`, the numeric half from the row's blend `ModelPrediction`,
+and `ExtendedDayProperties` is only `{lead, rain, rain_probability_pct}` with
+the lead implied by which list it sits in. Reconstruction was rejected anyway:
+it is a THIRD representation of one fact, and a schema that gains a field
+would leave the narrative rendering a different call than the judgment made,
+silently. ~1 KB against a 23.7 KB entry buys a row that says what that
+issuance committed to, and makes a tier-2 issuance replayable without reading
+the log entry.
+
 **C3. Models and the blend are scored together, from the same guidance, at
 every scored issuance.** Identical opportunity set, so each scored issuance is
 a paired comparison.
