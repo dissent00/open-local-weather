@@ -13238,7 +13238,7 @@ those two disagreed on 4 of 14 days measured — the disagreement the prompt
 already tells the forecaster never to reconcile. One instrument for a
 dimension across the whole window, or that dimension is withheld.
 
-### How to finish it — steps 1-3 shipped 2026-09-13, one left
+### How to finish it — all four steps shipped 2026-09-13, with one deliberate exception
 
 Ordered so the step that can corrupt the accuracy record comes last, and each
 one is provable on its own.
@@ -13343,11 +13343,70 @@ Four tests, each confirmed to fail on the preceding commit. Two dead
 comments held the only copy of item 90's reasoning, which moved onto
 `_visible_note`.
 
-**4. Collapse the bodies.** Gate the first-run-only work on
-`existing_entry is None` rather than on which function the caller chose —
-which is what `run_forecast` already decides, one level up. Then delete the
-`is_reissue` prompt branch: ~3,400 characters of LATER ISSUANCE that only the
-evening run has ever seen and that nothing has verified end to end.
+**4. Collapse the bodies. SHIPPED (`c3ea30f`), except the prompt branch.**
+`_issue_forecast` is the one body and branches once, on `first_issuance`.
+`run_refresh_pipeline`, `RefreshWithoutMorningRunError` and the `run-daily` /
+`refresh-forecast` verbs are gone: a run on a day with no entry IS that day's
+first issuance, at whatever hour it happens, which is this item's contract.
+420 non-comment lines across two bodies became 246 in one, plus two helpers
+lifted out unchanged (`_run_actuals_refresh`, `_write_back_verification`) so
+"only the first issuance does this" is one `if` rather than a gate threaded
+through forty lines.
+
+Three things only a first issuance does, each because repeating it would be
+WRONG rather than merely wasteful: fetching yesterday's actuals (the only
+archive requests a run makes); verifying and scoring (yesterday's
+observations do not change during the day, and a later issuance would
+overwrite the first run's notes with the placeholder it returns by design);
+and emailing.
+
+**THE `is_reissue` PROMPT BRANCH STAYS, and this is a deliberate departure
+from the plan above.** Two facts changed the answer:
+
+- It is **narrative-only** — 3,395 characters on the narrative prompt and
+  zero on the judgment prompt — so the scored call never sees it and deleting
+  it cannot move the numbers directly.
+- **It works.** "Nothing has verified it end to end" was true when written.
+  Today's two live issuances are the verification: 06:01 opened *"Cloudier
+  than yesterday"*, 18:01 opened *"Updated model guidance confirms showers and
+  thunderstorms remain on track for this evening and overnight"*. That is
+  exactly the behaviour the block exists to produce.
+
+And it is four rules, not one. Only the second — "THIS REPLACES THE
+DAY-OVER-DAY OPENING" — is killed by the settled contract, whose C8 recast
+against the forward window **is decided and not built**. The other three
+(the placeholder-verification instruction, "NO NEW GUIDANCE IS AN ANSWER"
+keyed to `newer_than_previous_issuance`, and "BREVITY IS NOT OMISSION" which
+keeps the met service named) still do work. Deleting the block now would
+trade a working behaviour for a plan, and would republish the defect it was
+written to stop — an evening update opening on the day the reader has
+already lived. **Delete it with C8's recast, not before.**
+
+*Note a contradiction inside this item that C8 settles:* "Also to be decided,
+and cheaper" says the day-over-day comparison should be first-issuance-only.
+C8 says it is recast and explicitly NOT suppressed. C8 is later and wins; the
+earlier note is superseded.
+
+**Email is preserved as first-issuance-only, and should become
+configurable.** The pipeline's `EmailSender` is not wired in production —
+`forecast.yml` sets no Gmail credentials — and it is NOT the Apps Script
+mailer, which polls the published data on its own trigger, keys on
+`refreshed_at || generated_at_utc`, and already mails every issuance with a
+run label. Once on-demand runs are routine, "the day's email" stops having an
+obvious meaning, so the choice belongs to the operator rather than to a
+constant in `_issue_forecast`.
+
+**How it was proved.** The CLI driven through first issuance, forced
+re-issue and skipped repeat: the log entry, actuals cache, spend ledger and
+track record byte-identical, the first issuance's prompt byte-identical, and
+exactly three deliberate text changes — two operator-facing CLI lines that
+said "refresh", and one sentence in the re-issue's verification note that
+said "morning". The `run-kind:` lines `forecast.yml` greps are unchanged, and
+step 3's write-once check still passes on a real re-issue.
+
+**The step 3 divergence script can no longer be written.** It drove the two
+re-issue paths against each other; there is one. That is the item's whole
+claim, stated as something that is now impossible to measure.
 
 **What is actually left, measured 2026-09-13.** `run_daily_pipeline` is 331
 non-comment lines and `run_refresh_pipeline` 182, down from 389 and 240. The
