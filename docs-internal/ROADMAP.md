@@ -15275,3 +15275,112 @@ Related: items 117 and 117b (the case that found it), 83 (code-written phrases
 and the contract nobody wrote), 104 (which makes this routine), 88 (the vector
 discipline and the ordering constraint), and Ensemble item 13 for the
 `required` argument.
+
+---
+
+## 119. The forecaster was asked to do arithmetic, and got it wrong in public · **Prevention and detection both shipped 2026-09-13**
+
+A run on 2026-09-13 wrote "Monday (16 September)". The 16th is a Wednesday.
+
+The operator's reaction is the item: not the wrong date itself, but *what else
+is it inventing.*
+
+### What it actually was
+
+**The date was never missing.** `2026-09-16` is in the prompt, in the extended
+daily arrays, along with every date out to Day+7. What the model had to supply
+was the mapping from that date to a weekday — and that is arithmetic, which
+this project has a standing rule about. Every other computed value in the
+prompt arrives finished precisely so the model never derives one. The calendar
+was the exception nobody noticed.
+
+### Measured before fixing, and the first measurement was wrong
+
+A scan of every stored entry and every issuance reported **4 false pairings out
+of 24**, on 2026-08-11 and 2026-08-12.
+
+That was itself wrong. The scan carried its own regex, which did not match an
+ordinal suffix, so `"Sunday, September 7th"` slipped past it. The real figure
+from the shipped checker is **7 of 39 — 18% — across four days**, and the most
+recent is **2026-09-04**, nine days before the run that prompted this rather
+than a month.
+
+**The lesson is the one this session kept relearning.** A second implementation
+of a check is a second answer to the same question, and the throwaway one is
+the one that is wrong. `tools/scan_weekday_claims.py` now imports `claims`
+rather than carrying a pattern of its own. The same mistake was made twice more
+the same day — a duplicate `WEEKDAYS` table that `dates.weekday_name` already
+owned and is vector-pinned to prevent, and a duplicate ISO date formatter beside
+`formatDate` — both caught by looking for a function before writing one.
+
+Every error, in all seven, is off by exactly one day.
+
+### Prevention: hand over the calendar
+
+`dates.forward_calendar` gives every day from today to Day+7 with its day name
+attached, and the block tells the forecaster to use those pairings and derive
+no others — a day not in the list is named by date alone or not at all.
+
+Day+7 rather than Day+3 because the Extended Outlook is written from the
+seven-day fetch, and a calendar stopping short would leave the model deriving
+exactly the dates it writes about.
+
+### Detection: read the prose before publishing it
+
+**Nothing had ever read the narrative.** Item 102 put a guard on the fields the
+forecaster writes; the prose went from the response into `narrative_markdown`
+and onto the page unread. `claims.false_weekday_claims` checks the one class of
+claim that is decidable with certainty — a weekday paired with a date is right
+or wrong and no weather comes into it.
+
+**A finding does not stop a run.** Operator's call: record it and publish.
+Discarding a narrative over one wrong weekday costs the reader far more than
+the error does, and a retry spends against a budget item 111 already says
+cannot express "spend less per forecast". The stored count is the evidence for
+whether anything stronger is ever worth buying — so re-read it in a few weeks
+before proposing one.
+
+**A false alarm would be worse than the defect**, because a check that cries
+wolf is one nobody reads. A bare month and day therefore resolve to the
+occurrence nearest the run rather than to its year: "Saturday, 2 January"
+written on 29 December is correct and stays silent.
+
+`NarrativeFinding` is deliberately not a `RunDegradation`. That class is for a
+block the prompt expected and did not get, and its own docstring warns that
+widening it would make the field mean nothing within a week. A degradation says
+the run had less to work with; this says the run had everything and the answer
+was still false.
+
+### What is checkable, and what is not
+
+The operator's real question was how far this goes. Honestly:
+
+| claim | checkable? | state |
+|---|---|---|
+| weekday paired with a date | **yes, with certainty** | was wrong 18% of the time; now prevented and checked |
+| a locked sentence used VERBATIM or not at all | **yes** | measured 2026-09-13: 5 offered, 3 verbatim, 2 dropped, **0 reworded** — the contract is holding |
+| a model named that is not in `MODELS` | yes | not checked yet |
+| a number attributed to a named model | yes, against the payload | not checked yet |
+| whether the evening will actually be thundery | **no** | nothing here can answer it, and nothing here pretends to |
+
+The verbatim result is worth keeping because it is the reassuring one: the
+contract nobody enforced turns out to be respected, so the failure was specific
+to arithmetic rather than general invention. Do not read that as proof for the
+two unchecked rows.
+
+### Shipped 2026-09-13
+
+Both halves, both languages. `forward_calendar` swept over 2192 start dates
+across six years — 17,536 pairings — and `false_weekday_claims` over 3000
+generated cases, zero Python/Dart divergences in either. Vector cases cover a
+month end, a year end in both directions, a leap and a non-leap February, an
+impossible 29 February, a weekday with no date and a date with no weekday.
+
+Wired on BOTH pipeline paths. The refresh keeps its own `meta` and would have
+omitted the field silently — the same divergence item 104 records, found for
+the fourth time in one day.
+
+Related: items 102 (the guard on the scored fields, and why this is a different
+one), 104 (the divergence class), 111 (why a retry was not bought), 9 (the
+WhatsApp field removed the same day for a related reason — nobody was reading
+what it produced either).
