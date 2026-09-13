@@ -103,7 +103,7 @@ absent values are `null`, never omitted keys.
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 8 |
-| `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 3 |
+| `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 4 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
 | `llm_schema_gemini.json` | `to_gemini_schema` | 1 |
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |

@@ -11100,10 +11100,29 @@ Ordered by what reaches a reader:
 
    The server's log is contiguous; the app's has no reason to be, and it is
    the app that has less recourse when a source goes quiet.
-7. **`extract.dart` Day+N uses `pickSeries` where Python still uses an `or`
-   chain**, so an all-null per-model array falls through in Dart and is used
-   in Python. Python is the source of truth and is the side still carrying
-   the un-fixed form.
+7. ~~**`extract.dart` Day+N uses `pickSeries` where Python still uses an `or`
+   chain.**~~ **Fixed 2026-09-13, in PYTHON**, which was the side carrying the
+   un-fixed form. A correctly-named array full of nulls is truthy, so `or`
+   latched onto it and never reached the fallback — the exact mechanism that
+   left ECMWF's Day+0 wind unscored for the life of this deployment, which is
+   what `pick_series` was written for. The Day+0 path adopted it; this one
+   never did.
+
+   **Unreachable on this deployment, and that is measured.** The two forms
+   differ only when a per-model key is all-null AND an un-suffixed key carries
+   the data. The 2026-09-12 extended-daily payload holds **41 keys and not one
+   of them is un-suffixed** — a multi-model request has no bare key for the
+   fallback to find, so both forms returned the same nulls. No published
+   number moves.
+
+   **It is reachable for a fork**, which is why it is still a fix rather than
+   a note: `pickSeries`'s own docstring records that a single-model response
+   uses the bare `{variable}` and that both shapes appear in practice. A
+   single-model deployment — item 52 — would have hit it.
+
+   The demonstration is the reverse of every other divergence here: the vector
+   case was generated from the broken Python, and DART failed it, reporting
+   the right answer (31.0 km/h) against Python's null.
 
 8. ~~**`baselines.dart:117` `reduce` rather than a compensated sum.**~~
    **Fixed 2026-09-13.** Climatology's mean runs over a record whose values

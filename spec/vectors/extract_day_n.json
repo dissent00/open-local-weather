@@ -293,6 +293,65 @@
           "mslp_trend": null
         }
       ]
+    },
+    {
+      "name": "an all-null alias falls through to the bare key",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-08-11",
+              "2026-08-12"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              3.2
+            ],
+            "temperature_2m_max_gfs_seamless": [
+              28.0,
+              26.0
+            ],
+            "temperature_2m_min_gfs_seamless": [
+              17.0,
+              18.0
+            ],
+            "pressure_msl_mean_gfs_seamless": [
+              1014.0,
+              1012.5
+            ],
+            "windgusts_10m_max_gfs_seamless": [
+              null,
+              null
+            ],
+            "windgusts_10m_max": [
+              25.0,
+              31.0
+            ]
+          }
+        },
+        "day_index": 1,
+        "models": [
+          "gfs_seamless"
+        ],
+        "threshold": 0.5
+      },
+      "expected": [
+        {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": null,
+          "precip_mm": 3.2,
+          "rain_probability_pct": null,
+          "wind_kmh": 31.0,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.5
+        }
+      ]
     }
   ]
 }

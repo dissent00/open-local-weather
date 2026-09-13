@@ -585,6 +585,27 @@ def export_extract() -> None:
             "pressure_msl_mean_ecmwf_ifs025": [1013.0, 1012.0],
         }
     }
+    # ROADMAP item 88, divergence 7, and the one case where PYTHON carries the
+    # un-fixed form. Open-Meteo returns a correctly-named array full of nulls
+    # when a model does not supply a variable under that alias, and a list of
+    # Nones is TRUTHY — so `d.get(per_model) or d.get(bare)` latches onto the
+    # null series and never reaches the fallback. That is how ECMWF's Day+0
+    # wind went unscored for the whole life of this deployment; `pick_series`
+    # was written for it, the Day+0 path uses it, and the Day+N path here
+    # never got it. Dart's `pickSeries` has always been correct.
+    daily_all_null_alias = {
+        "daily": {
+            "time": ["2026-08-11", "2026-08-12"],
+            "precipitation_sum_gfs_seamless": [0.0, 3.2],
+            "temperature_2m_max_gfs_seamless": [28.0, 26.0],
+            "temperature_2m_min_gfs_seamless": [17.0, 18.0],
+            "pressure_msl_mean_gfs_seamless": [1014.0, 1012.5],
+            # Present, correctly named, and empty of data. The bare key below
+            # is what the model actually supplies.
+            "windgusts_10m_max_gfs_seamless": [None, None],
+            "windgusts_10m_max": [25.0, 31.0],
+        }
+    }
     day_n_cases = []
     for idx, label in [(0, "day 0 has no previous day for mslp trend"), (1, "mid-range day"), (2, "beyond one model's horizon")]:
         day_n_cases.append(
@@ -594,6 +615,22 @@ def export_extract() -> None:
                 "expected": dump(extract_day_n_predictions_from_daily(daily, idx, models, RAIN_THRESHOLD_MM)),
             }
         )
+    day_n_cases.append(
+        {
+            "name": "an all-null alias falls through to the bare key",
+            "input": {
+                "daily_multi_model": daily_all_null_alias,
+                "day_index": 1,
+                "models": ["gfs_seamless"],
+                "threshold": RAIN_THRESHOLD_MM,
+            },
+            "expected": dump(
+                extract_day_n_predictions_from_daily(
+                    daily_all_null_alias, 1, ["gfs_seamless"], RAIN_THRESHOLD_MM
+                )
+            ),
+        }
+    )
     write(
         "extract_day_n.json",
         "extract_day_n_predictions_from_daily",

@@ -142,18 +142,26 @@ def extract_day_n_predictions_from_daily(
 
     predictions = []
     for model in models:
-        precip_arr = d.get(f"precipitation_sum_{model}") or d.get("precipitation_sum") or []
-        wind_arr = d.get(f"windgusts_10m_max_{model}") or d.get("windgusts_10m_max") or []
-        high_arr = d.get(f"temperature_2m_max_{model}") or d.get("temperature_2m_max") or []
-        low_arr = d.get(f"temperature_2m_min_{model}") or d.get("temperature_2m_min") or []
-        press_arr = d.get(f"pressure_msl_mean_{model}") or d.get("pressure_msl_mean") or []
+        # pick_series, NOT an `or` chain — ROADMAP item 88, divergence 7.
+        # Open-Meteo returns a correctly-named array full of nulls when a
+        # model does not supply a variable under that alias, and a list of
+        # Nones is TRUTHY, so `or` latches onto it and never reaches the
+        # fallback. That is how ECMWF's Day+0 wind went unscored for the whole
+        # life of this deployment. pick_series was written for exactly this,
+        # the Day+0 path above has used it since, and this path never got it —
+        # while the Dart port has been correct all along.
+        precip_arr = pick_series(d, f"precipitation_sum_{model}", "precipitation_sum")
+        wind_arr = pick_series(d, f"windgusts_10m_max_{model}", "windgusts_10m_max")
+        high_arr = pick_series(d, f"temperature_2m_max_{model}", "temperature_2m_max")
+        low_arr = pick_series(d, f"temperature_2m_min_{model}", "temperature_2m_min")
+        press_arr = pick_series(d, f"pressure_msl_mean_{model}", "pressure_msl_mean")
         # Fetched on every daily request since before this project scored
         # anything, and read by nothing until item 58. Recorded now because a
         # calibration check needs history and history only accrues forwards.
-        prob_arr = (
-            d.get(f"precipitation_probability_max_{model}")
-            or d.get("precipitation_probability_max")
-            or []
+        prob_arr = pick_series(
+            d,
+            f"precipitation_probability_max_{model}",
+            "precipitation_probability_max",
         )
 
         precip = precip_arr[day_index] if day_index < len(precip_arr) else None
