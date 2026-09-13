@@ -206,20 +206,39 @@ class PipelineDeps:
 
 
 @dataclass
-class PipelineRunResult:
+class ForecastRunResult:
+    """What a run of the day's forecast produced, whichever run it was.
+
+    ONE TYPE, BECAUSE THERE WERE TWO. PipelineRunResult and RefreshRunResult
+    made "was this the day's first run?" a question about the result's CLASS,
+    so a caller answered it with isinstance — which only works if the caller
+    already knows which function was dispatched to, and run_forecast exists
+    precisely so callers do not. It is a property of the RUN, and
+    `first_issuance` is that property. ROADMAP item 104, step 2.
+
+    It is the same question the entry already answers as
+    `InformationMoved.first_issuance_of_day` and the prompt as `is_reissue`.
+    In run_daily_pipeline all three read `existing_entry` directly; in
+    run_refresh_pipeline the guard at the top has already settled it, so the
+    latter two are written there as constants. Do not compute a fourth.
+
+    `updated_track_record` and `newly_verified` are the first run's work and
+    are None on a later issuance, meaning THIS RUN DID NOT DO IT. An empty
+    `newly_verified` would mean it verified and found nothing, which is a
+    different fact. The opposite choice is what item 104 is cleaning up: for
+    weeks three prompt blocks an unwired path never passed rendered
+    identically to a genuine absence, and nothing reported it.
+    """
+
     today: date
     log_entry: DailyLogEntry
-    updated_track_record: TrackRecord
-    newly_verified: list[tuple[date, int]]
     published: bool
-    emailed: bool
-
-
-@dataclass
-class RefreshRunResult:
-    today: date
-    log_entry: DailyLogEntry
-    published: bool
+    first_issuance: bool
+    updated_track_record: TrackRecord | None = None
+    newly_verified: list[tuple[date, int]] | None = None
+    # False on a later issuance because one genuinely sends no email — see
+    # run_refresh_pipeline's publish step. Not an absence, so not None.
+    emailed: bool = False
 
 
 @dataclass
@@ -1808,7 +1827,7 @@ def _with_merged_ground_aqi(
 
 def run_daily_pipeline(
     deps: PipelineDeps, today: date | None = None, dry_run: bool = False
-) -> PipelineRunResult:
+) -> ForecastRunResult:
     location = deps.location
     today = today or today_in_tz(location.timezone)
     yesterday = add_days(today, -1)
@@ -2362,12 +2381,18 @@ def run_daily_pipeline(
             deps.email_sender.send(log_entry)
             emailed = True
 
-    return PipelineRunResult(
+    return ForecastRunResult(
         today=today,
         log_entry=log_entry,
+        published=published,
+        # NOT a constant. `olw run-daily` can be typed for a day that already
+        # has an entry, and this body already treats that as a later issuance
+        # — it is where `is_reissue` above comes from, and where the scored
+        # predictions are preserved rather than rewritten. Hardcoding True
+        # here would make the result disagree with the entry it just wrote.
+        first_issuance=existing_entry is None,
         updated_track_record=verification_result.updated_track_record,
         newly_verified=verification_result.newly_verified,
-        published=published,
         emailed=emailed,
     )
 
@@ -2378,7 +2403,7 @@ def run_forecast(
     dry_run: bool = False,
     force: bool = False,
     now: datetime | None = None,
-) -> PipelineRunResult | RefreshRunResult | ForecastSkipped:
+) -> ForecastRunResult | ForecastSkipped:
     """The day's forecast, whichever run of the day this is.
 
     One verb, because the operator was picking between two by time of day and
@@ -2426,7 +2451,7 @@ def run_forecast(
 
 def run_refresh_pipeline(
     deps: PipelineDeps, today: date | None = None, dry_run: bool = False
-) -> RefreshRunResult:
+) -> ForecastRunResult:
     """The optional evening refresh — see this module's docstring and
     docs-internal/ROADMAP.md for the full rationale. Requires today's entry
     to already exist (written by a prior run_daily_pipeline() call);
@@ -2734,4 +2759,8 @@ def run_refresh_pipeline(
         # is unaffected either way since it runs on its own trigger and
         # just reads whatever is currently committed.
 
-    return RefreshRunResult(today=today, log_entry=updated_entry, published=published)
+    # Never the first issuance: the guard at the top of this function raises
+    # when the day has no entry to re-issue against.
+    return ForecastRunResult(
+        today=today, log_entry=updated_entry, published=published, first_issuance=False
+    )

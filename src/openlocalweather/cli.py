@@ -61,7 +61,6 @@ from openlocalweather.pipeline import (
     ForecastSkipped,
     attach_spend_cap,
     PipelineDeps,
-    PipelineRunResult,
     RefreshWithoutMorningRunError,
     run_daily_pipeline,
     run_forecast,
@@ -397,7 +396,8 @@ def _run_forecast(args: argparse.Namespace) -> int:
         print(f"Nothing to do for {result.today}: {result.reason}")
         return 0
 
-    if isinstance(result, PipelineRunResult):
+    # The RUN's own answer, not its type's — see pipeline.ForecastRunResult.
+    if result.first_issuance:
         print(RUN_KIND_FIRST)
         _print_daily_result(result, args.dry_run)
         return 0

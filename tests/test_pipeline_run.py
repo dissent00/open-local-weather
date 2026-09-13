@@ -1770,7 +1770,7 @@ def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
 def test_forecast_runs_the_full_pipeline_when_the_day_is_empty(tmp_path):
     result = pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
 
-    assert isinstance(result, pipeline.PipelineRunResult)
+    assert result.first_issuance is True
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.model_predictions.day0, "the day's first run owns the predictions"
     assert entry.meta.refreshed_at is None
@@ -1794,7 +1794,8 @@ def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
         now=before.meta.generated_at_utc + timedelta(hours=12),
     )
 
-    assert isinstance(result, pipeline.RefreshRunResult)
+    assert result.first_issuance is False
+    assert result.newly_verified is None, "a later issuance does not verify"
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.narrative_markdown == "## Overview\nEvening update."
     assert entry.model_predictions == before.model_predictions
@@ -1838,7 +1839,7 @@ def test_forecast_force_overrides_the_skip_but_not_the_predictions(tmp_path):
         force=True,
     )
 
-    assert isinstance(result, pipeline.RefreshRunResult)
+    assert result.first_issuance is False
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert after.narrative_markdown == "## Overview\nForced."
     assert after.model_predictions == entry.model_predictions
@@ -2393,6 +2394,24 @@ def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch
     assert [d.code for d in result.log_entry.earlier_issuances[0].degradations] == [
         "hours_ahead_narrowed"
     ]
+
+
+def test_run_daily_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path):
+    """`olw run-daily` is reachable for a day that already has an entry, and
+    the body already treats that as a later issuance — it is where the prompt's
+    `is_reissue` comes from. So first_issuance is a predicate here, not the
+    constant True that the function's name invites.
+
+    The CLI cannot reach this: `olw forecast` dispatches to run_refresh_pipeline
+    once the day has an entry, so no printed output would ever disagree. This
+    assertion is the only thing standing between the result and a lie about the
+    entry it just wrote.
+    """
+    first = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert first.first_issuance is True
+
+    again = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    assert again.first_issuance is False
 
 
 def test_an_entry_written_before_this_existed_loads_as_unrecorded(tmp_path):
