@@ -18,8 +18,9 @@ import re
 import sys
 from collections import defaultdict
 from dataclasses import asdict, is_dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -94,6 +95,15 @@ def store(row: dict) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "date": today.isoformat(),
+        # WITHOUT THIS, A LABEL DIFF LIES. The comparison and wind-shift labels
+        # are clock-dependent since ROADMAP item 118 — "dry until evening
+        # thunderstorms" becomes "largely dry with thunderstorms" once the
+        # onset hour arrives — so a sweep that lands an hour later than
+        # yesterday's flips a label with no code change behind it. The
+        # docstring above says labels are stored so a change to them shows as a
+        # diff; that only holds if the hour they were computed at is stored
+        # beside them.
+        "issued_hour": row.get("issued_hour"),
         "location": {"name": loc.name, "lat": loc.lat, "lon": loc.lon,
                      "timezone": loc.timezone, "icao": loc.icao},
         "predictions": {k: _plain(row.get(k)) for k in ("day0", "day3", "day7")},
@@ -172,9 +182,32 @@ def observe(loc: SandboxLocation) -> dict:
     actuals = bucket_hourly_by_date(archive)
     out["yesterday"] = actuals.get(yesterday)
     out["instability"] = summarize_instability(hourly, MODELS)
+    # THE ISSUANCE HOUR IS THE LOCATION'S, AND IT IS WHY THIS FILE BROKE.
+    #
+    # ROADMAP item 118 made `issued_hour` required on both composers rather
+    # than defaulted, precisely so a caller could not keep the old behaviour
+    # by saying nothing — and this caller was then not updated, so the sweep
+    # failed on 2026-09-13 with a TypeError after passing green the day
+    # before. The required argument did its job; it just caught this file a
+    # commit later than it caught the pipeline.
+    #
+    # The hour must be the LOCATION's, same reason the date is: a sweep is 18
+    # timezones wide, and the runner's clock is the right instant everywhere
+    # and the right hour nowhere. The timezone comes from the fleet entry, the
+    # instant from the clock — that split is what the date rule above is about
+    # too, and it is the pairing production uses.
+    #
+    # And the hour must be REAL rather than None. None means "a day that is
+    # over, described from observations", which suppresses nothing; passing it
+    # here would leave this sweep unable to surface the very class of defect
+    # item 118 exists to catch, which is the one thing this file is for.
+    issued_hour = datetime.now(ZoneInfo(loc.timezone)).hour
+
+    out["issued_hour"] = issued_hour
     out["comparison"] = compute_day_over_day(
         out["yesterday"], day0,
         today_convective=out["instability"].convective if out["instability"] else None,
+        issued_hour=issued_hour,
     )
 
     extended = [extract_day_n_predictions_from_daily(daily, n, MODELS) for n in (1, 2, 3)]
@@ -206,7 +239,7 @@ def observe(loc: SandboxLocation) -> dict:
     out["wind_direction"] = consensus_direction(
         [p.wind_direction_deg for p in day0 if p.wind_direction_deg is not None]
     )
-    out["wind_shift"] = describe_wind_shift(hourly, MODELS)
+    out["wind_shift"] = describe_wind_shift(hourly, MODELS, issued_hour=issued_hour)
     out["direction_agreement_by_hour"] = _direction_agreement_by_hour(hourly)
     out["consensus_gust"] = _mean([p.wind_kmh for p in day0])
     out["wind_warning"] = wind_warning(out["consensus_gust"])
