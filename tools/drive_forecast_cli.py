@@ -35,8 +35,9 @@ and it is what caught the one clock this file's masks did not reach — see
 `EARLIER_ISSUANCE_CLOCK`. A comparison whose control has not been run is not
 evidence.
 
-WHAT IT COVERS, AND WHAT IT DOES NOT. Three outcomes: a first issuance, a
-forced re-issue and a skipped repeat trigger. It does not drive `olw run-daily`
+WHAT IT COVERS, AND WHAT IT DOES NOT. Four outcomes: a first issuance, a
+forced re-issue, a skipped repeat trigger, and item 121's observation-only
+refresh — the one an hourly cron should mostly produce. It does not drive `olw run-daily`
 or `olw run-refresh`, which print through the same two functions the forecast
 path already exercises. It has no test of its own: its entire output is a
 diff, so a test would assert what the diff is for.
@@ -53,7 +54,7 @@ import json
 import os
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 # Which checkout to import — this one by default, another via OLW_ROOT so a
@@ -65,10 +66,12 @@ sys.path.insert(0, str(ROOT))
 import requests  # noqa: E402
 
 from openlocalweather import cli, pipeline, solar  # noqa: E402
+from openlocalweather.store import log_store  # noqa: E402
 from openlocalweather.fetch import open_meteo, metar as metar_fetch  # noqa: E402
 from openlocalweather.fetch import model_run as model_run_fetch  # noqa: E402
 from openlocalweather.fetch import waqi as waqi_fetch  # noqa: E402
 from openlocalweather.fetch.bulletin import NullBulletinFetcher  # noqa: E402
+from openlocalweather.fetch.metar import StationWeather  # noqa: E402
 
 from tests.test_pipeline_run import (  # noqa: E402
     LOCATION,
@@ -82,6 +85,20 @@ from tests.test_pipeline_run import (  # noqa: E402
 
 TODAY = date(2026, 8, 11)
 ISSUED_LOCAL = datetime(2026, 8, 11, 14, 28)
+
+# A station whose report the cases can move between runs — ROADMAP item 121.
+# LOCATION itself configures no ICAO, which would make `_observed_so_far`
+# return None everywhere and leave the observed block absent from every case,
+# so the one outcome that exists to refresh it would diff against nothing.
+STATION_ICAO = "HKKI"
+LOCATION_WITH_STATION = LOCATION.model_copy(update={"metar_station_icao": STATION_ICAO})
+STATION = {"raining": False}
+
+# The issuance clock, mutable so a case can move the afternoon on. Item 121's
+# observation-only run exists to put a LATER reading beside an EARLIER
+# forecast, and a harness that froze both at one minute would render the two
+# timestamps identical and prove nothing about the thing it is checking.
+CLOCK = {"local": ISSUED_LOCAL}
 
 
 def _no_network(*args, **kwargs):
@@ -99,6 +116,13 @@ def patch_everything_outside_the_process() -> None:
     open_meteo.fetch_archive_range = lambda lat, lon, start, end, tz: archive_fixture(end)
     solar.sun_times = sun_fixture
     metar_fetch.fetch_metar = lambda icao: None
+    # What the station has already seen today. Read once per run by the
+    # pipeline; this returns whatever STATION currently says, so a case can
+    # move the weather between runs the way a real afternoon does.
+    metar_fetch.observed_station_data = lambda icao, start, end, tz: (
+        {d: StationWeather(thunder=False, precipitation=STATION["raining"]) for d in (start, end)},
+        None,
+    )
     waqi_fetch.fetch_ground_aqi_stations = lambda stations, token: []
     model_run_fetch.fetch_model_run = lambda model: None
     requests.get = _no_network
@@ -112,8 +136,8 @@ def patch_everything_outside_the_process() -> None:
     # against the server's Date header and overrides what now_in_tz said, so
     # an unfrozen reconcile_now puts the real minute back into the prompt's
     # ISSUED line and its forecast windows.
-    pipeline.now_in_tz = lambda tz: ISSUED_LOCAL
-    pipeline.reconcile_now = lambda system_local, header, offset: (ISSUED_LOCAL, None)
+    pipeline.now_in_tz = lambda tz: CLOCK["local"]
+    pipeline.reconcile_now = lambda system_local, header, offset: (CLOCK["local"], None)
 
 
 def install_deps(data_dir: Path, narrative: str) -> None:
@@ -122,7 +146,7 @@ def install_deps(data_dir: Path, narrative: str) -> None:
 
     def _build(config, data, docs, public_url):
         return pipeline.PipelineDeps(
-            location=LOCATION,
+            location=LOCATION_WITH_STATION,
             data_dir=data_dir,
             llm_provider=llm,
             public_webpage_url="https://example.org",
@@ -192,6 +216,36 @@ def main() -> int:
     ]:
         code, text = run(data_dir, argv, narrative)
         transcript.append({"case": name, "exit": code, "stdout": mask(text)})
+
+    # --- 4: the observation-only refresh, ROADMAP item 121 ---
+    #
+    # The hourly-cron outcome, and the one that must cost nothing. Two things
+    # have to be true for the CLI to reach it and neither is reachable through
+    # argv, which is why they are set here rather than passed:
+    #
+    #   - THE REPEAT INTERVAL HAS TO HAVE PASSED. `run_forecast` measures it
+    #     against `datetime.now(timezone.utc)`, which the frozen seams above
+    #     do not reach — they freeze the ISSUANCE clock, not that one. So the
+    #     stored entry is aged instead, which is the same fact from the other
+    #     end and goes through the real comparison rather than around it.
+    #   - THE STATION HAS TO HAVE SEEN SOMETHING NEW, or the case proves only
+    #     that a run which changed nothing changed nothing.
+    #
+    # The narrative handed to the provider is one no run should ever ask for:
+    # if it appears in the output, the gate let an LLM call through.
+    aged = log_store.read_log_entry(data_dir, TODAY)
+    aged.meta.generated_at_utc = aged.meta.generated_at_utc - timedelta(hours=2)
+    if aged.meta.refreshed_at is not None:
+        aged.meta.refreshed_at = aged.meta.refreshed_at - timedelta(hours=2)
+    log_store.write_log_entry(data_dir, aged)
+    STATION["raining"] = True
+    # Two hours on. What makes the case legible: the page must now show a
+    # forecast issued at 14:28 beside a reading taken at 16:45, and a reader
+    # who sees one time twice has been told the day was quiet since 14:28.
+    CLOCK["local"] = datetime(2026, 8, 11, 16, 45)
+
+    code, text = run(data_dir, base, "## Overview\nShould never be asked for.")
+    transcript.append({"case": "4-observed", "exit": code, "stdout": mask(text)})
 
     (out_dir / "transcript.json").write_text(json.dumps(transcript, indent=2))
     (out_dir / "transcript.txt").write_text(

@@ -15886,7 +15886,7 @@ what it produced either).
 
 ---
 
-## 120. Is the daypart narrative wanted at all? · **Planned — shrunk 2026-09-13, most of it answered by item 121**
+## 120. Is the daypart narrative wanted at all? · **The option shipped 2026-09-13 as `llm_refresh_policy`; the contradiction default is still open**
 
 **Written larger, then cut down the same day.** It asked for a policy layer
 over C2's tiers: an operator declaring which signals earn a judgment call and
@@ -15924,6 +15924,23 @@ deployments will not want it:
 the app's settings — rather than a constant in the pipeline. Default to C2's
 answer, since that is the one that was reasoned through.
 
+**SHIPPED 2026-09-13 on OLW's side**, as `location.yaml`'s
+`llm_refresh_policy` (`reasoning.LLMRefreshPolicy`). Three values: `always`
+is what every run did before item 121, `new_cycle_only` is the default and
+the operator's target, `new_cycle_or_contradiction` adds C2's third trigger.
+Ported to Dart and vector-pinned so the app decides the same question the
+same way — `spec/vectors/llm_should_reason.json`. **The app does not call it
+yet**, and `reasoning.dart` says so in terms: nothing there has a refresh
+loop to gate.
+
+**The default is NOT C2's answer, and that is a departure worth stating.**
+C2's own answer includes the contradiction trigger, but that trigger's
+temperature margin is `TEMP_CONTRADICTION_MARGIN_C`, whose comment reads
+"CONSERVATIVE AND NOT YET MEASURED". Shipping it as the default would put an
+unmeasured threshold in charge of spending — the shape of item 100's mistake.
+The value exists for an operator who wants it; the default waits for the
+measurement this item already says to take.
+
 ### The one expensive question that remains
 
 **Does an observation CONTRADICTING the standing call earn a re-forecast?**
@@ -15953,7 +15970,7 @@ measurement to take rather than a number to choose.
 Related: items 121 (which shrank this), 104 (C2, whose single answer this
 makes optional), 111, 114, 109.
 
-## 121. Observations are facts, and paying a model to restate them is the one call nobody should make · **Composed and in the prompt 2026-09-13; publishing and the app's station are open**
+## 121. Observations are facts, and paying a model to restate them is the one call nobody should make · **The no-LLM refresh path shipped 2026-09-13; the app's station is open**
 
 Raised by the operator 2026-09-13, working through C2's call-gating:
 
@@ -15994,13 +16011,72 @@ Proved live by driving the real CLI with a station that reports:
 > As of 14:28: rain from 13:00; thunder; high so far 27°C / 81°F; low so far
 > 18°C / 65°F; peak gust 31 km/h; sky 6/8.
 
-### What is still open, and the second one is the app
+### The no-LLM refresh path, shipped 2026-09-13
 
-- **Publishing.** The block reaches the FORECASTER; it does not yet reach a
-  reader except through whatever the narrative chooses to say. The page, the
-  app and the mailer each need somewhere to put it, and until they have one
-  the cost saving this item exists for is not realised — a reader still needs
-  an LLM call to learn what the station saw.
+**The saving is now real.** A run whose guidance carries the same model cycle
+as the standing issuance refreshes what the station has seen, re-renders, and
+buys nothing. Driven through the real CLI against the unchanged code as a
+control: the same fourth case costs **two LLM calls before and none after**,
+while cases 1-3 are byte-identical.
+
+**It is a MODE, not a verb** — the operator's decision, and it keeps item
+104's one-verb contract. `run_forecast` already resolved the run kind itself;
+this is a fourth answer, printed as `run-kind: observed` and given its own
+commit subject (`observations:`) so the archive can still say how much of
+itself was actually forecast.
+
+**The signals were already there.** `InformationMoved` has recorded all three
+of C2's triggers on every entry since stage 2b, deliberately acted on by
+nothing. `reasoning.llm_should_reason` is the deciding, and it reads the
+record's own shape rather than recomputing it, so the signal that is stored
+and the signal that is acted on cannot drift apart.
+
+**The policy is declared, per item 120** — `location.yaml`'s
+`llm_refresh_policy`, defaulting to `new_cycle_only`. The
+`new_cycle_or_contradiction` value exists and is NOT the default, because
+C2's third trigger rests on `TEMP_CONTRADICTION_MARGIN_C`, which its own
+comment calls "CONSERVATIVE AND NOT YET MEASURED". Defaulting to it would
+ship an unmeasured threshold into a spending decision — item 100's mistake.
+
+**`--force` overrides the gate**, because the flag's help has always promised
+"Forces the NARRATIVE only" and the gate can decline to write one. A flag
+that silently does nothing is worse than no flag.
+
+**What the cheap path deliberately does not do**, each recorded beside the
+code in `_refresh_observations_only`: no prediction row (the numbers would be
+a duplicate, since it runs precisely when no cycle landed), no `refreshed_at`
+(that means the narrative moved, and it re-opens the morning-snapshot gate),
+no prompt archive (no prompt was built), no `information_moved` rewrite (the
+stored signals belong to the run that spent on them), no email. It is built by
+COPYING the stored entry rather than composing a fresh one, so a field added
+next year is preserved by default rather than by remembering — the opposite of
+the carry-forward list that was measured wrong in six places.
+
+**Storing the reading: latest only, and the archive is why.** The operator
+asked whether all three of a day's readings should be kept, to score the
+LLM's onset timing against. They are not kept, and the reasoning is worth
+having: every one of `ObservedSoFar`'s six fields is a whole-day aggregate,
+not a snapshot, so the 16:45 record already carries the day's high, its peak
+gust, and the onset time. A per-update history would mostly record WHEN WE
+POLLED rather than when the weather changed. See item 122 for where that
+timing question actually lands.
+
+**Two clocks, and the page had to learn the difference.**
+`LogEntryMeta.observations_local_time` is when the stored reading was taken;
+`issued_local_time` is when the forecast was reasoned. They come apart only on
+this path. Found by LOOKING at the rendered page rather than asserting on its
+HTML: the issuance label was stamped `%H:%M UTC` while the observed block is
+local. That was cosmetic while both described one moment, and is not now —
+west of Greenwich, observations genuinely newer than the forecast rendered as
+older than it. The live label is local where the entry knows its local clock.
+
+### What is still open, and it is the app
+
+- **Ground AQI is refetched and discarded on the cheap path.** The run merges
+  it into its guidance and then throws it away, because the path touches
+  nothing but the station reading. It is arguably an observation too. Not
+  built, and named here rather than left to be rediscovered.
+- **The mailer.** The page now carries the block; the mailer still does not.
 - **THE APP HAS NO STATION SOURCE AT ALL.** `forecast.dart` passes
   `airport_metar: null` and now `observedSoFar: null`, explicitly and with the
   reason, so the app prints the gap line. Everything above is server-only

@@ -9,7 +9,7 @@ from openlocalweather.models import (
     ModelPredictionsByLead,
     RunDegradation,
 )
-from openlocalweather.models import DailyLogEntry
+from openlocalweather.models import DailyLogEntry, ObservedSoFar
 from openlocalweather.publish.pages import (
     ArchiveItem,
     GitHubPagesPublisher,
@@ -888,3 +888,47 @@ def test_every_template_actually_escapes():
     for name in names:
         resolved = env.autoescape(name) if callable(env.autoescape) else env.autoescape
         assert resolved is True, f"{name} renders unescaped"
+
+
+def test_the_forecast_and_the_observations_are_stamped_in_the_same_zone():
+    """ROADMAP item 121. The observed block is stamped in LOCAL time and the
+    issuance label used to be stamped in UTC.
+
+    That was cosmetic while both described the same moment. Since the
+    observation-only refresh they are different moments AND the reader is
+    meant to compare them, so a unit mismatch can invert the comparison:
+    west of Greenwich, observations genuinely newer than the forecast would
+    render as older than it. Two numbers a reader is asked to subtract have
+    to be in the same units.
+    """
+    entry = _refreshed_entry()
+    entry.meta.issued_local_time = "14:28"
+    entry.meta.observations_local_time = "16:45"
+    entry.observed_so_far = ObservedSoFar(precipitation=True, precipitation_onset="15:10")
+
+    label = _issuance_label(entry, morning=False)
+
+    assert label == "Evening Update — 14:28"
+    assert "UTC" not in label, "a local clock must not be labelled UTC"
+
+    html = render_forecast_page(
+        entry,
+        LOCATION,
+        build_nav_links("https://example.com", "owner/repo"),
+        is_latest=True,
+        issuance_label=label,
+    )
+    assert "Evening Update — 14:28" in html
+    assert "As of 16:45" in html
+
+
+def test_an_entry_with_no_local_clock_keeps_the_utc_label():
+    """Entries written before `issued_local_time` existed. The suffix stays
+    because the number really is UTC — the failure to avoid is a local clock
+    wearing a UTC label, not a UTC clock wearing its own."""
+    entry = _refreshed_entry()
+    entry.meta.issued_local_time = None
+
+    label = _issuance_label(entry, morning=False)
+
+    assert label is not None and label.endswith("UTC")

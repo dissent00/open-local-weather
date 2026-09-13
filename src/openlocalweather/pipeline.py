@@ -154,6 +154,7 @@ from openlocalweather.llm.schema import (
     merge_forecast_response,
 )
 from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.reasoning import llm_should_reason
 from openlocalweather.disagreement import (
     StandingCall,
     observation_disagreements,
@@ -260,6 +261,26 @@ class ForecastSkipped:
 
     today: date
     reason: str
+
+
+@dataclass
+class ObservationsRefreshed:
+    """Returned when a run refreshed what the station has seen and reasoned
+    nothing — ROADMAP item 121.
+
+    A THIRD OUTCOME, not a kind of skip and not a kind of forecast. A skip
+    does nothing at all; a forecast buys a judgment and a narrative. This
+    fetched, composed what the station has seen since the standing forecast,
+    wrote it, and re-rendered the page — for no LLM spend. It is the outcome
+    an hourly cron should mostly produce.
+
+    `log_entry` is the day's entry as it now stands: the standing forecast
+    untouched, its observations current.
+    """
+
+    today: date
+    log_entry: DailyLogEntry
+    published: bool
 
 
 # How recently a run has to have happened for the next trigger to be a
@@ -1852,6 +1873,7 @@ def _compose_log_entry(
     llm_response: Any,
     *,
     observed_so_far: ObservedSoFar | None,
+    information_moved: InformationMoved,
     fresh_predictions: ModelPredictionsByLead | None,
     judgment_prompt: str,
     narrative_prompt: str,
@@ -1962,11 +1984,20 @@ def _compose_log_entry(
             # than re-fetched. Two calls to the station would be two answers
             # on a day it changed between them, and the record would then
             # describe an observation the forecaster never saw.
-            information_moved=_information_moved(guidance, existing_entry, observed_so_far),
+            #
+            # The SIGNALS are passed in for the same class of reason, since
+            # item 121: they decide whether this run reaches the model at all,
+            # so they are computed before that decision and recorded here
+            # rather than computed twice and able to disagree.
+            information_moved=information_moved,
             trigger_source=deps.trigger_source or None,
             # The clock the prompt was built with, so the page shows the same
             # one — see LogEntryMeta.issued_local_time.
             issued_local_time=guidance.issuance.local_time if guidance.issuance else None,
+            # Equal to issued_local_time on every run that reaches here, which
+            # is every run that reasons. They come apart only on the
+            # observation-only path — see LogEntryMeta.observations_local_time.
+            observations_local_time=guidance.issuance.local_time if guidance.issuance else None,
             degradations=guidance.degradations,
         ),
     )
@@ -2154,12 +2185,92 @@ def _write_back_verification(
     track_record_store.write_track_record(deps.data_dir, verification_result.updated_track_record)
 
 
+def _refresh_observations_only(
+    deps: PipelineDeps,
+    today: date,
+    existing_entry: DailyLogEntry,
+    guidance: ForwardGuidance,
+    *,
+    observed_so_far: ObservedSoFar | None,
+    dry_run: bool,
+) -> ObservationsRefreshed:
+    """Update what the station has seen, and touch nothing else.
+
+    ROADMAP item 121's saving. The standing forecast keeps its narrative, its
+    scored numbers and its verification; only the observed reading and the
+    clock that reading was taken at move.
+
+    BUILT BY COPYING THE STORED ENTRY RATHER THAN COMPOSING A NEW ONE, and
+    that is the safety property rather than a shortcut. `_compose_log_entry`
+    builds a fresh entry and then carries forward the fields a later issuance
+    must not rewrite — a list that has to be right, and that was measured
+    wrong in six places when there were two of it. Here there is no list:
+    everything not named below is the same object it was, so a field added to
+    the entry next year is preserved by default instead of by remembering.
+
+    WHAT IS DELIBERATELY NOT DONE, each for its own reason:
+
+      - NO PREDICTION ROW. Contract item 4 appends one row per issuance, and
+        an issuance that made no judgment has no numbers to add. This path
+        runs precisely when no new cycle has landed, so the row would hold
+        the previous row's figures re-stamped, and every reader of the record
+        would have to learn to skip it.
+      - NO `refreshed_at`. That field means the NARRATIVE was refreshed, and
+        it re-opens the morning-snapshot gate. Setting it here would let the
+        next real re-issue snapshot an unchanged narrative as the day's
+        morning issuance.
+      - NO PROMPT ARCHIVE. The archive answers "what was this forecast built
+        from", keyed by issuance instant. No prompt was built; an entry there
+        would be an input set for a forecast that never happened.
+      - NO `information_moved` REWRITE. The stored signals belong to the run
+        that reasoned on them and are the record of why it spent. That this
+        run found nothing moved is already said by the fact that it left the
+        narrative alone, and is visible as `observations_local_time` running
+        ahead of `issued_local_time`.
+      - NO EMAIL. A later issuance has never emailed, and this one has even
+        less to announce.
+
+    It DOES publish. Re-rendering is the whole point — the observation has to
+    reach a reader, and until it does the cost saving item 121 exists for is
+    not realised. See ROADMAP item 121, "Publishing".
+    """
+    # The clock this reading was taken at, from the same reconciled issuance
+    # the full path stamps with — never a fresh `datetime.now`, which would
+    # disagree with it on a machine whose clock daypart.reconcile_now had to
+    # override. See LogEntryMeta.issued_local_time.
+    local_time = guidance.issuance.local_time if guidance.issuance else None
+
+    entry = existing_entry.model_copy(
+        update={
+            "observed_so_far": observed_so_far,
+            "meta": existing_entry.meta.model_copy(
+                update={"observations_local_time": local_time}
+            ),
+        }
+    )
+
+    published = False
+    if not dry_run:
+        log_store.write_log_entry(deps.data_dir, entry)
+        if deps.publisher is not None:
+            deps.publisher.publish(entry)
+            published = True
+
+    return ObservationsRefreshed(today=today, log_entry=entry, published=published)
+
+
 def _issue_forecast(
     deps: PipelineDeps,
     today: date,
     existing_entry: DailyLogEntry | None,
     dry_run: bool,
-) -> ForecastRunResult:
+    *,
+    # NO DEFAULT, deliberately. This decides whether item 121's gate can
+    # decline to buy a narrative, and a call site that forgot it would get
+    # the gate silently applied where the caller meant to override it. Two
+    # call sites pass it today; a third has to say what it wants.
+    force: bool,
+) -> ForecastRunResult | ObservationsRefreshed:
     """One issuance of the day's forecast, whichever issuance it is.
 
     ROADMAP item 104 step 4. There were two bodies, and the difference
@@ -2354,6 +2465,39 @@ def _issue_forecast(
     # two cannot describe different observations.
     observed_so_far = _observed_so_far(location, today)
 
+    # C2's three triggers, computed ONCE and here — before the decision they
+    # inform rather than inside the entry that records them. They were stored
+    # and acted on by nothing from item 104 stage 2b until item 121; this is
+    # where that changes.
+    information_moved = _information_moved(guidance, existing_entry, observed_so_far)
+
+    # --- Step 5b: does this run earn an LLM call? ---
+    #
+    # ROADMAP item 121. Everything above this line is free of LLM spend:
+    # fetches, extraction, the day-over-day comparison and the station
+    # reading are all code. What follows is the only part that costs, and
+    # when nothing has moved there is nothing for it to reason about.
+    #
+    # The observations are the point. They refresh on EVERY run either way —
+    # that is what makes declining the call honest rather than a shortcut,
+    # because the reader still learns that it started raining at 13:00.
+    if not force and not llm_should_reason(information_moved, location.llm_refresh_policy):
+        # Guaranteed by `llm_should_reason` itself: `first_issuance_of_day` is
+        # `existing_entry is None`, and a first issuance always reasons. Stated
+        # rather than assumed, because the guarantee lives in another module —
+        # a future policy that let a first issuance decline would otherwise
+        # surface here as an AttributeError on a half-written day.
+        assert existing_entry is not None, "a day with no entry must never reach the cheap path"
+
+        return _refresh_observations_only(
+            deps,
+            today,
+            existing_entry,
+            guidance,
+            observed_so_far=observed_so_far,
+            dry_run=dry_run,
+        )
+
     # --- Step 6: call the LLM ---
     # A location with no WAQI stations gets a prompt with no ground-station
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
@@ -2526,6 +2670,7 @@ def _issue_forecast(
         today,
         llm_response,
         observed_so_far=observed_so_far,
+        information_moved=information_moved,
         # The freshly extracted set, which the composer keeps only when this
         # date holds none. Built even on a re-issue and discarded there, as
         # it always was — the day's numbers belong to the run that made them
@@ -2645,7 +2790,7 @@ def run_forecast(
     dry_run: bool = False,
     force: bool = False,
     now: datetime | None = None,
-) -> ForecastRunResult | ForecastSkipped:
+) -> ForecastRunResult | ForecastSkipped | ObservationsRefreshed:
     """The day's forecast, whichever run of the day this is.
 
     One verb, because the operator was picking between two by time of day and
@@ -2678,15 +2823,23 @@ def run_forecast(
     are the operator's to get wrong; a caller must be able to invoke this
     thing with any combination of flags and be unable to corrupt the record —
     the worst it should achieve is a wasted API call, and the skip means it
-    does not even achieve that. `force` overrides the skip and nothing else:
-    since the write-once guard it cannot reach the scored numbers.
+    does not even achieve that. `force` overrides the skip and item 121's
+    reasoning gate, and nothing else: since the write-once guard it cannot
+    reach the scored numbers.
+
+    THAT IT OVERRIDES THE GATE IS THE FLAG'S DOCUMENTED PROMISE. Its help has
+    always read "Forces the NARRATIVE only", and the gate can decline to
+    write one. An operator who types --force and gets no narrative, because
+    no new model cycle happens to have landed, has been told something untrue
+    by the CLI — so the flag reaches past the policy the same way it reaches
+    past the interval.
     """
     location = deps.location
     today = today or today_in_tz(location.timezone)
     existing_entry = log_store.read_log_entry(deps.data_dir, today)
 
     if existing_entry is None:
-        return _issue_forecast(deps, today, None, dry_run)
+        return _issue_forecast(deps, today, None, dry_run, force=force)
 
     now = now or datetime.now(timezone.utc)
     age_minutes = (now - existing_entry.last_issued_at).total_seconds() / 60
@@ -2700,4 +2853,4 @@ def run_forecast(
             ),
         )
 
-    return _issue_forecast(deps, today, existing_entry, dry_run)
+    return _issue_forecast(deps, today, existing_entry, dry_run, force=force)

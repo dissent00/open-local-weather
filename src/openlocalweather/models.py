@@ -878,6 +878,26 @@ class LogEntryMeta(BaseModel):
     # not read its own clock — never a guess.
     issued_local_time: str | None = None
 
+    # WHEN THE STORED `observed_so_far` WAS READ, as a local "HH:MM".
+    #
+    # SEPARATE FROM `issued_local_time` BECAUSE THE TWO COME APART — ROADMAP
+    # item 121's no-LLM refresh path. An observation-only update refreshes
+    # what the station has seen and deliberately leaves the forecast alone,
+    # so an entry can hold a narrative reasoned at 06:00 beside observations
+    # read at 14:00. That is the design, not a fault: the prose is the prose
+    # of the last real forecast and the observed block carries what has
+    # happened since.
+    #
+    # A reader has to be told both, or the page reads as one moment. The page
+    # stamps the observed block with THIS and the forecast with
+    # `issued_local_time`; when they are equal, which is every full run, a
+    # reader sees one time twice and nothing is lost.
+    #
+    # None for entries written before this existed and for a run that could
+    # not read its own clock. `publish.pages` falls back to
+    # `issued_local_time` there, which is what those entries meant.
+    observations_local_time: str | None = None
+
     # What this run did NOT have.
     #
     # THREE-VALUED, and the middle value is the whole point. `[]` means this

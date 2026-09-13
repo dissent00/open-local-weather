@@ -1,0 +1,121 @@
+{
+  "vector_format_version": 1,
+  "function": "llm_should_reason",
+  "description": "Whether this issuance buys a judgment and a narrative, or refreshes what the station has seen and stops. Observations refresh either way.",
+  "cases": [
+    {
+      "name": "first issuance always reasons",
+      "input": {
+        "first_issuance_of_day": true,
+        "guidance_is_newer": null,
+        "observation_disagreements": null,
+        "policy": "new_cycle_only"
+      },
+      "expected": true
+    },
+    {
+      "name": "first issuance reasons under every policy",
+      "input": {
+        "first_issuance_of_day": true,
+        "guidance_is_newer": false,
+        "observation_disagreements": [],
+        "policy": "new_cycle_or_contradiction"
+      },
+      "expected": true
+    },
+    {
+      "name": "a new cycle earns the call",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": true,
+        "observation_disagreements": [],
+        "policy": "new_cycle_only"
+      },
+      "expected": true
+    },
+    {
+      "name": "same cycle, nothing bought",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": [],
+        "policy": "new_cycle_only"
+      },
+      "expected": false
+    },
+    {
+      "name": "no basis resolves toward spending",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": null,
+        "observation_disagreements": [],
+        "policy": "new_cycle_only"
+      },
+      "expected": true
+    },
+    {
+      "name": "always spends on the same cycle",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": [],
+        "policy": "always"
+      },
+      "expected": true
+    },
+    {
+      "name": "always spends with no basis",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": null,
+        "observation_disagreements": null,
+        "policy": "always"
+      },
+      "expected": true
+    },
+    {
+      "name": "a contradiction is ignored by default",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": [
+          "rain_observed_while_dry_called"
+        ],
+        "policy": "new_cycle_only"
+      },
+      "expected": false
+    },
+    {
+      "name": "a contradiction earns the call when declared",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": [
+          "rain_observed_while_dry_called"
+        ],
+        "policy": "new_cycle_or_contradiction"
+      },
+      "expected": true
+    },
+    {
+      "name": "an empty disagreement list is not a contradiction",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": [],
+        "policy": "new_cycle_or_contradiction"
+      },
+      "expected": false
+    },
+    {
+      "name": "an unreadable station is not a contradiction",
+      "input": {
+        "first_issuance_of_day": false,
+        "guidance_is_newer": false,
+        "observation_disagreements": null,
+        "policy": "new_cycle_or_contradiction"
+      },
+      "expected": false
+    }
+  ]
+}

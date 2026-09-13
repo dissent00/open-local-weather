@@ -1336,6 +1336,31 @@ void main() {
     });
   });
 
+  group('llm_should_reason', () {
+    test('the spending gate matches Python', () {
+      // The cases that matter are the three-valued ones: a null
+      // `guidance_is_newer` means NO BASIS and resolves toward spending, and a
+      // null `observation_disagreements` means the station was never read,
+      // which is not a contradiction. Reading either as falsey would change
+      // what the app spends without failing anything else.
+      for (final c in casesOf('llm_should_reason.json')) {
+        final i = c['input'] as Map;
+        final disagreements = i['observation_disagreements'] as List?;
+        expect(
+            llmShouldReason(
+              InformationMoved(
+                firstIssuanceOfDay: i['first_issuance_of_day'] as bool,
+                guidanceIsNewer: i['guidance_is_newer'] as bool?,
+                observationDisagreements: disagreements?.cast<String>(),
+              ),
+              LLMRefreshPolicy.fromWireName(i['policy'] as String),
+            ),
+            equals(c['expected']),
+            reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -1374,6 +1399,7 @@ void main() {
       'extended_trend.json',
       'describe_day_rain.json',
       'observed_so_far.json',
+      'llm_should_reason.json',
       'describe_day_over_day.json',
       'glossary.json',
       'temp_high_low.json',

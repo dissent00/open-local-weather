@@ -263,6 +263,22 @@ def issue(deps, today=None, dry_run=False):
     return pipeline.run_forecast(deps, today=today, dry_run=dry_run, force=True)
 
 
+def refresh(deps, today, hours_later=2):
+    """A LATER trigger that forces nothing — the hourly-cron case.
+
+    `issue` passes force, which since ROADMAP item 121 also overrides the
+    reasoning gate. A test about that gate has to arrive the way cron does:
+    past the repeat interval, with nothing overridden.
+    """
+    stored = log_store.read_log_entry(deps.data_dir, today)
+    return pipeline.run_forecast(
+        deps,
+        today=today,
+        dry_run=False,
+        now=stored.last_issued_at + timedelta(hours=hours_later),
+    )
+
+
 def make_deps(tmp_path, llm=None) -> PipelineDeps:
     return PipelineDeps(
         location=LOCATION,
@@ -1903,6 +1919,15 @@ def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
     pipeline.run_forecast(make_deps(tmp_path), today=date(2026, 8, 11))
     before = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
+    # TWELVE HOURS LATER IS TWO CYCLES LATER, and since ROADMAP item 121 the
+    # test has to say so. `now` moves only the repeat-interval clock; the
+    # guidance cycle is derived from the real one, so without this the
+    # evening run finds the same cycle it started with and correctly declines
+    # to reason. Aged through the stored field the comparison actually reads,
+    # rather than by patching the comparison.
+    before.guidance_initialised_at = before.guidance_initialised_at - timedelta(hours=12)
+    log_store.write_log_entry(tmp_path, before)
+
     evening = FakeLLMProvider()
     evening.response = evening.response.model_copy(
         update={"today_narrative": "## Overview\nEvening update."}
@@ -3500,10 +3525,16 @@ def test_rain_seen_while_the_standing_call_said_dry_is_recorded(tmp_path, monkey
     assert DISAGREEMENT_RAIN_WHILE_DRY in (moved.observation_disagreements or [])
 
 
-def test_the_signals_change_nothing_yet(tmp_path):
-    """Stage 2b is deliberately inert. The refresh still runs, still spends,
-    and still publishes, whatever the signals say — so that the record can
-    show how often each fires BEFORE anything is decided on them."""
+def test_force_spends_whatever_the_signals_say(tmp_path):
+    """The signals stopped being inert in ROADMAP item 121 — an unforced
+    trigger that finds nothing moved now refreshes its observations and buys
+    no call. `force` is the override, and this pins that it still reaches
+    past a `guidance_is_newer` of False to both calls and a publish.
+
+    THIS TEST USED TO ASSERT THE OPPOSITE and was renamed rather than
+    deleted: it read "the signals change nothing yet", which was true from
+    item 104 stage 2b until item 121 wired them. The forced path is what is
+    left of the behaviour it was guarding."""
     from openlocalweather.spend import read_ledger
 
     issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
@@ -3549,3 +3580,122 @@ def test_a_re_issue_records_the_schema_it_used(tmp_path):
     meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
     assert meta.response_schema_sha256 == "b" * 64, "the morning's schema survived the re-issue"
     assert meta.nullable_fields == ["/today_properties/air_quality_aqi"]
+
+
+# --- ROADMAP item 121, the no-LLM refresh path -----------------------------
+#
+# The saving item 121 exists for. Everything above this line spends an LLM
+# call on every issuance; these pin the case where it must not.
+
+
+def _station_seeing(raining: dict):
+    """A station whose report the test can flip between two runs.
+
+    Flipped rather than patched once because a morning that already saw rain
+    has no dry call to update — see the disagreement test above, which had to
+    learn the same thing.
+    """
+    return lambda icao, start, end, tz: (
+        {d: StationWeather(thunder=False, precipitation=raining["now"]) for d in (start, end)},
+        None,
+    )
+
+
+def _with_station(tmp_path, llm=None):
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    return deps
+
+
+def test_no_new_cycle_means_no_llm_call(tmp_path):
+    """ROADMAP item 121's saving, realised.
+
+    An hourly cron whose guidance carries the SAME model cycle as the last
+    issuance has nothing new to reason about. What it does have — what the
+    station has seen since — is composed in code, so the run refreshes that
+    and spends nothing.
+    """
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    quiet = FakeLLMProvider()
+    refresh(make_deps(tmp_path, llm=quiet), date(2026, 8, 11))
+
+    assert quiet.calls == [], "an observation-only update must not reach the model"
+
+
+def test_an_observation_only_update_leaves_the_forecast_exactly_as_it_was(tmp_path):
+    """The narrative and the scored numbers belong to the run that reasoned
+    them, and an update that did no reasoning must not touch either.
+
+    Checked as whole objects rather than field by field: this is the
+    invariant the accuracy record rests on, and a list of fields can only
+    catch the ones somebody remembered to list.
+    """
+    today = date(2026, 8, 11)
+    issue(make_deps(tmp_path), today=today, dry_run=False)
+    before = log_store.read_log_entry(tmp_path, today)
+
+    refresh(make_deps(tmp_path, llm=FakeLLMProvider()), today)
+    after = log_store.read_log_entry(tmp_path, today)
+
+    assert after.narrative_markdown == before.narrative_markdown
+    assert after.prediction_rows == before.prediction_rows
+    assert after.verification == before.verification
+    assert after.yesterday_verification_summary == before.yesterday_verification_summary
+    assert after.model_predictions == before.model_predictions
+
+
+def test_an_observation_only_update_still_refreshes_what_the_station_saw(tmp_path, monkeypatch):
+    """The whole point of the path: a reader learns it has started raining
+    without anybody paying a model to say so."""
+    raining = {"now": False}
+    monkeypatch.setattr(pipeline.metar_fetch, "observed_station_data", _station_seeing(raining))
+
+    today = date(2026, 8, 11)
+    issue(_with_station(tmp_path), today=today, dry_run=False)
+    assert log_store.read_log_entry(tmp_path, today).observed_so_far.precipitation is False
+
+    raining["now"] = True
+    quiet = FakeLLMProvider()
+    refresh(_with_station(tmp_path, llm=quiet), today)
+
+    assert quiet.calls == []
+    assert log_store.read_log_entry(tmp_path, today).observed_so_far.precipitation is True
+
+
+def test_a_new_cycle_still_spends_the_call(tmp_path):
+    """The gate is about NEW MODEL DATA. When a cycle lands, the forecast is
+    re-reasoned exactly as it always was — this path is a saving, not a cap.
+    """
+    today = date(2026, 8, 11)
+    issue(make_deps(tmp_path), today=today, dry_run=False)
+
+    # Age the stored cycle so this run's guidance is genuinely newer, through
+    # the real comparison rather than around it.
+    entry = log_store.read_log_entry(tmp_path, today)
+    entry.guidance_initialised_at = entry.guidance_initialised_at - timedelta(hours=6)
+    log_store.write_log_entry(tmp_path, entry)
+
+    spender = FakeLLMProvider()
+    issue(make_deps(tmp_path, llm=spender), today=today, dry_run=False)
+
+    assert spender.calls != [], "a new cycle is what the LLM call is FOR"
+
+
+def test_the_always_policy_spends_on_every_issuance(tmp_path):
+    """An operator who wants the daypart narrative refreshed on its own —
+    C2's middle tier — declares it, and the gate steps aside. ROADMAP item
+    120: the option is the operator's, on both sides."""
+    today = date(2026, 8, 11)
+    always = LOCATION.model_copy(update={"llm_refresh_policy": "always"})
+
+    deps = make_deps(tmp_path)
+    deps.location = always
+    issue(deps, today=today, dry_run=False)
+
+    spender = FakeLLMProvider()
+    again = make_deps(tmp_path, llm=spender)
+    again.location = always
+    issue(again, today=today, dry_run=False)
+
+    assert spender.calls != []

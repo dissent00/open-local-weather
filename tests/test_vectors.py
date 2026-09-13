@@ -54,7 +54,8 @@ from openlocalweather.comparison import (
 )
 from openlocalweather.instability import summarize_instability
 from openlocalweather.observed import describe_observed_so_far
-from openlocalweather.models import ObservedSoFar
+from openlocalweather.models import InformationMoved, ObservedSoFar
+from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
     daypart_without_sun,
@@ -639,6 +640,24 @@ def test_vectors_observed_so_far():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_llm_should_reason():
+    """The spending gate — items 121 and 120. The cases that matter are the
+    three-valued ones: `guidance_is_newer=None` means NO BASIS and resolves
+    toward spending, and a port reading it as falsey would stop refreshing
+    exactly the entries with the least information behind them."""
+    for case in load("llm_should_reason.json")["cases"]:
+        i = case["input"]
+        got = llm_should_reason(
+            InformationMoved(
+                first_issuance_of_day=i["first_issuance_of_day"],
+                guidance_is_newer=i["guidance_is_newer"],
+                observation_disagreements=i["observation_disagreements"],
+            ),
+            LLMRefreshPolicy(i["policy"]),
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_describe_day_over_day():
     """Item 83's composition contract — the label combinations that produced
     "with dry until evening showers today; yesterday was largely dry"."""
@@ -798,6 +817,7 @@ def test_every_vector_file_is_exercised():
         "wind_consensus_direction.json",
         "wind_describe_shift.json",
         "observed_so_far.json",
+        "llm_should_reason.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

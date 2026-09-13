@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+from openlocalweather.reasoning import LLMRefreshPolicy
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
 from pydantic import BaseModel, Field
 
@@ -108,6 +109,16 @@ class LocationConfig(BaseModel):
     # Counts CALLS, not forecasts — one forecast can cost several attempts
     # when a provider is flaky.
     max_llm_calls_per_24h: int = DEFAULT_MAX_LLM_CALLS_PER_24H
+
+    # When a LATER issuance of a day may spend an LLM call — ROADMAP items 121
+    # and 120. Observations refresh in code on every run regardless; this
+    # governs only whether the judgment and the narrative are re-reasoned.
+    #
+    # Defaults to chasing model runs. C2's own answer also re-forecasts on a
+    # contradicting observation, and that value exists — see LLMRefreshPolicy
+    # for why it is not the default, which is a measurement that has not been
+    # taken rather than a disagreement with C2.
+    llm_refresh_policy: LLMRefreshPolicy = LLMRefreshPolicy.NEW_CYCLE_ONLY
 
     local_bulletin_area_name: str = ""
     # Model id the met service is scored under, alongside gfs_seamless and

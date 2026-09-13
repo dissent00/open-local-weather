@@ -681,3 +681,33 @@ class GroundAqiSummary {
         'stations_total': stationsTotal,
       };
 }
+
+/// C2's three triggers, as the record stores them — upstream ROADMAP item
+/// 104 stage 2b, acted on since item 121 by [llmShouldReason].
+///
+/// THREE-VALUED THROUGHOUT, AND THE MIDDLE VALUE IS THE POINT. `null` means
+/// there was no BASIS for the comparison, which is different from a
+/// comparison that came back negative. A port that collapsed the two would
+/// decide spending on the strength of not having looked — the error class
+/// that cost a published forecast upstream on 2026-08-29.
+class InformationMoved {
+  /// The day's first run is itself a trigger, so the other two have nothing
+  /// to compare against on it.
+  final bool firstIssuanceOfDay;
+
+  /// Whether a new guidance cycle has landed since the previous issuance.
+  /// `null` on a first run, and on a re-issue of an entry written before this
+  /// was recorded — both mean "no basis", never false.
+  final bool? guidanceIsNewer;
+
+  /// What the station has already seen that contradicts the standing call.
+  /// Empty means nothing seen contradicts it; `null` means nothing was looked
+  /// at, which happens when the station did not report or the lookup failed.
+  final List<String>? observationDisagreements;
+
+  const InformationMoved({
+    required this.firstIssuanceOfDay,
+    this.guidanceIsNewer,
+    this.observationDisagreements,
+  });
+}

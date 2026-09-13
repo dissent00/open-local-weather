@@ -71,6 +71,7 @@ from openlocalweather.extract import (
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import (
     DailyActual,
+    InformationMoved,
     ObservedSoFar,
     GroundAQIReading,
     ModelPrediction,
@@ -78,6 +79,7 @@ from openlocalweather.models import (
 )
 from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.disagreement import (
     StandingCall,
     observation_disagreements,
@@ -3295,6 +3297,74 @@ def export_describe_day_rain() -> None:
     )
 
 
+def export_llm_should_reason() -> None:
+    """Whether an issuance earns an LLM call — ROADMAP items 121 and 120.
+
+    NOT ARITHMETIC, AND VECTOR-TESTED ANYWAY. Item 120 settles that this
+    policy is declared on both sides, OLW's location.yaml and the app's
+    settings, so the app will decide the same question against the same
+    signals. A divergence here does not produce a wrong number; it produces a
+    client that spends where the server would not, or stays silent where the
+    server would speak, and neither shows up as a failure anywhere.
+
+    THE THREE-VALUED CASES ARE THE ONES THAT MATTER. `guidance_is_newer` is
+    True/False/None and None means NO BASIS — an entry written before the
+    cycle was recorded, or a run that knows less than its predecessor did. It
+    resolves toward spending, and a port that read it as falsey would silently
+    stop refreshing exactly the entries with the least information behind
+    them.
+    """
+    cases = [
+        ("first issuance always reasons", True, None, None, LLMRefreshPolicy.NEW_CYCLE_ONLY),
+        ("first issuance reasons under every policy", True, False, [],
+         LLMRefreshPolicy.NEW_CYCLE_OR_CONTRADICTION),
+        ("a new cycle earns the call", False, True, [], LLMRefreshPolicy.NEW_CYCLE_ONLY),
+        ("same cycle, nothing bought", False, False, [], LLMRefreshPolicy.NEW_CYCLE_ONLY),
+        ("no basis resolves toward spending", False, None, [], LLMRefreshPolicy.NEW_CYCLE_ONLY),
+        ("always spends on the same cycle", False, False, [], LLMRefreshPolicy.ALWAYS),
+        ("always spends with no basis", False, None, None, LLMRefreshPolicy.ALWAYS),
+        # C2's third trigger, which only this policy acts on.
+        ("a contradiction is ignored by default", False, False, ["rain_observed_while_dry_called"],
+         LLMRefreshPolicy.NEW_CYCLE_ONLY),
+        ("a contradiction earns the call when declared", False, False,
+         ["rain_observed_while_dry_called"], LLMRefreshPolicy.NEW_CYCLE_OR_CONTRADICTION),
+        ("an empty disagreement list is not a contradiction", False, False, [],
+         LLMRefreshPolicy.NEW_CYCLE_OR_CONTRADICTION),
+        # `None` is "the station was never looked at", `[]` is "looked and
+        # found nothing". Neither is a contradiction, and a port that treated
+        # None as a contradiction would re-forecast on every unreadable
+        # station — the decision ROADMAP item 104 records as taken.
+        ("an unreadable station is not a contradiction", False, False, None,
+         LLMRefreshPolicy.NEW_CYCLE_OR_CONTRADICTION),
+    ]
+    write(
+        "llm_should_reason.json",
+        "llm_should_reason",
+        "Whether this issuance buys a judgment and a narrative, or refreshes "
+        "what the station has seen and stops. Observations refresh either way.",
+        [
+            {
+                "name": name,
+                "input": {
+                    "first_issuance_of_day": first,
+                    "guidance_is_newer": newer,
+                    "observation_disagreements": disagreements,
+                    "policy": str(policy),
+                },
+                "expected": llm_should_reason(
+                    InformationMoved(
+                        first_issuance_of_day=first,
+                        guidance_is_newer=newer,
+                        observation_disagreements=disagreements,
+                    ),
+                    policy,
+                ),
+            }
+            for name, first, newer, disagreements, policy in cases
+        ],
+    )
+
+
 def export_observed_so_far() -> None:
     """The observed block, composed in code rather than paid for — item 121.
 
@@ -3927,6 +3997,7 @@ def main() -> None:
     export_extended_trend()
     export_describe_day_rain()
     export_observed_so_far()
+    export_llm_should_reason()
     export_describe_day_over_day()
     export_glossary()
     export_temp_high_low()

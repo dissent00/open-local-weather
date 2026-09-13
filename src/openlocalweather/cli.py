@@ -61,8 +61,10 @@ from openlocalweather.llm.anthropic import DEFAULT_MAX_TOKENS as DEFAULT_ANTHROP
 from openlocalweather.llm.anthropic import AnthropicProvider
 from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
+from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
+    ObservationsRefreshed,
     attach_spend_cap,
     PipelineDeps,
     run_forecast,
@@ -314,6 +316,10 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
 RUN_KIND_FIRST = "run-kind: first"
 RUN_KIND_REISSUE = "run-kind: reissue"
 RUN_KIND_SKIPPED = "run-kind: skipped"
+# A run that refreshed what the station has seen and reasoned nothing —
+# ROADMAP item 121. The outcome an hourly cron should mostly produce, and the
+# one that costs no LLM call.
+RUN_KIND_OBSERVED = "run-kind: observed"
 
 
 def _print_first_issuance(result, dry_run: bool) -> None:
@@ -343,6 +349,18 @@ def _print_re_issue(result, dry_run: bool) -> None:
         print(entry.narrative_markdown)
 
 
+def _print_observations_refreshed(result, dry_run: bool) -> None:
+    entry = result.log_entry
+    print(f"Observations refreshed for {result.today} (dry_run={dry_run}).")
+    print(f"  as of:           {entry.meta.observations_local_time}")
+    print(f"  forecast issued: {entry.meta.issued_local_time}")
+    # Composed through the same function the page and the prompt use, so what
+    # an operator reads here is what a reader gets rather than a second
+    # wording of it.
+    print(f"  observed:        {describe_observed_so_far(entry.observed_so_far, as_of=entry.meta.observations_local_time)}")
+    print(f"  published:       {result.published}")
+
+
 def _run_forecast(args: argparse.Namespace) -> int:
     """The verb to schedule. Which kind of run this is, is the day's business,
     not the operator's — see pipeline.run_forecast.
@@ -362,6 +380,13 @@ def _run_forecast(args: argparse.Namespace) -> int:
     if isinstance(result, ForecastSkipped):
         print(RUN_KIND_SKIPPED)
         print(f"Nothing to do for {result.today}: {result.reason}")
+        return 0
+
+    # Nothing was reasoned, so there is no forecast to print — only what the
+    # station has seen since the standing one.
+    if isinstance(result, ObservationsRefreshed):
+        print(RUN_KIND_OBSERVED)
+        _print_observations_refreshed(result, dry_run=args.dry_run)
         return 0
 
     # The RUN's own answer, not its type's — see pipeline.ForecastRunResult.
@@ -1028,7 +1053,8 @@ def main(argv: list[str] | None = None) -> int:
         "forecast",
         help=(
             "Forecast for today — a full run if the day has no entry yet, a narrative "
-            "re-issue if it has. The verb to schedule."
+            "re-issue if new model guidance has landed, and otherwise a free refresh of "
+            "what the station has observed. The verb to schedule, at any frequency."
         ),
     )
     forecast.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
@@ -1046,8 +1072,9 @@ def main(argv: list[str] | None = None) -> int:
         "--force",
         action="store_true",
         help=(
-            "Re-issue even if a forecast went out in the last hour. Forces the NARRATIVE only — "
-            "the day's scored predictions are written once and cannot be reached from here."
+            "Re-issue even if a forecast went out in the last hour, and even if no new model "
+            "cycle has landed. Forces the NARRATIVE only — the day's scored predictions are "
+            "written once and cannot be reached from here."
         ),
     )
 

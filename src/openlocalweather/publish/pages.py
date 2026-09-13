@@ -118,15 +118,42 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
 
 def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
     """Small "which issuance is this" tag shown in a page's meta line —
-    e.g. "Evening Update — 15:02 UTC". None for a page with nothing to
+    e.g. "Evening Update — 15:02". None for a page with nothing to
     disambiguate (a day that was never refreshed has only one issuance,
-    and doesn't need a label saying so)."""
+    and doesn't need a label saying so).
+
+    LOCAL WHERE THE ENTRY KNOWS ITS LOCAL CLOCK, and this stopped being
+    cosmetic with ROADMAP item 121's observation-only refresh. The observed
+    block beside this label is stamped in LOCAL time, and until item 121 both
+    described the same moment — so a reader comparing "15:02 UTC" against
+    "As of 18:02" was reading one instant written two ways, and the worst
+    outcome was mild confusion.
+
+    The two are now genuinely different moments and the reader is MEANT to
+    compare them: that is the whole point of stamping them separately. A unit
+    mismatch then does not merely confuse, it can invert the comparison. At
+    UTC+3 a forecast at 15:01 UTC beside observations "As of 15:45" reads as
+    44 minutes of elapsed day when it is three hours and 44; west of
+    Greenwich it is worse, and observations genuinely newer than the forecast
+    render as older than it.
+
+    Falls back to UTC for entries written before `issued_local_time` existed,
+    where the zone suffix is still honest because the number really is UTC.
+    The morning label keeps UTC unconditionally: `IssuanceSnapshot` stores
+    only `generated_at_utc`, and inventing a local time for it by applying
+    today's offset would be a guess about a zone the snapshot never recorded.
+    """
     if morning:
         assert entry.morning_issuance is not None
         return f"Morning Issuance — {entry.morning_issuance.generated_at_utc.strftime('%H:%M UTC')}"
-    if entry.meta.refreshed_at is not None:
-        return f"Evening Update — {entry.meta.refreshed_at.strftime('%H:%M UTC')}"
-    return None
+
+    if entry.meta.refreshed_at is None:
+        return None
+
+    if entry.meta.issued_local_time:
+        return f"Evening Update — {entry.meta.issued_local_time}"
+
+    return f"Evening Update — {entry.meta.refreshed_at.strftime('%H:%M UTC')}"
 
 
 @dataclass
@@ -222,8 +249,17 @@ def render_forecast_page(
         # from the instant and the zone. Those differ whenever reconcile_now
         # overrode a wrong system clock, and the page must not then show a
         # time the forecaster was never given.
+        #
+        # STAMPED WITH THE OBSERVATION'S OWN CLOCK, not the forecast's — item
+        # 121's no-LLM refresh path lets the two come apart, so a page can
+        # carry a narrative reasoned at 06:00 beside a station reading taken
+        # at 14:00. Showing the issuance time on both would date the reading
+        # eight hours early and tell a reader the day had been quiet since
+        # dawn. Falls back to the issuance time for entries written before
+        # the field existed, which is what those entries meant.
         observed_so_far=describe_observed_so_far(
-            entry.observed_so_far, as_of=entry.meta.issued_local_time
+            entry.observed_so_far,
+            as_of=entry.meta.observations_local_time or entry.meta.issued_local_time,
         ),
         # Rendered deterministically from the raw per-station readings, not
         # trusted to LLM narrative — same "code does the data, LLM does the

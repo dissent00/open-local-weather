@@ -25,6 +25,7 @@ export 'src/claims.dart';
 export 'src/dates.dart';
 export 'src/disagreement.dart';
 export 'src/observed.dart';
+export 'src/reasoning.dart';
 export 'src/extract.dart';
 export 'src/forecast.dart';
 export 'src/glossary.dart';
