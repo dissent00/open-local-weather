@@ -13660,9 +13660,13 @@ day's high and rain are settled; asking for them is asking for a report and
 scoring them would credit a forecaster for reading a thermometer." True, and
 about a frame that no longer exists.
 
-**C5. How much of the target remained at issuance is RECORDED per
-prediction**, so the record can partition a dawn call from a dusk one. Without
-it, lead-in-dates silently averages a two-hour call with an eighteen-hour one.
+**C5. ~~How much of the target remained at issuance is RECORDED per
+prediction.~~ NOT A STORED FIELD — operator's decision 2026-09-13.** It read:
+"so the record can partition a dawn call from a dusk one. Without it,
+lead-in-dates silently averages a two-hour call with an eighteen-hour one."
+That two-versus-eighteen was Day+0 and dissolves with it. **Fold it into C4
+and derive it at read time** — see "What a prediction must say about itself"
+below.
 
 **C6. Rolling windows and the sample-size gate count DISTINCT TARGET DATES,
 not rows.** The review gate already does (`variable_days = max(v.days ...)`);
@@ -13672,6 +13676,68 @@ one day would shrink the sampling-noise floor and fire rankings too eagerly.
 2026-09-12: re-scoring identical model rows does NOT bias the mean against
 the blend — more draws of a noisy forecaster estimate its skill better, not
 worse. What it breaks is independence, and only the gate depends on that.*
+
+### What a prediction must say about itself — settled 2026-09-13
+
+Three operator decisions, taken together because they are one question: how
+much of its own context does a stored prediction have to carry?
+
+**1. `hours_to_target` is DERIVED, not stored.** C4's container keys rows by
+issuance because contract item 4 requires it, so the issuance instant is
+present by construction; `target_date` has been on the prediction since C1.
+Subtracting them is the whole calculation. This project's stated preference
+applies directly — "a figure that can only be re-derived is a figure that can
+be checked, and one that's carried forward is one that can silently go stale"
+— and deriving also defers a question storing would bake in: hours to the
+target's START, its midpoint, or its end? Nobody knows yet which one an
+analysis will want.
+
+*Sized before deciding.* 16 h of lead is worth roughly 1–1.5 points of rain
+accuracy, against a noise floor of 8.7 points at n=30 and 12.3 for a two-group
+difference — about 7,800 checks per group to resolve, or 21 years at a check a
+day. In temperature error it is ~0.21 °C against ~0.013 °C per hour of lead,
+which is plausibly a year of two-issuance days rather than decades. So if this
+is ever measured it will be measured in temperature, and not soon.
+
+*And the confound is smaller than it looks.* Measured on today's two
+issuances: the 06:02 run read the 18Z cycle and the 18:02 run read the 06Z
+cycle, **both 9.0 hours old**. The 12-hour slots sit at the same phase against
+a 6-hourly cycle, so a dusk call is not reading staler guidance — it is
+reading a cycle initialised 12 h later, at 16 h shorter lead. Better-informed
+on both counts, in the same direction, which is why the effect is real and why
+it is also small.
+
+**2. The prediction is stamped with the ISSUANCE INSTANT, not an hours
+count.** Self-describing, bakes in no convention, and it degrades to
+redundancy rather than to a wrong answer if C4's keying already carries it. An
+hours count does the opposite: it is only as good as the convention it was
+written under, and nothing in the file says which one that was.
+
+**3. The record must be able to interpret `target_date` WITHOUT
+`config/location.yaml`, and today it cannot.** Checked 2026-09-13: the record
+stores no timezone and no UTC offset, anywhere. So a prediction can state when
+it was made to the microsecond and cannot state what period it covers without
+an external, mutable file.
+
+The asymmetry is the finding. The ISSUANCE side is already UTC —
+`generated_at_utc` and `refreshed_at` both. The TARGET side is local-only.
+Storing "UTC alongside local" helps precisely there, and the right companion
+is **the UTC offset in force for the target date**, not a second timestamp:
+one small integer, no duplication of `target_date`, and no second source of
+truth about which day is meant. `dates.utc_offset_seconds(tz, d)` already
+computes it and already takes the offset at local NOON to dodge DST gaps and
+folds.
+
+What one offset does not express is a target day containing a DST transition,
+which runs 23 or 25 hours. This location has no DST; for a fork the residual
+error is an hour on a multi-day lead.
+
+**Not built now, deliberately, and this is the part to hold onto.** The
+correction it buys is at most an hour or two out of a 50-90 h lead — about 6%
+of the 16 h effect it would serve, on a measurement decision 1 just declined
+to build. **But it must be settled when C4's container is designed**, because
+that is the moment the record's self-description is decided, and retrofitting
+it afterwards is a second migration over the same rows.
 
 ### C1-C6 reconciled against the contract settled the next day
 
