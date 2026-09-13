@@ -15086,7 +15086,34 @@ standing practice these findings are recorded under.
 
 ---
 
-## 117b. Correction: item 117 blamed the prompt, and the prompt was not at fault
+## 117b. Correction: item 117 blamed the prompt, and the prompt was not at fault · **Fixes 1 and 2 shipped 2026-09-13; 3, 4 and 5 open**
+
+### Status, checked 2026-09-13
+
+| fix | state |
+|---|---|
+| 1. `describe_day_rain` takes the issuance hour | **Shipped.** Required keyword on both sides. |
+| 2. Ports and vectors | **Shipped.** `describeDayRain` carries `issuedHour`; `describe_day_rain.json` holds 20 cases across `issued_hour` 6, 17, 18 and null. |
+| 3. The `issuance_time` prompt exception | Open. |
+| 4. Day+1 for a late issuance | Open, and still gated on sizing "late" against C4's floor. |
+| 5. `fetch_metar` should ask for `hours` | Open, and **bigger than this item implied** — see below. |
+
+**Fix 5 is not a parameter change, and this item was wrong to imply it.**
+`fetch_metar` already returns `list[dict]`, and the list goes to the prompt
+untouched as `airport_metar`. The prompt then spends a long passage reasoning
+FROM the fact that there is one element in it:
+
+> A METAR IS ONE POINT AT ONE MOMENT - a single airport, a single observation
+> - and these sections describe a whole day across an area. Its AGE is not the
+> argument [...] it is still one instant at one place, and a forecast is not.
+
+That sentence is the stated premise for withholding dew point, visibility and
+cloud base — the rule item 87 exists to keep straight. Asking for six hours
+makes the payload a short time series and the premise false, so the fetch
+change and a prompt change are one piece of work, not two. Whether a station
+time series should be a separate block from the current observation, and what
+it is allowed to license, is a design question and the operator's.
+
 
 Written 2026-09-12, corrected 2026-09-13 after tracing the sentence instead of
 inferring where it came from. **The headline above is wrong** and is kept
