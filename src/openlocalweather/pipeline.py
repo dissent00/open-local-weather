@@ -51,7 +51,7 @@ import sys
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from openlocalweather import __version__
 from openlocalweather.aqi import (
@@ -652,6 +652,185 @@ def _clock_on(day: datetime, hhmm: str | None) -> datetime | None:
         return None
 
     return day.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
+def _visible_note(note: str | None, hidden_model_id: str | None) -> str | None:
+    """A stored note, or None when it names a model the forecaster never sees.
+
+    Defined once here because it was defined twice: an identical nested copy
+    sat in run_daily_pipeline and another in run_refresh_pipeline, both closing
+    over `location`. See `models_visible_to_the_forecaster` for why the blend
+    and the baselines are withheld — a note that names one leaks a model the
+    prompt has just been told does not exist.
+    """
+    if note_names_a_hidden_model(note, hidden_model_id):
+        return None
+
+    return note
+
+
+def _historical_logs_payload(
+    data_dir: Path, today: date, hidden_model_id: str | None
+) -> list[dict]:
+    """The last HISTORICAL_LOOKBACK_DAYS of stored entries, as the prompt reads
+    them.
+
+    ROADMAP item 104. This loop existed twice, character for character, in
+    run_daily_pipeline and run_refresh_pipeline — the only difference being
+    that the refresh built its own `log_lookup` first. Two copies of a payload
+    the prompt depends on is the shape that has already cost this project the
+    three blocks the evening run silently omitted; a field added to one copy
+    reaches half the issuances and nothing says which half.
+
+    `visible_note` and `_corrected_on` are applied here rather than by the
+    caller for the same reason: the note a reader sees and the note the record
+    stores are not the same string, and deciding that twice is deciding it
+    twice differently.
+    """
+    log_lookup = log_store.make_log_lookup(data_dir)
+    lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
+
+    payload: list[dict] = []
+    for stored_date in log_store.list_log_dates(data_dir):
+        if not (lookback_start <= stored_date < today):
+            continue
+
+        entry = log_lookup(stored_date)
+        if entry is None:
+            continue
+
+        row = {"date": format_date(stored_date), "rain_expected": entry.rain_expected}
+        for lead in (0, 3, 7):
+            verification = entry.verification.for_lead(lead)
+            note = _visible_note(verification.note, hidden_model_id)
+            row[f"day{lead}_verified"] = verification.verified
+            row[f"day{lead}_note"] = note
+            row[f"day{lead}_note_sign_corrected_on"] = _corrected_on(verification, note)
+        payload.append(row)
+
+    return payload
+
+
+def _track_record_payload(entries, models: set | list) -> list[dict]:
+    """The rolling stats the forecaster is shown, with unsafe summaries hidden.
+
+    ONE IMPLEMENTATION, BECAUSE THERE WERE TWO. run_daily_pipeline had a nested
+    `visible_summary` and run_refresh_pipeline had the same rule written out
+    inline — one reading `skill_profile_summary` off the dumped dict and the
+    other off the model. They agreed, and nothing made them agree; this is the
+    class of divergence ROADMAP item 104 exists to close.
+
+    `entries` differs by design and is the caller's to supply: the first run of
+    a day passes the record it has just updated, and a later one passes what is
+    stored, because it did no verification and has nothing fresher. Item 91 is
+    why that matters — the refresh is the WORSE case, since every summary it
+    reads was written by an earlier run.
+    """
+    payload = []
+    for entry in entries:
+        if entry.model not in models:
+            continue
+
+        row = entry.model_dump()
+        if summary_carries_a_figure(entry.skill_profile_summary):
+            # The figure is withheld rather than the row: the stats are still
+            # worth showing, and the summary is the part the sample cannot
+            # support.
+            row = dict(row, skill_profile_summary=None)
+        payload.append(row)
+
+    return payload
+
+
+def _build_forecast_prompt(
+    deps: PipelineDeps,
+    guidance: ForwardGuidance,
+    existing_entry: DailyLogEntry | None,
+    today: date,
+    *,
+    day0_predictions: list,
+    verification_context: Any,
+    model_predictions_context: Any,
+    track_record_context: Any,
+    review_context: Any,
+    yesterday_actual: Any,
+) -> str:
+    """The user prompt, built in the one place it is built.
+
+    ROADMAP item 104, and this is the structural half of it. Two call sites
+    meant a field could be wired into one and not the other, and in a single
+    day that happened five times: `extended_trend`, `wind_direction` and
+    `wind_shift` had been missing from every evening run for weeks;
+    `narrative_findings` would have been missing from the refresh's own meta;
+    and `historical_logs`, the track-record shaping and `visible_note` were all
+    carried as second copies that agreed only by luck.
+
+    None of those was a hard failure. Each rendered as "Unavailable", which is
+    also what a real gap looks like, so the record could not tell an unwired
+    block from an absent one and neither could a reader.
+
+    WITH ONE CALL SITE THE CLASS IS CLOSED, not merely fixed: a new field added
+    to `build_user_prompt` has exactly one place to be wired, and both kinds of
+    run get it or neither does.
+
+    EVERYTHING A PATH GENUINELY DECIDES IS A REQUIRED KEYWORD ARGUMENT. Five
+    values differ by design — a first run verifies and scores, a later one
+    reuses what the first stored — and `required` is what stops a caller
+    keeping an old default by saying nothing. Item 118 used the same technique
+    for `issued_hour`, and it is what caught `sandbox/sweep.py` when the two
+    fell out of step.
+    """
+    return build_user_prompt(
+        today=today,
+        yesterday=add_days(today, -1),
+        public_webpage_url=deps.public_webpage_url,
+        verification_context=verification_context,
+        model_predictions_context=model_predictions_context,
+        track_record_context=track_record_context,
+        historical_logs=_historical_logs_payload(
+            deps.data_dir, today, deps.location.local_bulletin_model_id
+        ),
+        ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
+        ground_aqi_summary=(
+            asdict(guidance.ground_aqi_summary)
+            if guidance.ground_aqi_summary is not None
+            else None
+        ),
+        ground_aqi_last_known=(
+            asdict(guidance.ground_aqi_last_known)
+            if guidance.ground_aqi_last_known is not None
+            else None
+        ),
+        ground_stations_configured=bool(deps.location.waqi_stations),
+        local_bulletin_configured=bool(deps.location.local_bulletin_source_name),
+        instability=(
+            asdict(guidance.instability) if guidance.instability is not None else None
+        ),
+        guidance_recency=_guidance_recency_payload(guidance, existing_entry),
+        yesterday_actual=yesterday_actual,
+        **_locked_blocks(guidance, day0_predictions, today),
+        review_context=review_context,
+        today_weather_data={
+            "primary_today_hourly": guidance.primary_hourly,
+            "primary_extended_daily": guidance.primary_daily,
+            "secondary_today_hourly": guidance.secondary_hourly,
+            "secondary_extended_daily": guidance.secondary_daily,
+            "regional_pressure": guidance.regional_pressure,
+            "air_quality": guidance.air_quality,
+            "airport_metar": guidance.airport_metar,
+            "synoptic_scale_pressure": (
+                asdict(guidance.synoptic) if guidance.synoptic is not None else None
+            ),
+        },
+        local_bulletin_source_name=deps.location.local_bulletin_source_name,
+        local_bulletin_text=guidance.bulletin_text,
+        issuance=guidance.issuance,
+        forward_hourly=guidance.forward_hourly,
+        forward_window_narrowed=guidance.forward_window_narrowed,
+        earlier_today=(
+            _issuances_for_prompt(existing_entry) if existing_entry is not None else None
+        ),
+    )
 
 
 def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: date) -> dict:
@@ -1725,41 +1904,9 @@ def run_daily_pipeline(
     #
     # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
     # time this rule was broken, and only run_daily_pipeline had the test.
-    def visible_note(note: str | None) -> str | None:
-        if note_names_a_hidden_model(note, location.local_bulletin_model_id):
-            return None
-        return note
-
-    historical_logs = []
-    lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
-    for d in log_store.list_log_dates(deps.data_dir):
-        if lookback_start <= d < today:
-            entry = log_lookup(d)
-            if entry is not None:
-                historical_logs.append(
-                    {
-                        "date": format_date(d),
-                        "rain_expected": entry.rain_expected,
-                        "day0_verified": entry.verification.day0.verified,
-                        "day0_note": visible_note(entry.verification.day0.note),
-                        "day0_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day0,
-                            visible_note(entry.verification.day0.note),
-                        ),
-                        "day3_verified": entry.verification.day3.verified,
-                        "day3_note": visible_note(entry.verification.day3.note),
-                        "day3_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day3,
-                            visible_note(entry.verification.day3.note),
-                        ),
-                        "day7_verified": entry.verification.day7.verified,
-                        "day7_note": visible_note(entry.verification.day7.note),
-                        "day7_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day7,
-                            visible_note(entry.verification.day7.note),
-                        ),
-                    }
-                )
+    historical_logs = _historical_logs_payload(
+        deps.data_dir, today, location.local_bulletin_model_id
+    )
 
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
     day0_predictions = extract_day0_predictions_from_hourly(primary_hourly, MODELS)
@@ -1944,16 +2091,9 @@ def run_daily_pipeline(
     # Dropped whole rather than stripped: a summary with its number cut out
     # reads as a sentence missing a word, and the qualitative half is still
     # written fresh every run for every pair that verified.
-    def visible_summary(entry: dict) -> dict:
-        if summary_carries_a_figure(entry.get("skill_profile_summary")):
-            entry = dict(entry, skill_profile_summary=None)
-        return entry
-
-    track_record_context = [
-        visible_summary(e.model_dump())
-        for e in verification_result.updated_track_record.entries
-        if e.model in forecaster_models
-    ]
+    track_record_context = _track_record_payload(
+        verification_result.updated_track_record.entries, forecaster_models
+    )
     # Long-run review findings, recomputed from the raw record every run
     # rather than stored — same reasoning as every other statistic here: a
     # figure that can only be re-derived is a figure that can be checked,
@@ -1975,44 +2115,19 @@ def run_daily_pipeline(
     model_predictions_context = _model_predictions_prompt_payload(
         day0_predictions, day3_predictions, day7_predictions
     )
-    user_prompt = build_user_prompt(
-        today=today,
-        yesterday=yesterday,
-        public_webpage_url=deps.public_webpage_url,
+    user_prompt = _build_forecast_prompt(
+        deps,
+        guidance,
+        existing_entry,
+        today,
+        day0_predictions=day0_predictions,
         verification_context=verification_context,
         model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,
-        historical_logs=historical_logs,
-        ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
-        ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
-        ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
-        ground_stations_configured=ground_stations_configured,
-        local_bulletin_configured=local_bulletin_configured,
-        instability=asdict(guidance.instability) if guidance.instability is not None else None,
-        guidance_recency=_guidance_recency_payload(guidance, existing_entry),
-        # What actually HAPPENED yesterday, so the Overview can open with a
-        # real day-over-day comparison. Distinct from verification_context,
-        # which is how yesterday's predictions SCORED. Free: this is the same
-        # cache the verification pass already read.
-        yesterday_actual=comparison_for_prompt(asdict(day_over_day) if day_over_day is not None else None),
-        **_locked_blocks(guidance, day0_predictions, today),
         review_context=review_context,
-        today_weather_data={
-            "primary_today_hourly": primary_hourly,
-            "primary_extended_daily": primary_daily,
-            "secondary_today_hourly": guidance.secondary_hourly,
-            "secondary_extended_daily": guidance.secondary_daily,
-            "regional_pressure": guidance.regional_pressure,
-            "synoptic_scale_pressure": asdict(guidance.synoptic) if guidance.synoptic is not None else None,
-            "air_quality": guidance.air_quality,
-            "airport_metar": guidance.airport_metar,
-        },
-        local_bulletin_source_name=location.local_bulletin_source_name,
-        local_bulletin_text=guidance.bulletin_text,
-        issuance=guidance.issuance,
-        forward_hourly=guidance.forward_hourly,
-        forward_window_narrowed=guidance.forward_window_narrowed,
-        earlier_today=_issuances_for_prompt(existing_entry) if existing_entry is not None else None,
+        yesterday_actual=comparison_for_prompt(
+            asdict(day_over_day) if day_over_day is not None else None
+        ),
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
@@ -2346,42 +2461,9 @@ def run_refresh_pipeline(
     #
     # Applied in BOTH pipelines. Only run_daily_pipeline was filtered the last
     # time this rule was broken, and only run_daily_pipeline had the test.
-    def visible_note(note: str | None) -> str | None:
-        if note_names_a_hidden_model(note, location.local_bulletin_model_id):
-            return None
-        return note
-
-    historical_logs = []
-    lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
-    log_lookup = log_store.make_log_lookup(deps.data_dir)
-    for d in log_store.list_log_dates(deps.data_dir):
-        if lookback_start <= d < today:
-            entry = log_lookup(d)
-            if entry is not None:
-                historical_logs.append(
-                    {
-                        "date": format_date(d),
-                        "rain_expected": entry.rain_expected,
-                        "day0_verified": entry.verification.day0.verified,
-                        "day0_note": visible_note(entry.verification.day0.note),
-                        "day0_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day0,
-                            visible_note(entry.verification.day0.note),
-                        ),
-                        "day3_verified": entry.verification.day3.verified,
-                        "day3_note": visible_note(entry.verification.day3.note),
-                        "day3_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day3,
-                            visible_note(entry.verification.day3.note),
-                        ),
-                        "day7_verified": entry.verification.day7.verified,
-                        "day7_note": visible_note(entry.verification.day7.note),
-                        "day7_note_sign_corrected_on": _corrected_on(
-                            entry.verification.day7,
-                            visible_note(entry.verification.day7.note),
-                        ),
-                    }
-                )
+    historical_logs = _historical_logs_payload(
+        deps.data_dir, today, location.local_bulletin_model_id
+    )
 
     # --- Step 3: call the LLM in refresh mode ---
     # No new verification happened (yesterday's actuals don't change during
@@ -2425,13 +2507,10 @@ def run_refresh_pipeline(
     # every summary it reads was written by an earlier run and none is
     # current. Only run_daily_pipeline was filtered the last time a rule like
     # this was applied to one of these two blocks.
-    track_record_context = [
-        dict(e.model_dump(), skill_profile_summary=None)
-        if summary_carries_a_figure(e.skill_profile_summary)
-        else e.model_dump()
-        for e in track_record_store.read_track_record(deps.data_dir).entries
-        if e.model in _refresh_forecaster_models
-    ]
+    track_record_context = _track_record_payload(
+        track_record_store.read_track_record(deps.data_dir).entries,
+        _refresh_forecaster_models,
+    )
 
     # The refresh does no verification, but the long-run findings still
     # describe which models have earned trust here — relevant to the
@@ -2472,46 +2551,17 @@ def run_refresh_pipeline(
     )
     judgment_prompt = build_judgment_prompt(location, **prompt_flags)
     narrative_prompt = build_narrative_prompt(location, **prompt_flags)
-    user_prompt = build_user_prompt(
-        today=today,
-        yesterday=add_days(today, -1),
-        model_predictions_context=refresh_predictions_context,
-        public_webpage_url=deps.public_webpage_url,
+    user_prompt = _build_forecast_prompt(
+        deps,
+        guidance,
+        existing_entry,
+        today,
+        day0_predictions=existing_entry.model_predictions.day0,
         verification_context=verification_context,
+        model_predictions_context=refresh_predictions_context,
         track_record_context=track_record_context,
-        historical_logs=historical_logs,
-        ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
-        ground_aqi_summary=asdict(guidance.ground_aqi_summary) if guidance.ground_aqi_summary is not None else None,
-        ground_aqi_last_known=asdict(guidance.ground_aqi_last_known) if guidance.ground_aqi_last_known is not None else None,
-        ground_stations_configured=ground_stations_configured,
-        local_bulletin_configured=local_bulletin_configured,
-        instability=asdict(guidance.instability) if guidance.instability is not None else None,
-        guidance_recency=_guidance_recency_payload(guidance, existing_entry),
-        yesterday_actual=refresh_yesterday_actual,
-        # The three blocks this path silently omitted until item 104 — same
-        # guidance, same models, same function as the first run of the day.
-        **_locked_blocks(guidance, existing_entry.model_predictions.day0, today),
         review_context=refresh_review_context,
-        today_weather_data={
-            "primary_today_hourly": guidance.primary_hourly,
-            "primary_extended_daily": guidance.primary_daily,
-            "secondary_today_hourly": guidance.secondary_hourly,
-            "secondary_extended_daily": guidance.secondary_daily,
-            "regional_pressure": guidance.regional_pressure,
-            "synoptic_scale_pressure": asdict(guidance.synoptic) if guidance.synoptic is not None else None,
-            "air_quality": guidance.air_quality,
-            "airport_metar": guidance.airport_metar,
-        },
-        local_bulletin_source_name=location.local_bulletin_source_name,
-        local_bulletin_text=guidance.bulletin_text,
-        issuance=guidance.issuance,
-        forward_hourly=guidance.forward_hourly,
-        forward_window_narrowed=guidance.forward_window_narrowed,
-        # Every issuance already published today, in order. Was a single
-        # `morning_narrative`, which assumed the day has exactly two runs; an
-        # operator may schedule two or five, and each one after the first
-        # needs to know what its readers have already been told.
-        earlier_today=_issuances_for_prompt(existing_entry),
+        yesterday_actual=refresh_yesterday_actual,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the
