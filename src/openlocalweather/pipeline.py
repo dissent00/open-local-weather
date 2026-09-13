@@ -578,6 +578,80 @@ def _issued_hour(issuance: DayPart | None) -> int:
         return 24
 
 
+def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: date) -> dict:
+    """The pre-computed blocks the prompt locks, composed once for every run.
+
+    ROADMAP item 104. THESE THREE WERE COMPOSED ON ONE PATH AND NOT THE OTHER,
+    and the reader could not tell. `build_user_prompt` takes `extended_trend`,
+    `wind_direction` and `wind_shift` as keyword arguments defaulting to None,
+    run_daily_pipeline passed all three and run_refresh_pipeline passed none,
+    so every evening run told its reader the models had no three-day trend and
+    nothing could be said about the wind turning. Measured across the prompt
+    archive: real at the first issuance and Unavailable at the refresh on
+    2026-09-07, 09-10 and 09-11, and the same for the wind shift on 09-11.
+
+    Nothing marked it, because `None` is also what a legitimate absence looks
+    like — the models genuinely do disagree about a bearing most evenings — so
+    an unwired block and a true gap render as the same sentence.
+
+    THE INPUTS WERE NEVER THE PROBLEM. `ForwardGuidance` carries
+    `primary_hourly` and `primary_daily`, `_fetch_forward_guidance` is its only
+    constructor and both paths call it, and run_daily_pipeline's own
+    `primary_hourly` is that same object. The refresh could have published all
+    three at no extra request; it simply never asked.
+
+    So this exists to make asking the only option. A shared INPUT type was
+    already tried — ForwardGuidance's docstring promises the two runs "can
+    never silently drift apart" and it kept that promise, because they drifted
+    one layer up, on what each composed from identical inputs. A shared struct
+    cannot constrain two bodies of code. One function can, and every caller
+    that wants these blocks now gets all of them or none.
+
+    `day0_predictions` is the one input the callers must supply rather than
+    read off `guidance`: the first run of a day extracts them fresh, and a
+    later one reuses what the first stored, because those are the numbers the
+    record scores.
+    """
+    issued_hour = _issued_hour(guidance.issuance)
+
+    # Days 1-3 from the SAME daily source and the SAME model list as the
+    # scored Day+3 row, so the clause a reader acts on and the number the
+    # record scores cannot describe different weather.
+    extended_days = [
+        extract_day_n_predictions_from_daily(guidance.primary_daily, n, MODELS)
+        for n in (1, 2, 3)
+    ]
+
+    return {
+        "extended_trend": describe_extended_trend(
+            today_high_c=_mean_of([p.high_c for p in day0_predictions]),
+            day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
+            day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
+            last_day_name=weekday_name(add_days(today, 3)),
+            # Wind is present at these leads and was being discarded, so a
+            # three-day build in gusts under a flat temperature read as "much
+            # the same". It is also what lets the clause say "conditions".
+            today_wind_kmh=_mean_of([p.wind_kmh for p in day0_predictions]),
+            day_winds_kmh=[_mean_of([p.wind_kmh for p in day]) for day in extended_days],
+        ),
+        # ROADMAP item 59. TWO WIND FACTS, and the second is the better one.
+        # A bearing cannot be averaged — see wind.vector_mean — so the
+        # direction is a gated vector consensus and is absent whenever the
+        # models do not share one, which measured here is most of the evening.
+        # The SHIFT is what survives: the models argue about a single daily
+        # bearing and agree about which way it turns, so that is the fact
+        # worth publishing.
+        "wind_direction": consensus_direction(
+            [p.wind_direction_deg for p in day0_predictions if p.wind_direction_deg is not None]
+        ),
+        # ROADMAP item 118: the anchors are hours of the day, so a clause with
+        # none of them still ahead describes a day the reader has finished.
+        "wind_shift": describe_wind_shift(
+            guidance.primary_hourly, MODELS, issued_hour=issued_hour
+        ),
+    }
+
+
 def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[DayPart, datetime]:
     """Sunrise/sunset for today and tomorrow, reduced to the issuance moment.
 
@@ -1653,20 +1727,8 @@ def run_daily_pipeline(
     # the record scores cannot describe different weather. Consensus across
     # models per day, then banded in comparison.py: the arithmetic lives in
     # code, and the prompt is handed a finished phrase.
-    extended_days = [
-        extract_day_n_predictions_from_daily(primary_daily, n, MODELS) for n in (1, 2, 3)
-    ]
-    extended_trend = describe_extended_trend(
-        today_high_c=_mean_of([p.high_c for p in day0_predictions]),
-        day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
-        day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
-        last_day_name=weekday_name(add_days(today, 3)),
-        # Wind is present at these leads and was being discarded, so a
-        # three-day build in gusts under a flat temperature read as "much the
-        # same". It is also what lets the clause say "conditions" honestly.
-        today_wind_kmh=_mean_of([p.wind_kmh for p in day0_predictions]),
-        day_winds_kmh=[_mean_of([p.wind_kmh for p in day]) for day in extended_days],
-    )
+    # Composed by _locked_blocks with every other block the prompt locks, so
+    # this path and the refresh cannot compose different sets — item 104.
 
     # The yardsticks — ROADMAP item 57. Built from the stored record rather
     # than fetched, so they cost nothing and cannot fail a run.
@@ -1829,21 +1891,6 @@ def run_daily_pipeline(
     model_predictions_context = _model_predictions_prompt_payload(
         day0_predictions, day3_predictions, day7_predictions
     )
-    # ROADMAP item 59. TWO WIND FACTS, and the second is the better one.
-    #
-    # A bearing cannot be averaged — see wind.vector_mean — so the direction
-    # is a gated vector consensus and is absent whenever the models do not
-    # share one, which measured here is most of the evening. The SHIFT is
-    # what survives: the models argue about a single daily bearing and agree
-    # about which way it turns, so that is the fact worth publishing.
-    wind_direction = consensus_direction(
-        [p.wind_direction_deg for p in day0_predictions if p.wind_direction_deg is not None]
-    )
-    # ROADMAP item 118: the anchors are hours of the day, so a clause with
-    # none of them still ahead is a description of a day the reader finished.
-    wind_shift = describe_wind_shift(
-        primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
-    )
     user_prompt = build_user_prompt(
         today=today,
         yesterday=yesterday,
@@ -1864,9 +1911,7 @@ def run_daily_pipeline(
         # which is how yesterday's predictions SCORED. Free: this is the same
         # cache the verification pass already read.
         yesterday_actual=comparison_for_prompt(asdict(day_over_day) if day_over_day is not None else None),
-        extended_trend=extended_trend,
-        wind_direction=wind_direction,
-        wind_shift=wind_shift,
+        **_locked_blocks(guidance, day0_predictions, today),
         review_context=review_context,
         today_weather_data={
             "primary_today_hourly": primary_hourly,
@@ -2359,6 +2404,9 @@ def run_refresh_pipeline(
         instability=asdict(guidance.instability) if guidance.instability is not None else None,
         guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=refresh_yesterday_actual,
+        # The three blocks this path silently omitted until item 104 — same
+        # guidance, same models, same function as the first run of the day.
+        **_locked_blocks(guidance, existing_entry.model_predictions.day0, today),
         review_context=refresh_review_context,
         today_weather_data={
             "primary_today_hourly": guidance.primary_hourly,
