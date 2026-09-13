@@ -15064,9 +15064,11 @@ two calls can spend their day's budget in a minute.
 new information and no material clock change now costs ZERO calls and shows
 the stored forecast, so twenty taps are twenty reads. That makes this item a
 backstop rather than the mechanism, and it should be built after C2 rather
-than instead of it. Item 120 is what makes C2's answer an operator's choice
-rather than a constant, and it matters here: a deployment that opts into a
-looser policy re-opens exactly the harm this item backstops.
+than instead of it. Item 121 removes more of it again — observations
+composed in code cost nothing, so the taps that were spending on sensor news
+stop spending at all. What is left for this item to backstop is a deployment
+that keeps the daypart narrative on (item 120) and a reader who taps across
+daypart boundaries.
 
 What is still wanted:
 
@@ -15854,98 +15856,164 @@ what it produced either).
 
 ---
 
-## 120. C2's tiers are one policy, and the operator cannot state a different one · **Planned — and its precondition is a gap, measured**
+## 120. Is the daypart narrative wanted at all? · **Planned — shrunk 2026-09-13, most of it answered by item 121**
 
-Raised by the operator 2026-09-13 while C2's call-gating was being built:
+**Written larger, then cut down the same day.** It asked for a policy layer
+over C2's tiers: an operator declaring which signals earn a judgment call and
+which earn a narrative call. Item 121 answers most of that by removing the
+spend rather than rationing it — once observations are composed in code, "the
+sensors have something to say" costs nothing and needs no policy at all. The
+original ask also wanted a trigger for observations that are NEW but do not
+contradict; that case disappears entirely, because such observations are now
+reported rather than negotiated.
 
-> "the app owner or OLW admin could decide to run refreshes often, but not ask
-> for new prose unless there's a new cycle, or ask for prose when there's new
-> data."
+### What is left, and it is one option
 
-Item 104's C2 settles ONE answer to "what earns a call": information moved →
-both calls; only the daypart moved → narrative only; nothing moved → neither.
-That answer is defensible and is being built. What it is not is **a policy the
-operator can change**, and there are at least two deployments that want a
-different one.
+**The operator's target, 2026-09-13:**
 
-### The case C2 cannot express, and it is the operator's
+> "So I could run cron every hour, I'd get sensor updates from code as we're
+> now discussing, and only hit my LLM API if there's new model data. Same for
+> the app user who refreshes hourly."
 
-C2's third trigger is observations that **CONTRADICT** the standing call — the
-call says dry and a station reports rain, observed temperature has already
-passed the predicted high, observed peak wind has already passed the predicted
-peak. All three are contradictions.
+That is C2's tiers with the middle one switched off. The daypart narrative —
+re-rendering prose because the framing has gone stale, with every number
+unchanged — is the only remaining tier whose value is a judgment, and some
+deployments will not want it:
 
-**There is no trigger for observations that are merely NEW.** A station that
-has reported all morning, agreeing with the forecast the whole way, moves
-nothing under C2 and its readings earn no call. An operator who wants "tell me
-what the sensors have seen, whether or not it contradicts us" cannot say so,
-and for a deployment whose value IS the local sensor network that is the main
-thing they would want to say.
+- **Chasing model runs only.** An hourly cron, observations free, an LLM call
+  when and only when a new cycle has landed. The prose is then always the
+  prose of the last real forecast, and the observed block carries everything
+  that has happened since.
+- **Keeping the daypart narrative.** A forecast written at 06:00 does go stale
+  as a DOCUMENT by evening — "this morning" becomes wrong — and for a reader
+  who opens the page once, at dusk, that staleness is what they see. C2's
+  reasoning for the tier stands; it is the cost that is now arguable, because
+  it is the only remaining automatic spend that buys no new information.
 
-Note this is not a gap in C2's reasoning. C2 is about when to spend a JUDGMENT
-call, and an observation that agrees with the call genuinely does not change
-it. The gap is that the same switch also gates the NARRATIVE call, where fresh
-agreeing observations are worth a sentence.
+**So: make it a declared option, on both sides** — OLW's `location.yaml` and
+the app's settings — rather than a constant in the pipeline. Default to C2's
+answer, since that is the one that was reasoned through.
 
-### Its precondition, and this is the part that is a defect
+### The one expensive question that remains
 
-**`_observed_so_far` is computed once, stored on the record, and never reaches
-the prompt.** Verified 2026-09-13: `pipeline._observed_so_far` has exactly one
-caller, `_information_moved`, which puts it in `meta.information_moved`. It is
-not in any prompt block.
+**Does an observation CONTRADICTING the standing call earn a re-forecast?**
+Item 121 reports the contradiction in code either way, and argues the code
+line is the more reliable of the two — an LLM re-forecast may not mention it,
+which is what the prompt's `left_out` rule exists for. So this is genuinely
+open rather than obviously yes, and it is the only place left where a
+deployment's answer changes what gets spent.
 
-So today C2's third trigger can fire — the observed temperature has already
-passed the predicted high — cause a full re-forecast, and **the forecaster is
-never shown the observation that triggered it.** It re-reasons from the same
-model guidance and has no reason to produce a different call. The only current
-observation in the prompt is `airport_metar`, which is one instant at one
-place and which item 87's rules are careful to keep the forecaster from
-reporting.
+### Sized against the record, not guessed
 
-That makes this a precondition rather than a related item: acting on trigger 3
-buys little until the run that trigger 3 causes can see what caused it.
+The signals have been stored since 2026-09-13 and the record held TWO
+issuances carrying them when this was written. Item 100 is why that sentence
+is here. Whatever default this lands on, the frequency it fires at is a
+measurement to take rather than a number to choose.
 
-### The gate is about issuance frequency, not about which side runs it
-
-Measured 2026-09-13: the deployment's two scheduled slots are 12 hours apart
-and Open-Meteo's cycles are 6-hourly, so the evening run ALWAYS reads a
-strictly newer cycle than the morning — 18Z then 06Z on the day measured.
-`guidance_is_newer` is true every evening, so the cron hits C2's top tier every
-time and the gating changes nothing for it.
-
-**That is a property of the spacing, not of the server.** An operator running
-hourly cron would have five of every six runs sharing a cycle, and C2's lower
-tiers would fire there exactly as they do in the app. The same is true in
-reverse: an app used twice a day would rarely see them. So "this is an app
-concern" is wrong, and a policy layer belongs where both can reach it.
-
-### What is wanted
-
-- **A declared policy, per deployment**, over the same signals C2 already
-  computes and stores: which of `first_issuance_of_day`, `guidance_is_newer`,
-  `observation_disagreements` and a daypart change earn a judgment call, and
-  which earn a narrative call. C2's tiers become the default value, not the
-  only value.
-- **A trigger for new-but-agreeing observations**, which C2 has no room for.
-- **The observed record in the prompt**, per the precondition above.
-- **Sized against the record, not guessed.** The signals have been stored since
-  2026-09-13 and the record held TWO issuances carrying them when this was
-  written. Item 100 is why that sentence is here.
-
-### Its relationship to the three items it sits between
+### Its relationship to the items around it
 
 - **111** asks for `X` calls per forecast beside `Y` per 24 hours. That is a
-  CEILING on spend; this is a RULE about which runs deserve to spend at all.
-  Both are answers to "one budget is not enough levers" and neither replaces
-  the other.
+  CEILING; this is whether a particular kind of run deserves to spend at all.
 - **114** is refresh spam, and already records that C2 removes most of the
-  harm. This item is what makes that removal configurable rather than fixed.
-- **109** asks before generating. A policy that says "this tap would cost
-  nothing, because nothing has moved" is the same question answered before the
-  dialog rather than in it.
+  harm. A deployment that switches the daypart tier off removes more of it;
+  one that keeps it is where 114's backstop still matters.
+- **109** asks before generating. "This tap would cost nothing" is the same
+  question answered before the dialog rather than inside it.
 
-Related: items 104 (C2, whose single policy this generalises), 111 (the other
-missing lever), 114 (the backstop C2 makes mostly unnecessary), 109, 87 (why
-the METAR is the only observation the prompt carries, and what it may be used
-for), 98 ("did it rain yesterday" has no single answer — the same instrument
-question one day back).
+Related: items 121 (which shrank this), 104 (C2, whose single answer this
+makes optional), 111, 114, 109.
+
+## 121. Observations are facts, and paying a model to restate them is the one call nobody should make · **Planned — and the data layer is already complete, measured**
+
+Raised by the operator 2026-09-13, working through C2's call-gating:
+
+> "API calls that aren't true forecast updates with new models should be
+> infrequent. IF the only change is new sensor data, maybe we need to just
+> report that directly."
+
+That is this project's first principle applied to a case nobody had applied it
+to. **All arithmetic in code, never the LLM** — and an observation is a
+measured fact, not a judgment call. Today the only way "the station has
+recorded 27.4 °C and 3.2 mm since 14:00" reaches a reader is by paying a model
+to say it.
+
+### It reframes C2's tiers rather than adding one
+
+The tiers decide when to spend an LLM call. Once observations render in code,
+new sensor data stops being a reason to call the model at all — it becomes a
+reason to re-render, which is free.
+
+| what moved | what happens | LLM calls |
+|---|---|---|
+| a new model cycle | judgment + narrative; a real forecast update | 2 |
+| the daypart only | narrative only; the framing is stale | 1 |
+| **observations only** | **the observed block, composed in code** | **0** |
+| nothing | nothing, and said plainly | 0 |
+
+### The data layer is already complete — measured 2026-09-13
+
+C9's per-dimension instrument table is the spec, and every dimension in it is
+already fetched, in ONE request, by `metar.observed_station_data`:
+
+| C9 dimension | where it already is |
+|---|---|
+| high / low temperature | `StationReadings.high_c`, `.low_c` |
+| peak wind | `StationReadings.peak_wind_kmh` |
+| sky | `StationWeather.cloud_oktas` |
+| thunder | `StationWeather.thunder` |
+| rain yes/no, onset | `StationWeather.precipitation`, `.precipitation_onset` |
+| precipitation amount | **absent, and C9 withholds it** — the station cannot measure it, and ERA5's same-day archive is model output |
+
+The one dimension C9 refuses to report is the one the instrument cannot
+measure. That is a good sign about the table.
+
+**What narrows it is `ObservedSoFar`, which carries two fields** —
+`precipitation` and `high_c` — because it was built for C2's contradiction
+check and nothing else. Widening it to the six is the work; fetching them is
+not.
+
+### Three things it settles that are currently open elsewhere
+
+- **C7's home.** "A high that has already happened is reported as observed,
+  then dropped" stops being a prose rule the model must remember and becomes a
+  composed fact. Item 83 and item 117b both record what happens to rules that
+  live only in the prompt.
+- **Item 120's precondition, from the other end.** The same block handed to
+  the next real forecast run is what stops trigger 3 causing a re-forecast
+  that never sees the observation that caused it.
+- **Item 117's late issuance.** A reader at 18:01 is told what actually
+  happened today by the block, rather than by a forecast trying to describe
+  hours it cannot see.
+
+### The contradiction case, and here the code should go FURTHER than the model
+
+When the call said dry and the station recorded 4 mm since 15:00, a
+code-composed line saying exactly that is GUARANTEED to say the thing that
+matters. An LLM re-forecast is not: the prompt carries a `left_out` rule
+precisely because a run once held an afternoon of 2600 J/kg CAPE and never
+mentioned thunder, and item 117b found the model faithfully rendering a code
+string while the defect sat in the string.
+
+So report the contradiction in code, always, for free. Whether it ALSO earns a
+re-forecast is then a policy question and the only expensive one left — see
+item 120, which shrinks to roughly that.
+
+### Costs, and what it does not solve
+
+- **A new published surface.** The page, the app and the mailer each need
+  somewhere to put it. This is not a pipeline-only change.
+- **It joins the code-composed-sentence class** item 117b names: clock-blind,
+  and exempt from every rule the prompt spends its length on. Much safer here
+  than for a forecast — an observation is ABOUT elapsed hours by definition —
+  but item 118's issuance-hour bounding is the discipline to copy.
+- **"Free" means no LLM spend, not no request.** It fetches
+  aviationweather.gov, which needs no key.
+- **Model fetches still happen every run.** An hourly cron still pulls
+  Open-Meteo hourly; what stops is paying a model to narrate a day that has
+  not changed.
+
+Related: items 104 (C2's tiers, which this reframes; C7 and C9, which it
+implements), 120 (what is left of the policy layer afterwards), 117 and 117b
+(the late issuance, and code-composed sentences), 118 (bounding them by the
+issuance), 87 (why the METAR is the only observation the prompt carries
+today), 114 and 109 (the spend this removes rather than rations).
