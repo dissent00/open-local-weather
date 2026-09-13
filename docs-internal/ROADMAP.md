@@ -1137,9 +1137,23 @@ be trivial but not zero.
 **Do not** build on unofficial WhatsApp-Web automation libraries — ToS
 violation with real account-ban risk.
 
-The `whatsapp_summary` field already exists in the LLM response schema and
-is populated, so the content side is ready whenever the delivery side is
-worth doing.
+**The field is gone from the request as of 2026-09-13, and that does not
+change this item.** `whatsapp_summary` was a required-but-nullable slot on the
+narrative call with one line of prompt behind it — "concise mobile summary
+under 600 characters, emojis welcome" — and nothing downstream read it except
+the archived page. It was asked for on every single forecast for months
+against a delivery side that is deferred and unbuilt, and on a real run it
+came back null anyway.
+
+So the request stopped asking. `DailyLogEntry.whatsapp_summary` stays and so
+does the page's rendering of it, because past entries carry real summaries and
+those should keep working; nothing writes a new one.
+
+Rebuilding the content side is a prompt section and a schema field, which is
+an hour's work and is the cheap half of this item. The delivery side is the
+expensive half and is what "deferred" was ever about. Do not treat the field's
+absence as a reason to reopen this — treat it as the honest state: nothing is
+being produced for a channel nothing sends to.
 
 ---
 
@@ -12489,7 +12503,8 @@ remembering when a third provider is added.
 **2. Nothing bounded the field.** `uv_index_max` and its neighbours are
 `str | None` with no constraint, so a 15,930-character UV index validated
 perfectly. Now `MAX_DISPLAY_STRING = 1000`, on the seven short display strings
-only — not on the narrative or the WhatsApp summary, which are long by design.
+only — not on the narrative, which is long by design. (It also spared the
+WhatsApp summary, which the request stopped asking for on 2026-09-13; item 9.)
 
 **AND THE FIRST NUMBER WAS WRONG**, found the same evening while checking what
 was left in the critical path before signing off. It was set to 200 from two

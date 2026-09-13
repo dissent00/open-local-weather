@@ -174,7 +174,6 @@ class GeminiNarrativeResponse(BaseModel):
     verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
     today_narrative: str
-    whatsapp_summary: str | None = None
 
 
 # The two calls merged, and the shape everything downstream still reads.
@@ -199,7 +198,13 @@ class GeminiForecastResponse(BaseModel):
     # as confidently as a real one.
     extended_properties: list[ExtendedDayProperties] = Field(default_factory=list)
     today_narrative: str
-    whatsapp_summary: str | None = None
+
+    # NO whatsapp_summary. The prompt stopped asking for it on 2026-09-13 —
+    # ROADMAP item 9, which is deferred and was never built past the field
+    # itself. It was a required-but-nullable slot the model filled with
+    # whatever it liked, nothing read it but the archived page, and on a real
+    # run it came back null anyway. DailyLogEntry keeps its own field so the
+    # entries that do carry a summary still render; nothing writes a new one.
 
 
 def merge_forecast_response(
@@ -219,7 +224,6 @@ def merge_forecast_response(
         today_properties=judgment.today_properties,
         extended_properties=judgment.extended_properties,
         today_narrative=narrative.today_narrative,
-        whatsapp_summary=narrative.whatsapp_summary,
     )
 
 

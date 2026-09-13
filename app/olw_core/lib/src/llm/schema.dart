@@ -82,7 +82,6 @@ Map<String, Object?> geminiForecastSchema() => {
           },
         },
         'today_narrative': {'type': 'STRING'},
-        'whatsapp_summary': {'type': 'STRING', 'nullable': true},
       },
       'required': [
         'yesterday_verification',
@@ -174,9 +173,6 @@ Map<String, Object?> strictForecastSchema() => {
           },
         },
         'today_narrative': {'type': 'string'},
-        'whatsapp_summary': {
-          'type': ['string', 'null']
-        },
       },
       'required': [
         'yesterday_verification',
@@ -185,7 +181,6 @@ Map<String, Object?> strictForecastSchema() => {
         'today_properties',
         'extended_properties',
         'today_narrative',
-        'whatsapp_summary',
       ],
       'additionalProperties': false,
     };
@@ -284,8 +279,8 @@ class SkillProfileSummaryItem {
 /// published, which is ugly and nothing worse. So this errs long: 6.5x the
 /// longest real value, still 16x tighter than the 15,930 that caused it.
 ///
-/// Not applied to the narrative or the WhatsApp summary, which are long by
-/// design. Mirrors `MAX_DISPLAY_STRING` in the Python schema.
+/// Not applied to the narrative, which is long by design. Mirrors
+/// `MAX_DISPLAY_STRING` in the Python schema.
 const int maxDisplayString = 1000;
 
 /// Throws rather than truncating. A value this long is not a long answer, it
@@ -448,7 +443,6 @@ class ForecastResponse {
   /// boolean is scored wrong exactly as confidently as a real one.
   final List<ExtendedDayProperties> extendedProperties;
   final String todayNarrative;
-  final String? whatsappSummary;
 
   const ForecastResponse({
     required this.yesterdayVerification,
@@ -457,7 +451,6 @@ class ForecastResponse {
     required this.todayProperties,
     this.extendedProperties = const [],
     required this.todayNarrative,
-    this.whatsappSummary,
   });
 
   factory ForecastResponse.fromJson(Map<String, Object?> j) => ForecastResponse(
@@ -477,7 +470,6 @@ class ForecastResponse {
                 ExtendedDayProperties.fromJson(e as Map<String, Object?>))
             .toList(),
         todayNarrative: j['today_narrative'] as String,
-        whatsappSummary: j['whatsapp_summary'] as String?,
       );
 }
 
@@ -618,10 +610,6 @@ Map<String, Object?> geminiNarrativeSchema() => {
         'today_narrative': {
           'type': 'STRING',
         },
-        'whatsapp_summary': {
-          'type': 'STRING',
-          'nullable': true,
-        },
       },
       'required': ['yesterday_verification', 'today_narrative'],
       'description': 'What the rendering call returns: prose, and only prose.\n\nTHE SEAM IS THIS CLASS. Nothing here is scored, and there is no field a\nscored value could be written into, so the rendering call cannot revise\nthe forecast however its prompt is later edited. That separation used to\nbe a property of where a paragraph sat inside one string — see\ntests/test_prompt_seam.py, which still checks the weaker claim because a\nprompt can still be edited and this cannot.',
@@ -667,14 +655,12 @@ class NarrativeResponse {
   final List<VerificationNote> verificationNotes;
   final List<SkillProfileSummaryItem> skillProfileSummaries;
   final String todayNarrative;
-  final String? whatsappSummary;
 
   const NarrativeResponse({
     required this.yesterdayVerification,
     required this.verificationNotes,
     required this.skillProfileSummaries,
     required this.todayNarrative,
-    this.whatsappSummary,
   });
 
   factory NarrativeResponse.fromJson(Map<String, Object?> j) =>
@@ -689,7 +675,6 @@ class NarrativeResponse {
                     SkillProfileSummaryItem.fromJson(e as Map<String, Object?>))
                 .toList(),
         todayNarrative: j['today_narrative'] as String,
-        whatsappSummary: j['whatsapp_summary'] as String?,
       );
 }
 
@@ -710,7 +695,6 @@ ForecastResponse mergeForecastResponse(
       todayProperties: judgment.todayProperties,
       extendedProperties: judgment.extendedProperties,
       todayNarrative: narrative.todayNarrative,
-      whatsappSummary: narrative.whatsappSummary,
     );
 
 /// The judgment call's schema in OpenAI strict dialect — null as a type
@@ -838,11 +822,8 @@ Map<String, Object?> strictNarrativeSchema() => {
         'today_narrative': {
           'type': 'string',
         },
-        'whatsapp_summary': {
-          'type': ['string', 'null'],
-        },
       },
-      'required': ['yesterday_verification', 'verification_notes', 'skill_profile_summaries', 'today_narrative', 'whatsapp_summary'],
+      'required': ['yesterday_verification', 'verification_notes', 'skill_profile_summaries', 'today_narrative'],
       'additionalProperties': false,
       'description': 'What the rendering call returns: prose, and only prose.\n\nTHE SEAM IS THIS CLASS. Nothing here is scored, and there is no field a\nscored value could be written into, so the rendering call cannot revise\nthe forecast however its prompt is later edited. That separation used to\nbe a property of where a paragraph sat inside one string — see\ntests/test_prompt_seam.py, which still checks the weaker claim because a\nprompt can still be edited and this cannot.',
     };

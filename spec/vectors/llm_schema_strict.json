@@ -173,12 +173,6 @@
           },
           "today_narrative": {
             "type": "string"
-          },
-          "whatsapp_summary": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         },
         "required": [
@@ -187,8 +181,7 @@
           "skill_profile_summaries",
           "today_properties",
           "extended_properties",
-          "today_narrative",
-          "whatsapp_summary"
+          "today_narrative"
         ],
         "additionalProperties": false
       }

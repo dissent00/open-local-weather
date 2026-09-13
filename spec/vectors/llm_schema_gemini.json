@@ -139,10 +139,6 @@
           },
           "today_narrative": {
             "type": "STRING"
-          },
-          "whatsapp_summary": {
-            "type": "STRING",
-            "nullable": true
           }
         },
         "required": [

@@ -98,7 +98,7 @@ def test_system_prompt_mentions_key_design_principles():
     assert '"X km/h (Y kt)"' in prompt
     assert "SAY NOTHING ABOUT DIRECTION" in prompt
     assert "0°C / 32°F" in prompt
-    assert "Emojis ONLY in the whatsapp_summary field" in prompt
+    assert "Plain text throughout. No emojis." in prompt
 
 
 def test_system_prompt_interpolates_rolling_windows_and_lookback():

@@ -22,8 +22,14 @@ def test_simple_string_field():
 
 
 def test_optional_field_is_nullable_string():
+    # A NESTED example on purpose. This used to read whatsapp_summary, the
+    # only nullable string at the top level, and that field went when the
+    # prompt stopped asking for one — ROADMAP item 9. onset_window is a real
+    # `str | None` the forecaster fills or leaves empty, so the converter is
+    # still exercised on the case it exists for rather than on a field kept
+    # alive to be tested.
     schema = to_gemini_schema(GeminiForecastResponse)
-    prop = schema["properties"]["whatsapp_summary"]
+    prop = schema["properties"]["today_properties"]["properties"]["onset_window"]
     assert prop["type"] == "STRING"
     assert prop["nullable"] is True
 

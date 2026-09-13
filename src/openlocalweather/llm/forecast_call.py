@@ -73,7 +73,6 @@ def _unavailable_narrative() -> GeminiNarrativeResponse:
         verification_notes=[],
         skill_profile_summaries=[],
         today_narrative=NARRATIVE_UNAVAILABLE_MARKDOWN,
-        whatsapp_summary=None,
     )
 
 

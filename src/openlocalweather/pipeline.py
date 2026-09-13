@@ -2101,7 +2101,6 @@ def run_daily_pipeline(
         else None,
         yesterday_verification_summary=llm_response.yesterday_verification,
         narrative_markdown=llm_response.today_narrative,
-        whatsapp_summary=llm_response.whatsapp_summary,
         guidance_initialised_at=guidance.guidance_cycle.initialised_at,
         guidance_age_hours=guidance.guidance_cycle.age_hours,
         guidance_source=guidance.guidance_cycle.source,
@@ -2533,7 +2532,7 @@ def run_refresh_pipeline(
     # --- Step 4: merge into the EXISTING entry — everything the accuracy
     # loop depends on (model_predictions, verification, meta.generated_at_utc,
     # yesterday_verification_summary) is preserved untouched. Only the
-    # narrative/today_properties/ground_aqi/whatsapp_summary and a new
+    # narrative/today_properties/ground_aqi and a new
     # refreshed_at timestamp are updated.
     #
     # Before overwriting them, snapshot the existing entry's own version of
@@ -2583,7 +2582,6 @@ def run_refresh_pipeline(
             "sunset": (guidance.issuance.sunset or None if guidance.issuance else None)
             or existing_entry.sunset,
             "narrative_markdown": llm_response.today_narrative,
-            "whatsapp_summary": llm_response.whatsapp_summary,
             # This issuance's own recency, not the morning's — current_snapshot
             # above (built from existing_entry, before this overwrite) is what
             # carries the morning's guidance_* values into earlier_issuances.

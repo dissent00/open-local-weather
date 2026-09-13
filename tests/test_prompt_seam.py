@@ -70,10 +70,11 @@ NARRATIVE_MARKERS = (
     ("STEP1", "\n1. STEP 1:"),
     ("NARRATIVE", "\n2. STEP 2:"),
     ("FORMATTING", "\n3. FORMATTING RULES:"),
-    ("WHATSAPP", "\n4. WHATSAPP SUMMARY"),
-    ("LEFT_OUT", "\n5. BEFORE YOU RETURN"),
-    ("MISSING_BLOCK", "\n6. A MISSING BLOCK"),
-    ("GRAMMAR", "\n7. PROPER GRAMMAR"),
+    # WHATSAPP was 4 and is gone — the prompt stopped asking for a summary on
+    # 2026-09-13, ROADMAP item 9. The numbers below closed up with it.
+    ("LEFT_OUT", "\n4. BEFORE YOU RETURN"),
+    ("MISSING_BLOCK", "\n5. A MISSING BLOCK"),
+    ("GRAMMAR", "\n6. PROPER GRAMMAR"),
 )
 
 JUDGMENT = "JUDGMENT"
