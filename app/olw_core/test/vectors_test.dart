@@ -41,6 +41,22 @@ List<Map<String, Object?>> casesOf(String name) =>
 /// `26.0` may round-trip as `26` or `26.0`, and floating-point division in
 /// two languages can differ in the last bit. Everything non-numeric is
 /// compared exactly.
+/// Compare a vector case against this implementation.
+///
+/// THE DEFAULT TOLERANCE CANNOT SEE THE DIVERGENCE `sums.dart` EXISTS FOR.
+/// Upstream ROADMAP item 88, found 2026-09-13 while porting divergence 8: a
+/// compensated sum and a plain left-to-right one differ by about 5.6e-17 on
+/// realistic values, and `eps` here is 1e-9. Every such case passes whether
+/// the port is right or wrong, so the contract that exists to prove the two
+/// implementations agree is blind to a whole class of disagreement between
+/// them.
+///
+/// A case that pins last-bit arithmetic therefore declares `"compare":
+/// "exact"` and is compared with no tolerance at all. The tolerance stays the
+/// default for everything else, where it is doing a real job: a figure
+/// computed through different expression trees can differ in the last place
+/// for reasons that are not bugs, and `spec/README.md` tells a port to use
+/// one.
 bool deepMatches(Object? actual, Object? expected, {double eps = 1e-9}) {
   if (expected == null || actual == null) return actual == expected;
   if (expected is num && actual is num) {
@@ -65,9 +81,10 @@ bool deepMatches(Object? actual, Object? expected, {double eps = 1e-9}) {
   return actual == expected;
 }
 
-void expectMatches(Object? actual, Object? expected, String caseName) {
+void expectMatches(Object? actual, Object? expected, String caseName,
+    {bool exact = false}) {
   expect(
-    deepMatches(actual, expected),
+    deepMatches(actual, expected, eps: exact ? 0.0 : 1e-9),
     isTrue,
     reason: 'vector case "$caseName"\n  expected: ${jsonEncode(expected)}\n'
         '  actual:   ${jsonEncode(actual)}',
@@ -1064,7 +1081,8 @@ void main() {
           continue;
         }
         expect(got, isNotNull, reason: c['name'] as String);
-        expectMatches(got!.toJson(), expected, c['name'] as String);
+        expectMatches(got!.toJson(), expected, c['name'] as String,
+            exact: c['compare'] == 'exact');
       }
     });
 

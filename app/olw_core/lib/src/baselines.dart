@@ -20,6 +20,7 @@
 library;
 
 import 'models.dart';
+import 'sums.dart';
 import 'rounding.dart';
 
 const String persistenceModelId = 'persistence';
@@ -115,5 +116,9 @@ double? _mean(List<double?> values) {
     return null;
   }
 
-  return present.reduce((a, b) => a + b) / present.length;
+  // compensatedSum, not reduce: Python's sum() is Neumaier-compensated, and a
+  // climatology mean runs over a real record whose values span millimetres
+  // and tenths of a millimetre — the mixed magnitudes that separate the two.
+  // Upstream ROADMAP item 88, divergence 8.
+  return compensatedSum(present) / present.length;
 }

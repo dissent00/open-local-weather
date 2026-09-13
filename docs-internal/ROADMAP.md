@@ -11095,10 +11095,34 @@ Ordered by what reaches a reader:
    in Python. Python is the source of truth and is the side still carrying
    the un-fixed form.
 
-8-10. `baselines.dart:117` `reduce` rather than a compensated sum;
-   `synoptic.dart:162`'s round-scale-round; `wind.dart:126` falling back on a
-   missing key where Python falls back on a falsy one. All real, all last-bit
-   or unreachable today.
+8. ~~**`baselines.dart:117` `reduce` rather than a compensated sum.**~~
+   **Fixed 2026-09-13.** Climatology's mean runs over a record whose values
+   span millimetres and tenths of a millimetre, which is the mixed-magnitude
+   shape that separates Neumaier from a left-to-right accumulation.
+
+   **AND IT EXPOSED A HOLE IN THE HARNESS ITSELF, which is the bigger
+   finding.** `vectors_test.dart`'s `deepMatches` compares numbers with
+   `eps = 1e-9`. A compensated-summation divergence on realistic values is
+   about **5.6e-17**. So no vector case could ever have caught this class on
+   the Dart side: every such case passed whether the port was right or wrong,
+   and the contract that exists to prove the two implementations agree was
+   blind to a whole category of disagreement between them.
+
+   It also explains divergence 4's case. `[1e16, 1.0, -1e16]` looked like an
+   odd choice for weather data; it is the only shape whose error (0.3 against
+   0.0) clears a 1e-9 tolerance. The synthetic magnitude was not a stylistic
+   choice — it was the harness forcing one.
+
+   A case that pins last-bit arithmetic now declares `"compare": "exact"` and
+   is compared with no tolerance. The default stays for everything else, where
+   it does a real job: a figure computed through different expression trees
+   can differ in the last place for reasons that are not bugs, and
+   `spec/README.md` tells a port to use a tolerance. The exactness is opt-in
+   per case, by the case that needs it.
+
+9-10. `synoptic.dart:162`'s round-scale-round; `wind.dart:126` falling back on
+   a missing key where Python falls back on a falsy one. Both real, both
+   last-bit or unreachable today.
 
 **Every one is a missing VECTOR CASE, not a missing test.** Each rounding
 finding sits behind a vector whose values happen to carry no tie. That is

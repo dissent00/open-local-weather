@@ -3235,6 +3235,19 @@ def export_cycle() -> None:
         date(2026, 8, 1) + timedelta(days=i): _a(i == 0, high=25.0)
         for i in range(8)
     }
+    # ROADMAP item 88, divergence 8. Climatology averages the record, and
+    # Python's sum() is Neumaier-compensated where a plain left-to-right
+    # accumulation is not. These ten values are sums.dart's own measured case:
+    # five of 0.81 then five of 0.009999999999999995 average to
+    # 0.41000000000000003 compensated and 0.41 naively. Mixed magnitudes are
+    # what separate the two, and a climatology mean over a real record —
+    # millimetres beside tenths of a millimetre — is exactly that shape.
+    mixed_magnitude_record = {
+        date(2026, 8, 1) + timedelta(days=i): _a(
+            i < 5, precip=0.81 if i < 5 else 0.009999999999999995
+        )
+        for i in range(10)
+    }
 
     write(
         "baselines.json",
@@ -3316,6 +3329,24 @@ def export_cycle() -> None:
                 "name": "climatology on an empty record says nothing",
                 "input": {"fn": "climatology", "actuals": {}, "before": "2026-08-03"},
                 "expected": None,
+            },
+            {
+                "name": "climatology's mean uses compensated summation",
+                # Compared with NO tolerance: this case exists to pin a
+                # last-bit difference of about 5.6e-17, and the Dart reader's
+                # default 1e-9 would pass a naive reduce. See deepMatches.
+                "compare": "exact",
+                "input": {
+                    "fn": "climatology",
+                    "actuals": {
+                        d.isoformat(): a.model_dump(mode="json")
+                        for d, a in mixed_magnitude_record.items()
+                    },
+                    "before": "2026-08-11",
+                },
+                "expected": climatology_prediction(
+                    mixed_magnitude_record, before=date(2026, 8, 11)
+                ).model_dump(mode="json"),
             },
             {
                 "name": "climatology's 12.5 percent base rate rounds half-even",
