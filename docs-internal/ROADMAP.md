@@ -15923,7 +15923,7 @@ measurement to take rather than a number to choose.
 Related: items 121 (which shrank this), 104 (C2, whose single answer this
 makes optional), 111, 114, 109.
 
-## 121. Observations are facts, and paying a model to restate them is the one call nobody should make · **Planned — and the data layer is already complete, measured**
+## 121. Observations are facts, and paying a model to restate them is the one call nobody should make · **Composed and in the prompt 2026-09-13; publishing and the app's station are open**
 
 Raised by the operator 2026-09-13, working through C2's call-gating:
 
@@ -15936,6 +15936,46 @@ to. **All arithmetic in code, never the LLM** — and an observation is a
 measured fact, not a judgment call. Today the only way "the station has
 recorded 27.4 °C and 3.2 mm since 14:00" reaches a reader is by paying a model
 to say it.
+
+### What shipped 2026-09-13
+
+**`describe_observed_so_far` composes the block, and it is in the prompt.**
+`ObservedSoFar` went from two fields to C9's six; nothing new is fetched
+because `observed_station_data` already returned all six in one request. The
+block joins `_locked_blocks`, which is the one place item 104 step 1 made both
+paths reach, and it carries its own prompt rules because it is the only block
+there describing hours the reader has already lived.
+
+**The station is read ONCE per run**, before the prompt, and the same reading
+goes to the record. Two calls would be two answers on a day it changed between
+them, and the record would then describe an observation the forecaster never
+saw. That also closes item 120's precondition.
+
+**`format_temp_c` was extracted rather than copied**, on both sides. Three of
+the six dimensions round, so the vector cases are the half-to-even ties rather
+than a spread, and the Dart port uses `roundLikePython` at zero places —
+verified against Python on every tie including −0.5. Mutating it to Dart's own
+`.round()` fails the gust tie at once: 30.5 publishes 31 there and 30 here.
+Swept as well as pinned, per AGENTS.md: **6,200 values, zero divergences**,
+driver at `app/olw_core/tool/sweep_observed.dart`.
+
+Proved live by driving the real CLI with a station that reports:
+
+> As of 14:28: rain from 13:00; thunder; high so far 27°C / 81°F; low so far
+> 18°C / 65°F; peak gust 31 km/h; sky 6/8.
+
+### What is still open, and the second one is the app
+
+- **Publishing.** The block reaches the FORECASTER; it does not yet reach a
+  reader except through whatever the narrative chooses to say. The page, the
+  app and the mailer each need somewhere to put it, and until they have one
+  the cost saving this item exists for is not realised — a reader still needs
+  an LLM call to learn what the station saw.
+- **THE APP HAS NO STATION SOURCE AT ALL.** `forecast.dart` passes
+  `airport_metar: null` and now `observedSoFar: null`, explicitly and with the
+  reason, so the app prints the gap line. Everything above is server-only
+  until the app can fetch a station. That is a bigger gap than it sounds:
+  item 121's whole argument is about the on-demand case, which is the app.
 
 ### It reframes C2's tiers rather than adding one
 
