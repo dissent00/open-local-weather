@@ -141,6 +141,24 @@ Before committing:
 
 Write the failing test first. Watch it fail. Then fix. Then watch it pass.
 
+**Never push `HEAD:main`.** Name the branch. Measured 2026-09-13: a
+`git push origin HEAD:main --force-with-lease` was run while the shell sat in
+a checkout that was on a different branch, and it rewound `origin/main` by
+five commits — two of them the pipeline's own daily forecasts. It was caught
+and restored within a minute because the discarded commits were still
+reachable locally, which is luck rather than a safety net. `--force` to a
+shared branch needs the branch spelled out and a reason, and `HEAD` is not a
+name.
+
+**A worktree CAN run the Python suite, with one variable.** `.venv` holds an
+editable install pointing at the main checkout's `src`, so a worktree's tests
+silently exercise the WRONG source — which is why this file used to say
+Python work could not be done in one. `PYTHONPATH=<worktree>/src` shadows the
+editable install and fixes it: verified 2026-09-13 by mutating a worktree's
+`comparison.py` and watching three tests fail. That is what lets one agent
+verify or extend a commit while another holds the main checkout, and it is
+worth knowing before reaching for a second clone.
+
 **Reverting a mutation: never `git checkout --` a file with uncommitted work
 in it.** Testing that a guard bites means breaking the code, running, and
 putting it back — and `git checkout -- <file>` puts it back to HEAD, not to
