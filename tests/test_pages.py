@@ -140,8 +140,8 @@ def test_render_forecast_page_no_morning_issuance_shows_single_section():
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
-    assert "Morning Issuance" not in html
-    assert "Evening Update" not in html
+    assert "Issued" not in html
+    assert "Updated" not in html
 
 
 def _refreshed_entry(d=date(2026, 8, 11), **overrides):
@@ -185,8 +185,8 @@ def test_render_forecast_page_shows_only_current_issuance_even_when_morning_exis
     assert "Heavy rain now" in html
     assert "Morning: dry and warm expected" not in html
     assert "Dry all day" not in html
-    assert "Morning Issuance" not in html
-    assert "Evening Update" in html  # the label IS shown, just not the old content
+    assert "Issued" not in html
+    assert "Updated" in html  # the label IS shown, just not the old content
 
 
 def test_render_forecast_page_morning_view_shows_only_morning_content():
@@ -204,8 +204,8 @@ def test_render_forecast_page_morning_view_shows_only_morning_content():
     assert "Dry all day" in html
     assert "Evening: rain has arrived" not in html
     assert "Heavy rain now" not in html
-    assert "Morning Issuance" in html
-    assert "Evening Update" not in html
+    assert "Issued" in html
+    assert "Updated" not in html
 
 
 def test_render_forecast_page_archived_banner_only_when_not_latest():
@@ -309,11 +309,11 @@ def test_render_archive_index_page_always_shows_disclaimer():
 
 def test_render_archive_index_page_shows_label_and_links_slug():
     nav = build_nav_links("https://example.com", "owner/repo")
-    items = [ArchiveItem(date=date(2026, 8, 11), slug="2026-08-11-morning", label="Morning Issuance — 06:07 UTC")]
+    items = [ArchiveItem(date=date(2026, 8, 11), slug="2026-08-11-morning", label="Issued 06:07 UTC")]
     html = render_archive_index_page(items, LOCATION, nav)
 
     assert 'href="2026-08-11-morning.html"' in html
-    assert "Morning Issuance" in html
+    assert "Issued" in html
 
 
 # ---------------------------------------------------------------------------
@@ -335,8 +335,8 @@ def test_build_archive_items_two_entries_for_a_refreshed_day():
     items = build_archive_items(list(entries), entries.get)
 
     assert [i.slug for i in items] == ["2026-08-11", "2026-08-11-morning", "2026-08-10"]
-    assert items[0].label is not None and "Evening Update" in items[0].label
-    assert items[1].label is not None and "Morning Issuance" in items[1].label
+    assert items[0].label is not None and "Updated" in items[0].label
+    assert items[1].label is not None and "Issued" in items[1].label
     assert items[2].label is None
 
 
@@ -458,8 +458,8 @@ def test_publisher_writes_both_pages_for_a_refreshed_day(tmp_path):
     archive_index_text = (tmp_path / "archive" / "index.html").read_text()
     assert 'href="2026-08-11.html"' in archive_index_text
     assert 'href="2026-08-11-morning.html"' in archive_index_text
-    assert "Evening Update" in archive_index_text
-    assert "Morning Issuance" in archive_index_text
+    assert "Updated" in archive_index_text
+    assert "Issued" in archive_index_text
 
 
 def test_publisher_backfills_missing_morning_page_for_an_other_date(tmp_path):
@@ -908,7 +908,7 @@ def test_the_forecast_and_the_observations_are_stamped_in_the_same_zone():
 
     label = _issuance_label(entry, morning=False)
 
-    assert label == "Evening Update — 14:28"
+    assert label == "Updated 14:28"
     assert "UTC" not in label, "a local clock must not be labelled UTC"
 
     html = render_forecast_page(
@@ -918,7 +918,7 @@ def test_the_forecast_and_the_observations_are_stamped_in_the_same_zone():
         is_latest=True,
         issuance_label=label,
     )
-    assert "Evening Update — 14:28" in html
+    assert "Updated 14:28" in html
     assert "As of 16:45" in html
 
 
@@ -932,3 +932,73 @@ def test_an_entry_with_no_local_clock_keeps_the_utc_label():
     label = _issuance_label(entry, morning=False)
 
     assert label is not None and label.endswith("UTC")
+
+
+def test_an_issuance_is_not_labelled_by_a_time_of_day_it_did_not_happen_at():
+    """ROADMAP item 104 removed the two-runs-a-day structure; the labels kept
+    it. "Morning Issuance" named whatever the day's FIRST issuance was and
+    "Evening Update" whatever the LATEST was, regardless of the hour on the
+    clock — accurate only while the schedule was 03:01Z and 15:01Z.
+
+    A run can now happen at any time, and item 121's refresh path makes an
+    hourly cron the expected shape. A first issuance at 14:00 is not a
+    morning, and an update at 09:00 is not an evening.
+    """
+    entry = _refreshed_entry()
+    # A day that began at 14:00 and was updated at 09:00 the way no
+    # two-runs-a-day schedule ever produced, and every later one can.
+    entry.morning_issuance = entry.morning_issuance.model_copy(
+        update={"generated_at_utc": datetime(2026, 8, 11, 14, 0, tzinfo=timezone.utc)}
+    )
+    entry.meta.issued_local_time = "09:12"
+
+    first = _issuance_label(entry, morning=True)
+    latest = _issuance_label(entry, morning=False)
+
+    assert "Morning" not in first, f"a 14:00 issuance is not a morning: {first!r}"
+    assert "Evening" not in latest, f"an 09:12 update is not an evening: {latest!r}"
+    assert "14:00" in first and "09:12" in latest, "each still names its own clock"
+
+
+def test_both_issuance_labels_are_in_the_same_zone():
+    """The archive index prints one label per issuance, so the first and the
+    latest sit side by side. Until `IssuanceSnapshot` recorded its own local
+    clock the first was the only reader-facing time on the site still in UTC,
+    and two times in two zones cannot be ordered by a reader — the same defect
+    ROADMAP item 121 had to fix on the forecast page.
+    """
+    entry = _refreshed_entry()
+    entry.morning_issuance = entry.morning_issuance.model_copy(
+        update={"issued_local_time": "06:07"}
+    )
+    entry.meta.issued_local_time = "18:45"
+
+    first = _issuance_label(entry, morning=True)
+    latest = _issuance_label(entry, morning=False)
+
+    assert first == "Issued 06:07"
+    assert latest == "Updated 18:45"
+    assert "UTC" not in first and "UTC" not in latest
+
+
+def test_a_snapshot_with_no_local_clock_still_says_which_zone_it_is_in():
+    """Every snapshot taken before the field existed. The number really is
+    UTC, so the suffix is honest — the failure to avoid is a local clock
+    wearing a UTC label, not a UTC clock wearing its own."""
+    entry = _refreshed_entry()
+    entry.morning_issuance = entry.morning_issuance.model_copy(
+        update={"issued_local_time": None}
+    )
+
+    assert _issuance_label(entry, morning=True).endswith("UTC")
+
+
+def test_a_snapshot_records_the_local_clock_of_the_issuance_that_made_it():
+    """Captured at the source rather than derived later: converting the
+    stored UTC instant with today's configured zone would assume the
+    deployment has never moved, and reconcile_now can override the system
+    clock so the two are not the same instant."""
+    entry = _refreshed_entry()
+    entry.meta.issued_local_time = "22:14"
+
+    assert entry.to_issuance_snapshot().issued_local_time == "22:14"

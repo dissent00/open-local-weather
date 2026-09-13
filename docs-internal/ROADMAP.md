@@ -13482,6 +13482,63 @@ That asymmetry is the whole finding: this was never two pipelines. It is one
 pipeline and a subset of it, and the subset drifted because nothing made the
 two agree.
 
+### What the collapse left behind — swept 2026-09-14
+
+Asked whether the two-runs-a-day removal had lost anything. **Nothing was
+dropped** — every deferral is recorded with its reason — but three things
+still assumed the old structure, none of them written down anywhere until
+now. All three are fixed; the reasoning lives beside each.
+
+**1. The page labels named a time of day.** `_issuance_label` emitted
+"Morning Issuance" for the day's first issuance and "Evening Update" for the
+latest, regardless of the clock. That was accurate only while the schedule
+was exactly 03:01Z and 15:01Z. With runs at any hour — and item 121 making an
+hourly cron the expected shape — a first issuance at 14:00 rendered as
+"Morning Issuance — 14:00", contradicting the number printed beside it. Now
+"Issued" and "Updated", which carry the distinction that is still true and
+drop the claim that stopped being.
+
+**2. The first issuance's label was the last UTC clock a reader saw.**
+`IssuanceSnapshot` stored only `generated_at_utc`, so the archive index
+printed one label in UTC beside one in local and a reader could not order
+them. The snapshot now records `issued_local_time` at the moment it is taken.
+NOT derived from the UTC stamp: converting with today's configured zone
+assumes the deployment has never moved, and `reconcile_now` means the two are
+not always the same instant. Old snapshots keep the UTC label with its
+suffix, which is honest — the failure to avoid is a local clock wearing a UTC
+label, not a UTC clock wearing its own.
+
+**3. The spend cap's sizing rationale assumed two issuances a day.**
+`DEFAULT_MAX_LLM_CALLS_PER_24H`'s comment derived the number from "FOUR calls
+a day — two issuances, morning and evening refresh". What a day costs is now
+a property of the schedule AND `llm_refresh_policy`, measured against
+`cycle.aligned_cycle_at`:
+
+| schedule | issuances/day | calls/day |
+|---|---|---|
+| twice daily (deployed) | 2 | 4 |
+| hourly, `new_cycle_only` | 5 | 10 |
+| hourly, `always` | 24 | 48 |
+
+Five, not four, for the middle row: an hourly cron sees five distinct aligned
+cycles across a 24 h window, because the windows open at 02/08/14/20 UTC and
+a rolling day starts partway through one. The default is unchanged and now
+describes a schedule rather than a worst case; the deployed cap of 16 covers
+the first row with room for retries and the second with much less. A
+per-forecast ceiling beside the per-24h one is item 111.
+
+**Published history is not rewritten.** The 58 archive pages carrying the old
+labels keep them: `_write_archive_pages_for` backfills with `force=False`, so
+only the current day's pages and the two indexes re-render. The archive index
+is regenerated from `data/log/` every run and so shows the new vocabulary for
+every day, including days whose own page shows the old — the honest outcome
+of a rendered index over frozen artefacts.
+
+**What the sweep confirmed was NOT lost:** the seven divergences resolved as
+step 3's table records (`sunrise`/`sunset` falling back, `meta.llm_model` as
+this run's, the prompt archive keyed on `last_issued_at`, `local_bulletin`
+from the first issuance), and the ground-AQI merge closed in step 4.
+
 ### What does NOT die, and is the whole difficulty
 
 **SETTLED BY THE CONTRACT ABOVE — kept because the reasoning is what makes the

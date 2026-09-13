@@ -47,13 +47,34 @@ from pathlib import Path
 
 # Deliberately above the honest worst case rather than at it.
 #
-# RECOUNTED FOR THE SPLIT, ROADMAP item 59 step 3. A forecast is now a
-# judgment call and then a rendering call, so the pipeline nominally makes
-# FOUR calls a day — two issuances, morning and evening refresh, two calls
-# each — and up to SIXTEEN if every attempt retries to the limit. The old
-# default of 10 was chosen as headroom over a worst case of 8; it is now
-# below the worst case, which would turn a bad network day into a refused
-# forecast rather than a slow one.
+# RECOUNTED FOR THE SPLIT, ROADMAP item 59 step 3. A forecast is a judgment
+# call and then a rendering call, so each issuance costs two, and up to eight
+# if every attempt retries to the limit. The old default of 10 was chosen as
+# headroom over a worst case of 8; it is now below the worst case, which would
+# turn a bad network day into a refused forecast rather than a slow one.
+#
+# THE NUMBER OF ISSUANCES A DAY IS NO LONGER FIXED, and this comment used to
+# assume it was — it read "FOUR calls a day, two issuances, morning and
+# evening refresh". ROADMAP item 104 removed that structure and item 121 made
+# an hourly cron the expected shape, so what a day costs is now a property of
+# the operator's schedule AND their `llm_refresh_policy`:
+#
+#   twice daily (the deployed schedule)      2 issuances   4 calls
+#   hourly, new_cycle_only                   5 issuances  10 calls
+#   hourly, always                          24 issuances  48 calls
+#
+# Five, not four, for the middle row: an hourly cron sees five distinct
+# aligned cycles across a 24 h window, not four — the windows open at 02/08/
+# 14/20 UTC and a rolling day starts partway through one. Measured against
+# cycle.aligned_cycle_at on 2026-09-14.
+#
+# So this default no longer describes a worst case; it describes a schedule.
+# It still covers the deployed one with room for retries, and it is
+# deliberately NOT raised to cover `always` at hourly — an operator choosing
+# that is choosing to spend, and should say so by raising their own cap. What
+# a cap cannot do is protect an operator who never set one, which is the only
+# reason there is a default at all. ROADMAP item 111 is where a per-forecast
+# ceiling beside this per-24h one belongs.
 #
 # Doubled rather than recomputed from scratch, because what changed is the
 # number of calls per forecast and nothing else: the same number of

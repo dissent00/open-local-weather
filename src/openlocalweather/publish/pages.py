@@ -118,9 +118,22 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
 
 def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
     """Small "which issuance is this" tag shown in a page's meta line —
-    e.g. "Evening Update — 15:02". None for a page with nothing to
-    disambiguate (a day that was never refreshed has only one issuance,
-    and doesn't need a label saying so).
+    e.g. "Updated 15:02". None for a page with nothing to disambiguate (a day
+    that was never refreshed has only one issuance, and doesn't need a label
+    saying so).
+
+    IT NAMES THE CLOCK, NOT A TIME OF DAY. These read "Morning Issuance" and
+    "Evening Update" until 2026-09-14, which was accurate only while the
+    schedule was exactly two runs, at 03:01Z and 15:01Z. ROADMAP item 104
+    removed that structure — a run is now whatever the day's business makes
+    it, at any hour — and item 121's refresh path makes an hourly cron the
+    expected shape rather than an exotic one. The labels did not follow, so a
+    first issuance at 14:00 rendered as "Morning Issuance — 14:00" and an
+    update at 09:00 as "Evening Update — 09:00", each contradicting the clock
+    printed beside it.
+
+    "Issued" and "Updated" carry the distinction that is still true — which
+    issuance of the day this is — and drop the claim that stopped being true.
 
     LOCAL WHERE THE ENTRY KNOWS ITS LOCAL CLOCK, and this stopped being
     cosmetic with ROADMAP item 121's observation-only refresh. The observed
@@ -137,23 +150,29 @@ def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
     Greenwich it is worse, and observations genuinely newer than the forecast
     render as older than it.
 
-    Falls back to UTC for entries written before `issued_local_time` existed,
-    where the zone suffix is still honest because the number really is UTC.
-    The morning label keeps UTC unconditionally: `IssuanceSnapshot` stores
-    only `generated_at_utc`, and inventing a local time for it by applying
-    today's offset would be a guess about a zone the snapshot never recorded.
+    Falls back to UTC for entries and snapshots written before
+    `issued_local_time` existed, where the zone suffix is still honest because
+    the number really is UTC. That fallback is the ONLY place a UTC clock now
+    reaches a reader, and the two labels sit side by side in the archive
+    index — which is why `IssuanceSnapshot` records its own local clock rather
+    than having one derived from its UTC stamp here. Deriving would assume the
+    deployment has never moved zones, and `reconcile_now` means the two are
+    not always the same instant anyway.
     """
     if morning:
         assert entry.morning_issuance is not None
-        return f"Morning Issuance — {entry.morning_issuance.generated_at_utc.strftime('%H:%M UTC')}"
+        first = entry.morning_issuance
+        if first.issued_local_time:
+            return f"Issued {first.issued_local_time}"
+        return f"Issued {first.generated_at_utc.strftime('%H:%M UTC')}"
 
     if entry.meta.refreshed_at is None:
         return None
 
     if entry.meta.issued_local_time:
-        return f"Evening Update — {entry.meta.issued_local_time}"
+        return f"Updated {entry.meta.issued_local_time}"
 
-    return f"Evening Update — {entry.meta.refreshed_at.strftime('%H:%M UTC')}"
+    return f"Updated {entry.meta.refreshed_at.strftime('%H:%M UTC')}"
 
 
 @dataclass

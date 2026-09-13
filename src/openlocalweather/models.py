@@ -836,12 +836,22 @@ class LogEntryMeta(BaseModel):
     # Whether this issuance had anything new to say — ROADMAP item 104, C2.
     # None on entries written before 2026-09-12; see InformationMoved.
     information_moved: InformationMoved | None = None
-    # Set only by an evening refresh run (see pipeline.run_refresh_pipeline)
-    # — generated_at_utc stays the ORIGINAL morning creation time even after
-    # a refresh, so the audit trail keeps showing when this entry first
-    # existed; refreshed_at records the most recent narrative refresh on
-    # top of it. model_predictions/verification are never touched by a
-    # refresh, only this field and the narrative/today_properties fields.
+    # WHEN THE NARRATIVE WAS LAST REWRITTEN. Set by any issuance after the
+    # day's first, at whatever hour it happens — `generated_at_utc` stays the
+    # ORIGINAL creation time, so the audit trail keeps showing when this entry
+    # first existed and this records the most recent rewrite on top of it.
+    # `model_predictions`/`verification` are never touched by a later
+    # issuance, only this field and the narrative/today_properties fields.
+    #
+    # This comment used to read "set only by an evening refresh run (see
+    # pipeline.run_refresh_pipeline)". Both halves stopped being true with
+    # ROADMAP item 104: that function no longer exists, and there is no
+    # "evening refresh" — a run is whatever the day's business makes it, at
+    # any frequency.
+    #
+    # NOT SET BY AN OBSERVATION-ONLY REFRESH — item 121. That path rewrites no
+    # narrative, and setting this there would re-open the morning-snapshot
+    # gate; see pipeline._refresh_observations_only.
     refreshed_at: datetime | None = None
     # WHICH trigger produced this run — GitHub's `github.event_name`
     # ("schedule", "workflow_dispatch"), or empty when run outside Actions.
@@ -953,6 +963,25 @@ class IssuanceSnapshot(BaseModel):
     narrative_markdown: str
     whatsapp_summary: str | None = None
     generated_at_utc: datetime
+    # THE LOCAL CLOCK THIS ISSUANCE WENT OUT AT, as "HH:MM" — the same value
+    # `LogEntryMeta.issued_local_time` holds, captured here when the snapshot
+    # is taken rather than derived from `generated_at_utc` later.
+    #
+    # Derived-later was the alternative and it is a guess: converting a stored
+    # UTC instant with TODAY's configured zone assumes the deployment has
+    # never moved, and `daypart.reconcile_now` can override the system clock
+    # so the two are not even the same instant. Recorded at the source, they
+    # cannot disagree.
+    #
+    # WHY IT IS NEEDED AT ALL: the archive index prints one label per issuance,
+    # and without this the first issuance's label was the only one still in
+    # UTC while every other reader-facing clock on the site is local. Two
+    # times in two zones, side by side, cannot be ordered by a reader — the
+    # same defect item 121 had to fix on the forecast page.
+    #
+    # None for every snapshot taken before this existed; `publish.pages` falls
+    # back to the UTC stamp with its suffix, which is what those meant.
+    issued_local_time: str | None = None
 
     # How old the guidance behind THIS issuance was — see DailyLogEntry's
     # fields of the same name for why these exist and what "observed" vs
@@ -1147,6 +1176,7 @@ class DailyLogEntry(BaseModel):
         "earlier today" shrug.
         """
         return IssuanceSnapshot(
+            issued_local_time=self.meta.issued_local_time,
             rain_expected=self.rain_expected,
             onset_window=self.onset_window,
             peak_wind_kmh=self.peak_wind_kmh,
