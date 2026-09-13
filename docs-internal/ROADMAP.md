@@ -13136,7 +13136,105 @@ published defect this week and add three more lines to the path this item
 deletes. That trade is the operator's to make, not a detail to settle in
 passing.
 
+### The contract, settled 2026-09-13
+
+The operator's frame, in their words: **a run can happen at any time, and the
+forecast is a look at the upcoming 24 h, the next three days, and so on — not
+a review of the day.** Everything below follows from that one sentence.
+
+**1. Day+3 and Day+7 do not change.** They are issuance-hour independent: a
+claim made at 06:00 or at 22:00 on day D about day D+3 describes a period that
+has not begun either way. Only the lead differs, and the record already stores
+the issuance. Nothing about "a run can happen at any time" reaches them, and
+most of the record's value is here.
+
+**2. Day+0 is the only broken lead, and it is replaced by a rolling +24 h from
+issuance.** At 06:00 a quarter of the calendar day is already spent and the
+overnight low may have happened; at 22:00, ninety percent. Day+0 is therefore
+ALREADY part hindcast and the late issuance only makes it visible. Every
+issuance instead makes the same KIND of claim — the next 24 hours — so a 06:00
+row and a 22:00 row are directly comparable. This is lead-from-initialization,
+which is what operational verification does.
+
+**3. The existing Day+0 series is re-derived, not frozen.** Operator's call.
+Archived hourly supports it and item 97 is the precedent — "make `rain` mean
+one thing at every lead, and re-derive". A frozen legacy series would leave a
+discontinuity in the skill numbers that has to be explained forever.
+
+**4. One row per issuance; the weighting is derived at read time.** Scoring
+every issuance over-weights unsettled days, because those are the days guidance
+moves. Do not answer that in the schema: per-issuance and per-day averages are
+both computable from per-issuance rows, and neither is recoverable from the
+other once day-weighting is baked into storage. `ROLLING_WINDOW_SHORT` being
+"10 checks" stops being a distinction without a difference here, and gets named
+for whichever it is.
+
+**5. The blend produces a +24 h call.** `today_properties` becomes a
+forward-window call and that is what is scored. The alternative — keep the
+calendar-day call for display and add a scored +24 h beside it — was rejected:
+it puts a reader-visible number in the forecast that nothing ever verifies.
+
+**6. The published structure stays day-shaped, with explicit windows inside.**
+Not horizon-shaped. The familiar headers stay and every claim under them names
+the window it covers — `rest of today (22:01–24:00)`, `overnight (00:00–06:33,
+to sunrise)`. `daypart.py` already carries the vocabulary, the sun times and
+`forward_hours`; the windows are code-composed and land as a pre-computed
+block like every other locked value. The reader keeps the shape they know and
+no sentence is left to mean "today" when today is two hours long.
+
+**7. A high that has already happened is reported as observed, then dropped.**
+Labelled an observation, never a forecast, and the forecast number for the same
+header becomes tomorrow's.
+
+**8. The day-over-day comparison is recast against the forward window.** It is
+not suppressed at a late issuance and it is not keyed to the previous issuance.
+
+*Why not the previous issuance.* In the app a forecast is issued when someone
+taps, so "what changed since last time" can be days old, and the opening's
+meaning would depend on when a reader happened to open the app. That is
+precisely the defect this item already names for SCORING — "the record's
+meaning depends on when someone happened to tap a button" — appearing on the
+prose side.
+
+**9. What "observed" means, per dimension, and where it is withheld.** The
+recast needs an observed baseline available at any hour, and the instrument is
+chosen PER DIMENSION and PER COMPARISON — never per reading.
+
+| dimension | instrument for a day in progress |
+|---|---|
+| high / low temperature | station (`station_high_c`, `station_low_c`) |
+| peak wind | station (`station_peak_wind_kmh`) |
+| sky | station (`station_cloud_oktas`, mean) |
+| thunder | station (`thunder`) |
+| rain yes/no, onset | station (`precipitation`, `precipitation_onset`) |
+| **precipitation amount, and the band derived from it** | **none — withheld** |
+
+ERA5's archive DOES serve the current day and what it serves is model output,
+not observation — proven in Ensemble's item 14 finding 6 by hours that had not
+happened yet. So for today's elapsed hours ERA5 is not a fallback; the third
+branch is to withhold the dimension, not to substitute. It bites exactly one:
+precipitation amount, and therefore `day_rain_band`. Thunder, onset and
+rain-yes/no all survive from the station, which is most of what the Overview's
+rain clause actually carries.
+
+**The fallback is per comparison, not per reading.** "Station if available"
+applied reading by reading compares station-today against cell-yesterday, and
+those two disagreed on 4 of 14 days measured — the disagreement the prompt
+already tells the forecaster never to reconcile. One instrument for a
+dimension across the whole window, or that dimension is withheld.
+
 ### What does NOT die, and is the whole difficulty
+
+**SETTLED BY THE CONTRACT ABOVE — kept because the reasoning is what makes the
+answer defensible.** The three options below were written while Day+0 was still
+a calendar-day claim, and on that footing they are genuinely not equivalent.
+The contract picks (2), every issuance scoring, and the hazard stated below is
+what the rolling +24 h reframe exists to dissolve: once every issuance makes a
+claim about the SAME KIND of period — the next 24 hours from wherever it is —
+an 06:00 row and an 18:00 row are no longer two different claims scored against
+one observation. The reframe is not a convenience; it is the precondition that
+makes (2) safe. Read the hazard below as the reason for the reframe rather than
+as an open question.
 
 **WHICH ISSUANCE IS SCORED.** Today the answer is implicit and nobody chose
 it: `model_predictions` is written by the morning run and a refresh never
