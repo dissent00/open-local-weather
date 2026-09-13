@@ -123,7 +123,18 @@ List<double> _directionsAt(Map<String, Object?> hourly, List<String> models, int
 
   final out = <double>[];
   for (final model in models) {
-    final series = hours['wind_direction_10m_$model'] ?? hours['wind_direction_10m'];
+    // AN EMPTY PER-MODEL ARRAY FALLS THROUGH, not just a missing key.
+    // Python's chain is `get(per_model) or get(shared) or []`, and an empty
+    // list is FALSY there, so a model whose own array is present and empty
+    // reads the shared series. `??` fires only on null, so this used to
+    // contribute nothing for that model instead — a different number of
+    // bearings into a gated consensus, and the gate is a threshold, so the
+    // two languages could publish different words from identical bytes.
+    // Upstream ROADMAP item 88, divergence 10.
+    final perModel = hours['wind_direction_10m_$model'];
+    final series = (perModel is List && perModel.isNotEmpty)
+        ? perModel
+        : hours['wind_direction_10m'];
     if (series is! List || idx >= series.length) continue;
     final v = series[idx];
     if (v is num) out.add(v.toDouble());

@@ -2235,6 +2235,24 @@ def export_wind_direction() -> None:
          ]],
     )
 
+    # One model's own array is present and empty; the shared series carries
+    # the readings. See the divergence-10 case below.
+    empty_series_payload = {
+        "hourly": {
+            "time": ["2026-09-10T03:00", "2026-09-10T12:00", "2026-09-10T18:00"],
+            # The shared series is an OUTLIER at 03:00, deliberately. With it
+            # the four bearings fail the 0.75 agreement gate and the overnight
+            # anchor is dropped; without it the remaining three agree on NNE.
+            # That is the difference between a two-anchor clause and a
+            # three-anchor one, from identical bytes.
+            "wind_direction_10m": [120.0, 225.0, 270.0],
+            f"wind_direction_10m_{MODELS_HERE[0]}": [],
+            f"wind_direction_10m_{MODELS_HERE[1]}": [35.0, 220.0, 265.0],
+            f"wind_direction_10m_{MODELS_HERE[2]}": [25.0, 230.0, 275.0],
+            f"wind_direction_10m_{MODELS_HERE[3]}": [40.0, 218.0, 268.0],
+        }
+    }
+
     shift_cases = [
         ("the lake breeze, all three anchors agreed", {
             3: [30.0, 35.0, 25.0, 40.0],
@@ -2282,7 +2300,19 @@ def export_wind_direction() -> None:
           "input": {"hourly_multi_model": hourly(ph), "models": MODELS_HERE,
                     "issued_hour": issued},
           "expected": describe_wind_shift(hourly(ph), MODELS_HERE, issued_hour=issued)}
-         for n, ph, issued in shift_cases],
+         for n, ph, issued in shift_cases]
+        # ROADMAP item 88, divergence 10. A per-model key that is PRESENT but
+        # EMPTY: Python's `or` chain treats an empty list as falsy and falls
+        # through to the shared `wind_direction_10m` series, while Dart's `??`
+        # falls through only on a missing key and so contributes nothing for
+        # that model. Same payload, different number of models in the
+        # consensus, and the gate is a threshold on agreement — so the two can
+        # publish different clauses from identical data.
+        + [{"name": "an empty per-model series falls through to the shared one",
+            "input": {"hourly_multi_model": empty_series_payload,
+                      "models": MODELS_HERE, "issued_hour": 0},
+            "expected": describe_wind_shift(
+                empty_series_payload, MODELS_HERE, issued_hour=0)}],
     )
 
 

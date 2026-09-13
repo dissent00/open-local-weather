@@ -11134,8 +11134,21 @@ Ordered by what reaches a reader:
    it takes to reach the bug and which a different provider or a forked
    deployment may well supply — item 52.
 
-10. `wind.dart:126` falls back on a missing key where Python falls back on a
-   falsy one. Real, and last-bit or unreachable today.
+10. ~~**`wind.dart:126` falls back on a missing key where Python falls back on
+   a falsy one.**~~ **Fixed 2026-09-13, and it is not last-bit.** Python's
+   chain is `get(per_model) or get(shared) or []`, where an EMPTY LIST is
+   falsy, so a model whose own array is present and empty reads the shared
+   series. Dart's `??` fires only on null, so that model contributed nothing.
+
+   **Different bearings into a gated consensus, and the gate is a threshold.**
+   The vector case makes the shared series an outlier at 03:00: with it the
+   four bearings miss the 0.75 agreement gate and Python names NE, without it
+   the remaining three agree and Dart named NNE. Identical bytes, and the two
+   languages published different words — "northeasterly overnight" against
+   "north-northeasterly overnight". That is a larger consequence than the
+   item's own "last-bit or unreachable" estimate, and it took building the
+   case to see it: the first attempt dropped one model from a tight set and
+   changed nothing at all.
 
 **Every one is a missing VECTOR CASE, not a missing test.** Each rounding
 finding sits behind a vector whose values happen to carry no tie. That is
