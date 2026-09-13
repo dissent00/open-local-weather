@@ -773,3 +773,64 @@ String? describeExtendedTrend(
   return tails.isEmpty ? trend : '$trend, with ${tails.join(' and ')}';
 }
 
+
+/// The four fields the prompt is given, in the order Python lists them.
+///
+/// Upstream ROADMAP item 88, divergence 5. The stored comparison carries
+/// seventeen fields and `provenance`; the prompt gets these four and a
+/// rebuilt `observed_from`, and nothing else.
+const List<String> promptComparisonFields = [
+  'yesterday_rain',
+  'yesterday_thunder',
+  'today_rain_expected',
+  'overview_comparison',
+];
+
+/// Which stored provenance key each exposed boolean's source comes from.
+const Map<String, String> observedFieldSources = {
+  'yesterday_rain': 'rain',
+  'yesterday_thunder': 'thunder',
+};
+
+/// The labels and the booleans, never the numbers behind them — plus where
+/// each observation was taken.
+///
+/// Port of `comparison.comparison_for_prompt`, which had no Dart counterpart
+/// at all — upstream ROADMAP item 88, divergence 5.
+///
+/// WHAT IT LEAVES OUT IS THE POINT, and leaving it out is not a size saving.
+/// `DayOverDayComparison.toJson()` emits all seventeen fields, including the
+/// raw deltas. Two of those were deliberately removed from the prompt on
+/// 2026-09-05: a rule telling the forecaster not to re-derive a comparison
+/// cannot beat a payload that hands it the arithmetic to re-derive it WITH.
+/// Handing over `toJson()` would restore exactly the counter-example the rule
+/// was losing to, and it would look like passing the data through.
+///
+/// LATENT WHEN THIS WAS WRITTEN, because the app passes no `yesterdayActual`
+/// and so composes no comparison. It is here so that whoever wires that block
+/// finds a narrowing function rather than a `toJson()` that looks ready to
+/// use.
+///
+/// `observed_from` is REBUILT rather than passed through: the stored
+/// provenance is keyed by the observation's own field name (`rain`,
+/// `thunder`) and the prompt sees the exposed names. It is omitted entirely
+/// when nothing is stamped, rather than emitted empty — an empty map would
+/// claim the sources were looked up and found absent.
+Map<String, Object?>? comparisonForPrompt(Map<String, Object?>? comparison) {
+  if (comparison == null) return null;
+
+  final view = <String, Object?>{
+    for (final k in promptComparisonFields)
+      if (comparison.containsKey(k)) k: comparison[k],
+  };
+
+  final provenance = (comparison['provenance'] as Map?)?.cast<String, Object?>() ?? const {};
+  final sources = <String, Object?>{
+    for (final e in observedFieldSources.entries)
+      if (provenance.containsKey(e.value) && view.containsKey(e.key))
+        e.key: provenance[e.value],
+  };
+  if (sources.isNotEmpty) view['observed_from'] = sources;
+
+  return view;
+}

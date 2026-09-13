@@ -1086,6 +1086,21 @@ void main() {
       }
     });
 
+    test('comparison_for_prompt', () {
+      // Upstream ROADMAP item 88, divergence 5. What this DROPS is the
+      // contract: DayOverDayComparison.toJson() emits all seventeen fields
+      // and reads as though it were ready to hand to a prompt, and two of
+      // them were removed on 2026-09-05 because a rule asking the forecaster
+      // not to re-derive the comparison cannot beat a payload handing it the
+      // arithmetic.
+      for (final c in casesOf('comparison_for_prompt.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final raw = i['comparison'] as Map?;
+        final got = comparisonForPrompt(raw?.cast<String, Object?>());
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+
     test('next_aligned_window', () {
       for (final c in casesOf('next_aligned_window.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1309,6 +1324,7 @@ void main() {
       'aligned_cycle.json',
       'next_aligned_window.json',
       'baselines.json',
+      'comparison_for_prompt.json',
     };
     final onDisk = vectorsDir
         .listSync()

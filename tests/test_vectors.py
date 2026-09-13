@@ -574,6 +574,20 @@ def test_vectors_observation_disagreements():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_comparison_for_prompt():
+    """ROADMAP item 88, divergence 5 — the narrowing the prompt depends on.
+
+    What it DROPS is the contract: the raw deltas were removed on 2026-09-05
+    because a rule asking the forecaster not to re-derive the comparison
+    cannot beat a payload handing it the arithmetic.
+    """
+    from openlocalweather.comparison import comparison_for_prompt
+
+    for case in load("comparison_for_prompt.json")["cases"]:
+        got = comparison_for_prompt(case["input"]["comparison"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_day_over_day():
     """The Overview's opening sentence — the one a live run got wrong."""
     for case in load("day_over_day.json")["cases"]:
@@ -745,6 +759,7 @@ def test_every_vector_file_is_exercised():
         "coverage.json",
         "spend.json",
         "verification.json",
+        "comparison_for_prompt.json",
         "day_over_day.json",
         "extended_trend.json",
         "describe_day_rain.json",

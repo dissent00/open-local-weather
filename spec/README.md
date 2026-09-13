@@ -96,6 +96,7 @@ absent values are `null`, never omitted keys.
 | `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 44 |
+| `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 20 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |

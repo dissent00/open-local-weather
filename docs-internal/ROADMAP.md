@@ -10994,7 +10994,7 @@ a forecast section), item 73, item 77 (the harness that found it), item 58
 
 ---
 
-## 88. A fix ships with a vector case, or the other language never gets it · **Swept 2026-09-12; ten divergences found, fixes Planned**
+## 88. A fix ships with a vector case, or the other language never gets it · **All ten fixed, 2026-09-12 to 2026-09-13**
 
 Three divergences were found on 2026-09-08, all the same shape, none caught
 by either test suite:
@@ -11078,14 +11078,24 @@ Ordered by what reaches a reader:
    domain — which is the right division once the domain is swept separately,
    and it is recorded here so nobody reads that case as evidence of
    frequency.
-5. **`comparison_for_prompt` has no Dart counterpart at all.** Python narrows
-   the stored comparison to four fields and rebuilds `observed_from`;
+5. ~~**`comparison_for_prompt` has no Dart counterpart at all.**~~ **Ported
+   2026-09-13**, with its own vector file. Python narrows the stored
+   comparison to four fields and rebuilds `observed_from`;
    `DayOverDayComparison.toJson()` emits all seventeen plus `provenance` and
-   never `observed_from`. **Checked against the app: it passes no
-   `yesterdayActual` today, so this is LATENT rather than live** — a trap set
-   for whoever wires the app's day-over-day block, who would hand the
-   forecaster the two fields deleted on 2026-09-05 precisely because a rule
-   could not beat a payload supplying its own counter-example.
+   never `observed_from`.
+
+   Latent when found — the app passes no `yesterdayActual` and composes no
+   comparison — and ported anyway, because the trap is what `toJson()` LOOKS
+   like to whoever wires that block: a method that appears ready to hand over.
+   The mutation run to prove the vector bites shows what it would have handed
+   over, `high_delta_c: -0.1` and `low_delta_c: -0.8` among them: the two
+   fields removed from the prompt on 2026-09-05 precisely because a rule
+   telling the forecaster not to re-derive the comparison cannot beat a
+   payload supplying the arithmetic to re-derive it with.
+
+   `observed_from` is rebuilt rather than passed through, and omitted rather
+   than emitted empty when nothing is stamped — an empty map would claim the
+   sources were looked up and found absent.
 6. ~~**`coverage.dart:180` reconstructs `last_seen` from a loop index.**~~
    **Fixed 2026-09-13.** The date was collected at the top of the walk and
    thrown away, then rebuilt as `today - 1 - index`. Counting loop positions
