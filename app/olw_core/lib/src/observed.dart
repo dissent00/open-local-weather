@@ -19,7 +19,6 @@
 /// `spec/vectors/observed_so_far.json` and compared exactly against Python.
 library;
 
-import 'disagreement.dart';
 import 'models.dart';
 import 'rounding.dart';
 

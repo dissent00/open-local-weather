@@ -155,13 +155,13 @@ from openlocalweather.llm.schema import (
 )
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.disagreement import (
-    ObservedSoFar,
     StandingCall,
     observation_disagreements,
 )
 from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
     IssuancePredictions,
+    ObservedSoFar,
     InformationMoved,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
@@ -1915,6 +1915,10 @@ def _compose_log_entry(
         # model numbers, which it deliberately does not re-extract, plus its
         # own blend from its own judgment call. That blend used to be computed
         # and thrown away.
+        # This issuance's own reading — item 121. Stored so a reader can be
+        # shown what the station had seen without another LLM call, and so a
+        # later issuance's block describes ITS moment, not the morning's.
+        observed_so_far=observed_so_far,
         prediction_rows=[
             IssuancePredictions(
                 issued_at=datetime.now(timezone.utc),
@@ -1960,6 +1964,9 @@ def _compose_log_entry(
             # describe an observation the forecaster never saw.
             information_moved=_information_moved(guidance, existing_entry, observed_so_far),
             trigger_source=deps.trigger_source or None,
+            # The clock the prompt was built with, so the page shows the same
+            # one — see LogEntryMeta.issued_local_time.
+            issued_local_time=guidance.issuance.local_time if guidance.issuance else None,
             degradations=guidance.degradations,
         ),
     )

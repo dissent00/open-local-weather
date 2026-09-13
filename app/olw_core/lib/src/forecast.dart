@@ -11,7 +11,6 @@ import 'extract.dart';
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
-import 'disagreement.dart';
 import 'observed.dart';
 import 'llm/provider.dart';
 import 'wind.dart';

@@ -75,6 +75,24 @@
 
   {{ narrative_html | safe }}
 
+  {# WHAT THE STATION HAD ALREADY SEEN — ROADMAP item 121.
+
+     Below the narrative because it is not the forecast: it is the measured
+     record of hours the reader has already lived, and it is here so that a
+     reader at 18:00 can see what actually happened without a forecast having
+     to describe it. Composed by the SAME function that hands it to the
+     forecaster, so the page and the prompt cannot word it differently.
+
+     Absent when the station reported nothing. There is deliberately no "no
+     observations" line: a station that did not answer has not reported a
+     quiet day, and saying so is the error that cost a published forecast on
+     2026-08-29. #}
+  {% if observed_so_far %}
+  <h2 id="observed">Observed so far today</h2>
+  <p class="meta">{{ observed_so_far }}</p>
+  <p class="summary">Measured at {{ location.metar_station_icao }}, not forecast. Rainfall totals are not reported: the station records that rain fell, never how much.</p>
+  {% endif %}
+
   {# The technical half of the degradation notice. Kept away from the banner
      at the top deliberately: that is where somebody decides whether to go
      outside, and "the forward hourly window did not arrive" tells that person

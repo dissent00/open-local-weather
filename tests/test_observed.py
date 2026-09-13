@@ -7,7 +7,7 @@ verified expectations rather than generated ones.
 
 import pytest
 
-from openlocalweather.disagreement import ObservedSoFar
+from openlocalweather.models import ObservedSoFar
 from openlocalweather.observed import describe_observed_so_far
 
 

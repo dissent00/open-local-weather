@@ -25,7 +25,7 @@ against the Dart port, so reordering it is a behaviour change.
 
 from __future__ import annotations
 
-from openlocalweather.disagreement import ObservedSoFar
+from openlocalweather.models import ObservedSoFar
 from openlocalweather.models import format_temp_c
 
 

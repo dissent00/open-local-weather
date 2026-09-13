@@ -19,6 +19,7 @@ from openlocalweather.publish.pages import (
     render_forecast_page,
 )
 from openlocalweather.publish.pages import _entry_as_morning_view, _issuance_label
+from openlocalweather.models import ObservedSoFar
 
 LOCATION = LocationConfig(
     region_name="Test Region",
@@ -96,6 +97,40 @@ def test_render_forecast_page_includes_key_stats_and_narrative():
     assert nav.archive in html
     # nav.subscribe deliberately isn't linked from any template yet — see
     # NavLinks' docstring comment.
+
+
+def test_the_page_shows_what_the_station_had_already_seen():
+    """ROADMAP item 121's whole point on the reader's side: at 18:00 the page
+    says what actually happened today, without a forecast having to describe
+    it and without an LLM call to produce it."""
+    entry = make_entry(date(2026, 8, 11)).model_copy(
+        update={
+            "observed_so_far": ObservedSoFar(
+                precipitation=True, precipitation_onset="13:00", thunder=True,
+                high_c=27.4, low_c=18.1, peak_wind_kmh=31.4, cloud_oktas=5.5,
+            )
+        }
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "Observed so far today" in html
+    assert "rain from 13:00; thunder; high so far 27°C / 81°F" in html
+    assert "peak gust 31 km/h; sky 6/8." in html
+    # The withheld dimension is named rather than silently missing — C9.
+    assert "never how much" in html
+
+
+def test_a_silent_station_gets_no_section_rather_than_a_quiet_day():
+    """No "no observations today" line, deliberately. A station that did not
+    answer has not reported a quiet day, and saying so is the error that cost
+    a published forecast on 2026-08-29."""
+    entry = make_entry(date(2026, 8, 11))
+    assert entry.observed_so_far is None, "fixture must have no reading"
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "Observed so far today" not in html
 
 
 def test_render_forecast_page_no_morning_issuance_shows_single_section():

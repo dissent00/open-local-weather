@@ -26,6 +26,7 @@ from typing import Callable
 
 from jinja2 import Environment, FileSystemLoader
 
+from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.publish.narrative import narrative_to_html
 
 from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
@@ -193,6 +194,9 @@ def render_accuracy_page(review: WeeklyReview, location: LocationConfig, nav: Na
     return template.render(review=review, skill_groups=groups, location=location, nav=nav)
 
 
+
+
+
 def render_forecast_page(
     entry: DailyLogEntry, location: LocationConfig, nav: NavLinks, is_latest: bool, issuance_label: str | None = None
 ) -> str:
@@ -211,6 +215,16 @@ def render_forecast_page(
         is_latest=is_latest,
         issuance_label=issuance_label,
         narrative_html=_narrative_html(entry),
+        # Composed through the same function the prompt uses, from the reading
+        # stored on the entry — item 121. Not stored pre-composed, so the
+        # wording is fixable for every day already written.
+        # THE CLOCK THE RUN USED, read off the entry rather than re-derived
+        # from the instant and the zone. Those differ whenever reconcile_now
+        # overrode a wrong system clock, and the page must not then show a
+        # time the forecaster was never given.
+        observed_so_far=describe_observed_so_far(
+            entry.observed_so_far, as_of=entry.meta.issued_local_time
+        ),
         # Rendered deterministically from the raw per-station readings, not
         # trusted to LLM narrative — same "code does the data, LLM does the
         # prose" split as everywhere else in this project. See aqi.py.

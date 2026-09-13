@@ -18,9 +18,57 @@ import re
 
 from datetime import date, datetime
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field
 
 LeadTime = int  # one of 0, 3, 7 — not a real enum, kept as int to match defaults.LEAD_TIMES_DAYS
+
+
+@dataclass(frozen=True)
+class ObservedSoFar:
+    """What the station has actually reported TODAY, so far.
+
+    Every field is three-valued and absence means absence: a station that
+    reported nothing is not a station reporting agreement. That is the same
+    rule every other absent input in this project follows, and the one whose
+    violation cost a published forecast on 2026-08-29.
+
+    WITHIN a populated record the distinction sharpens, and it is worth
+    stating because the two look alike in JSON. `thunder=False` means the
+    station reported and saw none, which is information. `thunder=None` means
+    nothing was measured, which is not.
+
+    SIX DIMENSIONS, WHICH ARE ROADMAP ITEM 104'S C9 TABLE — high and low,
+    peak wind, sky, thunder, and rain with its onset. It carried two until
+    2026-09-13 because it existed only to feed the contradiction check; item
+    121 reports these to a reader directly, in code, so the set is now the
+    one C9 specified rather than the one that check happened to need.
+
+    PRECIPITATION AMOUNT IS ABSENT ON PURPOSE and is the one dimension C9
+    withholds: a METAR reports that rain fell, never how much, and ERA5's
+    same-day archive is model output rather than observation — proven in
+    Ensemble's item 14 finding 6 by hours that had not happened yet. So for
+    today's elapsed hours there is no instrument for it, and the honest move
+    is to withhold the dimension rather than substitute one.
+
+    MOVED HERE 2026-09-13 from `disagreement.py`, where it lived only because
+    C2's contradiction check was the first thing to need it. Item 121 stores
+    it on the entry, and this module is the single source of truth for the
+    shape of everything committed to git as JSON — so a record that is now
+    committed belongs here, and `disagreement` imports it like any other
+    consumer.
+    """
+
+    precipitation: bool | None = None
+    high_c: float | None = None
+    low_c: float | None = None
+    peak_wind_kmh: float | None = None
+    # Mean cover in eighths across the day's reports so far.
+    cloud_oktas: float | None = None
+    thunder: bool | None = None
+    # Local "HH:MM" of the first report that saw precipitation.
+    precipitation_onset: str | None = None
 
 
 def format_temp_high_low(high_c: float, low_c: float) -> str:
@@ -812,6 +860,24 @@ class LogEntryMeta(BaseModel):
     # entries written before it existed still load.
     trigger_source: str | None = None
 
+    # WHEN THIS ISSUANCE WENT OUT, as a local "HH:MM" — ROADMAP item 121.
+    #
+    # Stored rather than re-derived from `last_issued_at` and the configured
+    # zone, because those are not the same number. `daypart.reconcile_now`
+    # OVERRIDES the system clock when the server's Date header disagrees with
+    # it, so on a machine whose clock is wrong the forecaster is given the
+    # server's time and `generated_at_utc` carries the machine's. Re-deriving
+    # would then print one time on the page and another in the prompt, from
+    # one issuance, with only a stderr line recording why.
+    #
+    # It sits beside `sunrise` and `sunset`, which are already persisted off
+    # this same DayPart for the same reason: they are what the run actually
+    # used, not what a later reader would recompute.
+    #
+    # None for entries written before this existed, and for a run that could
+    # not read its own clock — never a guess.
+    issued_local_time: str | None = None
+
     # What this run did NOT have.
     #
     # THREE-VALUED, and the middle value is the whole point. `[]` means this
@@ -955,6 +1021,20 @@ class DailyLogEntry(BaseModel):
     # `verify.scoring.resolve_prediction_rows`, never directly, so entries
     # written before this existed are handled in one place.
     prediction_rows: list[IssuancePredictions] = Field(default_factory=list)
+
+    # WHAT THE STATION HAD SEEN AT THIS ISSUANCE — ROADMAP item 121.
+    #
+    # THE RECORD, NOT THE SENTENCE. Storing the composed string would put the
+    # wording in the file and make it unfixable for every day already written;
+    # storing the reading lets the page, the app and the prompt all render it
+    # through `observed.describe_observed_so_far`, which is the one place it
+    # is worded. Re-derivable is also checkable — the same reason the review
+    # findings are recomputed every run rather than carried forward.
+    #
+    # None means the station said nothing, or this entry predates the field.
+    # It is NOT a quiet day: see ObservedSoFar, and the published forecast
+    # that cost on 2026-08-29.
+    observed_so_far: ObservedSoFar | None = None
 
     # SUPERSEDED by prediction_rows, and None on every entry written since.
     #

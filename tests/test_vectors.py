@@ -54,7 +54,7 @@ from openlocalweather.comparison import (
 )
 from openlocalweather.instability import summarize_instability
 from openlocalweather.observed import describe_observed_so_far
-from openlocalweather.disagreement import ObservedSoFar
+from openlocalweather.models import ObservedSoFar
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
     daypart_without_sun,

@@ -71,6 +71,7 @@ from openlocalweather.extract import (
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import (
     DailyActual,
+    ObservedSoFar,
     GroundAQIReading,
     ModelPrediction,
     format_temp_high_low,
@@ -78,7 +79,6 @@ from openlocalweather.models import (
 from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.disagreement import (
-    ObservedSoFar,
     StandingCall,
     observation_disagreements,
 )
