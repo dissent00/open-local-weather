@@ -1,46 +1,52 @@
-"""Daily pipeline orchestration — mirrors runDailyForecastPipeline() from
-KisumuForecastPipeline_v2.gs step-for-step, adapted to git-as-database.
+"""Forecast pipeline orchestration, adapted to git-as-database.
 
 git commit/push is deliberately NOT done here — that's the GitHub Actions
-workflow's job (see .github/workflows/forecast.yml)
-after these functions return, keeping this module free of any git
-dependency and testable purely as "run this, inspect the files/return
-value."
+workflow's job (see .github/workflows/forecast.yml) after these functions
+return, keeping this module free of any git dependency and testable purely
+as "run this, inspect the files/return value."
 
-Two entry points:
+ONE ENTRY POINT, since ROADMAP item 104 step 4.
 
-run_daily_pipeline() — the morning run. Step order:
-  1. Fetch today's forward-looking multi-model guidance + optional sources
-     (METAR, ground AQI, local bulletin).
-  2. Fetch/refresh yesterday's actual into the actuals cache — a cheap
-     single-day upsert on a normal day, a full batch re-fetch on
-     defaults.WEEKLY_BATCH_WEEKDAY (see store/actuals_cache.py).
-  3. Deterministic verification + rolling stats (verify/pipeline.py) — no
-     LLM involved.
-  4. Historical notes context for the LLM.
-  5. Extract today's raw per-model predictions (extract.py) — code, not LLM.
-  6. Call the LLM for narrative + qualitative notes + blended today_properties.
-  7. Build today's DailyLogEntry.
-  8. Write today's entry, write the LLM's qualitative notes back onto the
-     TRACK RECORD (skill summaries) and the ORIGINAL historical log rows
-     that just got verified (verification notes) — not today's row.
-  9. Publish (GitHub Pages / email) via injected Publisher/EmailSender, if
-     configured — both are optional hooks so this module doesn't need to
-     know about either concrete implementation.
+run_forecast() reads the day, skips a trigger that merely repeats one that
+just ran, and hands the rest to _issue_forecast(). There used to be two
+pipelines here — a morning run and an evening "refresh" — and the item's
+finding was that this was never two pipelines: it was one pipeline and a
+subset of it, and the subset drifted, repeatedly and in both directions,
+because nothing made the two agree. A run can happen at any time, and the
+forecast is a look at the upcoming 24 hours and the next three days, not a
+review of the day.
 
-run_refresh_pipeline() — an optional same-day evening run (see
-docs-internal/ROADMAP.md's "Second daily forecast run" for the full design
-rationale). Re-fetches forward guidance on a fresher model cycle and
-re-synthesizes the narrative, but deliberately does NOT touch the accuracy
-loop: no verification runs (yesterday's actuals don't change during the
-day), and critically, the morning run's stored model_predictions are
-preserved byte-for-byte. Those are what tomorrow's verification scores, and
-they must reflect what was actually published at 6 AM, not silently get
-overwritten by evening data.
+_issue_forecast() branches once, on whether the day already holds an entry.
+Step order:
+  1. Fetch forward-looking multi-model guidance + optional sources (METAR,
+     ground AQI, local bulletin). A later issuance merges the ground AQI
+     against what the day already holds.
+  2. FIRST ISSUANCE ONLY — fetch/refresh yesterday's actuals into the cache,
+     a cheap single-day upsert on a normal day and a full batch re-fetch on
+     defaults.WEEKLY_BATCH_WEEKDAY (see store/actuals_cache.py). This is the
+     only part of a run that makes archive requests.
+  3. FIRST ISSUANCE ONLY — deterministic verification + rolling stats
+     (verify/pipeline.py), no LLM involved. Yesterday's actuals do not change
+     during the day, so a later issuance would rewrite the record's learning
+     loop against unchanged inputs.
+  4. Extract the raw per-model predictions (extract.py) — code, not LLM. A
+     later issuance keeps what the day already stored.
+  5. Call the LLM for narrative + qualitative notes + blended
+     today_properties.
+  6. Build the entry — _compose_log_entry, which is also where the rules a
+     later issuance may not rewrite live.
+  7. Write the entry and archive the prompt. FIRST ISSUANCE ONLY: write the
+     actuals cache, the track record's skill summaries, and the verification
+     notes back onto the historical rows that just got verified.
+  8. Publish via the injected Publisher, and — FIRST ISSUANCE ONLY — email
+     via the injected EmailSender. Both are optional hooks so this module
+     doesn't need to know about either concrete implementation. Note the
+     standalone Apps Script mailer is unrelated to EmailSender: it polls the
+     published data on its own trigger and mails every issuance.
 
---dry-run (see cli.py) skips both functions' file-write/publish/email
-steps — the fetch/LLM steps still run for real, so a maintainer can see the
-pipeline actually working without polluting committed data or emailing real
+--dry-run (see cli.py) skips the file-write/publish/email steps — the
+fetch/LLM steps still run for real, so a maintainer can see the pipeline
+actually working without polluting committed data or emailing real
 subscribers.
 """
 
@@ -218,9 +224,8 @@ class ForecastRunResult:
 
     It is the same question the entry already answers as
     `InformationMoved.first_issuance_of_day` and the prompt as `is_reissue`.
-    In run_daily_pipeline all three read `existing_entry` directly; in
-    run_refresh_pipeline the guard at the top has already settled it, so the
-    latter two are written there as constants. Do not compute a fourth.
+    All three read `existing_entry`, which `run_forecast` resolves once and
+    passes down. Do not compute a fourth.
 
     `updated_track_record` and `newly_verified` are the first run's work and
     are None on a later issuance, meaning THIS RUN DID NOT DO IT. An empty
@@ -237,7 +242,7 @@ class ForecastRunResult:
     updated_track_record: TrackRecord | None = None
     newly_verified: list[tuple[date, int]] | None = None
     # False on a later issuance because one genuinely sends no email — see
-    # run_refresh_pipeline's publish step. Not an absence, so not None.
+    # _issue_forecast's publish step. Not an absence, so not None.
     emailed: bool = False
 
 
@@ -263,15 +268,6 @@ class ForecastSkipped:
 # the bound is that runs scheduled less than an hour apart are refused; four
 # runs a day, the most anyone has wanted, is six hours apart.
 MIN_REISSUE_INTERVAL_MINUTES = 60
-
-
-class RefreshWithoutMorningRunError(RuntimeError):
-    """Raised when run_refresh_pipeline() is called for a date with no
-    existing log entry — there is nothing to refresh, and silently creating
-    a "morning" entry from an evening run would mean model_predictions were
-    extracted from evening-cycle data, not what was actually true at 6 AM
-    when a run_daily_pipeline() call would normally have captured them.
-    """
 
 
 @dataclass
@@ -2010,20 +2006,22 @@ def _compose_log_entry(
     )
 
 
-def run_daily_pipeline(
-    deps: PipelineDeps, today: date | None = None, dry_run: bool = False
-) -> ForecastRunResult:
+def _run_actuals_refresh(
+    deps: PipelineDeps,
+    cache: Any,
+    today: date,
+    yesterday: date,
+    log_dates_for_retention: list[date],
+) -> None:
+    """Bring the actuals cache up to date, in place.
+
+    Lifted out of the pipeline body unchanged by ROADMAP item 104 step 4, so
+    that "only the day's first issuance does this" is one `if` rather than
+    forty indented lines. It is the only part of a run that makes archive
+    requests, which is why it is the part a later issuance skips.
+    """
     location = deps.location
-    today = today or today_in_tz(location.timezone)
-    yesterday = add_days(today, -1)
 
-    # --- Step 1: today's forward-looking guidance + optional sources ---
-    guidance = _fetch_forward_guidance(deps)
-    primary_hourly = guidance.primary_hourly
-    primary_daily = guidance.primary_daily
-
-    # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
-    cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
     if today.weekday() == WEEKLY_BATCH_WEEKDAY:
         # Full span, not a fixed 40 days: Open-Meteo revises recent
         # observations, so a bounded re-fetch would leave older revisions
@@ -2066,12 +2064,12 @@ def run_daily_pipeline(
             for d, actual in open_meteo.bucket_hourly_by_date(secondary_archive).items():
                 actuals_cache_store.upsert_day(cache.secondary, d, actual)
 
+
     # Retention follows the LOG history, not a fixed window. All-time is now
     # re-derived by walking every stored prediction, so an actuals cache that
     # falls behind the log would silently shrink the headline number rather
     # than fail. Keeps at least the old 45-day window, and more once the log
     # is older than that. Cost is ~400 bytes/day (~146 KB/year).
-    log_dates_for_retention = log_store.list_log_dates(deps.data_dir)
     fixed_window_cutoff = add_days(today, -(ACTUALS_BATCH_LOOKBACK_DAYS + 5))
     prune_cutoff = (
         min(fixed_window_cutoff, min(log_dates_for_retention))
@@ -2080,19 +2078,120 @@ def run_daily_pipeline(
     )
     actuals_cache_store.prune_older_than(cache.primary, prune_cutoff)
     actuals_cache_store.prune_older_than(cache.secondary, prune_cutoff)
+
+
+def _write_back_verification(
+    deps: PipelineDeps,
+    verification_result: Any,
+    llm_response: Any,
+    log_lookup: Any,
+) -> None:
+    """Patch the rows this run verified, and store the track record.
+
+    Lifted out of the pipeline body unchanged by ROADMAP item 104 step 4, so
+    the rule "only the day's first issuance verifies" is one `if` around one
+    call rather than a gate threaded through forty lines. The scoring pass
+    itself is idempotent; the notes and summaries written here are not, which
+    is why the whole block moves together.
+    """
+    notes_by_lead = {n.lead_time_days: n.note for n in llm_response.verification_notes}
+    for row_date, lead_time_days in verification_result.newly_verified:
+        historical_entry = log_lookup(row_date)
+        if historical_entry is None:
+            continue
+        verification_field = historical_entry.verification.for_lead(lead_time_days)
+        verification_field.verified = True
+        note = notes_by_lead.get(lead_time_days)
+        if note:
+            verification_field.note = note
+        log_store.write_log_entry(deps.data_dir, historical_entry)
+
+    summaries_by_key = {
+        (s.model, s.lead_time_days): s.summary for s in llm_response.skill_profile_summaries
+    }
+    for entry in verification_result.updated_track_record.entries:
+        summary = summaries_by_key.get((entry.model, entry.lead_time_days))
+        if summary:
+            entry.skill_profile_summary = summary
+    track_record_store.write_track_record(deps.data_dir, verification_result.updated_track_record)
+
+
+def _issue_forecast(
+    deps: PipelineDeps,
+    today: date,
+    existing_entry: DailyLogEntry | None,
+    dry_run: bool,
+) -> ForecastRunResult:
+    """One issuance of the day's forecast, whichever issuance it is.
+
+    ROADMAP item 104 step 4. There were two bodies, and the difference
+    between them was never what kind of run it was — it was whether the day
+    already had an entry. `run_forecast` reads that one level up and this
+    body branches on it once, as `first_issuance`.
+
+    WHAT ONLY THE FIRST ISSUANCE OF A DAY DOES, and why each is not merely
+    an optimisation:
+
+      - Fetches yesterday's actuals and writes the cache. Real archive
+        requests; a later issuance reads the same cache and adds nothing.
+      - Verifies and scores, and writes the track record. Yesterday's
+        observations do not change during the day, so re-verifying would
+        rewrite the record's learning loop several times against unchanged
+        inputs — and would overwrite the first run's note with a placeholder.
+      - Emails. Preserved as it was; see ROADMAP item 104 on making it
+        configurable, and note this is NOT the Apps Script mailer, which
+        runs on its own trigger and already mails every issuance.
+
+    Everything else runs on every issuance, and the values a later issuance
+    must not rewrite are enforced in `_compose_log_entry`, not here.
+    """
+    location = deps.location
+    yesterday = add_days(today, -1)
+    # The one question this body branches on. It is a property of the DAY —
+    # whether it already holds an entry — not of which verb was typed, which
+    # is the whole of item 104.
+    first_issuance = existing_entry is None
+
+    # --- Step 1: today's forward-looking guidance + optional sources ---
+    guidance = _fetch_forward_guidance(deps)
+    if not first_issuance:
+        # A re-fetch that comes back empty must not erase a real reading the
+        # day's first run captured — see aqi.merge_ground_aqi. This was
+        # applied only by the old refresh path, so a re-issue reached through
+        # the other one could silently drop the day's ground AQI.
+        guidance = _with_merged_ground_aqi(guidance, existing_entry.ground_aqi)
+    primary_hourly = guidance.primary_hourly
+    primary_daily = guidance.primary_daily
+
+    # --- Step 2: actuals cache (daily upsert, or weekly full re-fetch) ---
+    #
+    # FIRST ISSUANCE ONLY, because this is where the archive requests are.
+    # Yesterday's observations do not change during the day, so a later
+    # issuance reads the cache the first one wrote and asks for nothing.
+    cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
+    log_dates_for_retention = log_store.list_log_dates(deps.data_dir)
+    if first_issuance:
+        _run_actuals_refresh(deps, cache, today, yesterday, log_dates_for_retention)
     actuals_primary = actuals_cache_store.as_date_dict(cache.primary)
 
     # --- Step 3: deterministic verification + rolling stats ---
+    #
+    # FIRST ISSUANCE ONLY. Re-verifying against unchanged observations would
+    # rewrite the record's learning loop several times a day, and the note a
+    # later issuance returns is a placeholder by design.
     log_lookup = log_store.make_log_lookup(deps.data_dir)
-    prior_track_record = track_record_store.read_track_record(deps.data_dir)
-    verification_result = run_deterministic_verification_and_scoring(
-        log_lookup=log_lookup,
-        prior_track_record=prior_track_record,
-        earliest_log_date=min(log_dates_for_retention) if log_dates_for_retention else None,
-        actuals_primary=actuals_primary,
-        today=today,
-        yesterday=yesterday,
-        models=scored_models(location.local_bulletin_model_id),
+    verification_result = (
+        run_deterministic_verification_and_scoring(
+            log_lookup=log_lookup,
+            prior_track_record=track_record_store.read_track_record(deps.data_dir),
+            earliest_log_date=min(log_dates_for_retention) if log_dates_for_retention else None,
+            actuals_primary=actuals_primary,
+            today=today,
+            yesterday=yesterday,
+            models=scored_models(location.local_bulletin_model_id),
+        )
+        if first_issuance
+        else None
     )
 
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
@@ -2108,14 +2207,6 @@ def run_daily_pipeline(
     # yesterday's always could, so a thundery yesterday manufactured a change
     # — see compute_day_over_day. The flag is already computed above, from
     # the hours ahead; it simply never reached here.
-    day_over_day = compute_day_over_day(
-        actuals_primary.get(yesterday),
-        day0_predictions,
-        today_convective=(
-            guidance.instability.convective if guidance.instability is not None else None
-        ),
-        issued_hour=_issued_hour(guidance.issuance),
-    )
     # The local met service's own forecast, scored as another model. Its
     # prediction comes from the same bulletin fetch that already happened for
     # the narrative, so this costs no additional request — and it is decoded
@@ -2199,7 +2290,6 @@ def run_daily_pipeline(
     # day_over_day above is deliberately left reasoning from the fresh
     # cycle: it frames today against yesterday for the prose and is not part
     # of the scored record.
-    existing_entry = log_lookup(today)
     recorded_predictions = _predictions_already_recorded(existing_entry)
     if recorded_predictions is not None:
         # ONLY the blend is stripped here, and deliberately not the baselines,
@@ -2211,6 +2301,30 @@ def run_daily_pipeline(
         day0_predictions = [p for p in recorded_predictions.day0 if p.model != BLEND_MODEL_ID]
         day3_predictions = recorded_predictions.day3
         day7_predictions = recorded_predictions.day7
+
+    # AFTER the swap above, deliberately. A later issuance compares against
+    # the numbers this day actually PUBLISHED — the ones tomorrow will score
+    # — not against a re-extraction from the fresher cycle, which would leave
+    # the prose describing values the record does not contain. The old
+    # refresh path did it this way and the old daily path did not, so a
+    # forced re-run framed its Overview against numbers nobody had been told.
+    #
+    # today_convective is the OTHER half of the comparison's thunder
+    # dimension, and is recomputed from THIS issuance's forward hours:
+    # without it today's side could never be thundery while yesterday's
+    # always could, so a thundery yesterday manufactured a change.
+    #
+    # issued_hour is why item 118 exists: an evening issuance reusing the
+    # morning's onset would compose "dry until evening" after the evening
+    # had begun.
+    day_over_day = compute_day_over_day(
+        actuals_primary.get(yesterday),
+        day0_predictions,
+        today_convective=(
+            guidance.instability.convective if guidance.instability is not None else None
+        ),
+        issued_hour=_issued_hour(guidance.issuance),
+    )
 
     # --- Step 6: call the LLM ---
     # A location with no WAQI stations gets a prompt with no ground-station
@@ -2233,7 +2347,7 @@ def run_daily_pipeline(
     # verb was typed. Told otherwise it writes a fresh morning-style forecast
     # over one the readers have already had, and emails it as the day's first.
     prompt_flags = dict(
-        is_reissue=existing_entry is not None,
+        is_reissue=not first_issuance,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         extended_outlook_available=extended_outlook_available,
@@ -2252,6 +2366,11 @@ def run_daily_pipeline(
     # payload, where olw_blend's Day+0 score and both baselines at all three
     # leads were sitting in it.
     forecaster_models = models_visible_to_the_forecaster(location.local_bulletin_model_id)
+    # A later issuance verified nothing — yesterday's actuals do not change
+    # during the day — so it says so rather than repeating the morning's
+    # scores as though they were new. The response's verification fields are
+    # read and discarded on that path; `_compose_log_entry` keeps the real
+    # ones the first run stored.
     verification_context = [
         {
             "lead_time_days": r.lead_time_days,
@@ -2263,7 +2382,9 @@ def run_daily_pipeline(
             },
         }
         for r in verification_result.lead_time_results
-    ]
+    ] if first_issuance else {
+        "note": "No new verification this run — same-day re-issue; see the first issuance."
+    }
     # The forecaster's own blend and the two baselines are scored and
     # published, and withheld from its context — see
     # models_visible_to_the_forecaster for why each is a standing rule rather
@@ -2279,7 +2400,13 @@ def run_daily_pipeline(
     # reads as a sentence missing a word, and the qualitative half is still
     # written fresh every run for every pair that verified.
     track_record_context = _track_record_payload(
-        verification_result.updated_track_record.entries, forecaster_models
+        verification_result.updated_track_record.entries
+        if first_issuance
+        # A later issuance scored nothing, so the freshest figures available
+        # are the stored ones the first run wrote. Item 91's warning applies
+        # harder here: every summary it reads was written by an earlier run.
+        else track_record_store.read_track_record(deps.data_dir).entries,
+        forecaster_models,
     )
     # Long-run review findings, recomputed from the raw record every run
     # rather than stored — same reasoning as every other statistic here: a
@@ -2323,7 +2450,10 @@ def run_daily_pipeline(
         deps.llm_provider,
         deps.data_dir,
         max_calls=location.max_llm_calls_per_24h,
-        purpose="forecast",
+        # Kept distinct in the spend ledger, which is the one place the
+        # difference is still worth recording: a re-issue is a second call on
+        # the same day and an operator reading the ledger wants to see that.
+        purpose="forecast" if first_issuance else "refresh",
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
     _call, _call_meta = _generate_forecast(
@@ -2414,7 +2544,8 @@ def run_daily_pipeline(
     # --- Step 8: write files + patch historical rows/track record ---
     if not dry_run:
         log_store.write_log_entry(deps.data_dir, log_entry)
-        actuals_cache_store.write_actuals_cache(deps.data_dir, cache)
+        if first_issuance:
+            actuals_cache_store.write_actuals_cache(deps.data_dir, cache)
 
         # The inputs this forecast was built from — ROADMAP item 69. Written
         # beside the log entry rather than before the LLM call, deliberately:
@@ -2428,8 +2559,9 @@ def run_daily_pipeline(
             # keyed on it, and a re-issue deliberately carries
             # generated_at_utc from the first run — so stamping with that
             # overwrote the morning's archived prompt at the same key and
-            # destroyed the only copy of it. Measured 2026-09-13: two
-            # `run-daily` runs, one archived issuance.
+            # destroyed the only copy of it. Measured 2026-09-13: two runs
+            # through the then-separate `run-daily` verb, one archived
+            # issuance.
             issued_at=log_entry.last_issued_at,
             judgment_prompt=judgment_prompt,
             narrative_prompt=narrative_prompt,
@@ -2437,41 +2569,28 @@ def run_daily_pipeline(
             llm_model=log_entry.meta.llm_model,
         )
 
-        # A later issuance does no verification, and returns a placeholder for
-        # these fields by design. The row it would land on was scored by the
-        # day's first run, and the note there is the record of what was
-        # actually checked — re-running the scoring pass is idempotent, but
-        # overwriting its note with "no new verification this run" is not.
-        notes_by_lead = (
-            {}
-            if existing_entry is not None
-            else {n.lead_time_days: n.note for n in llm_response.verification_notes}
-        )
-        for row_date, lead_time_days in verification_result.newly_verified:
-            historical_entry = log_lookup(row_date)
-            if historical_entry is None:
-                continue
-            verification_field = historical_entry.verification.for_lead(lead_time_days)
-            verification_field.verified = True
-            note = notes_by_lead.get(lead_time_days)
-            if note:
-                verification_field.note = note
-            log_store.write_log_entry(deps.data_dir, historical_entry)
-
-        summaries_by_key = {
-            (s.model, s.lead_time_days): s.summary for s in llm_response.skill_profile_summaries
-        }
-        for entry in verification_result.updated_track_record.entries:
-            summary = summaries_by_key.get((entry.model, entry.lead_time_days))
-            if summary:
-                entry.skill_profile_summary = summary
-        track_record_store.write_track_record(deps.data_dir, verification_result.updated_track_record)
+        # A later issuance does no verification, so there is nothing to write
+        # back. The rows it would land on were scored by the day's first run,
+        # and the notes there are the record of what was actually checked —
+        # re-running the scoring pass is idempotent, but overwriting a note
+        # with "no new verification this run" is not.
+        #
+        # This used to be a `notes_by_lead` that emptied itself on a re-issue
+        # while the write-back ran anyway. One gate says it once.
+        if first_issuance:
+            _write_back_verification(deps, verification_result, llm_response, log_lookup)
 
         # --- Step 9: publish (optional hooks) ---
         if deps.publisher is not None:
             deps.publisher.publish(log_entry)
             published = True
-        if deps.email_sender is not None:
+        # FIRST ISSUANCE ONLY, preserving what the two paths did: the old
+        # refresh never emailed. This is the pipeline's own mail path, which
+        # is not wired in production — forecast.yml sets no Gmail
+        # credentials — and is NOT the Apps Script mailer, which polls the
+        # published data on its own trigger and already mails every issuance.
+        # ROADMAP item 104 carries making this configurable.
+        if first_issuance and deps.email_sender is not None:
             deps.email_sender.send(log_entry)
             emailed = True
 
@@ -2479,14 +2598,13 @@ def run_daily_pipeline(
         today=today,
         log_entry=log_entry,
         published=published,
-        # NOT a constant. `olw run-daily` can be typed for a day that already
-        # has an entry, and this body already treats that as a later issuance
-        # — it is where `is_reissue` above comes from, and where the scored
-        # predictions are preserved rather than rewritten. Hardcoding True
-        # here would make the result disagree with the entry it just wrote.
-        first_issuance=existing_entry is None,
-        updated_track_record=verification_result.updated_track_record,
-        newly_verified=verification_result.newly_verified,
+        first_issuance=first_issuance,
+        # None on a later issuance, meaning this run did not do that work —
+        # see ForecastRunResult on why that is not an empty list.
+        updated_track_record=(
+            verification_result.updated_track_record if first_issuance else None
+        ),
+        newly_verified=verification_result.newly_verified if first_issuance else None,
         emailed=emailed,
     )
 
@@ -2508,10 +2626,22 @@ def run_forecast(
         model_predictions — the numbers tomorrow scores.
       - EVERY later run is an update: narrative only, predictions preserved.
 
-    A dispatcher, not a rewrite. run_daily_pipeline and run_refresh_pipeline
-    keep their own bodies, because the two have genuinely different
-    responsibilities and merging them would lose the invariant that makes the
-    accuracy record trustworthy.
+    THIS PARAGRAPH USED TO SAY THE OPPOSITE, and the correction is the
+    finding. It read: "A dispatcher, not a rewrite. run_daily_pipeline and
+    run_refresh_pipeline keep their own bodies, because the two have
+    genuinely different responsibilities and merging them would lose the
+    invariant that makes the accuracy record trustworthy."
+
+    Merging them is what SECURED that invariant. The write-once rules now
+    live in one list inside `_compose_log_entry` instead of being written
+    twice and drifting — which they did, measurably, in both directions: six
+    fields disagreed between the two re-issue paths, plus a ground-AQI merge
+    one path skipped and an archive key that destroyed the morning's stored
+    prompt. Two bodies of code cannot be held in step by intent.
+
+    So this resolves the day once — is there an entry already? — and
+    `_issue_forecast` branches on that answer, rather than on which function
+    a caller happened to reach for.
 
     Repeat triggers are skipped here rather than in a workflow condition. A
     YAML `if:` and a crontab line are not code this repo can test, and both
@@ -2526,7 +2656,7 @@ def run_forecast(
     existing_entry = log_store.read_log_entry(deps.data_dir, today)
 
     if existing_entry is None:
-        return run_daily_pipeline(deps, today=today, dry_run=dry_run)
+        return _issue_forecast(deps, today, None, dry_run)
 
     now = now or datetime.now(timezone.utc)
     age_minutes = (now - existing_entry.last_issued_at).total_seconds() / 60
@@ -2540,241 +2670,4 @@ def run_forecast(
             ),
         )
 
-    return run_refresh_pipeline(deps, today=today, dry_run=dry_run)
-
-
-def run_refresh_pipeline(
-    deps: PipelineDeps, today: date | None = None, dry_run: bool = False
-) -> ForecastRunResult:
-    """The optional evening refresh — see this module's docstring and
-    docs-internal/ROADMAP.md for the full rationale. Requires today's entry
-    to already exist (written by a prior run_daily_pipeline() call);
-    raises RefreshWithoutMorningRunError otherwise, since there is nothing
-    to refresh and fabricating one here would mean model_predictions came
-    from evening-cycle data instead of what was true at 6 AM.
-    """
-    location = deps.location
-    today = today or today_in_tz(location.timezone)
-
-    existing_entry = log_store.read_log_entry(deps.data_dir, today)
-    if existing_entry is None:
-        raise RefreshWithoutMorningRunError(
-            f"No forecast entry found for {today} to refresh — run-daily must complete "
-            "successfully first (see run_daily_pipeline)."
-        )
-
-    # --- Step 1: fresh forward-looking guidance (later model cycle) ---
-    guidance = _fetch_forward_guidance(deps)
-    guidance = _with_merged_ground_aqi(guidance, existing_entry.ground_aqi)
-
-    # --- Step 3: call the LLM in refresh mode ---
-    # No new verification happened (yesterday's actuals don't change during
-    # the day), so this is a placeholder explaining that, not a recomputed
-    # result — the LLM is told in-prompt not to fabricate new verification
-    # content, and the response's verification_notes/yesterday_verification
-    # are simply not used when merging back into the entry below.
-    verification_context = {"note": "No new verification this run — same-day refresh; see the morning issuance."}
-    # The evening run does no verification, so it never needed the actuals
-    # cache before. It reads it now purely for the Overview's day-over-day
-    # comparison — a local file read, no extra API call.
-    _refresh_actuals = actuals_cache_store.as_date_dict(
-        actuals_cache_store.read_actuals_cache(deps.data_dir).primary
-    )
-    _refresh_yesterday = add_days(today, -1)
-    # The evening refresh deliberately keeps the morning's model_predictions,
-    # so it compares against those — the numbers actually published today.
-    _refresh_comparison = compute_day_over_day(
-        _refresh_actuals.get(_refresh_yesterday),
-        existing_entry.model_predictions.day0,
-        # The refresh recomputes instability from its own fresh forward hours,
-        # so the evening comparison sees the evening's convective picture.
-        today_convective=(
-            guidance.instability.convective if guidance.instability is not None else None
-        ),
-        # And it is the run this item was raised about: an evening issuance
-        # reusing the morning's onset would compose "dry until evening" after
-        # the evening had begun.
-        issued_hour=_issued_hour(guidance.issuance),
-    )
-    refresh_yesterday_actual = comparison_for_prompt(
-        asdict(_refresh_comparison) if _refresh_comparison is not None else None
-    )
-    # Same filter as the morning run, for the same standing reason: the blend
-    # and the baselines are scored and published, and never shown to the
-    # forecaster — see models_visible_to_the_forecaster.
-    _refresh_forecaster_models = models_visible_to_the_forecaster(
-        deps.location.local_bulletin_model_id
-    )
-    # Item 91, and the refresh is the WORSE case: it does no verification, so
-    # every summary it reads was written by an earlier run and none is
-    # current. Only run_daily_pipeline was filtered the last time a rule like
-    # this was applied to one of these two blocks.
-    track_record_context = _track_record_payload(
-        track_record_store.read_track_record(deps.data_dir).entries,
-        _refresh_forecaster_models,
-    )
-
-    # The refresh does no verification, but the long-run findings still
-    # describe which models have earned trust here — relevant to the
-    # narrative even when nothing new has been scored today.
-    refresh_review_context = _review_prompt_payload(
-        build_weekly_review(
-            log_lookup=log_store.make_log_lookup(deps.data_dir),
-            actuals=_refresh_actuals,
-            all_log_dates=log_store.list_log_dates(deps.data_dir),
-            today=today,
-            models=models_visible_to_the_forecaster(location.local_bulletin_model_id),
-        )
-    )
-
-    # The morning's stored predictions, deliberately not re-extracted: a
-    # refresh keeps the numbers actually published today, and those are what
-    # tomorrow's verification will score. Re-deriving them from the fresher
-    # cycle would leave the narrative describing values the record doesn't
-    # contain.
-    refresh_predictions_context = _model_predictions_prompt_payload(
-        existing_entry.model_predictions.day0,
-        existing_entry.model_predictions.day3,
-        existing_entry.model_predictions.day7,
-    )
-
-    ground_stations_configured = bool(location.waqi_stations)
-    local_bulletin_configured = bool(location.local_bulletin_source_name)
-    # Item 51, derived from the recorded code rather than from an empty dict
-    # — the reasoning is at the same derivation in run_daily_pipeline.
-    extended_outlook_available = DEGRADATION_EXTENDED_OUTLOOK not in {
-        d.code for d in guidance.degradations
-    }
-    prompt_flags = dict(
-        is_reissue=True,
-        ground_stations_configured=ground_stations_configured,
-        local_bulletin_configured=local_bulletin_configured,
-        extended_outlook_available=extended_outlook_available,
-    )
-    judgment_prompt = build_judgment_prompt(location, **prompt_flags)
-    narrative_prompt = build_narrative_prompt(location, **prompt_flags)
-    user_prompt = _build_forecast_prompt(
-        deps,
-        guidance,
-        existing_entry,
-        today,
-        day0_predictions=existing_entry.model_predictions.day0,
-        verification_context=verification_context,
-        model_predictions_context=refresh_predictions_context,
-        track_record_context=track_record_context,
-        review_context=refresh_review_context,
-        yesterday_actual=refresh_yesterday_actual,
-    )
-    # Route EVERY request the provider makes through the cap — retries
-    # included. Raises SpendCapExceeded, deliberately NOT caught here: the
-    # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = attach_spend_cap(
-        deps.llm_provider,
-        deps.data_dir,
-        max_calls=location.max_llm_calls_per_24h,
-        purpose="refresh",
-        # A refresh is a forecast too — same two calls, same reason to refuse
-        # before the first rather than between them.
-        calls_needed=LLM_CALLS_PER_FORECAST,
-    )
-    _call, _call_meta = _generate_forecast(
-        deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
-    )
-    _verify_spend()
-    llm_response = _call.response
-
-    # The write-up failed and the scored call did not — ROADMAP item 59 step
-    # 3. Recorded rather than raised: the numbers below are real, and losing
-    # them to publish nothing would put a hole in the accuracy record.
-    if _call.narrative_error is not None:
-        print(
-            f"Narrative call failed ({_call.narrative_error}); publishing the "
-            "scored forecast without its write-up.",
-            file=sys.stderr,
-        )
-        guidance.degradations.append(
-            RunDegradation(
-                code=DEGRADATION_NARRATIVE,
-                summary=(
-                    "Today's figures are here, but the write-up that normally "
-                    "explains them could not be produced this time. The numbers "
-                    "are the same ones this forecast is scored on."
-                ),
-                detail=(
-                    "The rendering call failed after its retries while the "
-                    "judgment call had already succeeded, so the scored "
-                    "prediction was published without a narrative: "
-                    f"{_call.narrative_error}"
-                ),
-            )
-        )
-
-    # --- Step 4: merge into the EXISTING entry — everything the accuracy
-    # loop depends on (model_predictions, verification, meta.generated_at_utc,
-    # yesterday_verification_summary) is preserved untouched. Only the
-    # narrative/today_properties/ground_aqi and a new
-    # refreshed_at timestamp are updated.
-    #
-    # Before overwriting them, snapshot the existing entry's own version of
-    # those same fields — current_snapshot always gets appended below to
-    # earlier_issuances, since it is by definition an issuance that
-    # happened before the one this run is about to write.
-    #
-    # morning_issuance is different: it must be snapshotted exactly ONCE,
-    # by whichever run is first to find it unset, so it keeps the day's
-    # TRUE morning content. Re-snapshotting on a later refresh would
-    # silently replace it with an already-refreshed version — hence the
-    # `or`, which only reaches current_snapshot the first time. (A second
-    # same-day refresh finding morning_issuance already set shouldn't
-    # normally happen — forecast.yml's `check` job gates on
-    # meta.refreshed_at already being set — but the guard costs nothing and
-    # matches this project's existing belt-and-suspenders idempotency
-    # style, e.g. last_verified_target_date in verify/pipeline.py.)
-    updated_entry = _compose_log_entry(
-        deps,
-        guidance,
-        existing_entry,
-        today,
-        llm_response,
-        # None, and required rather than defaulted: a later issuance extracts
-        # no predictions of its own, and the composer carries the day's
-        # forward. A path that genuinely has none has to say so.
-        fresh_predictions=None,
-        judgment_prompt=judgment_prompt,
-        narrative_prompt=narrative_prompt,
-        last_response=_last_response,
-    )
-
-    published = False
-    if not dry_run:
-        log_store.write_log_entry(deps.data_dir, updated_entry)
-
-        # A refresh is a separate forecast from separate inputs, so it is a
-        # separate archive entry rather than an overwrite of the morning's —
-        # keyed on refreshed_at, which is this issuance's own clock.
-        prompt_archive.write_prompt_archive(
-            deps.data_dir,
-            today,
-            # The same expression as the daily path, which is the point of
-            # step 3: refreshed_at is what last_issued_at resolves to here,
-            # so the two agree by construction rather than by coincidence.
-            issued_at=updated_entry.last_issued_at,
-            judgment_prompt=judgment_prompt,
-            narrative_prompt=narrative_prompt,
-            user_prompt=user_prompt,
-            llm_model=updated_entry.meta.llm_model,
-        )
-        if deps.publisher is not None:
-            deps.publisher.publish(updated_entry)
-            published = True
-        # No email_sender call here by design — the evening refresh is
-        # web-only in this first version (see ROADMAP.md's open task on
-        # whether it should also email); the standalone Apps Script mailer
-        # is unaffected either way since it runs on its own trigger and
-        # just reads whatever is currently committed.
-
-    # Never the first issuance: the guard at the top of this function raises
-    # when the day has no entry to re-issue against.
-    return ForecastRunResult(
-        today=today, log_entry=updated_entry, published=published, first_issuance=False
-    )
+    return _issue_forecast(deps, today, existing_entry, dry_run)

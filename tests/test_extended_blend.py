@@ -91,7 +91,7 @@ from openlocalweather.llm.schema import (
     TodayProperties,
     VerificationNote,
 )
-from openlocalweather.pipeline import run_daily_pipeline
+from tests.test_pipeline_run import issue  # noqa: F401
 from openlocalweather.store import log_store
 
 from tests.test_pipeline_run import make_deps, patch_fetches  # noqa: F401
@@ -119,7 +119,7 @@ def _response_with(extended):
 
 def _stored(tmp_path, extended):
     llm = FakeLLMProvider(response=_response_with(extended))
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
     return log_store.read_log_entry(tmp_path, TODAY).model_predictions
 
 

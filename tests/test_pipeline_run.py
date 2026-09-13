@@ -35,7 +35,7 @@ from openlocalweather.models import (
 from openlocalweather import pipeline
 from openlocalweather import solar
 from openlocalweather.solar import SunTimes, sun_times as real_sun_times
-from openlocalweather.pipeline import PipelineDeps, run_daily_pipeline
+from openlocalweather.pipeline import PipelineDeps
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
 
@@ -250,6 +250,18 @@ def patch_fetches(monkeypatch):
     monkeypatch.setattr(requests, "post", _no_network)
 
 
+def issue(deps, today=None, dry_run=False):
+    """One issuance of the day's forecast, whichever of the day it is.
+
+    What `run_daily_pipeline` and `run_refresh_pipeline` did when a test
+    called them directly, before item 104 step 4 collapsed them. `force`
+    because a direct call never went through the repeat-trigger interval
+    guard that `run_forecast` applies — the tests that are ABOUT that guard
+    call `run_forecast` themselves.
+    """
+    return pipeline.run_forecast(deps, today=today, dry_run=dry_run, force=True)
+
+
 def make_deps(tmp_path, llm=None) -> PipelineDeps:
     return PipelineDeps(
         location=LOCATION,
@@ -270,7 +282,7 @@ def predictions_block(user_prompt: str) -> str:
 
 def test_dry_run_does_not_write_any_files(tmp_path):
     deps = make_deps(tmp_path)
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     assert result.log_entry.rain_expected == "Unlikely"
     assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
@@ -282,7 +294,7 @@ def test_dry_run_does_not_write_any_files(tmp_path):
 
 def test_real_run_writes_log_entry_and_track_record(tmp_path):
     deps = make_deps(tmp_path)
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert written is not None
@@ -296,7 +308,7 @@ def test_real_run_writes_log_entry_and_track_record(tmp_path):
 
 def test_today_entry_carries_extracted_model_predictions(tmp_path):
     deps = make_deps(tmp_path)
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     day0 = result.log_entry.model_predictions.day0
 
     # Every extracted model, PLUS our own blended call — the forecast the
@@ -321,7 +333,7 @@ def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
     # Built from today_properties' structured fields, not parsed back out of
     # the prose. What gets scored is what the forecaster committed to.
     deps = make_deps(tmp_path)
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     blend = next(
         p for p in result.log_entry.model_predictions.day0 if p.model == BLEND_MODEL_ID
     )
@@ -345,7 +357,7 @@ def test_the_forecaster_is_never_shown_its_own_record(tmp_path):
     actually be broken, and it leaks through two separate blocks — the track
     record and the review findings, which name models."""
     deps = make_deps(tmp_path)
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     system_prompt, user_prompt = deps.llm_provider.calls[-1]
     assert BLEND_MODEL_ID not in user_prompt, (
@@ -359,10 +371,10 @@ def test_a_re_issue_is_never_shown_the_blend_either(tmp_path):
     review findings: a re-issue is handed the day's stored predictions so its
     narrative describes the numbers the record holds — and the stored Day+0
     list has the blend in it, because the blend is scored."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     llm = FakeLLMProvider()
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False
     )
 
@@ -378,7 +390,7 @@ def test_the_blend_has_no_extended_range_entry(tmp_path):
     # would put an unscoreable placeholder into the record and give the
     # accuracy page a model that appears to forecast a range it never did.
     deps = make_deps(tmp_path)
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day3}
     assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day7}
@@ -433,7 +445,7 @@ def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
         )
     )
     deps = make_deps(tmp_path, llm=llm)
-    result = run_daily_pipeline(deps, today=today, dry_run=False)
+    result = issue(deps, today=today, dry_run=False)
 
     assert (yesterday, 0) in result.newly_verified
 
@@ -462,7 +474,7 @@ def test_a_forced_re_run_does_not_rewrite_yesterdays_verification_note(tmp_path)
             today_narrative="## Overview\nDry.",
         )
     )
-    run_daily_pipeline(make_deps(tmp_path, llm=morning), today=today, dry_run=False)
+    issue(make_deps(tmp_path, llm=morning), today=today, dry_run=False)
 
     forced = FakeLLMProvider(
         morning.response.model_copy(
@@ -474,7 +486,7 @@ def test_a_forced_re_run_does_not_rewrite_yesterdays_verification_note(tmp_path)
             }
         )
     )
-    run_daily_pipeline(make_deps(tmp_path, llm=forced), today=today, dry_run=False)
+    issue(make_deps(tmp_path, llm=forced), today=today, dry_run=False)
 
     assert log_store.read_log_entry(tmp_path, yesterday).verification.day0.note == (
         "Rain correctly not predicted."
@@ -500,7 +512,7 @@ def test_publisher_and_email_sender_invoked_when_configured(tmp_path):
     deps.publisher = FakePublisher()
     deps.email_sender = FakeEmailSender()
 
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert result.published is True
     assert result.emailed is True
@@ -516,7 +528,7 @@ def test_publisher_not_invoked_on_dry_run_even_if_configured(tmp_path):
     deps = make_deps(tmp_path)
     deps.publisher = FakePublisher()
 
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=True)
     assert result.published is False
 
 
@@ -537,7 +549,7 @@ def test_weekly_batch_day_triggers_full_archive_refetch(tmp_path, monkeypatch):
     monday = date(2026, 8, 10)
     assert monday.weekday() == 0
     deps = make_deps(tmp_path)
-    run_daily_pipeline(deps, today=monday, dry_run=False)
+    issue(deps, today=monday, dry_run=False)
 
     assert calls["range"] == 1
     assert calls["single"] == 0
@@ -559,7 +571,7 @@ def test_non_weekly_day_uses_single_day_upsert(tmp_path, monkeypatch):
     tuesday = date(2026, 8, 11)
     assert tuesday.weekday() == 1
     deps = make_deps(tmp_path)
-    run_daily_pipeline(deps, today=tuesday, dry_run=False)
+    issue(deps, today=tuesday, dry_run=False)
 
     assert calls["range"] == 0
     assert calls["single"] == 1
@@ -568,7 +580,7 @@ def test_non_weekly_day_uses_single_day_upsert(tmp_path, monkeypatch):
 def test_llm_receives_system_and_user_prompt(tmp_path):
     llm = FakeLLMProvider()
     deps = make_deps(tmp_path, llm=llm)
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     # Two calls since ROADMAP item 59 step 3: judgment, then narrative.
     assert len(llm.calls) == 2
@@ -613,7 +625,7 @@ def test_multi_station_aqi_readings_flow_through_to_log_entry(tmp_path, monkeypa
         public_webpage_url="https://example.org",
         bulletin_fetcher=NullBulletinFetcher(),
     )
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert len(result.log_entry.ground_aqi) == 2
     names = {r.name for r in result.log_entry.ground_aqi}
@@ -647,7 +659,7 @@ def test_llm_receives_precomputed_aqi_range_and_worst_station(tmp_path, monkeypa
         public_webpage_url="https://example.org",
         bulletin_fetcher=NullBulletinFetcher(),
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     _, user_prompt = llm.calls[0]
     assert '"aqi_min": 42' in user_prompt
@@ -683,7 +695,7 @@ def test_llm_receives_stale_flag_and_hours_old_per_reading(tmp_path, monkeypatch
         public_webpage_url="https://example.org",
         bulletin_fetcher=NullBulletinFetcher(),
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     _, user_prompt = llm.calls[0]
     assert '"stale": true' in user_prompt
@@ -712,7 +724,7 @@ def test_no_stations_configured_says_nothing_about_ground_stations(tmp_path):
         public_webpage_url="https://example.org",
         bulletin_fetcher=NullBulletinFetcher(),
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
@@ -737,7 +749,7 @@ def test_stations_configured_still_get_their_blocks(tmp_path, monkeypatch):
     deps.location = LOCATION.model_copy(
         update={"waqi_stations": [WaqiStation(name="Kisumu Airport", station_id="A1")]}
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
@@ -761,7 +773,7 @@ def test_no_met_service_configured_is_a_state_not_a_missing_bulletin(tmp_path):
     report of a failure but not an invention.
     """
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
 
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
@@ -781,7 +793,7 @@ def test_a_configured_met_service_is_named_and_carried(tmp_path):
     deps.location = LOCATION.model_copy(
         update={"local_bulletin_source_name": "Kenya Meteorological Department (KMD)"}
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
@@ -806,7 +818,7 @@ def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
         update={"local_bulletin_source_name": "Kenya Meteorological Department (KMD)"}
     )
     deps.bulletin_fetcher = _DownFetcher()
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     _, user_prompt = llm.calls[0]
     assert "LOCAL BULLETIN (Kenya Meteorological Department (KMD)):" in user_prompt
@@ -818,22 +830,17 @@ def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-from openlocalweather.pipeline import (
-    RefreshWithoutMorningRunError,
-    run_refresh_pipeline,
-)
-
-
-def test_refresh_requires_existing_morning_entry(tmp_path):
-    deps = make_deps(tmp_path)
-    with pytest.raises(RefreshWithoutMorningRunError):
-        run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+# A run on a day with no entry IS the day's first issuance, at whatever hour
+# it happens — item 104's contract, and the reason RefreshWithoutMorningRunError
+# is gone rather than merely unused. There is no verb left that can ask for an
+# evening-style run on an empty day. See
+# test_forecast_runs_the_full_pipeline_when_the_day_is_empty.
 
 
 def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     # First, a real morning run.
     morning_deps = make_deps(tmp_path)
-    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
     original_predictions = morning_result.log_entry.model_predictions
 
     # Then an evening refresh with DIFFERENT fresh model data.
@@ -850,7 +857,7 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
         )
     )
     refresh_deps = make_deps(tmp_path, llm=evening_llm)
-    refresh_result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=False)
 
     # Narrative/properties changed...
     assert refresh_result.log_entry.rain_expected == "Now raining"
@@ -867,7 +874,7 @@ def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
     exactly what the morning run actually published, before the refresh
     overwrites the top-level fields with the evening's new values."""
     morning_deps = make_deps(tmp_path)
-    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
     assert morning_result.log_entry.morning_issuance is None, "a fresh morning entry has nothing to snapshot yet"
 
     evening_llm = FakeLLMProvider(
@@ -882,7 +889,7 @@ def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
             today_narrative="## Overview\nRain has moved in this evening.",
         )
     )
-    refresh_result = run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
 
     snapshot = refresh_result.log_entry.morning_issuance
     assert snapshot is not None, "morning_issuance must be populated once a refresh has happened"
@@ -901,7 +908,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
     check job gates on meta.refreshed_at already being set) but must be
     correct if it ever does: a second refresh the same day must not
     replace the true morning snapshot with an already-refreshed version."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     first_refresh_llm = FakeLLMProvider(
         GeminiForecastResponse(
@@ -913,7 +920,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
             today_narrative="## Overview\nFirst refresh.",
         )
     )
-    run_refresh_pipeline(make_deps(tmp_path, llm=first_refresh_llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=first_refresh_llm), today=date(2026, 8, 11), dry_run=False)
 
     second_refresh_llm = FakeLLMProvider(
         GeminiForecastResponse(
@@ -925,7 +932,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
             today_narrative="## Overview\nSecond refresh.",
         )
     )
-    second_result = run_refresh_pipeline(make_deps(tmp_path, llm=second_refresh_llm), today=date(2026, 8, 11), dry_run=False)
+    second_result = issue(make_deps(tmp_path, llm=second_refresh_llm), today=date(2026, 8, 11), dry_run=False)
 
     # Still the TRUE morning values (FakeLLMProvider's default), not the
     # first refresh's "Light rain" — that would mean the real morning
@@ -938,12 +945,12 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
 
 def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
     morning_deps = make_deps(tmp_path)
-    morning_result = run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
     original_generated_at = morning_result.log_entry.meta.generated_at_utc
     original_verification = morning_result.log_entry.verification
 
     refresh_deps = make_deps(tmp_path)
-    refresh_result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=False)
 
     assert refresh_result.log_entry.meta.generated_at_utc == original_generated_at
     assert refresh_result.log_entry.verification == original_verification
@@ -952,7 +959,7 @@ def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
 
 
 def test_refresh_dry_run_does_not_write_or_publish(tmp_path):
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     before = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
     class FailingPublisher:
@@ -961,7 +968,7 @@ def test_refresh_dry_run_does_not_write_or_publish(tmp_path):
 
     deps = make_deps(tmp_path)
     deps.publisher = FailingPublisher()
-    result = run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=True)
 
     assert result.published is False
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
@@ -969,7 +976,7 @@ def test_refresh_dry_run_does_not_write_or_publish(tmp_path):
 
 
 def test_refresh_real_run_writes_and_publishes(tmp_path):
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     published_entries = []
 
@@ -979,7 +986,7 @@ def test_refresh_real_run_writes_and_publishes(tmp_path):
 
     deps = make_deps(tmp_path)
     deps.publisher = FakePublisher()
-    result = run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert result.published is True
     assert len(published_entries) == 1
@@ -989,7 +996,7 @@ def test_refresh_real_run_writes_and_publishes(tmp_path):
 
 def test_refresh_never_emails_even_when_email_sender_configured(tmp_path):
     # Web-only by design in this first version — see pipeline.py's comment.
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     emailed_entries = []
 
@@ -999,17 +1006,17 @@ def test_refresh_never_emails_even_when_email_sender_configured(tmp_path):
 
     deps = make_deps(tmp_path)
     deps.email_sender = FakeEmailSender()
-    run_refresh_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert emailed_entries == []
 
 
 def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_path):
     morning_llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
 
     evening_llm = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
 
     system_prompt, user_prompt = evening_llm.system_prompts, evening_llm.user_prompts
     assert "LATER ISSUANCE" in system_prompt
@@ -1022,16 +1029,16 @@ def test_a_third_run_is_shown_both_earlier_narratives(tmp_path):
     element — so a third run was shown the second issuance and had no idea
     the first one existed, even though morning_issuance still held it. The
     prompt must carry every issuance published today, not just the last."""
-    run_daily_pipeline(make_deps(tmp_path, llm=FakeLLMProvider()), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=FakeLLMProvider()), today=date(2026, 8, 11), dry_run=False)
 
     second = FakeLLMProvider()
     second.response = second.response.model_copy(
         update={"today_narrative": "## Overview\nSECOND issuance."}
     )
-    run_refresh_pipeline(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
 
     third = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=True)
 
     _, user_prompt = third.calls[0]
     assert "Dry and warm" in user_prompt, "the first issuance"
@@ -1043,7 +1050,7 @@ def test_every_run_is_told_what_time_it_is(tmp_path):
     nothing else, so a run could not tell 06:00 from 18:00 and wrote as though
     the whole day were still ahead."""
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "ISSUED:" in user_prompt
@@ -1055,7 +1062,7 @@ def test_the_hours_ahead_are_supplied_separately_from_the_calendar_day(tmp_path)
     """A run issued in the evening was being asked to talk about tonight while
     holding only 00:00-23:00 of today."""
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "HOURS AHEAD" in user_prompt
@@ -1081,7 +1088,7 @@ def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
     )
     morning_deps = make_deps(tmp_path)
     morning_deps.location = location_with_station
-    run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(
         waqi_fetch,
@@ -1092,9 +1099,50 @@ def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
     )
     refresh_deps = make_deps(tmp_path)
     refresh_deps.location = location_with_station
-    result = run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=True)
+    result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=True)
 
     assert result.log_entry.ground_aqi[0].aqi == 90  # the fresh evening reading, not the morning's 30
+
+
+def test_a_re_issue_keeps_a_stored_reading_when_the_refetch_is_empty(tmp_path, monkeypatch):
+    """The eighth divergence item 104 step 3 found and step 4 closed.
+
+    `_with_merged_ground_aqi` is applied to the GUIDANCE, before the prompt is
+    built, so it was not part of the entry construction step 3 merged — and
+    only the old refresh path applied it. A re-issue reached through the other
+    path got the raw fetch, so a station that failed to answer this hour
+    erased a real reading the day's first run had captured.
+
+    Now there is one path, so there is one answer."""
+    from openlocalweather.config import WaqiStation
+    from openlocalweather.models import GroundAQIReading
+
+    location_with_station = LOCATION.model_copy(
+        update={"waqi_stations": [WaqiStation(name="Test Station", station_id="A1")]}
+    )
+    monkeypatch.setattr(
+        waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(
+                name="Test Station", station_id="A1", aqi=42,
+                measured_at=datetime.now(timezone.utc),
+            )
+        ],
+    )
+    first = make_deps(tmp_path)
+    first.location = location_with_station
+    issue(first, today=date(2026, 8, 11), dry_run=False)
+
+    # The station does not answer this hour. Absence is not a reading.
+    monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: [])
+    later = make_deps(tmp_path)
+    later.location = location_with_station
+    result = issue(later, today=date(2026, 8, 11), dry_run=False)
+
+    assert [r.aqi for r in result.log_entry.ground_aqi] == [42], (
+        "a failed re-fetch must not erase the reading the first issuance captured"
+    )
 
 
 MORNING_AQI_AT = datetime(2026, 8, 11, 0, 0, tzinfo=timezone.utc)
@@ -1124,12 +1172,12 @@ def _run_morning_then_refetching(tmp_path, monkeypatch, refetched, llm=None):
     )
     morning_deps = make_deps(tmp_path)
     morning_deps.location = location
-    run_daily_pipeline(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: refetched)
     refresh_deps = make_deps(tmp_path, llm=llm)
     refresh_deps.location = location
-    return pipeline.run_refresh_pipeline(refresh_deps, today=date(2026, 8, 11), dry_run=True).log_entry
+    return issue(refresh_deps, today=date(2026, 8, 11), dry_run=True).log_entry
 
 
 def test_a_refetched_null_does_not_erase_the_mornings_reading(tmp_path, monkeypatch):
@@ -1224,7 +1272,7 @@ def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch
     )
 
     with pytest.raises(SpendCapExceeded):
-        run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+        issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert called == [], "the provider must never be reached once the cap is hit"
 
@@ -1242,7 +1290,7 @@ def test_a_normal_run_records_exactly_two_calls(tmp_path):
     from openlocalweather.spend import read_ledger
 
     deps = make_deps(tmp_path)
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     ledger = read_ledger(tmp_path)
     assert len(ledger) == 2
@@ -1257,7 +1305,7 @@ def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
     from openlocalweather.spend import read_ledger
 
     deps = make_deps(tmp_path)
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=True)
+    issue(deps, today=date(2026, 8, 11), dry_run=True)
     assert len(read_ledger(tmp_path)) == 2
 
 
@@ -1277,7 +1325,7 @@ def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatc
         solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "ISSUED:" in user_prompt
@@ -1295,7 +1343,7 @@ def test_a_failed_sun_lookup_does_not_also_lose_the_hours_ahead(tmp_path, monkey
         solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "HOURS AHEAD" in user_prompt
@@ -1310,7 +1358,7 @@ def test_a_failed_forward_window_does_not_lose_the_sun_or_the_time(tmp_path, mon
         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")),
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "sunset 18:47" in user_prompt, "the sun times are unaffected"
@@ -1326,7 +1374,7 @@ def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
     monkeypatch.setattr(solar, "sun_times", down)
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", down)
     llm = FakeLLMProvider()
-    result = run_daily_pipeline(
+    result = issue(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
     )
     assert result.log_entry is not None
@@ -1338,7 +1386,7 @@ def test_sunrise_and_sunset_are_stored_from_code_not_the_narrative(tmp_path):
     """Facts, not prose. Asking a language model to restate a computed time is
     how a wrong one gets published — and these are checkable by anyone who
     looks out of a window, so being wrong is expensive."""
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
     assert result.log_entry.sunrise == "06:40"
     assert result.log_entry.sunset == "18:47"
 
@@ -1364,7 +1412,7 @@ def test_the_computed_sun_times_reach_the_prompt_and_the_entry(tmp_path, monkeyp
     """
     monkeypatch.setattr(solar, "sun_times", real_sun_times)
     llm = FakeLLMProvider()
-    result = run_daily_pipeline(
+    result = issue(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
     )
     _, user_prompt = llm.calls[0]
@@ -1394,7 +1442,7 @@ def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, 
     monkeypatch.setattr(
         solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
     assert result.log_entry.sunrise is None
     assert result.log_entry.sunset is None
 
@@ -1411,19 +1459,19 @@ def test_three_issuances_are_all_recoverable_from_the_stored_entry(tmp_path):
     top level. morning_issuance still tracks the first, unchanged.
     """
     deps1 = make_deps(tmp_path, llm=FakeLLMProvider())
-    run_daily_pipeline(deps1, today=date(2026, 8, 11), dry_run=False)
+    issue(deps1, today=date(2026, 8, 11), dry_run=False)
 
     second = FakeLLMProvider()
     second.response = second.response.model_copy(
         update={"today_narrative": "## Overview\nSECOND issuance."}
     )
-    run_refresh_pipeline(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
 
     third = FakeLLMProvider()
     third.response = third.response.model_copy(
         update={"today_narrative": "## Overview\nTHIRD issuance."}
     )
-    run_refresh_pipeline(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert "THIRD" in entry.narrative_markdown, "the latest stays at the top level"
@@ -1449,11 +1497,11 @@ def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):
     and must survive any number of re-issues untouched — otherwise adding a
     midday run would silently improve the published accuracy figures.
     """
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     before = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
 
     for _ in range(3):
-        run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+        issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
     assert after == before, "three re-issues must leave the scored numbers identical"
@@ -1475,7 +1523,7 @@ def test_run_daily_a_SECOND_time_KEEPS_the_days_predictions(tmp_path, monkeypatc
     invoke this with any combination of flags and be unable to corrupt the
     record.
     """
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     first = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
 
     # A genuinely different cycle. With the shared fixture a rewrite and a
@@ -1488,7 +1536,7 @@ def test_run_daily_a_SECOND_time_KEEPS_the_days_predictions(tmp_path, monkeypatc
         return fixture
 
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", evening_cycle_hourly)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     second = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).model_predictions
 
     assert second == first, "a second run rewrote the numbers tomorrow scores"
@@ -1498,13 +1546,13 @@ def test_a_second_run_still_writes_a_fresh_narrative(tmp_path):
     """The other half of the rule: force forces the NARRATIVE, and can never
     reach the scored numbers. A guard that also froze the prose would make a
     forced re-run pointless."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     evening = FakeLLMProvider()
     evening.response = evening.response.model_copy(
         update={"today_narrative": "## Overview\nStorms arrived after all."}
     )
-    run_daily_pipeline(
+    issue(
         make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
     )
 
@@ -1517,7 +1565,7 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
     the fresher extraction would leave the narrative quoting values the record
     does not contain — the same reason the refresh path passes the stored
     predictions rather than re-deriving them."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     def evening_cycle_hourly(*args, **kwargs):
         fixture = hourly_fixture()
@@ -1527,7 +1575,7 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
 
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", evening_cycle_hourly)
     evening = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = evening.calls[-1]
     block = predictions_block(user_prompt)
@@ -1538,18 +1586,18 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
 def _forced_rerun(tmp_path, narrative, after_refresh: bool):
     """A day that has already been forecast, then run-daily again — the shape
     `force: true` on a manual dispatch produces."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     if after_refresh:
         evening = FakeLLMProvider()
         evening.response = evening.response.model_copy(
             update={"today_narrative": "## Overview\nEvening refresh."}
         )
-        run_refresh_pipeline(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+        issue(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
 
     forced = FakeLLMProvider()
     forced.response = forced.response.model_copy(update={"today_narrative": narrative})
     deps = make_deps(tmp_path, llm=forced)
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
     return log_store.read_log_entry(tmp_path, date(2026, 8, 11)), forced
 
 
@@ -1598,20 +1646,12 @@ def test_a_forced_re_run_is_told_it_is_a_later_issuance(tmp_path):
     assert "Evening refresh." in user_prompt, "shown what has already been published"
 
 
-def test_refresh_without_a_prior_run_fails_loudly(tmp_path):
-    """The current safety net. If the morning run never happened, the evening
-    refresh does not quietly become the day's first forecast — which would
-    mean model_predictions came from evening-cycle data."""
-    with pytest.raises(RefreshWithoutMorningRunError):
-        run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11))
-
-
 def test_a_refresh_keeps_the_sun_times(tmp_path):
     """They were only set on the day's first run, so any refreshed day
     carried nulls from that point — the site would simply stop showing sun
     times after the evening run, with nothing to flag it."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.sunrise == "06:40"
@@ -1622,11 +1662,11 @@ def test_a_refresh_with_no_sun_data_keeps_the_mornings(tmp_path, monkeypatch):
     """A failed sun lookup on a re-issue must not erase a good value the first
     run captured. Fresher is not automatically better when the fresher value
     is 'unknown'."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     monkeypatch.setattr(
         solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
-    run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.sunrise == "06:40", "the morning's value survives a failed re-fetch"
@@ -1641,11 +1681,11 @@ def test_a_run_daily_re_issue_also_keeps_the_mornings_sun_times(tmp_path, monkey
     Measured 2026-09-13 by driving both re-issue paths against identical
     fixtures: six fields disagreed and each path held a fix the other lacked.
     ROADMAP item 104 step 3."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     monkeypatch.setattr(
         solar, "sun_times", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.sunrise == "06:40", "the morning's value survives a failed re-compute"
@@ -1662,11 +1702,11 @@ def test_a_re_issue_is_stamped_with_the_model_that_wrote_it(tmp_path):
     that archive is for. ROADMAP item 104 step 3."""
     morning = make_deps(tmp_path, llm=FakeLLMProvider())
     morning.llm_provider.model = "morning-model"
-    run_daily_pipeline(morning, today=date(2026, 8, 11), dry_run=False)
+    issue(morning, today=date(2026, 8, 11), dry_run=False)
 
     evening = make_deps(tmp_path, llm=FakeLLMProvider())
     evening.llm_provider.model = "evening-model"
-    run_refresh_pipeline(evening, today=date(2026, 8, 11), dry_run=False)
+    issue(evening, today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.meta.llm_model == "evening-model"
@@ -1679,12 +1719,12 @@ def test_a_re_issue_records_the_trigger_and_version_that_ran_it(tmp_path):
     morning = make_deps(tmp_path)
     morning.trigger_source = "schedule"
     morning.pipeline_version = "1.0.0"
-    run_daily_pipeline(morning, today=date(2026, 8, 11), dry_run=False)
+    issue(morning, today=date(2026, 8, 11), dry_run=False)
 
     evening = make_deps(tmp_path)
     evening.trigger_source = "workflow_dispatch"
     evening.pipeline_version = "2.0.0"
-    run_refresh_pipeline(evening, today=date(2026, 8, 11), dry_run=False)
+    issue(evening, today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.meta.trigger_source == "workflow_dispatch"
@@ -1732,7 +1772,7 @@ def test_user_prompt_carries_the_convective_flag(tmp_path, monkeypatch):
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "CONVECTIVE INSTABILITY" in user_prompt
@@ -1747,7 +1787,7 @@ def test_user_prompt_says_when_there_is_no_instability_data(tmp_path, monkeypatc
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_from_now()
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "no model supplied a CAPE series" in user_prompt
@@ -1763,7 +1803,7 @@ def test_quiet_cape_does_not_set_the_convective_flag(tmp_path, monkeypatch):
         lambda *a, **k: forward_hourly_from_now(cape_gfs_seamless=calm),
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert '"convective": false' in user_prompt
@@ -1791,7 +1831,7 @@ def test_user_prompt_quotes_the_last_known_aqi_when_all_stale(tmp_path, monkeypa
             ]
         }
     )
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "GROUND AQI LAST KNOWN" in user_prompt
@@ -1813,7 +1853,7 @@ def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     cache = actuals_cache_store.read_actuals_cache(tmp_path)
     stored = actuals_cache_store.as_date_dict(cache.primary)
@@ -1929,7 +1969,7 @@ def test_a_settled_observation_is_recorded_as_observed(tmp_path, monkeypatch):
         ),
     )
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     entry = result.log_entry
 
     assert entry.guidance_source == "observed"
@@ -1956,7 +1996,7 @@ def test_an_unsettled_observation_is_ignored_and_derived_is_used(tmp_path, monke
         ),
     )
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     entry = result.log_entry
     expected = aligned_cycle_at(now).initialised_at
 
@@ -1967,7 +2007,7 @@ def test_an_unsettled_observation_is_ignored_and_derived_is_used(tmp_path, monke
 def test_a_metadata_fetch_returning_none_costs_the_run_nothing(tmp_path, monkeypatch):
     monkeypatch.setattr(model_run_fetch, "fetch_model_run", lambda model: None)
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     entry = result.log_entry
 
     assert entry.guidance_source == "derived"
@@ -1986,7 +2026,7 @@ def test_a_metadata_fetch_that_raises_costs_the_run_nothing(tmp_path, monkeypatc
 
     monkeypatch.setattr(requests, "get", _raise)
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     entry = result.log_entry
 
     assert entry.guidance_source == "derived"
@@ -2011,7 +2051,7 @@ def test_disagreement_between_observed_and_derived_warns_and_keeps_observed(tmp_
         ),
     )
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     captured = capsys.readouterr()
     assert "WARNING" in captured.err
@@ -2037,7 +2077,7 @@ def test_a_reissue_archives_the_first_issuances_guidance_recency(tmp_path, monke
             model=model, initialised_at=morning_initialised, available_at=now - timedelta(minutes=30)
         ),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(
         model_run_fetch,
@@ -2046,7 +2086,7 @@ def test_a_reissue_archives_the_first_issuances_guidance_recency(tmp_path, monke
             model=model, initialised_at=evening_initialised, available_at=now - timedelta(minutes=30)
         ),
     )
-    refresh_result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     entry = refresh_result.log_entry
 
     assert entry.guidance_source == "observed"
@@ -2073,7 +2113,7 @@ def test_an_impossible_guidance_age_is_not_narrated(tmp_path, monkeypatch):
         ),
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "could not establish which model cycle" in user_prompt
@@ -2087,7 +2127,7 @@ def test_the_days_first_run_has_no_previous_issuance_to_compare(tmp_path):
     """No stored entry yet, so there is no basis for the comparison — null,
     not false. Uses the default derived-cycle fallback from patch_fetches."""
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert '"newer_than_previous_issuance": null' in user_prompt
@@ -2107,7 +2147,7 @@ def test_a_reissue_reports_true_when_a_newer_cycle_has_landed(tmp_path, monkeypa
             model=model, initialised_at=morning_initialised, available_at=now - timedelta(minutes=30)
         ),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(
         model_run_fetch,
@@ -2117,7 +2157,7 @@ def test_a_reissue_reports_true_when_a_newer_cycle_has_landed(tmp_path, monkeypa
         ),
     )
     evening_llm = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = evening_llm.calls[0]
     assert '"newer_than_previous_issuance": true' in user_prompt
@@ -2137,10 +2177,10 @@ def test_a_reissue_reports_false_when_no_newer_cycle_has_landed(tmp_path, monkey
             model=model, initialised_at=unchanged_initialised, available_at=now - timedelta(minutes=30)
         ),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     evening_llm = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = evening_llm.calls[0]
     assert '"newer_than_previous_issuance": false' in user_prompt
@@ -2163,13 +2203,13 @@ def test_a_run_that_knows_less_than_the_last_one_says_so(tmp_path, monkeypatch):
             available_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
         ),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     # The re-issue loses the observation and falls back to the derived floor,
     # which is older than what the first run recorded.
     monkeypatch.setattr(model_run_fetch, "fetch_model_run", lambda model: None)
     llm = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert '"newer_than_previous_issuance": null' in user_prompt
@@ -2215,7 +2255,7 @@ def test_a_failed_forward_window_falls_back_to_the_day_zero_cape(tmp_path, monke
         ),
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "no model supplied a CAPE series" not in user_prompt
@@ -2240,7 +2280,7 @@ def test_the_fallback_window_says_it_is_only_the_rest_of_today(tmp_path, monkeyp
         ),
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     # Case-insensitive: the prompt shouts it, and the emphasis is styling
@@ -2255,7 +2295,7 @@ def test_the_full_forward_window_is_not_labelled_as_narrowed(tmp_path, monkeypat
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "rest of today only" not in user_prompt.lower()
@@ -2290,7 +2330,7 @@ def test_an_absent_cape_series_forbids_an_all_clear(tmp_path, monkeypatch):
         open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: today_only_hourly_from_now()
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
     # tests/test_prompt_seam.py's.
@@ -2312,7 +2352,7 @@ def test_a_present_cape_series_carries_no_gap_warning(tmp_path, monkeypatch):
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
     )
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
     _, user_prompt = llm.calls[0]
 
     assert "no model supplied a CAPE series" not in user_prompt
@@ -2343,7 +2383,7 @@ def test_a_run_that_lost_the_forward_window_records_it(tmp_path, monkeypatch):
         "fetch_forecast_hourly_forward",
         _raises(RuntimeError("Read timed out. (read timeout=30)")),
     )
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     codes = [d.code for d in result.log_entry.meta.degradations]
     assert "hours_ahead_narrowed" in codes
@@ -2355,7 +2395,7 @@ def test_a_run_that_lost_the_forward_window_records_it(tmp_path, monkeypatch):
 
 
 def test_a_clean_run_records_no_degradations(tmp_path):
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert result.log_entry.meta.degradations == []
 
 
@@ -2370,7 +2410,7 @@ def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypa
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: None)
 
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     assert "metar_unavailable" in [d.code for d in result.log_entry.meta.degradations]
 
 
@@ -2378,7 +2418,7 @@ def test_no_station_configured_is_a_state_not_a_degradation(tmp_path):
     """LOCATION has metar_station_icao="". A deployment with no station is not
     running degraded; it is running as configured, and saying otherwise would
     make the flag mean nothing."""
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert "metar_unavailable" not in [d.code for d in result.log_entry.meta.degradations]
 
 
@@ -2390,7 +2430,7 @@ def test_a_station_that_answered_is_not_a_degradation(tmp_path, monkeypatch):
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: [{"rawOb": "HKKI 111200Z"}])
 
-    result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     assert "metar_unavailable" not in [d.code for d in result.log_entry.meta.degradations]
 
 
@@ -2404,13 +2444,13 @@ def test_a_re_issue_keeps_the_earlier_issuance_s_own_degradation(tmp_path, monke
         "fetch_forecast_hourly_forward",
         _raises(RuntimeError("Read timed out. (read timeout=30)")),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     # The evening run's forward fetch works.
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
     )
-    result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     entry = result.log_entry
     assert entry.meta.degradations == [], "the re-issue was clean and must say so"
@@ -2420,13 +2460,13 @@ def test_a_re_issue_keeps_the_earlier_issuance_s_own_degradation(tmp_path, monke
 
 
 def test_a_degraded_re_issue_records_its_own_gap(tmp_path, monkeypatch):
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     monkeypatch.setattr(
         open_meteo,
         "fetch_forecast_hourly_forward",
         _raises(RuntimeError("Read timed out. (read timeout=30)")),
     )
-    result = run_refresh_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     assert [d.code for d in result.log_entry.meta.degradations] == ["hours_ahead_narrowed"]
     assert result.log_entry.earlier_issuances[0].degradations == []
@@ -2442,12 +2482,12 @@ def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch
         "fetch_forecast_hourly_forward",
         _raises(RuntimeError("Read timed out. (read timeout=30)")),
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_hourly_fixture()
     )
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     assert result.log_entry.meta.degradations == []
     assert [d.code for d in result.log_entry.earlier_issuances[0].degradations] == [
@@ -2466,10 +2506,10 @@ def test_run_daily_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path)
     assertion is the only thing standing between the result and a lie about the
     entry it just wrote.
     """
-    first = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    first = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert first.first_issuance is True
 
-    again = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    again = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert again.first_issuance is False
 
 
@@ -2496,7 +2536,7 @@ def test_the_baselines_are_predicted_and_stored(tmp_path):
     """Persistence and climatology enter the ledger through the same path as
     GFS, so the published figures have something to be read against."""
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     day0 = {p.model for p in result.log_entry.model_predictions.day0}
     assert "persistence" in day0
@@ -2514,7 +2554,7 @@ def test_persistence_repeats_yesterday_not_today(tmp_path):
     is forecasting would score near-perfectly and make every real model look
     hopeless, and nothing about the page would appear broken."""
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     cache = actuals_cache_store.read_actuals_cache(tmp_path)
     stored = actuals_cache_store.as_date_dict(cache.primary)
@@ -2533,7 +2573,7 @@ def test_the_forecaster_is_never_shown_a_baseline(tmp_path):
     an observation the forecaster already holds."""
     llm = FakeLLMProvider()
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     assert "persistence" not in predictions_block(user_prompt)
@@ -2555,7 +2595,7 @@ def test_a_baseline_with_nothing_to_stand_on_makes_no_prediction(tmp_path, monke
     monkeypatch.setattr(open_meteo, "fetch_archive_single_day", lambda *a, **k: empty)
     monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: empty)
 
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     day0 = {p.model for p in result.log_entry.model_predictions.day0}
     assert "persistence" not in day0
@@ -2570,7 +2610,7 @@ def test_no_baseline_reaches_the_prompt_through_any_block(tmp_path):
     prompt rather than any single section."""
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     # Both calls' instructions. Whether a rule reached the forecaster is a
     # question about the run; WHICH of the two calls carries it is
@@ -2585,10 +2625,10 @@ def test_a_re_issue_is_not_shown_a_baseline_either(tmp_path):
     """The re-issue path reads the day's STORED predictions, which DO contain
     the baselines. That is exactly how the blend leaked once."""
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     llm = FakeLLMProvider()
-    run_refresh_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     _, user_prompt = llm.calls[0]
     for baseline in BASELINE_MODEL_IDS:
@@ -2627,7 +2667,7 @@ def test_the_forward_window_is_fetched_before_the_optional_extras(tmp_path, monk
     monkeypatch.setattr(open_meteo, "fetch_synoptic_pressure",
                         _record("synoptic", {"points": []}))
 
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=True)
 
     assert seen.index("forward") < seen.index("daily")
     assert seen.index("forward") < seen.index("synoptic")
@@ -2645,14 +2685,14 @@ def test_a_failed_synoptic_fetch_is_recorded_rather_than_swallowed(tmp_path, mon
     monkeypatch.setattr(
         open_meteo, "fetch_synoptic_pressure", _raises(RuntimeError("Read timed out"))
     )
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     codes = [d.code for d in result.log_entry.meta.degradations]
     assert "synoptic_unavailable" in codes
 
 
 def test_a_working_synoptic_fetch_records_nothing(tmp_path):
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert "synoptic_unavailable" not in [
         d.code for d in result.log_entry.meta.degradations
     ]
@@ -2676,7 +2716,7 @@ def test_a_lost_forward_window_is_tried_once_more_later_in_the_run(tmp_path, mon
         return forward_hourly_fixture()
 
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", _flaky)
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     assert calls["n"] == 2, "the second attempt must actually be made"
     # And having succeeded, the run is NOT degraded: the reader gets the full
@@ -2692,7 +2732,7 @@ def test_the_retry_is_not_attempted_when_the_first_one_worked(tmp_path, monkeypa
         return forward_hourly_fixture()
 
     monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_forward", _ok)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert calls["n"] == 1
 
 
@@ -2701,7 +2741,7 @@ def test_both_attempts_failing_still_falls_back_and_says_so(tmp_path, monkeypatc
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", _raises(RuntimeError("Read timed out"))
     )
-    result = run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     assert "hours_ahead_narrowed" in [d.code for d in result.log_entry.meta.degradations]
 
@@ -2722,10 +2762,10 @@ def test_the_verification_block_hides_the_blend_and_the_baselines_too(tmp_path):
     what to do — which is the loop models_visible_to_the_forecaster exists to
     keep closed.
     """
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 12), dry_run=False)
 
     system_prompt, user_prompt = llm.calls[-1]
     assert "PRE-COMPUTED VERIFICATION RESULTS" in user_prompt
@@ -2771,13 +2811,13 @@ def test_a_note_naming_a_hidden_model_never_comes_back_as_context(tmp_path):
     # One contaminated day and one clean one, so the test can show the filter
     # is SELECTIVE. Dropping every note would satisfy a test that only looked
     # for the bad string.
-    run_daily_pipeline(
+    issue(
         make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 11), dry_run=False
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
 
     system_prompt, user_prompt = llm.calls[-1]
     # GUARD THE GUARD, and it is not decoration: the first version of this
@@ -2801,14 +2841,14 @@ def test_a_re_issue_drops_the_contaminated_note_too(tmp_path):
     """Both pipelines build HISTORICAL NOTES, and last time this rule broke
     it was because only run_daily_pipeline had the filter AND only
     run_daily_pipeline had the test. Same shape, so the same pair of tests."""
-    run_daily_pipeline(
+    issue(
         make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 11), dry_run=False
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
 
     llm = FakeLLMProvider()
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False
     )
 
@@ -2841,16 +2881,16 @@ def test_a_stored_summary_carrying_a_figure_never_comes_back(tmp_path):
     every percentage rather than choose. So a figure must not be stored,
     and one already stored must not be fed back.
     """
-    run_daily_pipeline(
+    issue(
         make_deps(tmp_path, llm=summarising_provider(
             "At Day+0, strong on timing, though highs run 63% of the time too warm."
         )),
         today=date(2026, 8, 11), dry_run=False,
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
     _, user_prompt = llm.calls[-1]
 
     assert "MODEL TRACK RECORD" in user_prompt
@@ -2862,14 +2902,14 @@ def test_a_figureless_summary_is_kept(tmp_path):
     """A filter, not a delete. The qualitative picture is the whole value and
     survives a cycle intact — it is only the numbers that go stale."""
     clean = "At Day+0, strong on precip timing and pressure, with highs running warm."
-    run_daily_pipeline(
+    issue(
         make_deps(tmp_path, llm=summarising_provider(clean)),
         today=date(2026, 8, 11), dry_run=False,
     )
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
 
     assert clean in llm.calls[-1][1]
 
@@ -2904,7 +2944,7 @@ def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
     pipeline.open_meteo.fetch_forecast_daily_extended = fail_extended
     pipeline.build_narrative_prompt = spy
     try:
-        result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+        result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_daily_extended = real
         pipeline.build_narrative_prompt = real_system
@@ -2990,7 +3030,7 @@ def test_the_lake_losing_its_outlook_degrades_too(tmp_path):
     pipeline.open_meteo.fetch_forecast_daily_extended = fail_secondary_only
     pipeline.build_narrative_prompt = spy
     try:
-        result = run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+        result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_daily_extended = real
         pipeline.build_narrative_prompt = real_system
@@ -3025,7 +3065,7 @@ def test_losing_today_is_still_fatal(tmp_path):
     pipeline.open_meteo.fetch_forecast_hourly_today = fail_today
     try:
         with pytest.raises(pipeline.open_meteo.OpenMeteoFetchError):
-            run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+            issue(deps, today=date(2026, 8, 11), dry_run=False)
     finally:
         pipeline.open_meteo.fetch_forecast_hourly_today = real
 
@@ -3066,12 +3106,12 @@ def test_a_corrected_notes_marker_reaches_the_prompt(tmp_path):
     # A note lands on day D when D+1 runs, so 8/11 is the day that has one
     # after these two — checked, not assumed; the helper refuses a day with
     # no note rather than letting the test pass against nothing.
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
     note = _mark_a_note_corrected(tmp_path, date(2026, 8, 11))
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
 
     _, user_prompt = llm.calls[-1]
     # GUARD THE GUARD. Asserting only that the date appears would pass on a
@@ -3090,13 +3130,13 @@ def test_a_re_issue_carries_the_marker_too(tmp_path):
     """Both pipelines project HISTORICAL NOTES by hand from identical
     literals, and the last rule to break here broke because only
     run_daily_pipeline had it AND only run_daily_pipeline had the test."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 13), dry_run=False)
     note = _mark_a_note_corrected(tmp_path, date(2026, 8, 12))
 
     llm = FakeLLMProvider()
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False
     )
 
@@ -3116,8 +3156,8 @@ def test_a_dropped_note_takes_its_correction_marker_with_it(tmp_path):
     """
     # The note for day D is written by the run on D+1, so the contaminated
     # provider has to be the one that VERIFIES 8/11, not the one that runs it.
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    run_daily_pipeline(
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(
         make_deps(tmp_path, llm=contaminated_provider()), today=date(2026, 8, 12), dry_run=False
     )
     note = _mark_a_note_corrected(tmp_path, date(2026, 8, 11))
@@ -3127,7 +3167,7 @@ def test_a_dropped_note_takes_its_correction_marker_with_it(tmp_path):
     )
 
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
 
     notes = notes_block(llm.calls[-1][1])
     assert "OLW blend" not in notes, "the note itself came back"
@@ -3141,7 +3181,7 @@ def test_the_entry_records_how_the_call_ended(tmp_path):
     model stopped or what it spent. When the question came the record could
     not answer it."""
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
     assert meta.finish_reason == "STOP"
@@ -3158,14 +3198,14 @@ def test_a_re_issue_records_its_own_call_not_the_mornings(tmp_path):
     the historical-notes projection, where only run_daily_pipeline had the
     change AND only run_daily_pipeline had the test.
     """
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     morning = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
     assert morning.output_tokens == 2_100
 
     evening = FakeLLMProvider()
     evening.finish_reason = "MAX_TOKENS"
     evening.output_tokens = 8_192
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
     )
 
@@ -3191,7 +3231,7 @@ def test_a_provider_that_reports_nothing_leaves_the_fields_unset(tmp_path):
             self.calls.append((system_prompt, user_prompt))
             return self.response
 
-    run_daily_pipeline(make_deps(tmp_path, llm=Silent()), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=Silent()), today=date(2026, 8, 11), dry_run=False)
 
     meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
     assert meta.finish_reason is None
@@ -3219,7 +3259,7 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     llm = FakeLLMProvider()
     llm.fail_narrative = LLMResponseError("Gemini request failed after 4 attempts")
 
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
@@ -3258,7 +3298,7 @@ def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
     llm.fail_judgment = LLMResponseError("Gemini request failed after 4 attempts")
 
     with pytest.raises(LLMResponseError):
-        run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+        issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
 
@@ -3271,7 +3311,7 @@ def test_a_first_issuance_records_that_it_had_nothing_to_move_from(tmp_path):
     Recorded as None rather than False, the same three-valued rule the rest of
     this record follows.
     """
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
     assert moved is not None, "the signals must be recorded even on a first run"
@@ -3287,8 +3327,8 @@ def test_a_first_issuance_records_that_it_had_nothing_to_move_from(tmp_path):
 
 def test_a_later_issuance_records_all_three_signals(tmp_path):
     """And a re-issue has a basis for all of them."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    pipeline.run_refresh_pipeline(
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(
         make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False
     )
 
@@ -3320,7 +3360,7 @@ def test_a_station_that_answers_and_agrees_records_an_EMPTY_list(tmp_path, monke
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
     assert moved.observation_disagreements == [], "looked, and nothing contradicted"
@@ -3351,12 +3391,12 @@ def test_rain_seen_while_the_standing_call_said_dry_is_recorded(tmp_path, monkey
 
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
-    run_daily_pipeline(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     raining["now"] = True
     refresh = make_deps(tmp_path)
     refresh.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
-    pipeline.run_refresh_pipeline(refresh, today=date(2026, 8, 11), dry_run=False)
+    issue(refresh, today=date(2026, 8, 11), dry_run=False)
 
     moved = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta.information_moved
     assert DISAGREEMENT_RAIN_WHILE_DRY in (moved.observation_disagreements or [])
@@ -3368,10 +3408,10 @@ def test_the_signals_change_nothing_yet(tmp_path):
     show how often each fires BEFORE anything is decided on them."""
     from openlocalweather.spend import read_ledger
 
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     before = len(read_ledger(tmp_path))
 
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False
     )
 
@@ -3387,7 +3427,7 @@ def test_the_entry_records_which_schema_permitted_the_answer(tmp_path):
     schema had anything to do with it means reading what was SENT beside
     what came back, and item 102 found the record could not say."""
     llm = FakeLLMProvider()
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     meta = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).meta
     assert meta.response_schema_sha256 == "a" * 64
@@ -3399,12 +3439,12 @@ def test_a_re_issue_records_the_schema_it_used(tmp_path):
     file keeps pairing them: every divergence found here so far has been a
     change that landed in run_daily_pipeline and not in run_refresh_pipeline,
     with the test following the change rather than the pair."""
-    run_daily_pipeline(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     evening = FakeLLMProvider()
     evening.response_schema_sha256 = "b" * 64
     evening.nullable_fields = ("/today_properties/air_quality_aqi",)
-    pipeline.run_refresh_pipeline(
+    issue(
         make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
     )
 

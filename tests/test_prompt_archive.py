@@ -19,13 +19,13 @@ from openlocalweather.store.prompt_archive import combined_prompt_sha256, prompt
 # live requests to api.open-meteo.com. Importing the fixture binds it into
 # this module's namespace, which is what makes it apply.
 from tests.test_pipeline_run import make_deps, patch_fetches  # noqa: F401
-from openlocalweather.pipeline import run_daily_pipeline
+from tests.test_pipeline_run import issue  # noqa: F401
 
 TODAY = date(2026, 8, 11)
 
 
 def test_a_real_run_archives_the_prompt_it_actually_sent(tmp_path):
-    run_daily_pipeline(make_deps(tmp_path), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path), today=TODAY, dry_run=False)
 
     issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
     assert len(issuances) == 1
@@ -51,7 +51,7 @@ def test_a_dry_run_archives_nothing(tmp_path):
     one. Grouped with the existing dry-run assertions in spirit: the reason
     this file exists at all is that a new write path is easy to add and easy
     to forget to gate."""
-    run_daily_pipeline(make_deps(tmp_path), today=TODAY, dry_run=True)
+    issue(make_deps(tmp_path), today=TODAY, dry_run=True)
 
     assert prompt_archive.read_prompt_archive(tmp_path, TODAY) == []
     assert not (tmp_path / "prompts").exists()
@@ -168,10 +168,10 @@ def test_the_evening_refresh_archives_its_own_prompt_not_the_mornings(tmp_path):
     from openlocalweather import pipeline
     from tests.test_pipeline_run import FakeLLMProvider
 
-    run_daily_pipeline(make_deps(tmp_path), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path), today=TODAY, dry_run=False)
 
     llm = FakeLLMProvider()
-    pipeline.run_refresh_pipeline(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
 
     issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
     assert len(issuances) == 2, "the morning issuance must survive the refresh"
@@ -211,13 +211,13 @@ def test_a_run_daily_re_issue_archives_its_own_prompt_too(tmp_path):
     """
     from tests.test_pipeline_run import FakeLLMProvider
 
-    run_daily_pipeline(make_deps(tmp_path), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path), today=TODAY, dry_run=False)
 
     llm = FakeLLMProvider()
     llm.response = llm.response.model_copy(
         update={"today_narrative": "## Overview\nSecond issuance."}
     )
-    run_daily_pipeline(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
+    issue(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
 
     issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
     assert len(issuances) == 2, "the morning's prompt must survive a re-issue"

@@ -1,6 +1,9 @@
 """Command-line entrypoint.
 
-`olw run-daily` is what .github/workflows/forecast.yml invokes. It reads
+`olw forecast` is what .github/workflows/forecast.yml invokes, and since
+ROADMAP item 104 step 4 it is the only verb that issues one — `run-daily`
+and `refresh-forecast` are gone, because which run of the day this is was
+never the operator's to choose. It reads
 secrets from the environment (never from CLI args, so they don't end up in
 shell history or process listings) and leaves git commit/push and any
 required approvals to the caller — see pipeline.py's module docstring for
@@ -61,10 +64,7 @@ from openlocalweather.pipeline import (
     ForecastSkipped,
     attach_spend_cap,
     PipelineDeps,
-    RefreshWithoutMorningRunError,
-    run_daily_pipeline,
     run_forecast,
-    run_refresh_pipeline,
 )
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
@@ -101,7 +101,7 @@ DEFAULT_DOCS_DIR = REPO_ROOT / "docs"
 CAP_FEED_TIMEOUT_S = 20
 
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
-# "high" by default for the actual forecast pipeline (run-daily,
+# "high" by default for the actual forecast pipeline (forecast,
 # refresh-forecast) — measured against the real production prompt, "high"
 # vs "low" is a real difference (4,235 vs 739 thinking tokens) and at
 # ~45K tokens/call against a 250K-token/run free-tier limit there's ample
@@ -304,39 +304,6 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     )
 
 
-def _run_daily(args: argparse.Namespace) -> int:
-    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
-    try:
-        result = run_daily_pipeline(deps, dry_run=args.dry_run)
-    except OpenMeteoFetchError as e:
-        print(f"Critical Error: pipeline aborted, a required weather fetch failed: {e}", file=sys.stderr)
-        return 1
-    except LLMResponseError as e:
-        print(f"Critical Error: pipeline aborted, the LLM call failed: {e}", file=sys.stderr)
-        return 1
-
-    _print_daily_result(result, args.dry_run)
-    return 0
-
-
-def _run_refresh(args: argparse.Namespace) -> int:
-    deps = _build_pipeline_deps(args.config, args.data_dir, args.docs_dir, args.public_url)
-    try:
-        result = run_refresh_pipeline(deps, dry_run=args.dry_run)
-    except RefreshWithoutMorningRunError as e:
-        print(f"Critical Error: {e}", file=sys.stderr)
-        return 1
-    except OpenMeteoFetchError as e:
-        print(f"Critical Error: refresh aborted, a required weather fetch failed: {e}", file=sys.stderr)
-        return 1
-    except LLMResponseError as e:
-        print(f"Critical Error: refresh aborted, the LLM call failed: {e}", file=sys.stderr)
-        return 1
-
-    _print_refresh_result(result, args.dry_run)
-    return 0
-
-
 # What kind of run this turned out to be, on its own line and first.
 #
 # A contract, not decoration: .github/workflows/forecast.yml greps for these
@@ -348,9 +315,9 @@ RUN_KIND_REISSUE = "run-kind: reissue"
 RUN_KIND_SKIPPED = "run-kind: skipped"
 
 
-def _print_daily_result(result, dry_run: bool) -> None:
+def _print_first_issuance(result, dry_run: bool) -> None:
     entry = result.log_entry
-    print(f"Pipeline run complete for {result.today} (dry_run={dry_run}).")
+    print(f"Forecast issued for {result.today} (dry_run={dry_run}).")
     print(f"  rain_expected:   {entry.rain_expected}")
     print(f"  temp:            {entry.temp_high_low_display}")
     print(f"  synoptic:        {entry.synoptic_pattern}")
@@ -362,9 +329,9 @@ def _print_daily_result(result, dry_run: bool) -> None:
         print(entry.narrative_markdown)
 
 
-def _print_refresh_result(result, dry_run: bool) -> None:
+def _print_re_issue(result, dry_run: bool) -> None:
     entry = result.log_entry
-    print(f"Refresh run complete for {result.today} (dry_run={dry_run}).")
+    print(f"Forecast re-issued for {result.today} (dry_run={dry_run}).")
     print(f"  rain_expected:   {entry.rain_expected}")
     print(f"  temp:            {entry.temp_high_low_display}")
     print(f"  synoptic:        {entry.synoptic_pattern}")
@@ -399,11 +366,11 @@ def _run_forecast(args: argparse.Namespace) -> int:
     # The RUN's own answer, not its type's — see pipeline.ForecastRunResult.
     if result.first_issuance:
         print(RUN_KIND_FIRST)
-        _print_daily_result(result, args.dry_run)
+        _print_first_issuance(result, args.dry_run)
         return 0
 
     print(RUN_KIND_REISSUE)
-    _print_refresh_result(result, args.dry_run)
+    _print_re_issue(result, args.dry_run)
     return 0
 
 
@@ -1083,38 +1050,6 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
 
-    run_daily = sub.add_parser(
-        "run-daily",
-        help="The day's FIRST run explicitly. Prefer `forecast`, which decides for itself.",
-    )
-    run_daily.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
-    run_daily.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
-    run_daily.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
-    run_daily.add_argument(
-        "--public-url",
-        default="",
-        help="Public GitHub Pages URL. Included in the LLM prompt; also enables GitHub Pages publishing if set.",
-    )
-    run_daily.add_argument(
-        "--dry-run", action="store_true", help="Run fetch/verify/LLM for real but skip writes, publish, and email."
-    )
-
-    refresh = sub.add_parser(
-        "refresh-forecast",
-        help="Optional same-day evening refresh — fresher narrative, morning's model_predictions preserved.",
-    )
-    refresh.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
-    refresh.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
-    refresh.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Path to the docs/ (GitHub Pages) directory")
-    refresh.add_argument(
-        "--public-url",
-        default="",
-        help="Public GitHub Pages URL. Included in the LLM prompt; also enables GitHub Pages publishing if set.",
-    )
-    refresh.add_argument(
-        "--dry-run", action="store_true", help="Run fetch/LLM for real but skip writes and publish."
-    )
-
     check_config = sub.add_parser("check-config", help="Load and validate a location.yaml, then exit.")
     check_config.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
 
@@ -1176,12 +1111,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "forecast":
         return _run_forecast(args)
-
-    if args.command == "run-daily":
-        return _run_daily(args)
-
-    if args.command == "refresh-forecast":
-        return _run_refresh(args)
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)
