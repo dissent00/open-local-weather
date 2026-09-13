@@ -1053,6 +1053,28 @@ def export_user_prompt() -> None:
                 "tomorrow",
             ],
         },
+        # A POPULATED WINDOWS LIST, because every other case here leaves the
+        # issuance out and renders the unavailable text — a port could format
+        # a real list any way it liked and still pass the set. Two entries so
+        # the separator is exercised, and the second is named by weekday
+        # exactly as forecast_windows names it at a dusk issuance.
+        forecast_windows=[
+            {
+                "name": "tonight (dusk, evening and overnight through to dawn)",
+                "start": "18:15",
+                "end": "06:40",
+                "crosses_midnight": True,
+                "label": "tonight (dusk, evening and overnight through to dawn) "
+                         "(18:15 to 06:40 next day)",
+            },
+            {
+                "name": "Thursday",
+                "start": "06:40",
+                "end": "24:00",
+                "crosses_midnight": False,
+                "label": "Thursday (06:40-24:00)",
+            },
+        ],
         forward_hourly={"hourly": {"time": ["2026-08-19T18:00"], "precipitation_gfs_seamless": [0.4]}},
         # A re-issue whose observed cycle has moved on since the morning:
         # newer_than_previous_issuance true, real news to narrate.

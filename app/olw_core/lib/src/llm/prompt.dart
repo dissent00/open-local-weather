@@ -534,6 +534,23 @@ String issuedLine(Object? issuance) {
       'WHAT MATTERS NOW: $horizon.';
 }
 
+const String forecastWindowsGap =
+    'Unavailable — the periods could not be placed on the clock this run. '
+    'Name a period only as the ISSUED line names it, and do not attach hours '
+    'to it.';
+
+/// The periods this issuance covers, each with the hours it means.
+///
+/// ROADMAP item 104. The horizon on the ISSUED line says WHICH periods matter
+/// and has never said when they start or stop, so "today" meant eighteen hours
+/// at 06:01 and two at 22:01 with nothing in the prompt distinguishing them. A
+/// run can happen at any time, so the words have to carry their bounds.
+String forecastWindowsBlock(List<Map<String, Object?>>? windows) {
+  if (windows == null || windows.isEmpty) return forecastWindowsGap;
+
+  return windows.map((w) => '- ${w['label']}').join('\n');
+}
+
 String buildUserPrompt({
   required DateTime today,
   required DateTime yesterday,
@@ -549,6 +566,10 @@ String buildUserPrompt({
   String? extendedTrend,
   String? windDirection,
   String? windShift,
+
+  /// The periods this issuance covers, each with the clock hours it means —
+  /// composed by `forecastWindows`. See [_forecastWindowsBlock].
+  List<Map<String, Object?>>? forecastWindows,
   required Map<String, Object?> todayWeatherData,
   required String localBulletinSourceName,
   required String localBulletinText,
@@ -640,6 +661,9 @@ $localBulletinText'''
 Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Public Webpage: $publicWebpageUrl
 
 ISSUED: ${issuedLine(issuance)}
+
+FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
+${forecastWindowsBlock(forecastWindows)}
 
 HOURS AHEAD (${_forwardWindowScope(forwardHourly, forwardWindowNarrowed)}):
 ${forwardHourly == null ? 'Unavailable this run.' : promptJson(forwardHourly)}

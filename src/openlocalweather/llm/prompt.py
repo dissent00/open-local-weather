@@ -543,6 +543,31 @@ def _issued_line(issuance: Any) -> str:
     )
 
 
+FORECAST_WINDOWS_GAP = (
+    "Unavailable — the periods could not be placed on the clock this run. "
+    "Name a period only as the ISSUED line names it, and do not attach hours "
+    "to it."
+)
+
+
+def _forecast_windows_block(windows: Any) -> str:
+    """The periods this issuance covers, each with the hours it means.
+
+    ROADMAP item 104. The horizon on the ISSUED line says WHICH periods
+    matter and has never said when they start or stop, so "today" meant
+    eighteen hours at 06:01 and two at 22:01 with nothing in the prompt
+    distinguishing them. A run can happen at any time, so the words have to
+    carry their bounds.
+
+    Composed in `daypart.forecast_windows` and rendered here, like every other
+    pre-computed block: the arithmetic is not the model's to redo.
+    """
+    if not windows:
+        return FORECAST_WINDOWS_GAP
+
+    return "\n".join(f"- {w['label']}" for w in windows)
+
+
 def build_user_prompt(
     today: date,
     yesterday: date,
@@ -570,6 +595,7 @@ def build_user_prompt(
     extended_trend: str | None = None,
     wind_direction: str | None = None,
     wind_shift: str | None = None,
+    forecast_windows: Any = None,
 ) -> str:
     """Assembles the per-run user message. All the `*_context`/`*_data`
     parameters accept plain JSON-serializable structures (dicts/lists/
@@ -679,6 +705,9 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
 Today's Date: {today.isoformat()} | Yesterday: {yesterday.isoformat()} | Public Webpage: {public_webpage_url}
 
 ISSUED: {_issued_line(issuance)}
+
+FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
+{_forecast_windows_block(forecast_windows)}
 
 HOURS AHEAD ({_forward_window_scope(forward_hourly, forward_window_narrowed)}):
 {_json(forward_hourly) if forward_hourly is not None else "Unavailable this run."}

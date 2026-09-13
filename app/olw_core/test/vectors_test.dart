@@ -868,6 +868,9 @@ void main() {
               ?.map((e) => (e as Map).cast<String, Object?>())
               .toList(),
           issuance: i['issuance'],
+          forecastWindows: (i['forecast_windows'] as List?)
+              ?.map((e) => (e as Map).cast<String, Object?>())
+              .toList(),
           forwardHourly: i['forward_hourly'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],

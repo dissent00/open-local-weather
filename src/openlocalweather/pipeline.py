@@ -49,7 +49,7 @@ from __future__ import annotations
 import hashlib
 import sys
 from dataclasses import asdict, dataclass, field, replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -74,6 +74,7 @@ from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.daypart import (
     DayPart,
     daypart_without_sun,
+    forecast_windows,
     forward_hours,
     reconcile_now,
     summarize_daypart,
@@ -578,6 +579,58 @@ def _issued_hour(issuance: DayPart | None) -> int:
         return 24
 
 
+def _issuance_windows(issuance: DayPart | None, today: date) -> tuple:
+    """The issuance's named periods with explicit clock bounds.
+
+    Empty when the moment could not be established, for the same reason
+    `_issued_hour` returns 24 there: a run that cannot say what hour it is has
+    no business telling a reader which hours a period covers. The prompt
+    renders that as unavailable and asks for no hours at all, rather than
+    offering bounds computed from a clock nobody trusts.
+
+    The DayPart carries clock times and no date, so `today` supplies it — and
+    it must be the LOCATION's date, which is what the pipeline means by
+    `today`, never the runner's. A run at 03:02 UTC is already tomorrow in
+    Kisumu, so a date taken from the host clock would put every window on the
+    wrong day and name the wrong weekday with it. Same rule the sandbox sweep
+    states for its filenames, one layer down.
+    """
+    if issuance is None:
+        return ()
+
+    now = _issuance_moment(issuance, today)
+    if now is None:
+        return ()
+
+    sunrise = _clock_on(now, getattr(issuance, "sunrise", None))
+    sunset = _clock_on(now, getattr(issuance, "sunset", None))
+    next_sunrise = None if sunrise is None else sunrise + timedelta(days=1)
+
+    return forecast_windows(now, sunrise, sunset, issuance.horizon, next_sunrise)
+
+
+def _issuance_moment(issuance: DayPart, today: date) -> datetime | None:
+    """The issuance as a datetime on the location's own date, or None when its
+    clock cannot be read."""
+    try:
+        hour, minute = (int(part) for part in issuance.local_time.split(":")[:2])
+    except (AttributeError, ValueError, IndexError):
+        return None
+
+    return datetime(today.year, today.month, today.day, hour, minute)
+
+
+def _clock_on(day: datetime, hhmm: str | None) -> datetime | None:
+    if not hhmm:
+        return None
+    try:
+        hour, minute = (int(part) for part in hhmm.split(":")[:2])
+    except (ValueError, IndexError):
+        return None
+
+    return day.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+
 def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: date) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
@@ -623,6 +676,10 @@ def _locked_blocks(guidance: ForwardGuidance, day0_predictions: list, today: dat
     ]
 
     return {
+        # The periods this issuance covers, each with the hours it means —
+        # item 104. Derived from the issuance's own horizon, so the prompt
+        # cannot name a period the phase did not call for.
+        "forecast_windows": [w.to_json() for w in _issuance_windows(guidance.issuance, today)],
         "extended_trend": describe_extended_trend(
             today_high_c=_mean_of([p.high_c for p in day0_predictions]),
             day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
