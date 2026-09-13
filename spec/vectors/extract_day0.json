@@ -432,6 +432,51 @@
       ]
     },
     {
+      "name": "cloud accumulation uses compensated summation",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-08-11T12:00",
+              "2026-08-11T13:00",
+              "2026-08-11T14:00"
+            ],
+            "precipitation_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "cloud_cover_gfs_seamless": [
+              1e+16,
+              1.0,
+              -1e+16
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless"
+        ],
+        "threshold": 0.5
+      },
+      "expected": [
+        {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.0,
+          "rain_probability_pct": null,
+          "wind_kmh": null,
+          "high_c": null,
+          "low_c": null,
+          "cloud_cover_pct": 0.3,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ]
+    },
+    {
       "name": "empty payload yields no predictions",
       "input": {
         "hourly_multi_model": {},

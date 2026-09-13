@@ -441,6 +441,13 @@ def export_extract() -> None:
             "pressure_msl_gfs_seamless": [1010.0, 1010.0],
         }
     }
+    hourly_cloud_sum = {
+        "hourly": {
+            "time": ["2026-08-11T12:00", "2026-08-11T13:00", "2026-08-11T14:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "cloud_cover_gfs_seamless": [1e16, 1.0, -1e16],
+        }
+    }
 
     # The shape that hid a real bug for months: a key that is present and
     # correctly named but ALL-NULL, with the real data under a later
@@ -541,6 +548,11 @@ def export_extract() -> None:
             "name": "a day that rained without a heavy hour is still a rain day",
             "input": {"hourly_multi_model": hourly_spread, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
             "expected": dump(extract_day0_predictions_from_hourly(hourly_spread, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
+        },
+        {
+            "name": "cloud accumulation uses compensated summation",
+            "input": {"hourly_multi_model": hourly_cloud_sum, "models": ["gfs_seamless"], "threshold": RAIN_THRESHOLD_MM},
+            "expected": dump(extract_day0_predictions_from_hourly(hourly_cloud_sum, ["gfs_seamless"], RAIN_THRESHOLD_MM)),
         },
         {
             "name": "empty payload yields no predictions",

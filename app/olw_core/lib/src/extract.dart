@@ -2,6 +2,7 @@
 // Copyright 2026 dissent00
 import 'models.dart';
 import 'rounding.dart';
+import 'sums.dart';
 
 /// Default rain threshold in mm, matching Python's `RAIN_THRESHOLD_MM`.
 /// Used consistently for both "did it rain" scoring and onset detection.
@@ -104,7 +105,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
     // because it is the only rule that CAN apply at every lead: the extended
     // forecast comes from a daily endpoint with no hours to take a peak over.
     final bool? rain = hasPrecipData
-        ? precip.fold<double>(0, (a, v) => a + (v ?? 0)) >= threshold
+        ? compensatedSum(precip.map((v) => v ?? 0)) >= threshold
         : null;
     // Onset still asks about an HOUR, deliberately, so a day whose rain never
     // concentrated returns rain=true with no onset — which the scorer handles,
@@ -147,7 +148,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       cloudCoverPct: cloudVals.isEmpty
           ? null
           : roundLikePython(
-              cloudVals.fold<double>(0, (a, v) => a + v) / cloudVals.length, 1),
+              compensatedSum(cloudVals) / cloudVals.length, 1),
       // THE PEAK, not a mean — see ModelPrediction.peakCapeJkg. An all-null
       // series is null rather than 0.0, because zero CAPE is a confident
       // claim of stable air and no data is not.
@@ -158,7 +159,7 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       // answers and the summary must not conflate them.
       precipMm: hasPrecipData
           ? roundLikePython(
-              precip.where((v) => v != null).fold<double>(0, (a, v) => a + v!), 2)
+              compensatedSum(precip.whereType<double>()), 2)
           : null,
     );
   }).toList();
