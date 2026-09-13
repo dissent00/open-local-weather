@@ -79,3 +79,26 @@ location:
   # Optional local met-service bulletin. Leave "" to skip gracefully.
   local_bulletin_url: ""
   local_bulletin_source_name: ""
+
+  # When a LATER issuance of a day may spend an LLM call — ROADMAP item 121.
+  #
+  # Observations refresh on EVERY run regardless, composed in code and for
+  # free, so an hourly cron always tells a reader what the station has seen.
+  # This governs only whether the judgment and the narrative are re-reasoned.
+  #
+  #   new_cycle_only   (default) chase model runs. A run that finds the same
+  #                    cycle behind its guidance refreshes the observations
+  #                    and buys nothing. The prose stays the prose of the
+  #                    last real forecast.
+  #   always           what every run did before item 121 — re-reason on
+  #                    every issuance, so the daypart framing is never stale.
+  #                    A forecast written at 06:00 does read oddly by dusk.
+  #   new_cycle_or_contradiction
+  #                    also re-forecasts when an observation CONTRADICTS the
+  #                    standing call. Not the default, and the reason is a
+  #                    measurement nobody has taken: the temperature margin
+  #                    it fires on is still a conservative guess.
+  #
+  # Note this is orthogonal to max_llm_calls_per_24h, which is a hard
+  # ceiling. This decides whether a particular run deserves to spend at all.
+  llm_refresh_policy: "new_cycle_only"
