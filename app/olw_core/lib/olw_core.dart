@@ -21,6 +21,7 @@ export 'src/coverage.dart';
 export 'src/baselines.dart';
 export 'src/brier.dart';
 export 'src/cycle.dart';
+export 'src/claims.dart';
 export 'src/dates.dart';
 export 'src/disagreement.dart';
 export 'src/extract.dart';

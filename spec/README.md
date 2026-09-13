@@ -95,6 +95,7 @@ absent values are `null`, never omitted keys.
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
 | `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |
+| `false_weekday_claims.json` | `false_weekday_claims` | Weekday/date pairings a narrative asserts that the calendar contradicts. Recorded against the entry and published anyway; a false alarm is worse than the defect. |
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 44 |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |

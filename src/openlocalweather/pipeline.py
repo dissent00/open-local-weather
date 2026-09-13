@@ -151,6 +151,7 @@ from openlocalweather.disagreement import (
     StandingCall,
     observation_disagreements,
 )
+from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
     InformationMoved,
     DEGRADATION_NARRATIVE,
@@ -170,6 +171,7 @@ from openlocalweather.models import (
     LogEntryMeta,
     ModelPrediction,
     ModelPredictionsByLead,
+    NarrativeFinding,
     RunDegradation,
     TrackRecord,
     format_temp_high_low,
@@ -394,6 +396,26 @@ def _combined_meta(judgment: ResponseMeta, narrative: ResponseMeta) -> ResponseM
         response_schema_sha256=combined_sha,
         nullable_fields=nullable,
     )
+
+
+def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
+    """What the published prose asserts that a machine could check and found
+    false — see claims.py.
+
+    RECORDED, NOT ENFORCED. The run publishes either way: the operator's call
+    on 2026-09-13 was that discarding a narrative over one wrong weekday costs
+    the reader more than the error does. So the value of this field is the
+    COUNT over time — it says whether `forward_calendar` closed the gap, and
+    whether anything stronger than recording is ever worth buying.
+
+    `[]` is a real answer and is stored as one. An entry whose findings are
+    None was written before the check existed, and is unchecked rather than
+    clean.
+    """
+    return [
+        NarrativeFinding(**finding)
+        for finding in false_weekday_claims(llm_response.today_narrative or "", today)
+    ]
 
 
 def _generate_forecast(
@@ -2122,6 +2144,7 @@ def run_daily_pipeline(
             output_tokens=_response_meta(_last_response).output_tokens,
             response_schema_sha256=_response_meta(_last_response).response_schema_sha256,
             nullable_fields=_nullable_fields(_last_response),
+            narrative_findings=_narrative_findings(llm_response, today),
             information_moved=_information_moved(
                 guidance, existing_entry, _observed_so_far(location, today)
             ),
@@ -2622,6 +2645,12 @@ def run_refresh_pipeline(
                         _last_response
                     ).response_schema_sha256,
                     "nullable_fields": _nullable_fields(_last_response),
+                    # THIS issuance's prose, checked. The morning's findings
+                    # travelled into earlier_issuances with its narrative, and
+                    # leaving them here would report an evening that is clean
+                    # as false for ever — the same split degradations get
+                    # three fields up.
+                    "narrative_findings": _narrative_findings(llm_response, today),
                     "information_moved": _information_moved(
                         guidance, existing_entry, _observed_so_far(location, today)
                     ),

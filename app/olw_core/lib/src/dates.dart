@@ -70,10 +70,11 @@ const int calendarDays = 7;
 /// Each day from today forward, with its date and its day name.
 ///
 /// THE MODEL WAS DOING THIS ARITHMETIC AND GETTING IT WRONG. Measured across
-/// the upstream published record on 2026-09-13: of 24 weekday/date pairings
-/// the narratives assert, 4 are false — two runs each published "Sunday,
-/// August 17" and "Monday, August 18" when the 17th was a Monday and the 18th
-/// a Tuesday, both off by exactly one day, and nothing noticed.
+/// the upstream published record on 2026-09-13: of 39 weekday/date pairings
+/// the narratives assert, 7 are false, on four separate days — three runs
+/// published "Sunday, August 17" when the 17th was a Monday, and another
+/// "Sunday, September 7th" when the 7th was a Monday. Every one is off by
+/// exactly one day and nothing noticed.
 ///
 /// The dates were never missing; the daily payload carries them as ISO strings
 /// out to Day+7. What the model had to do was map a date to a weekday, and

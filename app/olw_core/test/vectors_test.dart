@@ -1173,6 +1173,15 @@ void main() {
       }
     });
 
+    test('a false weekday claim is found exactly where Python finds one', () {
+      for (final c in loadVectors('false_weekday_claims.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = falseWeekdayClaims(
+            i['text'] as String, DateTime.parse(i['today'] as String));
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('the calendar pairs each date with the day Python names', () {
       for (final c in loadVectors('forward_calendar.json')['cases'] as List) {
         final i = (c as Map)['input'] as Map;
@@ -1348,6 +1357,7 @@ void main() {
       'daypart.json',
       'forecast_windows.json',
       'forward_calendar.json',
+      'false_weekday_claims.json',
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',

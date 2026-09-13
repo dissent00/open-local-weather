@@ -576,6 +576,31 @@ DEGRADATION_SECONDARY_EXTENDED_OUTLOOK = "secondary_extended_outlook_unavailable
 DEGRADATION_NARRATIVE = "narrative_unavailable"
 
 
+class NarrativeFinding(BaseModel):
+    """Something a machine could check in the published prose, and found wrong.
+
+    DELIBERATELY NOT A RunDegradation. That class is for a block the prompt
+    expects and did not get, and its own docstring warns that widening it
+    would make the field mean nothing within a week. A degradation says the
+    run had less to work with; this says the run had everything and the answer
+    was still false. Two different facts, and the record keeps them apart —
+    the same separation "no met service configured" and "the met service did
+    not answer" already get.
+
+    THE RUN STILL PUBLISHES. Operator's call, 2026-09-13: discarding a whole
+    narrative over one wrong weekday costs the reader more than the error
+    does. So this is a record, not a gate, and its count is the evidence for
+    whether anything stronger is ever worth buying.
+    """
+
+    # Which check found it — see claims.CLAIM_*.
+    kind: str
+    # The text as written, so a reader of the record can find it in the prose.
+    quote: str
+    # What is actually true, in a sentence.
+    detail: str
+
+
 class RunDegradation(BaseModel):
     """One block the prompt expects that arrived absent, narrowed or unread.
 
@@ -715,6 +740,13 @@ class LogEntryMeta(BaseModel):
     # to report these leaves both None rather than guessing.
     response_schema_sha256: str | None = None
     nullable_fields: list[str] | None = None
+    # What the narrative asserted that a machine could check and found false —
+    # see claims.py. Three-valued like `degradations` and `nullable_fields`:
+    # None means the entry predates the check, and `[]` means it ran and found
+    # nothing. An entry from before 2026-09-13 saying None is not a clean run;
+    # it is an unchecked one, and seven false pairings are already in the
+    # record behind it.
+    narrative_findings: list[NarrativeFinding] | None = None
     # Whether this issuance had anything new to say — ROADMAP item 104, C2.
     # None on entries written before 2026-09-12; see InformationMoved.
     information_moved: InformationMoved | None = None

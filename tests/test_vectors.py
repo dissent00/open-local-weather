@@ -45,6 +45,7 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.aqi import last_known_ground_aqi
+from openlocalweather.claims import false_weekday_claims
 from openlocalweather.comparison import (
     compute_day_over_day,
     describe_day_over_day,
@@ -736,6 +737,7 @@ def test_every_vector_file_is_exercised():
         "dates.json",
         "weekday_name.json",
         "forward_calendar.json",
+        "false_weekday_claims.json",
         "dates_add_days.json",
         "scoring_score_prediction.json",
         "scoring_mean.json",
@@ -852,6 +854,13 @@ def test_vectors_solar():
             i["lat"], i["lon"], date.fromisoformat(i["day"]), i["utc_offset_seconds"]
         )
         assert got.to_json() == c["expected"], c["name"]
+
+
+def test_vectors_false_weekday_claims():
+    for c in load("false_weekday_claims.json")["cases"]:
+        i = c["input"]
+        got = false_weekday_claims(i["text"], date.fromisoformat(i["today"]))
+        check(c, got)
 
 
 def test_vectors_forward_calendar():

@@ -177,6 +177,61 @@ def export_weekday_name() -> None:
     )
 
 
+def export_false_weekday_claims() -> None:
+    """The pairings a narrative asserts, checked against the calendar.
+
+    Every case here is drawn from something real or from a boundary that would
+    produce a FALSE ALARM, which is the failure that matters most: a check
+    nobody trusts is a check nobody reads. The year-end case is the one to keep
+    — "Saturday, 2 January" written on 29 December is correct, and a naive
+    implementation that resolved it against the run's own year would call it
+    wrong.
+    """
+    from openlocalweather.claims import false_weekday_claims
+
+    cases = []
+    for label, today, text in [
+        # The run that prompted this. 2026-09-16 is a Wednesday.
+        ("the case that prompted it", "2026-09-13",
+         "Monday (16 September) is expected to see scattered rainfall."),
+        # Both historical forms, including the ordinal that the first scan missed.
+        ("published 2026-08-11", "2026-08-11",
+         "Rain clears by Sunday, August 17 and returns Monday, August 18."),
+        ("ordinal suffix", "2026-08-13",
+         "A drier spell arrives Sunday, August 17th."),
+        # Correct pairings must pass silently.
+        ("correct, day first", "2026-09-13", "Wednesday (16 September) stays dry."),
+        ("correct, month first", "2026-09-13", "Expect showers Monday, September 14."),
+        ("correct, ISO", "2026-09-13", "Rain on Monday, 2026-09-14."),
+        # Year boundary, both directions. Neither is an error.
+        ("crosses into next year", "2026-12-29", "Rain returns Saturday, 2 January."),
+        ("crosses from last year", "2027-01-02", "Drier than Tuesday, 29 December."),
+        # A weekday with no date attached is not checkable and must not fire.
+        ("weekday alone", "2026-09-13", "Rain becomes likely by Wednesday."),
+        # A date with no weekday, likewise.
+        ("date alone", "2026-09-13", "Totals reach 23 mm by 20 September."),
+        # 29 February in a non-leap year resolves to nothing; it must not raise.
+        ("impossible date", "2026-02-25", "Snow on Sunday, 29 February."),
+        ("nothing at all", "2026-09-13", "A quiet day with light winds."),
+    ]:
+        cases.append(
+            {
+                "name": label,
+                "input": {"today": today, "text": text},
+                "expected": false_weekday_claims(text, date.fromisoformat(today)),
+            }
+        )
+    write(
+        "false_weekday_claims.json",
+        "false_weekday_claims",
+        "Weekday/date pairings a narrative asserts that the calendar "
+        "contradicts. Recorded against the entry and published anyway. A false "
+        "alarm is worse than the defect, so the correct and the unresolvable "
+        "cases matter as much as the wrong ones.",
+        cases,
+    )
+
+
 def export_forward_calendar() -> None:
     """The date/day-name pairings the prompt hands over finished.
 
@@ -3783,6 +3838,7 @@ def main() -> None:
     export_dates()
     export_weekday_name()
     export_forward_calendar()
+    export_false_weekday_claims()
     export_scoring()
     export_extract()
     export_aqi()

@@ -97,11 +97,19 @@ def forward_calendar(today: date, days: int = CALENDAR_DAYS) -> list[dict]:
     """Each day from today forward, with its date and its day name.
 
     THE MODEL WAS DOING THIS ARITHMETIC AND GETTING IT WRONG. Measured across
-    the published record on 2026-09-13: of 24 weekday/date pairings the
-    narratives assert, 4 are false — 2026-08-11 and 2026-08-12 each published
-    "Sunday, August 17" and "Monday, August 18" when the 17th was a Monday and
-    the 18th a Tuesday, both off by exactly one day, and nothing noticed. A
-    2026-09-13 run called 16 September a Monday; it is a Wednesday.
+    the published record on 2026-09-13: of 39 weekday/date pairings the
+    narratives assert, 7 are false, on four separate days — 2026-08-11, 08-12
+    and 08-13 published "Sunday, August 17" when the 17th was a Monday, and
+    2026-09-04 published "Sunday, September 7th" when the 7th was a Monday.
+    Every one is off by exactly one day and nothing noticed. A 2026-09-13 run
+    called 16 September a Monday; it is a Wednesday.
+
+    THE FIRST COUNT OF THIS WAS ITSELF WRONG, and the way it was wrong is worth
+    keeping: a quick scan written to size the problem said 4 of 24, because its
+    pattern did not match an ordinal suffix and "Sunday, September 7th" slipped
+    past it. The checker in `claims` is what produced the real figure, and the
+    tool that measures it now shares that module rather than carrying a second
+    copy of the pattern.
 
     The dates were never missing — the daily payload carries them as ISO
     strings out to Day+7. What the model had to do was map a date to a weekday,

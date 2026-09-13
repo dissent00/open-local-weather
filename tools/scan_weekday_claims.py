@@ -1,59 +1,75 @@
+#!/usr/bin/env python3
 """Weekday/date pairings the published narratives assert, checked against the
 calendar — every stored entry, every issuance.
 
 WHY THIS EXISTS. The model was doing calendar arithmetic and getting it wrong,
-and nothing anywhere noticed: run from data/log/ on 2026-09-13 it found 4 false
-pairings out of 24, on 2026-08-11 and 2026-08-12, each off by exactly one day.
-`dates.forward_calendar` now hands the pairings over finished so the model has
-no arithmetic left to do. This is how you check whether that worked — re-run it
-after a few weeks of forecasts and the count should stay at those 4, which are
-history and cannot be unpublished.
+and nothing anywhere noticed. `dates.forward_calendar` now hands the pairings
+over finished so there is no arithmetic left to do, and `claims` checks each
+run before it publishes. This is how you check whether that worked: re-run it
+after a few weeks and the count should stay where it is, because the entries
+below are history and cannot be unpublished.
+
+IT SHARES THE CHECKER RATHER THAN CARRYING ITS OWN PATTERN, and that is not
+tidiness. The first version of this file had its own regex, and it missed an
+ordinal suffix — "Sunday, September 7th" — so it reported 4 false pairings when
+there were 7, and undercounted the days affected from four to two. A second
+implementation of a check is a second answer to the same question.
 
 Read-only. Prints; writes nothing.
 
   python tools/scan_weekday_claims.py
 """
-import json, re, glob, datetime, sys
 
-WEEKDAYS = ("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday")
-MONTHS = {m: i for i, m in enumerate(
-    ("January","February","March","April","May","June","July","August",
-     "September","October","November","December"), start=1)}
+from __future__ import annotations
 
-# "Monday (16 September)", "Monday, 16 September", "Monday 16 September"
-PAIR = re.compile(
-    rf"\b({'|'.join(WEEKDAYS)})\b[\s,(]+(\d{{1,2}})\s+({'|'.join(MONTHS)})\b")
-# "Monday (September 16)"
-PAIR_US = re.compile(
-    rf"\b({'|'.join(WEEKDAYS)})\b[\s,(]+({'|'.join(MONTHS)})\s+(\d{{1,2}})\b")
+import glob
+import json
+import sys
+from datetime import date
+from pathlib import Path
 
-def narratives(entry):
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from openlocalweather import claims  # noqa: E402
+
+
+def _narratives(entry: dict):
     yield "current", entry.get("narrative_markdown") or ""
-    for i, iss in enumerate(entry.get("earlier_issuances") or []):
-        yield f"earlier[{i}]", (iss or {}).get("narrative_markdown") or ""
+    for index, issuance in enumerate(entry.get("earlier_issuances") or []):
+        yield f"earlier[{index}]", (issuance or {}).get("narrative_markdown") or ""
 
-checked = wrong = 0
-findings = []
-for path in sorted(glob.glob("data/log/*.json")):
-    entry = json.load(open(path))
-    year = int(entry["date"][:4])
-    for which, text in narratives(entry):
-        for rx, order in ((PAIR, "dm"), (PAIR_US, "md")):
-            for m in rx.finditer(text):
-                name = m.group(1)
-                day, month = (m.group(2), m.group(3)) if order == "dm" else (m.group(3), m.group(2))
-                try:
-                    d = datetime.date(year, MONTHS[month], int(day))
-                except ValueError:
-                    continue
-                checked += 1
-                actual = WEEKDAYS[d.weekday()]
-                if actual != name:
-                    wrong += 1
-                    findings.append((entry["date"], which, m.group(0).strip(), actual))
 
-print(f"entries scanned: {len(glob.glob('data/log/*.json'))}")
-print(f"weekday/date pairings asserted: {checked}")
-print(f"WRONG: {wrong}")
-for date, which, text, actual in findings:
-    print(f"  {date} {which:<12} {text!r} -> {date[:4]} says {actual}")
+def _pairings(text: str) -> int:
+    """How many pairings were asserted at all — the denominator."""
+    return sum(
+        len(pattern.findall(text))
+        for pattern in (claims._DAY_FIRST, claims._MONTH_FIRST, claims._ISO)
+    )
+
+
+def main() -> int:
+    asserted = 0
+    findings: list[tuple[str, str, dict]] = []
+    paths = sorted(glob.glob(str(ROOT / "data" / "log" / "*.json")))
+
+    for path in paths:
+        entry = json.loads(Path(path).read_text())
+        today = date.fromisoformat(entry["date"])
+        for which, text in _narratives(entry):
+            asserted += _pairings(text)
+            for finding in claims.false_weekday_claims(text, today):
+                findings.append((entry["date"], which, finding))
+
+    print(f"entries scanned: {len(paths)}")
+    print(f"weekday/date pairings asserted: {asserted}")
+    share = f" ({len(findings) / asserted * 100:.0f}%)" if asserted else ""
+    print(f"FALSE: {len(findings)}{share}")
+    for day, which, finding in findings:
+        print(f"  {day}  {which:<12} {finding['quote']!r} — {finding['detail']}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
