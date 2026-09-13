@@ -203,7 +203,7 @@ def test_uneven_model_coverage_is_reported_not_averaged_away():
     # poor_model stops reaching this lead time half way through the record.
     for i, d in enumerate(sorted(logs, reverse=True)):
         if i >= 6:
-            preds = logs[d].model_predictions.day0
+            preds = scored_predictions(logs[d]).day0
             logs[d].model_predictions.day0 = [p for p in preds if p.model != "poor_model"]
 
     r = review_of(logs, actuals)
@@ -254,6 +254,7 @@ def test_a_newly_added_model_does_not_erase_the_existing_record():
 # ---------------------------------------------------------------------------
 
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
+from openlocalweather.verify.scoring import scored_predictions
 
 
 def build_history_with_baseline(days: int, good_hits: int, poor_hits: int, base_hits: int):
@@ -536,7 +537,7 @@ def test_sufficiency_does_not_deny_a_ranking_the_review_itself_publishes():
     for i, d in enumerate(sorted(logs, reverse=True)):
         if i < 5:
             logs[d].model_predictions.day0 = [
-                *logs[d].model_predictions.day0,
+                *scored_predictions(logs[d]).day0,
                 ModelPrediction(model="thin_model", rain=True, high_c=26.0, low_c=18.0),
             ]
 
@@ -635,7 +636,7 @@ def test_a_cloud_finding_cannot_borrow_the_rain_record_s_sample_size():
         actuals[d] = DailyActual(
             rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0
         )
-        for p in logs[d].model_predictions.day0:
+        for p in scored_predictions(logs[d]).day0:
             p.cloud_cover_pct = None
 
     r = review_of(logs, actuals)
@@ -711,7 +712,7 @@ def _drop_poor_model_after(logs, keep: int):
     """poor_model stops reaching Day+0 after its `keep` most recent days."""
     for i, d in enumerate(sorted(logs, reverse=True)):
         if i >= keep:
-            preds = logs[d].model_predictions.day0
+            preds = scored_predictions(logs[d]).day0
             logs[d].model_predictions.day0 = [p for p in preds if p.model != "poor_model"]
     return logs
 

@@ -38,6 +38,7 @@ from openlocalweather.solar import SunTimes, sun_times as real_sun_times
 from openlocalweather.pipeline import PipelineDeps
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
+from openlocalweather.verify.scoring import scored_predictions
 
 LOCATION = LocationConfig(
     region_name="Test Region",
@@ -309,7 +310,7 @@ def test_real_run_writes_log_entry_and_track_record(tmp_path):
 def test_today_entry_carries_extracted_model_predictions(tmp_path):
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=False)
-    day0 = result.log_entry.model_predictions.day0
+    day0 = scored_predictions(result.log_entry).day0
 
     # Every extracted model, PLUS our own blended call — the forecast the
     # reader actually gets, scored as a peer of the guidance that fed it —
@@ -319,11 +320,11 @@ def test_today_entry_carries_extracted_model_predictions(tmp_path):
     # and there is no structured equivalent to score further out. The
     # baselines reach every lead, because a yardstick that stops at Day+0
     # cannot say whether the extended outlook is worth anything.
-    assert {p.model for p in result.log_entry.model_predictions.day3} == {
+    assert {p.model for p in scored_predictions(result.log_entry).day3} == {
         *MODELS,
         *BASELINE_MODEL_IDS,
     }
-    assert {p.model for p in result.log_entry.model_predictions.day7} == {
+    assert {p.model for p in scored_predictions(result.log_entry).day7} == {
         *MODELS,
         *BASELINE_MODEL_IDS,
     }
@@ -335,7 +336,7 @@ def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     blend = next(
-        p for p in result.log_entry.model_predictions.day0 if p.model == BLEND_MODEL_ID
+        p for p in scored_predictions(result.log_entry).day0 if p.model == BLEND_MODEL_ID
     )
 
     assert blend.high_c == result.log_entry.temp_high_c
@@ -392,8 +393,8 @@ def test_the_blend_has_no_extended_range_entry(tmp_path):
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=False)
 
-    assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day3}
-    assert BLEND_MODEL_ID not in {p.model for p in result.log_entry.model_predictions.day7}
+    assert BLEND_MODEL_ID not in {p.model for p in scored_predictions(result.log_entry).day3}
+    assert BLEND_MODEL_ID not in {p.model for p in scored_predictions(result.log_entry).day7}
 
 
 def _seed_yesterday_log_entry(tmp_path, d: date) -> None:
@@ -841,7 +842,7 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     # First, a real morning run.
     morning_deps = make_deps(tmp_path)
     morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
-    original_predictions = morning_result.log_entry.model_predictions
+    original_predictions = scored_predictions(morning_result.log_entry)
 
     # Then an evening refresh with DIFFERENT fresh model data.
     evening_llm = FakeLLMProvider(
@@ -864,7 +865,7 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     assert refresh_result.log_entry.temp_high_c == 25.0
     assert "Rain has moved in" in refresh_result.log_entry.narrative_markdown
     # ...but model_predictions (what tomorrow's verification scores) did NOT.
-    assert refresh_result.log_entry.model_predictions == original_predictions
+    assert scored_predictions(refresh_result.log_entry) == original_predictions
 
 
 def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
@@ -1561,10 +1562,21 @@ def test_a_second_run_still_writes_a_fresh_narrative(tmp_path):
 
 
 def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypatch):
-    """A run whose predictions are kept must be told the KEPT ones. Handing it
-    the fresher extraction would leave the narrative quoting values the record
-    does not contain — the same reason the refresh path passes the stored
-    predictions rather than re-deriving them."""
+    """A run must be told the numbers the record holds FOR IT, and since
+    contract item 4 that is its own extraction, not the day's first.
+
+    INVERTED 2026-09-13, and the old expectation is kept here because the
+    reason it flipped is the point. It read: "A run whose predictions are
+    kept must be told the KEPT ones. Handing it the fresher extraction would
+    leave the narrative quoting values the record does not contain." True
+    while a DAY held one set of predictions. Contract item 4 gives every
+    issuance a row, so the record now contains exactly what each issuance
+    saw — the premise dissolved, the same way C4 did once Day+0 stopped
+    being a calendar day.
+
+    The second assertion is the one that earns the inversion: the value the
+    evening was shown is in the evening's own row. Without that this would
+    just be a test bent to fit the code."""
     issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     def evening_cycle_hourly(*args, **kwargs):
@@ -1579,8 +1591,16 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
 
     _, user_prompt = evening.calls[-1]
     block = predictions_block(user_prompt)
-    assert '"high_c": 26.0' in block, "the morning's Day+0 call is what got stored"
-    assert "31.0" not in block, "the narrative was shown a prediction the record does not hold"
+    assert '"high_c": 31.0' in block, "the evening is shown the cycle the evening read"
+
+    rows = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows
+    assert len(rows) == 2
+    assert any(p.high_c == 31.0 for p in rows[1].predictions.day0), (
+        "and the record holds it — which is why showing it is no longer a lie"
+    )
+    assert any(p.high_c == 26.0 for p in rows[0].predictions.day0), (
+        "row 0, the scored set, still holds the morning's"
+    )
 
 
 def _forced_rerun(tmp_path, narrative, after_refresh: bool):
@@ -1871,7 +1891,7 @@ def test_forecast_runs_the_full_pipeline_when_the_day_is_empty(tmp_path):
 
     assert result.first_issuance is True
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.model_predictions.day0, "the day's first run owns the predictions"
+    assert scored_predictions(entry).day0, "the day's first run owns the predictions"
     assert entry.meta.refreshed_at is None
 
 
@@ -1897,7 +1917,7 @@ def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
     assert result.newly_verified is None, "a later issuance does not verify"
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.narrative_markdown == "## Overview\nEvening update."
-    assert entry.model_predictions == before.model_predictions
+    assert scored_predictions(entry) == scored_predictions(before)
     assert entry.meta.refreshed_at is not None
 
 
@@ -1941,7 +1961,7 @@ def test_forecast_force_overrides_the_skip_but_not_the_predictions(tmp_path):
     assert result.first_issuance is False
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert after.narrative_markdown == "## Overview\nForced."
-    assert after.model_predictions == entry.model_predictions
+    assert scored_predictions(after) == scored_predictions(entry)
 
 
 def test_forecast_dry_run_writes_nothing(tmp_path):
@@ -2495,6 +2515,84 @@ def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch
     ]
 
 
+def test_a_re_issue_against_a_legacy_entry_keeps_its_scored_set_as_row_zero(tmp_path):
+    """The migration's dangerous hour, and the one that could destroy a day.
+
+    Every entry committed before contract item 4 holds `model_predictions` and
+    no rows. The FIRST re-issue after the upgrade meets one of those, and if
+    the append had read `.prediction_rows` directly it would have appended to
+    an empty list — writing a day whose scored numbers are the EVENING's and
+    whose morning call is gone. The bridge is read instead, so the stored set
+    becomes row 0 and the re-issue lands after it.
+    """
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    # Rewrite it into the shape every committed entry is in today.
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    legacy = entry.model_copy(
+        update={
+            "model_predictions": scored_predictions(entry),
+            "prediction_rows": [],
+        }
+    )
+    log_store.write_log_entry(tmp_path, legacy)
+    morning_numbers = scored_predictions(legacy)
+    assert morning_numbers.day0, "fixture must actually hold predictions"
+
+    evening = FakeLLMProvider()
+    evening.response = evening.response.model_copy(
+        update={"today_narrative": "## Overview\nEvening."}
+    )
+    issue(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+
+    after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert len(after.prediction_rows) == 2, "the legacy set became row 0, the re-issue row 1"
+    assert after.prediction_rows[0].predictions == morning_numbers
+    assert scored_predictions(after) == morning_numbers, "what tomorrow scores has not moved"
+
+
+def test_prediction_rows_are_append_only_across_three_issuances(tmp_path):
+    """Row 0 is immutable. It is the write-once rule the accuracy record rests
+    on, in the form contract item 4 gives it."""
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    first = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+
+    for narrative in ("## Overview\nSecond.", "## Overview\nThird."):
+        llm = FakeLLMProvider()
+        llm.response = llm.response.model_copy(update={"today_narrative": narrative})
+        issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    rows = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows
+    assert len(rows) == 3
+    assert rows[0] == first, "row 0 is never rewritten"
+    assert [r.issued_at for r in rows] == sorted(r.issued_at for r in rows), "oldest first"
+
+
+def test_a_later_issuance_stores_the_blend_it_actually_made(tmp_path):
+    """Before contract item 4 this number was computed and thrown away: the
+    evening run spent a judgment call, `_blend_prediction` turned it into a
+    prediction, and the entry kept only the morning's. Item 104 measured that
+    as "a whole LLM call, up to four requests, for display only"."""
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    evening = FakeLLMProvider()
+    evening.response = evening.response.model_copy(
+        update={
+            "today_properties": evening.response.today_properties.model_copy(
+                update={"rain": True, "rain_expected": "Likely", "temp_high_c": 31.0}
+            )
+        }
+    )
+    issue(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+
+    rows = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows
+    blends = [
+        next(p for p in r.predictions.day0 if p.model == BLEND_MODEL_ID) for r in rows
+    ]
+    assert blends[0].rain is False and blends[1].rain is True
+    assert blends[1].high_c == 31.0, "the evening's own call is on the record"
+
+
 def test_run_daily_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path):
     """`olw run-daily` is reachable for a day that already has an entry, and
     the body already treats that as a later issuance — it is where the prompt's
@@ -2538,15 +2636,15 @@ def test_the_baselines_are_predicted_and_stored(tmp_path):
     _seed_yesterday_log_entry(tmp_path, date(2026, 8, 10))
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    day0 = {p.model for p in result.log_entry.model_predictions.day0}
+    day0 = {p.model for p in scored_predictions(result.log_entry).day0}
     assert "persistence" in day0
     assert "climatology" in day0
 
     # At every lead, because a real model is scored at every lead and a
     # yardstick that only exists at Day+0 cannot say whether the extended
     # outlook is worth anything.
-    assert "persistence" in {p.model for p in result.log_entry.model_predictions.day3}
-    assert "climatology" in {p.model for p in result.log_entry.model_predictions.day7}
+    assert "persistence" in {p.model for p in scored_predictions(result.log_entry).day3}
+    assert "climatology" in {p.model for p in scored_predictions(result.log_entry).day7}
 
 
 def test_persistence_repeats_yesterday_not_today(tmp_path):
@@ -2562,7 +2660,7 @@ def test_persistence_repeats_yesterday_not_today(tmp_path):
     assert yesterday is not None, "the fixture must supply yesterday's actual"
 
     persistence = next(
-        p for p in result.log_entry.model_predictions.day0 if p.model == "persistence"
+        p for p in scored_predictions(result.log_entry).day0 if p.model == "persistence"
     )
     assert persistence.rain == yesterday.rain
 
@@ -2597,7 +2695,7 @@ def test_a_baseline_with_nothing_to_stand_on_makes_no_prediction(tmp_path, monke
 
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    day0 = {p.model for p in result.log_entry.model_predictions.day0}
+    day0 = {p.model for p in scored_predictions(result.log_entry).day0}
     assert "persistence" not in day0
     assert "climatology" not in day0
 
@@ -3280,7 +3378,7 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     # AND THE DAY IS SCORED. This is the whole justification for degrading
     # rather than aborting: the blend's row is in the record beside the
     # models, so tomorrow's verification has something to check.
-    blend = [p for p in entry.model_predictions.day0 if p.model == BLEND_MODEL_ID]
+    blend = [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID]
     assert len(blend) == 1, "the forecaster's own scored row is missing"
     assert blend[0].rain is not None
     assert blend[0].high_c is not None

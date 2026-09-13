@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from openlocalweather.models import DailyActual, DailyLogEntry, LogEntryMeta, ModelPrediction, ModelPredictionsByLead
+from openlocalweather.verify.scoring import scored_predictions
 from openlocalweather.verify.scoring import (
     compute_rain_pct_trend,
     mean,

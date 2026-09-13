@@ -10,6 +10,7 @@ it must NOT touch.
 from datetime import date
 
 from openlocalweather.backfill import backfill_entry_baselines
+from openlocalweather.verify.scoring import scored_predictions
 from openlocalweather.models import (
     DailyActual,
     DailyLogEntry,
@@ -60,8 +61,8 @@ def test_both_baselines_are_added_at_every_lead():
     out = backfill_entry_baselines(_entry(date(2026, 8, 11)), _RECORD)
     assert out is not None
 
-    for lead in (out.model_predictions.day0, out.model_predictions.day3,
-                 out.model_predictions.day7):
+    for lead in (scored_predictions(out).day0, scored_predictions(out).day3,
+                 scored_predictions(out).day7):
         names = {p.model for p in lead}
         assert "persistence" in names
         assert "climatology" in names
@@ -71,8 +72,8 @@ def test_persistence_repeats_the_day_before_the_ISSUANCE():
     """For an entry dated D, at every lead — the lead is a property of the
     target, not of what the forecaster could see. 08-10 was dry."""
     out = backfill_entry_baselines(_entry(date(2026, 8, 11)), _RECORD)
-    for lead in (out.model_predictions.day0, out.model_predictions.day3,
-                 out.model_predictions.day7):
+    for lead in (scored_predictions(out).day0, scored_predictions(out).day3,
+                 scored_predictions(out).day7):
         p = next(x for x in lead if x.model == "persistence")
         assert p.rain is False
 
@@ -80,7 +81,7 @@ def test_persistence_repeats_the_day_before_the_ISSUANCE():
 def test_climatology_reads_only_days_before_the_issuance():
     """08-08 and 08-09 wet, 08-10 dry: 2 of 3 wet, so rain."""
     out = backfill_entry_baselines(_entry(date(2026, 8, 11)), _RECORD)
-    c = next(x for x in out.model_predictions.day0 if x.model == "climatology")
+    c = next(x for x in scored_predictions(out).day0 if x.model == "climatology")
     assert c.rain is True
 
 
@@ -88,8 +89,8 @@ def test_onset_is_carried_only_at_day_zero():
     record = {date(2026, 8, 10): DailyActual(rain=True, onset_hour="15:00")}
     out = backfill_entry_baselines(_entry(date(2026, 8, 11)), record)
 
-    day0 = next(x for x in out.model_predictions.day0 if x.model == "persistence")
-    day3 = next(x for x in out.model_predictions.day3 if x.model == "persistence")
+    day0 = next(x for x in scored_predictions(out).day0 if x.model == "persistence")
+    day3 = next(x for x in scored_predictions(out).day3 if x.model == "persistence")
     assert day0.onset == "15:00"
     assert day3.onset is None
 
@@ -117,8 +118,8 @@ def test_it_touches_nothing_but_the_predictions():
     assert after.date == before.date
 
     # And the real models' own predictions are untouched, in place and count.
-    gfs_before = [p for p in before.model_predictions.day0 if p.model == "gfs_seamless"]
-    gfs_after = [p for p in after.model_predictions.day0 if p.model == "gfs_seamless"]
+    gfs_before = [p for p in scored_predictions(before).day0 if p.model == "gfs_seamless"]
+    gfs_after = [p for p in scored_predictions(after).day0 if p.model == "gfs_seamless"]
     assert gfs_before == gfs_after
 
 
@@ -135,7 +136,7 @@ def test_persistence_alone_is_still_worth_adding():
     out = backfill_entry_baselines(
         _entry(date(2026, 8, 11)), {date(2026, 8, 10): _actual(True)}
     )
-    names = {p.model for p in out.model_predictions.day0}
+    names = {p.model for p in scored_predictions(out).day0}
     assert {"persistence", "climatology"} <= names
 
 
@@ -147,6 +148,6 @@ def test_a_gap_before_the_issuance_means_no_persistence():
     out = backfill_entry_baselines(_entry(date(2026, 8, 11)), record)
     assert out is not None
 
-    names = {p.model for p in out.model_predictions.day0}
+    names = {p.model for p in scored_predictions(out).day0}
     assert "persistence" not in names
     assert "climatology" in names

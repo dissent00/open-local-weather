@@ -77,6 +77,7 @@ from openlocalweather.comparison import (
     describe_extended_trend,
 )
 from openlocalweather.verify.scoring import mean as _mean_of
+from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
 from openlocalweather.daypart import (
     DayPart,
     daypart_without_sun,
@@ -159,6 +160,7 @@ from openlocalweather.disagreement import (
 )
 from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
+    IssuancePredictions,
     InformationMoved,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
@@ -1651,7 +1653,7 @@ def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
         return StandingCall()
 
     blend = next(
-        (p for p in entry.model_predictions.day0 if p.model == BLEND_MODEL_ID), None
+        (p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID), None
     )
 
     return StandingCall(
@@ -1770,24 +1772,6 @@ def _guidance_recency_payload(guidance: ForwardGuidance, previous: DailyLogEntry
     }
 
 
-def _predictions_already_recorded(entry: DailyLogEntry | None) -> ModelPredictionsByLead | None:
-    """The scored predictions this date already holds, or None if it holds
-    none.
-
-    Empty lists count as none: an entry carrying no predictions has nothing
-    to protect, and refusing to write would leave that date permanently
-    unscoreable.
-    """
-    if entry is None:
-        return None
-
-    stored = entry.model_predictions
-    if not (stored.day0 or stored.day3 or stored.day7):
-        return None
-
-    return stored
-
-
 def _model_predictions_prompt_payload(
     day0: list[ModelPrediction], day3: list[ModelPrediction], day7: list[ModelPrediction]
 ) -> dict:
@@ -1900,10 +1884,21 @@ def _compose_log_entry(
         # so an absent value is never rendered as an empty clock.
         sunrise=(guidance.issuance.sunrise or None) if guidance.issuance else None,
         sunset=(guidance.issuance.sunset or None) if guidance.issuance else None,
-        # What THIS issuance extracted, or an empty set when it extracted
-        # none. Whether it is kept is decided once, below: a date that
-        # already holds predictions keeps those, byte for byte.
-        model_predictions=fresh_predictions or ModelPredictionsByLead(),
+        # ONE ROW, stamped with this issuance. Contract item 4: a day holds a
+        # row per issuance rather than one set, and the row a later issuance
+        # adds is what IT had in hand — on a re-issue that is the day's stored
+        # model numbers, which it deliberately does not re-extract, plus its
+        # own blend from its own judgment call. That blend used to be computed
+        # and thrown away.
+        prediction_rows=[
+            IssuancePredictions(
+                issued_at=datetime.now(timezone.utc),
+                predictions=fresh_predictions or ModelPredictionsByLead(),
+            )
+        ],
+        # Superseded by prediction_rows and deliberately not written — see
+        # DailyLogEntry.model_predictions for why None rather than empty.
+        model_predictions=None,
         # Stored verbatim, and stored even when it says "unavailable" — see
         # LocalBulletinRecord. A met service's forecast cannot be re-fetched
         # for a past day once its weekly bulletin is replaced, so a run that
@@ -1955,12 +1950,10 @@ def _compose_log_entry(
     # gate, so the NEXT refresh would snapshot the forced narrative as that
     # day's morning issuance.
     #
-    # model_predictions is the one that makes the accuracy record
-    # trustworthy: the numbers tomorrow scores must be the ones the day's
-    # first run committed. `_predictions_already_recorded` returns None for
-    # an empty set on purpose, so a first run that stored none can still be
-    # given them — a date with no predictions is unscoreable for ever
-    # otherwise.
+    # prediction_rows is the one that makes the accuracy record trustworthy:
+    # the numbers tomorrow scores are row 0's, and row 0 is whatever the
+    # day's first issuance committed. Appending rather than replacing is the
+    # whole guard — there is no path here that rewrites an existing row.
     #
     # verification and yesterday_verification_summary are carried for a
     # related reason: this run is told it is a later issuance, so the model
@@ -1984,8 +1977,19 @@ def _compose_log_entry(
 
     return issuance.model_copy(
         update={
-            "model_predictions": _predictions_already_recorded(existing_entry)
-            or issuance.model_predictions,
+            # APPEND-ONLY, and row 0 is never rewritten. This is the
+            # write-once rule the accuracy record rests on, in its general
+            # form: the numbers tomorrow scores are the ones the day's first
+            # issuance committed, and a later issuance adds a row.
+            #
+            # `resolve_prediction_rows` rather than `.prediction_rows` so an
+            # entry written before contract item 4 contributes its single
+            # stored set as row 0 instead of being silently dropped.
+            "prediction_rows": [
+                *resolve_prediction_rows(existing_entry),
+                *issuance.prediction_rows,
+            ],
+            "model_predictions": None,
             "verification": existing_entry.verification,
             "yesterday_verification_summary": existing_entry.yesterday_verification_summary,
             "sunrise": issuance.sunrise or existing_entry.sunrise,
@@ -2267,47 +2271,32 @@ def _issue_forecast(
     day3_predictions = [*day3_predictions, *baselines_no_onset]
     day7_predictions = [*day7_predictions, *baselines_no_onset]
 
-    # The day's predictions are written once, and the first write wins.
+    # EVERY ISSUANCE EXTRACTS ITS OWN, and this replaced a swap that kept the
+    # day's first set. ROADMAP item 104, contract items 3 and 4.
     #
-    # A second full run re-extracts them from a later model cycle, and
-    # tomorrow scores those as though they had been issued at 06:00 —
-    # every model's Day+0 accuracy improves and nothing in the record shows
-    # why. The guards that used to prevent it both live OUTSIDE this
-    # pipeline: forecast.yml's already_done condition, and a crontab on a
-    # machine this repo cannot see or test. Neither survives someone ticking
-    # `force` on a manual dispatch.
+    # The swap existed because the record held ONE set per day: re-deriving
+    # from a fresher cycle "would leave the narrative describing values the
+    # record doesn't contain". Contract item 4 gives every issuance its own
+    # row, so the record now contains exactly what each issuance saw, and the
+    # swap's premise is gone — the same way item 104's own C4 dissolved once
+    # Day+0 stopped being a calendar day.
     #
-    # THE TRIGGER IS UNTRUSTED INPUT. A caller must be able to invoke this
-    # with any combination of flags and be unable to corrupt the record; the
-    # worst it should achieve is a wasted API call. Same rule and same
-    # reasoning as HistoryStore.savePredictions in the app.
+    # WHAT THE SWAP WAS NOT PROTECTING is worth stating, because it reads
+    # like the write-once guard and is not it. The numbers tomorrow scores
+    # are row 0, and row 0 is protected by `_compose_log_entry` appending
+    # rather than rewriting. A caller may still invoke this with any
+    # combination of flags and be unable to reach the scored numbers; the
+    # worst it achieves is a wasted API call.
     #
-    # `force` still forces the NARRATIVE, which is the only thing it was
-    # ever wanted for. The blend is dropped from the day0 list here because
-    # everything downstream of this point treats day0_predictions as the
-    # models' own calls — the stored value below keeps it.
-    #
-    # day_over_day above is deliberately left reasoning from the fresh
-    # cycle: it frames today against yesterday for the prose and is not part
-    # of the scored record.
-    recorded_predictions = _predictions_already_recorded(existing_entry)
-    if recorded_predictions is not None:
-        # ONLY the blend is stripped here, and deliberately not the baselines,
-        # even though both are hidden from the forecaster. This list is
-        # re-stored below with `_blend_prediction(tp)` appended, so dropping
-        # the blend prevents a duplicate; dropping the baselines would delete
-        # them from the day's record on every re-run. The prompt's own copy is
-        # filtered separately, in _model_predictions_prompt_payload.
-        day0_predictions = [p for p in recorded_predictions.day0 if p.model != BLEND_MODEL_ID]
-        day3_predictions = recorded_predictions.day3
-        day7_predictions = recorded_predictions.day7
-
-    # AFTER the swap above, deliberately. A later issuance compares against
-    # the numbers this day actually PUBLISHED — the ones tomorrow will score
-    # — not against a re-extraction from the fresher cycle, which would leave
-    # the prose describing values the record does not contain. The old
-    # refresh path did it this way and the old daily path did not, so a
-    # forced re-run framed its Overview against numbers nobody had been told.
+    # And it is what makes C3 possible. A row whose models came from the
+    # morning's cycle and whose blend came from the evening's is not a paired
+    # comparison — the blend saw guidance the models it sits beside did not.
+    # Measured 2026-09-13: the 06:02 issuance read the 18Z cycle and the 18:02
+    # issuance read the 06Z cycle, both 9.0 hours old.
+    # Reasons from THIS issuance's extraction, like everything else it sends.
+    # It read the day's stored numbers while the record held only those; now
+    # that every issuance has its own row, the comparison an evening reader
+    # sees is built from the cycle that evening actually read.
     #
     # today_convective is the OTHER half of the comparison's thunder
     # dimension, and is recomputed from THIS issuance's forward hours:

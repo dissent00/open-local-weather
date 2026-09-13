@@ -19,13 +19,65 @@ from typing import Callable
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG
 from openlocalweather.verify.brier import brier_score, mean_brier
-from openlocalweather.models import DailyActual, DailyLogEntry, ModelPrediction, VerificationScore
+from openlocalweather.models import (
+    DailyActual,
+    DailyLogEntry,
+    IssuancePredictions,
+    ModelPrediction,
+    ModelPredictionsByLead,
+    VerificationScore,
+)
 
 # `date -> DailyLogEntry | None`. Injected rather than reading files directly
 # so this module is testable with an in-memory dict and has no filesystem
 # dependency of its own — see store/log_store.make_log_lookup for the real
 # implementation used in production.
 LogLookup = Callable[[date], DailyLogEntry | None]
+
+
+def resolve_prediction_rows(entry: DailyLogEntry) -> list[IssuancePredictions]:
+    """This entry's predictions, one row per issuance, oldest first.
+
+    THE SINGLE PLACE THE FALLBACK LIVES, like `resolve_target_date` beside
+    it. An entry written since ROADMAP item 104's contract item 4 carries
+    `prediction_rows`; every one written before holds a single
+    `model_predictions` set, which the day's FIRST issuance wrote and no
+    later run touched — so `meta.generated_at_utc` is exactly the moment
+    that made it. Both are read by one pass, so the committed record does
+    not have to be rewritten to be readable.
+
+    ROW 0 IS THE DAY'S FIRST ISSUANCE on both shapes, which is what keeps
+    scoring unchanged across the migration: `predictions_by_model` takes
+    row 0 and gets the same numbers it always did.
+
+    Deletable in one edit, with `model_predictions` itself, once no
+    unmarked entry remains in the window any verification pass reads.
+    """
+    if entry.prediction_rows:
+        return entry.prediction_rows
+
+    if entry.model_predictions is None:
+        return []
+
+    return [
+        IssuancePredictions(
+            issued_at=entry.meta.generated_at_utc,
+            predictions=entry.model_predictions,
+        )
+    ]
+
+
+def scored_predictions(entry: DailyLogEntry) -> ModelPredictionsByLead:
+    """The set tomorrow scores: the day's FIRST issuance.
+
+    Named rather than inlined because "which issuance is scored" is the
+    question item 104 spent a contract settling, and it should be answerable
+    by grepping one identifier. Contract item 4 makes every issuance a row;
+    it does not yet make every row scored, and the switch belongs with C2/C3
+    where the series is re-derived.
+    """
+    rows = resolve_prediction_rows(entry)
+    return rows[0].predictions if rows else ModelPredictionsByLead()
 
 
 def resolve_target_date(
@@ -143,7 +195,11 @@ def _hour_diff(predicted_hhmm: str, actual_hhmm: str) -> float:
 
 
 def predictions_by_model(entry: DailyLogEntry, lead_time_days: int) -> dict[str, ModelPrediction]:
-    return {p.model: p for p in entry.model_predictions.for_lead(lead_time_days)}
+    # Keyed by model, so it must be handed ONE issuance's predictions. Given
+    # two issuances' rows flattened together it would silently keep whichever
+    # came last and score the wrong call, with nothing to notice — which is
+    # why contract item 4's rows are rows rather than a stamped flat list.
+    return {p.model: p for p in scored_predictions(entry).for_lead(lead_time_days)}
 
 
 def mean(values: list[float | None]) -> float | None:

@@ -45,7 +45,7 @@ from datetime import date
 
 from openlocalweather.dates import add_days
 from openlocalweather.defaults import COVERAGE_ABSENT_RUNS, COVERAGE_WINDOW_DAYS
-from openlocalweather.verify.scoring import LogLookup
+from openlocalweather.verify.scoring import LogLookup, scored_predictions
 
 # The fields worth watching. `onset` is deliberately absent: it is only ever
 # populated when rain is forecast, so its absence is a legitimate forecast
@@ -119,7 +119,9 @@ def detect_coverage(
         entry = log_lookup(cursor)
         if entry is not None:
             for k in lead_times_days:
-                preds = {p.model: p for p in entry.model_predictions.for_lead(k)}
+                # Row 0 — coverage describes the SCORED record, and contract
+                # item 4 has not yet made every issuance scored.
+                preds = {p.model: p for p in scored_predictions(entry).for_lead(k)}
                 if preds:
                     by_lead[k].append((cursor, preds))
         cursor = add_days(cursor, -1)

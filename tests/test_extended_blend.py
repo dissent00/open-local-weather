@@ -93,6 +93,7 @@ from openlocalweather.llm.schema import (
 )
 from tests.test_pipeline_run import issue  # noqa: F401
 from openlocalweather.store import log_store
+from openlocalweather.verify.scoring import scored_predictions
 
 from tests.test_pipeline_run import make_deps, patch_fetches  # noqa: F401
 from tests.test_pipeline_run import FakeLLMProvider
@@ -120,7 +121,7 @@ def _response_with(extended):
 def _stored(tmp_path, extended):
     llm = FakeLLMProvider(response=_response_with(extended))
     issue(make_deps(tmp_path, llm=llm), today=TODAY, dry_run=False)
-    return log_store.read_log_entry(tmp_path, TODAY).model_predictions
+    return scored_predictions(log_store.read_log_entry(tmp_path, TODAY))
 
 
 def _blend(rows):

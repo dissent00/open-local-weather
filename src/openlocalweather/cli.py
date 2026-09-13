@@ -23,6 +23,7 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import load_location_config
+from openlocalweather.verify.scoring import scored_predictions
 from openlocalweather.coverage import (
     actionable,
     actionable_narrated,
@@ -841,7 +842,7 @@ def _run_backfill_baselines(args) -> int:
             # have them" — the first day of the record has nothing before it.
             has_baselines = any(
                 p.model in (PERSISTENCE_MODEL_ID, CLIMATOLOGY_MODEL_ID)
-                for p in entry.model_predictions.day0
+                for p in scored_predictions(entry).day0
             )
             (skipped if has_baselines else impossible).append(d)
             continue

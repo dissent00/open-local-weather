@@ -34,6 +34,7 @@ from openlocalweather.baselines import (
     persistence_prediction,
 )
 from openlocalweather.models import DailyActual, DailyLogEntry
+from openlocalweather.verify.scoring import resolve_prediction_rows
 
 _BASELINE_IDS = {PERSISTENCE_MODEL_ID, CLIMATOLOGY_MODEL_ID}
 
@@ -50,7 +51,11 @@ def backfill_entry_baselines(
     stored file untouched: rewriting a JSON file to identical content still
     churns the archive's git history for nothing.
     """
-    if any(p.model in _BASELINE_IDS for p in entry.model_predictions.day0):
+    rows = resolve_prediction_rows(entry)
+    if not rows:
+        return None
+
+    if any(p.model in _BASELINE_IDS for p in rows[0].predictions.day0):
         return None
 
     issued = entry.date
@@ -68,15 +73,31 @@ def backfill_entry_baselines(
     # measuring the same thing they are. Same rule as the live pipeline.
     beyond = [p.model_copy(update={"onset": None}) for p in at_day0]
 
-    predictions = entry.model_predictions
+    # ROW 0, because the baselines belong beside the numbers that get
+    # scored, and this is the one tool allowed to rewrite that row: it is a
+    # deliberate historical repair, not a run. Later rows are untouched — a
+    # baseline is a property of what could be seen at the DAY's first
+    # issuance, so re-deriving it per issuance would be a different claim.
+    #
+    # Writing rows here also migrates an entry that predates contract item 4,
+    # which is fine and is why the bridge is read rather than the field.
+    predictions = rows[0].predictions
     return entry.model_copy(
         update={
-            "model_predictions": predictions.model_copy(
-                update={
-                    "day0": [*predictions.day0, *at_day0],
-                    "day3": [*predictions.day3, *beyond],
-                    "day7": [*predictions.day7, *beyond],
-                }
-            )
+            "model_predictions": None,
+            "prediction_rows": [
+                rows[0].model_copy(
+                    update={
+                        "predictions": predictions.model_copy(
+                            update={
+                                "day0": [*predictions.day0, *at_day0],
+                                "day3": [*predictions.day3, *beyond],
+                                "day7": [*predictions.day7, *beyond],
+                            }
+                        )
+                    }
+                ),
+                *rows[1:],
+            ],
         }
     )

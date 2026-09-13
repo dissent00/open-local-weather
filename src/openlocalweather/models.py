@@ -493,6 +493,31 @@ class ModelPredictionsByLead(BaseModel):
         return {0: self.day0, 3: self.day3, 7: self.day7}[lead_time_days]
 
 
+class IssuancePredictions(BaseModel):
+    """One issuance's predictions, stamped with the moment that made them.
+
+    ROADMAP item 104, contract item 4 — one row per issuance. Until this
+    existed, a DAY held one set of predictions: `model_predictions` was
+    written by the first run and every later issuance's numbers were
+    discarded, so the record could not say what a 22:00 call had been.
+
+    THE STAMP IS THE ISSUANCE INSTANT, NOT AN HOURS COUNT — operator's
+    decision 2026-09-13. Hours-to-target is derived at read time from this
+    and the prediction's `target_date`, because storing it would bake in a
+    convention (hours to the target's start, its midpoint, or its end?)
+    before anyone knows which an analysis wants, and because a figure that
+    can only be re-derived is a figure that can be checked.
+
+    ROWS ARE APPEND-ONLY AND ROW 0 IS IMMUTABLE. That is the write-once rule
+    the accuracy record rests on, generalised: the numbers tomorrow scores
+    are the ones the day's first issuance committed, and a later issuance
+    adds a row rather than editing one.
+    """
+
+    issued_at: datetime
+    predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
+
+
 class VerificationByLead(BaseModel):
     day0: LeadTimeVerification = Field(default_factory=LeadTimeVerification)
     day3: LeadTimeVerification = Field(default_factory=LeadTimeVerification)
@@ -912,7 +937,24 @@ class DailyLogEntry(BaseModel):
     sunrise: str | None = None
     sunset: str | None = None
 
-    model_predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
+    # ONE ROW PER ISSUANCE — ROADMAP item 104, contract item 4. Append-only;
+    # see IssuancePredictions. Read it through
+    # `verify.scoring.resolve_prediction_rows`, never directly, so entries
+    # written before this existed are handled in one place.
+    prediction_rows: list[IssuancePredictions] = Field(default_factory=list)
+
+    # SUPERSEDED by prediction_rows, and None on every entry written since.
+    #
+    # None rather than an empty ModelPredictionsByLead on purpose. A reader
+    # that has not been moved to `resolve_prediction_rows` fails loudly here
+    # instead of quietly seeing a day with no predictions in it — which is
+    # the failure mode this whole item exists to stop, and the one an empty
+    # default would have reintroduced at the exact moment the field stopped
+    # being written.
+    #
+    # Deletable, with the fallback in `resolve_prediction_rows`, once no
+    # unmarked entry remains in the window any verification pass reads.
+    model_predictions: ModelPredictionsByLead | None = None
     verification: VerificationByLead = Field(default_factory=VerificationByLead)
 
     # The local met service's own words for this day, verbatim. None for
