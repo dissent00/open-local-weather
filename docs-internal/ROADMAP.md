@@ -11120,9 +11120,22 @@ Ordered by what reaches a reader:
    `spec/README.md` tells a port to use a tolerance. The exactness is opt-in
    per case, by the case that needs it.
 
-9-10. `synoptic.dart:162`'s round-scale-round; `wind.dart:126` falling back on
-   a missing key where Python falls back on a falsy one. Both real, both
-   last-bit or unreachable today.
+9. ~~**`synoptic.dart:162`'s round-scale-round.**~~ **Fixed 2026-09-13**, and
+   the reachability measured before touching it: Open-Meteo returns
+   `pressure_msl` at ONE decimal — the 2026-09-12 run carried 1008.1 and
+   1016.9 — and **400,000 swept pairs of 1-dp readings produced zero
+   disagreements**, because a difference of two 1-dp values rounded to 1 dp
+   cannot separate the two forms. So the reachable domain is empty today.
+
+   Fixed anyway, and the argument is not impact. `rounding.dart`'s header
+   names this exact form and calls it wrong twice over; leaving the last
+   instance of it in a file that publishes numbers is a pattern for the next
+   person to copy. The vector case uses two-decimal pressures, which is what
+   it takes to reach the bug and which a different provider or a forked
+   deployment may well supply — item 52.
+
+10. `wind.dart:126` falls back on a missing key where Python falls back on a
+   falsy one. Real, and last-bit or unreachable today.
 
 **Every one is a missing VECTOR CASE, not a missing test.** Each rounding
 finding sits behind a vector whose values happen to carry no tie. That is

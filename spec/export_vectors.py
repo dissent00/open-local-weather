@@ -1667,6 +1667,21 @@ def export_synoptic() -> None:
         centre=[1014.0, 1013.5, 1013.0], NE=[1008.0, 1008.1, 1008.0],
         W=[1015.0, 1012.5, 1010.0], S=[1018.0, 1018.1, 1018.0],
     )
+    # ROADMAP item 88, divergence 9. The gradient is rounded to one decimal,
+    # and the Dart port used (v * 10).round() / 10 — the form rounding.dart's
+    # own header calls "wrong twice over", because the multiply both rounds
+    # half away from zero AND invents ties the value does not have.
+    #
+    # UNREACHABLE WITH TODAY'S DATA, and that is measured rather than assumed:
+    # Open-Meteo returns pressure_msl at one decimal (the 2026-09-12 run
+    # carried 1008.1 and 1016.9), and 400,000 swept pairs of 1-dp readings
+    # produced ZERO disagreements, because a difference of two 1-dp values
+    # rounded to 1 dp cannot separate the two forms. These pressures are at
+    # two decimals, which a different provider or a forked deployment may
+    # well supply — item 52 — and which is what it takes to reach the bug.
+    tie_gradient = ring(
+        centre=[1006.00], N=[1000.00], S=[1012.25],
+    )
     gaps = ring(centre=[1013.0], N=[None, None])
     missing_tail = ring(centre=[1013.0], N=[1009.0], S=[1017.0])
 
@@ -1675,6 +1690,7 @@ def export_synoptic() -> None:
         ("live ring — low to the NE, high to the S, pressure falling west", live),
         ("flat field — weak gradient, nothing deepening", flat),
         ("a feature building to the west before it is the lowest quadrant", approaching),
+        ("a gradient landing on a tie rounds half-even", tie_gradient),
         ("too few usable readings yields nothing rather than a flat field", gaps),
         ("single-sample points still describe a gradient, with no tendencies", missing_tail),
         ("absent payload", None),

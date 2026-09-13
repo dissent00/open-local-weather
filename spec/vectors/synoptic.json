@@ -243,6 +243,52 @@
       }
     },
     {
+      "name": "a gradient landing on a tie rounds half-even",
+      "input": {
+        "payload": {
+          "points": [
+            {
+              "label": "centre",
+              "mslp_hpa": [
+                1006.0
+              ]
+            },
+            {
+              "label": "N",
+              "mslp_hpa": [
+                1000.0
+              ]
+            },
+            {
+              "label": "S",
+              "mslp_hpa": [
+                1012.25
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "centre_mslp_hpa": 1006.0,
+        "lowest_label": "N",
+        "lowest_mslp_hpa": 1000.0,
+        "highest_label": "S",
+        "highest_mslp_hpa": 1012.25,
+        "gradient_hpa": 12.2,
+        "gradient_strength": "strong",
+        "tendencies": {
+          "centre": "steady",
+          "N": "steady",
+          "S": "steady"
+        },
+        "statements": [
+          "Across roughly 2,600 km, pressure is lowest toward the north (1000 hPa) and highest toward the south (1012 hPa) \u2014 a 12 hPa spread, a strong large-scale gradient.",
+          "Pressure overhead is near-steady.",
+          "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+        ]
+      }
+    },
+    {
       "name": "too few usable readings yields nothing rather than a flat field",
       "input": {
         "payload": {

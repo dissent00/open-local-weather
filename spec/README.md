@@ -115,7 +115,7 @@ absent values are `null`, never omitted keys.
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 28 |
 | `spend.json` | `calls_in_window / prune` | 6 |
-| `synoptic.json` | `summarize_synoptic` | 6 |
+| `synoptic.json` | `summarize_synoptic` | 7 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |
 | `weekly_review.json` | `build_weekly_review` | 20 |
 | `solar.json` | `sun_times` | Sunrise and sunset for a LOCAL date, computed from latitude, longitude and the location's UTC offset. Whole minutes, truncated. The midnight sun is midnight to midnight; polar night is a span of zero. |

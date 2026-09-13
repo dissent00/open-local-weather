@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'rounding.dart';
 import 'config.dart';
 
 /// Turning a coarse pressure field into statements a forecaster would make.
@@ -159,7 +160,12 @@ SynopticSnapshot? summarizeSynoptic(Map<String, Object?>? payload) {
     }
   }
 
-  final roundedGradient = (gradient * 10).round() / 10;
+  // roundLikePython, not a scaled multiply: (v * 10).round() / 10 rounds half
+  // AWAY FROM ZERO where Python rounds half to even, and the multiply invents
+  // ties the value does not have. rounding.dart's header calls that form
+  // wrong twice over. Upstream ROADMAP item 88, divergence 9 — unreachable
+  // while pressure arrives at one decimal, and one line to close.
+  final roundedGradient = roundLikePython(gradient, 1);
   final snapshot = SynopticSnapshot(
     centreMslpHpa: centre,
     lowestLabel: lowest.$1,
