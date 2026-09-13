@@ -39,13 +39,45 @@ class StandingCall {
 
 /// What the station has actually reported TODAY, so far.
 ///
-/// Both fields are three-valued and absence means absence: a station that
+/// Every field is three-valued and absence means absence: a station that
 /// reported nothing is not a station reporting agreement.
+///
+/// WITHIN a populated record the distinction sharpens, and it is worth
+/// stating because the two look alike in JSON. `thunder: false` means the
+/// station reported and saw none, which is information. `thunder: null` means
+/// nothing was measured, which is not.
+///
+/// SIX DIMENSIONS, WHICH ARE UPSTREAM ITEM 104'S C9 TABLE — high and low,
+/// peak wind, sky, thunder, and rain with its onset. It carried two until
+/// 2026-09-13 because it existed only to feed the contradiction check; item
+/// 121 reports these to a reader directly, in code, so the set is now the one
+/// C9 specified rather than the one that check happened to need.
+///
+/// PRECIPITATION AMOUNT IS ABSENT ON PURPOSE and is the one dimension C9
+/// withholds: a METAR reports that rain fell, never how much, and ERA5's
+/// same-day archive is model output rather than observation.
 class ObservedSoFar {
-  const ObservedSoFar({this.precipitation, this.highC});
+  const ObservedSoFar({
+    this.precipitation,
+    this.precipitationOnset,
+    this.thunder,
+    this.highC,
+    this.lowC,
+    this.peakWindKmh,
+    this.cloudOktas,
+  });
 
   final bool? precipitation;
+
+  /// Local "HH:MM" of the first report that saw precipitation.
+  final String? precipitationOnset;
+  final bool? thunder;
   final double? highC;
+  final double? lowC;
+  final double? peakWindKmh;
+
+  /// Mean cover in eighths across the day's reports so far.
+  final double? cloudOktas;
 }
 
 const String disagreementRainWhileDry = 'rain_observed_while_dry_called';

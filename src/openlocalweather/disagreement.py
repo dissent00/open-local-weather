@@ -52,14 +52,39 @@ class StandingCall:
 class ObservedSoFar:
     """What the station has actually reported TODAY, so far.
 
-    Both fields are three-valued and absence means absence: a station that
+    Every field is three-valued and absence means absence: a station that
     reported nothing is not a station reporting agreement. That is the same
     rule every other absent input in this project follows, and the one whose
     violation cost a published forecast on 2026-08-29.
+
+    WITHIN a populated record the distinction sharpens, and it is worth
+    stating because the two look alike in JSON. `thunder=False` means the
+    station reported and saw none, which is information. `thunder=None` means
+    nothing was measured, which is not.
+
+    SIX DIMENSIONS, WHICH ARE ROADMAP ITEM 104'S C9 TABLE — high and low,
+    peak wind, sky, thunder, and rain with its onset. It carried two until
+    2026-09-13 because it existed only to feed the contradiction check; item
+    121 reports these to a reader directly, in code, so the set is now the
+    one C9 specified rather than the one that check happened to need.
+
+    PRECIPITATION AMOUNT IS ABSENT ON PURPOSE and is the one dimension C9
+    withholds: a METAR reports that rain fell, never how much, and ERA5's
+    same-day archive is model output rather than observation — proven in
+    Ensemble's item 14 finding 6 by hours that had not happened yet. So for
+    today's elapsed hours there is no instrument for it, and the honest move
+    is to withhold the dimension rather than substitute one.
     """
 
     precipitation: bool | None = None
     high_c: float | None = None
+    low_c: float | None = None
+    peak_wind_kmh: float | None = None
+    # Mean cover in eighths across the day's reports so far.
+    cloud_oktas: float | None = None
+    thunder: bool | None = None
+    # Local "HH:MM" of the first report that saw precipitation.
+    precipitation_onset: str | None = None
 
 
 DISAGREEMENT_RAIN_WHILE_DRY = "rain_observed_while_dry_called"

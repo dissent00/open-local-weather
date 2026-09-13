@@ -38,12 +38,21 @@ int? _toInt(Object? v) => v == null ? null : (v as num).toInt();
 /// A consequence worth keeping rather than "fixing": 33.5 °C gives
 /// "34°C / 92°F", and 34 °C converts to 93.2 °F. The pair does not round-trip,
 /// because rounding twice is what caused this.
-String formatTempHighLow(double highC, double lowC) {
-  String both(double celsius) =>
-      '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F';
+String formatTempHighLow(double highC, double lowC) =>
+    '${formatTempC(highC)} high, ${formatTempC(lowC)} low';
 
-  return '${both(highC)} high, ${both(lowC)} low';
-}
+/// One temperature, in both units — the half of [formatTempHighLow] that is
+/// about a single number.
+///
+/// EXTRACTED RATHER THAN COPIED, 2026-09-13, mirroring `format_temp_c` in
+/// models.py. Upstream item 121 needs the same rendering for observed
+/// temperatures, and a second spelling would be a second rounding site —
+/// which is this project's most-bitten cross-language divergence.
+///
+/// The rounding reasoning belongs to [formatTempHighLow] above and is not
+/// repeated.
+String formatTempC(double celsius) =>
+    '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F';
 
 /// Matches Python's `round()`, which is half-to-EVEN.
 ///

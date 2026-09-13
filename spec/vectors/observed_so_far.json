@@ -1,0 +1,247 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_observed_so_far",
+  "description": "One finished sentence for what the station has already measured today, or null when it has measured nothing. A False is reported because the station looked; a null is omitted because it did not.",
+  "cases": [
+    {
+      "name": "every dimension, contract order",
+      "input": {
+        "observed": {
+          "precipitation": true,
+          "precipitation_onset": "13:00",
+          "thunder": true,
+          "high_c": 27.4,
+          "low_c": 18.1,
+          "peak_wind_kmh": 31.4,
+          "cloud_oktas": 5.5
+        },
+        "as_of": "14:00"
+      },
+      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak gust 31 km/h; sky 6/8."
+    },
+    {
+      "name": "negatives are reported, absences omitted",
+      "input": {
+        "observed": {
+          "precipitation": false,
+          "precipitation_onset": null,
+          "thunder": false,
+          "high_c": 22.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "09:00"
+      },
+      "expected": "As of 09:00: no rain; no thunder; high so far 22\u00b0C / 72\u00b0F."
+    },
+    {
+      "name": "rain with no first-seen time",
+      "input": {
+        "observed": {
+          "precipitation": true,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "12:00"
+      },
+      "expected": "As of 12:00: rain."
+    },
+    {
+      "name": "a station that measured nothing",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "14:00"
+      },
+      "expected": null
+    },
+    {
+      "name": "no issuance clock",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": null
+      },
+      "expected": "So far today: thunder."
+    },
+    {
+      "name": "thunder without rain is a real outcome",
+      "input": {
+        "observed": {
+          "precipitation": false,
+          "precipitation_onset": null,
+          "thunder": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "16:00"
+      },
+      "expected": "As of 16:00: no rain; thunder."
+    },
+    {
+      "name": "temperature tie, rounds down to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": 32.5,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: high so far 32\u00b0C / 90\u00b0F."
+    },
+    {
+      "name": "temperature tie, rounds up to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": 33.5,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: high so far 34\u00b0C / 92\u00b0F."
+    },
+    {
+      "name": "temperature tie below zero",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": -0.5,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: high so far 0\u00b0C / 31\u00b0F."
+    },
+    {
+      "name": "gust tie, rounds down to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": 30.5,
+          "cloud_oktas": null
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: peak gust 30 km/h."
+    },
+    {
+      "name": "gust tie, rounds up to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": 31.5,
+          "cloud_oktas": null
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: peak gust 32 km/h."
+    },
+    {
+      "name": "sky tie, rounds up to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": 5.5
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: sky 6/8."
+    },
+    {
+      "name": "sky tie, rounds down to even",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": 6.5
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: sky 6/8."
+    },
+    {
+      "name": "overcast",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": 8.0
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: sky 8/8."
+    },
+    {
+      "name": "clear",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": 0.0
+        },
+        "as_of": "15:00"
+      },
+      "expected": "As of 15:00: sky 0/8."
+    }
+  ]
+}

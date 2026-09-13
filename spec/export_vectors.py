@@ -76,6 +76,7 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
+from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.disagreement import (
     ObservedSoFar,
     StandingCall,
@@ -3294,6 +3295,74 @@ def export_describe_day_rain() -> None:
     )
 
 
+def export_observed_so_far() -> None:
+    """The observed block, composed in code rather than paid for — item 121.
+
+    Vector-tested because it is the fifth thing this project composes as a
+    finished sentence and hands over to be used verbatim, and because three of
+    its six dimensions round. Rounding is the divergence this repo has been
+    bitten by most: item 88 found ten, and `_roundHalfEven`, `_fmt0` and the
+    whole of rounding.dart exist for it. The tie cases below are chosen to be
+    where Dart's half-away-from-zero `.round()` parts company with Python's
+    half-to-even, not a spread of ordinary values.
+
+    THE THREE-VALUED CASES MATTER AS MUCH AS THE ARITHMETIC. A `False` is
+    reported and a `None` is omitted, and a port that collapsed the two would
+    publish "no rain" on the strength of not having looked.
+    """
+    cases = [
+        ("every dimension, contract order", ObservedSoFar(
+            precipitation=True, precipitation_onset="13:00", thunder=True,
+            high_c=27.4, low_c=18.1, peak_wind_kmh=31.4, cloud_oktas=5.5), "14:00"),
+        ("negatives are reported, absences omitted", ObservedSoFar(
+            precipitation=False, thunder=False, high_c=22.0), "09:00"),
+        ("rain with no first-seen time", ObservedSoFar(
+            precipitation=True, precipitation_onset=None), "12:00"),
+        ("a station that measured nothing", ObservedSoFar(), "14:00"),
+        ("no issuance clock", ObservedSoFar(thunder=True), None),
+        ("thunder without rain is a real outcome", ObservedSoFar(
+            precipitation=False, thunder=True), "16:00"),
+        # The ties. Half-to-even sends .5 to the EVEN neighbour, so 32.5 goes
+        # down and 33.5 goes up — the pair is the point, either alone passes
+        # under half-away-from-zero too.
+        ("temperature tie, rounds down to even", ObservedSoFar(high_c=32.5), "15:00"),
+        ("temperature tie, rounds up to even", ObservedSoFar(high_c=33.5), "15:00"),
+        ("temperature tie below zero", ObservedSoFar(high_c=-0.5), "15:00"),
+        ("gust tie, rounds down to even", ObservedSoFar(peak_wind_kmh=30.5), "15:00"),
+        ("gust tie, rounds up to even", ObservedSoFar(peak_wind_kmh=31.5), "15:00"),
+        ("sky tie, rounds up to even", ObservedSoFar(cloud_oktas=5.5), "15:00"),
+        ("sky tie, rounds down to even", ObservedSoFar(cloud_oktas=6.5), "15:00"),
+        ("overcast", ObservedSoFar(cloud_oktas=8.0), "15:00"),
+        ("clear", ObservedSoFar(cloud_oktas=0.0), "15:00"),
+    ]
+    write(
+        "observed_so_far.json",
+        "describe_observed_so_far",
+        "One finished sentence for what the station has already measured today, "
+        "or null when it has measured nothing. A False is reported because the "
+        "station looked; a null is omitted because it did not.",
+        [
+            {
+                "name": name,
+                "input": {
+                    "observed": {
+                        "precipitation": o.precipitation,
+                        "precipitation_onset": o.precipitation_onset,
+                        "thunder": o.thunder,
+                        "high_c": o.high_c,
+                        "low_c": o.low_c,
+                        "peak_wind_kmh": o.peak_wind_kmh,
+                        "cloud_oktas": o.cloud_oktas,
+                    },
+                    "as_of": as_of,
+                },
+                "expected": describe_observed_so_far(o, as_of=as_of),
+            }
+            for name, o, as_of in cases
+        ],
+    )
+
+
 def export_temp_high_low() -> None:
     """The headline temperature line, in both units.
 
@@ -3857,6 +3926,7 @@ def main() -> None:
     export_day_over_day()
     export_extended_trend()
     export_describe_day_rain()
+    export_observed_so_far()
     export_describe_day_over_day()
     export_glossary()
     export_temp_high_low()

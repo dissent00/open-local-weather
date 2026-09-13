@@ -952,6 +952,30 @@ void main() {
       }
     });
 
+    test('observed_so_far', () {
+      // Item 121. The rounding ties are why this file exists: Dart's .round()
+      // goes half AWAY from zero, so 32.5 would publish 33 here and 32 in
+      // Python. The three-valued cases are the other half — a false is
+      // reported because the station looked, a null omitted because it did not.
+      for (final c in casesOf('observed_so_far.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final got = describeObservedSoFar(
+          ObservedSoFar(
+            precipitation: o['precipitation'] as bool?,
+            precipitationOnset: o['precipitation_onset'] as String?,
+            thunder: o['thunder'] as bool?,
+            highC: (o['high_c'] as num?)?.toDouble(),
+            lowC: (o['low_c'] as num?)?.toDouble(),
+            peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble(),
+            cloudOktas: (o['cloud_oktas'] as num?)?.toDouble(),
+          ),
+          asOf: i['as_of'] as String?,
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('describe_day_over_day', () {
       // Item 83's composition contract — the label combinations that produced
       // "with dry until evening showers today; yesterday was largely dry".
@@ -1349,6 +1373,7 @@ void main() {
       'day_over_day.json',
       'extended_trend.json',
       'describe_day_rain.json',
+      'observed_so_far.json',
       'describe_day_over_day.json',
       'glossary.json',
       'temp_high_low.json',

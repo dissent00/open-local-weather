@@ -50,10 +50,23 @@ def format_temp_high_low(high_c: float, low_c: float) -> str:
     already pins across the two implementations — see `_fmt0` in the Dart
     `synoptic.dart` for the matching half.
     """
-    def both(celsius: float) -> str:
-        return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
+    return f"{format_temp_c(high_c)} high, {format_temp_c(low_c)} low"
 
-    return f"{both(high_c)} high, {both(low_c)} low"
+
+def format_temp_c(celsius: float) -> str:
+    """One temperature, in both units — the half of `format_temp_high_low`
+    that is about a single number.
+
+    EXTRACTED RATHER THAN COPIED, 2026-09-13. It was a nested `both()` and
+    item 121 needs the same rendering for observed temperatures. A second
+    spelling of it would be a second rounding site, and rounding is this
+    project's most-bitten cross-language divergence — `_roundHalfEven` in
+    models.dart, `_fmt0` in synoptic.dart and the whole of rounding.dart
+    exist for it, and item 88 found ten.
+
+    The rounding reasoning belongs to the caller above and is not repeated.
+    """
+    return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
 
 
 # ---------------------------------------------------------------------------

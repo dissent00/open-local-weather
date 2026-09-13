@@ -1695,7 +1695,12 @@ def _observed_so_far(location: LocationConfig, today: date) -> ObservedSoFar | N
 
     return ObservedSoFar(
         precipitation=seen.precipitation if seen is not None else None,
+        precipitation_onset=seen.precipitation_onset if seen is not None else None,
+        thunder=seen.thunder if seen is not None else None,
+        cloud_oktas=seen.cloud_oktas if seen is not None else None,
         high_c=measured.high_c if measured is not None else None,
+        low_c=measured.low_c if measured is not None else None,
+        peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
     )
 
 

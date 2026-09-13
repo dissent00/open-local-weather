@@ -53,6 +53,8 @@ from openlocalweather.comparison import (
     describe_day_rain,
 )
 from openlocalweather.instability import summarize_instability
+from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.disagreement import ObservedSoFar
 from openlocalweather.solar import sun_times
 from openlocalweather.daypart import (
     daypart_without_sun,
@@ -626,6 +628,17 @@ def test_vectors_describe_day_rain():
         )
 
 
+def test_vectors_observed_so_far():
+    """The observed block — item 121. Covers the rounding ties where a Dart
+    .round() would part company, and the False-versus-null distinction a port
+    could collapse without failing anything else."""
+    for case in load("observed_so_far.json")["cases"]:
+        i = case["input"]
+        observed = ObservedSoFar(**i["observed"])
+        got = describe_observed_so_far(observed, as_of=i["as_of"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_describe_day_over_day():
     """Item 83's composition contract — the label combinations that produced
     "with dry until evening showers today; yesterday was largely dry"."""
@@ -784,6 +797,7 @@ def test_every_vector_file_is_exercised():
         "wind_vector_mean.json",
         "wind_consensus_direction.json",
         "wind_describe_shift.json",
+        "observed_so_far.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

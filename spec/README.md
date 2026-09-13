@@ -102,6 +102,7 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 20 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
+| `observed_so_far.json` | `describe_observed_so_far` | 15 |
 | `glossary.json` | `GLOSSARY` | 19 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
@@ -132,6 +133,7 @@ absent values are `null`, never omitted keys.
 | `next_aligned_window.json` | `next_aligned_window` | When the next window opens and which cycle it will carry — the forward-looking half of the same table. Strictly after the given moment, so a reader on a boundary is pointed at the next window rather than the one they already have. Used to tell someone whose forecast was built on a narrowed window when waiting would help. |
 | `wind_vector_mean.json` | `vector_mean` | Bearing and agreement for a set of compass directions, combined as unit vectors. The one quantity in this project that cannot be averaged on a number line: 350° and 10° are twenty degrees apart and their arithmetic mean is due SOUTH of both. The agreement figure is the resultant length and falls out of the same arithmetic — 0.0 is a set that cancels out and genuinely has no mean direction, which is why this approach cannot invent a bearing no model holds. |
 | `wind_consensus_direction.json` | `consensus_direction` | The gated rose point, or null. Null is the correct and common answer here in the evening: measured 2026-09-10, model agreement runs 0.95 at midday while Lake Victoria's breeze is driven and 0.48 at 19:00 as it collapses. |
+| `observed_so_far.json` | `describe_observed_so_far` | What the station has already measured today, as one finished sentence — ROADMAP item 121, so a reader gets mid-day updates without an LLM call. Three of its six dimensions round, and the cases are the half-to-even ties rather than a spread: Dart's `.round()` goes half AWAY from zero and would publish 33 where Python publishes 32. The other half of the file is the three-valued contract — a `False` is reported because the station looked, a `null` is omitted because it did not, and a port that collapsed the two would say "no rain" on the strength of not having looked. |
 | `wind_describe_shift.json` | `describe_wind_shift` | How the wind turns through the day, as one finished clause. The models disagree on a single daily bearing and agree on which way it turns — across-day agreement 0.98–0.99 at the anchor hours — so the shift is reported and the bearing usually is not. An anchor the models split on is dropped rather than guessed. |
 
 ### The cases that matter most
