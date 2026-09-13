@@ -120,7 +120,12 @@ List<CoverageFinding> detectCoverage({
   int windowDays = coverageWindowDays,
   int absentRunsThreshold = coverageAbsentRuns,
 }) {
-  final byLead = <int, List<Map<String, ModelPrediction>>>{
+  // THE DATE TRAVELS WITH THE RUN, mirroring Python's `runs` list of
+  // (date, predictions) pairs. It used to be discarded here and rebuilt later
+  // as `today - 1 - index`, which is only correct while the window has no
+  // holes — see the lastSeen block below. Upstream ROADMAP item 88,
+  // divergence 6.
+  final byLead = <int, List<(DateTime, Map<String, ModelPrediction>)>>{
     for (final k in leadTimesDays) k: []
   };
   var cursor = addDays(today, -1);
@@ -129,7 +134,7 @@ List<CoverageFinding> detectCoverage({
     for (final k in leadTimesDays) {
       final preds = predictionsFor(cursor, k);
       if (preds != null && preds.isNotEmpty) {
-        byLead[k]!.add({for (final p in preds) p.model: p});
+        byLead[k]!.add((cursor, {for (final p in preds) p.model: p}));
       }
     }
     cursor = addDays(cursor, -1);
@@ -143,18 +148,21 @@ List<CoverageFinding> detectCoverage({
       // Runs in which this model appeared at all. A model absent entirely is
       // a different problem — a config change, or one added partway through
       // — and is not what this watches.
-      final modelRuns = [for (final r in runs) if (r.containsKey(model)) r[model]!];
+      final modelRuns = [
+        for (final r in runs) if (r.$2.containsKey(model)) (r.$1, r.$2[model]!)
+      ];
       if (modelRuns.isEmpty) continue;
 
       for (final variable in watchedVariables) {
-        final anyPresent = modelRuns.any((p) => _valueOf(p, variable) != null);
+        final anyPresent =
+            modelRuns.any((r) => _valueOf(r.$2, variable) != null);
         if (!anyPresent) {
           // Do any OTHER models supply this at this lead time? If so the gap
           // belongs to this model, not to the variable — the distinction
           // that makes the ECMWF case detectable at all.
           final peers = <String>{};
           for (final r in runs) {
-            r.forEach((m, p) {
+            r.$2.forEach((m, p) {
               if (m != model && _valueOf(p, variable) != null) peers.add(m);
             });
           }
@@ -173,20 +181,24 @@ List<CoverageFinding> detectCoverage({
         }
         // Consecutive absences from the newest run backwards.
         var absent = 0;
-        for (final p in modelRuns) {
-          if (_valueOf(p, variable) != null) break;
+        for (final r in modelRuns) {
+          if (_valueOf(r.$2, variable) != null) break;
           absent++;
         }
         if (absent >= absentRunsThreshold) {
+          // The STORED date of the newest run that still had the value —
+          // Python's `present[0][0]`. Counting loop positions and counting
+          // calendar days agree only while every day in the window produced
+          // a run, and a day the app slept through leaves a hole: the old
+          // form then named the missing day itself as when the variable was
+          // last seen.
           DateTime? lastSeen;
-          var idx = 0;
           for (final r in runs) {
-            final p = r[model];
+            final p = r.$2[model];
             if (p != null && _valueOf(p, variable) != null) {
-              lastSeen = addDays(today, -1 - idx);
+              lastSeen = r.$1;
               break;
             }
-            idx++;
           }
           findings.add(CoverageFinding(
             kind: 'regression',

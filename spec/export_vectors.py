@@ -1744,9 +1744,11 @@ def export_coverage() -> None:
     today = date(2026, 8, 21)
     models = ["alpha", "beta"]
 
-    def build(days: int, alpha_wind, beta_wind):
+    def build(days: int, alpha_wind, beta_wind, skip=()):
         logs = {}
         for i in range(days):
+            if i in skip:
+                continue
             d = today - timedelta(days=i + 1)
             logs[d] = DailyLogEntry(
                 date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
@@ -1765,8 +1767,8 @@ def export_coverage() -> None:
             )
         return logs
 
-    def case(name, days, alpha_wind, beta_wind):
-        logs = build(days, alpha_wind, beta_wind)
+    def case(name, days, alpha_wind, beta_wind, skip=()):
+        logs = build(days, alpha_wind, beta_wind, skip=skip)
         findings = detect_coverage(
             log_lookup=lambda d: logs.get(d), today=today,
             models=models, lead_times_days=[0],
@@ -1810,6 +1812,15 @@ def export_coverage() -> None:
             case("a single missed run is noise", 12,
                  lambda i: None if i < 1 else 22.0, 25.0),
             case("a healthy record yields nothing", 10, 24.0, 25.0),
+            # ROADMAP item 88, divergence 6. The window has a HOLE in it: the
+            # run five days back never happened, so counting positions in the
+            # loop and counting days on the calendar stop agreeing. Python
+            # carries the stored date of the last present run; the Dart port
+            # rebuilt it as today - 1 - index, which lands on the missing day
+            # itself — a date the record does not contain, reported to a
+            # reader as when the variable was last seen.
+            case("last seen carries its stored date across a gap", 12,
+                 lambda i: None if i < 4 else 22.0, 25.0, skip=(4,)),
         ],
     )
 

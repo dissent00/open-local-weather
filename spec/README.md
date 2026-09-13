@@ -91,7 +91,7 @@ absent values are `null`, never omitted keys.
 | `blend_prediction.json` | `_blend_prediction` | 4 |
 | `extended_blend_predictions.json` | `_extended_blend_predictions` | 6 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 6 |
-| `coverage.json` | `detect_coverage` | 5 |
+| `coverage.json` | `detect_coverage` | 6 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
 | `dates_add_days.json` | `add_days` | 4 |

@@ -11086,10 +11086,20 @@ Ordered by what reaches a reader:
    for whoever wires the app's day-over-day block, who would hand the
    forecaster the two fields deleted on 2026-09-05 precisely because a rule
    could not beat a payload supplying its own counter-example.
-6. **`coverage.dart:180` reconstructs `last_seen` from a loop index** rather
-   than carrying the stored date. Correct only where the window has no gaps;
-   the server's log has none today, but the app's record has no reason to be
-   contiguous.
+6. ~~**`coverage.dart:180` reconstructs `last_seen` from a loop index.**~~
+   **Fixed 2026-09-13.** The date was collected at the top of the walk and
+   thrown away, then rebuilt as `today - 1 - index`. Counting loop positions
+   and counting calendar days agree only while every day in the window
+   produced a run.
+
+   The vector case puts a hole in the window — the run five days back never
+   happened — and the old form then names **the missing day itself** as when
+   the variable was last seen: a date the record does not contain, reported to
+   a reader as a fact about the record. `byLead` now carries
+   `(date, predictions)` pairs, which is the shape Python's `runs` always had.
+
+   The server's log is contiguous; the app's has no reason to be, and it is
+   the app that has less recourse when a source goes quiet.
 7. **`extract.dart` Day+N uses `pickSeries` where Python still uses an `or`
    chain**, so an all-null per-model array falls through in Dart and is used
    in Python. Python is the source of truth and is the side still carrying
