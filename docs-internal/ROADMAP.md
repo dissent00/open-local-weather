@@ -11058,11 +11058,26 @@ Ordered by what reaches a reader:
    That rate is the reference every Brier skill score is divided by, so a
    one-point shift moves a published number. `models.dart` already has
    `_roundHalfEven`; this line does not use it.
-4. **`extract.dart:150` accumulates cloud with `fold`** where Python's `sum()`
-   is Neumaier-compensated, and `sums.dart` exists for exactly this. Cloud
-   feeds a day-over-day label whose band edges are 12.5 and 37.5, so a 0.1
-   shift can change published words. The rain boolean and `precip_mm` share
-   the pattern and appear latent.
+4. ~~**`extract.dart:150` accumulates cloud with `fold`**~~ **Fixed
+   2026-09-13**, `ba5c9b5`, along with the rain boolean and `precip_mm`, which
+   did share the pattern. Python's `sum()` is Neumaier-compensated and
+   `sums.dart` exists for exactly this.
+
+   **The reachability is now measured, and this item overstated it.** 200,000
+   realistic 24-hour series, values as Open-Meteo returns them: the rounded
+   1-dp cloud mean differs between naive and compensated summation on **2,926
+   of them — about 1.5%** — and lands in a different day-over-day band on
+   **one**. So "a 0.1 shift can change published words" is true and happens
+   about once in 200,000 days; the published MEAN moving 1.5% of the time is
+   the real reason to fix it. Precipitation over the same sweep: **zero**
+   divergences, so that site was correct-but-unreachable and is fixed for the
+   pattern rather than for a live fault.
+
+   The vector case is `[1e16, 1.0, -1e16]`, which is catastrophic
+   cancellation rather than weather. It proves the port and nothing about the
+   domain — which is the right division once the domain is swept separately,
+   and it is recorded here so nobody reads that case as evidence of
+   frequency.
 5. **`comparison_for_prompt` has no Dart counterpart at all.** Python narrows
    the stored comparison to four fields and rebuilds `observed_from`;
    `DayOverDayComparison.toJson()` emits all seventeen plus `provenance` and
