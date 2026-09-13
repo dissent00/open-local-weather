@@ -12,6 +12,7 @@ import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
 import 'llm/provider.dart';
+import 'wind.dart';
 import 'llm/schema.dart';
 import 'models.dart';
 import 'open_meteo.dart';
@@ -488,6 +489,27 @@ Future<ForecastRun> generateForecast({
     },
     guidanceRecency: guidanceRecency,
     extendedTrend: extendedTrend,
+    // THE APP OMITTED TWO OF THESE ENTIRELY — upstream ROADMAP item 104.
+    //
+    // describeWindShift and consensusDirection have been ported, exported and
+    // vector-tested here for as long as the Python side has had them, and
+    // nothing on this path ever called either. So every forecast this app has
+    // issued told its reader the models shared no bearing and that nothing
+    // could be said about the wind turning, from data that supported both.
+    //
+    // It is the same defect item 104 found between the server's two pipelines,
+    // on a third surface, and it found it the same way: the blocks are
+    // optional arguments defaulting to null, and a block nobody wired renders
+    // exactly like a block with nothing to say.
+    windDirection: consensusDirection([
+      for (final p in day0)
+        if (p.windDirectionDeg != null) p.windDirectionDeg!,
+    ]),
+    // Item 118: the anchors are hours of the day, so a clause with none of
+    // them still ahead describes a day the reader has already finished.
+    windShift: describeWindShift(hourly, models,
+        issuedHour: issuedHourOf(resolvedIssuance)),
+    forecastWindows: issuanceWindows(resolvedIssuance, today),
   );
 
   // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
@@ -557,4 +579,73 @@ String _isoLikePython(DateTime value) {
   return '${pad(utc.year, 4)}-${pad(utc.month, 2)}-${pad(utc.day, 2)}'
       'T${pad(utc.hour, 2)}:${pad(utc.minute, 2)}:${pad(utc.second, 2)}'
       '$fraction+00:00';
+}
+
+/// The local hour a run went out, or 24 when the moment could not be read.
+///
+/// Mirrors `pipeline._issued_hour`, including its answer for the unknown case:
+/// 24 is later than any onset and therefore suppresses every timing qualifier.
+/// Absence is not permission — a phrase saying a day was dry until the evening
+/// is a claim about elapsed hours, and a run that cannot say what hour it is
+/// has no business making it.
+int issuedHourOf(Object? issuance) {
+  if (issuance == null) return 24;
+
+  try {
+    final d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+    final parts = (d['local_time'] as String).split(':');
+    return int.parse(parts.first);
+  } catch (_) {
+    return 24;
+  }
+}
+
+/// The issuance's named periods with explicit clock bounds.
+///
+/// Mirrors `pipeline._issuance_windows`. Empty when the moment cannot be read,
+/// for the same reason the Python side returns 24 for an unknown issued hour:
+/// a run that cannot say what hour it is has no business telling a reader
+/// which hours a period covers, and the prompt renders that as unavailable
+/// rather than offering bounds from a clock nobody trusts.
+///
+/// [today] must be the LOCATION's date, never the device's. A DayPart carries
+/// clock times and no date, and a phone in another timezone would otherwise
+/// put every window on the wrong day and name the wrong weekday with it.
+List<Map<String, Object?>> issuanceWindows(Object? issuance, DateTime today) {
+  if (issuance == null) return const [];
+
+  final Map<String, Object?> d;
+  try {
+    d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+  } catch (_) {
+    return const [];
+  }
+
+  final now = _clockOn(today, d['local_time'] as String?);
+  if (now == null) return const [];
+
+  final sunrise = _clockOn(today, d['sunrise'] as String?);
+  final sunset = _clockOn(today, d['sunset'] as String?);
+  final nextSunrise =
+      sunrise == null ? null : sunrise.add(const Duration(days: 1));
+  final horizon = (d['horizon'] as List?)?.cast<String>() ?? const <String>[];
+
+  return forecastWindows(now, sunrise, sunset, horizon, nextSunrise)
+      .map((w) => w.toJson())
+      .toList();
+}
+
+DateTime? _clockOn(DateTime day, String? hhmm) {
+  if (hhmm == null) return null;
+  final parts = hhmm.split(':');
+  if (parts.length < 2) return null;
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) return null;
+
+  return DateTime(day.year, day.month, day.day, hour, minute);
 }

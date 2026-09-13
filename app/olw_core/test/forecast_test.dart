@@ -186,6 +186,57 @@ void main() {
     );
   }
 
+
+  /// A client whose hourly series spans the wind-shift anchors (03:00, 12:00,
+  /// 18:00) and carries a direction at each.
+  ///
+  /// The shared `_hourlyBody` holds three hours — 12:00 to 14:00 — and no
+  /// direction at all, so `describeWindShift` could only ever return null
+  /// against it: one anchor, and nothing to read. That is exactly why the app
+  /// never publishing a wind shift went unnoticed, so the fixture is part of
+  /// the defect and not merely absent.
+  ///
+  /// Bearings turn NE -> SW -> S through the day, the Lake Victoria pattern
+  /// upstream item 59 measured, and every model agrees so the consensus gate
+  /// opens.
+  OpenMeteoClient _windClient() {
+    Map<String, Object?> body() {
+      const hours = [0, 3, 6, 9, 12, 15, 18, 21];
+      const bearings = [30.0, 40.0, 60.0, 120.0, 210.0, 200.0, 180.0, 20.0];
+      return {
+        'utc_offset_seconds': 10800,
+        'hourly': {
+          'time': [
+            for (final h in hours)
+              '2026-08-19T${h.toString().padLeft(2, '0')}:00'
+          ],
+          for (final m in defaultModels) ...{
+            'precipitation_$m': List<double>.filled(hours.length, 0.2),
+            'wind_gusts_10m_$m': List<double>.filled(hours.length, 20.0),
+            'temperature_2m_$m': List<double>.filled(hours.length, 24.0),
+            'pressure_msl_$m': List<double>.filled(hours.length, 1012.0),
+            'wind_direction_10m_$m': bearings,
+          },
+        }
+      };
+    }
+
+    return OpenMeteoClient(
+      client: MockClient((request) async {
+        if (request.url.queryParameters['daily'] == 'pressure_msl_mean') {
+          return http.Response(jsonEncode([]), 200);
+        }
+        if (request.url.path.contains('air-quality')) {
+          return http.Response(jsonEncode({'hourly': {'pm2_5': [18.0]}}), 200);
+        }
+        if (request.url.queryParameters.containsKey('daily')) {
+          return http.Response(jsonEncode(_dailyBody(defaultModels)), 200);
+        }
+        return http.Response(jsonEncode(body()), 200);
+      }),
+    );
+  }
+
   test('generates one forecast end to end', () async {
     final llm = _StubProvider();
     final run = await generateForecast(
@@ -724,6 +775,47 @@ void main() {
     expect(llm.seenUserPrompt, contains('Sunset is in 32 minutes'));
     expect(llm.seenUserPrompt, contains('WHAT MATTERS NOW: tonight'));
     expect(llm.seenUserPrompt, contains('HOURS AHEAD'));
+  });
+
+  test('every pre-computed block the prompt locks actually reaches it', () async {
+    // THE TEST THAT WAS MISSING THREE TIMES — upstream ROADMAP item 104.
+    //
+    // These blocks are optional arguments defaulting to null, and the prompt
+    // renders null as "Unavailable". So a block nobody wired reads exactly
+    // like a block with nothing to say, and no assertion anywhere noticed: the
+    // server's evening refresh omitted three of them for weeks, and this app
+    // omitted wind direction and wind shift from every forecast it has ever
+    // issued, while describeWindShift sat here ported, exported and
+    // vector-tested with no caller.
+    //
+    // Asserting the ABSENCE of the fallback text is the point. Asserting the
+    // header is present proves nothing — the header is there either way.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: _windClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      // Midday, so the wind clause has anchors still ahead of it and item
+      // 118 does not legitimately withhold it. An evening hour would make
+      // this test pass for the wrong reason.
+      nowLocal: DateTime(2026, 8, 19, 11, 0),
+    );
+
+    expect(llm.seenUserPrompt, contains('FORECAST WINDOWS'));
+    expect(llm.seenUserPrompt,
+        isNot(contains('the periods could not be placed on the clock')),
+        reason: 'the windows block was not wired into this path');
+
+    expect(llm.seenUserPrompt, contains('WIND SHIFT'));
+    expect(llm.seenUserPrompt,
+        isNot(contains('omit any claim about the wind turning')),
+        reason: 'the wind shift was not wired into this path');
+
+    expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
+    expect(llm.seenUserPrompt, isNot(contains('omit the extended clause')),
+        reason: 'the extended trend was not wired into this path');
   });
 
   test('generateForecast computes the derived guidance recency floor', () async {
