@@ -14782,3 +14782,64 @@ composer for any sentence it is about to blame the model for.
 Related: items 117 (the version this corrects), 83 (code-written phrases and
 the contract nobody wrote), 104 (C4's floor, and prose keyed to the clock),
 97, 98, 88 (the vector case this fix needs), and 48 for the standing practice.
+
+### The class this belongs to — the operator's reading, 2026-09-13
+
+"Everything was initially designed around the morning/evening concept.
+Expected, not really an issue outside the new paradigm of *a forecast is a
+forecast*."
+
+That is right, and the code says it more plainly than the prose does.
+
+**THE PIPELINE NEVER BRANCHES ON THE CLOCK. IT BRANCHES ON EXISTENCE.**
+
+```python
+first_issuance_of_day=existing_entry is None
+is_reissue=existing_entry is not None
+```
+
+Those are the only two switches, and neither asks what time it is. The word
+"morning" appears throughout this project's prose and in none of its
+conditions. A first issuance at 18:01 therefore takes the byte-identical path
+a 06:00 run takes — the morning shape is a property of the cron, not of the
+code.
+
+**And the split runs exactly where item 117b found the defect.** Checked
+across `comparison.py`, `synoptic.py`, `instability.py` and `wind.py`: not one
+code-composer takes a clock. `describe_day_rain`, `describe_day_over_day`,
+`describe_extended_trend`, `summarize_synoptic`, `describe_wind_shift`,
+`wind_warning` — no `now`, no issuance, no hour, in any signature. Meanwhile
+the prompt IS clock-aware, through `summarize_daypart` and `forward_hours`,
+and it spends real length on spent values and past tense.
+
+So:
+
+| | knows the hour | governs |
+|---|---|---|
+| the prompt's rules | yes | prose the model writes |
+| `summarize_daypart`, `forward_hours` | yes | what is handed over |
+| every code-composed sentence | **no** | text required VERBATIM |
+
+The one column that cannot adapt is the one the model is forbidden to edit.
+That is why the defect landed there and nowhere else, and it predicts where
+the next one lands.
+
+### The wrinkle, and it decides whether this waits for item 104
+
+**It is live now.** The run that produced it was `workflow_dispatch` under the
+CURRENT design, with `first_issuance_of_day: true` at 18:01. The two-slot
+design does not guarantee a morning run — it assumes one. Any day the 03:07
+cron fails, is skipped, or is beaten to it by a manual dispatch, the same
+phrase composes from the same code.
+
+So item 104 does not CREATE this class. It makes it routine, which is a
+different thing and a weaker reason to wait. The `describe_day_rain` fix is
+one argument and a vector case; it should go in on its own, before the
+paradigm it will eventually serve.
+
+**What item 104 changes is the scope.** Today one function is wrong on a rare
+day. Under "a forecast is a forecast" every composer in that table is a
+candidate, and the honest way to take them is as a sweep with the clock as the
+question — not one bug report at a time. Worth doing once, deliberately, when
+104's build starts, and worth remembering that this was the first and was
+found by a reader standing outside rather than by any test.
