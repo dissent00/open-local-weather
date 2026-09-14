@@ -8803,6 +8803,47 @@ this is read against), item 58, item 27.
 > frozen prompt vectors followed by `olw replay-diff before after`. That
 > spends, so it is the operator's call.
 >
+> **SECOND CUT, SHIPPED: category 4, the payload's own precision.** Measured on
+> the same issuance: 186 literals carried three or more decimal places, and the
+> pass removes **2,472 characters, 1.50% of the prompt**, about 1,236 tokens an
+> issuance. The size is the least interesting part.
+>
+> What it removes is a claim of precision nothing measured —
+> `"avg_temp_high_error_c_10": -2.380000000000001` is a mean temperature error
+> to sixteen significant figures against an observation recorded to 0.1 C, and
+> `regional_pressure` carried SEVENTEEN decimal places. And it invites the
+> error category 1 is about: a model shown `65.38461538461539` and asked for
+> prose has been handed a number it can only use by rounding, which is
+> arithmetic, which is the one thing the prompt forbids it.
+>
+> **One decimal place by default, because the instruments are.** Every hourly
+> variable in the raw guidance was swept and they already arrive at one place,
+> so across roughly 40% of the prompt this changes nothing a model reads. What
+> it catches is OUR OWN arithmetic — means, deltas, unit conversions — where
+> the trailing digits are IEEE754 noise and the rounded value IS the value.
+>
+> **The exceptions were measured, not guessed.** Every numeric field in a real
+> prompt was swept for values living inside [0, 1], where one place deletes
+> rather than tidies. Two families came back: Brier scores and their skill
+> score (0.0529 would become 0.1), and coordinates, which are a POSITION and
+> would move kilometres. Both keep four places. The table is keyed by NAME, not
+> by a range test that would reclassify a Brier of 1.0.
+>
+> **Swept 8,013 values against the Dart port at both precisions: zero
+> disagreements.** That check is not optional here — `spec/README.md` records a
+> one-decimal port that passed every vector case and still disagreed on 962 of
+> 4801 values, because Python rounds the DECIMAL EXPANSION of a binary float.
+> The vector cases are therefore the ties: 0.05 rounds UP, 0.15 rounds DOWN,
+> 0.25 is exact and goes half-to-even, 0.35 rounds down. A scale-and-round port
+> gets three of those four wrong while looking right.
+>
+> **Still open in category 4**, and deliberately not taken here:
+> `generationtime_ms` is Open-Meteo's own server timing, echoed eleven times
+> per prompt, and `latitude`/`longitude` are the API's copy of the coordinates
+> we sent it. Neither is a forecast input. Rounding them was the cheap half;
+> asking why they are in a forecaster's prompt at all is category 1 and wants
+> its own decision.
+>
 > **The obvious next cuts, and why they are NOT the same case:**
 > - `secondary_today_hourly` (13.3%) has no forward window, so dropping it
 >   would lose information rather than a duplicate. It needs a decision about

@@ -78,6 +78,7 @@ from openlocalweather.models import (
     format_temp_high_low,
 )
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
+from openlocalweather.llm.prompt import _round_for_prompt
 from openlocalweather.comparison import compute_day_over_day, comparison_subject, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
@@ -3397,6 +3398,86 @@ def export_describe_day_rain() -> None:
     )
 
 
+def export_prompt_rounding() -> None:
+    """The payload's precision pass — ROADMAP item 73, category 4.
+
+    VECTOR-TESTED BECAUSE ROUNDING IS WHERE PORTS PART COMPANY, and this repo
+    has the measurement: a Dart one-decimal rounding passed every vector case
+    and still disagreed with Python on 962 of 4801 swept values, because
+    Python rounds the DECIMAL EXPANSION of a binary float and the port scaled
+    and rounded the float itself.
+
+    So the cases below are the ties and the boundaries, not a spread of
+    ordinary values — spec/README.md's own instruction. 0.05 rounds UP because
+    the double is 0.050000000000000003; 0.15 rounds DOWN because it is
+    0.1499999999999999944; 0.25 is exact and half-to-even takes it to 0.2; and
+    0.35 is 0.34999999999999997779 and goes to 0.3. A port that scales by ten
+    and rounds gets three of those four wrong while looking correct.
+
+    The STRUCTURE cases matter as much. A bool is not a number however
+    `isinstance(True, int)` reads, an int is a count and must come back
+    untouched, and the per-field table has to survive nesting — the worst
+    offender in a real prompt, `regional_pressure`, is a list of dicts.
+    """
+    cases = [
+        # The ties, at the default one place.
+        ("0.05 rounds up: the double is above the tie", 0.05, None),
+        ("0.15 rounds down: the double is below the tie", 0.15, None),
+        ("0.25 is an exact tie and goes half-to-even", 0.25, None),
+        ("0.35 is below its tie and rounds down", 0.35, None),
+        ("negative ties keep the sign", -0.05, None),
+        # The noise this pass exists to remove, from a real prompt.
+        ("a mean error carrying IEEE noise", -2.380000000000001, None),
+        ("a pressure trend carrying IEEE noise", 1.1999999999999318, None),
+        ("a percentage from a count", 61.76470588235294, None),
+        # The exceptions, keyed by field name.
+        ("a Brier score keeps four places", 0.05289999999999999, "rain_brier"),
+        ("a Brier skill score keeps four places", -0.1234567, "rain_brier_skill"),
+        ("a coordinate keeps four places", -0.05857086, "latitude"),
+        # Structure.
+        ("an int is a count and is untouched", 34, None),
+        ("True is not a number", True, None),
+        ("False is not a number", False, None),
+        ("null passes through", None, None),
+        ("a string passes through", "steady", None),
+    ]
+
+    exported = []
+    for name, value, field in cases:
+        payload = {field: value} if field else {"value": value}
+        exported.append({
+            "name": name,
+            "input": {"payload": payload},
+            "expected": _round_for_prompt(payload),
+        })
+
+    # Nesting, with the per-field precision surviving a list of dicts — the
+    # shape `regional_pressure` actually arrives in.
+    nested = {
+        "regional_pressure": [
+            {"latitude": -0.10544816, "pressure_msl_mean": 1014.6666666666666},
+            {"latitude": 34.793453, "pressure_msl_mean": 1013.3333333333334},
+        ],
+        "checks": 34,
+        "rain_brier": 0.3721,
+        "hourly": {"temperature_2m": [21.349999999999998, 22.65]},
+    }
+    exported.append({
+        "name": "the per-field table survives a list of dicts",
+        "input": {"payload": nested},
+        "expected": _round_for_prompt(nested),
+    })
+
+    write(
+        "prompt_rounding.json",
+        "_round_for_prompt",
+        "The precision pass applied to the prompt payload: one decimal place "
+        "by default, because the instruments are recorded to 0.1, with a "
+        "per-field table for the quantities one place would destroy.",
+        exported,
+    )
+
+
 def export_gust_calibration() -> None:
     """The gust correction and the consensus it produces — ROADMAP item 126.
 
@@ -4242,6 +4323,7 @@ def main() -> None:
     export_describe_day_rain()
     export_observed_so_far()
     export_comparison_subject()
+    export_prompt_rounding()
     export_gust_calibration()
     export_llm_should_reason()
     export_describe_day_over_day()

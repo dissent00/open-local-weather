@@ -948,6 +948,17 @@ void main() {
       }
     });
 
+    test('prompt_rounding', () {
+      // Upstream item 73 category 4. The cases are the TIES, because that is
+      // where a port parts company: 0.05 rounds up and 0.15 rounds down, and
+      // a scale-and-round implementation gets both wrong while looking right.
+      for (final c in casesOf('prompt_rounding.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = roundForPrompt(i['payload']);
+        expectMatches(got, c['expected'], c['name'] as String, exact: true);
+      }
+    });
+
     test('gust_calibration', () {
       // Upstream item 126. THE SIGN IS THE WHOLE THING: the correction is
       // ADDED, and a port that subtracted would double the bias rather than
@@ -1469,6 +1480,7 @@ void main() {
       'llm_should_reason.json',
       'comparison_subject.json',
       'gust_calibration.json',
+      'prompt_rounding.json',
       'describe_day_over_day.json',
       'glossary.json',
       'temp_high_low.json',

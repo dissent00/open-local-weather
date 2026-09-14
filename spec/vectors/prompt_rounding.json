@@ -1,0 +1,228 @@
+{
+  "vector_format_version": 1,
+  "function": "_round_for_prompt",
+  "description": "The precision pass applied to the prompt payload: one decimal place by default, because the instruments are recorded to 0.1, with a per-field table for the quantities one place would destroy.",
+  "cases": [
+    {
+      "name": "0.05 rounds up: the double is above the tie",
+      "input": {
+        "payload": {
+          "value": 0.05
+        }
+      },
+      "expected": {
+        "value": 0.1
+      }
+    },
+    {
+      "name": "0.15 rounds down: the double is below the tie",
+      "input": {
+        "payload": {
+          "value": 0.15
+        }
+      },
+      "expected": {
+        "value": 0.1
+      }
+    },
+    {
+      "name": "0.25 is an exact tie and goes half-to-even",
+      "input": {
+        "payload": {
+          "value": 0.25
+        }
+      },
+      "expected": {
+        "value": 0.2
+      }
+    },
+    {
+      "name": "0.35 is below its tie and rounds down",
+      "input": {
+        "payload": {
+          "value": 0.35
+        }
+      },
+      "expected": {
+        "value": 0.3
+      }
+    },
+    {
+      "name": "negative ties keep the sign",
+      "input": {
+        "payload": {
+          "value": -0.05
+        }
+      },
+      "expected": {
+        "value": -0.1
+      }
+    },
+    {
+      "name": "a mean error carrying IEEE noise",
+      "input": {
+        "payload": {
+          "value": -2.380000000000001
+        }
+      },
+      "expected": {
+        "value": -2.4
+      }
+    },
+    {
+      "name": "a pressure trend carrying IEEE noise",
+      "input": {
+        "payload": {
+          "value": 1.1999999999999318
+        }
+      },
+      "expected": {
+        "value": 1.2
+      }
+    },
+    {
+      "name": "a percentage from a count",
+      "input": {
+        "payload": {
+          "value": 61.76470588235294
+        }
+      },
+      "expected": {
+        "value": 61.8
+      }
+    },
+    {
+      "name": "a Brier score keeps four places",
+      "input": {
+        "payload": {
+          "rain_brier": 0.05289999999999999
+        }
+      },
+      "expected": {
+        "rain_brier": 0.0529
+      }
+    },
+    {
+      "name": "a Brier skill score keeps four places",
+      "input": {
+        "payload": {
+          "rain_brier_skill": -0.1234567
+        }
+      },
+      "expected": {
+        "rain_brier_skill": -0.1235
+      }
+    },
+    {
+      "name": "a coordinate keeps four places",
+      "input": {
+        "payload": {
+          "latitude": -0.05857086
+        }
+      },
+      "expected": {
+        "latitude": -0.0586
+      }
+    },
+    {
+      "name": "an int is a count and is untouched",
+      "input": {
+        "payload": {
+          "value": 34
+        }
+      },
+      "expected": {
+        "value": 34
+      }
+    },
+    {
+      "name": "True is not a number",
+      "input": {
+        "payload": {
+          "value": true
+        }
+      },
+      "expected": {
+        "value": true
+      }
+    },
+    {
+      "name": "False is not a number",
+      "input": {
+        "payload": {
+          "value": false
+        }
+      },
+      "expected": {
+        "value": false
+      }
+    },
+    {
+      "name": "null passes through",
+      "input": {
+        "payload": {
+          "value": null
+        }
+      },
+      "expected": {
+        "value": null
+      }
+    },
+    {
+      "name": "a string passes through",
+      "input": {
+        "payload": {
+          "value": "steady"
+        }
+      },
+      "expected": {
+        "value": "steady"
+      }
+    },
+    {
+      "name": "the per-field table survives a list of dicts",
+      "input": {
+        "payload": {
+          "regional_pressure": [
+            {
+              "latitude": -0.10544816,
+              "pressure_msl_mean": 1014.6666666666666
+            },
+            {
+              "latitude": 34.793453,
+              "pressure_msl_mean": 1013.3333333333334
+            }
+          ],
+          "checks": 34,
+          "rain_brier": 0.3721,
+          "hourly": {
+            "temperature_2m": [
+              21.349999999999998,
+              22.65
+            ]
+          }
+        }
+      },
+      "expected": {
+        "regional_pressure": [
+          {
+            "latitude": -0.1054,
+            "pressure_msl_mean": 1014.7
+          },
+          {
+            "latitude": 34.7935,
+            "pressure_msl_mean": 1013.3
+          }
+        ],
+        "checks": 34,
+        "rain_brier": 0.3721,
+        "hourly": {
+          "temperature_2m": [
+            21.3,
+            22.6
+          ]
+        }
+      }
+    }
+  ]
+}

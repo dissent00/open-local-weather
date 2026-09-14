@@ -2,6 +2,8 @@
 // Copyright 2026 dissent00
 import 'dart:convert';
 
+import '../rounding.dart';
+
 import '../config.dart';
 import '../dates.dart';
 
@@ -447,8 +449,75 @@ String buildNarrativeUserPrompt(String userPrompt, Object? judgment) => '''$user
 ${promptJson(judgment)}
 ''';
 
-String promptJson(Object? value) =>
-    JsonEncoder.withIndent('  ', (o) => o.toString()).convert(value);
+/// The payload's precision pass — upstream ROADMAP item 73, category 4.
+///
+/// THE SIZE IS THE LEAST INTERESTING PART. What it removes is a claim of
+/// precision nothing measured: the record was handing the forecaster
+/// `"avg_temp_high_error_c_10": -2.380000000000001`, a mean temperature error
+/// to sixteen significant figures when the observation behind it is recorded
+/// to 0.1 C, and `regional_pressure` carried seventeen decimal places.
+///
+/// ONE PLACE BY DEFAULT, BECAUSE THE INSTRUMENTS ARE. The raw guidance arrays
+/// already arrive at one decimal place — measured across every hourly
+/// variable — so for roughly 40% of the prompt this changes nothing. What it
+/// catches is OUR OWN arithmetic: means, deltas and unit conversions, where
+/// the trailing digits are IEEE754 noise and the rounded value IS the value.
+const int promptDefaultDecimalPlaces = 1;
+
+/// The quantities one place would destroy rather than tidy. Measured, not
+/// assumed: every numeric field in a real prompt was swept for values living
+/// inside [0, 1]. Keyed by NAME rather than by a range test, which would
+/// silently reclassify a Brier score of 1.0.
+const Map<String, int> promptFieldDecimalPlaces = {
+  // 0.0529 at one place is 0.1 — a deletion, not a rounding.
+  'rain_brier': 4,
+  'mean_rain_brier': 4,
+  'rain_brier_skill': 4,
+  // A POSITION, not a measurement. One place moves the location kilometres;
+  // four is about 11 m, far finer than the grid cell and far coarser than the
+  // false millimetre precision the API echoes back.
+  'latitude': 4,
+  'longitude': 4,
+  'lat': 4,
+  'lon': 4,
+};
+
+/// Walks the payload rounding doubles, carrying each field's own precision.
+///
+/// `roundLikePython`, NEVER `roundToDouble`. Python rounds the DECIMAL
+/// EXPANSION of a binary float; a port that scales by ten and rounds the
+/// float disagreed on 962 of 4801 swept values while passing every vector
+/// case that existed at the time. 0.05 rounds UP and 0.15 rounds DOWN, and
+/// nothing about that is guessable.
+///
+/// Ints are counts and come back untouched. THE BOOL TEST IS DEFENSIVE and
+/// does nothing today — a bool would fall through to the final return either
+/// way. It is here so a later edit that makes the int branch round cannot
+/// turn a three-valued flag into the count 1.
+Object? roundForPrompt(Object? value, [int places = promptDefaultDecimalPlaces]) {
+  if (value is bool || value is int) return value;
+
+  if (value is double) return roundLikePython(value, places);
+
+  if (value is Map) {
+    return {
+      for (final e in value.entries)
+        e.key: roundForPrompt(
+          e.value,
+          promptFieldDecimalPlaces[e.key] ?? places,
+        ),
+    };
+  }
+
+  if (value is List) {
+    return [for (final v in value) roundForPrompt(v, places)];
+  }
+
+  return value;
+}
+
+String promptJson(Object? value) => JsonEncoder.withIndent('  ', (o) => o.toString())
+    .convert(roundForPrompt(value));
 
 /// Per-run user message.
 ///

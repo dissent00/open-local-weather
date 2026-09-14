@@ -99,6 +99,7 @@ absent values are `null`, never omitted keys.
 | `dates_add_days.json` | `add_days` | 4 |
 | `day_over_day.json` | `compute_day_over_day` | 53 |
 | `gust_calibration.json` | `calibrated_gust_consensus` | The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model short of the check threshold is absent from it rather than corrected by zero. |
+| `prompt_rounding.json` | `_round_for_prompt` | The precision pass applied to the prompt payload: one decimal place by default, because the instruments are recorded to 0.1, with a per-field table for the quantities one place would destroy. |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 20 |

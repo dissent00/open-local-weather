@@ -677,3 +677,69 @@ def test_the_calendar_days_hourly_series_is_not_sent():
     # And the rule that policed it is gone with it — item 73's first
     # category: the cheapest way to delete a rule is to delete the temptation.
     assert "as though it were all still ahead" not in prompt
+
+
+# ---------------------------------------------------------------------------
+# Item 73, category 4 — the payload's own precision.
+# ---------------------------------------------------------------------------
+
+
+def test_our_own_arithmetic_is_rounded_to_the_instrument():
+    """The noise this pass exists to remove, taken from a real prompt.
+
+    `avg_temp_high_error_c_10: -2.380000000000001` is a mean temperature error
+    to sixteen significant figures, and the observation behind it is recorded
+    to 0.1 C. The rounded value IS the value; nothing is lost.
+    """
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    assert _round_for_prompt({"avg_temp_high_error_c_10": -2.380000000000001}) == {
+        "avg_temp_high_error_c_10": -2.4
+    }
+    assert _round_for_prompt({"mslp_trend": 1.1999999999999318}) == {"mslp_trend": 1.2}
+    assert _round_for_prompt({"all_time_rain_pct": 61.76470588235294}) == {
+        "all_time_rain_pct": 61.8
+    }
+
+
+def test_a_brier_score_is_not_rounded_into_nothing():
+    """0.0529 at one decimal place is 0.1 — a deletion, not a rounding.
+
+    The exceptions were found by sweeping every numeric field in a real prompt
+    for values living inside [0, 1], not by guessing which ones looked
+    delicate.
+    """
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    assert _round_for_prompt({"rain_brier": 0.05289999999999999}) == {"rain_brier": 0.0529}
+    assert _round_for_prompt({"rain_brier_skill": -0.1234567}) == {"rain_brier_skill": -0.1235}
+
+
+def test_a_coordinate_is_a_position_not_a_measurement():
+    """One decimal place would move the location by kilometres."""
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    assert _round_for_prompt({"latitude": -0.05857086}) == {"latitude": -0.0586}
+
+
+def test_counts_and_flags_are_not_numbers_to_round():
+    """A bool rounded into 1 reads as a count, whatever isinstance(True, int)
+    says; and a count is not a measurement with a precision."""
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    got = _round_for_prompt({"checks": 34, "thunder": True, "rain": False, "note": "steady"})
+
+    assert got == {"checks": 34, "thunder": True, "rain": False, "note": "steady"}
+    assert got["thunder"] is True and got["rain"] is False
+
+
+def test_the_field_table_survives_a_list_of_dicts():
+    """The worst offender in a real prompt is `regional_pressure`, which
+    arrives as a list of dicts carrying seventeen decimal places."""
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    got = _round_for_prompt(
+        {"regional_pressure": [{"latitude": -0.10544816, "pressure_msl_mean": 1014.6666666666666}]}
+    )
+
+    assert got == {"regional_pressure": [{"latitude": -0.1054, "pressure_msl_mean": 1014.7}]}

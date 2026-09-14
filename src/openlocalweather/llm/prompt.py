@@ -476,8 +476,94 @@ def build_narrative_user_prompt(user_prompt: str, judgment: Any) -> str:
 """
 
 
+# ROADMAP item 73, category 4 — the payload's own precision.
+#
+# THE SIZE IS THE LEAST INTERESTING PART. Measured on the 2026-09-14 issuance,
+# 184 literals carried three or more decimal places and about 2,457 characters
+# of the prompt were trailing digits. That is 1.5%, which alone would not be
+# worth a pass.
+#
+# WHAT IT ACTUALLY DOES IS CLAIM PRECISION NOTHING MEASURED. The record handed
+# the forecaster `"avg_temp_high_error_c_10": -2.380000000000001` — a mean
+# temperature error to sixteen significant figures, when the observation
+# behind it is recorded to 0.1 C. `regional_pressure` carried SEVENTEEN
+# decimal places. That is a claim the measurement cannot support, in a project
+# whose whole discipline is not claiming evidence it does not have.
+#
+# AND IT INVITES THE ERROR CATEGORY 1 IS ABOUT. A model shown
+# `65.38461538461539` and asked for prose has been handed a number it can only
+# use by rounding, which is arithmetic, which is the one thing the prompt
+# forbids it. The fix is the payload, not a rule telling it to round.
+#
+# A DEFAULT OF ONE PLACE, BECAUSE THE INSTRUMENTS ARE. Temperatures, pressures
+# and wind are all recorded to 0.1, and the raw guidance arrays already arrive
+# at one decimal place — measured across every hourly variable, so for roughly
+# 40% of the prompt this pass is a no-op and changes nothing a model reads.
+# What it catches is our OWN arithmetic: means, deltas and unit conversions,
+# where the trailing digits are IEEE754 noise and the rounded value IS the
+# value.
+#
+# THE EXCEPTIONS ARE MEASURED, NOT ASSUMED. Every numeric field in a real
+# prompt was swept for values that live inside [0, 1], where one place would
+# destroy them rather than tidy them. Two families came back, and both are
+# here. A field added later that belongs to either MUST be added with it —
+# which is why the table is keyed by name rather than by a range test that
+# would silently reclassify a Brier of 1.0.
+PROMPT_DEFAULT_DECIMAL_PLACES = 1
+
+PROMPT_FIELD_DECIMAL_PLACES = {
+    # Brier scores and their skill score live in [0, 1] and near zero: 0.0529
+    # at one place is 0.1, which is not a rounding but a deletion.
+    "rain_brier": 4,
+    "mean_rain_brier": 4,
+    "rain_brier_skill": 4,
+    # Coordinates are a POSITION, not a measurement, and one place would move
+    # the location by kilometres. Four places is about 11 m — finer than any
+    # purpose here and far finer than the ~9-25 km grid cell item 110
+    # measured — while dropping the false millimetre precision the API echoes.
+    "latitude": 4,
+    "longitude": 4,
+    "lat": 4,
+    "lon": 4,
+}
+
+
+def _round_for_prompt(value: Any, places: int = PROMPT_DEFAULT_DECIMAL_PLACES) -> Any:
+    """Walks the payload rounding floats, carrying each field's own precision.
+
+    Integers are returned untouched rather than rounded: `checks`, `correct`
+    and `lead_time_days` are counts, and `round(5, 1)` returning `5` is a
+    coincidence of Python rather than a guarantee worth relying on.
+
+    THE BOOL TEST IS DEFENSIVE AND DOES NOTHING TODAY, which is worth saying
+    rather than implying otherwise: `isinstance(True, int)` is True, so the
+    line below would catch a bool either way and return it unchanged. Deleting
+    the bool test survives the suite, and that is not a gap in the tests — it
+    is the honest state. It is here so that a later edit making the integer
+    branch ROUND rather than return cannot silently turn a three-valued flag
+    into the count `1`, which is the one way this function could corrupt a
+    field whose whole meaning is that None, False and True differ.
+    """
+    if isinstance(value, bool) or isinstance(value, int):
+        return value
+
+    if isinstance(value, float):
+        return round(value, places)
+
+    if isinstance(value, dict):
+        return {
+            k: _round_for_prompt(v, PROMPT_FIELD_DECIMAL_PLACES.get(k, places))
+            for k, v in value.items()
+        }
+
+    if isinstance(value, (list, tuple)):
+        return [_round_for_prompt(v, places) for v in value]
+
+    return value
+
+
 def _json(value: Any) -> str:
-    return json.dumps(value, indent=2, default=str)
+    return json.dumps(_round_for_prompt(value), indent=2, default=str)
 
 
 # What the CONVECTIVE INSTABILITY block says when code found no CAPE series.

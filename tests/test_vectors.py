@@ -868,6 +868,7 @@ def test_every_vector_file_is_exercised():
         "llm_should_reason.json",
         "comparison_subject.json",
         "gust_calibration.json",
+        "prompt_rounding.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (
@@ -1032,3 +1033,14 @@ def test_vectors_wind_describe_shift():
     for case in load("wind_describe_shift.json")["cases"]:
         got = describe_wind_shift(case["input"]["hourly_multi_model"], case["input"]["models"], issued_hour=case["input"]["issued_hour"])
         assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_prompt_rounding():
+    """Item 73 category 4. The cases are the TIES: 0.05 rounds up and 0.15
+    rounds down, and a port that scales by ten and rounds gets both wrong
+    while passing a spread of ordinary values."""
+    from openlocalweather.llm.prompt import _round_for_prompt
+
+    for case in load("prompt_rounding.json")["cases"]:
+        got = _round_for_prompt(case["input"]["payload"])
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
