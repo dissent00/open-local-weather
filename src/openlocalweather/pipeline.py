@@ -156,7 +156,7 @@ from openlocalweather.llm.schema import (
     TodayProperties,
     merge_forecast_response,
 )
-from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.observed import describe_observed_so_far, observed_baseline
 from openlocalweather.reasoning import llm_should_reason
 from openlocalweather.verify.scoring import verify_closed_windows
 from openlocalweather.disagreement import (
@@ -654,6 +654,25 @@ def _issued_hour(issuance: DayPart | None) -> int:
         return 24
 
 
+def _sunset_hour(issuance: DayPart | None) -> int | None:
+    """The local hour the sun sets, or None when it could not be established.
+
+    None RATHER THAN A DEFAULT, and the asymmetry with `_issued_hour`'s 24 is
+    deliberate. That returns a value later than any onset so an unknown clock
+    SUPPRESSES a timing phrase; this returns None so an unknown sunset
+    suppresses the evening subject — `comparison_subject` never promotes an
+    afternoon into a comparison without a boundary to place the pivot on.
+    Both choices resolve toward saying less.
+    """
+    if issuance is None:
+        return None
+
+    try:
+        return int(issuance.sunset.split(":")[0])
+    except (AttributeError, ValueError, IndexError):
+        return None
+
+
 def _issuance_windows(issuance: DayPart | None, today: date) -> tuple:
     """The issuance's named periods with explicit clock bounds.
 
@@ -823,6 +842,7 @@ def _build_forecast_prompt(
     review_context: Any,
     yesterday_actual: Any,
     calibrated_wind_kmh: float | None,
+    extended_days: list[list],
 ) -> str:
     """The user prompt, built in the one place it is built.
 
@@ -878,7 +898,8 @@ def _build_forecast_prompt(
         guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=yesterday_actual,
         **_locked_blocks(
-            guidance, day0_predictions, today, observed_so_far, calibrated_wind_kmh
+            guidance, day0_predictions, today, observed_so_far, calibrated_wind_kmh,
+            extended_days,
         ),
         review_context=review_context,
         today_weather_data={
@@ -910,6 +931,7 @@ def _locked_blocks(
     today: date,
     observed: ObservedSoFar | None,
     calibrated_wind_kmh: float | None,
+    extended_days: list[list],
 ) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
@@ -945,14 +967,6 @@ def _locked_blocks(
     record scores.
     """
     issued_hour = _issued_hour(guidance.issuance)
-
-    # Days 1-3 from the SAME daily source and the SAME model list as the
-    # scored Day+3 row, so the clause a reader acts on and the number the
-    # record scores cannot describe different weather.
-    extended_days = [
-        extract_day_n_predictions_from_daily(guidance.primary_daily, n, MODELS)
-        for n in (1, 2, 3)
-    ]
 
     return {
         # What the station has already measured today — ROADMAP item 121.
@@ -2574,6 +2588,26 @@ def _issue_forecast(
     # morning's onset would compose "dry until evening" after the evening
     # had begun.
 
+    # DAYS 1-3, EXTRACTED ONCE, from the SAME daily source and the SAME model
+    # list as the scored Day+3 row — so the clause a reader acts on and the
+    # number the record scores cannot describe different weather.
+    #
+    # Hoisted out of `_locked_blocks` because contract item 8's evening
+    # subject is a second consumer: after sunset the comparison is about
+    # TOMORROW, and tomorrow is `extended_days[0]`. Extracting it twice would
+    # be cheap and would also be exactly the drift `_locked_blocks` exists to
+    # prevent — two computations of one quantity that agree only by luck.
+    extended_days = [
+        extract_day_n_predictions_from_daily(guidance.primary_daily, n, MODELS)
+        for n in (1, 2, 3)
+    ]
+
+    # ONE READING OF THE STATION PER RUN, taken before the prompt because item
+    # 121 puts it IN the prompt, shared with the record below so the two
+    # cannot describe different observations, and now also the BASELINE an
+    # evening comparison measures tomorrow against — see observed_baseline.
+    observed_so_far = _observed_so_far(location, today)
+
     # THE GUST THE RECORD SAYS TO EXPECT — calibration.py, which carries the
     # out-of-sample validation and the reason this is not applied to the
     # scored rows. Computed here, before both consumers, so the number the
@@ -2590,12 +2624,21 @@ def _issue_forecast(
         ),
         issued_hour=_issued_hour(guidance.issuance),
         calibrated_wind_kmh=calibrated_wind_kmh,
+        # CONTRACT ITEM 8, STAGE 2 — the evening subject, wired. After sunset
+        # the comparison is about tomorrow, measured against today's daytime,
+        # and named for the days it means.
+        #
+        # WHAT THIS CHANGES IN PRACTICE IS SMALL AND WORTH STATING: this
+        # deployment issues at 06:00 and 18:00, and 18:00 is BEFORE a sunset
+        # that sits near 18:40 all year at this latitude, so the gate keeps
+        # returning None there. The consumer that reaches it is the app, where
+        # a forecast is issued whenever someone taps — including after dark.
+        sunset_hour=_sunset_hour(guidance.issuance),
+        tomorrow_predictions=extended_days[0],
+        today_actual=observed_baseline(observed_so_far),
+        today_name=weekday_name(today),
+        tomorrow_name=weekday_name(add_days(today, 1)),
     )
-
-    # ONE READING OF THE STATION PER RUN, taken before the prompt because
-    # item 121 puts it IN the prompt, and shared with the record below so the
-    # two cannot describe different observations.
-    observed_so_far = _observed_so_far(location, today)
 
     # C2's three triggers, computed ONCE and here — before the decision they
     # inform rather than inside the entry that records them. They were stored
@@ -2744,6 +2787,7 @@ def _issue_forecast(
             asdict(day_over_day) if day_over_day is not None else None
         ),
         calibrated_wind_kmh=calibrated_wind_kmh,
+        extended_days=extended_days,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the

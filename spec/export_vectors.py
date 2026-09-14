@@ -2788,9 +2788,9 @@ def export_day_over_day() -> None:
         # carries the day it is about, because "dry until evening showers"
         # read at 20:00 is about tonight to anyone not told otherwise.
         ("the evening subject is tomorrow, named and in the past tense",
-         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
-         preds([29.6]), None, 20, None,
-         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
+         None, preds([29.6]), None, 20, None,
+         {"today_actual": actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+          "sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
                                                            rains=[False]),
           "today_name": "Monday", "tomorrow_name": "Tuesday"}),
         # TOMORROW'S TIMING SURVIVES A LATE ISSUANCE. Item 118 bounds a timing
@@ -2798,9 +2798,9 @@ def export_day_over_day() -> None:
         # a 17:00 onset read at 20:00 must stay. Bounding it by today's hour
         # would suppress a phrase about a day that has not started.
         ("a late issuance does not bound tomorrow's onset",
-         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
-         preds([29.6]), None, 20, None,
-         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[8.0], onsets=["17:00"]),
+         None, preds([29.6]), None, 20, None,
+         {"today_actual": actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+          "sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[8.0], onsets=["17:00"]),
           "today_name": "Monday", "tomorrow_name": "Tuesday"}),
         # THE SIMILARITY FORM TAKES NO VERB. "Much like today (Monday) was"
         # is a stammer, and without a case that reaches this branch a port can
@@ -2808,19 +2808,19 @@ def export_day_over_day() -> None:
         # Dart vectors until this case existed. Every dimension quiet and the
         # rain band unchanged, which is what it takes to get here.
         ("the evening similarity form names today without a verb",
-         actual(high_c=29.6, peak_wind_kmh=20.0, cloud_cover_pct=40.0,
-                precip_mm=12.0, onset_hour="14:00"),
-         preds([29.6]), None, 20, None,
-         {"sunset_hour": 18,
+         None, preds([29.6]), None, 20, None,
+         {"today_actual": actual(high_c=29.6, peak_wind_kmh=20.0, cloud_cover_pct=40.0,
+                                 precip_mm=12.0, onset_hour="14:00"),
+          "sunset_hour": 18,
           "tomorrow_predictions": preds([29.6], winds=[20.0], clouds=[44.0],
                                         mm=[12.0], onsets=["14:00"]),
           "today_name": "Monday", "tomorrow_name": "Tuesday"}),
         # NO CALENDAR, PLAINER SENTENCE. A caller without weekday names says
         # "today" and "tomorrow" rather than printing an empty parenthesis.
         ("without weekday names the evening sentence is plainer",
-         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
-         preds([29.6]), None, 20, None,
-         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
+         None, preds([29.6]), None, 20, None,
+         {"today_actual": actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+          "sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
                                                            rains=[False])}),
     ]
 
@@ -2845,7 +2845,7 @@ def export_day_over_day() -> None:
         cases.append({
             "name": name,
             "input": {
-                "yesterday_actual": dump(y),
+                "yesterday_actual": dump(y) if y is not None else None,
                 "today_day0_predictions": [dump(p) for p in ps],
                 "today_convective": convective,
                 "issued_hour": issued,
@@ -2857,6 +2857,9 @@ def export_day_over_day() -> None:
                 ),
                 "today_name": extra.get("today_name"),
                 "tomorrow_name": extra.get("tomorrow_name"),
+                "today_actual": (
+                    dump(extra["today_actual"]) if extra.get("today_actual") else None
+                ),
             },
             "expected": dump(result),
         })

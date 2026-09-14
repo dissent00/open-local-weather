@@ -436,9 +436,8 @@ DayOverDayComparison? computeDayOverDay(
   List<ModelPrediction>? tomorrowPredictions,
   String? todayName,
   String? tomorrowName,
+  DailyActual? todayActual,
 }) {
-  if (yesterdayActual == null) return null;
-
   // The daypart gate — contract item 8. See comparisonSubject for why.
   final subject = comparisonSubject(issuedHour, sunsetHour: sunsetHour);
   if (subject == null) {
@@ -458,6 +457,7 @@ DayOverDayComparison? computeDayOverDay(
   // weekday the sentence still says "today" and "tomorrow", unambiguous in
   // every case except the one the names exist for — a reader opening the page
   // the next morning.
+  var baseline = yesterdayActual;
   var predictions = todayDay0Predictions;
   var baselineComparative = 'yesterday';
   var baselineSimilarity = 'yesterday';
@@ -472,6 +472,14 @@ DayOverDayComparison? computeDayOverDay(
     if (tomorrowPredictions == null || tomorrowPredictions.isEmpty) {
       return null;
     }
+    // AND THE BASELINE MOVES WITH THE SUBJECT. "Tomorrow against yesterday"
+    // is a comparison nobody asked for: the 20:00 scenario is tomorrow
+    // against TODAY'S daytime, which at that hour is closed and final. Only
+    // the STATION observes today — archive-api serves the current day as
+    // model output — so this baseline arrives already narrowed to what a
+    // station can honestly supply, and wind, cloud and the rain amount are
+    // absent by design. See observedBaseline upstream.
+    baseline = todayActual;
     predictions = tomorrowPredictions;
     final todayPhrase = todayName != null ? 'today ($todayName)' : 'today';
     baselineComparative = '$todayPhrase was';
@@ -480,6 +488,14 @@ DayOverDayComparison? computeDayOverDay(
         tomorrowName != null ? '$tomorrowName will be ' : 'tomorrow will be ';
     characterIssuedHour = null;
   }
+
+  // A GAP MUST READ AS A GAP, not a day with unremarkable weather — checked
+  // HERE, after the subject has chosen which day is the baseline, rather than
+  // on the parameter. Before the evening subject the two were the same thing;
+  // now a 20:00 run with today's observations in hand and no record for
+  // yesterday is a comparison that CAN be made, and testing the parameter
+  // would have refused it.
+  if (baseline == null) return null;
 
   final consensusHigh = mean([for (final p in predictions) p.highC]);
   final consensusLow = mean([for (final p in predictions) p.lowC]);
@@ -494,7 +510,7 @@ DayOverDayComparison? computeDayOverDay(
   // station's sustained wind sits beside the scored gust.
   final consensusCloud =
       mean([for (final p in predictions) p.cloudCoverPct]);
-  final cloudDelta = delta(consensusCloud, yesterdayActual.cloudCoverPct);
+  final cloudDelta = delta(consensusCloud, baseline.cloudCoverPct);
 
   // THE GUST OPERAND IS THE CALIBRATED ONE — see calibration.dart for the
   // measurement, and for why the correction never touches the scored rows.
@@ -508,9 +524,9 @@ DayOverDayComparison? computeDayOverDay(
   // remove there. Which was used is recorded, not inferred.
   final windForLabel = calibratedWindKmh ?? consensusWind;
 
-  final highDelta = delta(consensusHigh, yesterdayActual.highC);
-  final lowDelta = delta(consensusLow, yesterdayActual.lowC);
-  final windDelta = delta(windForLabel, yesterdayActual.peakWindKmh);
+  final highDelta = delta(consensusHigh, baseline.highC);
+  final lowDelta = delta(consensusLow, baseline.lowC);
+  final windDelta = delta(windForLabel, baseline.peakWindKmh);
 
   final votes = [for (final p in predictions) if (p.rain != null) p.rain!];
   final bool? todayRain =
@@ -550,14 +566,14 @@ DayOverDayComparison? computeDayOverDay(
       describeDayRain(todayPrecip, todayOnset, todayConvective,
           issuedHour: characterIssuedHour);
   final yesterdayCharacter = describeDayRain(
-      yesterdayActual.precipMm,
+      baseline.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed
       // entirely leaves onsetHour null, and the dry band's shower phrases are
       // reached by TIMING. Without this the description says "dry" for a day
       // the record scores as wet — the same contradiction, one layer down,
       // that item 42 was raised to fix.
-      yesterdayActual.observedOnset(),
-      yesterdayActual.thunder,
+      baseline.observedOnset(),
+      baseline.thunder,
       // The day is OVER and this is built from observations, so its timing is
       // a report rather than a claim and is never suppressed.
       issuedHour: null);
@@ -588,15 +604,15 @@ DayOverDayComparison? computeDayOverDay(
     // could be framed as a change: "Largely dry, after a largely dry day"
     // was reachable. The key is now the pair the summary is built from.
     final todayBand = dayRainBand(todayPrecip);
-    final yesterdayBand = dayRainBand(yesterdayActual.precipMm);
+    final yesterdayBand = dayRainBand(baseline.precipMm);
     final todayKey = '$todayBand|${todayConvective == true}';
-    final yesterdayKey = '$yesterdayBand|${yesterdayActual.thunder == true}';
+    final yesterdayKey = '$yesterdayBand|${baseline.thunder == true}';
     rainKeysMatch = todayKey == yesterdayKey;
     final bothDry = todayBand == dryDayLabel && yesterdayBand == dryDayLabel;
 
     if (bothDry &&
         todayCharacter == todayBand &&
-        yesterdayActual.thunder != true) {
+        baseline.thunder != true) {
       // Null is already the prompt's "omit the comparison" signal.
       rainContrast = null;
     } else if (todayKey == yesterdayKey) {
@@ -634,11 +650,11 @@ DayOverDayComparison? computeDayOverDay(
       _bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
 
   return DayOverDayComparison(
-    yesterdayHighC: yesterdayActual.highC,
-    yesterdayLowC: yesterdayActual.lowC,
-    yesterdayRain: yesterdayActual.rain,
-    yesterdayThunder: yesterdayActual.thunder,
-    yesterdayPeakWindKmh: yesterdayActual.peakWindKmh,
+    yesterdayHighC: baseline.highC,
+    yesterdayLowC: baseline.lowC,
+    yesterdayRain: baseline.rain,
+    yesterdayThunder: baseline.thunder,
+    yesterdayPeakWindKmh: baseline.peakWindKmh,
     todayRainExpected: todayRain,
     todayConsensusHighC: _round1(consensusHigh),
     todayConsensusLowC: _round1(consensusLow),
@@ -651,9 +667,9 @@ DayOverDayComparison? computeDayOverDay(
     windLabel: windLabel,
     cloudLabel: cloudLabel,
     rainContrast: rainContrast,
-    provenance: yesterdayActual.provenance == null
+    provenance: baseline.provenance == null
         ? null
-        : Map<String, String>.from(yesterdayActual.provenance!),
+        : Map<String, String>.from(baseline.provenance!),
     overviewComparison: describeDayOverDay(
       highLabel,
       windLabel,

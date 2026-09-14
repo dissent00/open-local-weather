@@ -611,6 +611,9 @@ def test_vectors_day_over_day():
             ),
             today_name=i.get("today_name"),
             tomorrow_name=i.get("tomorrow_name"),
+            today_actual=(
+                DailyActual.model_validate(i["today_actual"]) if i.get("today_actual") else None
+            ),
         )
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 

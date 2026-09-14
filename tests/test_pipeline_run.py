@@ -16,7 +16,7 @@ from openlocalweather.models import (
     DEGRADATION_NARRATIVE,
     DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
 )
-from openlocalweather.fetch.metar import StationWeather
+from openlocalweather.fetch.metar import StationReadings, StationWeather
 from openlocalweather.fetch import metar as metar_fetch
 import requests
 
@@ -3804,3 +3804,70 @@ def test_a_run_that_cannot_fill_the_window_stores_no_claim(tmp_path, monkeypatch
 
     assert row.window_predictions == [], "an unfillable window is an absence, not a forecast"
     assert row.predictions.day0, "and the day's scored numbers are unaffected"
+
+
+def test_an_unreadable_sunset_never_promotes_an_afternoon():
+    """ROADMAP item 104, contract item 8. `_sunset_hour` returns None rather
+    than a default, and the asymmetry with `_issued_hour`'s 24 is the point:
+    that returns a value LATER than any onset so an unknown clock suppresses a
+    timing phrase, this returns None so an unknown sunset suppresses the
+    evening subject. Both resolve toward saying less."""
+    from openlocalweather.pipeline import _sunset_hour
+
+    class Issuance:
+        def __init__(self, sunset):
+            self.sunset = sunset
+
+    assert _sunset_hour(None) is None
+    assert _sunset_hour(Issuance(None)) is None
+    assert _sunset_hour(Issuance("")) is None
+    assert _sunset_hour(Issuance("not a time")) is None
+    assert _sunset_hour(Issuance("18:47")) == 18
+
+
+def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypatch):
+    """ROADMAP item 104, contract item 8, stage 2 — the whole wiring, driven.
+
+    Three inputs have to reach `compute_day_over_day` for the evening subject
+    to exist, and each of them was passed by nothing until now: the sunset the
+    gate pivots on, tomorrow's predictions, and a baseline for today. Every
+    one of them defaults to None in the function, so a missing wire renders as
+    a comparison that is simply absent — which is also what a real gap looks
+    like. That is the defect class `_locked_blocks` exists to close, and the
+    reason this test drives the pipeline rather than the function.
+
+    Mutating any of the three call-site arguments to None survived the whole
+    suite before this existed.
+    """
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz: (
+            {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
+            {d: StationReadings(high_c=31.8, low_c=19.4, peak_wind_kmh=24.0) for d in (start, end)},
+        ),
+    )
+    # 20:05, after the fixture's 18:47 sunset. At 18:00 the gate is silent,
+    # which is why this deployment's own schedule does not reach here — the
+    # consumer that does is the app, where a tap can come after dark.
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 20, 5))
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    # READ OFF THE PROMPT, because the comparison is not stored anywhere —
+    # `comparison_for_prompt` is its only consumer and the entry keeps no copy.
+    # That is a real gap in the record and is recorded as one; it is not this
+    # test's business to work around, and the prompt is where the sentence a
+    # reader eventually sees actually goes.
+    prompt = llm.user_prompts
+    # Named for the days it means, and in the past tense for the day that is
+    # ending — 2026-08-11 was a Tuesday.
+    assert "than today (Tuesday) was" in prompt, (
+        "the evening subject never reached the pipeline"
+    )
+    # The dimensions no instrument here can pair are absent from the sentence:
+    # the station files sustained wind, eighths of sky, and no rain amount.
+    for artefact in ("windier", "calmer", "cloudier", "clearer"):
+        assert artefact not in prompt.split("than today (Tuesday) was")[0][-120:], artefact

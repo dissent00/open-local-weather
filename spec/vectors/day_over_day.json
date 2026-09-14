@@ -78,7 +78,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -177,7 +178,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 27.0,
@@ -276,7 +278,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 34.0,
@@ -375,7 +378,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 39.0,
@@ -474,7 +478,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 27.5,
@@ -573,7 +578,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 32.3,
@@ -672,7 +678,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 32.6,
@@ -741,7 +748,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -810,7 +818,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -879,7 +888,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -948,7 +958,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1017,7 +1028,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1086,7 +1098,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1155,7 +1168,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1224,7 +1238,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1293,7 +1308,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1362,7 +1378,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1431,7 +1448,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1545,7 +1563,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1614,7 +1633,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1683,7 +1703,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1752,7 +1773,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1821,7 +1843,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1965,7 +1988,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2064,7 +2088,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 50.0,
@@ -2163,7 +2188,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 40.9,
@@ -2262,7 +2288,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 41.0,
@@ -2331,7 +2358,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2400,7 +2428,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2469,7 +2498,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2538,7 +2568,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2607,7 +2638,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2676,7 +2708,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2745,7 +2778,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2814,7 +2848,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2883,7 +2918,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2952,7 +2988,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3021,7 +3058,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3090,7 +3128,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3162,7 +3201,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3216,7 +3256,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": null
     },
@@ -3280,7 +3321,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3349,7 +3391,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3418,7 +3461,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": null
     },
@@ -3467,7 +3511,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3536,7 +3581,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3605,7 +3651,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3674,7 +3721,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3743,7 +3791,8 @@
         "sunset_hour": null,
         "tomorrow_predictions": null,
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3770,25 +3819,7 @@
     {
       "name": "the evening subject is tomorrow, named and in the past tense",
       "input": {
-        "yesterday_actual": {
-          "rain": true,
-          "high_c": 30.5,
-          "low_c": 18.8,
-          "peak_wind_kmh": 40.7,
-          "mslp_trend": -0.5,
-          "onset_hour": "14:00",
-          "precip_mm": 12.0,
-          "thunder": null,
-          "precipitation": null,
-          "precipitation_onset": null,
-          "station_high_c": null,
-          "station_low_c": null,
-          "station_peak_wind_kmh": null,
-          "cloud_cover_pct": null,
-          "station_cloud_oktas": null,
-          "lightning": null,
-          "provenance": null
-        },
+        "yesterday_actual": null,
         "today_day0_predictions": [
           {
             "model": "m0",
@@ -3828,7 +3859,26 @@
           }
         ],
         "today_name": "Monday",
-        "tomorrow_name": "Tuesday"
+        "tomorrow_name": "Tuesday",
+        "today_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        }
       },
       "expected": {
         "yesterday_high_c": 30.5,
@@ -3855,25 +3905,7 @@
     {
       "name": "a late issuance does not bound tomorrow's onset",
       "input": {
-        "yesterday_actual": {
-          "rain": true,
-          "high_c": 30.5,
-          "low_c": 18.8,
-          "peak_wind_kmh": 40.7,
-          "mslp_trend": -0.5,
-          "onset_hour": "14:00",
-          "precip_mm": 12.0,
-          "thunder": null,
-          "precipitation": null,
-          "precipitation_onset": null,
-          "station_high_c": null,
-          "station_low_c": null,
-          "station_peak_wind_kmh": null,
-          "cloud_cover_pct": null,
-          "station_cloud_oktas": null,
-          "lightning": null,
-          "provenance": null
-        },
+        "yesterday_actual": null,
         "today_day0_predictions": [
           {
             "model": "m0",
@@ -3913,7 +3945,26 @@
           }
         ],
         "today_name": "Monday",
-        "tomorrow_name": "Tuesday"
+        "tomorrow_name": "Tuesday",
+        "today_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        }
       },
       "expected": {
         "yesterday_high_c": 30.5,
@@ -3940,25 +3991,7 @@
     {
       "name": "the evening similarity form names today without a verb",
       "input": {
-        "yesterday_actual": {
-          "rain": true,
-          "high_c": 29.6,
-          "low_c": 18.8,
-          "peak_wind_kmh": 20.0,
-          "mslp_trend": -0.5,
-          "onset_hour": "14:00",
-          "precip_mm": 12.0,
-          "thunder": null,
-          "precipitation": null,
-          "precipitation_onset": null,
-          "station_high_c": null,
-          "station_low_c": null,
-          "station_peak_wind_kmh": null,
-          "cloud_cover_pct": 40.0,
-          "station_cloud_oktas": null,
-          "lightning": null,
-          "provenance": null
-        },
+        "yesterday_actual": null,
         "today_day0_predictions": [
           {
             "model": "m0",
@@ -3998,7 +4031,26 @@
           }
         ],
         "today_name": "Monday",
-        "tomorrow_name": "Tuesday"
+        "tomorrow_name": "Tuesday",
+        "today_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": 40.0,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        }
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -4025,25 +4077,7 @@
     {
       "name": "without weekday names the evening sentence is plainer",
       "input": {
-        "yesterday_actual": {
-          "rain": true,
-          "high_c": 30.5,
-          "low_c": 18.8,
-          "peak_wind_kmh": 40.7,
-          "mslp_trend": -0.5,
-          "onset_hour": "14:00",
-          "precip_mm": 12.0,
-          "thunder": null,
-          "precipitation": null,
-          "precipitation_onset": null,
-          "station_high_c": null,
-          "station_low_c": null,
-          "station_peak_wind_kmh": null,
-          "cloud_cover_pct": null,
-          "station_cloud_oktas": null,
-          "lightning": null,
-          "provenance": null
-        },
+        "yesterday_actual": null,
         "today_day0_predictions": [
           {
             "model": "m0",
@@ -4083,7 +4117,26 @@
           }
         ],
         "today_name": null,
-        "tomorrow_name": null
+        "tomorrow_name": null,
+        "today_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        }
       },
       "expected": {
         "yesterday_high_c": 30.5,

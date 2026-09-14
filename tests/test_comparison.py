@@ -813,12 +813,15 @@ def test_the_tomorrow_subject_describes_tomorrow():
     tomorrow = [ModelPrediction(model="a", rain=False, high_c=30.0, low_c=15.0, wind_kmh=10.0)]
 
     evening = compute_day_over_day(
-        yesterday, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=tomorrow
+        # `yesterday` is not the baseline at this hour — stage 2 moved it to
+        # today, which is the day the operator's 20:00 scenario asks about.
+        None, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=tomorrow,
+        today_actual=yesterday,
     )
 
     assert evening is not None
-    # Tomorrow is 10 C above yesterday; today is only 1 C above. A comparison
-    # built from today's numbers would read "about the same".
+    # Tomorrow is 10 C above the baseline; today is only 1 C above. A
+    # comparison built from today's numbers would read "about the same".
     assert evening.high_label is not None and "much" in evening.high_label
 
 
@@ -834,7 +837,8 @@ def test_a_tomorrow_subject_without_tomorrow_says_nothing():
     today = [ModelPrediction(model="a", rain=False, high_c=21.0, low_c=15.0, wind_kmh=10.0)]
 
     assert compute_day_over_day(
-        yesterday, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=None
+        None, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=None,
+        today_actual=yesterday,
     ) is None
 
 
@@ -926,11 +930,22 @@ def test_the_gale_warning_reads_the_calibrated_gust():
 
 
 def _evening(**kw):
-    """20:00 on a Monday whose sun set at 18:39, with Tuesday forecast."""
+    """20:00 on a Monday whose sun set at 18:39, with Tuesday forecast.
+
+    The baseline here is a RICH DailyActual, which is not what the pipeline
+    supplies — `observed.observed_baseline` narrows today's to temperature,
+    because only the station observes a day in progress and it measures
+    sustained wind, eighths of sky and no rainfall amount. These cases are
+    about the WORDING contract; the instrument contract is tested where it
+    is decided.
+    """
     today_observed = kw.pop("today_observed", actual(high_c=30.5, precip_mm=12.0))
     tomorrow = kw.pop("tomorrow", preds(high_c=27.0, precip_mm=0.0))
     return compute_day_over_day(
-        today_observed, [], issued_hour=20, sunset_hour=18,
+        # Yesterday is not the baseline at this hour and is deliberately
+        # absent: a 20:00 run with today in hand and no record for yesterday
+        # is still a comparison that can be made.
+        None, [], issued_hour=20, sunset_hour=18, today_actual=today_observed,
         tomorrow_predictions=tomorrow, today_name="Monday", tomorrow_name="Tuesday",
         **kw,
     )
@@ -982,7 +997,8 @@ def test_without_a_calendar_the_sentence_is_plainer_and_still_true():
     an empty parenthesis. Unambiguous in every case but the one the names
     exist for: a reader opening the page the next morning."""
     result = compute_day_over_day(
-        actual(high_c=30.5, precip_mm=12.0), [], issued_hour=20, sunset_hour=18,
+        None, [], issued_hour=20, sunset_hour=18,
+        today_actual=actual(high_c=30.5, precip_mm=12.0),
         tomorrow_predictions=preds(high_c=27.0, precip_mm=0.0),
     )
 
@@ -998,3 +1014,44 @@ def test_the_morning_sentence_is_untouched():
 
     assert "than yesterday" in result.overview_comparison
     assert "today (" not in result.overview_comparison
+
+
+def test_an_evening_with_nothing_observed_of_today_says_nothing():
+    """The baseline moves with the subject, so its absence does too.
+
+    Falling back to yesterday would publish "Tuesday will be cooler than
+    Sunday" — the comparison piece 1 returns null rather than compute, one
+    operand over.
+    """
+    tomorrow = preds(high_c=27.0)
+
+    assert compute_day_over_day(
+        actual(high_c=30.5), [], issued_hour=20, sunset_hour=18,
+        tomorrow_predictions=tomorrow, today_actual=None,
+    ) is None
+
+
+def test_a_morning_with_nothing_observed_of_today_is_unaffected():
+    """today_actual is the EVENING's baseline and must not gate the morning,
+    where yesterday is still the day being measured against."""
+    result = compute_day_over_day(
+        actual(high_c=27.0), preds(high_c=29.0), issued_hour=6, today_actual=None
+    )
+
+    assert result is not None
+    assert "than yesterday" in result.overview_comparison
+
+
+def test_an_evening_needs_no_record_for_yesterday():
+    """A 20:00 run with today in hand and nothing stored for yesterday is a
+    comparison that CAN be made. Checking the parameter rather than the chosen
+    baseline would have refused it — the two were the same thing until the
+    evening subject existed."""
+    result = compute_day_over_day(
+        None, [], issued_hour=20, sunset_hour=18,
+        tomorrow_predictions=preds(high_c=27.0), today_actual=actual(high_c=30.5),
+        today_name="Monday", tomorrow_name="Tuesday",
+    )
+
+    assert result is not None
+    assert "than today (Monday) was" in result.overview_comparison

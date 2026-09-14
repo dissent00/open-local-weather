@@ -940,7 +940,10 @@ void main() {
                     .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
                     .toList(),
             todayName: i['today_name'] as String?,
-            tomorrowName: i['tomorrow_name'] as String?);
+            tomorrowName: i['tomorrow_name'] as String?,
+            todayActual: i['today_actual'] == null
+                ? null
+                : DailyActual.fromJson(i['today_actual'] as Map<String, Object?>));
         expectMatches(got?.toJson(), c['expected'], c['name'] as String);
       }
     });

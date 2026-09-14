@@ -25,7 +25,7 @@ against the Dart port, so reordering it is a behaviour change.
 
 from __future__ import annotations
 
-from openlocalweather.models import ObservedSoFar
+from openlocalweather.models import SOURCE_STATION, DailyActual, ObservedSoFar
 from openlocalweather.models import format_temp_c
 
 
@@ -110,3 +110,75 @@ def _sky(oktas: float | None) -> str | None:
     # Eighths, which is how a METAR reports cover and how the mean of a day's
     # reports stays comparable with a single one.
     return f"sky {round(oktas)}/8"
+
+
+# The dimensions today's own observations can honestly baseline a forecast
+# against, and the ones they cannot — ROADMAP item 104, contract item 8.
+#
+# At 20:00 the comparison's subject is tomorrow and its baseline is TODAY, a
+# day only the station has observed: `archive-api` serves the current day as
+# model output, proven in Ensemble's item 14 finding 6 by hours that had not
+# happened yet. So the baseline has to be built from ObservedSoFar, and the
+# question is which of its six dimensions may cross into a comparison.
+#
+# TEMPERATURE, AND ONLY TEMPERATURE. Each exclusion is a measurement, not a
+# shrug:
+#
+#   high_c, low_c   THE SAME QUANTITY the models forecast and the reanalysis
+#                   records. Station minus reanalysis over 40 days is +0.49 C
+#                   on the high and -0.05 C on the low, against a 1.0 C band.
+#
+#   peak_wind_kmh   A DIFFERENT QUANTITY. `fetch/metar.py` reads `sknt`, the
+#                   max SUSTAINED wind, because METAR files a gust group only
+#                   when a gust occurs — absent on all 932 rows of a 45-day
+#                   sample. The forecast side is `windgusts_10m_max`. Pairing
+#                   them reads the gust factor as weather, which is exactly
+#                   the error item 126 records withdrawing a whole plan over.
+#                   This deployment cannot observe a gust at all.
+#
+#   cloud_oktas     A DIFFERENT STATISTIC: a point mean in eighths, 12.5-point
+#                   steps, against a mean over hourly grid values in percent.
+#                   Item 123 owns that choice and has four paired days.
+#
+#   precipitation   NO AMOUNT EXISTS. A METAR reports that rain fell, never
+#                   how much — see ObservedSoFar, which withholds the
+#                   dimension for the same reason. `describe_day_rain` needs
+#                   an amount, so the rain half of an evening comparison is
+#                   silent rather than invented.
+#
+# WHAT THAT LEAVES is a comparison that can say "cooler than today (Monday)
+# was" and nothing else, which is thinner than the operator's example sentence
+# by one clause — "and breezier" — and that clause is the one no instrument
+# here supports.
+def observed_baseline(observed: ObservedSoFar | None) -> DailyActual | None:
+    """Today's own observations, shaped as the baseline a comparison can use.
+
+    None when nothing was measured, never an empty baseline: a station that
+    did not report is not a station reporting a quiet day.
+
+    `rain` is False because DailyActual requires it and the day-over-day
+    comparison reads `precip_mm` rather than this flag for everything a reader
+    sees. It is not published from here and nothing scores it.
+    """
+    if observed is None:
+        return None
+
+    if observed.high_c is None and observed.low_c is None:
+        return None
+
+    return DailyActual(
+        rain=False,
+        high_c=observed.high_c,
+        low_c=observed.low_c,
+        # Deliberately absent: see the block above. Each of these would pair a
+        # forecast with something that is not the same measurement.
+        peak_wind_kmh=None,
+        cloud_cover_pct=None,
+        precip_mm=None,
+        thunder=observed.thunder,
+        provenance={
+            field: SOURCE_STATION
+            for field, value in (("high_c", observed.high_c), ("low_c", observed.low_c))
+            if value is not None
+        },
+    )

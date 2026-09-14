@@ -79,8 +79,13 @@ class DayOverDayComparison:
     cloud_label: str | None
     rain_contrast: str | None
     # The three labels above, composed into finished sentences — item 83.
-    # This is what the PROMPT is given; the labels themselves stay in the
-    # record because that is what is stored and scored.
+    # This is what the PROMPT is given.
+    #
+    # THE SECOND HALF OF THIS COMMENT WAS FALSE and said "the labels
+    # themselves stay in the record because that is what is stored and
+    # scored". Checked 2026-09-14: nothing writes this dataclass to the entry
+    # and no stored log carries a label. The labels stay HERE, on a structure
+    # that lives for the length of a run. See PROMPT_COMPARISON_FIELDS.
     overview_comparison: str | None
     # Where yesterday's observed values were taken — item 98. Carried through
     # so comparison_for_prompt can name the source beside each boolean; the
@@ -368,9 +373,12 @@ def compute_day_over_day(
     calibrated_wind_kmh: float | None = None,
     today_name: str | None = None,
     tomorrow_name: str | None = None,
+    today_actual: DailyActual | None = None,
 ) -> DayOverDayComparison | None:
-    """None when there is no observed record for yesterday — a gap must read
-    as a gap, not as a day with unremarkable weather.
+    """None when there is no observed record for the day being compared
+    AGAINST — a gap must read as a gap, not as a day with unremarkable
+    weather. Which day that is depends on the hour: yesterday in the morning,
+    today after sunset.
 
     ALSO None WHEN THE HOUR HAS PASSED FOR IT — ROADMAP item 104, contract
     item 8, and `comparison_subject` carries the reasoning. A comparison earns
@@ -383,9 +391,6 @@ def compute_day_over_day(
     that has not been given one, and the evening pivot simply never fires
     there. A missing boundary must not promote an afternoon into a comparison.
     """
-    if yesterday_actual is None:
-        return None
-
     subject = comparison_subject(issued_hour, sunset_hour=sunset_hour)
     if subject is None:
         return None
@@ -428,12 +433,34 @@ def compute_day_over_day(
     if subject == COMPARISON_SUBJECT_TOMORROW:
         if not tomorrow_predictions:
             return None
+        # AND THE BASELINE MOVES WITH THE SUBJECT. "Tomorrow against yesterday"
+        # is a comparison nobody asked for — the operator's 20:00 scenario is
+        # tomorrow against TODAY'S daytime, which at 20:00 is closed and
+        # final. None rather than falling back to yesterday, for the same
+        # reason tomorrow's predictions are required: a sentence measured
+        # against a day the reader has half forgotten is worse than silence.
+        #
+        # Only the STATION observes today — `archive-api` serves the current
+        # day as model output — so this baseline arrives already narrowed to
+        # the dimensions a station can honestly supply. See
+        # `observed.observed_baseline`, which is where each exclusion is
+        # argued, and expect wind, cloud and the rain amount to be absent.
+        yesterday_actual = today_actual
         today_day0_predictions = tomorrow_predictions
         today_phrase = f"today ({today_name})" if today_name else "today"
         baseline_comparative = f"{today_phrase} was"
         baseline_similarity = today_phrase
         subject_prefix = f"{tomorrow_name} will be " if tomorrow_name else "tomorrow will be "
         character_issued_hour = None
+
+    # A GAP MUST READ AS A GAP, not as a day with unremarkable weather — and
+    # it is checked HERE, after the subject has chosen which day is the
+    # baseline, rather than on the parameter. Before contract item 8's evening
+    # subject the two were the same thing; now a 20:00 run with today's
+    # observations in hand and no record for yesterday is a comparison that
+    # can be made, and testing the parameter would have refused it.
+    if yesterday_actual is None:
+        return None
 
     consensus_high = mean([p.high_c for p in today_day0_predictions])
     consensus_low = mean([p.low_c for p in today_day0_predictions])
@@ -947,9 +974,17 @@ def describe_extended_trend(
 # counter-example, and the cheapest way to delete a rule is to delete the
 # temptation.
 #
-# The full comparison is unchanged in the RECORD — asdict(day_over_day) is
-# still what gets stored and scored. This narrows only the view handed to the
-# forecaster.
+# WHAT THIS NARROWS IS THE ONLY COPY THERE IS, and an earlier version of this
+# comment said otherwise: "the full comparison is unchanged in the RECORD —
+# asdict(day_over_day) is still what gets stored and scored". Checked
+# 2026-09-14 and false in both halves. `comparison_for_prompt` is the sole
+# consumer, nothing writes a DayOverDayComparison to the entry, and no stored
+# log carries `overview_comparison` or any of the labels. The wider structure
+# below exists for callers and tests, not for a record.
+#
+# So the fields dropped here are dropped from everything, which raises the
+# stakes on the choice rather than lowering them — see the item on storing the
+# comparison, where the case for a record is made on its own merits.
 #
 # THE THREE LABELS WENT THE SAME WAY, 2026-09-08 (item 83). They were
 # fragments of unstated grammatical shape, handed over with an order to use

@@ -8,7 +8,7 @@ verified expectations rather than generated ones.
 import pytest
 
 from openlocalweather.models import ObservedSoFar
-from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.observed import describe_observed_so_far, observed_baseline
 
 
 def test_every_dimension_reported_in_the_contract_order():
@@ -76,3 +76,53 @@ def test_gust_ties_go_half_to_even(kmh, expected):
 def test_sky_ties_go_half_to_even(oktas, expected):
     got = describe_observed_so_far(ObservedSoFar(cloud_oktas=oktas))
     assert got == f"So far today: sky {expected}/8."
+
+
+# ---------------------------------------------------------------------------
+# Contract item 8, stage 2 — what today's own observations may baseline.
+# ---------------------------------------------------------------------------
+
+
+def test_the_baseline_carries_temperature():
+    """The one pair of dimensions where the station and the models measure the
+    same quantity. Station minus reanalysis over 40 days is +0.49 C on the
+    high and -0.05 C on the low, against a 1.0 C band."""
+    baseline = observed_baseline(ObservedSoFar(high_c=31.8, low_c=19.4))
+
+    assert baseline is not None
+    assert (baseline.high_c, baseline.low_c) == (31.8, 19.4)
+    assert baseline.provenance == {"high_c": "metar_station", "low_c": "metar_station"}
+
+
+def test_the_baseline_refuses_the_station_gust():
+    """A DIFFERENT QUANTITY, not a noisier version of the same one.
+
+    `fetch/metar.py` reads `sknt` — the max SUSTAINED wind — because METAR
+    files a gust group only when a gust occurs, absent on all 932 rows of a
+    45-day sample. The forecast side is `windgusts_10m_max`. Pairing them
+    reads the gust factor as weather, which is the error item 126 records a
+    whole withdrawn plan over.
+    """
+    baseline = observed_baseline(ObservedSoFar(high_c=31.8, peak_wind_kmh=24.0))
+
+    assert baseline.peak_wind_kmh is None
+
+
+def test_the_baseline_refuses_the_station_sky_and_the_rain_amount():
+    """Cloud is a different STATISTIC — a point mean in eighths against a mean
+    over hourly grid values — and item 123 owns that choice with four paired
+    days. A METAR reports that rain fell, never how much, so there is no
+    amount to band a day by and the rain half stays silent."""
+    baseline = observed_baseline(
+        ObservedSoFar(high_c=31.8, cloud_oktas=6.0, precipitation=True)
+    )
+
+    assert baseline.cloud_cover_pct is None
+    assert baseline.precip_mm is None
+
+
+def test_nothing_measured_is_not_a_quiet_day():
+    """A station that did not report is not a station reporting agreement —
+    the error class that cost a published forecast on 2026-08-29."""
+    assert observed_baseline(None) is None
+    assert observed_baseline(ObservedSoFar(precipitation=True)) is None

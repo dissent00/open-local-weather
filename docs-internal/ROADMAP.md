@@ -17367,3 +17367,58 @@ close to unbiased against the reanalysis (-0.05 C over 34 days), so there may
 be nothing to remove, and a correction fitted to noise is worse than none.
 
 Related: items 104 (contract item 8, which surfaced it), 44, 100, 123.
+
+## 127. The day-over-day comparison is computed, published, and never stored · **Planned — raised 2026-09-14**
+
+Found while writing a pipeline test for contract item 8's evening subject: the
+test tried to read the comparison off the entry and there is nothing there.
+
+`compute_day_over_day` builds a `DayOverDayComparison` every run.
+`comparison_for_prompt` narrows it to four fields and hands those to the
+forecaster. Nothing else touches it. No `DayOverDayComparison` is written to a
+`DailyLogEntry`, no stored log carries `overview_comparison` or any of the
+labels, and the structure is discarded when the run ends.
+
+**Two comments asserted the opposite and were corrected in place** —
+`PROMPT_COMPARISON_FIELDS` said "the full comparison is unchanged in the
+RECORD — asdict(day_over_day) is still what gets stored and scored", and the
+`overview_comparison` field said "the labels themselves stay in the record
+because that is what is stored and scored". Both false in both halves. They
+are the kind of comment this repo treats as load-bearing, and they had been
+read as true while deciding what to withhold from the prompt.
+
+### Why it matters, and it is the operator's own standard
+
+"The record is almost as important as the update presented to the user"
+(2026-09-13). Every other pre-computed quantity here is stored so it can be
+re-derived and checked later: the predictions, the window, the observations,
+the track record, the information-moved triggers. This one is not, so:
+
+- **Nothing can measure whether the Overview used it.** The prompt orders the
+  sentence used verbatim; whether the model obeyed is checkable only against a
+  stored copy, and there is none. Item 126's whole finding — that telling a
+  model about a bias does not remove it — was only measurable because the
+  published gust IS stored.
+- **A label change is invisible in the archive.** The prompt archive keeps the
+  rendered sentence, which is not the same as the fields behind it: a band
+  edge moving cannot be told from the weather moving.
+- **It is the natural home for the calibration audit.** Item 126 stores both
+  the raw and the calibrated gust ON the comparison, so those two fields exist
+  and are thrown away every run.
+
+### What it is not
+
+Not a scored field, and it must not become one. This is a PROSE quantity built
+from a consensus, and the firewall around `prediction_rows` exists precisely to
+stop prose-facing numbers drifting into what models are judged on. Storing it
+means a new field on the entry beside the narrative, written once per issuance
+and read by nothing that scores.
+
+### Size
+
+Small, with the usual two-repo tail: a field on `DailyLogEntry` or
+`IssuancePredictions`, the Dart model, a vector, and a decision about whether
+a re-issue appends or overwrites — which contract item 4 has already answered
+for everything else on the row.
+
+Related: items 104 (contract items 4 and 8), 126, 98, 83.
