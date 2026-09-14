@@ -16333,7 +16333,25 @@ older than it. The live label is local where the entry knows its local clock.
   it into its guidance and then throws it away, because the path touches
   nothing but the station reading. It is arguably an observation too. Not
   built, and named here rather than left to be rediscovered.
-- **The mailer.** The page now carries the block; the mailer still does not.
+- **The mailer, and it needs a decision rather than an afternoon.** Reviewed
+  2026-09-14 at the operator's request. The blocker is the storage choice this
+  item made on purpose: the entry holds the READING, not the sentence, so the
+  wording stays fixable for every day already written. The mailer is Apps
+  Script and fetches `data/log/*.json` directly, so rendering the block there
+  means a THIRD implementation of `describe_observed_so_far` — after Python
+  and Dart — in a language with no vector conformance and a manual deploy.
+  Three options, none yet chosen:
+
+  1. **Leave it out**, as the per-station Ground AQI section already is, and
+     say so where a reader would look. Cheapest, and the narrative already
+     carries some of what the station saw because the block is in the prompt.
+  2. **Store the composed sentence beside the reading.** Breaks this item's
+     own rule, but only for consumers that cannot compose — and the rule's
+     purpose, keeping the wording fixable, survives if the stored sentence is
+     treated as a cache re-derived every run rather than as the record.
+  3. **Port the composer to JS** and pin it against
+     `spec/vectors/observed_so_far.json`, which is what makes the Dart port
+     trustworthy. Most work, most correct, and a third place to keep in step.
 - **THE APP HAS NO STATION SOURCE AT ALL.** `forecast.dart` passes
   `airport_metar: null` and now `observedSoFar: null`, explicitly and with the
   reason, so the app prints the gap line. Everything above is server-only

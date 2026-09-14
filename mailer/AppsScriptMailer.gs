@@ -334,7 +334,7 @@ function sendEntryEmail(config, entry, dateStr, subject, runLabel) {
     }
   });
 
-  Logger.log(`Sent ${dateStr} (${runLabel || 'morning'}) to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
+  Logger.log(`Sent ${dateStr} (${runLabel || 'first issuance'}) to ${sentCount}/${config.subscriberEmails.length} subscriber(s).`);
 }
 
 /** Fetches data/log/{dateStr}.json from GitHub's raw-content CDN. Returns
@@ -420,6 +420,12 @@ function buildEmailPlainText(config, entry, dateStr, runLabel) {
   lines.push('Open Local Weather — Experimental Forecast Discussion');
   lines.push(locationLine);
   lines.push(`Issued ${issuedStr} (${config.timezone})`);
+  // The AFD body carries no stat table — its numbers arrive inside the
+  // narrative's own sections — so the sun goes in the header block, where the
+  // other facts about the day already are. Both or neither, as above.
+  if (entry.sunrise && entry.sunset) {
+    lines.push(`Sunrise ${entry.sunrise} | Sunset ${entry.sunset}`);
+  }
   lines.push('');
   lines.push(AFD_DIVIDER);
   lines.push('');
@@ -598,8 +604,9 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
 /** Builds the site's stat-grid ("High/Low", "Rain", "Onset Window", "UV
  * Index", "Air Quality") as an HTML <table> — matches forecast.html.jinja's
  * .stat-grid section, same fields, same conditional-on-present logic
- * (onset_window/uv_index_max/air_quality_aqi only shown when the entry
- * actually has them). A <table> with the legacy `cellspacing` attribute
+ * (onset_window/uv_index_max/air_quality_aqi/sunrise+sunset only shown
+ * when the entry actually has them). When the site's grid gains a field,
+ * this one has to gain it too — that has drifted once already. A <table> with the legacy `cellspacing` attribute
  * for gaps, not CSS grid/gap, since that's the reliable choice across
  * email clients including Outlook. */
 function buildStatGridHtml(entry) {
@@ -607,6 +614,20 @@ function buildStatGridHtml(entry) {
   if (entry.onset_window) stats.push(['Onset Window', entry.onset_window]);
   if (entry.uv_index_max) stats.push(['UV Index', entry.uv_index_max]);
   if (entry.air_quality_aqi) stats.push(['Air Quality', entry.air_quality_aqi]);
+  // Both or neither, exactly as forecast.html.jinja does it: in polar night
+  // there is no sunrise to report, and half a pair reads as a rendering fault
+  // rather than as the honest answer it is.
+  //
+  // ADDED 2026-09-14, TWENTY-THREE DAYS LATE. The site published these on
+  // 2026-08-22; this file was edited on 2026-08-31 and did not pick them up,
+  // while the comment above went on claiming "same fields". The harness could
+  // not catch it because its fixture was frozen at 2026-08-11, before the
+  // fields existed — see test_mailer.js, which now checks for them and says
+  // to keep the fixture current.
+  if (entry.sunrise && entry.sunset) {
+    stats.push(['Sunrise', entry.sunrise]);
+    stats.push(['Sunset', entry.sunset]);
+  }
 
   const cells = stats.map(([label, value]) => `<td style="background: ${SITE_CARD_BG}; border: 1px solid ${SITE_BORDER}; border-radius: 8px; padding: 0.7em 0.9em; vertical-align: top;"><div style="font-size: 0.72em; color: ${SITE_MUTED}; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.15em;">${escapeHtml(label)}</div><div style="font-size: 1em; font-weight: 600; color: ${SITE_FG};">${escapeHtml(String(value))}</div></td>`).join('');
 

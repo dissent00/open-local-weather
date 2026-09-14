@@ -540,3 +540,39 @@ assert.ok(!sentEmails[0].body.includes('LESS THAN USUAL'), 'absent must render a
 console.log('PASS: an entry predating the field still sends');
 
 console.log('\nALL MAILER HARNESS CHECKS PASSED');
+
+// --- The stat grid must carry what the SITE's stat grid carries. ---
+//
+// This check exists because the mailer went 23 days behind without anything
+// noticing. Sunrise and sunset reached forecast.html.jinja on 2026-08-22;
+// the mailer was edited on 2026-08-31 and never picked them up, and
+// buildStatGridHtml's own comment still claimed "same fields". Nothing could
+// have caught it: the fixture was frozen at 2026-08-11, eleven days before
+// the fields existed, so the only entry this harness ever rendered had
+// nothing to render.
+//
+// KEEP THE FIXTURE CURRENT. A frozen fixture cannot fail on a field added
+// after it was captured, which makes every check here weaker than it looks —
+// refresh mailer/fixtures/sample_entry.json from a real data/log entry when
+// the pipeline gains a reader-facing field.
+reset();
+servedEntry = sampleEntryRaw;
+sendForecastEmail();
+const sunHtml = sentEmails[0].htmlBody;
+assert.ok(
+  sampleEntryRaw.sunrise && sampleEntryRaw.sunset,
+  'the fixture is too old to test this — refresh it from a real data/log entry'
+);
+assert.ok(
+  sunHtml.includes('Sunrise') && sunHtml.includes(sampleEntryRaw.sunrise),
+  'the HTML stat grid must carry sunrise, as the site does'
+);
+assert.ok(
+  sunHtml.includes('Sunset') && sunHtml.includes(sampleEntryRaw.sunset),
+  'the HTML stat grid must carry sunset, as the site does'
+);
+assert.ok(
+  sentEmails[0].body.includes(sampleEntryRaw.sunrise),
+  'the plain-text body must carry sunrise too — both representations, same data'
+);
+console.log('PASS: the stat grid carries the sun times the site shows');

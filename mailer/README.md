@@ -27,7 +27,8 @@ so it's immune to any future page-template change.
   prose reflowed to a fixed width. What non-HTML clients see.
 - `htmlBody` — styled to match the [GitHub Pages
   site](https://dissent00.github.io/open-local-weather/) itself: system
-  font, the same High/Low/Rain/Onset/UV/AQI stat-grid, narrative rendered
+  font, the same High/Low/Rain/Onset/UV/AQI/Sunrise/Sunset stat-grid,
+  narrative rendered
   as real `<h2>`/`<h3>`/`<p>`/`<ul>` HTML rather than monospace text. What
   most subscribers actually see, since HTML-capable clients prefer
   `htmlBody` over `body` when both are present.
@@ -110,3 +111,37 @@ Migrating to a verified-domain ESP later (e.g. once Brevo's domain
 verification is sorted) means writing a `publish/email_brevo.py`
 `EmailSender` and wiring it into `cli.py` — a one-line swap in
 `pipeline.py`'s dependency injection, no changes needed here or there.
+
+
+## Keeping it in step with the pipeline
+
+This file is deployed by hand, and it drifts. Sunrise and sunset reached the
+site on 2026-08-22; this mailer was edited on 2026-08-31, did not pick them
+up, and went 23 days rendering an email the site had outgrown — while
+`buildStatGridHtml`'s own comment claimed "same fields".
+
+**The harness could not have caught it.** `fixtures/sample_entry.json` was
+frozen at 2026-08-11, eleven days before the fields existed, so the only
+entry it ever rendered had nothing to render. A frozen fixture cannot fail on
+a field added after it was captured, which makes every check here weaker than
+it looks.
+
+So, when the pipeline gains a reader-facing field:
+
+1. **Refresh the fixture** from a real `data/log/` entry. That is the step
+   that makes the rest of this list possible to check.
+2. Add the field to BOTH representations — `buildStatGridHtml` for HTML, and
+   the header block or a section for the AFD text, which has no stat table.
+3. Add a harness check that fails without it, and confirm it fails.
+4. `node mailer/test_mailer.js`, then paste the file into the Apps Script
+   editor — committing it changes nothing for subscribers.
+
+**What is deliberately NOT here**, so absence is not read as drift:
+
+- **The per-station Ground AQI section**, for the reason above — it would
+  mean a second implementation of `aqi.py`'s staleness logic in JS.
+- **The observed-so-far block** (ROADMAP item 121). The entry stores the
+  READING, not the sentence, deliberately — so that the wording stays fixable
+  for every day already written. Rendering it here would mean a THIRD
+  implementation of `describe_observed_so_far`, after Python and Dart, and
+  one with no vector conformance. See ROADMAP item 121 for the options.
