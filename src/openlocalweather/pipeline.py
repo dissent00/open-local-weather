@@ -108,6 +108,7 @@ from openlocalweather.dates import (
     weekday_name,
 )
 from openlocalweather.defaults import (
+    WINDOW_VERIFY_LOOKBACK_DAYS,
     ACTUALS_BATCH_LOOKBACK_DAYS,
     BASELINE_MODEL_IDS,
     BLEND_MODEL_ID,
@@ -156,6 +157,7 @@ from openlocalweather.llm.schema import (
 )
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.reasoning import llm_should_reason
+from openlocalweather.verify.scoring import verify_closed_windows
 from openlocalweather.disagreement import (
     StandingCall,
     observation_disagreements,
@@ -1958,6 +1960,14 @@ def _compose_log_entry(
                 issued_at=datetime.now(timezone.utc),
                 predictions=fresh_predictions or ModelPredictionsByLead(),
                 window_predictions=window_predictions,
+                # The exact instant the window was sliced at, floored the way
+                # `forward_hours` floors it — see
+                # IssuancePredictions.window_opened_local.
+                window_opened_local=(
+                    guidance.issued_at_local.replace(minute=0, second=0, microsecond=0)
+                    if window_predictions and guidance.issued_at_local is not None
+                    else None
+                ),
             )
         ],
         # Superseded by prediction_rows and deliberately not written — see
@@ -2086,6 +2096,48 @@ def _compose_log_entry(
             ),
         }
     )
+
+
+def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
+    """Score every stored issuance window whose days have finished.
+
+    ROADMAP item 104, contract item 2. Returns the dates whose entries changed.
+
+    ITS OWN ARCHIVE FETCH, DELIBERATELY, and it never touches the actuals
+    cache. The daily refresh fetches exactly yesterday and buckets it by
+    calendar date; a window straddles midnight, so it needs two days at once,
+    and widening the cached fetch to get them would put a PARTIAL today into
+    the cache that tomorrow's verification would then score against. One extra
+    archive request costs nothing and cannot corrupt the record.
+
+    BEST EFFORT. A window left unscored is scored by a later run — the archive
+    does not change for finished days — so a failure here must not take the
+    forecast down with it.
+    """
+    location = deps.location
+    start = add_days(today, -(WINDOW_VERIFY_LOOKBACK_DAYS + 1))
+    end = add_days(today, -1)
+
+    try:
+        archive = open_meteo.fetch_archive_range(
+            location.primary_point.lat, location.primary_point.lon, start, end, location.timezone
+        )
+    except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
+        print(f"Window verification skipped ({e}); a later run will score them.", file=sys.stderr)
+        return []
+
+    changed: list[date] = []
+    for d in log_store.list_log_dates(deps.data_dir):
+        if not (start <= d <= end):
+            continue
+        entry = log_store.read_log_entry(deps.data_dir, d)
+        if entry is None:
+            continue
+        if verify_closed_windows(entry, archive, today=today):
+            log_store.write_log_entry(deps.data_dir, entry)
+            changed.append(d)
+
+    return changed
 
 
 def _run_actuals_refresh(
@@ -2334,6 +2386,14 @@ def _issue_forecast(
     log_dates_for_retention = log_store.list_log_dates(deps.data_dir)
     if first_issuance:
         _run_actuals_refresh(deps, cache, today, yesterday, log_dates_for_retention)
+        # Contract item 2. Separate from the refresh above and from the daily
+        # verification below: this one is keyed on each ISSUANCE's own 24
+        # hours rather than on a calendar day, so it re-reads recent entries
+        # and scores whatever has become observable. First issuance only, for
+        # the same reason the rest of verification is — the archive does not
+        # change during a day.
+        if not dry_run:
+            _verify_recent_windows(deps, today)
     actuals_primary = actuals_cache_store.as_date_dict(cache.primary)
 
     # --- Step 3: deterministic verification + rolling stats ---

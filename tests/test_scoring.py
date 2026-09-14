@@ -520,3 +520,167 @@ def test_the_target_is_what_the_row_arithmetic_says_when_absent():
     assert resolve_target_date(old, row_date=date(2026, 9, 10), lead_time_days=3) == date(2026, 9, 13)
     # An explicit target wins, and is NOT required to agree with the arithmetic.
     assert resolve_target_date(new, row_date=date(2026, 9, 10), lead_time_days=3) == date(2026, 9, 20)
+
+
+# --- ROADMAP item 104, contract item 2: scoring the issuance window --------
+
+
+def _window_row(issued, models_cloud=None):
+    from openlocalweather.models import IssuancePredictions, ModelPrediction
+    return IssuancePredictions(
+        issued_at=issued,
+        window_predictions=[
+            ModelPrediction(model="gfs_seamless", rain=True, onset="20:00", high_c=30.0,
+                            low_c=18.0, wind_kmh=20.0, cloud_cover_pct=80.0),
+            ModelPrediction(model="ecmwf_ifs025", rain=False, high_c=27.0,
+                            low_c=19.0, wind_kmh=15.0, cloud_cover_pct=40.0),
+        ],
+    )
+
+
+def test_a_window_is_scored_per_model_against_its_own_observation():
+    """Contract item 2. The window's claim is a lead-0-shaped one — it carries
+    an onset and a rain call about a period that has now finished — so it is
+    scored by `score_prediction` at lead 0 rather than by a second scorer."""
+    from datetime import datetime, timezone
+    from openlocalweather.verify.scoring import score_window_row
+
+    row = _window_row(datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc))
+    observed = actual(rain=True, onset_hour="19:00", high_c=28.0, low_c=17.5,
+                      peak_wind_kmh=26.0, cloud_cover_pct=60.0)
+
+    scores = score_window_row(row, observed)
+
+    assert set(scores) == {"gfs_seamless", "ecmwf_ifs025"}
+    assert scores["gfs_seamless"].rain_correct is True
+    assert scores["ecmwf_ifs025"].rain_correct is False
+    # actual - predicted, the convention every other error here follows.
+    assert scores["gfs_seamless"].high_error_c == pytest.approx(-2.0)
+    assert scores["gfs_seamless"].cloud_error_pct == pytest.approx(-20.0)
+    assert scores["gfs_seamless"].onset_error_hrs == pytest.approx(-1.0)
+
+
+def test_a_window_with_no_observation_scores_nothing():
+    """An absent observation is not a wrong forecast. The window bucketer
+    returns None when the archive cannot cover the period, and that has to
+    stay an absence all the way through rather than becoming a zero error."""
+    from datetime import datetime, timezone
+    from openlocalweather.verify.scoring import score_window_row
+
+    row = _window_row(datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc))
+
+    assert score_window_row(row, None) == {}
+
+
+def test_a_row_that_made_no_window_claim_scores_nothing():
+    """A run whose two-day fetch failed stored an empty window rather than a
+    short one — there is nothing to score and that is not a miss."""
+    from datetime import datetime, timezone
+    from openlocalweather.models import IssuancePredictions
+    from openlocalweather.verify.scoring import score_window_row
+
+    row = IssuancePredictions(issued_at=datetime(2026, 8, 11, 6, 0, tzinfo=timezone.utc))
+
+    assert score_window_row(row, actual(rain=True)) == {}
+
+
+def test_a_window_is_not_scorable_until_every_hour_it_covers_is_a_finished_day():
+    """MEASURED 2026-09-14, and this guard is the whole reason the lag is not
+    24 hours. `archive-api.open-meteo.com` serves the CURRENT day, and what it
+    serves is model output: asked for 2026-09-13..14 at 08:31 local it
+    returned fifteen stamps in the future carrying temperatures, up to
+    23:00 that evening.
+
+    So an "observation" that reaches into today is partly a forecast, and
+    scoring a window against it scores a forecast against a forecast. A window
+    is scorable only once every hour it covers lies on a day that has ended.
+    """
+    from datetime import date, datetime
+    from openlocalweather.verify.scoring import window_is_scorable
+
+    # Issued 06:50 on the 11th, so the window runs 06:00 on the 11th to
+    # 05:00 on the 12th and touches the 12th.
+    issued = datetime(2026, 8, 11, 6, 50)
+
+    assert window_is_scorable(issued, today=date(2026, 8, 12)) is False, (
+        "the 12th is still running — its hours would be model output"
+    )
+    assert window_is_scorable(issued, today=date(2026, 8, 13)) is True
+
+    # A window that closes exactly at midnight touches only one day.
+    midnight = datetime(2026, 8, 11, 0, 0)
+    assert window_is_scorable(midnight, today=date(2026, 8, 12)) is True
+
+
+def _archive_two_days(start_day=11):
+    """48 hours of 'observations', unique temperature per hour."""
+    times, temp = [], []
+    for i in range(48):
+        times.append(f"2026-08-{start_day + i // 24:02d}T{i % 24:02d}:00")
+        temp.append(10.0 + i)
+    return {"hourly": {
+        "time": times, "temperature_2m": temp, "precipitation": [0.0] * 48,
+        "cloud_cover": [50.0] * 48, "wind_gusts_10m": [20.0] * 48,
+        "pressure_msl": [1010.0] * 48,
+    }}
+
+
+def test_the_walker_scores_a_finished_window_and_stamps_it():
+    from datetime import date, datetime, timezone
+    from openlocalweather.models import DailyLogEntry, IssuancePredictions, ModelPrediction, LogEntryMeta
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 8, 11, 3, 0, tzinfo=timezone.utc),
+        window_opened_local=datetime(2026, 8, 11, 6, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=40.0)],
+    )
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+
+    changed = verify_closed_windows(entry, _archive_two_days(), today=date(2026, 8, 13))
+
+    assert changed is True
+    assert row.window_verified_at is not None, "a scored row says when"
+    # 06:00 on the 11th (temp 16) .. 05:00 on the 12th (temp 39).
+    assert row.window_scores["gfs_seamless"].high_error_c == pytest.approx(39.0 - 40.0)
+
+
+def test_the_walker_leaves_a_window_alone_until_its_days_have_finished():
+    from datetime import date, datetime, timezone
+    from openlocalweather.models import IssuancePredictions, ModelPrediction
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 8, 11, 3, 0, tzinfo=timezone.utc),
+        window_opened_local=datetime(2026, 8, 11, 6, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=40.0)],
+    )
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+
+    # The 12th is still running, so its hours would be model output.
+    changed = verify_closed_windows(entry, _archive_two_days(), today=date(2026, 8, 12))
+
+    assert changed is False
+    assert row.window_verified_at is None
+    assert row.window_scores == {}
+
+
+def test_the_walker_does_not_rescore_a_row_it_already_stamped():
+    from datetime import date, datetime, timezone
+    from openlocalweather.models import IssuancePredictions, ModelPrediction
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    stamped = datetime(2026, 8, 13, 3, 0, tzinfo=timezone.utc)
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 8, 11, 3, 0, tzinfo=timezone.utc),
+        window_opened_local=datetime(2026, 8, 11, 6, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=40.0)],
+        window_verified_at=stamped,
+    )
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+
+    assert verify_closed_windows(entry, _archive_two_days(), today=date(2026, 8, 14)) is False
+    assert row.window_verified_at == stamped, "row 0 of a scored window is not rewritten"

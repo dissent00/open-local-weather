@@ -158,6 +158,16 @@ LEAD_TIMES_DAYS: list[int] = [0, 3, 7]
 # hours and one in checks, is how a unit error gets written.
 ISSUANCE_WINDOW_HOURS = 24
 
+# How many days back a run looks for issuance windows that have become
+# scorable — ROADMAP item 104, contract item 2.
+#
+# A window opened on day D is not scorable until D+2, because the archive
+# serves the current day as model output (verify.scoring.window_is_scorable).
+# Two days would therefore be the minimum; seven is the catch-up margin, so a
+# run of missed or failed days does not leave windows permanently unscored.
+# Cheap: the lookback costs archive rows, not requests.
+WINDOW_VERIFY_LOOKBACK_DAYS = 7
+
 ROLLING_WINDOW_SHORT = 10  # "recent" window
 ROLLING_WINDOW_LONG = 30  # "longer-term" window
 

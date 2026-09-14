@@ -13271,10 +13271,54 @@ interval to `<=` fails it; so does removing the hour-flooring.
 still running, or one whose archive has a hole, returns None rather than
 scoring a 24-hour claim against eighteen hours.
 
-**Still to wire: the scoring itself.** Note the timing changes with it — a
-window opened at 06:50 yesterday does not CLOSE until 06:50 today, so it
-cannot be scored by the run at 06:01. Window verification is per-row and
-clock-based where calendar verification is per-day.
+### The window is scored — wired 2026-09-14
+
+`verify.scoring.verify_closed_windows` walks each entry's rows and scores any
+window whose hours have all finished, per model, via the existing
+`score_prediction` at lead 0 — the window is a lead-0 shaped claim and a
+second scorer would be a second place for the rain threshold, the onset
+convention and the error signs to drift. Results land on the row as
+`window_scores`, stamped with `window_verified_at`.
+
+**THE LAG IS ~48 HOURS, NOT 24, AND THE REASON IS MEASURED.**
+`archive-api.open-meteo.com` serves the CURRENT DAY WITH MODEL OUTPUT. Asked
+on 2026-09-14 at 08:31 local for 2026-09-13..14 it returned **fifteen stamps
+in the future carrying temperatures**, the last of them 23:00 that evening.
+The project already knew this about ERA5's same-day precipitation — C9
+withholds the dimension for it — and this confirms it is true of the whole
+series on the primary archive path, not only of rain.
+
+So an observation reaching into today is partly a forecast, and scoring a
+window against it scores a forecast against a forecast. `window_is_scorable`
+therefore gates on the CALENDAR: a window may be scored once the last day it
+touches has ended. The existing daily verification never met this because it
+only ever buckets a completed yesterday; the window is the first thing here
+that straddles midnight. Mutating the guard from `<` to `<=` fails two tests.
+
+**Its own archive fetch, and it never touches the actuals cache.** The daily
+refresh fetches exactly yesterday and buckets by calendar date; a window needs
+two days at once, and widening the cached fetch to get them would put a
+PARTIAL today into the cache that tomorrow's verification would score against.
+One extra archive request cannot corrupt the record.
+
+**Idempotent by stamp rather than by recomputation.** A row already carrying
+`window_verified_at` is left alone — the archive is stable for finished days
+so a rescore would agree, but nothing here should be able to move stored
+numbers. `rebuild-record` is where deliberate re-derivation belongs.
+
+**Proved end to end against the real archive**, by giving a backdated entry a
+row with real model numbers and running the pipeline function: fetched,
+windowed, scored, stamped, written. The scores corroborate item 123
+independently — GFS -53.4 and ICON -59.4 points on cloud against ECMWF's
+-8.3, the same split the track record shows.
+
+**ONE PRODUCTION ROW CANNOT BE SCORED, and it is named rather than fixed.**
+`window_opened_local` was added after the 2026-09-14 03:52Z run had already
+written its row, so that row carries five window predictions and no local
+start. The walker skips it, which is correct — deriving the start from the
+stored UTC would assume the zone and that `reconcile_now` never intervened,
+which is the re-derivation this field exists to avoid. Every row from the next
+run onward carries it.
 
 ### Contract item 3 is not available as written — measured 2026-09-14
 

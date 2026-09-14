@@ -586,7 +586,13 @@ def test_weekly_batch_day_triggers_full_archive_refetch(tmp_path, monkeypatch):
     deps = make_deps(tmp_path)
     issue(deps, today=monday, dry_run=False)
 
-    assert calls["range"] == 1
+    # TWO range calls since ROADMAP item 104's contract item 2, and they are
+    # different jobs: one is the weekly full re-fetch into the actuals cache,
+    # the other is `_verify_recent_windows`, which needs two days at once
+    # because a window straddles midnight and which never writes the cache.
+    # Counted rather than loosened — if the cache path started re-fetching
+    # twice this would be three.
+    assert calls["range"] == 2
     assert calls["single"] == 0
 
 
@@ -608,7 +614,11 @@ def test_non_weekly_day_uses_single_day_upsert(tmp_path, monkeypatch):
     deps = make_deps(tmp_path)
     issue(deps, today=tuesday, dry_run=False)
 
-    assert calls["range"] == 0
+    # The CACHE path is the single-day upsert, which is what this test is
+    # about. The one range call is `_verify_recent_windows` — contract item 2
+    # — which never touches the cache; two would mean the cache had started
+    # doing a full re-fetch on an ordinary day.
+    assert calls["range"] == 1
     assert calls["single"] == 1
 
 

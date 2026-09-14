@@ -598,6 +598,32 @@ class IssuancePredictions(BaseModel):
     # publishing six hours dressed as twenty-four.
     window_predictions: list[ModelPrediction] = Field(default_factory=list)
 
+    # THE LOCAL INSTANT THE WINDOW OPENED, floored to the hour — the exact
+    # value `daypart.forward_hours` sliced the forecast at.
+    #
+    # Stored rather than re-derived from `issued_at`, which is UTC. Converting
+    # back would need the zone AND would assume `reconcile_now` never
+    # overrode the clock, and the two sides of a window score must cover the
+    # same hours or the score is wrong in a way nothing reports. Recorded at
+    # the source, they cannot disagree. Same reasoning as
+    # `IssuanceSnapshot.issued_local_time`.
+    window_opened_local: datetime | None = None
+
+    # WHAT THE WINDOW'S CLAIM TURNED OUT TO BE WORTH, per model.
+    #
+    # Empty until scored, and `window_verified_at` is what says which: {} with
+    # a null timestamp is "not yet", {} with a timestamp is "scored and there
+    # was nothing to score" — the archive could not cover it, or the run made
+    # no window claim. A row carrying scores asserts a comparison happened.
+    window_scores: dict[str, VerificationScore] = Field(default_factory=dict)
+
+    # WHEN the window was scored. None means it has not been, which for a
+    # fresh row is the normal condition — the observation is not available
+    # until every hour the window touches lies on a finished day, roughly 48
+    # hours after a morning issuance. See verify.scoring.window_is_scorable
+    # for why it is the calendar rather than the 24-hour clock.
+    window_verified_at: datetime | None = None
+
 
 class VerificationByLead(BaseModel):
     day0: LeadTimeVerification = Field(default_factory=LeadTimeVerification)
