@@ -16853,6 +16853,46 @@ the measurement above exposes:
   GitLab gets either a wrong link or an empty one. A `source_url` in
   `location.yaml` would let them point at their own, or omit it.
 
+### A worked target, rather than generic instructions
+
+Operator, 2026-09-14:
+
+> "Maybe even at the level of setting up an always-free OCI instance to run
+> OLW from start to finish."
+
+**One named, free, start-to-finish path beats a page of alternatives.** A
+forker does not want a survey of static servers; they want a thing that works,
+and can substitute later once they have seen it work once. Oracle Cloud's
+always-free tier is a reasonable choice because it is genuinely perpetual
+rather than a twelve-month trial, and this workload is tiny — a few HTTP
+fetches, one LLM call, and a handful of static files a day.
+
+**Verify the tier's shape when writing it, not from memory.** Free-tier terms
+move, and an out-of-date instruction is worse than none here because the
+reader has no way to tell. Two specifics known to matter and worth confirming
+at the time: the always-free compute is ARM (Ampere), so every Python wheel in
+the dependency set must have an aarch64 build — `pydantic-core` is the one to
+check, being Rust — and Ampere capacity is not always available on demand in
+every region, which is a real obstacle a guide should warn about rather than
+let a reader hit cold.
+
+### The cost this reintroduces, and it should be named up front
+
+**A public page over HTTPS wants a domain, and that is the cost item 5 was
+walked away from.** Not for DKIM this time — for TLS. Let's Encrypt issues
+against names, so a bare instance IP means either serving plain HTTP, which a
+browser will mark insecure on a page people are asked to rely on, or a free
+subdomain from a dynamic-DNS provider, or the same ~$15/yr item 5 declined.
+That is not an argument against self-hosting; it is the sentence a guide has
+to contain so a reader meets it in the plan rather than at the end.
+
+**And the honest counterweight to the brittleness argument:** GitHub Pages
+never needs patching. A self-hosted instance is a machine somebody has to keep
+current, and a forecast that stops because an unattended server fell over is
+the same missed forecast item 108 is about, with nobody to notify. Trading
+platform risk for maintenance burden is a real trade, not a free win, and the
+guide should say which one the reader is choosing.
+
 ### What it is NOT
 
 Not a container, not an installer, not a hosted service. The point is a
