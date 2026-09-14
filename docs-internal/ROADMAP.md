@@ -13585,7 +13585,7 @@ reframe matters least, and this one measures the case it was raised for. A
 decision on contract item 3 taken from either alone will be taken on half the
 evidence.
 
-**6. The published structure stays day-shaped, with explicit windows inside.**
+**6. The published structure stays day-shaped, with explicit windows inside. EFFECTIVELY SHIPPED — status corrected 2026-09-14.** `daypart.py` gives every named period the prompt uses the clock range it covers, with explicit non-overlapping bounds; the commits are `cd50c18` and `8ac521b`. It said Planned until this sweep, which is the same staleness item 35 had.
 Not horizon-shaped. The familiar headers stay and every claim under them names
 the window it covers — `rest of today (22:01–24:00)`, `overnight (00:00–06:33,
 to sunrise)`. `daypart.py` already carries the vocabulary, the sun times and
@@ -13593,11 +13593,11 @@ to sunrise)`. `daypart.py` already carries the vocabulary, the sun times and
 block like every other locked value. The reader keeps the shape they know and
 no sentence is left to mean "today" when today is two hours long.
 
-**7. A high that has already happened is reported as observed, then dropped.**
+**7. A high that has already happened is reported as observed, then dropped. BLOCKED ON ITEM 3, by the same sentence as item 5 — established 2026-09-14.** Half of it shipped with item 121: the observed block reports what the station has already measured. The other half — DROPPING it from the forecast — is refused in terms by the firewall, which says `temp_high_c` is "the day's high whether or not it has already happened". Dropping it is narrowing a scored field, which is exactly what that sentence forbids and why it exists. So item 7 unblocks when item 5 does, and for the same reason.
 Labelled an observation, never a forecast, and the forecast number for the same
 header becomes tomorrow's.
 
-**8. The day-over-day comparison is recast against the forward window.** It is
+**8. The day-over-day comparison is recast against the forward window. NOT BUILT — confirmed 2026-09-14.** `compute_day_over_day` still builds `consensus_high` from the calendar `today_day0_predictions` and compares it against `yesterday_actual.high_c`, so both sides are calendar days. Item 118 bounded its PHRASES by the issuance hour (`_onset_is_ahead`), which is a different fix and is done; the QUANTITIES were not recast. Unlike items 5 and 7 this is not blocked — the comparison is prose-facing rather than a scored field, so no firewall stands in the way. What it needs is a decision about the other side: a forward window compared against yesterday's same window, or against yesterday's whole day. It is
 not suppressed at a late issuance and it is not keyed to the previous issuance.
 
 *Why not the previous issuance.* In the app a forecast is issued when someone
