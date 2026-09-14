@@ -90,6 +90,13 @@ inference item 80 made from subtraction is now confirmed by direct
 measurement, which is what it asked for. What is left of 80 is the
 Interactions API move, and that is a question of when rather than whether.
 
+### Raised 2026-09-14, after this block was written
+
+**131 (A/B on live)** and Ensemble's **17 (vacation mode)**. Neither changes
+the order below. 131's first step is a free retrospective query over the stored
+prompt hashes; Ensemble 17's value is a decision about the prediction key that
+should be taken before item 4 migrates anything, not a build.
+
 ### What is buildable today, in order
 
 1. **73 — pare the prompt, by category rather than by length.** The
@@ -17940,3 +17947,69 @@ instrument cannot separate a real effect from worker variance, and the fix
 does not change that — it removes a systematic false-negative, not the noise.
 
 Related: items 77 (whose method this amends), 73, 128.
+
+## 131. A/B a prompt change against live production · **Planned — raised 2026-09-14**
+
+Requested by the operator. Item 77's offline harness reads one archived
+prompt with a cold worker; this is the other question — does a change make the
+PUBLISHED forecast better, measured against what actually happened.
+
+### The cheap half already exists and nobody has run it
+
+Every archived issuance stores `system_prompt_sha256`, `judgment_prompt_sha256`
+and `narrative_prompt_sha256` — item 70 put them there. So the stored record
+can already be split by prompt version and the SCORED fields compared across
+the split, retrospectively, at no cost and with no new spend. That analysis has
+never been done. It is the first thing to build here, and it is a query rather
+than an experiment.
+
+**What it can answer is narrower than it looks**, for a reason item 59 created:
+
+### The split means a narrative change CANNOT move the record
+
+Since 2026-09-11 the forecast is two calls. The judgment call produces
+`today_properties` — the scored commitment. The narrative call renders prose
+and cannot touch a scored field. So:
+
+- **A judgment-prompt change is measurable against the record.** Rain
+  accuracy, temperature error, wind error, onset error all move or do not.
+- **A narrative-prompt change is not measurable against the record, ever.**
+  It provably cannot alter a scored number. No amount of running it live
+  produces evidence in the ledger.
+
+That is not a limitation of the experiment, it is a property of the design, and
+it means "A/B on live" has two halves that need different instruments. Most
+prompt work this project does — items 48, 67, 73, 83, 118, 128 — is narrative.
+
+### What a live A/B of the JUDGMENT prompt would cost and confound
+
+- **Spend doubles.** A paired same-day run is 4 calls rather than 2. On the
+  server that is the operator's budget; in the app it is the reader's cap,
+  which item 26 already sized for one forecast and item 59 already halved.
+- **Alternating days confounds with weather.** A quiet week against a stormy
+  one is not a prompt comparison. Same-day pairing is the only clean design,
+  and it is the expensive one.
+- **The record moves slowly.** A finding needs 10 checks and confidence needs
+  30, so a paired design needs 10 to 30 DAYS at one issuance a day before it
+  says anything. Sized against the rolling windows, not against impatience.
+
+### And the noise floor is already measured, one instrument over
+
+2026-09-14: two cold readers given BYTE-IDENTICAL prompts produced different
+compliance findings and split on a live rule. Whatever judges prose here will
+have variance of that order, so a prose A/B needs repeated sampling per arm
+rather than one reading each — which is the part item 77's practice does not do
+and this item must not assume away.
+
+### Sequence
+
+1. **The retrospective query**, which is free: outcomes by prompt hash over the
+   stored record. It may show nothing, and that is a result.
+2. **Decide whether judgment-prompt changes are frequent enough to be worth a
+   paired live design at all.** They are rarer than narrative ones.
+3. **The prose half is a different item** — a judge, repeated sampling, and an
+   agreed rubric. Do not fold it in here.
+
+Related: items 70 (the hashes this rests on), 59 (the split that halves it),
+77 and 130 (the offline harness and its measured noise floor), 26 and 111
+(what it costs).
