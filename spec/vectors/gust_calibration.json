@@ -1,0 +1,240 @@
+{
+  "vector_format_version": 1,
+  "function": "calibrated_gust_consensus",
+  "description": "The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model without enough verified checks is absent from it rather than corrected by zero.",
+  "cases": [
+    {
+      "name": "the correction map itself",
+      "input": {
+        "entries": [
+          {
+            "model": "ecmwf_ifs025",
+            "lead_time_days": 0,
+            "avg_wind_error_kmh_10": 12.96,
+            "checks_in_window_10": 10
+          },
+          {
+            "model": "gfs_seamless",
+            "lead_time_days": 0,
+            "avg_wind_error_kmh_10": 16.47,
+            "checks_in_window_10": 10
+          },
+          {
+            "model": "icon_seamless",
+            "lead_time_days": 0,
+            "avg_wind_error_kmh_10": 12.76,
+            "checks_in_window_10": 9
+          },
+          {
+            "model": "kenya_met",
+            "lead_time_days": 0,
+            "avg_wind_error_kmh_10": null,
+            "checks_in_window_10": 10
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "lead_time_days": 3,
+            "avg_wind_error_kmh_10": 99.0,
+            "checks_in_window_10": 30
+          }
+        ]
+      },
+      "expected": {
+        "ecmwf_ifs025": 12.96,
+        "gfs_seamless": 16.47
+      }
+    },
+    {
+      "name": "both models corrected",
+      "input": {
+        "corrections": {
+          "ecmwf_ifs025": 12.96,
+          "gfs_seamless": 16.47
+        },
+        "predictions": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": 42.715
+    },
+    {
+      "name": "an uncorrected model is left out of the mean",
+      "input": {
+        "corrections": {
+          "ecmwf_ifs025": 12.96,
+          "gfs_seamless": 16.47
+        },
+        "predictions": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 5.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": 42.96
+    },
+    {
+      "name": "no corrected member is null, never the raw mean",
+      "input": {
+        "corrections": {
+          "ecmwf_ifs025": 12.96,
+          "gfs_seamless": 16.47
+        },
+        "predictions": [
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 5.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "kenya_met",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 5.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "a missing gust is skipped",
+      "input": {
+        "corrections": {
+          "ecmwf_ifs025": 12.96,
+          "gfs_seamless": 16.47
+        },
+        "predictions": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": 42.47
+    },
+    {
+      "name": "no corrections at all is null",
+      "input": {
+        "corrections": {},
+        "predictions": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": null
+    }
+  ]
+}

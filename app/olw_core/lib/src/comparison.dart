@@ -129,6 +129,13 @@ class DayOverDayComparison {
   final double? todayConsensusHighC;
   final double? todayConsensusLowC;
   final double? todayConsensusPeakWindKmh;
+
+  /// The gust operand the LABEL was actually banded from — calibration.dart,
+  /// and the reason the raw consensus above is kept beside it. A delta
+  /// computed from one number and stored beside another cannot be checked
+  /// afterwards, which is most of what the record is for. Null means no model
+  /// had enough verified checks and the raw consensus was used.
+  final double? todayCalibratedPeakWindKmh;
   /// Surfaced beside the derived label for the same reason todayRainExpected
   /// is: a raw observation is harder for the LLM to misread than a phrase
   /// alone. Null means no station observation, not "no thunder".
@@ -165,6 +172,7 @@ class DayOverDayComparison {
     this.todayConsensusHighC,
     this.todayConsensusLowC,
     this.todayConsensusPeakWindKmh,
+    this.todayCalibratedPeakWindKmh,
     this.highDeltaC,
     this.lowDeltaC,
     this.windDeltaKmh,
@@ -186,6 +194,7 @@ class DayOverDayComparison {
         'today_consensus_high_c': todayConsensusHighC,
         'today_consensus_low_c': todayConsensusLowC,
         'today_consensus_peak_wind_kmh': todayConsensusPeakWindKmh,
+        'today_calibrated_peak_wind_kmh': todayCalibratedPeakWindKmh,
         'high_delta_c': highDeltaC,
         'low_delta_c': lowDeltaC,
         'wind_delta_kmh': windDeltaKmh,
@@ -423,6 +432,7 @@ DayOverDayComparison? computeDayOverDay(
   bool? todayConvective,
   required int? issuedHour,
   int? sunsetHour,
+  double? calibratedWindKmh,
 }) {
   if (yesterdayActual == null) return null;
 
@@ -446,9 +456,21 @@ DayOverDayComparison? computeDayOverDay(
       mean([for (final p in todayDay0Predictions) p.cloudCoverPct]);
   final cloudDelta = delta(consensusCloud, yesterdayActual.cloudCoverPct);
 
+  // THE GUST OPERAND IS THE CALIBRATED ONE — see calibration.dart for the
+  // measurement, and for why the correction never touches the scored rows.
+  // The label was reporting a model bias as weather: over 34 mornings it read
+  // "calmer than yesterday" fourteen times and "windier" NOT ONCE, at a mean
+  // delta of -8.31 km/h against an 8.0 km/h no-change band, so the band was
+  // being cleared by the bias alone. Corrected, the mean is +0.24 km/h.
+  //
+  // THE RAW CONSENSUS IS NOT A FALLBACK ON PURPOSE — it is what a day with too
+  // little verified history gets, because nothing has measured a bias to
+  // remove there. Which was used is recorded, not inferred.
+  final windForLabel = calibratedWindKmh ?? consensusWind;
+
   final highDelta = delta(consensusHigh, yesterdayActual.highC);
   final lowDelta = delta(consensusLow, yesterdayActual.lowC);
-  final windDelta = delta(consensusWind, yesterdayActual.peakWindKmh);
+  final windDelta = delta(windForLabel, yesterdayActual.peakWindKmh);
 
   final votes = [for (final p in todayDay0Predictions) if (p.rain != null) p.rain!];
   final bool? todayRain =
@@ -581,6 +603,7 @@ DayOverDayComparison? computeDayOverDay(
     todayConsensusHighC: _round1(consensusHigh),
     todayConsensusLowC: _round1(consensusLow),
     todayConsensusPeakWindKmh: _round1(consensusWind),
+    todayCalibratedPeakWindKmh: _round1(calibratedWindKmh),
     highDeltaC: highDelta,
     lowDeltaC: lowDelta,
     windDeltaKmh: windDelta,
@@ -598,7 +621,12 @@ DayOverDayComparison? computeDayOverDay(
       cloudLabel: cloudLabel,
       todayCharacter: todayCharacter,
       rainUnchanged: rainUnchanged,
-      windWarningName: windWarning(consensusWind),
+      // THE WARNING TAKES THE CALIBRATED GUST TOO, and this is the consumer
+      // where it matters most. Every other label here is relative and a shared
+      // bias partly cancels; a warning is a LEVEL against NOAA's absolute
+      // thresholds, so a gust 12 km/h low sits a whole band below where it
+      // belongs and the day it matters is the day it stays silent.
+      windWarningName: windWarning(windForLabel),
     ),
   );
 }

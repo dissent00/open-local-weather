@@ -31,6 +31,7 @@ export 'src/forecast.dart';
 export 'src/glossary.dart';
 export 'src/instability.dart';
 export 'src/models.dart';
+export 'src/calibration.dart';
 export 'src/comparison.dart';
 export 'src/config.dart';
 export 'src/llm/anthropic.dart';

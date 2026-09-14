@@ -875,6 +875,7 @@ void main() {
               ?.map((e) => (e as Map).cast<String, Object?>())
               .toList(),
           forwardHourly: i['forward_hourly'],
+          calibratedGustKmh: (i['calibrated_gust_kmh'] as num?)?.toDouble(),
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
           guidanceRecency: i['guidance_recency'],
@@ -930,8 +931,47 @@ void main() {
             .toList();
         final got = computeDayOverDay(y, preds,
             todayConvective: i['today_convective'] as bool?,
-            issuedHour: i['issued_hour'] as int?);
+            issuedHour: i['issued_hour'] as int?,
+            calibratedWindKmh: (i['calibrated_wind_kmh'] as num?)?.toDouble());
         expectMatches(got?.toJson(), c['expected'], c['name'] as String);
+      }
+    });
+
+    test('gust_calibration', () {
+      // Upstream item 126. THE SIGN IS THE WHOLE THING: the correction is
+      // ADDED, and a port that subtracted would double the bias rather than
+      // remove it while nothing failed.
+      for (final c in casesOf('gust_calibration.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        if (i.containsKey('entries')) {
+          final entries = (i['entries'] as List).map((e) {
+            final m = e as Map<String, Object?>;
+            return TrackRecordEntry(
+              model: m['model'] as String,
+              leadTimeDays: m['lead_time_days'] as int,
+              avgWindErrorKmh10: (m['avg_wind_error_kmh_10'] as num?)?.toDouble(),
+              checksInWindow10: (m['checks_in_window_10'] as num?)?.toInt() ?? 0,
+            );
+          }).toList();
+          final got = gustCorrections(entries);
+          expectMatches(got, c['expected'], c['name'] as String);
+          // AND THE KEY SET, EXACTLY. deepMatches compares maps on the
+          // EXPECTED keys only, so an extra one passes silently — which is
+          // right for a growing result object and wrong here, where ABSENCE
+          // is the contract: a model short of the check threshold must not
+          // appear. Mutating the threshold away SURVIVED the vector until
+          // this line existed.
+          expect(got.length, (c['expected'] as Map).length,
+              reason: 'vector case "${c['name']}" gained a correction it should not have');
+          continue;
+        }
+        final preds = (i['predictions'] as List)
+            .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
+            .toList();
+        final corrections = (i['corrections'] as Map).map(
+            (k, v) => MapEntry(k as String, (v as num).toDouble()));
+        expectMatches(calibratedGustConsensus(preds, corrections), c['expected'],
+            c['name'] as String);
       }
     });
   });
@@ -1417,6 +1457,7 @@ void main() {
       'observed_so_far.json',
       'llm_should_reason.json',
       'comparison_subject.json',
+      'gust_calibration.json',
       'describe_day_over_day.json',
       'glossary.json',
       'temp_high_low.json',

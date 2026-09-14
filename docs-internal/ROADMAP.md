@@ -17251,3 +17251,119 @@ documentation problem with two small code fixes attached — not a platform.
 Related: items 124 (which makes the page the product and so raises the stakes
 of where it is hosted), 5 and 3 (on hold indefinitely, the other half of
 reducing GitHub-shaped dependencies), 113.
+
+## 126. The published gust is 12 km/h low, and the record already knew · **SHIPPED 2026-09-14**
+
+The founding principle of this project is that arithmetic an LLM can get wrong
+belongs in code. The gust is where that was stated and then not applied.
+
+**Measured, and the numbers are the whole item.** Over the 32 days pairing a
+published forecast with an observed day, the page's own gust came in **12.09
+km/h below what was observed**, median 10.15. On 2026-09-13 it published 28.6
+km/h against an observed 55.1.
+
+**The information was already in the prompt.** `skill_profile_summary` for gfs
+says "a strong tendency to under-forecast peak surface wind speeds"; the
+per-model figures sit beside it in MODEL TRACK RECORD; prompt rule 218 spells
+out the sign convention in terms. Telling a model about a bias is not removing
+it — the same finding `comparison.py` records about labels, one layer up.
+
+### How it surfaced: the day-over-day wind label
+
+Item 104's contract item 8, stage 2, went looking for an instrument problem and
+found a model one. Over 34 mornings the Overview's wind label read "calmer than
+yesterday" **fourteen times and "windier" not once**, at a mean delta of -8.31
+km/h against an 8.0 km/h no-change band. The band was being cleared by the bias
+alone. All four archived Overviews carrying a wind label say "calmer".
+
+### The correction is the record's own number, validated out of sample
+
+`avg_wind_error_kmh_10` is `actual - predicted` over the last
+ROLLING_WINDOW_SHORT checks, recomputed every run and already stored. Nothing
+new is measured. Taking the bias from the days STRICTLY BEFORE each day:
+
+| window | days | mean abs error, raw -> corrected | days improved |
+|---|---|---|---|
+| 5 | 29 | 12.26 -> 4.48 | 27/29 |
+| **10** | **24** | **11.16 -> 3.80** | **23/24** |
+| 20 | 14 | 11.69 -> 3.23 | 14/14 |
+
+Per model rather than pooled, by a hair on the numbers (3.70 against 3.80) and
+by a wide margin on the reasoning: the per-model figure is already computed,
+already stored and already in the prompt, so code and forecaster correct from
+ONE number. The spread justifies it anyway — gfs +19.99 against best_match
++4.40 over the record.
+
+The rolling-10 bias has been strikingly stable: ecmwf +8.57..+13.35, gfs
++16.00..+23.91, icon +5.98..+12.50, ukmo +11.47..+16.86, best_match
++0.93..+9.41, over 15 to 24 windows. **No cap on the correction**, because a
+cap is a threshold and there is not yet enough to size one against — item 100
+is the record of what happens when one is sized from two convenient samples.
+`GUST_CALIBRATION_MIN_CHECKS` is the guard instead.
+
+### Two consumers, one number
+
+Computed once in `_issue_forecast` and handed to both:
+
+- **CALIBRATED PEAK GUST**, a new locked block, telling the forecaster to start
+  `peak_wind_kmh` from it rather than from the raw per-model gusts.
+- **`compute_day_over_day`**, so the label and the published number move
+  together. Correcting one and not the other is what makes an Overview
+  contradict the page, and it is the reason this was not done as a label fix.
+
+`track_record_entries` is now chosen ONCE, up at the verification step, because
+it has two consumers. The rule was previously written out at the payload's call
+site alone and a second copy is exactly the divergence item 104 exists to close.
+
+**The gale warning reads the calibrated gust too**, and it is the consumer
+where it matters most. Every other label here is RELATIVE, so a shared bias
+partly cancels; a warning is a LEVEL against NOAA's absolute thresholds, and
+the lowest is 25 knots — 46.3 km/h. A gust 12 km/h low sits a whole band below
+where it belongs, and the day it matters is the day it stays silent.
+
+### What it must never touch
+
+The SCORED rows. The scorer measures stored predictions against observations to
+produce the very number used here; correcting the stored prediction would close
+that loop on itself, the measured error would collapse toward zero, and the
+bias would return uncorrected while the record claimed it was fixed. So
+`calibration.py` returns a SEPARATE consensus and never a modified
+`ModelPrediction`. Both stored: `today_consensus_peak_wind_kmh` is what the
+models said, `today_calibrated_peak_wind_kmh` is what the label banded from,
+and a stored comparison has to be re-derivable from its own fields.
+
+### Two test-harness findings, both caught by mutation and both general
+
+**`deepMatches` compares maps on the EXPECTED key set only** — "the vector
+defines the contract" — so an EXTRA key in the actual map passes silently. That
+is right for a result object that grows fields and wrong for a map whose KEY
+SET is the answer: mutating the check threshold away SURVIVED the Dart vector
+until the test asserted the length too. Every map-valued vector has this
+weakness; this one is now guarded, the others are not.
+
+**Restoring a mutated file is not enough — the bytecode cache survives it.** A
+mutation run left a stale `__pycache__` that made a restored, correct file fail
+its own test, which reads exactly like a real defect. AGENTS.md already warns
+that `git checkout --` is the wrong way to revert a mutation; this is the
+second half of the same trap. The harness now clears `__pycache__` and asserts
+the baseline is green before AND after every mutation.
+
+Seven mutations killed on each side, with that assertion in place.
+
+### What was not checked
+
+Whether the same bias exists at Day+3 and Day+7 — `GUST_CALIBRATION_LEAD_DAYS`
+is 0 because that is where it was validated, not because the others were
+measured and found clean. Whether a rolling-10 correction stays stable as the
+record lengthens; the residuals span +7.0 to +24.6, so it will move. And
+whether the forecaster actually USES the block — the measurable test is whether
+the published gust's 12.09 km/h deficit shrinks, and that needs live days.
+
+### The temperature question this raises and does not answer
+
+The same machinery would correct `avg_temp_high_error_c_10`. It should not be
+wired without its own out-of-sample validation: the high consensus is already
+close to unbiased against the reanalysis (-0.05 C over 34 days), so there may
+be nothing to remove, and a correction fitted to noise is worse than none.
+
+Related: items 104 (contract item 8, which surfaced it), 44, 100, 123.

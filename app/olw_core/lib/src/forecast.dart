@@ -207,6 +207,15 @@ Future<ForecastRun> generateForecast({
   Object? historicalLogs = const <Object>[],
   Object? reviewContext,
   Object? yesterdayActual,
+  /// The gust the record says to expect, or null when too little has been
+  /// verified to have measured a bias — calibration.dart.
+  ///
+  /// REQUIRED, and that is the point. Upstream item 104's finding is that an
+  /// optional block wired on one path and not the other renders as a
+  /// legitimate absence and nobody can tell; a caller that has not decided
+  /// what to pass here should fail to compile rather than quietly publish a
+  /// gust the record says runs 12 km/h low.
+  required double? calibratedGustKmh,
   Object? groundAqiReadings,
   Object? groundAqiSummary,
 
@@ -481,6 +490,7 @@ Future<ForecastRun> generateForecast({
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
     instability: instability?.toJson(),
     yesterdayActual: yesterdayActual,
+    calibratedGustKmh: calibratedGustKmh,
     todayWeatherData: {
       'primary_today_hourly': hourly,
       'primary_extended_daily': daily,

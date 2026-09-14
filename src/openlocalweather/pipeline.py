@@ -71,6 +71,7 @@ from openlocalweather.aqi import (
 )
 from openlocalweather.instability import InstabilityOutlook, summarize_instability
 from openlocalweather.wind import consensus_direction, describe_wind_shift
+from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -821,6 +822,7 @@ def _build_forecast_prompt(
     track_record_context: Any,
     review_context: Any,
     yesterday_actual: Any,
+    calibrated_wind_kmh: float | None,
 ) -> str:
     """The user prompt, built in the one place it is built.
 
@@ -875,7 +877,9 @@ def _build_forecast_prompt(
         ),
         guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=yesterday_actual,
-        **_locked_blocks(guidance, day0_predictions, today, observed_so_far),
+        **_locked_blocks(
+            guidance, day0_predictions, today, observed_so_far, calibrated_wind_kmh
+        ),
         review_context=review_context,
         today_weather_data={
             "primary_today_hourly": guidance.primary_hourly,
@@ -905,6 +909,7 @@ def _locked_blocks(
     day0_predictions: list,
     today: date,
     observed: ObservedSoFar | None,
+    calibrated_wind_kmh: float | None,
 ) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
@@ -995,6 +1000,13 @@ def _locked_blocks(
         # none of them still ahead describes a day the reader has finished.
         "wind_shift": describe_wind_shift(
             guidance.primary_hourly, MODELS, issued_hour=issued_hour
+        ),
+        # The gust the record says to expect — calibration.py. Here with the
+        # other locked blocks for this function's founding reason: a block
+        # composed on one path and not the other renders as a legitimate
+        # absence and nobody can tell.
+        "calibrated_gust_kmh": (
+            round(calibrated_wind_kmh, 1) if calibrated_wind_kmh is not None else None
         ),
     }
 
@@ -2416,6 +2428,23 @@ def _issue_forecast(
         else None
     )
 
+    # WHICH TRACK RECORD THIS RUN READS, decided ONCE — the first run of a day
+    # reads what it has just re-derived, a later one reads what that run
+    # stored, because it verified nothing and has nothing fresher.
+    #
+    # Hoisted here because it now has two consumers rather than one: the
+    # forecaster's MODEL TRACK RECORD block, and the gust calibration below.
+    # The rule was previously written out at the payload's call site alone,
+    # and a second copy of it is exactly the divergence item 104 exists to
+    # close — the calibration and the block the forecaster reads must be
+    # computed from the same record, or code corrects from one set of numbers
+    # while the prompt argues from another.
+    track_record_entries = (
+        verification_result.updated_track_record.entries
+        if first_issuance
+        else track_record_store.read_track_record(deps.data_dir).entries
+    )
+
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
     day0_predictions = extract_day0_predictions_from_hourly(primary_hourly, MODELS)
 
@@ -2544,6 +2573,15 @@ def _issue_forecast(
     # issued_hour is why item 118 exists: an evening issuance reusing the
     # morning's onset would compose "dry until evening" after the evening
     # had begun.
+
+    # THE GUST THE RECORD SAYS TO EXPECT — calibration.py, which carries the
+    # out-of-sample validation and the reason this is not applied to the
+    # scored rows. Computed here, before both consumers, so the number the
+    # forecaster is handed and the number the comparison bands from are one
+    # number and cannot drift.
+    gust_bias = gust_corrections(track_record_entries)
+    calibrated_wind_kmh = calibrated_gust_consensus(day0_predictions, gust_bias)
+
     day_over_day = compute_day_over_day(
         actuals_primary.get(yesterday),
         day0_predictions,
@@ -2551,6 +2589,7 @@ def _issue_forecast(
             guidance.instability.convective if guidance.instability is not None else None
         ),
         issued_hour=_issued_hour(guidance.issuance),
+        calibrated_wind_kmh=calibrated_wind_kmh,
     )
 
     # ONE READING OF THE STATION PER RUN, taken before the prompt because
@@ -2664,15 +2703,11 @@ def _issue_forecast(
     # Dropped whole rather than stripped: a summary with its number cut out
     # reads as a sentence missing a word, and the qualitative half is still
     # written fresh every run for every pair that verified.
-    track_record_context = _track_record_payload(
-        verification_result.updated_track_record.entries
-        if first_issuance
-        # A later issuance scored nothing, so the freshest figures available
-        # are the stored ones the first run wrote. Item 91's warning applies
-        # harder here: every summary it reads was written by an earlier run.
-        else track_record_store.read_track_record(deps.data_dir).entries,
-        forecaster_models,
-    )
+    # `track_record_entries` was chosen once, up at the verification step —
+    # a later issuance scored nothing, so the freshest figures available are
+    # the stored ones the first run wrote. Item 91's warning applies harder
+    # here: every summary it reads was written by an earlier run.
+    track_record_context = _track_record_payload(track_record_entries, forecaster_models)
     # Long-run review findings, recomputed from the raw record every run
     # rather than stored — same reasoning as every other statistic here: a
     # figure that can only be re-derived is a figure that can be checked,
@@ -2708,6 +2743,7 @@ def _issue_forecast(
         yesterday_actual=comparison_for_prompt(
             asdict(day_over_day) if day_over_day is not None else None
         ),
+        calibrated_wind_kmh=calibrated_wind_kmh,
     )
     # Route EVERY request the provider makes through the cap — retries
     # included. Raises SpendCapExceeded, deliberately NOT caught here: the

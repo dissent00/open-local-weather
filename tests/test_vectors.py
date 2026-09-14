@@ -599,7 +599,33 @@ def test_vectors_day_over_day():
         i = case["input"]
         y = DailyActual.model_validate(i["yesterday_actual"]) if i["yesterday_actual"] else None
         preds = [ModelPrediction.model_validate(p) for p in i["today_day0_predictions"]]
-        got = compute_day_over_day(y, preds, today_convective=i.get("today_convective"), issued_hour=i["issued_hour"])
+        got = compute_day_over_day(
+            y, preds,
+            today_convective=i.get("today_convective"),
+            issued_hour=i["issued_hour"],
+            calibrated_wind_kmh=i.get("calibrated_wind_kmh"),
+        )
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_gust_calibration():
+    """ROADMAP item 126 — the correction is ADDED, and a port that subtracted
+    would double the bias instead of removing it while nothing failed."""
+    from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
+
+    class _Entry:
+        def __init__(self, **kw):
+            self.__dict__.update(kw)
+
+    for case in load("gust_calibration.json")["cases"]:
+        i = case["input"]
+        if "entries" in i:
+            got = gust_corrections([_Entry(**e) for e in i["entries"]])
+        else:
+            got = calibrated_gust_consensus(
+                [ModelPrediction.model_validate(p) for p in i["predictions"]],
+                i["corrections"],
+            )
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
 
@@ -831,6 +857,7 @@ def test_every_vector_file_is_exercised():
         "observed_so_far.json",
         "llm_should_reason.json",
         "comparison_subject.json",
+        "gust_calibration.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

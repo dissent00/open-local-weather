@@ -564,6 +564,10 @@ String buildUserPrompt({
   String? extendedTrend,
   String? windDirection,
   String? windShift,
+  /// The gust the record says to expect, in km/h — upstream item 126.
+  /// Pre-computed because the bias it removes was measured by this project
+  /// and telling the model about it did not remove it; see calibration.dart.
+  double? calibratedGustKmh,
 
   /// What the station has ALREADY measured today — upstream item 121.
   /// Composed in code because an observation is a fact, and facts are not
@@ -701,6 +705,9 @@ ${windDirection != null ? 'from the $windDirection' : 'Unavailable — the model
 
 WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
 ${windShift ?? 'Unavailable — omit any claim about the wind turning.'}
+
+CALIBRATED PEAK GUST (pre-computed by code: the models' Day+0 consensus gust with each model's OWN measured bias added back, from the record's own measured "actual minus predicted" at Day+0. MODEL TRACK RECORD shows you that figure for the models it lists; the consensus behind this number also includes internal yardsticks whose rows are deliberately withheld from you, so do not try to reconstruct it from what is in front of you. START YOUR "peak_wind_kmh" FROM THIS NUMBER, not from the raw per-model gusts in EXTRACTED PER-MODEL PREDICTIONS. Those are the uncorrected forecasts and they are in your context because they are what gets SCORED, not because they are the best estimate. This is not a judgement call being taken from you: measured over 32 days, the published gust came in 12.09 km/h BELOW what was observed, median 10.15, on a day-over-day band of 8.0 km/h — while the track record sitting in this same prompt said in words that every model under-forecasts peak wind. You may still depart from it, and a departure is exactly what a forecaster is for; say so in the Forecaster Confidence Notes and say which way and why. What you may not do is quietly average the raw model gusts back in, which is the behaviour this block exists to end):
+${calibratedGustKmh != null ? '$calibratedGustKmh km/h' : 'Unavailable - too few verified checks to have measured a bias yet. Reason from the raw per-model gusts, and expect them to run low.'}
 
 OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — MEASURED, not forecast, and the only block here that describes hours the reader has already lived. Use it VERBATIM or not at all. IT IS NOT A FORECAST AND MUST NOT BE WEIGHED AGAINST ONE: where it and the call disagree, the observation happened and the forecast did not, so say what was measured and do not reconcile them. A NEGATIVE IN IT IS A MEASUREMENT — "no rain" means the station reported and saw none, which is worth telling a reader at midday; a dimension that is simply absent was not measured and you may say nothing about it. This is the one place you may write in the PAST TENSE about today, and the clause it earns is short: a reader who was rained on at 15:00 and is told the day was dry stops believing the rest):
 ${observedSoFar ?? 'Unavailable — the station reported nothing measurable today. Say nothing about what has already happened.'}$groundAqiBlock$localBulletinBlock

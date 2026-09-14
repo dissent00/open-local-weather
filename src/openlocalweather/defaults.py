@@ -381,6 +381,17 @@ REVIEW_CONFIDENCE_BANDS = [
 # this many checks, and a gap wider than the sampling noise below.
 REVIEW_MIN_CHECKS_FOR_COMPARISON = 10
 
+# How many verified checks a model needs before its measured gust bias is
+# applied to its forecast — see calibration.py, which has the out-of-sample
+# validation behind the correction itself.
+#
+# THE SAME TEN, deliberately, and not a second threshold invented for this.
+# It is ROLLING_WINDOW_SHORT, so it is exactly the window the correction is
+# averaged over: requiring fewer checks than the window would apply a mean
+# computed from a window that is not full, and requiring more would leave a
+# measured bias unused for no stated reason.
+GUST_CALIBRATION_MIN_CHECKS = ROLLING_WINDOW_SHORT
+
 # Minimum percentage-point gap between two models before the difference is
 # worth asserting. Same reasoning as TREND_THRESHOLD_PCT: at n=10 a binary
 # hit rate carries ~15 points of binomial noise on its own, so anything

@@ -852,3 +852,69 @@ def test_the_morning_subject_still_uses_today():
 
     assert morning is not None
     assert morning.high_label is not None and "much" in morning.high_label
+
+
+# ---------------------------------------------------------------------------
+# Item 126 — the gust operand is the calibrated one.
+# ---------------------------------------------------------------------------
+
+
+def test_the_label_bands_the_calibrated_gust_not_the_raw_consensus():
+    """The defect, and the same weather banded both ways.
+
+    Yesterday gusted to 40.7 and the models call 30.0. Raw, that is -10.7 and
+    reads "calmer"; with the +11.5 km/h the record has measured added back it
+    is +0.8 and the wind held still. Over 34 mornings the raw operand read
+    "calmer" fourteen times and "windier" not once, at a mean of -8.31 km/h
+    against an 8.0 km/h no-change band.
+    """
+    yesterday = actual(peak_wind_kmh=40.7)
+
+    raw = compute_day_over_day(yesterday, preds(wind_kmh=30.0), issued_hour=6)
+    calibrated = compute_day_over_day(
+        yesterday, preds(wind_kmh=30.0), issued_hour=6, calibrated_wind_kmh=41.5
+    )
+
+    assert raw.wind_label == "calmer"
+    assert calibrated.wind_label == "similar winds"
+
+
+def test_the_record_stores_both_gusts():
+    """A delta computed from one number and stored beside another cannot be
+    checked afterwards, and checking afterwards is most of what the record is
+    for. The raw consensus stays because it is what the models said."""
+    result = compute_day_over_day(
+        actual(peak_wind_kmh=40.7), preds(wind_kmh=30.0), issued_hour=6,
+        calibrated_wind_kmh=41.5,
+    )
+
+    assert result.today_consensus_peak_wind_kmh == 30.0
+    assert result.today_calibrated_peak_wind_kmh == 41.5
+    assert result.wind_delta_kmh == 0.8
+
+
+def test_no_calibration_falls_back_to_what_the_models_said():
+    """Not a fallback so much as the honest operand: on a day with too little
+    verified history nothing has measured a bias to remove."""
+    result = compute_day_over_day(actual(peak_wind_kmh=40.7), preds(wind_kmh=30.0), issued_hour=6)
+
+    assert result.today_calibrated_peak_wind_kmh is None
+    assert result.wind_delta_kmh == -10.7
+
+
+def test_the_gale_warning_reads_the_calibrated_gust():
+    """The consumer where a low gust costs most. Every other label here is
+    relative, so a shared bias partly cancels; a warning is a LEVEL against
+    NOAA's absolute thresholds, and 12 km/h low is a whole band low on the day
+    it matters."""
+    yesterday = actual(peak_wind_kmh=40.7)
+
+    # The lowest band is 25 knots, 46.3 km/h. A 40.0 km/h consensus sits
+    # under it and the record's own correction carries it over.
+    quiet = compute_day_over_day(yesterday, preds(wind_kmh=40.0), issued_hour=6)
+    warned = compute_day_over_day(
+        yesterday, preds(wind_kmh=40.0), issued_hour=6, calibrated_wind_kmh=51.5
+    )
+
+    assert "strong breeze" not in (quiet.overview_comparison or "")
+    assert "strong breeze" in warned.overview_comparison

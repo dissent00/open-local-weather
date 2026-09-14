@@ -77,6 +77,7 @@ from openlocalweather.models import (
     ModelPrediction,
     format_temp_high_low,
 )
+from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.comparison import compute_day_over_day, comparison_subject, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
@@ -1182,6 +1183,12 @@ def export_user_prompt() -> None:
             },
         ],
         forward_hourly={"hourly": {"time": ["2026-08-19T18:00"], "precipitation_gfs_seamless": [0.4]}},
+        # A REAL CALIBRATED GUST, because every other case leaves it out and
+        # renders the unavailable text — and the thing most likely to diverge
+        # is how a language prints the NUMBER. Python's f-string and Dart's
+        # interpolation agree on 41.5 and on 41.0, and disagree with anything
+        # that formats it as an int; pinning a value is what catches that.
+        calibrated_gust_kmh=41.5,
         # A re-issue whose observed cycle has moved on since the morning:
         # newer_than_previous_issuance true, real news to narrate.
         guidance_recency={
@@ -2752,6 +2759,27 @@ def export_day_over_day() -> None:
         # itself stays — which is the behaviour the 18:00 case used to carry.
         ("an onset already past is not a timing phrase", actual(),
          preds([29.0], rains=[True], mm=[8.0], onsets=["05:00"]), True, 8),
+        # ROADMAP item 126. The gust operand is the CALIBRATED consensus, and
+        # these two cases are the same weather banded from the raw and the
+        # corrected number. Yesterday gusted to 40.7 and the models call 30.0
+        # — "calmer" on the raw figure, and "similar winds" once the +11.5
+        # km/h the record has measured is added back. That flip is the defect:
+        # over 34 mornings the label read calmer fourteen times and windier
+        # never, at a mean of -8.31 km/h against an 8.0 km/h band.
+        ("the raw gust consensus bands as calmer", actual(),
+         preds([29.6], winds=[30.0]), None, 6),
+        ("the calibrated gust says the wind held still", actual(),
+         preds([29.6], winds=[30.0]), None, 6, 41.5),
+        # THE WARNING READS THE CALIBRATED GUST TOO, and this pair is the case
+        # that proves it. Every other label here is RELATIVE, so a shared bias
+        # partly cancels; a warning is a LEVEL against NOAA's absolute
+        # thresholds, and the lowest is 25 knots — 46.3 km/h. A 40.0 km/h
+        # consensus sits under it and the record's own correction carries it
+        # over, so an uncalibrated warning is silent on the day it matters.
+        ("a raw gust under the lowest band warns about nothing", actual(),
+         preds([29.6], winds=[40.0]), None, 6),
+        ("the calibrated gust crosses into a warning", actual(),
+         preds([29.6], winds=[40.0]), None, 6, 51.5),
     ]
 
     cases = []
@@ -2761,8 +2789,12 @@ def export_day_over_day() -> None:
         # Issued at midnight unless the scenario says otherwise, so every
         # onset is still ahead and these keep the behaviour the record has.
         issued = scenario[4] if len(scenario) > 4 else 0
+        # None means "no model had enough verified checks", which is the state
+        # every case but one is in — see ROADMAP item 126.
+        calibrated = scenario[5] if len(scenario) > 5 else None
         result = compute_day_over_day(
-            y, ps, today_convective=convective, issued_hour=issued
+            y, ps, today_convective=convective, issued_hour=issued,
+            calibrated_wind_kmh=calibrated,
         )
         cases.append({
             "name": name,
@@ -2771,6 +2803,7 @@ def export_day_over_day() -> None:
                 "today_day0_predictions": [dump(p) for p in ps],
                 "today_convective": convective,
                 "issued_hour": issued,
+                "calibrated_wind_kmh": calibrated,
             },
             "expected": dump(result),
         })
@@ -3305,6 +3338,101 @@ def export_describe_day_rain() -> None:
         "thundered. Thunder outranks the amount — a day the airport observed a "
         "storm on is never described as dry, whatever the grid cell recorded.",
         cases,
+    )
+
+
+def export_gust_calibration() -> None:
+    """The gust correction and the consensus it produces — ROADMAP item 126.
+
+    VECTOR-TESTED BECAUSE THE SIGN IS THE WHOLE THING. `avg_wind_error_kmh_10`
+    is `actual - predicted`, so a positive value means the model came in UNDER
+    and the correction is ADDED. A port that subtracted would double the bias
+    instead of removing it and nothing would fail — the number would simply be
+    wrong in the direction the record already leans, which is the hardest kind
+    of wrong to notice. 43 stored notes had exactly this direction backwards
+    before prompt rule 218 existed.
+
+    The threshold cases matter for the same reason `llm_should_reason`'s
+    three-valued ones do: a model below the check count must be ABSENT from
+    the correction map rather than present with a zero, and a consensus with
+    no corrected member at all must be null rather than the raw mean.
+    """
+    class _Entry:
+        def __init__(self, model, lead, err, checks):
+            self.model, self.lead_time_days = model, lead
+            self.avg_wind_error_kmh_10, self.checks_in_window_10 = err, checks
+
+    # The record's own Day+0 figures on 2026-09-14, plus the cases that only
+    # a constructed row can reach.
+    entries = [
+        _Entry("ecmwf_ifs025", 0, 12.96, 10),
+        _Entry("gfs_seamless", 0, 16.47, 10),
+        # Enough of a record to have an error, not enough to trust it.
+        _Entry("icon_seamless", 0, 12.76, 9),
+        # Verified, and nothing measured its wind — the met service files none.
+        _Entry("kenya_met", 0, None, 10),
+        # A different lead time never leaks into the Day+0 correction.
+        _Entry("ecmwf_ifs025", 3, 99.0, 30),
+    ]
+
+    corrections = gust_corrections(entries)
+
+    def preds(pairs):
+        return [ModelPrediction(model=m, rain=False, wind_kmh=w) for m, w in pairs]
+
+    consensus_cases = [
+        ("both models corrected", preds([("ecmwf_ifs025", 30.0), ("gfs_seamless", 26.0)])),
+        ("an uncorrected model is left out of the mean",
+         preds([("ecmwf_ifs025", 30.0), ("icon_seamless", 5.0)])),
+        ("no corrected member is null, never the raw mean",
+         preds([("icon_seamless", 5.0), ("kenya_met", 5.0)])),
+        ("a missing gust is skipped", preds([("ecmwf_ifs025", None), ("gfs_seamless", 26.0)])),
+        # AN EMPTY CORRECTION MAP, which is what every run looks like until the
+        # record has ten verified checks. Distinct from the case above: there
+        # the map has members and none of them match, here there is no map at
+        # all, and they reach the null by different branches. Without this the
+        # early return was never executed and mutating it to the raw mean
+        # SURVIVED the vector on the Dart side.
+        ("no corrections at all is null", preds([("ecmwf_ifs025", 30.0)]), {}),
+    ]
+
+    write(
+        "gust_calibration.json",
+        "calibrated_gust_consensus",
+        "The Day+0 consensus gust with each model's own measured bias added "
+        "back. The correction is the record's stored actual-minus-predicted, "
+        "so it is ADDED; a model without enough verified checks is absent "
+        "from it rather than corrected by zero.",
+        [
+            {
+                "name": "the correction map itself",
+                "input": {
+                    "entries": [
+                        {
+                            "model": e.model,
+                            "lead_time_days": e.lead_time_days,
+                            "avg_wind_error_kmh_10": e.avg_wind_error_kmh_10,
+                            "checks_in_window_10": e.checks_in_window_10,
+                        }
+                        for e in entries
+                    ]
+                },
+                "expected": corrections,
+            }
+        ]
+        + [
+            {
+                "name": name,
+                "input": {
+                    "corrections": case_corrections,
+                    "predictions": [dump(p) for p in ps],
+                },
+                "expected": calibrated_gust_consensus(ps, case_corrections),
+            }
+            for name, ps, case_corrections in (
+                (c if len(c) > 2 else (*c, corrections)) for c in consensus_cases
+            )
+        ],
     )
 
 
@@ -4058,6 +4186,7 @@ def main() -> None:
     export_describe_day_rain()
     export_observed_so_far()
     export_comparison_subject()
+    export_gust_calibration()
     export_llm_should_reason()
     export_describe_day_over_day()
     export_glossary()

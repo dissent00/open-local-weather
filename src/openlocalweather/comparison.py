@@ -59,6 +59,14 @@ class DayOverDayComparison:
     today_consensus_high_c: float | None
     today_consensus_low_c: float | None
     today_consensus_peak_wind_kmh: float | None
+    # The gust operand the LABEL was actually banded from — calibration.py,
+    # and the reason the raw consensus above is kept beside it. The two differ
+    # by the models' measured bias, and a stored comparison has to be
+    # re-derivable from its own fields: a delta computed from one number and
+    # stored beside another cannot be checked afterwards, which is most of
+    # what the record is for. None means no model had enough verified checks
+    # and the raw consensus was used.
+    today_calibrated_peak_wind_kmh: float | None
     high_delta_c: float | None
     low_delta_c: float | None
     wind_delta_kmh: float | None
@@ -347,6 +355,7 @@ def compute_day_over_day(
     issued_hour: int | None,
     sunset_hour: int | None = None,
     tomorrow_predictions: list[ModelPrediction] | None = None,
+    calibrated_wind_kmh: float | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
     as a gap, not as a day with unremarkable weather.
@@ -406,9 +415,23 @@ def compute_day_over_day(
     consensus_cloud = mean([p.cloud_cover_pct for p in today_day0_predictions])
     cloud_delta = delta(consensus_cloud, yesterday_actual.cloud_cover_pct)
 
+    # THE GUST OPERAND IS THE CALIBRATED ONE — see calibration.py for the
+    # measurement, and for why the correction is not applied to the scored
+    # rows. The label was reporting a model bias as weather: over 34 mornings
+    # it read "calmer than yesterday" fourteen times and "windier" NOT ONCE,
+    # at a mean delta of -8.31 km/h against an 8.0 km/h no-change band. The
+    # band was being cleared by the bias alone. With the record's own
+    # correction applied the mean is +0.24 km/h.
+    #
+    # THE RAW CONSENSUS IS NOT A FALLBACK ON PURPOSE — it is what a day with
+    # too little verified history gets, because on such a day nothing has
+    # measured a bias to remove and the honest operand is the one the models
+    # gave. Which was used is recorded, not inferred.
+    wind_for_label = consensus_wind if calibrated_wind_kmh is None else calibrated_wind_kmh
+
     high_delta = delta(consensus_high, yesterday_actual.high_c)
     low_delta = delta(consensus_low, yesterday_actual.low_c)
-    wind_delta = delta(consensus_wind, yesterday_actual.peak_wind_kmh)
+    wind_delta = delta(wind_for_label, yesterday_actual.peak_wind_kmh)
 
     # Both days described by AMOUNT and TIMING, then compared — rather than
     # by whether any hour crossed 0.5 mm, which called a clear day with
@@ -577,6 +600,9 @@ def compute_day_over_day(
         today_consensus_high_c=round(consensus_high, 1) if consensus_high is not None else None,
         today_consensus_low_c=round(consensus_low, 1) if consensus_low is not None else None,
         today_consensus_peak_wind_kmh=round(consensus_wind, 1) if consensus_wind is not None else None,
+        today_calibrated_peak_wind_kmh=(
+            round(calibrated_wind_kmh, 1) if calibrated_wind_kmh is not None else None
+        ),
         high_delta_c=high_delta,
         low_delta_c=low_delta,
         wind_delta_kmh=wind_delta,
@@ -592,7 +618,13 @@ def compute_day_over_day(
             cloud_label=cloud_label,
             today_character=today_character,
             rain_unchanged=rain_unchanged,
-            wind_warning_name=wind_warning(consensus_wind),
+            # THE WARNING TAKES THE CALIBRATED GUST TOO, and this is the
+            # consumer where it matters most. Every other label here is
+            # relative and a shared bias partly cancels; a warning is a LEVEL
+            # measured against NOAA's absolute thresholds, so a gust forecast
+            # 12 km/h low sits a whole band below where it belongs and the
+            # day it matters is the day it stays silent.
+            wind_warning_name=wind_warning(wind_for_label),
         ),
     )
 
