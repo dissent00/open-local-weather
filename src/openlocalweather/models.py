@@ -578,6 +578,26 @@ class IssuancePredictions(BaseModel):
     issued_at: datetime
     predictions: ModelPredictionsByLead = Field(default_factory=ModelPredictionsByLead)
 
+    # THIS ISSUANCE'S CLAIM ABOUT THE NEXT 24 HOURS — ROADMAP item 104,
+    # contract item 2. Day+0 above is a CALENDAR-DAY claim, which at 06:00 is
+    # already a quarter hindcast and at 22:00 nine tenths of one; this is the
+    # same models over the window that actually begins when the issuance does,
+    # so a 06:00 row and a 22:00 row make the same KIND of claim.
+    #
+    # STORED AND NOT YET SCORED, deliberately. `verify.scoring` still names
+    # row 0's `predictions` as the set tomorrow scores, and nothing reads this
+    # field. It accumulates first so that switching the record over is a
+    # decision taken against measured days rather than against the reframe's
+    # argument — ROADMAP item 100 is why that sentence is here. What it is NOT
+    # is a second opinion to average with Day+0: it is the replacement, parked
+    # until there is enough of it to replace anything.
+    #
+    # EMPTY MEANS THE WINDOW COULD NOT BE FILLED, never a quiet forecast. A
+    # run whose two-day fetch failed holds only today, which at 18:00 is six
+    # hours, and `extract.extract_window_predictions` declines rather than
+    # publishing six hours dressed as twenty-four.
+    window_predictions: list[ModelPrediction] = Field(default_factory=list)
+
 
 class VerificationByLead(BaseModel):
     day0: LeadTimeVerification = Field(default_factory=LeadTimeVerification)

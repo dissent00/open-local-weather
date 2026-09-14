@@ -147,6 +147,17 @@ LEAD_TIMES_DAYS: list[int] = [0, 3, 7]
 
 # Rolling-window sizes, in *verified checks* (not calendar days) at a given
 # lead time.
+# How many hours forward an issuance's scored claim covers — ROADMAP item
+# 104, contract item 2.
+#
+# NOT NAMED "ROLLING", deliberately, though that is what the contract calls
+# it. `ROLLING_WINDOW_SHORT`/`_LONG` below are counts of CHECKS in the skill
+# statistics, and the contract itself flagged the collision — "ROLLING_WINDOW_
+# SHORT being '10 checks' stops being a distinction without a difference
+# here". Two different things called the rolling window, one measured in
+# hours and one in checks, is how a unit error gets written.
+ISSUANCE_WINDOW_HOURS = 24
+
 ROLLING_WINDOW_SHORT = 10  # "recent" window
 ROLLING_WINDOW_LONG = 30  # "longer-term" window
 

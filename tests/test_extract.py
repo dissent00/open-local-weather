@@ -426,3 +426,83 @@ def test_a_missing_bearing_is_none_not_north():
     by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
     assert by_model["gfs_seamless"].wind_direction_deg is None, "all-null is not north"
     assert by_model["ecmwf_ifs025"].wind_direction_deg is None, "absent is not north"
+
+
+# --- ROADMAP item 104, contract item 2: the issuance window -----------------
+
+
+def _two_days_hourly(models):
+    """48 hours from 2026-08-11T00:00, one model per name, rain only at 20:00
+    on the FIRST day and 02:00 on the second.
+
+    Built so the two candidate windows disagree: a calendar day sees the 20:00
+    rain and not the 02:00, a +24 h window from 12:00 sees both.
+    """
+    times, precip, temp = [], [], []
+    for day, d in ((11, 0), (12, 24)):
+        for h in range(24):
+            times.append(f"2026-08-{day:02d}T{h:02d}:00")
+            precip.append(0.9 if (day, h) in ((11, 20), (12, 2)) else 0.0)
+            # A clean ramp so high/low are unambiguous per window.
+            temp.append(10.0 + d + h)
+    hourly = {"time": times}
+    for m in models:
+        hourly[f"precipitation_{m}"] = list(precip)
+        hourly[f"temperature_2m_{m}"] = list(temp)
+        hourly[f"windgusts_10m_{m}"] = [5.0] * 48
+        hourly[f"pressure_msl_{m}"] = [1010.0] * 48
+    return {"hourly": hourly}
+
+
+def test_the_window_is_the_next_24_hours_from_the_issuance():
+    """Contract item 2. At 12:00 the claim covers 12:00 today to 11:00
+    tomorrow — so it must see the 02:00 rain the calendar day cannot, and the
+    overnight low that a calendar day would attribute to the wrong date."""
+    from datetime import datetime
+    from openlocalweather.extract import extract_window_predictions
+
+    got = extract_window_predictions(
+        _two_days_hourly(MODELS), MODELS, issued_local=datetime(2026, 8, 11, 12, 30)
+    )
+    by_model = {p.model: p for p in got}
+    gfs = by_model["gfs_seamless"]
+
+    assert gfs.rain is True
+    # 20:00 on day one is inside the window and is the FIRST wet hour in it.
+    assert gfs.onset == "20:00"
+    # The window runs 12:00 (temp 22) to 11:00 next day (temp 45).
+    assert gfs.low_c == pytest.approx(22.0)
+    assert gfs.high_c == pytest.approx(45.0)
+
+
+def test_a_window_that_cannot_be_filled_is_not_a_claim():
+    """The guard that makes this safe. `forward_hours`'s own docstring records
+    the hazard: scoring a partial window against a full one quietly rewards a
+    model for hours it was never asked about. A run holding only today's
+    hours at 18:00 has six, not twenty-four, and must decline rather than
+    publish a short window dressed as a full one."""
+    from datetime import datetime
+    from openlocalweather.extract import extract_window_predictions
+
+    one_day = {"hourly": {k: v[:24] for k, v in _two_days_hourly(MODELS)["hourly"].items()}}
+
+    assert extract_window_predictions(
+        one_day, MODELS, issued_local=datetime(2026, 8, 11, 18, 0)
+    ) == []
+
+
+def test_the_window_uses_the_same_arithmetic_as_day_zero():
+    """Not a second implementation. Handed the SAME hours, the two must agree
+    field for field — the window differs only in which hours go in, and that
+    is the whole of the reframe."""
+    from datetime import datetime
+    from openlocalweather.extract import extract_window_predictions
+
+    midnight = {"hourly": {k: v[:24] for k, v in _two_days_hourly(MODELS)["hourly"].items()}}
+    # A window opening at 00:00 over a 24-hour series IS the calendar day.
+    window = extract_window_predictions(
+        midnight, MODELS, issued_local=datetime(2026, 8, 11, 0, 0)
+    )
+    day0 = extract_day0_predictions_from_hourly(midnight, MODELS)
+
+    assert [p.model_dump() for p in window] == [p.model_dump() for p in day0]

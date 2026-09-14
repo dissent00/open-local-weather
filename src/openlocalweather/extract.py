@@ -9,7 +9,10 @@ for why that round-trip was dropped rather than preserved.
 
 from __future__ import annotations
 
-from openlocalweather.defaults import RAIN_THRESHOLD_MM
+from datetime import datetime
+
+from openlocalweather.daypart import forward_hours
+from openlocalweather.defaults import ISSUANCE_WINDOW_HOURS, RAIN_THRESHOLD_MM
 from openlocalweather.fetch.open_meteo import get_onset_hour, pick_series
 from openlocalweather.models import ModelPrediction
 
@@ -199,3 +202,47 @@ def extract_day_n_predictions_from_daily(
             )
         )
     return predictions
+
+
+def extract_window_predictions(
+    hourly_multi_model: dict,
+    models: list[str],
+    *,
+    issued_local: datetime,
+    hours: int = ISSUANCE_WINDOW_HOURS,
+    threshold: float = RAIN_THRESHOLD_MM,
+) -> list[ModelPrediction]:
+    """Each model's claim about the next `hours` from the issuance.
+
+    ROADMAP item 104, contract item 2. Day+0 is the only broken lead: at 06:00
+    a quarter of the calendar day is already spent and at 22:00 ninety percent
+    of it is, so a calendar-day claim is ALREADY part hindcast and a late
+    issuance only makes that visible. A window measured from the issuance
+    makes every issuance make the same KIND of claim, which is what
+    lead-from-initialization means and what operational verification does.
+
+    TWO EXISTING FUNCTIONS COMPOSED, NOT A THIRD IMPLEMENTATION. The slicing
+    is `daypart.forward_hours` and the arithmetic is
+    `extract_day0_predictions_from_hourly`, unchanged and untouched. That is
+    the point rather than a convenience: the window differs from Day+0 in
+    WHICH HOURS GO IN and in nothing else, so the two cannot drift in their
+    rounding, their gust-series fallback or their onset rule — and
+    `test_the_window_uses_the_same_arithmetic_as_day_zero` pins it by handing
+    both the same hours and demanding identical output.
+
+    A SHORT WINDOW IS NOT A CLAIM, and returning one would be the exact
+    failure `forward_hours` was written to avoid: "scoring a partial day
+    against a full day's observation would quietly reward a model for the
+    hours it was not asked about". A run whose two-day fetch failed holds only
+    today, which at 18:00 is six hours; it returns [] so the caller records an
+    absence rather than publishing six hours dressed as twenty-four.
+    """
+    window = forward_hours(hourly_multi_model, issued_local, hours_ahead=hours)
+    if not window or not window.get("hourly"):
+        return []
+
+    times = window["hourly"].get("time") or []
+    if len(times) < hours:
+        return []
+
+    return extract_day0_predictions_from_hourly(window, models, threshold=threshold)

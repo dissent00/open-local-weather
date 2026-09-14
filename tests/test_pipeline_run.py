@@ -198,13 +198,31 @@ def sun_fixture(lat, lon, day, utc_offset_seconds):
 
 
 def forward_hourly_fixture():
-    """Two days of hourly data, so a run at any hour has hours still ahead."""
-    times, precip = [], []
+    """Two days of hourly data, so a run at any hour has hours still ahead.
+
+    CARRIES EVERY VARIABLE `hourly_fixture` DOES, for all five models, since
+    ROADMAP item 104's contract item 2. It used to hold precipitation for one
+    model only — enough for the narrative's forward window, which is all it
+    fed. The issuance window is extracted from this series and would have come
+    back with a rain call and null temperatures, which is a shape no
+    assertion would have noticed and the driver's own output did not.
+
+    The temperature ramps across the two days rather than repeating, so a
+    window opening at 06:00 and one opening at 18:00 have different highs and
+    a test can tell them apart.
+    """
+    times = []
+    fields: dict[str, list] = {}
     for i in range(48):
         day = 11 + i // 24
         times.append(f"2026-08-{day:02d}T{i % 24:02d}:00")
-        precip.append(0.0)
-    return {"hourly": {"time": times, "precipitation_gfs_seamless": precip}}
+    fields["time"] = times
+    for model in MODELS:
+        fields[f"precipitation_{model}"] = [0.0] * 48
+        fields[f"windgusts_10m_{model}"] = [10.0 + (i % 24) / 4 for i in range(48)]
+        fields[f"temperature_2m_{model}"] = [16.0 + (i % 24) * 0.5 + (i // 24) for i in range(48)]
+        fields[f"pressure_msl_{model}"] = [1012.0 - i * 0.05 for i in range(48)]
+    return {"hourly": fields}
 
 
 @pytest.fixture(autouse=True)
@@ -3699,3 +3717,80 @@ def test_the_always_policy_spends_on_every_issuance(tmp_path):
     issue(again, today=today, dry_run=False)
 
     assert spender.calls != []
+
+
+# --- ROADMAP item 104, contract item 2: the issuance window ----------------
+
+
+def _clock_at(monkeypatch, when):
+    """Freeze the issuance clock inside the fixtures' own dates.
+
+    The window is sliced from the issuance forward, so it is empty unless the
+    guidance actually covers the moment the run happens — which for fixtures
+    dated 2026-08-11 means the run has to think it is 2026-08-11. Both seams,
+    because `_sun_context` re-derives the moment through `reconcile_now` and
+    would put the real clock back.
+    """
+    monkeypatch.setattr(pipeline, "now_in_tz", lambda tz: when)
+    monkeypatch.setattr(pipeline, "reconcile_now", lambda local, header, offset: (when, None))
+
+
+def test_the_row_carries_a_window_prediction_beside_day_zero(tmp_path, monkeypatch):
+    """Contract item 2, accumulating. Every issuance stores what the models
+    say about the next 24 hours from ITS moment, beside the calendar-day
+    Day+0 the record still scores."""
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+
+    assert row.window_predictions, "the window is the point of contract item 2"
+    assert row.predictions.day0, "and Day+0 is still stored beside it"
+
+
+def test_the_window_cannot_reach_what_is_scored(tmp_path, monkeypatch):
+    """THE SAFETY PROPERTY, and the reason the window is a separate field.
+
+    `fetch_forecast_hourly_forward` is kept away from scoring on purpose —
+    "widening that fetch to two days would silently score 48 hours as today".
+    The window crosses that fence; the scored set must not. Pinned by
+    identity: what tomorrow scores comes from the day-0 fetch and is byte for
+    byte what the extractor makes of it.
+    """
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    from openlocalweather.extract import extract_day0_predictions_from_hourly
+
+    expected = extract_day0_predictions_from_hourly(hourly_fixture(), MODELS)
+    scored = scored_predictions(entry).day0
+    by_model = {p.model: p for p in scored}
+
+    for want in expected:
+        got = by_model[want.model].model_dump()
+        # `target_date` is stamped by the pipeline at assembly rather than by
+        # the extractor — contract item C1 — so it is the one field that
+        # legitimately differs from a bare extraction, and it is asserted
+        # rather than skipped.
+        assert got.pop("target_date") == date(2026, 8, 11)
+        want_fields = want.model_dump()
+        want_fields.pop("target_date")
+        assert got == want_fields, (
+            f"{want.model}'s scored Day+0 moved when the window was added"
+        )
+
+
+def test_a_run_that_cannot_fill_the_window_stores_no_claim(tmp_path, monkeypatch):
+    """The degraded path. When the two-day fetch fails the run falls back to
+    today's hours only, which late in the day is a handful — and six hours
+    stored as a 24-hour claim would be scored against 24 hours of weather the
+    models were never asked about."""
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: {"hourly": {"time": []}}
+    )
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+
+    assert row.window_predictions == [], "an unfillable window is an absence, not a forecast"
+    assert row.predictions.day0, "and the day's scored numbers are unaffected"

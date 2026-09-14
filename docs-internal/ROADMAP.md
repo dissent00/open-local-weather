@@ -13164,7 +13164,8 @@ the issuance. Nothing about "a run can happen at any time" reaches them, and
 most of the record's value is here.
 
 **2. Day+0 is the only broken lead, and it is replaced by a rolling +24 h from
-issuance.** At 06:00 a quarter of the calendar day is already spent and the
+issuance. THE WINDOW IS BUILT AND STORED (2026-09-14); nothing scores it yet
+— see "The window, accumulating" below.** At 06:00 a quarter of the calendar day is already spent and the
 overnight low may have happened; at 22:00, ninety percent. Day+0 is therefore
 ALREADY part hindcast and the late issuance only makes it visible. Every
 issuance instead makes the same KIND of claim — the next 24 hours — so a 06:00
@@ -13183,6 +13184,72 @@ both computable from per-issuance rows, and neither is recoverable from the
 other once day-weighting is baked into storage. `ROLLING_WINDOW_SHORT` being
 "10 checks" stops being a distinction without a difference here, and gets named
 for whichever it is.
+
+### The window, accumulating — built 2026-09-14
+
+`IssuancePredictions.window_predictions` holds each issuance's claim about the
+next `ISSUANCE_WINDOW_HOURS` (24) from its own moment, beside the calendar-day
+Day+0 the record still scores. Visible in a driven run: Day+0 26.0/18.0 against
+a window of 27.5/17.0 for the same models and the same day.
+
+**Two existing functions composed, not a third implementation.**
+`extract_window_predictions` is `daypart.forward_hours` for the slicing and
+`extract_day0_predictions_from_hourly` for the arithmetic, both untouched. The
+window therefore differs from Day+0 in WHICH HOURS GO IN and in nothing else —
+no second rounding, no second gust fallback, no second onset rule — and a test
+pins it by handing both the same hours and demanding identical output.
+
+**It crosses a fence that was put there on purpose, and only here.**
+`fetch_forecast_hourly_forward`'s docstring is explicit: widening the scored
+fetch to two days "would silently score 48 hours as today — quietly corrupting
+the accuracy record". The window reads that two-day series; Day+0 still reads
+`primary_hourly` and is unreachable from the new line. Mutating Day+0 to read
+the forward series — the exact corruption named — fails one test.
+
+**A short window is an absence, not a forecast.** A run whose two-day fetch
+failed holds only today, which at 18:00 is six hours. Storing that as a
+24-hour claim is the failure `forward_hours` exists to prevent, so it stores
+`[]` instead.
+
+**Stored and NOT scored, deliberately.** `verify.scoring.scored_predictions`
+still names row 0's `predictions`. The window accumulates first so the switch
+is decided against measured days rather than against the reframe's argument —
+item 100 is why.
+
+**It carries the five raw models and NOT the blend.** Contract item 5 — the
+blend producing a +24 h call — is not built, so this is what the MODELS say
+about the window, not what this project forecasts for it. Scoring it as the
+project's own call before item 5 lands would score a quantity the forecaster
+never made.
+
+### Contract item 3 is not available as written — measured 2026-09-14
+
+Item 3 says the existing Day+0 series is re-derived rather than frozen, and
+that "archived hourly supports it". **It does not, for most of the record.**
+
+| | days |
+|---|---|
+| log entries (2026-08-11 .. 09-13) | 34 |
+| with archived hourly, re-derivable | **10** |
+| without | **24** |
+
+Every archived issuance does carry 41-53 h of hourly guidance, which is ample
+for a +24 h window from any hour — but `data/prompts/` only begins 2026-09-04.
+For the other 24 days the stored Day+0 is a calendar-day SUMMARY (`rain`,
+`high_c`, `low_c`, `wind_kmh`, `onset`) and a +24 h-from-issuance claim cannot
+be reconstructed from it.
+
+**The historical-forecast API does not rescue it.** This repo already records
+the caveat that closes it: `past_days` "serves whatever cycle is current now,
+not necessarily the 06Z cycle the 18:04 run held". Re-deriving from it would
+score the record against forecasts this project never made, which is worse
+than a discontinuity.
+
+**So the choice is the operator's and is not yet made.** Run both series until
+the window has enough days and then break; break cleanly now; re-derive the 10
+and freeze the 24; or keep both permanently. Building the window first is what
+every one of those needs, which is why it was built before the question was
+answered. Nothing here forecloses any of them.
 
 ### Contract item 4's container, shipped 2026-09-13
 

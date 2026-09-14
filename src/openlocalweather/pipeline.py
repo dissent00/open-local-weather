@@ -119,6 +119,7 @@ from openlocalweather.defaults import (
     scored_models,
 )
 from openlocalweather.extract import (
+    extract_window_predictions,
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
 )
@@ -359,6 +360,15 @@ class ForwardGuidance:
     # the day and the fourth cannot disagree about what time it is.
     issuance: DayPart | None = None
     forward_hourly: dict | None = None
+    # THE RECONCILED LOCAL INSTANT this run was issued at, carried whole.
+    #
+    # `issuance.local_time` is the same moment as an "HH:MM" string, and that
+    # is enough for a sentence but not for slicing an hourly series: the
+    # window needs a date as well as a clock, and re-deriving one by pairing
+    # the string with `today` would be a second derivation of a number
+    # `reconcile_now` may already have overridden. Carried rather than
+    # recomputed, for the same reason `issuance` itself is.
+    issued_at_local: datetime | None = None
 
 
 
@@ -1495,6 +1505,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
 
     return ForwardGuidance(
         issuance=issuance,
+        issued_at_local=now_local,
         forward_hourly=forward_hourly,
         forward_window_narrowed=forward_window_narrowed,
         degradations=degradations,
@@ -1874,6 +1885,7 @@ def _compose_log_entry(
     *,
     observed_so_far: ObservedSoFar | None,
     information_moved: InformationMoved,
+    window_predictions: list[ModelPrediction],
     fresh_predictions: ModelPredictionsByLead | None,
     judgment_prompt: str,
     narrative_prompt: str,
@@ -1945,6 +1957,7 @@ def _compose_log_entry(
             IssuancePredictions(
                 issued_at=datetime.now(timezone.utc),
                 predictions=fresh_predictions or ModelPredictionsByLead(),
+                window_predictions=window_predictions,
             )
         ],
         # Superseded by prediction_rows and deliberately not written — see
@@ -2346,6 +2359,26 @@ def _issue_forecast(
     # --- Step 5: extract today's raw per-model predictions (code, not LLM) ---
     day0_predictions = extract_day0_predictions_from_hourly(primary_hourly, MODELS)
 
+    # The same models over the window that starts when this issuance does —
+    # ROADMAP item 104, contract item 2. Stored beside Day+0 and scored by
+    # nothing yet; see IssuancePredictions.window_predictions for why it
+    # accumulates before it replaces anything.
+    #
+    # FED FROM `forward_hourly`, WHICH IS THE TWO-DAY FETCH. That series is
+    # the one `fetch_forecast_hourly_forward` keeps deliberately away from
+    # scoring — "widening that fetch to two days would silently score 48 hours
+    # as today". Crossing that fence is the whole of the reframe, so it is
+    # crossed HERE, once, into a field nothing scores, rather than by widening
+    # the fetch that Day+0 still reads. `primary_hourly` is untouched and
+    # Day+0 above cannot be reached from this line.
+    window_predictions = (
+        extract_window_predictions(
+            guidance.forward_hourly, MODELS, issued_local=guidance.issued_at_local
+        )
+        if guidance.forward_hourly and guidance.issued_at_local is not None
+        else []
+    )
+
     # Deterministic day-over-day comparison for the Overview — in code, not
     # the LLM. A live run asked to compare 29.6°C against 29.5°C described it
     # as "about 1°C cooler": a ten-fold overstatement of the one sentence
@@ -2671,6 +2704,7 @@ def _issue_forecast(
         llm_response,
         observed_so_far=observed_so_far,
         information_moved=information_moved,
+        window_predictions=window_predictions,
         # The freshly extracted set, which the composer keeps only when this
         # date holds none. Built even on a re-issue and discarded there, as
         # it always was — the day's numbers belong to the run that made them
