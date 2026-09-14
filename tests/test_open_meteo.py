@@ -473,3 +473,46 @@ def test_retries_are_jittered_so_clients_do_not_return_in_lockstep(monkeypatch):
 
     assert len(seen) > 1, "a fixed delay means every client returns at once"
     assert all(1.5 <= d <= 1.5 * (1 + open_meteo.JITTER_FRACTION) for d in seen)
+
+
+def test_a_200_that_is_not_json_is_retried_then_reported(requests_mock, monkeypatch):
+    """THE 2026-09-14 03:01Z PRODUCTION FAILURE. Open-Meteo answered 200 with a
+    body that was not JSON, `resp.json()` raised, and the run died with a raw
+    traceback — no retry, and no forecast for the day.
+
+    Two things were wrong and both are here. The retry never fired, though
+    `requests.exceptions.JSONDecodeError` IS a `RequestException` and the
+    handler would have caught it: `resp.json()` sat in the `else:` branch of
+    the try, so it was outside the block guarding it. And because nothing
+    converted it, `_run_forecast`'s `except OpenMeteoFetchError` never saw it
+    — the one handler whose whole job is to turn a failed fetch into a clean
+    "critical error" and exit 1 instead of a stack trace.
+
+    A 200 carrying an HTML error page or a truncated body is a TRANSIENT
+    upstream fault, exactly like the 503 above, and must be treated as one.
+    """
+    monkeypatch.setattr(open_meteo.time, "sleep", lambda s: None)
+    requests_mock.get(
+        open_meteo.FORECAST_URL,
+        [
+            {"status_code": 200, "text": "<html><body>502 Bad Gateway</body></html>"},
+            {"json": {"hourly": {"time": ["2026-09-14T00:00"]}}, "status_code": 200},
+        ],
+    )
+
+    result = open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+
+    assert result["hourly"]["time"] == ["2026-09-14T00:00"], "the retry must win"
+
+
+def test_a_200_that_is_never_json_becomes_a_fetch_error(requests_mock, monkeypatch):
+    """And when every attempt comes back unparseable, the caller gets the
+    error type it already handles rather than a JSONDecodeError nothing
+    catches."""
+    monkeypatch.setattr(open_meteo.time, "sleep", lambda s: None)
+    requests_mock.get(open_meteo.FORECAST_URL, status_code=200, text="not json at all")
+
+    with pytest.raises(open_meteo.OpenMeteoFetchError, match="not JSON"):
+        open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
+
+    assert requests_mock.call_count == open_meteo.MAX_ATTEMPTS

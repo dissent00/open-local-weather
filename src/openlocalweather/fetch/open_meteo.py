@@ -222,25 +222,60 @@ def _get(url: str, params: dict[str, Any]) -> dict:
             last_error = OpenMeteoFetchError(f"Request to {url} failed: {e}")
         else:
             if resp.status_code == 200:
-                payload = resp.json()
-                # The server's own clock, carried on every response we already
-                # make. Free, and the only time reference here that does not
-                # depend on this machine being right — see daypart.reconcile_now.
-                server_date = resp.headers.get("Date")
-                if isinstance(payload, dict) and server_date:
-                    payload["_server_date"] = server_date
-                return payload
+                # A 200 IS NOT A PROMISE OF JSON, and this cost a day's
+                # forecast. On 2026-09-14 at 03:01Z Open-Meteo answered 200
+                # with a body that would not parse; `resp.json()` raised, and
+                # because it sat in the `else:` branch it was OUTSIDE the try
+                # above — so the retry never fired and nothing converted it to
+                # OpenMeteoFetchError. The run died with a raw traceback and
+                # the day had no forecast until the next trigger, twelve hours
+                # later.
+                #
+                # Both halves of that are fixed by catching it here.
+                # `requests.exceptions.JSONDecodeError` is a RequestException,
+                # so the handler above WOULD have caught it had it been in
+                # scope; an unparseable 200 is a transient upstream fault —
+                # an error page, a truncated body, a proxy interstitial —
+                # exactly like the 503 this loop already waits out.
+                try:
+                    payload = resp.json()
+                except requests.RequestException as e:
+                    print(
+                        f"request #{position} ({_describe(url, params)}) returned "
+                        f"HTTP 200 with an unparseable body on attempt "
+                        f"{attempt}/{MAX_ATTEMPTS}: {e}",
+                        file=sys.stderr,
+                    )
+                    last_error = OpenMeteoFetchError(
+                        f"{url} returned HTTP 200 with a body that is not JSON: "
+                        f"{resp.text[:500]}"
+                    )
+                else:
+                    # The server's own clock, carried on every response we already
+                    # make. Free, and the only time reference here that does not
+                    # depend on this machine being right — see daypart.reconcile_now.
+                    server_date = resp.headers.get("Date")
+                    if isinstance(payload, dict) and server_date:
+                        payload["_server_date"] = server_date
+                    return payload
             # 4xx other than 429 means the REQUEST is wrong — a bad variable
             # name, an impossible coordinate. Retrying just repeats the
             # mistake more slowly, and hides it behind a longer wait.
-            if 400 <= resp.status_code < 500 and resp.status_code != 429:
+            #
+            # elif/else RATHER THAN THREE STATEMENTS: the unparseable-200 path
+            # above falls through rather than returning, and with a flat
+            # sequence it landed on the generic assignment below and
+            # overwrote its own diagnosis with "returned HTTP 200". The three
+            # outcomes are mutually exclusive, so they are written that way.
+            elif 400 <= resp.status_code < 500 and resp.status_code != 429:
                 raise OpenMeteoFetchError(
                     f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
                 )
-            last_error = OpenMeteoFetchError(
-                f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
-            )
-            asked_for = _retry_after_s(resp)
+            else:
+                last_error = OpenMeteoFetchError(
+                    f"{url} returned HTTP {resp.status_code}: {resp.text[:500]}"
+                )
+                asked_for = _retry_after_s(resp)
         if attempt < MAX_ATTEMPTS:
             time.sleep(
                 asked_for
