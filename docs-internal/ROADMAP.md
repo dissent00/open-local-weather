@@ -13243,6 +13243,39 @@ about the window, not what this project forecasts for it. Scoring it as the
 project's own call before item 5 lands would score a quantity the forecaster
 never made.
 
+### Observations over a window — built 2026-09-14
+
+`open_meteo.bucket_hourly_window` answers "what happened over the 24 hours
+from this issuance", which is the question a windowed claim has to be scored
+against. `bucket_hourly_by_date` answers "what happened on date X", and
+scoring a 12:00 claim against that marks a model on twelve hours the
+forecaster said nothing about.
+
+**One aggregation, two slicings — the mirror of the prediction side.** The
+per-bucket reduction was lifted out of `bucket_hourly_by_date` unchanged as
+`_aggregate_hours`, so a window and a calendar day covering identical hours
+produce identical `DailyActual`s. That refactor touches the accuracy record's
+observation path, and `spec/vectors/bucket_hourly_by_date.json` pinning every
+field is what proves it moved nothing.
+
+**The property the whole score rests on is tested across the two modules.**
+The forecast side slices with `daypart.forward_hours` and the observation side
+slices itself; a disagreement of one hour — a different flooring rule, or a
+closed interval on one side and a half-open one on the other — scores a
+24-hour claim against 23 or 25 hours of weather. A test gives every hour a
+distinct temperature and demands both sides report the same high and low, so
+identical extremes can only come from an identical set of hours. Mutating the
+interval to `<=` fails it; so does removing the hour-flooring.
+
+**An incomplete window is an absent observation, not a shorter one.** A window
+still running, or one whose archive has a hole, returns None rather than
+scoring a 24-hour claim against eighteen hours.
+
+**Still to wire: the scoring itself.** Note the timing changes with it — a
+window opened at 06:50 yesterday does not CLOSE until 06:50 today, so it
+cannot be scored by the run at 06:01. Window verification is per-row and
+clock-based where calendar verification is per-day.
+
 ### Contract item 3 is not available as written — measured 2026-09-14
 
 Item 3 says the existing Day+0 series is re-derived rather than frozen, and

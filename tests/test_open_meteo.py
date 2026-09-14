@@ -516,3 +516,75 @@ def test_a_200_that_is_never_json_becomes_a_fetch_error(requests_mock, monkeypat
         open_meteo.fetch_forecast_hourly_today(-0.09, 34.77, ["gfs_seamless"], "UTC")
 
     assert requests_mock.call_count == open_meteo.MAX_ATTEMPTS
+
+
+# --- ROADMAP item 104, contract item 2: observations over a window ---------
+
+
+def _two_day_archive():
+    """48 hours from 2026-08-11T00:00. Rain at 20:00 on the first day and
+    02:00 on the second, so a calendar day and a window from 12:00 see
+    different rain; temperature ramps so highs and lows are unambiguous."""
+    times, temp, precip = [], [], []
+    for i in range(48):
+        day, hour = 11 + i // 24, i % 24
+        times.append(f"2026-08-{day:02d}T{hour:02d}:00")
+        temp.append(10.0 + i)
+        precip.append(0.9 if (day, hour) in ((11, 20), (12, 2)) else 0.0)
+    return {
+        "hourly": {
+            "time": times,
+            "temperature_2m": temp,
+            "precipitation": precip,
+            "cloud_cover": [50.0] * 48,
+            "wind_gusts_10m": [20.0] * 48,
+            "pressure_msl": [1010.0 - i * 0.1 for i in range(48)],
+        }
+    }
+
+
+def test_a_window_observation_covers_the_hours_the_window_claimed():
+    """Contract item 2's other half. A claim made at 12:00 about the next 24
+    hours has to be scored against those hours, not against a calendar day
+    that starts twelve hours before the forecaster said anything."""
+    from datetime import datetime
+
+    got = open_meteo.bucket_hourly_window(
+        _two_day_archive(), start=datetime(2026, 8, 11, 12, 30), hours=24
+    )
+
+    # 12:00 (temp 22) through 11:00 next day (temp 45).
+    assert got.high_c == pytest.approx(45.0)
+    assert got.low_c == pytest.approx(22.0)
+    # Both wet hours are inside the window; the first one is the onset.
+    assert got.rain is True
+    assert got.onset_hour == "20:00"
+
+
+def test_a_window_and_a_calendar_day_agree_when_they_are_the_same_hours():
+    """Not a second implementation. A window opening at midnight over a
+    24-hour series IS the calendar day, and every field must agree — the two
+    differ in WHICH HOURS GO IN and in nothing else."""
+    from datetime import datetime, date as _date
+
+    one_day = {"hourly": {k: v[:24] for k, v in _two_day_archive()["hourly"].items()}}
+
+    window = open_meteo.bucket_hourly_window(
+        one_day, start=datetime(2026, 8, 11, 0, 0), hours=24
+    )
+    calendar = open_meteo.bucket_hourly_by_date(one_day)[_date(2026, 8, 11)]
+
+    assert window.model_dump() == calendar.model_dump()
+
+
+def test_a_window_that_the_archive_cannot_cover_is_not_an_observation():
+    """The same asymmetry the prediction side has. Scoring a 24-hour claim
+    against eighteen hours of observation would mark a model wrong for
+    weather nobody recorded, so an incomplete window returns None."""
+    from datetime import datetime
+
+    one_day = {"hourly": {k: v[:24] for k, v in _two_day_archive()["hourly"].items()}}
+
+    assert open_meteo.bucket_hourly_window(
+        one_day, start=datetime(2026, 8, 11, 12, 0), hours=24
+    ) is None

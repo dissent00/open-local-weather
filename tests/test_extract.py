@@ -506,3 +506,48 @@ def test_the_window_uses_the_same_arithmetic_as_day_zero():
     day0 = extract_day0_predictions_from_hourly(midnight, MODELS)
 
     assert [p.model_dump() for p in window] == [p.model_dump() for p in day0]
+
+
+def test_the_forecast_window_and_the_observed_window_cover_the_same_hours():
+    """THE PROPERTY THE WHOLE SCORE RESTS ON, and it spans two modules.
+
+    `extract_window_predictions` slices the forecast with
+    `daypart.forward_hours`; `open_meteo.bucket_hourly_window` slices the
+    observation itself. If those two disagree by even one hour — a different
+    flooring rule, a half-open interval on one side and a closed one on the
+    other — then a 24-hour claim is scored against 23 or 25 hours of weather
+    and every figure derived from it is quietly wrong.
+
+    Proved by extremes rather than by reading either function's internals: the
+    series gives every hour a distinct temperature, so identical high and low
+    on both sides can only come from an identical set of hours.
+    """
+    from datetime import datetime
+    from openlocalweather.extract import extract_window_predictions
+    from openlocalweather.fetch.open_meteo import bucket_hourly_window
+
+    times, temp = [], []
+    for i in range(48):
+        times.append(f"2026-08-{11 + i // 24:02d}T{i % 24:02d}:00")
+        temp.append(10.0 + i)  # unique per hour
+    series = {
+        "hourly": {
+            "time": times,
+            "temperature_2m": temp,
+            "precipitation": [0.0] * 48,
+            "cloud_cover": [50.0] * 48,
+            "wind_gusts_10m": [20.0] * 48,
+            "pressure_msl": [1010.0] * 48,
+        }
+    }
+
+    # An issuance at 06:50 — deliberately not on the hour, which is where a
+    # flooring disagreement would show.
+    issued = datetime(2026, 8, 11, 6, 50)
+
+    forecast = extract_window_predictions(series, ["gfs_seamless"], issued_local=issued)[0]
+    observed = bucket_hourly_window(series, start=issued, hours=24)
+
+    assert observed is not None
+    assert forecast.high_c == observed.high_c, "the two sides picked different hours"
+    assert forecast.low_c == observed.low_c, "the two sides picked different hours"

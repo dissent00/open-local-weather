@@ -20,7 +20,7 @@ from partial/garbage data.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import random
@@ -30,7 +30,7 @@ import time
 import requests
 
 from openlocalweather.dates import format_date, parse_date
-from openlocalweather.defaults import RAIN_THRESHOLD_MM
+from openlocalweather.defaults import ISSUANCE_WINDOW_HOURS, RAIN_THRESHOLD_MM
 from openlocalweather.models import SOURCE_REANALYSIS, DailyActual
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -532,55 +532,139 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
 
     result: dict[date, DailyActual] = {}
     for d_str, day in by_date.items():
-        temps = [v for v in day["temps"] if v is not None]
-        wind = [v for v in day["wind"] if v is not None]
-        pressure = [v for v in day["pressure"] if v is not None]
-        precip_mm = (
-            round(sum(v for v in day["precip"] if v is not None), 2)
-            if any(v is not None for v in day["precip"])
-            else None
-        )
-        onset_hour = get_onset_hour(day["times"], day["precip"], threshold)
-        # A MEAN, matching what the models' own cloud_cover is a mean of, and
-        # matching the station reading's day-level meaning. Hours with no
-        # value are skipped rather than counted as clear: absent is not zero,
-        # the same rule the precipitation sum follows.
-        clouds = [v for v in day["cloud"] if v is not None]
-        cloud_pct = round(sum(clouds) / len(clouds), 1) if clouds else None
-        high_c = max(temps) if temps else None
-        low_c = min(temps) if temps else None
-        peak_wind = max(wind) if wind else None
-        mslp_trend = (pressure[-1] - pressure[0]) if len(pressure) >= 2 else None
-
-        # ROADMAP item 45, trap 2. A key per field this source actually
-        # supplied — a field that came back None is left unstamped, because a
-        # stamp asserts that an observation was made and stamping an absence
-        # would record one that never happened.
-        provenance = {"rain": SOURCE_REANALYSIS}
-        for field, value in (
-            ("high_c", high_c),
-            ("low_c", low_c),
-            ("peak_wind_kmh", peak_wind),
-            ("mslp_trend", mslp_trend),
-            ("onset_hour", onset_hour),
-            ("precip_mm", precip_mm),
-            ("cloud_cover_pct", cloud_pct),
-        ):
-            if value is not None:
-                provenance[field] = SOURCE_REANALYSIS
-
-        result[parse_date(d_str)] = DailyActual(
-            rain=any((v or 0) >= threshold for v in day["precip"]),
-            high_c=high_c,
-            low_c=low_c,
-            peak_wind_kmh=peak_wind,
-            mslp_trend=mslp_trend,
-            onset_hour=onset_hour,
-            provenance=provenance,
-            # Summed over hours that reported a value. An all-null day gives
-            # None rather than 0.0 — "no data" and "no rain" are different
-            # answers and the summary must not conflate them.
-            precip_mm=precip_mm,
-            cloud_cover_pct=cloud_pct,
-        )
+        result[parse_date(d_str)] = _aggregate_hours(day, threshold)
     return result
+
+
+def bucket_hourly_window(
+    hourly_json: dict,
+    *,
+    start: datetime,
+    hours: int = ISSUANCE_WINDOW_HOURS,
+    threshold: float = RAIN_THRESHOLD_MM,
+) -> DailyActual | None:
+    """What actually happened over the `hours` beginning at `start`.
+
+    ROADMAP item 104, contract item 2's other half. `bucket_hourly_by_date`
+    answers "what happened on date X", which is the wrong question for a claim
+    made at 12:00 about the next 24 hours — scoring that against a calendar day
+    marks a model on twelve hours the forecaster said nothing about.
+
+    SAME AGGREGATION AS THE CALENDAR DAY, via `_aggregate_hours`. The two
+    differ in which hours go in and in nothing else, so a window and a day
+    covering identical hours produce identical DailyActuals — pinned by a test
+    that does exactly that. It is the mirror of `extract_window_predictions`
+    reusing the Day+0 extractor on the prediction side, and for the same
+    reason: the two sides of a score must not round or threshold differently.
+
+    FLOORED TO THE HOUR, exactly as `daypart.forward_hours` floors the
+    prediction side. An issuance at 06:50 claims 06:00 onward on both sides or
+    the score compares a 24-hour forecast against 23 hours of weather.
+
+    None WHEN THE ARCHIVE CANNOT COVER THE WINDOW, which is the same asymmetry
+    the prediction side has. A window still running, or one whose archive has
+    a hole in it, is not a shorter observation — it is an absent one, and
+    scoring a 24-hour claim against eighteen hours would mark a model wrong
+    for weather nobody recorded.
+    """
+    if not hourly_json or not hourly_json.get("hourly"):
+        return None
+
+    h = hourly_json["hourly"]
+    times = h.get("time") or []
+    if not times:
+        return None
+
+    opened = start.replace(minute=0, second=0, microsecond=0)
+    closes = opened + timedelta(hours=hours)
+
+    temp_arr = h.get("temperature_2m") or []
+    precip_arr = h.get("precipitation") or []
+    cloud_arr = h.get("cloud_cover") or []
+    wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m", "wind_speed_10m", "windspeed_10m")
+    pressure_arr = h.get("pressure_msl") or []
+
+    def _at(series: list, i: int):
+        return series[i] if i < len(series) else None
+
+    bucket: dict[str, list] = {"temps": [], "precip": [], "wind": [], "pressure": [], "times": [], "cloud": []}
+    for i, t in enumerate(times):
+        moment = datetime.fromisoformat(t)
+        if not (opened <= moment < closes):
+            continue
+        bucket["temps"].append(_at(temp_arr, i))
+        bucket["precip"].append(_at(precip_arr, i))
+        bucket["cloud"].append(_at(cloud_arr, i))
+        bucket["wind"].append(_at(wind_arr, i))
+        bucket["pressure"].append(_at(pressure_arr, i))
+        bucket["times"].append(t)
+
+    if len(bucket["times"]) < hours:
+        return None
+
+    return _aggregate_hours(bucket, threshold)
+
+
+def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
+    """One bucket of parallel hourly series, reduced to a DailyActual.
+
+    LIFTED OUT OF `bucket_hourly_by_date` UNCHANGED so that a calendar day and
+    a rolling window cannot disagree about what a day's weather WAS — ROADMAP
+    item 104, contract item 2. The two callers differ in which hours they put
+    in and in nothing else, which is the same property the prediction side
+    gets from `extract_window_predictions` reusing the Day+0 extractor.
+
+    Refactor only: `spec/vectors/bucket_hourly_by_date.json` pins every field
+    here and is the check that this moved nothing.
+    """
+    temps = [v for v in day["temps"] if v is not None]
+    wind = [v for v in day["wind"] if v is not None]
+    pressure = [v for v in day["pressure"] if v is not None]
+    precip_mm = (
+        round(sum(v for v in day["precip"] if v is not None), 2)
+        if any(v is not None for v in day["precip"])
+        else None
+    )
+    onset_hour = get_onset_hour(day["times"], day["precip"], threshold)
+    # A MEAN, matching what the models' own cloud_cover is a mean of, and
+    # matching the station reading's day-level meaning. Hours with no
+    # value are skipped rather than counted as clear: absent is not zero,
+    # the same rule the precipitation sum follows.
+    clouds = [v for v in day["cloud"] if v is not None]
+    cloud_pct = round(sum(clouds) / len(clouds), 1) if clouds else None
+    high_c = max(temps) if temps else None
+    low_c = min(temps) if temps else None
+    peak_wind = max(wind) if wind else None
+    mslp_trend = (pressure[-1] - pressure[0]) if len(pressure) >= 2 else None
+
+    # ROADMAP item 45, trap 2. A key per field this source actually
+    # supplied — a field that came back None is left unstamped, because a
+    # stamp asserts that an observation was made and stamping an absence
+    # would record one that never happened.
+    provenance = {"rain": SOURCE_REANALYSIS}
+    for field, value in (
+        ("high_c", high_c),
+        ("low_c", low_c),
+        ("peak_wind_kmh", peak_wind),
+        ("mslp_trend", mslp_trend),
+        ("onset_hour", onset_hour),
+        ("precip_mm", precip_mm),
+        ("cloud_cover_pct", cloud_pct),
+    ):
+        if value is not None:
+            provenance[field] = SOURCE_REANALYSIS
+
+    return DailyActual(
+        rain=any((v or 0) >= threshold for v in day["precip"]),
+        high_c=high_c,
+        low_c=low_c,
+        peak_wind_kmh=peak_wind,
+        mslp_trend=mslp_trend,
+        onset_hour=onset_hour,
+        provenance=provenance,
+        # Summed over hours that reported a value. An all-null day gives
+        # None rather than 0.0 — "no data" and "no rain" are different
+        # answers and the summary must not conflate them.
+        precip_mm=precip_mm,
+        cloud_cover_pct=cloud_pct,
+    )
