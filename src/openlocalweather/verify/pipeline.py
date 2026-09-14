@@ -177,6 +177,10 @@ def run_deterministic_verification_and_scoring(
             track_entry.avg_temp_high_error_c_10 = short.high_err
             track_entry.avg_temp_low_error_c_10 = short.low_err
             track_entry.avg_mslp_trend_error_hpa_10 = short.mslp_err
+            # The sky, Day+0 only — DAILY_FORECAST_VARS carries no cloud, so
+            # the longer leads have none to score. Same shape as onset above.
+            track_entry.avg_cloud_error_pct_10 = short.cloud_err if k == 0 else None
+            track_entry.cloud_checks_in_window_10 = short.cloud_checks if k == 0 else 0
             track_entry.checks_in_window_10 = short.checks_found
             track_entry.last_updated = today
             # No longer load-bearing for correctness (re-derivation cannot

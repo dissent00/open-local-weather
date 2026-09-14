@@ -16508,18 +16508,42 @@ for**: the mean is useless because GFS and ICON are ~30 points wrong in one
 direction while ECMWF is nearly right, so averaging them buries the one model
 worth believing. Four checks is not a finding — it is a reason to expect one.
 
-**THE BLOCKER: that skill never reaches the forecaster.** `TrackRecordEntry`
-has twenty fields and **not one of them is cloud**, so the per-model sky bias
-above exists only inside the weekly review's recomputation. The prompt cites
-track-record figures — "ECMWF 100% rolling Day+0 rain verification" — and so
-the forecaster is asked to describe the sky while being told which model to
-believe about rain, wind, temperature and pressure, and nothing about cloud.
+### The sky reaches the track record — shipped 2026-09-14
 
-That gap is small, additive and Python-only, and nothing depends on the ten
-checks: `verify.scoring` already computes `cloud_err` and `cloud_checks` per
-window and `verify/pipeline` simply never maps them onto the entry. Building
-it now means the figures are there the day the count reaches ten, rather than
-starting the wait again.
+`TrackRecordEntry` had twenty fields and not one of them was cloud, so the
+per-model sky bias existed only inside the weekly review's recomputation and
+never landed in the record itself. It does now:
+`avg_cloud_error_pct_10` and `cloud_checks_in_window_10`, Day+0 only, because
+`DAILY_FORECAST_VARS` carries no cloud and the longer leads have no sky to
+score — None there rather than 0.0, which would read as a model that forecast
+it perfectly. Verified against the real record: the numbers match the review's
+exactly.
+
+**The two counts are kept apart, and the live record shows why: four cloud
+checks against ten rain checks.** One count for both would present a -34.2
+bias as though ten days agreed with it.
+
+**CORRECTION TO WHAT THIS ITEM FIRST SAID.** An earlier draft called this "the
+blocker" and claimed the forecaster was cut off from sky skill entirely. That
+was wrong and is worth stating rather than quietly editing. `review.py` has
+always computed a cloud-bias finding, gated on `cloud_checks` against
+`REVIEW_MIN_CHECKS_FOR_COMPARISON` — "the floor applies to the FIELD's
+evidence, not the row's" — and `review_context` reaches the prompt. So the
+finding was always going to fire at ten checks, with or without this change,
+and the ~2026-09-20 date holds either way.
+
+**What the change actually buys**, stated accurately:
+
+- The bias is PERSISTED. The record is this project's product, and a scored
+  quantity that never lands in the track record is invisible to every reader
+  of it and cannot be queried historically.
+- The forecaster sees the per-model number beside the other error fields.
+  That is CONTEXT AND NOT A LICENCE: the prompt already forbids asserting a
+  bias from raw track-record numbers — "if no bias finding names a model, do
+  not assert one from the error numbers yourself" — so the review's gated
+  finding remains the only thing that may be acted on. The sign convention is
+  the one already stated for every other error field, observed minus forecast,
+  so a negative means the model painted more cloud than there was.
 
 **Sized against five days, which is not enough for the GATE.** Cloud only
 entered the record with item 65, so revisit the spread table before choosing a

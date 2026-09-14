@@ -1296,6 +1296,37 @@ class TrackRecordEntry(BaseModel):
     avg_temp_low_error_c_10: float | None = None
     avg_mslp_trend_error_hpa_10: float | None = None
     checks_in_window_10: int = 0  # how many of the last 10 actually had data (cold-start visibility)
+
+    # THE SKY — ROADMAP items 87 and 123, added 2026-09-14.
+    #
+    # Cloud has been scored per model since 2026-09-10 and the number reached
+    # nothing that lasts: `verify.scoring` computed `cloud_err` and
+    # `cloud_checks` per window, `review.py` recomputed them weekly, and this
+    # class had twenty fields and not one of them was cloud. This class is
+    # what `pipeline._track_record_payload` dumps into the PROMPT, so the
+    # forecaster was told which model to believe about rain, wind,
+    # temperature and pressure — and nothing about the sky it is asked to
+    # describe. Measured the day this was added: GFS and ICON over-forecast
+    # cloud by about 30 points while ECMWF sits at +3.3, so the disagreement
+    # is large, one-directional per model, and exactly the kind of thing a
+    # forecaster can act on.
+    #
+    # `actual - predicted`, like every other error here: NEGATIVE means the
+    # model painted more cloud than there was.
+    #
+    # DAY+0 ONLY, and None at the longer leads rather than 0.0.
+    # DAILY_FORECAST_VARS carries no cloud, so Day+3 and Day+7 have no sky to
+    # score — the same shape as `avg_onset_error_hrs_10`, and 0.0 there would
+    # read as a model that forecast the sky perfectly.
+    avg_cloud_error_pct_10: float | None = None
+
+    # KEPT APART FROM `checks_in_window_10` ON PURPOSE, and `verify.scoring`
+    # already states why: cloud_cover_pct is null on every row written before
+    # item 65, so a window can hold ten scored days and one with a sky. One
+    # count for both would report a bias drawn from a single check as though
+    # ten days agreed with it — which, while the record is this young, is
+    # precisely the mistake available.
+    cloud_checks_in_window_10: int = 0
     last_updated: date | None = None
     # The TARGET date whose result was last counted into all_time_checks /
     # all_time_correct. Guards those two incremental fields against being

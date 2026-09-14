@@ -600,3 +600,116 @@ def test_a_station_with_no_sky_reading_stamps_nothing(monkeypatch):
 
     assert actuals[day].station_cloud_oktas is None
     assert "station_cloud_oktas" not in (actuals[day].provenance or {})
+
+
+def test_the_track_record_carries_the_sky_the_forecaster_is_asked_to_describe():
+    """ROADMAP items 87 and 123. Cloud has been scored per model since
+    2026-09-10 and the number reached nothing that lasts: `verify.scoring`
+    computes `cloud_err` and `cloud_checks`, the weekly review recomputes
+    them, and `TrackRecordEntry` had twenty fields and not one of them was
+    cloud.
+
+    That is the field the PROMPT is built from. So the forecaster was told
+    which model to believe about rain, wind, temperature and pressure, and
+    nothing about the sky — while being asked to describe it.
+    """
+    today, yesterday = date(2026, 8, 11), date(2026, 8, 10)
+    logs = {
+        yesterday: log_entry(
+            yesterday,
+            day0=[prediction(model="gfs_seamless", rain=True, cloud_cover_pct=90.0)],
+        )
+    }
+    actuals = {yesterday: actual(rain=True, cloud_cover_pct=60.0)}
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=LEAD_TIMES,
+    )
+
+    entry = next(
+        e for e in result.updated_track_record.entries
+        if e.model == "gfs_seamless" and e.lead_time_days == 0
+    )
+    # actual - predicted, so a model that painted 90 on a 60 day is -30.
+    assert entry.avg_cloud_error_pct_10 == pytest.approx(-30.0)
+    assert entry.cloud_checks_in_window_10 == 1
+
+
+def test_the_sky_count_is_kept_apart_from_the_rain_count():
+    """`cloud_checks` is separate from `checks_in_window_10` for the reason
+    `verify.scoring` already states: cloud_cover_pct is null on every row
+    written before item 65, so a window can hold ten scored days and one with
+    a sky. One count for both would report a bias from a single check as
+    though ten days agreed with it."""
+    today, yesterday = date(2026, 8, 11), date(2026, 8, 10)
+    logs, actuals = {}, {}
+    for i in range(3):
+        d = yesterday - timedelta(days=i)
+        # Only the most recent day says anything about the sky.
+        cloud = 90.0 if i == 0 else None
+        logs[d] = log_entry(d, day0=[prediction(model="gfs_seamless", rain=True, cloud_cover_pct=cloud)])
+        actuals[d] = actual(rain=True, cloud_cover_pct=60.0)
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=[0],
+    )
+
+    entry = next(
+        e for e in result.updated_track_record.entries
+        if e.model == "gfs_seamless" and e.lead_time_days == 0
+    )
+    assert entry.checks_in_window_10 == 3, "three days were scored"
+    assert entry.cloud_checks_in_window_10 == 1, "one of them said anything about the sky"
+
+
+def test_no_sky_is_claimed_at_the_longer_leads():
+    """DAILY_FORECAST_VARS carries no cloud, so Day+3 and Day+7 predictions
+    have none to score — exactly like onset. None rather than 0.0, which
+    would read as a model that forecast the sky perfectly.
+
+    THE DAY+3 ROW IS GIVEN A CLOUD FIGURE ON PURPOSE, and the first version of
+    this test did not do that. Without it the lead carries no cloud anyway, so
+    the assertion held whether or not the `k == 0` gate existed — mutating the
+    gate away left the test green. Real extraction cannot produce this row;
+    the fixture builds it so the gate is what the assertion rests on.
+    """
+    today, yesterday = date(2026, 8, 11), date(2026, 8, 10)
+    target_day3 = yesterday - timedelta(days=3)
+    logs = {
+        yesterday: log_entry(yesterday, day0=[prediction(model="gfs_seamless", cloud_cover_pct=90.0)]),
+        target_day3: log_entry(
+            target_day3, day3=[prediction(model="gfs_seamless", cloud_cover_pct=90.0)]
+        ),
+    }
+    actuals = {yesterday: actual(cloud_cover_pct=60.0)}
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=empty_track_record(),
+        actuals_primary=actuals,
+        today=today,
+        yesterday=yesterday,
+        models=MODELS,
+        lead_times_days=LEAD_TIMES,
+    )
+
+    # LEAD_TIMES here is [0, 3]; Day+7 behaves identically and is covered by
+    # the same branch.
+    for lead in (3,):
+        entry = next(
+            e for e in result.updated_track_record.entries
+            if e.model == "gfs_seamless" and e.lead_time_days == lead
+        )
+        assert entry.avg_cloud_error_pct_10 is None, f"Day+{lead} has no sky to score"
