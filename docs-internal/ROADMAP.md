@@ -13626,6 +13626,38 @@ working around it. The unsettled part of a calendar day is the night; at 20:00
 the daytime window is closed, so its high, gust and rain are final. The
 measured table above is about whole-day values and does not constrain this.
 
+### Stage 1 shipped 2026-09-14; stage 2 has a blocker nobody had found
+
+**The GATE is built** — `comparison_subject`, wired into
+`compute_day_over_day`, vector-pinned in both languages. Exercised at the
+operator's own hours:
+
+| issued | subject | what the Overview receives |
+|---|---|---|
+| 03:00, 06:00 | today | "Slightly warmer than yesterday." |
+| 12:00, 15:00, 18:00 | — | nothing; omitted from the prompt |
+| 20:00 | tomorrow | "Slightly warmer than yesterday." |
+
+**The 20:00 row is gated ON and still computing the OLD thing.** Its subject
+says tomorrow while its numbers and its wording are today-against-yesterday.
+Not a regression — that is what 20:00 produced before the gate — but it is
+not the design either.
+
+**STAGE 2'S BLOCKER: THERE IS NO DAY+1.** Comparing tomorrow to today needs
+tomorrow's forecast, and this pipeline extracts Day+0 from hourly and Day+3
+and Day+7 from daily. Day+1 is not extracted anywhere. The data is present —
+`primary_daily` carries eight days and
+`extract_day_n_predictions_from_daily(primary_daily, 1, MODELS)` would work
+today — but nothing calls it, so the 20:00 subject has nothing to describe.
+
+That makes stage 2 four things rather than one: extract Day+1; take the
+baseline from the station on both sides; reword for a tomorrow subject with
+day names and a past tense ("cooler than today (Monday) was"); and decide
+whether Day+1 joins the scored record or stays prose-only. **That last one is
+not obvious** — a new extracted lead that nothing scores is the shape item 121
+warned about, and a new lead that IS scored is a change to what the record
+means.
+
 ### Station on both sides, and the measurement that makes it mandatory
 
 At 20:00 only the STATION can observe today's daytime — the reanalysis serves
