@@ -14,6 +14,7 @@ from openlocalweather.comparison import (
     wind_warning,
 )
 from openlocalweather.models import DailyActual, ModelPrediction
+import pytest
 
 
 def actual(**overrides) -> DailyActual:
@@ -732,3 +733,62 @@ def test_the_backward_glance_is_gone_from_the_rain_sentence():
     )
     assert text.count("yesterday") == 1
     assert "after a" not in text
+
+
+# --- ROADMAP item 104, contract item 8: the daypart gate -------------------
+
+
+@pytest.mark.parametrize(
+    "issued_hour,sunset_hour,expected,why",
+    [
+        (3,  18, "today",    "03:00 — the whole day is ahead"),
+        (6,  18, "today",    "06:00 — the day is ahead"),
+        # NOON ITSELF IS AFTERNOON. Half the day is lived by then, and the
+        # operator's rule is "only useful early in the local day" — so the
+        # boundary is exclusive. Asserted rather than left to `<` versus
+        # `<=`, because nothing else in their five scenarios lands on it.
+        (12, 18, None,       "12:00 — half lived, the comparison has gone"),
+        (11, 18, "today",    "11:00 — still morning"),
+        (15, 18, None,       "15:00 — lived enough of it to stop caring"),
+        (18, 18, None,       "18:00 — still before sunset, still today"),
+        (20, 18, "tomorrow", "20:00 — after sunset, the day ahead is tomorrow"),
+    ],
+)
+def test_the_comparison_is_gated_by_the_daypart(issued_hour, sunset_hour, expected, why):
+    """THE OPERATOR'S OWN FIVE SCENARIOS, 2026-09-14, named one per case.
+
+    Asked what they wanted at each hour, the answer was not a recast window
+    but a gate: a comparison is worth reading while the day is mostly ahead,
+    and by mid-afternoon the reader has lived it — "I've already lived enough
+    of it that I don't care how it compares to yesterday."
+
+    Two boundaries, and both are the day's own rather than round numbers.
+    NOON separates a day mostly ahead from one mostly lived. SUNSET is where
+    "the day ahead" stops meaning today and starts meaning tomorrow, which is
+    why 18:00 is suppressed and 20:00 is not on a day whose sun sets at 18:39.
+    """
+    from openlocalweather.comparison import comparison_subject
+
+    assert comparison_subject(issued_hour, sunset_hour=sunset_hour) == expected, why
+
+
+def test_an_unknown_clock_makes_no_comparison():
+    """`_issued_hour` returns 24 when the moment could not be established, and
+    absence is not permission — the same rule item 118 applies to every other
+    clock-dependent phrase."""
+    from openlocalweather.comparison import comparison_subject
+
+    assert comparison_subject(24, sunset_hour=18) is None
+    assert comparison_subject(None, sunset_hour=18) is None
+
+
+def test_a_day_with_no_sunset_still_gates_on_noon():
+    """Polar latitudes, or a sun computation that threw. Without a sunset the
+    evening pivot cannot be placed, so the morning half still works and the
+    tomorrow-subject simply never fires — a missing boundary must not promote
+    an afternoon into a comparison."""
+    from openlocalweather.comparison import comparison_subject
+
+    assert comparison_subject(6, sunset_hour=None) == "today"
+    assert comparison_subject(15, sunset_hour=None) is None
+    assert comparison_subject(20, sunset_hour=None) is None

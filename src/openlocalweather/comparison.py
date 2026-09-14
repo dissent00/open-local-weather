@@ -874,3 +874,59 @@ def comparison_for_prompt(comparison: dict | None) -> dict | None:
 
     return view
 
+
+
+# What a day-over-day comparison is ABOUT at a given hour, or None when it
+# should not appear at all — ROADMAP item 104, contract item 8.
+COMPARISON_SUBJECT_TODAY = "today"
+COMPARISON_SUBJECT_TOMORROW = "tomorrow"
+
+# Where a day stops being mostly ahead. Local noon, and it is the day's own
+# midpoint rather than a round number that happens to look like one.
+COMPARISON_MORNING_ENDS_HOUR = 12
+
+
+def comparison_subject(issued_hour: int | None, *, sunset_hour: int | None) -> str | None:
+    """Whether a day-over-day comparison is worth reading at this hour, and
+    what it should be about.
+
+    THE OPERATOR'S FIVE SCENARIOS, 2026-09-14, are the specification. Asked
+    what they wanted hour by hour, the answer was not a recast window but a
+    gate:
+
+      03:00, 06:00  the day ahead, against a previous full day
+      15:00, 18:00  nothing — "I've already lived enough of it that I don't
+                    care how it compares to yesterday"
+      20:00         tomorrow from sunrise, against today's DAYTIME
+
+    THIS WITHDRAWS "it is not suppressed at a late issuance", which contract
+    item 8 asserted without reasoning. A comparison earns its place while the
+    day is mostly ahead; by mid-afternoon the reader has lived it and is
+    asking a different question.
+
+    BOTH BOUNDARIES ARE THE DAY'S OWN. Noon separates a day mostly ahead from
+    one mostly lived. SUNSET is where "the day ahead" stops meaning today and
+    starts meaning tomorrow — which is why an 18:00 issuance is suppressed and
+    a 20:00 one is not, on a day whose sun sets at 18:39. A fixed evening hour
+    would put that pivot in the wrong place twice a year at latitude, and in
+    the wrong place always for a fork somewhere else.
+
+    NONE WHEN THE CLOCK IS UNKNOWN. `_issued_hour` returns 24 when the moment
+    could not be established, and absence is not permission — the rule item
+    118 applies to every other clock-dependent phrase.
+
+    NONE AFTER SUNSET WHEN THERE IS NO SUNSET. Without one the evening pivot
+    cannot be placed, so the morning half still works and the tomorrow subject
+    simply never fires. A missing boundary must not promote an afternoon into
+    a comparison.
+    """
+    if issued_hour is None or not 0 <= issued_hour < 24:
+        return None
+
+    if issued_hour < COMPARISON_MORNING_ENDS_HOUR:
+        return COMPARISON_SUBJECT_TODAY
+
+    if sunset_hour is not None and issued_hour > sunset_hour:
+        return COMPARISON_SUBJECT_TOMORROW
+
+    return None
