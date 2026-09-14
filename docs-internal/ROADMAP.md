@@ -18157,3 +18157,99 @@ and this item must not assume away.
 Related: items 70 (the hashes this rests on), 59 (the split that halves it),
 77 and 130 (the offline harness and its measured noise floor), 26 and 111
 (what it costs).
+
+## 132. A free tier that refuses at peak is a design constraint, not an incident · **Planned — raised 2026-09-14**
+
+Raised by the operator after two aborted evening runs in a week: *"highlights
+a problem with our model here if google will regularly be throttling/blocking
+free user calls."* And, on the proposed fix: *"switching the time may help me
+in Kisumu, but it's not a fix."* That second sentence is the item.
+
+### The measured scale, which is smaller than a bad afternoon feels
+
+Over the seven days the ledger has recorded outcomes:
+
+| | |
+|---|---|
+| scheduled runs | 11 |
+| published | 9 |
+| aborted | **2** — 2026-09-08 and 2026-09-14, **both 15:0x** |
+| morning slot | 5 of 5 published |
+
+**18% of runs lost, and 100% of the losses in one slot.** So on the evidence
+this is slot-shaped rather than provider-shaped, and moving the slot is the
+cheap test. It is not the fix, for the reason below.
+
+### Why moving the slot is a local mitigation and not a fix
+
+Three constraints, and for some longitudes they do not intersect:
+
+1. **The aligned windows are fixed in UTC.** `cycle.py`: 02:00, 08:00, 14:00
+   and 20:00, carrying the 18z/00z/06z/12z cycles. Every deployment on Earth
+   has the same four to choose from, because they are when the guidance lands.
+2. **The provider's congestion is fixed in UTC too**, and it is the US and
+   European working day — which covers 14:00 and 20:00, two of the four.
+3. **Which windows give a USEFUL LOCAL time depends on longitude**, and that
+   is the one thing a fork cannot change.
+
+Kisumu (UTC+3) is lucky: 02:00 UTC is 05:00 local, quiet on the provider and
+early enough to be a morning forecast. A US east-coast deployment (UTC-5) has
+08:00 UTC at 03:00 local — useless — and 14:00 UTC at 09:00 local, which is
+the middle of provider peak. **It has no good morning option at all.**
+
+So `ops/README.md`'s advice to pick the first slot inside an aligned window is
+right about the weather and blind to the provider, and the amendment made
+2026-09-14 tells a reader to avoid 14:00-22:00 UTC without admitting that for
+some of them that leaves nothing.
+
+**And it gets worse with adoption.** If OLW is forked widely, every deployment
+piles into the same four UTC minutes — self-inflicted congestion stacked on
+the provider's own.
+
+### What the position actually is, and it is stronger than one afternoon suggests
+
+- **The provider abstraction already exists.** `gemini.py`, `anthropic.py` and
+  `openai_compat.py` all sit behind `LLMProvider` with the same retry,
+  outcome-recording and spend seams. Switching is a config change and a key.
+- **The volume is small.** Measured from stored token counts: ~80,000 input
+  tokens a day at one issuance; about **4.8M input tokens a month at two
+  issuances, 4.1M after item 73's cuts**. Output is ~2,240 a day, negligible.
+  For a flash-class model that is a small monthly bill on a PAID tier of the
+  same provider, which removes throttling without touching code. Price it
+  before engineering anything.
+
+### The trap in switching, and item 81 already names it
+
+The prompt is ~38,000 characters accumulated against ONE model's failure
+modes (item 76), and item 73's category 3 cannot tell a load-bearing rule from
+a workaround for `gemini-3.6-flash`. A provider switch therefore risks a
+quietly worse forecast.
+
+**There is now an instrument for that**, which there was not this morning:
+item 130 fixed the harness that had been reading a third of the prompt. Item
+81's supported matrix is exactly what running it against real archived inputs
+produces.
+
+**Do NOT add an automatic fallback to a second provider on exhaustion.** The
+abstraction supports it and it is the obvious move, and it would publish a
+forecast from an untested combination on precisely the days nobody is
+watching. Fall back only to a combination the matrix has a row for.
+
+### Order
+
+1. **Move the slot** — free, tests the hypothesis that explains every observed
+   loss, and worth doing whatever else follows.
+2. **A catch-up run after a missed one.** 2026-09-14's outage ran 42 minutes,
+   longer than any retry budget should try to cover — item 79 records why
+   widening further is the wrong instrument. A re-attempt at +60 to +90
+   minutes costs nothing on a healthy day and is the only thing that rescues a
+   long outage. Item 108's territory, and the structural fix before any
+   vendor change.
+3. **Price the paid tier** against 4.1M tokens a month.
+4. **Then** evaluate alternatives, with the harness producing item 81's matrix.
+   The hard constraint any candidate must meet is schema-enforced structured
+   output — the whole pipeline rests on a strict `response_schema`.
+
+Related: items 79 (the backoff and why it stops here), 80 (the Interactions
+API, which changes this question again), 81 (the supported matrix), 108 (the
+catch-up run), 111, 26, and `ops/README.md`.
