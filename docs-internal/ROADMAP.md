@@ -13470,10 +13470,61 @@ this contract is built for, and it needs this container more than the server
 does. `olw_core` carries no entry model, so nothing was ported with this
 change and the vectors did not move.
 
-**5. The blend produces a +24 h call.** `today_properties` becomes a
-forward-window call and that is what is scored. The alternative — keep the
-calendar-day call for display and add a scored +24 h beside it — was rejected:
-it puts a reader-visible number in the forecast that nothing ever verifies.
+**5. The blend produces a +24 h call. BLOCKED ON ITEM 3 — established
+2026-09-14, see below.** `today_properties` becomes a forward-window call and
+that is what is scored. The alternative — keep the calendar-day call for
+display and add a scored +24 h beside it — was rejected: it puts a
+reader-visible number in the forecast that nothing ever verifies.
+
+### Why item 5 cannot go first, and what it costs — 2026-09-14
+
+**The sentence item 5 must invert states its own blocker.** `llm/prompt.py`
+carries a firewall that exists so a late issuance cannot narrow a scored
+field:
+
+> "THE CALL YOU WERE GIVEN describes the WHOLE calendar day: temp_high_c is
+> the day's high whether or not it has already happened. Those values are
+> scored against the day's observations AND COMPARED AGAINST EVERY OTHER DAY
+> IN THE RECORD, so narrowing them to the hours ahead would silently break
+> that comparison."
+
+That last clause is contract item 3's question, and item 3 is undecided. So
+flipping the firewall now would create exactly the discontinuity item 3 exists
+to manage, silently, mid-record, for the one model it hurts most.
+
+**AND ITEM 3 IS SHARPER FOR THE BLEND THAN THE MEASUREMENT SUGGESTED.** That
+measurement — 10 of 34 days re-derivable — was taken over the RAW MODELS,
+whose window predictions can be rebuilt from archived hourly guidance. The
+blend has no such path:
+
+| | re-derivable to a window claim |
+|---|---|
+| raw models | 10 of 34 days, from archived hourly |
+| **olw_blend** | **0 of 18** |
+
+The blend's call is the LLM's judgment, and the prompt archive stores the
+INPUTS, not the output. Re-deriving one would mean re-running the model
+against an archived prompt — which costs money, and returns what a 2026-09
+model says now rather than what the forecaster said then. Those are different
+claims and only one of them is the record.
+
+**What is at stake is 17 scored checks**, measured 2026-09-14: `olw_blend` at
+Day+0 holds 70.6% all-time rain accuracy over 17 checks, a rolling-10 of 60%,
+and high/low biases of -0.60 / -0.21 °C. That is the entire evidence for
+whether synthesizing the models helps at all, which is the question item 58
+exists to answer.
+
+**Which makes "run both, then break" much stronger for the blend than for the
+models.** A window series for the blend can only ever accumulate forward. Any
+option that closes the calendar series before a window series exists leaves
+the project unable to say whether its own forecast is any good, for as long
+as the new series takes to reach ten checks.
+
+**So the order is: decide item 3, then build item 5.** Nothing in item 5 is
+hard — `_blend_prediction` reads `today_properties`, the firewall is one
+sentence, and the blend would join `window_predictions` and be scored by the
+window path already built. It is one prompt change and a handful of lines. It
+is the CONSEQUENCES that need the decision first.
 
 **6. The published structure stays day-shaped, with explicit windows inside.**
 Not horizon-shaped. The familiar headers stay and every claim under them names
