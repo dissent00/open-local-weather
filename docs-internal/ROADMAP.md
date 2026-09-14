@@ -16477,9 +16477,54 @@ needs the spread measured against a real record, and this table is five days.
 - **Not a mean presented as a fact.** That is the one option the table rules
   out.
 
-**Sized against five days, which is not enough.** Cloud only entered the
-record with item 65, so revisit this table before choosing a gate rather than
-picking a number now — ROADMAP item 100 is why that sentence is here.
+### The wait has a date, and a blocker — measured 2026-09-14
+
+**Operator's steer:** "I do think a clear/partly cloudy/cloudy call will
+strengthen the overview a lot. Especially when we have observations to back it
+up." That last clause is the design: the OBSERVED sky is an instrument and the
+forecast sky is a mean over a 63-point spread, so a call backed by both is
+defensible where a call backed by the mean alone is not.
+
+**Six more days, not ten.** The weekly review already carries per-model sky
+bias, and at Day+0 every model has **4 cloud checks** against the 10
+`REVIEW_MIN_CHECKS_FOR_COMPARISON` wants. Item 87's "roughly 2026-09-24"
+estimate was made before the first paired row landed; on the actual count the
+first bias finding is due about **2026-09-20**.
+
+**And the early signal is not a wash — it splits the models cleanly:**
+
+| model | cloud checks | mean error (pts) | reading |
+|---|---|---|---|
+| gfs_seamless | 4 | **-34.2** | over-forecasts cloud badly |
+| icon_seamless | 4 | **-28.9** | over-forecasts cloud badly |
+| ukmo_seamless | 4 | +14.0 | under-forecasts |
+| ecmwf_ifs025 | 4 | **+3.3** | near-unbiased |
+| best_match | 4 | +6.6 | near-unbiased |
+
+Sign convention is `actual - predicted`, so negative means the model painted
+more cloud than there was. Two of five already exceed
+`REVIEW_CLOUD_BIAS_THRESHOLD_PCT`. **This is the answer item 87 is waiting
+for**: the mean is useless because GFS and ICON are ~30 points wrong in one
+direction while ECMWF is nearly right, so averaging them buries the one model
+worth believing. Four checks is not a finding — it is a reason to expect one.
+
+**THE BLOCKER: that skill never reaches the forecaster.** `TrackRecordEntry`
+has twenty fields and **not one of them is cloud**, so the per-model sky bias
+above exists only inside the weekly review's recomputation. The prompt cites
+track-record figures — "ECMWF 100% rolling Day+0 rain verification" — and so
+the forecaster is asked to describe the sky while being told which model to
+believe about rain, wind, temperature and pressure, and nothing about cloud.
+
+That gap is small, additive and Python-only, and nothing depends on the ten
+checks: `verify.scoring` already computes `cloud_err` and `cloud_checks` per
+window and `verify/pipeline` simply never maps them onto the entry. Building
+it now means the figures are there the day the count reaches ten, rather than
+starting the wait again.
+
+**Sized against five days, which is not enough for the GATE.** Cloud only
+entered the record with item 65, so revisit the spread table before choosing a
+threshold — ROADMAP item 100 is why that sentence is here. The track-record
+field is a different question and is not blocked by it.
 
 Related: items 121 (the observed block, which already carries the solid half),
 83 and 65 (the comparison and the cloud data), 87, 100.
