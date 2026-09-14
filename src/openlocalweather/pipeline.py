@@ -165,6 +165,7 @@ from openlocalweather.disagreement import (
 )
 from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
+    DayOverDayComparison,
     IssuancePredictions,
     ObservedSoFar,
     InformationMoved,
@@ -1921,6 +1922,7 @@ def _compose_log_entry(
     information_moved: InformationMoved,
     window_predictions: list[ModelPrediction],
     fresh_predictions: ModelPredictionsByLead | None,
+    day_over_day: DayOverDayComparison | None,
     judgment_prompt: str,
     narrative_prompt: str,
     last_response: Any,
@@ -2000,6 +2002,11 @@ def _compose_log_entry(
                     if window_predictions and guidance.issued_at_local is not None
                     else None
                 ),
+                # ROADMAP item 127. What the Overview was handed, kept so the
+                # published prose can be checked against it afterwards — the
+                # prompt orders the sentence used VERBATIM and nothing could
+                # verify that, because the sentence was nowhere in the record.
+                day_over_day=day_over_day,
             )
         ],
         # Superseded by prediction_rows and deliberately not written — see
@@ -2851,6 +2858,9 @@ def _issue_forecast(
         observed_so_far=observed_so_far,
         information_moved=information_moved,
         window_predictions=window_predictions,
+        # Item 127. The same object the prompt was built from, so the stored
+        # copy and the sentence the forecaster read cannot be different ones.
+        day_over_day=day_over_day,
         # The freshly extracted set, which the composer keeps only when this
         # date holds none. Built even on a re-issue and discarded there, as
         # it always was — the day's numbers belong to the run that made them

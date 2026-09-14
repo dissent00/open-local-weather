@@ -24,8 +24,6 @@ raw number is not.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from openlocalweather.defaults import (
     CLOUD_CHANGE_BANDS_PCT,
     KNOTS_TO_KMH,
@@ -33,64 +31,8 @@ from openlocalweather.defaults import (
     WIND_CHANGE_BANDS_KMH,
     WIND_WARNING_BANDS_KT,
 )
-from openlocalweather.models import DailyActual, ModelPrediction
+from openlocalweather.models import DailyActual, DayOverDayComparison, ModelPrediction
 from openlocalweather.verify.scoring import mean
-
-
-@dataclass
-class DayOverDayComparison:
-    """Pre-computed comparison of today's consensus against yesterday's
-    observations. Every field is derived in code; the LLM's job is to phrase
-    `summary`, not to recompute it."""
-
-    yesterday_high_c: float | None
-    yesterday_low_c: float | None
-    yesterday_rain: bool | None
-    # Surfaced beside the label for the same reason today_rain_expected is:
-    # a raw observation in the payload is much harder for the LLM to misread
-    # than a phrase alone. None means no station observation, not "no thunder".
-    yesterday_thunder: bool | None
-    yesterday_peak_wind_kmh: float | None
-    # Exposed alongside the derived label, not just folded into it. A live
-    # run read "rain again, as yesterday" and wrote "wetter conditions",
-    # dropping the comparison — having both raw booleans visible makes that
-    # much harder to misread than a lone phrase.
-    today_rain_expected: bool | None
-    today_consensus_high_c: float | None
-    today_consensus_low_c: float | None
-    today_consensus_peak_wind_kmh: float | None
-    # The gust operand the LABEL was actually banded from — calibration.py,
-    # and the reason the raw consensus above is kept beside it. The two differ
-    # by the models' measured bias, and a stored comparison has to be
-    # re-derivable from its own fields: a delta computed from one number and
-    # stored beside another cannot be checked afterwards, which is most of
-    # what the record is for. None means no model had enough verified checks
-    # and the raw consensus was used.
-    today_calibrated_peak_wind_kmh: float | None
-    high_delta_c: float | None
-    low_delta_c: float | None
-    wind_delta_kmh: float | None
-    high_label: str | None
-    wind_label: str | None
-    # Items 87, 65 and 83. The fourth measurement, and the one the operator's
-    # founding objection was about: "a cloudy/rainy day with the same temps,
-    # wind speed, and AQI is not 'much the same' even though 3/4 vectors may
-    # be the same."
-    cloud_label: str | None
-    rain_contrast: str | None
-    # The three labels above, composed into finished sentences — item 83.
-    # This is what the PROMPT is given.
-    #
-    # THE SECOND HALF OF THIS COMMENT WAS FALSE and said "the labels
-    # themselves stay in the record because that is what is stored and
-    # scored". Checked 2026-09-14: nothing writes this dataclass to the entry
-    # and no stored log carries a label. The labels stay HERE, on a structure
-    # that lives for the length of a run. See PROMPT_COMPARISON_FIELDS.
-    overview_comparison: str | None
-    # Where yesterday's observed values were taken — item 98. Carried through
-    # so comparison_for_prompt can name the source beside each boolean; the
-    # comparison itself never reads it.
-    provenance: dict[str, str] | None = None
 
 
 def wind_warning(gust_kmh: float | None) -> str | None:

@@ -3856,11 +3856,20 @@ def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypat
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
     issue(deps, today=date(2026, 8, 11), dry_run=False)
 
-    # READ OFF THE PROMPT, because the comparison is not stored anywhere —
-    # `comparison_for_prompt` is its only consumer and the entry keeps no copy.
-    # That is a real gap in the record and is recorded as one; it is not this
-    # test's business to work around, and the prompt is where the sentence a
-    # reader eventually sees actually goes.
+    # ROADMAP item 127 closed the gap this used to read around: the comparison
+    # is now stored on the row, so this asserts BOTH — that the forecaster was
+    # handed the sentence, and that the record kept the one it was handed.
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    stored = entry.prediction_rows[0].day_over_day
+    assert stored is not None, "the comparison never reached the record"
+    assert "than today (Tuesday) was" in stored.overview_comparison
+    # The dimensions no instrument here can pair are absent in the RECORD too,
+    # not merely unsaid in the prose.
+    assert stored.wind_label is None
+    assert stored.cloud_label is None
+    assert stored.rain_contrast is None
+    assert stored.provenance["high_c"] == "metar_station"
+
     prompt = llm.user_prompts
     # Named for the days it means, and in the past tense for the day that is
     # ending — 2026-08-11 was a Tuesday.
@@ -3871,3 +3880,50 @@ def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypat
     # the station files sustained wind, eighths of sky, and no rain amount.
     for artefact in ("windier", "calmer", "cloudier", "clearer"):
         assert artefact not in prompt.split("than today (Tuesday) was")[0][-120:], artefact
+
+
+def test_the_morning_comparison_is_kept_on_the_row(tmp_path, monkeypatch):
+    """ROADMAP item 127. Computed every run since item 23 and thrown away.
+
+    Until this landed, nothing could measure whether the Overview used the
+    sentence it was ordered to use verbatim, because the sentence was nowhere
+    in the record to compare the published prose against. Item 126 was only
+    answerable because the published gust IS stored; this is the same question
+    one field over.
+
+    Asserted through the PIPELINE rather than on `compute_day_over_day`,
+    because the gap was never in the computation — it was the wiring, and a
+    unit test of the function would have passed throughout.
+    """
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+
+    assert row.day_over_day is not None, "the comparison never reached the record"
+    # The OPERANDS, not the sentence. On this fixture nothing moved on any
+    # dimension and the rain was unchanged, so `describe_day_over_day`
+    # composes nothing — which is a legitimate outcome and exactly the case a
+    # record has to keep, because "the Overview said nothing" and "the
+    # comparison found nothing to say" are different facts and only the stored
+    # operands tell them apart.
+    assert row.day_over_day.yesterday_high_c == 26.0
+    assert row.day_over_day.provenance["high_c"] == "era5_archive"
+    # A SIBLING of the scored set, never a member of it — the firewall is the
+    # nesting, and `verify.scoring` names `row.predictions` as what is scored.
+    assert not hasattr(row.predictions, "day_over_day")
+
+
+def test_the_stored_comparison_carries_both_gusts(tmp_path, monkeypatch):
+    """Item 127's other reason: the raw and the calibrated consensus are both
+    computed here and were both discarded. A calibration that cannot be
+    audited afterwards is item 126's finding waiting to happen again."""
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    stored = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0].day_over_day
+
+    # Present as FIELDS whatever their values: a thin record has no measured
+    # bias yet, and the point is that the pair is re-derivable at all.
+    assert hasattr(stored, "today_consensus_peak_wind_kmh")
+    assert hasattr(stored, "today_calibrated_peak_wind_kmh")

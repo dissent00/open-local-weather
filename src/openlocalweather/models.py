@@ -71,6 +71,71 @@ class ObservedSoFar:
     precipitation_onset: str | None = None
 
 
+# MOVED HERE 2026-09-14 from `comparison.py` — ROADMAP item 127, and the same
+# rule that brought `ObservedSoFar` here: this module is the single source of
+# truth for the shape of everything committed to git as JSON, and this
+# structure is now committed.
+#
+# THE IMPORT DIRECTION ALSO FORCES IT. `comparison.py` imports DailyActual and
+# ModelPrediction from here, so a field on `IssuancePredictions` typed as this
+# class could not live there without a cycle. That is the move being made for
+# a structural reason rather than a tidy one.
+@dataclass
+class DayOverDayComparison:
+    """Pre-computed comparison of today's consensus against yesterday's
+    observations. Every field is derived in code; the LLM's job is to phrase
+    `summary`, not to recompute it."""
+
+    yesterday_high_c: float | None
+    yesterday_low_c: float | None
+    yesterday_rain: bool | None
+    # Surfaced beside the label for the same reason today_rain_expected is:
+    # a raw observation in the payload is much harder for the LLM to misread
+    # than a phrase alone. None means no station observation, not "no thunder".
+    yesterday_thunder: bool | None
+    yesterday_peak_wind_kmh: float | None
+    # Exposed alongside the derived label, not just folded into it. A live
+    # run read "rain again, as yesterday" and wrote "wetter conditions",
+    # dropping the comparison — having both raw booleans visible makes that
+    # much harder to misread than a lone phrase.
+    today_rain_expected: bool | None
+    today_consensus_high_c: float | None
+    today_consensus_low_c: float | None
+    today_consensus_peak_wind_kmh: float | None
+    # The gust operand the LABEL was actually banded from — calibration.py,
+    # and the reason the raw consensus above is kept beside it. The two differ
+    # by the models' measured bias, and a stored comparison has to be
+    # re-derivable from its own fields: a delta computed from one number and
+    # stored beside another cannot be checked afterwards, which is most of
+    # what the record is for. None means no model had enough verified checks
+    # and the raw consensus was used.
+    today_calibrated_peak_wind_kmh: float | None
+    high_delta_c: float | None
+    low_delta_c: float | None
+    wind_delta_kmh: float | None
+    high_label: str | None
+    wind_label: str | None
+    # Items 87, 65 and 83. The fourth measurement, and the one the operator's
+    # founding objection was about: "a cloudy/rainy day with the same temps,
+    # wind speed, and AQI is not 'much the same' even though 3/4 vectors may
+    # be the same."
+    cloud_label: str | None
+    rain_contrast: str | None
+    # The three labels above, composed into finished sentences — item 83.
+    # This is what the PROMPT is given.
+    #
+    # THE SECOND HALF OF THIS COMMENT WAS FALSE and said "the labels
+    # themselves stay in the record because that is what is stored and
+    # scored". Checked 2026-09-14: nothing writes this dataclass to the entry
+    # and no stored log carries a label. The labels stay HERE, on a structure
+    # that lives for the length of a run. See PROMPT_COMPARISON_FIELDS.
+    overview_comparison: str | None
+    # Where yesterday's observed values were taken — item 98. Carried through
+    # so comparison_for_prompt can name the source beside each boolean; the
+    # comparison itself never reads it.
+    provenance: dict[str, str] | None = None
+
+
 def format_temp_high_low(high_c: float, low_c: float) -> str:
     """The headline temperature line, in both units.
 
@@ -623,6 +688,35 @@ class IssuancePredictions(BaseModel):
     # hours after a morning issuance. See verify.scoring.window_is_scorable
     # for why it is the calendar rather than the 24-hour clock.
     window_verified_at: datetime | None = None
+
+    # WHAT THE OVERVIEW WAS HANDED — ROADMAP item 127.
+    #
+    # Computed every run since item 23 and, until now, thrown away: the only
+    # consumer was `comparison_for_prompt`, which narrows it to four fields on
+    # the way to the forecaster. Two comments in `comparison.py` said the full
+    # structure was "stored and scored"; both were false and were corrected
+    # when this was found.
+    #
+    # WHY IT IS WORTH KEEPING. Nothing could measure whether the Overview used
+    # the sentence it was ordered to use verbatim, because the sentence was
+    # nowhere in the record to compare the published prose against. Item 126
+    # was only measurable because the published gust IS stored — that is the
+    # same question one field over, and it took a live run and a spare
+    # afternoon to answer it. It is also the only home for the calibration
+    # audit: the raw and the calibrated gust are both computed here and both
+    # discarded.
+    #
+    # ON THE ROW, NOT THE DAY, because the comparison is a property of the
+    # ISSUANCE. Contract item 8's gate makes a 06:00 run say "today", an 18:00
+    # run say nothing at all and a 20:00 run say "tomorrow", from the same
+    # weather — so a per-day field would record one of three answers and lose
+    # which run gave it. Being on the row also inherits append-only and row 0
+    # immutable for free, which is the right rule here too.
+    #
+    # A SIBLING OF `predictions`, NOT A MEMBER OF IT. `verify.scoring` names
+    # `row.predictions` as the set tomorrow scores; this is prose-facing and
+    # must never drift into that. The firewall is the nesting.
+    day_over_day: DayOverDayComparison | None = None
 
 
 class VerificationByLead(BaseModel):

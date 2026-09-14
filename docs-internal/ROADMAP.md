@@ -17681,7 +17681,46 @@ be nothing to remove, and a correction fitted to noise is worse than none.
 
 Related: items 104 (contract item 8, which surfaced it), 44, 100, 123.
 
-## 127. The day-over-day comparison is computed, published, and never stored · **Planned — raised 2026-09-14**
+## 127. The day-over-day comparison is computed, published, and never stored · **SHIPPED 2026-09-14**
+
+> **Stored on the ROW, not the day.** The comparison is a property of the
+> ISSUANCE: contract item 8's gate makes a 06:00 run say "today", an 18:00 run
+> say nothing at all and a 20:00 run say "tomorrow", from the same weather. A
+> per-day field would record one of three answers and lose which run gave it.
+> Being on `IssuancePredictions` also inherits append-only and row 0 immutable
+> for free, which is the right rule here too.
+>
+> **A SIBLING of `predictions`, never a member.** `verify.scoring` names
+> `row.predictions` as the set tomorrow scores; this is prose-facing and must
+> not drift into it. The firewall is the nesting, and a test asserts it.
+>
+> **`DayOverDayComparison` moved to `models.py`,** for the same reason
+> `ObservedSoFar` did — that module is the single source of truth for the
+> shape of everything committed to git as JSON. Here the import direction
+> forced it as well: `comparison.py` imports `DailyActual` and
+> `ModelPrediction` from `models.py`, so a field typed as this class could not
+> live there without a cycle.
+>
+> **No Dart port is owed.** `DailyLogEntry` has no Dart equivalent — the app
+> keeps its own `HistoryStore` shape — and `DayOverDayComparison` itself was
+> already ported with `toJson`. What the app owes is the prediction-key work
+> its own item 4 and upstream C1 already cover.
+>
+> **Driven, and the driver could not prove it.** The CLI harness's fixture has
+> no observed record for yesterday, so `compute_day_over_day` correctly
+> returns None and the stored value is None — right, and useless as evidence.
+> The pipeline suite supplies a yesterday and asserts the stored operands;
+> three mutations killed, including removing the field.
+>
+> **One thing the stored record immediately showed:** the morning row's
+> provenance reads `era5_archive` for `high_c`, which is the withdrawn
+> station-baseline plan confirmed from the other side — the morning really is
+> still measured against the reanalysis.
+>
+> **What it does NOT yet do** is answer the question it exists for. Whether
+> the Overview uses the sentence it is handed needs the stored comparison
+> compared against the published prose, over days. The instrument is built;
+> the analysis is item 131's retrospective query, one field over.
 
 Found while writing a pipeline test for contract item 8's evening subject: the
 test tried to read the comparison off the entry and there is nothing there.
