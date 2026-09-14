@@ -792,3 +792,63 @@ def test_a_day_with_no_sunset_still_gates_on_noon():
     assert comparison_subject(6, sunset_hour=None) == "today"
     assert comparison_subject(15, sunset_hour=None) is None
     assert comparison_subject(20, sunset_hour=None) is None
+
+
+def test_the_tomorrow_subject_describes_tomorrow():
+    """ROADMAP item 104, contract item 8, stage 2 piece 1.
+
+    At 20:00 the subject is tomorrow, so the numbers must be TOMORROW'S. Until
+    now the gate said "tomorrow" while `compute_day_over_day` went on averaging
+    today's Day+0 predictions — a comparison labelled one thing and computed
+    from another.
+
+    Day+1 was already being extracted for `describe_extended_trend`; this
+    threads the same predictions to a second consumer rather than adding a
+    lead.
+    """
+    from openlocalweather.comparison import compute_day_over_day
+
+    yesterday = DailyActual(rain=False, high_c=20.0, low_c=15.0, peak_wind_kmh=10.0)
+    today = [ModelPrediction(model="a", rain=False, high_c=21.0, low_c=15.0, wind_kmh=10.0)]
+    tomorrow = [ModelPrediction(model="a", rain=False, high_c=30.0, low_c=15.0, wind_kmh=10.0)]
+
+    evening = compute_day_over_day(
+        yesterday, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=tomorrow
+    )
+
+    assert evening is not None
+    # Tomorrow is 10 C above yesterday; today is only 1 C above. A comparison
+    # built from today's numbers would read "about the same".
+    assert evening.high_label is not None and "much" in evening.high_label
+
+
+def test_a_tomorrow_subject_without_tomorrow_says_nothing():
+    """The honest absence while stage 2 is half-built, and afterwards whenever
+    the extended fetch has failed. A comparison that cannot describe its own
+    subject is not a comparison — and "Tuesday will be cooler than Sunday",
+    which is what today's numbers against yesterday's would mean here, is
+    worse than silence."""
+    from openlocalweather.comparison import compute_day_over_day
+
+    yesterday = DailyActual(rain=False, high_c=20.0, low_c=15.0, peak_wind_kmh=10.0)
+    today = [ModelPrediction(model="a", rain=False, high_c=21.0, low_c=15.0, wind_kmh=10.0)]
+
+    assert compute_day_over_day(
+        yesterday, today, issued_hour=20, sunset_hour=18, tomorrow_predictions=None
+    ) is None
+
+
+def test_the_morning_subject_still_uses_today():
+    """Piece 1 must not disturb the hours that already worked."""
+    from openlocalweather.comparison import compute_day_over_day
+
+    yesterday = DailyActual(rain=False, high_c=20.0, low_c=15.0, peak_wind_kmh=10.0)
+    today = [ModelPrediction(model="a", rain=False, high_c=30.0, low_c=15.0, wind_kmh=10.0)]
+    tomorrow = [ModelPrediction(model="a", rain=False, high_c=21.0, low_c=15.0, wind_kmh=10.0)]
+
+    morning = compute_day_over_day(
+        yesterday, today, issued_hour=6, sunset_hour=18, tomorrow_predictions=tomorrow
+    )
+
+    assert morning is not None
+    assert morning.high_label is not None and "much" in morning.high_label

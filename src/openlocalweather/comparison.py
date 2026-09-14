@@ -346,6 +346,7 @@ def compute_day_over_day(
     *,
     issued_hour: int | None,
     sunset_hour: int | None = None,
+    tomorrow_predictions: list[ModelPrediction] | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
     as a gap, not as a day with unremarkable weather.
@@ -364,8 +365,29 @@ def compute_day_over_day(
     if yesterday_actual is None:
         return None
 
-    if comparison_subject(issued_hour, sunset_hour=sunset_hour) is None:
+    subject = comparison_subject(issued_hour, sunset_hour=sunset_hour)
+    if subject is None:
         return None
+
+    # WHICH DAY THE NUMBERS DESCRIBE — contract item 8, stage 2. After sunset
+    # the subject is tomorrow, so the consensus must be built from TOMORROW'S
+    # predictions. Until this existed the gate said "tomorrow" while the
+    # arithmetic went on averaging today's Day+0 row: a comparison labelled one
+    # thing and computed from another.
+    #
+    # THESE ARE NOT A NEW LEAD. `_locked_blocks` already extracts days 1, 2
+    # and 3 on every run, from the same daily source and model list as the
+    # scored Day+3 row, for `describe_extended_trend`. This is the same
+    # predictions reaching a second consumer.
+    #
+    # None RATHER THAN A FALLBACK TO TODAY'S. A tomorrow comparison computed
+    # from today's numbers against yesterday's observation means "Tuesday will
+    # be cooler than Sunday", which is worse than silence — and the prompt
+    # already knows what to do with an absent comparison.
+    if subject == COMPARISON_SUBJECT_TOMORROW:
+        if not tomorrow_predictions:
+            return None
+        today_day0_predictions = tomorrow_predictions
 
     consensus_high = mean([p.high_c for p in today_day0_predictions])
     consensus_low = mean([p.low_c for p in today_day0_predictions])
