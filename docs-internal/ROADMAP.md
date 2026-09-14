@@ -13668,7 +13668,92 @@ So stage 2 is three things: thread the existing Day+1 to the comparison; take
 the baseline from the station on both sides; and reword for a tomorrow subject
 with day names and a past tense ("cooler than today (Monday) was").
 
-### Station on both sides, and the measurement that makes it mandatory
+### Station on both sides is WITHDRAWN — the table compared two different quantities
+
+**Established 2026-09-14, building it.** The section below was the stated
+plan, the operator agreed to it, and it is wrong. It is left standing rather
+than edited away, because the error is the interesting part: a measured table
+that compared a station's max SUSTAINED wind against a reanalysis max GUST,
+called the difference an instrument offset, and concluded the swap was
+mandatory. Both columns were headed `peak_wind_kmh`.
+
+`fetch/metar.py` states it in terms, and had all along: `ARCHIVE_DATA_COLUMNS`
+is `("metar", "tmpf", "sknt")`, and the comment beside it says `gust` is
+deliberately absent because "METAR files a gust group only when a gust
+occurs" — missing on all 932 rows of a 45-day sample. So
+`station_peak_wind_kmh` is `sknt`, the sustained wind. The forecast side is
+`windgusts_10m_max` and the reanalysis side is `max(wind_gusts_10m)`: those
+two are like-for-like, and the station is not a third opinion about the same
+number. The comparison module's own comment said so — "the station's sustained
+wind sits beside the scored gust" — and the plan overrode it without noticing.
+
+A max sustained wind runs well below a max gust, so -14.19 km/h is not a
+sensor disagreement to be cancelled. It is the gust factor.
+
+**And the temperature half gains nothing either, which only the replay
+showed.** Those rows ARE the same quantity, and the +0.49 C / -0.05 C offsets
+are real. But what matters is not the offset between two observations, it is
+the bias between the baseline and THE CONSENSUS THE READER IS COMPARED
+AGAINST. Replaying 34 mornings through `compute_day_over_day` itself, at
+06:00, with the day0 rows each run actually stored:
+
+| baseline | mean high delta | labels over 34 mornings |
+|---|---|---|
+| reanalysis (ships today) | **-0.05 C** | 25 "about the same", 4 cooler, 5 warmer |
+| station | -0.61 C | 22 "about the same", **12 cooler, 0 warmer** |
+
+The reanalysis baseline is already unbiased against the consensus. Moving it
+to the station imports the +0.49 C offset as a half-band cool bias and turns a
+balanced label one-sided. So the swap costs something and buys nothing.
+
+**Nothing shipped.** The change was built, tested, vectored, ported to Dart and
+mutation-tested on both sides before the replay caught it; all of it was
+reverted. What survives is the measurement below.
+
+### The wind label IS broken, and the cause is on the forecast side
+
+The defect the withdrawn plan was reaching for is real. Same replay, same 34
+mornings, the wind label:
+
+| configuration | mean gust delta | labels |
+|---|---|---|
+| **ships today** — reanalysis baseline, yardsticks in | **-8.31 km/h** | 20 "similar winds", 13 "calmer", 1 "much calmer", **0 "windier"** |
+| reanalysis baseline, yardsticks out | -11.49 km/h | 11 similar, 18 calmer, 5 much calmer, 0 windier |
+| station baseline, yardsticks in | +5.95 km/h | 19 similar, 14 **windier**, 1 calmer |
+| station baseline, yardsticks out | +2.78 km/h | 22 similar, 9 windier, 3 calmer |
+
+**Fourteen mornings in thirty-four said the day would be calmer than
+yesterday, and not one ever said windier.** The no-change band is 8.0 km/h and
+the mean is -8.31, so the band is being cleared by the bias alone. Four of the
+four archived Overviews carrying a wind label say "calmer".
+
+**THE CAUSE IS THE MODELS' GUST UNDER-FORECAST, WHICH THE RECORD ALREADY
+MEASURES.** `avg_wind_error_kmh_10` is `actual - predicted` at Day+0: ecmwf
++12.96, icon +12.76, ukmo +13.05, gfs +16.47. Every model under-forecasts the
+gust by more than the whole no-change band, and `skill_profile_summary` for
+gfs says it in words — "a strong tendency to under-forecast peak surface wind
+speeds". The label is reporting that bias as weather.
+
+So the fix belongs on the FORECAST side, not the baseline side. The obvious
+candidate, and the reason this is worth an item rather than a patch: the
+project already computes the per-model correction daily and stores it, so
+`consensus_wind + mean(avg_wind_error_kmh_10)` is a calibrated estimate of the
+gust that updates itself, rather than a constant fitted once. Whether a
+reader-facing band should be fed a bias-corrected number at all is the
+question to settle first — every other label in this file is raw.
+
+**A SECOND FINDING, AND IT CUTS AGAINST THE OBVIOUS FIX.** `persistence` and
+`climatology` are appended to `day0_predictions` before the comparison sees
+them, so the "model consensus" the reader is compared against contains a
+prediction that IS yesterday's observation. That drags every comparison toward
+"no change" by construction. But the table above shows removing them makes the
+wind label WORSE, -8.31 to -11.49: being reanalysis-derived, they were
+accidentally compensating for the models' under-forecast. Two defects were
+cancelling, and either one removed alone leaves the other exposed. They have
+to move together or not at all.
+
+### The original plan, left standing for the reasoning it got right
+
 
 At 20:00 only the STATION can observe today's daytime — the reanalysis serves
 the current day as model output. So the 20:00 comparison changes instrument,
@@ -13689,6 +13774,18 @@ different sensor was read. Station on BOTH sides is therefore mandatory rather
 than tidy; the offsets cancel and the bands stay honest.
 
 It also confirms item 44 on a longer record: +0.49 °C against its +0.43.
+
+> **WITHDRAWN — see above.** The `peak_wind_kmh` row compares a station
+> SUSTAINED maximum against a reanalysis GUST maximum, so its -14.19 km/h is a
+> gust factor rather than an offset, and cancelling it was never available.
+> The temperature rows stand as measurements and still do not justify the
+> swap. The `low_c` mean is -0.05 °C, not +0.05 as first written.
+>
+> What the section gets right is the QUESTION: at 20:00 the baseline has to be
+> today's daytime, and only the station observes that. The answer is that the
+> 20:00 comparison must then use dimensions the station can actually supply —
+> temperature — and stay silent on the gust, rather than re-basing every
+> dimension on an instrument that measures a different thing.
 
 ### Which instrument is RIGHT is a different question, and this does not answer it
 
