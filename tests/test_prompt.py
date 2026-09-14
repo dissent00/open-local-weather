@@ -177,6 +177,9 @@ def test_user_prompt_serializes_ground_aqi_readings_and_summary_when_present():
 
 
 def test_user_prompt_includes_weather_data_sections():
+    # `primary_extended_daily` rather than `primary_today_hourly` — ROADMAP
+    # item 73's first cut removed the calendar day's hourly series from the
+    # payload, so this asserts against a key that is still forwarded.
     prompt = build_user_prompt(
         today=date(2026, 8, 11),
         yesterday=date(2026, 8, 10),
@@ -187,11 +190,11 @@ def test_user_prompt_includes_weather_data_sections():
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,
-        today_weather_data={"primary_today_hourly": {"hourly": {"time": ["2026-08-11T00:00"]}}},
+        today_weather_data={"primary_extended_daily": {"daily": {"time": ["2026-08-11"]}}},
         local_bulletin_source_name="KMD",
         local_bulletin_text="text",
     )
-    assert "2026-08-11T00:00" in prompt
+    assert "2026-08-11" in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -637,3 +640,40 @@ def test_the_extended_outlook_says_when_its_guidance_never_arrived():
     assert re.search(r"extended_properties[^\n]*empty|empty[^\n]*extended_properties", missing) or (
         "leave \"extended_properties\" empty" in missing
     ), "nothing tells the forecaster not to commit to Day+3/Day+7 blind"
+
+
+def test_the_calendar_days_hourly_series_is_not_sent():
+    """ROADMAP item 73's first cut, and the guard that keeps it cut.
+
+    `primary_today_hourly` was 13.2% of the whole prompt — ten hourly
+    variables across five models for the calendar day. Eighteen of its
+    twenty-four hours were already in HOURS AHEAD and the other six had
+    elapsed, so it carried nothing the forecaster could legitimately use.
+
+    Asserted here rather than left to the size of the prompt, because a
+    payload key that creeps back is exactly how the synoptic key went missing
+    in the other direction and nothing noticed for weeks.
+    """
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.org",
+        verification_context={},
+        track_record_context=[],
+        historical_logs=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={
+            "primary_today_hourly": {"hourly": {"time": ["2026-08-11T00:00"]}},
+            "primary_extended_daily": {"daily": {"time": ["2026-08-11"]}},
+        },
+        local_bulletin_source_name="KMD",
+        local_bulletin_text="text",
+    )
+
+    assert "primary_today_hourly" not in prompt
+    assert "2026-08-11T00:00" not in prompt
+    # And the rule that policed it is gone with it — item 73's first
+    # category: the cheapest way to delete a rule is to delete the temptation.
+    assert "as though it were all still ahead" not in prompt

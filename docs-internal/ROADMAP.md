@@ -8753,7 +8753,64 @@ this is read against), item 58, item 27.
 
 ---
 
-## 73. Pare the prompt, by category rather than by length · **Planned**
+## 73. Pare the prompt, by category rather than by length · **First cut shipped 2026-09-14; the rest Planned**
+
+> **A FIFTH CATEGORY, AND IT IS BIGGER THAN THE OTHER FOUR TOGETHER: raw
+> payload handed over wholesale.** The four categories below were all found by
+> reading the SYSTEM prompt, which is ~34,000 characters. Nobody had measured
+> the USER prompt. It is **165,000 characters, ~41,000 tokens, sent twice per
+> issuance** — the narrative call re-sends the judgment prompt with the call
+> appended — and **78% of it is raw model arrays**, 268 of them. Every
+> pre-computed block this project has argued about is under one percent.
+>
+> | block | chars | share |
+> |---|---|---|
+> | `secondary_today_hourly` | 21,903 | 13.3% |
+> | `primary_today_hourly` | 21,850 | 13.2% |
+> | HOURS AHEAD (`forward_hourly`) | 22,695 | 13.8% |
+> | HISTORICAL NOTES | 27,775 | 16.8% |
+> | MODEL TRACK RECORD | 15,409 | 9.3% |
+> | `primary_extended_daily` / `secondary_extended_daily` | 9,046 / 9,053 | 11% |
+> | PRE-COMPUTED VERIFICATION RESULTS | 6,487 | 3.9% |
+> | EXTRACTED PER-MODEL PREDICTIONS | 6,241 | 3.8% |
+> | DAY-OVER-DAY COMPARISON | 1,318 | 0.8% |
+> | OBSERVED SO FAR TODAY | 927 | 0.6% |
+>
+> **FIRST CUT, SHIPPED: `primary_today_hourly`.** Every hour of it was either
+> DUPLICATED or ELAPSED, and which one moves with the clock. HOURS AHEAD
+> starts at the issuance hour, so for an issuance at H the hours H..23 are in
+> both blocks and 0..H-1 have already happened. On the 2026-09-14 06:00
+> issuance that is eighteen duplicated against six elapsed — 900 repeated
+> values across ten variables and five models. There is no hour of the
+> calendar day it was the only source for, at any issuance hour.
+>
+> **It is category 1 exactly.** The rule policing it read "TODAY'S MULTI-MODEL
+> GUIDANCE still carries the full calendar day, needed for daily totals and
+> for the day-over-day comparison; do not use it to describe the day as though
+> it were all still ahead." Both stated reasons had stopped being true: daily
+> totals are in `primary_extended_daily`, which stays, and the day-over-day
+> comparison is computed in code and handed over finished. The rule went with
+> the block.
+>
+> **Saved: 21,850 characters, 13.2% of every prompt, ~5,462 tokens per call
+> and ~10,925 per issuance.** `guidance.primary_hourly` is still fetched and
+> still read by code — the wind shift, the Day+0 extraction and the
+> instability summary all reason from it — so what changed is what the
+> FORECASTER is handed, not what the pipeline knows.
+>
+> **NOT YET VERIFIED AGAINST A REAL GENERATION.** This changes the
+> forecaster's inputs, and the instrument for that is `olw replay` against the
+> frozen prompt vectors followed by `olw replay-diff before after`. That
+> spends, so it is the operator's call.
+>
+> **The obvious next cuts, and why they are NOT the same case:**
+> - `secondary_today_hourly` (13.3%) has no forward window, so dropping it
+>   would lose information rather than a duplicate. It needs a decision about
+>   what the lake point is FOR, not a measurement.
+> - HISTORICAL NOTES (16.8%) is the record's own learning loop — item 91's
+>   territory, and prompt rule `past_misses` depends on it.
+> - MODEL TRACK RECORD (9.3%) is where category 4's rounding pass lands: 8% of
+>   that block is trailing digits.
 
 Raised 2026-09-05, after six generation passes against the real archived
 inputs found three different reasons a rule was in the prompt — only one of

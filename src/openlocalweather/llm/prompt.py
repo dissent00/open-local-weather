@@ -181,7 +181,7 @@ BREVITY IS NOT OMISSION. Being an update licenses you to say "little has changed
 1. PRE-COMPUTED VERIFICATION RESULTS for yesterday, at Day+0, Day+3, and Day+7 lead times (per model: rain hit/miss, and where applicable onset/wind/temp/pressure errors).
 2. MODEL TRACK RECORD (rolling {rolling_window_short}-check/{rolling_window_long}-check/all-time stats per model per lead time, already computed).
 3. HISTORICAL VERIFICATION NOTES (past {historical_lookback_days} days).
-4. TODAY'S MULTI-MODEL GUIDANCE (hourly for today, daily summary out to 7 days) for {location.primary_place_name}{secondary_guidance_note}.
+4. TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days) for {location.primary_place_name}{secondary_guidance_note}.
 5. REGIONAL PRESSURE SNAPSHOT (multi-point MSLP across {location.region_name}).
 6. LONG-RUN REVIEW FINDINGS (cross-model conclusions drawn in code from the entire stored record, each with its own evidence and confidence).
 7. EXTRACTED PER-MODEL PREDICTIONS - each model's Day+0/Day+3/Day+7 call, already pulled out of the raw guidance in code, EVERY ONE OF THEM FOR {location.primary_place_name}. These are the exact values that will be scored against tomorrow's observations, and they include the local met service alongside the numerical models where one is configured.
@@ -202,7 +202,7 @@ Use each finding at the confidence it states and do not upgrade it - "provisiona
         "issuance_time": f"""ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
 
 "Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.""",
-        "hours_ahead": f"""HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, which is the data to reason from for near-term timing. TODAY'S MULTI-MODEL GUIDANCE still carries the full calendar day, needed for daily totals and for the day-over-day comparison; do not use it to describe the day as though it were all still ahead.""",
+        "hours_ahead": f"""HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, and it is the ONLY hourly series you have for this location: the calendar day's hours are no longer sent. For the hours already elapsed, read OBSERVED SO FAR TODAY, which is what the station measured rather than what a model expected.""",
         "sun_times": f"""The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, and never estimate sunset from latitude or season yourself.""",
         "reissue": f"""{reissue_block}""",
         "the_call": f"""THE CALL HAS ALREADY BEEN MADE, AND IT IS NOT YOURS TO REVISIT.
@@ -691,8 +691,44 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
             "\n\nEARLIER TODAY (already published — this issuance must read as "
             "an update to these, not a repeat of them):\n" + issued
         )
+    # ROADMAP item 73, first cut — 2026-09-14.
+    #
+    # `primary_today_hourly` IS GONE, and it was 13.2% of the whole prompt:
+    # 21,850 characters of ten hourly variables across five models, for the
+    # CALENDAR day.
+    #
+    # EVERY HOUR OF IT WAS EITHER DUPLICATED OR ELAPSED, and which one moves
+    # with the clock rather than being a property of any single run. HOURS
+    # AHEAD starts at the issuance hour, so for an issuance at H the hours
+    # H..23 are in both blocks and the hours 0..H-1 have already happened.
+    # Measured on the 2026-09-14 06:00 issuance that split is eighteen
+    # duplicated against six elapsed — 900 repeated values across ten
+    # variables and five models — and at an evening issuance it is the other
+    # way round. There is no hour of the calendar day it is the only source
+    # for, at any issuance hour.
+    #
+    # SO IT CARRIED NOTHING THE FORECASTER COULD LEGITIMATELY USE. What is
+    # ahead is in HOURS AHEAD, at the same resolution and further out. What is
+    # behind is in OBSERVED SO FAR TODAY, which is the station's own
+    # measurements rather than model output — a better instrument for elapsed
+    # hours, and the one item 121 added for exactly this.
+    #
+    # AND ITS OWN RULE SAID SO, which is item 73's first category: a rule that
+    # exists because the payload invites the error. The instruction read
+    # "TODAY'S MULTI-MODEL GUIDANCE still carries the full calendar day,
+    # needed for daily totals and for the day-over-day comparison; do not use
+    # it to describe the day as though it were all still ahead." Both stated
+    # reasons had stopped being true: daily totals are in
+    # `primary_extended_daily`, a different key that stays; and the
+    # day-over-day comparison is computed in code and handed over finished,
+    # which is why the forecaster is told to use it verbatim. What was left
+    # was a rule policing a block nothing needed. The cheapest way to delete a
+    # rule is to delete the temptation.
+    #
+    # The SECONDARY point's hourly is a different case and stays: there is no
+    # forward window for it, so dropping it would lose information rather than
+    # a duplicate.
     weather_payload = {
-        "primary_today_hourly": today_weather_data.get("primary_today_hourly"),
         "primary_extended_daily": today_weather_data.get("primary_extended_daily"),
         "secondary_today_hourly": today_weather_data.get("secondary_today_hourly"),
         "secondary_extended_daily": today_weather_data.get("secondary_extended_daily"),

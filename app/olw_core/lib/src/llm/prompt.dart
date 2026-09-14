@@ -152,7 +152,7 @@ BREVITY IS NOT OMISSION. Being an update licenses you to say "little has changed
 1. PRE-COMPUTED VERIFICATION RESULTS for yesterday, at Day+0, Day+3, and Day+7 lead times (per model: rain hit/miss, and where applicable onset/wind/temp/pressure errors).
 2. MODEL TRACK RECORD (rolling $rollingWindowShortArg-check/$rollingWindowLongArg-check/all-time stats per model per lead time, already computed).
 3. HISTORICAL VERIFICATION NOTES (past $historicalLookbackDaysArg days).
-4. TODAY'S MULTI-MODEL GUIDANCE (hourly for today, daily summary out to 7 days) for ${location.primaryPlaceName}$secondaryGuidanceNote.
+4. TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days) for ${location.primaryPlaceName}$secondaryGuidanceNote.
 5. REGIONAL PRESSURE SNAPSHOT (multi-point MSLP across ${location.regionName}).
 6. LONG-RUN REVIEW FINDINGS (cross-model conclusions drawn in code from the entire stored record, each with its own evidence and confidence).
 7. EXTRACTED PER-MODEL PREDICTIONS - each model's Day+0/Day+3/Day+7 call, already pulled out of the raw guidance in code, EVERY ONE OF THEM FOR ${location.primaryPlaceName}. These are the exact values that will be scored against tomorrow's observations, and they include the local met service alongside the numerical models where one is configured.
@@ -173,7 +173,7 @@ $groundAqiQualityNote
     'issuance_time': '''ISSUANCE TIME: the user message opens with ISSUED, giving the local time, which part of the day it is, and WHAT MATTERS NOW - the periods a reader at this hour actually cares about, most pressing first. Lead with those periods and weight the whole forecast toward them. Do not re-narrate hours that have already passed except where they explain what is coming: someone reading at 18:15 lived through the afternoon and is asking about tonight.
 
 "Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.''',
-    'hours_ahead': '''HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, which is the data to reason from for near-term timing. TODAY'S MULTI-MODEL GUIDANCE still carries the full calendar day, needed for daily totals and for the day-over-day comparison; do not use it to describe the day as though it were all still ahead.''',
+    'hours_ahead': '''HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, and it is the ONLY hourly series you have for this location: the calendar day's hours are no longer sent. For the hours already elapsed, read OBSERVED SO FAR TODAY, which is what the station measured rather than what a model expected.''',
     'sun_times': '''The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, and never estimate sunset from latitude or season yourself.''',
     'reissue': '''$reissueBlock''',
     'the_call': '''THE CALL HAS ALREADY BEEN MADE, AND IT IS NOT YOURS TO REVISIT.
@@ -626,7 +626,18 @@ String buildUserPrompt({
   // Rebuilt key-by-key rather than passed through, so an extra key in the
   // caller's map can never silently enlarge the prompt.
   final weatherPayload = {
-    'primary_today_hourly': todayWeatherData['primary_today_hourly'],
+    // `primary_today_hourly` IS NOT FORWARDED — upstream ROADMAP item 73's
+    // first cut. It was 13.2% of the whole prompt: ten hourly variables
+    // across five models for the CALENDAR day, and every hour of it was
+    // either DUPLICATED or ELAPSED. HOURS AHEAD starts at the issuance hour,
+    // so for an issuance at H the hours H..23 are in both and 0..H-1 have
+    // already happened; the split moves with the clock and there is no hour
+    // this was the only source for at any issuance hour. What is ahead is in HOURS AHEAD at the same resolution and
+    // further out; what is behind is in OBSERVED SO FAR TODAY, which is the
+    // station's own measurements rather than model output.
+    //
+    // The SECONDARY point's hourly stays: there is no forward window for it,
+    // so dropping it would lose information rather than a duplicate.
     'primary_extended_daily': todayWeatherData['primary_extended_daily'],
     'secondary_today_hourly': todayWeatherData['secondary_today_hourly'],
     'secondary_extended_daily': todayWeatherData['secondary_extended_daily'],

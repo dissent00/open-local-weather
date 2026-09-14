@@ -903,7 +903,13 @@ def _build_forecast_prompt(
         ),
         review_context=review_context,
         today_weather_data={
-            "primary_today_hourly": guidance.primary_hourly,
+            # `primary_today_hourly` IS NOT SENT — ROADMAP item 73's first
+            # cut. Eighteen of its twenty-four hours were already in HOURS
+            # AHEAD and the other six had elapsed. `guidance.primary_hourly`
+            # is still fetched and still read by code — the wind shift, the
+            # Day+0 extraction and the instability summary all reason from
+            # it — so what changed is what the FORECASTER is handed, not what
+            # the pipeline knows. See llm/prompt.py for the measurement.
             "primary_extended_daily": guidance.primary_daily,
             "secondary_today_hourly": guidance.secondary_hourly,
             "secondary_extended_daily": guidance.secondary_daily,
