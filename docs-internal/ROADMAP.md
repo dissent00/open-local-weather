@@ -17678,3 +17678,60 @@ a re-issue appends or overwrites — which contract item 4 has already answered
 for everything else on the row.
 
 Related: items 104 (contract items 4 and 8), 126, 98, 83.
+
+## 128. Four rules a cold reader skipped, found by running item 77's harness · **Planned — raised 2026-09-14**
+
+Found by the manual prompt harness at item 73's first cut, in the arm reading
+the UNCHANGED production prompt — so all four are defects in what ships today,
+not in the change being tested. Item 77's method was followed: real archived
+user prompt, system prompts rebuilt at the previous commit and confirmed
+against the stored hashes (`ground=True, bulletin=True, reissue=False`), a
+worker told nothing about what was being tested.
+
+**1. A bearing was derived when WIND DIRECTION was unavailable.** The block
+rendered "Unavailable — the models do not share a bearing. Say nothing about
+direction." The reader said nothing about direction in the Overview and
+Today's Forecast, then wrote "steer showers and storms from the northwest and
+west-northwest into the basin" in the Synoptic Overview — derived from the
+pressure ring. The rule is obeyed where it is stated and evaded one section
+later. **This is item 73's category 2 exactly**: the rule is in the wind
+block, and the temptation is in the synoptic block.
+
+**2. The individual AQI stations were not named in the Detailed Discussion.**
+The instruction is explicit — the range and the worst station in Today's
+Forecast, "List each individual station's own reading by name in the Detailed
+Discussion." The range and worst station appeared; the per-station list did
+not. Three stations spanning 8 to 117 on one morning is exactly the case the
+rule was written for.
+
+**3. `X km/h (Y kt)` was applied inconsistently.** The reader flagged it
+itself: some wind figures carried knots, some did not. A formatting rule
+stated once, far from the values it governs.
+
+**4. The extended-trend phrase is handed over lowercase and unpunctuated, and
+capitalising it yields a verbless sentence.** "temperatures and winds much the
+same through Thursday, with rain becoming more likely" becomes "Temperatures
+and winds much the same through Thursday, with rain becoming more likely." —
+no verb. The prompt orders it used verbatim and capitalised, so the reader
+cannot repair it; that is item 83's composition contract, one phrase over.
+**Raised as a QUESTION, not a defect**: headline-style weather prose drops the
+copula routinely, and "Temperatures much the same through Friday" may be
+exactly right. What is not in doubt is that the decision has never been taken
+deliberately — `describe_extended_trend` builds the fragment and nothing has
+asked whether it stands as a sentence.
+
+### Why these are worth an item rather than four quick fixes
+
+1 and 3 are the same shape and it is the shape item 73 names: a rule far from
+the payload that invites breaking it. Fixing them by adding more words is the
+move that was already measured not to work — moving `STATE NO NUMBER FROM
+YESTERDAY` to the front of its section made it worse, and deleting the fields
+fixed it. So each wants the same question asked: can the temptation be
+narrowed instead?
+
+**And they were invisible to every other instrument.** The suite is green, the
+vectors pin the prompt's TEXT, and the published forecast reads well. Only a
+cold reader asked to write the thing surfaces a rule that is obeyed in one
+section and evaded in the next.
+
+Related: items 73 (categories 2 and 1), 77 (the harness), 83, 61, 62.
