@@ -13561,7 +13561,29 @@ for is a calendar claim — the calendar series holds one row per day, row 0's.
 So the late-issuance evidence is not a window-versus-calendar comparison at
 all; it is row 1's window score against row 0's window score on the same day,
 which asks whether a later issuance is better informed. That is the question
-the whole reframe exists to make askable, and no view of it exists yet.
+the whole reframe exists to make askable.
+
+**`olw early-vs-late` is that view — built 2026-09-14.**
+`review.compare_early_to_late` pairs each day's FIRST scored window against
+its LAST, per model. First against last rather than first against second,
+because an hourly cron produces many rows a day and the interesting contrast
+is the widest one.
+
+**The two cover DIFFERENT 24 hours, and that is the point rather than a flaw
+to correct.** They overlap by however long separates the issuances, so on any
+single day a difference could be weather rather than skill; across days that
+averages out and what remains is the thing being measured. Forcing both onto
+one period would destroy the comparison, because the later call's whole
+advantage is that its period starts later.
+
+**A day needs two SCORED windows**, so its pair lands about 48 hours after the
+later issuance — the same calendar floor everything here obeys. Nothing is
+paired yet and the verb says so.
+
+**Read the two verbs together.** `window-vs-day` measures the case where the
+reframe matters least, and this one measures the case it was raised for. A
+decision on contract item 3 taken from either alone will be taken on half the
+evidence.
 
 **6. The published structure stays day-shaped, with explicit windows inside.**
 Not horizon-shaped. The familiar headers stay and every claim under them names

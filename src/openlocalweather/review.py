@@ -736,3 +736,92 @@ def _calendar_day0_for(entry, observed: DailyActual, model: str) -> Verification
         (p for p in scored_predictions(entry).day0 if p.model == model), None
     )
     return score_prediction(predicted, observed, 0)
+
+
+@dataclass
+class IssuanceTimeComparison:
+    """One model's opening call of the day set against its last — ROADMAP item
+    104, contract item 2.
+
+    THE QUESTION THE REFRAME EXISTS TO MAKE ASKABLE. While Day+0 was a
+    calendar claim, an 06:00 forecast and an 18:00 forecast were not the same
+    kind of statement: the first described a day that had barely begun and the
+    second a day that was nine tenths over. Scoring them together compared
+    unlike things, which is why the record only ever scored the first. Once
+    every issuance claims the next 24 hours FROM ITSELF, the two become
+    directly comparable and "is a later forecast better informed?" has an
+    answer.
+
+    IT IS NOT A WINDOW-VERSUS-CALENDAR QUESTION, and cannot be made into one.
+    The calendar series holds a single row per day, so a late issuance has no
+    calendar counterpart to be compared against — which is exactly why this
+    view had to exist separately from `compare_window_to_calendar`.
+    """
+
+    model: str
+    # Days holding at least two SCORED windows for this model. One issuance
+    # cannot be compared with itself, and an unscored row is not evidence.
+    paired_days: int
+    early_rain_correct: int
+    late_rain_correct: int
+    early_high_error_c: float | None
+    late_high_error_c: float | None
+    early_low_error_c: float | None
+    late_low_error_c: float | None
+    early_cloud_error_pct: float | None
+    late_cloud_error_pct: float | None
+
+
+def compare_early_to_late(
+    log_lookup: LogLookup, all_log_dates: list[date], models: list[str]
+) -> list[IssuanceTimeComparison]:
+    """The day's first scored window against its last, per model.
+
+    FIRST AGAINST LAST, not first against second. An hourly cron produces many
+    rows a day and the interesting contrast is the widest one — the freshest
+    call of the day against the one that opened it.
+
+    THE TWO COVER DIFFERENT 24 HOURS, and that is not a flaw to correct. They
+    overlap by however long separates the issuances, so on any single day a
+    difference could be weather rather than skill; across days that averages
+    out, and what remains is the thing being measured — whether newer guidance
+    and a shorter unknown horizon actually verify better. Forcing them onto
+    one period would destroy the comparison, because the later issuance's
+    whole advantage is that its period starts later.
+    """
+    rows: list[IssuanceTimeComparison] = []
+
+    for model in models:
+        pairs: list[tuple[VerificationScore, VerificationScore]] = []
+
+        for d in all_log_dates:
+            entry = log_lookup(d)
+            if entry is None:
+                continue
+
+            scored = [
+                r.window_scores[model]
+                for r in entry.prediction_rows
+                if r.window_verified_at is not None and model in r.window_scores
+            ]
+            if len(scored) < 2:
+                continue
+
+            pairs.append((scored[0], scored[-1]))
+
+        rows.append(
+            IssuanceTimeComparison(
+                model=model,
+                paired_days=len(pairs),
+                early_rain_correct=sum(1 for e, _ in pairs if e.rain_correct),
+                late_rain_correct=sum(1 for _, l in pairs if l.rain_correct),
+                early_high_error_c=mean([e.high_error_c for e, _ in pairs]),
+                late_high_error_c=mean([l.high_error_c for _, l in pairs]),
+                early_low_error_c=mean([e.low_error_c for e, _ in pairs]),
+                late_low_error_c=mean([l.low_error_c for _, l in pairs]),
+                early_cloud_error_pct=mean([e.cloud_error_pct for e, _ in pairs]),
+                late_cloud_error_pct=mean([l.cloud_error_pct for _, l in pairs]),
+            )
+        )
+
+    return rows

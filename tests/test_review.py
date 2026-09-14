@@ -840,3 +840,83 @@ def test_a_record_with_no_scored_windows_compares_nothing():
 
     assert row.paired_checks == 0
     assert row.calendar_high_error_c is None and row.window_high_error_c is None
+
+
+def _day_with_issuances(d, *, rows):
+    """One day carrying several scored windows — `rows` is a list of
+    (local_hour, high_error) pairs, earliest first."""
+    from openlocalweather.models import IssuancePredictions, VerificationScore
+    e = entry(d, day0=[ModelPrediction(model="gfs_seamless", rain=False, high_c=30.0)])
+    e.prediction_rows = [
+        IssuancePredictions(
+            issued_at=datetime(d.year, d.month, d.day, hour, 0, tzinfo=timezone.utc),
+            window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=28.0)],
+            window_opened_local=datetime(d.year, d.month, d.day, hour, 0),
+            window_scores={"gfs_seamless": VerificationScore(rain_correct=True, high_error_c=err)},
+            window_verified_at=datetime.now(timezone.utc),
+        )
+        for hour, err in rows
+    ]
+    return e
+
+
+def test_the_late_issuance_is_compared_against_the_early_one():
+    """ROADMAP item 104, contract item 2. The reframe's whole argument is that
+    every issuance now makes the same KIND of claim, so a 06:00 row and an
+    18:00 row are directly comparable — which makes "is a later forecast
+    better informed?" askable for the first time.
+
+    It is NOT a window-versus-calendar question: the calendar series holds one
+    row per day, so a late issuance has no calendar counterpart at all.
+    """
+    from openlocalweather.review import compare_early_to_late
+
+    logs = {}
+    for i in range(3):
+        d = date(2026, 9, 1) + timedelta(days=i)
+        # The early call is 2 degrees out; the later one, holding newer
+        # guidance and a shorter unknown horizon, is half a degree out.
+        logs[d] = _day_with_issuances(d, rows=[(6, -2.0), (18, -0.5)])
+
+    row = next(r for r in compare_early_to_late(lambda x: logs.get(x), sorted(logs),
+                                                models=["gfs_seamless"])
+               if r.model == "gfs_seamless")
+
+    assert row.paired_days == 3
+    assert row.early_high_error_c == pytest.approx(-2.0)
+    assert row.late_high_error_c == pytest.approx(-0.5)
+
+
+def test_a_day_with_one_issuance_pairs_nothing():
+    """The common case on a twice-daily schedule is two, but a skipped or
+    failed second run leaves one — and one issuance cannot be compared with
+    itself."""
+    from openlocalweather.review import compare_early_to_late
+
+    d = date(2026, 9, 1)
+    logs = {d: _day_with_issuances(d, rows=[(6, -2.0)])}
+
+    row = next(r for r in compare_early_to_late(lambda x: logs.get(x), [d],
+                                                models=["gfs_seamless"])
+               if r.model == "gfs_seamless")
+
+    assert row.paired_days == 0
+    assert row.early_high_error_c is None and row.late_high_error_c is None
+
+
+def test_the_latest_scored_issuance_is_the_one_compared():
+    """First against LAST, not first against second. An hourly cron produces
+    many rows a day and the interesting contrast is the widest one — the
+    freshest call against the day's opening call."""
+    from openlocalweather.review import compare_early_to_late
+
+    d = date(2026, 9, 1)
+    logs = {d: _day_with_issuances(d, rows=[(6, -2.0), (12, -1.5), (21, -0.1)])}
+
+    row = next(r for r in compare_early_to_late(lambda x: logs.get(x), [d],
+                                                models=["gfs_seamless"])
+               if r.model == "gfs_seamless")
+
+    assert row.paired_days == 1
+    assert row.early_high_error_c == pytest.approx(-2.0)
+    assert row.late_high_error_c == pytest.approx(-0.1), "the 21:00 row, not the 12:00 one"

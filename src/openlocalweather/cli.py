@@ -71,7 +71,11 @@ from openlocalweather.pipeline import (
 )
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
-from openlocalweather.review import build_weekly_review, compare_window_to_calendar
+from openlocalweather.review import (
+    build_weekly_review,
+    compare_early_to_late,
+    compare_window_to_calendar,
+)
 from openlocalweather.store.actuals_cache import (
     as_date_dict,
     read_actuals_cache,
@@ -409,6 +413,55 @@ def _run_window_vs_day(args: argparse.Namespace) -> int:
     print("Errors are observed minus forecast. The two sides are scored against")
     print("DIFFERENT observations on purpose: the calendar claim against the calendar")
     print("day, the window claim against the 24 hours it actually covered.")
+    return 0
+
+
+def _run_early_vs_late(args: argparse.Namespace) -> int:
+    """The day's opening window call against its last — ROADMAP item 104.
+
+    The question the reframe exists to make askable, and it is NOT a
+    window-versus-calendar one: the calendar series holds a single row per
+    day, so a late issuance has no calendar counterpart at all. See
+    `olw window-vs-day` for the other half, and note that one measures the
+    case where the reframe matters LEAST.
+    """
+    location = load_location_config(args.config)
+    rows = compare_early_to_late(
+        make_log_lookup(args.data_dir),
+        list_log_dates(args.data_dir),
+        models=scored_models(location.local_bulletin_model_id),
+    )
+
+    if not max((r.paired_days for r in rows), default=0):
+        print("No day yet carries two scored windows.")
+        print(
+            "Each needs every hour it covers to lie on a finished day, so a "
+            "day's pair lands about 48 hours after its later issuance."
+        )
+        return 0
+
+    print(f"{'model':16} {'days':>5} {'rain early/late':>16} {'high early/late':>18} {'cloud early/late':>20}")
+    for r in rows:
+        if not r.paired_days:
+            continue
+
+        def _pair(a, b):
+            left = f"{a:+.1f}" if a is not None else "-"
+            right = f"{b:+.1f}" if b is not None else "-"
+            return f"{left} / {right}"
+
+        print(
+            f"{r.model:16} {r.paired_days:>5} "
+            f"{f'{r.early_rain_correct}/{r.late_rain_correct}':>16} "
+            f"{_pair(r.early_high_error_c, r.late_high_error_c):>18} "
+            f"{_pair(r.early_cloud_error_pct, r.late_cloud_error_pct):>20}"
+        )
+
+    print()
+    print("Errors are observed minus forecast. The two cover DIFFERENT 24 hours —")
+    print("that is the point, not a flaw: the later call's whole advantage is that")
+    print("its period starts later. On one day a difference may be weather; across")
+    print("days what remains is whether newer guidance verifies better.")
     return 0
 
 
@@ -1181,6 +1234,13 @@ def main(argv: list[str] | None = None) -> int:
     wvd.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
     wvd.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
 
+    evl = sub.add_parser(
+        "early-vs-late",
+        help="Is a later issuance better informed? The day's first window against its last.",
+    )
+    evl.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    evl.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+
     health = sub.add_parser(
         "check-health",
         help="Weekly health checks: model deprecation, repo staleness, data coverage.",
@@ -1199,6 +1259,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_forecast(args)
     if args.command == "window-vs-day":
         return _run_window_vs_day(args)
+    if args.command == "early-vs-late":
+        return _run_early_vs_late(args)
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)
