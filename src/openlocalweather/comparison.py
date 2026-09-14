@@ -212,11 +212,21 @@ def _onset_is_ahead(onset: str | None, issued_hour: int | None) -> bool:
     by the prompt, so no instruction the forecaster could have followed would
     have repaired it.
 
-    `issued_hour` is None for a day that is OVER and described from
+    `issued_hour` is None when THE HOUR BOUND DOES NOT APPLY, which is two
+    different days rather than one. A day that is OVER and described from
     observations — yesterday's side of the comparison — where a timing phrase
-    is a report rather than a claim and is always allowed. That case is passed
-    explicitly rather than defaulted, so a new caller has to decide which day
-    it is holding.
+    is a report rather than a claim. And a day that has NOT BEGUN — tomorrow,
+    once contract item 8's evening subject exists — where every hour is still
+    ahead by construction and nothing of it can have elapsed.
+
+    Both are "always allowed", and they are the same rule seen from either
+    side: the bound exists only for a day IN PROGRESS, which is the only kind
+    of day whose hours can be partly spent. Stated as two cases because a
+    reader meeting `issued_hour=None` at a new call site has to know which one
+    they are in, and because the second one was added later.
+
+    That case is passed explicitly rather than defaulted, so a new caller has
+    to decide which day it is holding.
     """
     if onset is None:
         return False
@@ -356,6 +366,8 @@ def compute_day_over_day(
     sunset_hour: int | None = None,
     tomorrow_predictions: list[ModelPrediction] | None = None,
     calibrated_wind_kmh: float | None = None,
+    today_name: str | None = None,
+    tomorrow_name: str | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
     as a gap, not as a day with unremarkable weather.
@@ -393,10 +405,35 @@ def compute_day_over_day(
     # from today's numbers against yesterday's observation means "Tuesday will
     # be cooler than Sunday", which is worse than silence — and the prompt
     # already knows what to do with an absent comparison.
+    #
+    # WHAT THE SENTENCE CALLS THINGS moves with it. A comparison about
+    # tomorrow measured against today has to say so, and at 20:00 on a Monday
+    # "dry until evening showers" is about Monday night to any reader who has
+    # not been told otherwise. The operator's instruction, 2026-09-14:
+    # substitute day names where it is ambiguous.
+    #
+    # NAMES ARE OPTIONAL AND THE FALLBACK IS PLAINER, NOT WRONGER. Without a
+    # weekday the sentence still says "today" and "tomorrow", which is
+    # unambiguous in every case except the one the names exist for — a reader
+    # opening the page the next morning. A caller with no calendar gets the
+    # honest lesser version rather than a parenthesis with nothing in it.
+    baseline_comparative, baseline_similarity = "yesterday", "yesterday"
+    subject_prefix = None
+    # Tomorrow has not started, so every hour of it is ahead of this issuance
+    # and no timing qualifier in it is a claim about elapsed hours — see
+    # _onset_is_ahead, whose None means exactly that the hour bound does not
+    # apply.
+    character_issued_hour = issued_hour
+
     if subject == COMPARISON_SUBJECT_TOMORROW:
         if not tomorrow_predictions:
             return None
         today_day0_predictions = tomorrow_predictions
+        today_phrase = f"today ({today_name})" if today_name else "today"
+        baseline_comparative = f"{today_phrase} was"
+        baseline_similarity = today_phrase
+        subject_prefix = f"{tomorrow_name} will be " if tomorrow_name else "tomorrow will be "
+        character_issued_hour = None
 
     consensus_high = mean([p.high_c for p in today_day0_predictions])
     consensus_low = mean([p.low_c for p in today_day0_predictions])
@@ -493,7 +530,7 @@ def compute_day_over_day(
     # from a forecast, so a timing qualifier whose hour has passed is a claim
     # about hours nobody here can see — see _onset_is_ahead.
     today_character = describe_day_rain(
-        today_precip, today_onset, thunder=today_convective, issued_hour=issued_hour
+        today_precip, today_onset, thunder=today_convective, issued_hour=character_issued_hour
     )
     # observed_onset(), not onset_hour: a shower the reanalysis missed
     # entirely leaves onset_hour None, and the dry band's shower phrases are
@@ -625,6 +662,9 @@ def compute_day_over_day(
             # 12 km/h low sits a whole band below where it belongs and the
             # day it matters is the day it stays silent.
             wind_warning_name=wind_warning(wind_for_label),
+            baseline_comparative=baseline_comparative,
+            baseline_similarity=baseline_similarity,
+            subject_prefix=subject_prefix,
         ),
     )
 
@@ -674,6 +714,9 @@ def describe_day_over_day(
     today_character: str | None = None,
     rain_unchanged: bool = False,
     wind_warning_name: str | None = None,
+    baseline_comparative: str = "yesterday",
+    baseline_similarity: str = "yesterday",
+    subject_prefix: str | None = None,
 ) -> str | None:
     """The whole day-over-day comparison as finished, punctuated sentences.
 
@@ -683,6 +726,21 @@ def describe_day_over_day(
     THE RAIN PHRASE ALWAYS GETS ITS OWN SENTENCE. It is written as a sentence
     opener and there is no preposition it survives — which is defect 1, and
     the reason this function exists rather than a longer instruction.
+
+    THE BASELINE IS NAMED TWICE BECAUSE ENGLISH NAMES IT TWICE — item 104,
+    contract item 8, stage 2. "Warmer than yesterday" and "much like
+    yesterday" take the same word, and "warmer than today (Monday) WAS" and
+    "much like today (Monday)" do not: the comparative needs a verb to place a
+    day that is still in progress, and the similarity form reads as a
+    stammer with one. Two parameters rather than one plus a rule, because a
+    rule here would be a conditional on a string.
+
+    `subject_prefix` names the day the rain phrase is ABOUT, and exists for
+    the same reason. "Dry until evening showers." read at 20:00 on Monday is
+    about Monday night to anyone who has not been told otherwise, and it is
+    the operator's own instruction for this: substitute day names where it is
+    ambiguous. The default is None because a comparison about TODAY has no
+    ambiguity to resolve — the Overview is already about today.
     """
     dimensions = (
         (high_label, TEMP_CHANGE_BANDS_C[0][1]),
@@ -699,7 +757,7 @@ def describe_day_over_day(
         # "than yesterday" ONCE, on the clause that owns the comparison. The
         # unmoved label is dropped rather than listed: "slightly warmer and
         # similar winds" is an enumeration of one fact and one non-fact.
-        lead = f"{' and '.join(moved)} than yesterday"
+        lead = f"{' and '.join(moved)} than {baseline_comparative}"
     elif measured and (rain_unchanged or not rain_contrast):
         # NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting
         # one of them. Raised by the operator 2026-09-09: an Overview opening
@@ -710,7 +768,7 @@ def describe_day_over_day(
         # A claim about the measurements, not about the day, so a MISSING
         # label withholds it: a null wind label is absent data, not a quiet
         # wind, and this would be asserting a baseline never measured.
-        lead = "much like yesterday"
+        lead = f"much like {baseline_similarity}"
 
     sentences = [s for s in (lead,) if s]
 
@@ -718,9 +776,15 @@ def describe_day_over_day(
         # The lead has already made the comparison, so the rain half drops
         # its own "again" and simply describes today. Item 48's enumeration:
         # a reader told the day is like yesterday has been told the rain is.
-        sentences.append(
-            today_character if lead == "much like yesterday" and today_character else rain_contrast
+        phrase = (
+            today_character
+            if lead == f"much like {baseline_similarity}" and today_character
+            else rain_contrast
         )
+        # The day name goes on the rain half and NOT on the lead, because the
+        # lead already carries its own baseline ("than today (Monday) was")
+        # and a second day name in one breath reads as two forecasts.
+        sentences.append(f"{subject_prefix}{phrase}" if subject_prefix else phrase)
 
     if wind_warning_name:
         # A LEVEL, NOT A CHANGE, and it gets its own sentence so that nothing

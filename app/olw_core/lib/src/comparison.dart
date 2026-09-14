@@ -433,17 +433,57 @@ DayOverDayComparison? computeDayOverDay(
   required int? issuedHour,
   int? sunsetHour,
   double? calibratedWindKmh,
+  List<ModelPrediction>? tomorrowPredictions,
+  String? todayName,
+  String? tomorrowName,
 }) {
   if (yesterdayActual == null) return null;
 
   // The daypart gate — contract item 8. See comparisonSubject for why.
-  if (comparisonSubject(issuedHour, sunsetHour: sunsetHour) == null) {
+  final subject = comparisonSubject(issuedHour, sunsetHour: sunsetHour);
+  if (subject == null) {
     return null;
   }
 
-  final consensusHigh = mean([for (final p in todayDay0Predictions) p.highC]);
-  final consensusLow = mean([for (final p in todayDay0Predictions) p.lowC]);
-  final consensusWind = mean([for (final p in todayDay0Predictions) p.windKmh]);
+  // WHICH DAY THE NUMBERS DESCRIBE, and what the sentence calls it. After
+  // sunset the subject is tomorrow, so the consensus must be built from
+  // TOMORROW'S predictions — until this existed the gate said "tomorrow"
+  // while the arithmetic went on averaging today's Day+0 row.
+  //
+  // NULL RATHER THAN A FALLBACK TO TODAY'S: a tomorrow comparison computed
+  // from today's numbers against yesterday's observation means "Tuesday will
+  // be cooler than Sunday", which is worse than silence.
+  //
+  // NAMES ARE OPTIONAL AND THE FALLBACK IS PLAINER, NOT WRONGER. Without a
+  // weekday the sentence still says "today" and "tomorrow", unambiguous in
+  // every case except the one the names exist for — a reader opening the page
+  // the next morning.
+  var predictions = todayDay0Predictions;
+  var baselineComparative = 'yesterday';
+  var baselineSimilarity = 'yesterday';
+  String? subjectPrefix;
+  // Tomorrow has not started, so every hour of it is ahead of this issuance
+  // and no timing qualifier in it is a claim about elapsed hours — see
+  // _onsetIsAhead, whose null means exactly that the hour bound does not
+  // apply.
+  int? characterIssuedHour = issuedHour;
+
+  if (subject == comparisonSubjectTomorrow) {
+    if (tomorrowPredictions == null || tomorrowPredictions.isEmpty) {
+      return null;
+    }
+    predictions = tomorrowPredictions;
+    final todayPhrase = todayName != null ? 'today ($todayName)' : 'today';
+    baselineComparative = '$todayPhrase was';
+    baselineSimilarity = todayPhrase;
+    subjectPrefix =
+        tomorrowName != null ? '$tomorrowName will be ' : 'tomorrow will be ';
+    characterIssuedHour = null;
+  }
+
+  final consensusHigh = mean([for (final p in predictions) p.highC]);
+  final consensusLow = mean([for (final p in predictions) p.lowC]);
+  final consensusWind = mean([for (final p in predictions) p.windKmh]);
 
   double? delta(double? today, double? yesterday) =>
       (today == null || yesterday == null) ? null : _round1(today - yesterday);
@@ -453,7 +493,7 @@ DayOverDayComparison? computeDayOverDay(
   // station's eighths sit beside it as a cross-check, exactly as the
   // station's sustained wind sits beside the scored gust.
   final consensusCloud =
-      mean([for (final p in todayDay0Predictions) p.cloudCoverPct]);
+      mean([for (final p in predictions) p.cloudCoverPct]);
   final cloudDelta = delta(consensusCloud, yesterdayActual.cloudCoverPct);
 
   // THE GUST OPERAND IS THE CALIBRATED ONE — see calibration.dart for the
@@ -472,7 +512,7 @@ DayOverDayComparison? computeDayOverDay(
   final lowDelta = delta(consensusLow, yesterdayActual.lowC);
   final windDelta = delta(windForLabel, yesterdayActual.peakWindKmh);
 
-  final votes = [for (final p in todayDay0Predictions) if (p.rain != null) p.rain!];
+  final votes = [for (final p in predictions) if (p.rain != null) p.rain!];
   final bool? todayRain =
       votes.isEmpty ? null : votes.where((v) => v).length > votes.length / 2;
 
@@ -481,7 +521,7 @@ DayOverDayComparison? computeDayOverDay(
   // storms "another wet day". todayRain above is still computed and still
   // stored, because it is what the accuracy record scores; it is simply no
   // longer what the reader is handed.
-  final todayPrecip = mean([for (final p in todayDay0Predictions) p.precipMm]);
+  final todayPrecip = mean([for (final p in predictions) p.precipMm]);
   // THE ONSET ANSWERS "WHEN", NEVER "WHETHER", so it is gated on the same
   // vote todayRainExpected reports, and the block can no longer contradict
   // itself. Measured 2026-09-08: of six models ecmwf alone forecast rain,
@@ -492,7 +532,7 @@ DayOverDayComparison? computeDayOverDay(
   // prose. The minority's storm still reaches the reader through the
   // convective block and Today's Forecast.
   final todayOnset =
-      todayRain == true ? consensusOnset(todayDay0Predictions) : null;
+      todayRain == true ? consensusOnset(predictions) : null;
   // SYMMETRY. Today's side used to pass null always, on the reasoning that
   // today has no thunder OBSERVATION. True, and it made the comparison
   // structurally incapable of calling today thundery while yesterday always
@@ -508,7 +548,7 @@ DayOverDayComparison? computeDayOverDay(
   // a claim about hours nobody here can see — see _onsetIsAhead.
   final todayCharacter =
       describeDayRain(todayPrecip, todayOnset, todayConvective,
-          issuedHour: issuedHour);
+          issuedHour: characterIssuedHour);
   final yesterdayCharacter = describeDayRain(
       yesterdayActual.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed
@@ -627,6 +667,9 @@ DayOverDayComparison? computeDayOverDay(
       // thresholds, so a gust 12 km/h low sits a whole band below where it
       // belongs and the day it matters is the day it stays silent.
       windWarningName: windWarning(windForLabel),
+      baselineComparative: baselineComparative,
+      baselineSimilarity: baselineSimilarity,
+      subjectPrefix: subjectPrefix,
     ),
   );
 }
@@ -675,6 +718,18 @@ String? describeDayOverDay(
   String? todayCharacter,
   bool rainUnchanged = false,
   String? windWarningName,
+  /// THE BASELINE IS NAMED TWICE BECAUSE ENGLISH NAMES IT TWICE — upstream
+  /// item 104, contract item 8. "Warmer than yesterday" and "much like
+  /// yesterday" take the same word; "warmer than today (Monday) WAS" and
+  /// "much like today (Monday)" do not. The comparative needs a verb to place
+  /// a day still in progress and the similarity form reads as a stammer with
+  /// one, so both are passed rather than one plus a rule.
+  String baselineComparative = 'yesterday',
+  String baselineSimilarity = 'yesterday',
+  /// The day the RAIN half is about. "Dry until evening showers." read at
+  /// 20:00 on Monday is about Monday night to anyone not told otherwise. Null
+  /// for a comparison about today, which has no ambiguity to resolve.
+  String? subjectPrefix,
 }) {
   final dimensions = [
     (highLabel, tempChangeBandsC.first.$2),
@@ -695,7 +750,7 @@ String? describeDayOverDay(
     // "than yesterday" ONCE, on the clause that owns the comparison. The
     // unmoved label is dropped rather than listed: "slightly warmer and
     // similar winds" is an enumeration of one fact and one non-fact.
-    lead = '${moved.join(' and ')} than yesterday';
+    lead = '${moved.join(' and ')} than $baselineComparative';
   } else if (measured && (rainUnchanged || !hasRain)) {
     // NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting one
     // of them: an Overview opening "Largely dry with thunderstorms again"
@@ -704,7 +759,7 @@ String? describeDayOverDay(
     //
     // A claim about the measurements, not the day, so a MISSING label
     // withholds it — a null wind label is absent data, not a quiet wind.
-    lead = 'much like yesterday';
+    lead = 'much like $baselineSimilarity';
   }
 
   final sentences = <String>[if (lead != null) lead];
@@ -712,9 +767,13 @@ String? describeDayOverDay(
   if (hasRain) {
     // The lead already made the comparison, so the rain half drops its own
     // "again" and simply describes today.
-    sentences.add(lead == 'much like yesterday' && todayCharacter != null
+    final phrase = lead == 'much like $baselineSimilarity' && todayCharacter != null
         ? todayCharacter
-        : rainContrast);
+        : rainContrast;
+    // The day name goes on the rain half and NOT on the lead, which already
+    // carries its own baseline — two day names in one breath read as two
+    // forecasts.
+    sentences.add(subjectPrefix != null ? '$subjectPrefix$phrase' : phrase);
   }
 
   if (windWarningName != null) {

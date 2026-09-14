@@ -932,7 +932,15 @@ void main() {
         final got = computeDayOverDay(y, preds,
             todayConvective: i['today_convective'] as bool?,
             issuedHour: i['issued_hour'] as int?,
-            calibratedWindKmh: (i['calibrated_wind_kmh'] as num?)?.toDouble());
+            calibratedWindKmh: (i['calibrated_wind_kmh'] as num?)?.toDouble(),
+            sunsetHour: i['sunset_hour'] as int?,
+            tomorrowPredictions: i['tomorrow_predictions'] == null
+                ? null
+                : (i['tomorrow_predictions'] as List)
+                    .map((p) => ModelPrediction.fromJson(p as Map<String, Object?>))
+                    .toList(),
+            todayName: i['today_name'] as String?,
+            tomorrowName: i['tomorrow_name'] as String?);
         expectMatches(got?.toJson(), c['expected'], c['name'] as String);
       }
     });

@@ -918,3 +918,83 @@ def test_the_gale_warning_reads_the_calibrated_gust():
 
     assert "strong breeze" not in (quiet.overview_comparison or "")
     assert "strong breeze" in warned.overview_comparison
+
+
+# ---------------------------------------------------------------------------
+# Contract item 8, stage 2 — a comparison about tomorrow has to say so.
+# ---------------------------------------------------------------------------
+
+
+def _evening(**kw):
+    """20:00 on a Monday whose sun set at 18:39, with Tuesday forecast."""
+    today_observed = kw.pop("today_observed", actual(high_c=30.5, precip_mm=12.0))
+    tomorrow = kw.pop("tomorrow", preds(high_c=27.0, precip_mm=0.0))
+    return compute_day_over_day(
+        today_observed, [], issued_hour=20, sunset_hour=18,
+        tomorrow_predictions=tomorrow, today_name="Monday", tomorrow_name="Tuesday",
+        **kw,
+    )
+
+
+def test_the_evening_lead_names_today_in_the_past_tense():
+    """The operator's own sentence, 2026-09-14: "It will be cooler and
+    breezier than today (Monday) was."
+
+    "Cooler than today" at 20:00 is ambiguous about which today — the one
+    ending or the one the reader wakes into — and the verb is what places it.
+    """
+    result = _evening()
+
+    assert result.overview_comparison.startswith("Noticeably cooler than today (Monday) was.")
+
+
+def test_the_similarity_form_takes_no_verb():
+    """"Much like today (Monday) was" is a stammer. English names the same
+    baseline two different ways depending on the clause, which is why the two
+    fragments are passed separately rather than derived from one by a rule."""
+    steady = _evening(today_observed=actual(high_c=31.5, peak_wind_kmh=33.1, cloud_cover_pct=40.0),
+                      tomorrow=preds(high_c=31.5, wind_kmh=33.0, cloud_cover_pct=44.0))
+
+    assert steady.overview_comparison.startswith("Much like today (Monday).")
+
+
+def test_the_rain_half_names_the_day_it_is_about():
+    """"Dry until evening showers." read at 20:00 on Monday is about Monday
+    night to anyone who has not been told otherwise."""
+    result = _evening(tomorrow=preds(rain=True, precip_mm=8.0, onset="17:00", high_c=27.0))
+
+    # "again" because today was showery too, which at 20:00 is a true and
+    # useful thing to say about tomorrow.
+    assert "Tuesday will be dry until evening showers again." in result.overview_comparison
+
+
+def test_tomorrows_timing_survives_a_late_issuance():
+    """Item 118 bounds a timing phrase by the hours already ELAPSED, and none
+    of tomorrow's have. Without this a 17:00 onset read at 20:00 would be
+    suppressed as a claim about the past — on a day that has not started."""
+    result = _evening(tomorrow=preds(rain=True, precip_mm=8.0, onset="17:00", high_c=27.0))
+
+    assert "evening showers" in result.overview_comparison
+
+
+def test_without_a_calendar_the_sentence_is_plainer_and_still_true():
+    """A caller with no weekday names gets "today" and "tomorrow" rather than
+    an empty parenthesis. Unambiguous in every case but the one the names
+    exist for: a reader opening the page the next morning."""
+    result = compute_day_over_day(
+        actual(high_c=30.5, precip_mm=12.0), [], issued_hour=20, sunset_hour=18,
+        tomorrow_predictions=preds(high_c=27.0, precip_mm=0.0),
+    )
+
+    assert "than today was." in result.overview_comparison
+    assert "Tomorrow will be" in result.overview_comparison
+    assert "(" not in result.overview_comparison
+
+
+def test_the_morning_sentence_is_untouched():
+    """Every default is yesterday, so the hour that already worked cannot
+    have moved."""
+    result = compute_day_over_day(actual(high_c=27.0), preds(high_c=29.0), issued_hour=6)
+
+    assert "than yesterday" in result.overview_comparison
+    assert "today (" not in result.overview_comparison

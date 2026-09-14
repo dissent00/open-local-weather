@@ -604,6 +604,13 @@ def test_vectors_day_over_day():
             today_convective=i.get("today_convective"),
             issued_hour=i["issued_hour"],
             calibrated_wind_kmh=i.get("calibrated_wind_kmh"),
+            sunset_hour=i.get("sunset_hour"),
+            tomorrow_predictions=(
+                [ModelPrediction.model_validate(p) for p in i["tomorrow_predictions"]]
+                if i.get("tomorrow_predictions") else None
+            ),
+            today_name=i.get("today_name"),
+            tomorrow_name=i.get("tomorrow_name"),
         )
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 

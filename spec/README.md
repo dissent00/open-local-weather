@@ -97,7 +97,7 @@ absent values are `null`, never omitted keys.
 | `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |
 | `false_weekday_claims.json` | `false_weekday_claims` | Weekday/date pairings a narrative asserts that the calendar contradicts. Recorded against the entry and published anyway; a false alarm is worse than the defect. |
 | `dates_add_days.json` | `add_days` | 4 |
-| `day_over_day.json` | `compute_day_over_day` | 49 |
+| `day_over_day.json` | `compute_day_over_day` | 53 |
 | `gust_calibration.json` | `calibrated_gust_consensus` | The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model short of the check threshold is absent from it rather than corrected by zero. |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |

@@ -74,7 +74,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -169,7 +173,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 27.0,
@@ -264,7 +272,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 34.0,
@@ -359,7 +371,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 39.0,
@@ -454,7 +470,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 27.5,
@@ -549,7 +569,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 32.3,
@@ -644,7 +668,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 32.6,
@@ -709,7 +737,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -774,7 +806,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -839,7 +875,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -904,7 +944,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -969,7 +1013,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1034,7 +1082,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1099,7 +1151,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1164,7 +1220,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1229,7 +1289,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1294,7 +1358,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1359,7 +1427,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1469,7 +1541,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1534,7 +1610,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1599,7 +1679,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1664,7 +1748,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1729,7 +1817,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1869,7 +1961,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -1964,7 +2060,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 50.0,
@@ -2059,7 +2159,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 40.9,
@@ -2154,7 +2258,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 41.0,
@@ -2219,7 +2327,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2284,7 +2396,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2349,7 +2465,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2414,7 +2534,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2479,7 +2603,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 30.0,
@@ -2544,7 +2672,11 @@
         ],
         "today_convective": true,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2609,7 +2741,11 @@
         ],
         "today_convective": false,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2674,7 +2810,11 @@
         ],
         "today_convective": true,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2739,7 +2879,11 @@
         ],
         "today_convective": false,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2804,7 +2948,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2869,7 +3017,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -2934,7 +3086,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3002,7 +3158,11 @@
         ],
         "today_convective": true,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3052,7 +3212,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": null
     },
@@ -3112,7 +3276,11 @@
         ],
         "today_convective": null,
         "issued_hour": 0,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3177,7 +3345,11 @@
         ],
         "today_convective": true,
         "issued_hour": 6,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3242,7 +3414,11 @@
         ],
         "today_convective": true,
         "issued_hour": 18,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": null
     },
@@ -3287,7 +3463,11 @@
         ],
         "today_convective": true,
         "issued_hour": 8,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3352,7 +3532,11 @@
         ],
         "today_convective": null,
         "issued_hour": 6,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3417,7 +3601,11 @@
         ],
         "today_convective": null,
         "issued_hour": 6,
-        "calibrated_wind_kmh": 41.5
+        "calibrated_wind_kmh": 41.5,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3482,7 +3670,11 @@
         ],
         "today_convective": null,
         "issued_hour": 6,
-        "calibrated_wind_kmh": null
+        "calibrated_wind_kmh": null,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3547,7 +3739,11 @@
         ],
         "today_convective": null,
         "issued_hour": 6,
-        "calibrated_wind_kmh": 51.5
+        "calibrated_wind_kmh": 51.5,
+        "sunset_hour": null,
+        "tomorrow_predictions": null,
+        "today_name": null,
+        "tomorrow_name": null
       },
       "expected": {
         "yesterday_high_c": 29.6,
@@ -3568,6 +3764,346 @@
         "cloud_label": null,
         "rain_contrast": "wet again",
         "overview_comparison": "Windier than yesterday. Wet again. Gusting to strong breeze.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "the evening subject is tomorrow, named and in the past tense",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.6,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null,
+        "issued_hour": 20,
+        "calibrated_wind_kmh": null,
+        "sunset_hour": 18,
+        "tomorrow_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 27.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_name": "Monday",
+        "tomorrow_name": "Tuesday"
+      },
+      "expected": {
+        "yesterday_high_c": 30.5,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 27.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "today_calibrated_peak_wind_kmh": null,
+        "high_delta_c": -3.5,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "noticeably cooler",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "dry",
+        "overview_comparison": "Noticeably cooler and much calmer than today (Monday) was. Tuesday will be dry.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "a late issuance does not bound tomorrow's onset",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.6,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null,
+        "issued_hour": 20,
+        "calibrated_wind_kmh": null,
+        "sunset_hour": 18,
+        "tomorrow_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "17:00",
+            "precip_mm": 8.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 27.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_name": "Monday",
+        "tomorrow_name": "Tuesday"
+      },
+      "expected": {
+        "yesterday_high_c": 30.5,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 27.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "today_calibrated_peak_wind_kmh": null,
+        "high_delta_c": -3.5,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "noticeably cooler",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "dry until evening showers again",
+        "overview_comparison": "Noticeably cooler and much calmer than today (Monday) was. Tuesday will be dry until evening showers again.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "the evening similarity form names today without a verb",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 20.0,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": 40.0,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.6,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null,
+        "issued_hour": 20,
+        "calibrated_wind_kmh": null,
+        "sunset_hour": 18,
+        "tomorrow_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 12.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.6,
+            "low_c": 18.0,
+            "cloud_cover_pct": 44.0,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_name": "Monday",
+        "tomorrow_name": "Tuesday"
+      },
+      "expected": {
+        "yesterday_high_c": 29.6,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 20.0,
+        "today_rain_expected": true,
+        "today_consensus_high_c": 29.6,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "today_calibrated_peak_wind_kmh": null,
+        "high_delta_c": 0.0,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": 0.0,
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "cloud_label": "similar cloud",
+        "rain_contrast": "showery from the afternoon again",
+        "overview_comparison": "Much like today (Monday). Tuesday will be showery from the afternoon.",
+        "provenance": null
+      }
+    },
+    {
+      "name": "without weekday names the evening sentence is plainer",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 30.5,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "14:00",
+          "precip_mm": 12.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "08:00",
+            "precip_mm": 18.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.6,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": null,
+        "issued_hour": 20,
+        "calibrated_wind_kmh": null,
+        "sunset_hour": 18,
+        "tomorrow_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 27.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_name": null,
+        "tomorrow_name": null
+      },
+      "expected": {
+        "yesterday_high_c": 30.5,
+        "yesterday_low_c": 18.8,
+        "yesterday_rain": true,
+        "yesterday_thunder": null,
+        "yesterday_peak_wind_kmh": 40.7,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 27.0,
+        "today_consensus_low_c": 18.0,
+        "today_consensus_peak_wind_kmh": 20.0,
+        "today_calibrated_peak_wind_kmh": null,
+        "high_delta_c": -3.5,
+        "low_delta_c": -0.8,
+        "wind_delta_kmh": -20.7,
+        "high_label": "noticeably cooler",
+        "wind_label": "much calmer",
+        "cloud_label": null,
+        "rain_contrast": "dry",
+        "overview_comparison": "Noticeably cooler and much calmer than today was. Tomorrow will be dry.",
         "provenance": null
       }
     }

@@ -2780,6 +2780,48 @@ def export_day_over_day() -> None:
          preds([29.6], winds=[40.0]), None, 6),
         ("the calibrated gust crosses into a warning", actual(),
          preds([29.6], winds=[40.0]), None, 6, 51.5),
+        # CONTRACT ITEM 8, STAGE 2 — the evening subject. 20:00 on a Monday
+        # whose sun set at 18:39: the comparison is about TOMORROW, measured
+        # against today, and every word of it has to say so. The baseline is
+        # named twice because English names it twice — "cooler than today
+        # (Monday) WAS" against "much like today (Monday)" — and the rain half
+        # carries the day it is about, because "dry until evening showers"
+        # read at 20:00 is about tonight to anyone not told otherwise.
+        ("the evening subject is tomorrow, named and in the past tense",
+         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+         preds([29.6]), None, 20, None,
+         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
+                                                           rains=[False]),
+          "today_name": "Monday", "tomorrow_name": "Tuesday"}),
+        # TOMORROW'S TIMING SURVIVES A LATE ISSUANCE. Item 118 bounds a timing
+        # phrase by the hours already ELAPSED and none of tomorrow's have, so
+        # a 17:00 onset read at 20:00 must stay. Bounding it by today's hour
+        # would suppress a phrase about a day that has not started.
+        ("a late issuance does not bound tomorrow's onset",
+         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+         preds([29.6]), None, 20, None,
+         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[8.0], onsets=["17:00"]),
+          "today_name": "Monday", "tomorrow_name": "Tuesday"}),
+        # THE SIMILARITY FORM TAKES NO VERB. "Much like today (Monday) was"
+        # is a stammer, and without a case that reaches this branch a port can
+        # add the verb and pass everything else — mutating it SURVIVED the
+        # Dart vectors until this case existed. Every dimension quiet and the
+        # rain band unchanged, which is what it takes to get here.
+        ("the evening similarity form names today without a verb",
+         actual(high_c=29.6, peak_wind_kmh=20.0, cloud_cover_pct=40.0,
+                precip_mm=12.0, onset_hour="14:00"),
+         preds([29.6]), None, 20, None,
+         {"sunset_hour": 18,
+          "tomorrow_predictions": preds([29.6], winds=[20.0], clouds=[44.0],
+                                        mm=[12.0], onsets=["14:00"]),
+          "today_name": "Monday", "tomorrow_name": "Tuesday"}),
+        # NO CALENDAR, PLAINER SENTENCE. A caller without weekday names says
+        # "today" and "tomorrow" rather than printing an empty parenthesis.
+        ("without weekday names the evening sentence is plainer",
+         actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+         preds([29.6]), None, 20, None,
+         {"sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
+                                                           rains=[False])}),
     ]
 
     cases = []
@@ -2792,9 +2834,13 @@ def export_day_over_day() -> None:
         # None means "no model had enough verified checks", which is the state
         # every case but one is in — see ROADMAP item 126.
         calibrated = scenario[5] if len(scenario) > 5 else None
+        # The evening subject needs four more inputs than the morning one, and
+        # a seventh positional slot would be unreadable at the call sites that
+        # do not use it.
+        extra = dict(scenario[6]) if len(scenario) > 6 else {}
         result = compute_day_over_day(
             y, ps, today_convective=convective, issued_hour=issued,
-            calibrated_wind_kmh=calibrated,
+            calibrated_wind_kmh=calibrated, **extra,
         )
         cases.append({
             "name": name,
@@ -2804,6 +2850,13 @@ def export_day_over_day() -> None:
                 "today_convective": convective,
                 "issued_hour": issued,
                 "calibrated_wind_kmh": calibrated,
+                "sunset_hour": extra.get("sunset_hour"),
+                "tomorrow_predictions": (
+                    [dump(p) for p in extra["tomorrow_predictions"]]
+                    if extra.get("tomorrow_predictions") else None
+                ),
+                "today_name": extra.get("today_name"),
+                "tomorrow_name": extra.get("tomorrow_name"),
             },
             "expected": dump(result),
         })
