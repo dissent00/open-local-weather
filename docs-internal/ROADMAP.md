@@ -13211,6 +13211,27 @@ failed holds only today, which at 18:00 is six hours. Storing that as a
 24-hour claim is the failure `forward_hours` exists to prevent, so it stores
 `[]` instead.
 
+**FIRST PRODUCTION RUN, 2026-09-14 03:52Z — and one model shows exactly why
+Day+0 is broken.** Issued 06:50 local:
+
+| model | Day+0 high/low/onset | window high/low/onset |
+|---|---|---|
+| gfs_seamless | 30.2 / 19.1 / 19:00 | same |
+| ecmwf_ifs025 | 28.2 / 17.8 / 16:00 | same |
+| **icon_seamless** | 28.6 / 20.8 / **00:00** | 28.6 / 20.8 / **06:00** |
+| **ukmo_seamless** | 29.2 / **18.1** / 19:00 | 29.2 / **17.7** / 19:00 |
+| best_match | 29.1 / 18.0 / 17:00 | same |
+
+`icon_seamless` is the case in one line: its calendar-day claim puts rain
+onset at 00:00, six hours BEFORE the issuance — a forecast about hours the
+reader had already lived through. The window reports the first wet hour
+actually ahead. `ukmo_seamless` moves its low because the window reaches into
+tomorrow morning.
+
+The high moved on no model and the low on one of five, which is what the
+earlier measurement predicted for the 06:00 slot: "it changes `temp_high_c` on
+NO day and `temp_low_c` on about a third".
+
 **Stored and NOT scored, deliberately.** `verify.scoring.scored_predictions`
 still names row 0's `predictions`. The window accumulates first so the switch
 is decided against measured days rather than against the reframe's argument —
@@ -14401,6 +14422,19 @@ area), 105 (where mirrored deployments would appear).
 On 2026-09-12 the 03:01 forecast was refused by the spend cap and readers got
 yesterday's page. The only trace was a red workflow run. Nobody was told, and
 the operator found out by looking.
+
+**IT HAPPENED AGAIN ON 2026-09-14, and the same sentence applies.** The
+03:01Z run died on an unparseable 200 from Open-Meteo (fixed in the fetch
+layer — see below), readers got yesterday's page, and the operator found out
+by looking. Fifty-one minutes to recovery because they happened to check; the
+next scheduled trigger was twelve hours away, so without them noticing the day
+would have had no forecast until 15:01Z.
+
+**Two instances now, two different causes** — a spend cap refusal and an
+upstream fault — which is the argument for notifying on the OUTCOME rather
+than on any particular cause. The cheap version is worth more than the
+complete one: "no issuance for today by HH:MM" is one check against
+`data/log/`, and it does not need to know why.
 
 **The gap is not detection — it is notification.** The run failed loudly in
 the only place nobody reads. Every other slow rot in this project is caught by
