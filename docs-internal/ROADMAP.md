@@ -9492,6 +9492,15 @@ not in the session that built it.
 > 4. Hand both to a worker model that has been told NOTHING about what
 >    changed. The cold reading is the whole value; whoever made the edit is
 >    the worst judge of whether it lands.
+>
+>    **HAND OVER THE PROMPT, NOT A PATH TO IT — see item 130.** A file of
+>    6,079 lines read with a 2,000-line default gives the reader the raw
+>    arrays and nothing else: every pre-computed block sits past line 1,753.
+>    Three readers reported present blocks as missing before this was found.
+>    State the line count, require explicit successive offset/limit reads
+>    covering it, and make the reader report the line number of every block
+>    BEFORE it writes anything, so a short read is visible instead of
+>    arriving disguised as a data gap.
 > 5. Ask for the narrative AND a compliance section naming anything
 >    ambiguous, self-contradictory, or impossible — with the instruction
 >    quoted. **Tell it not to smooth over an awkward result**: an ungrammatical
@@ -17720,7 +17729,25 @@ for everything else on the row.
 
 Related: items 104 (contract items 4 and 8), 126, 98, 83.
 
-## 128. Four rules a cold reader skipped, found by running item 77's harness · **Planned — raised 2026-09-14**
+## 128. Rules a cold reader skipped · **Planned — raised and PARTLY WITHDRAWN the same day, 2026-09-14**
+
+> **TWO OF THE FOUR SURVIVED RE-TESTING AND ONE DID NOT.** These were filed
+> from a harness run that turned out to be reading only part of the prompt —
+> see item 130. Re-run against the same prompt with the reading defect fixed:
+>
+> | | |
+> |---|---|
+> | 1, a bearing derived from the pressure ring | **REPRODUCES** — "shifting more southerly as convection builds", with WIND DIRECTION and WIND SHIFT both rendering Unavailable |
+> | 2, AQI stations not named in the Detailed Discussion | **WITHDRAWN** — the fixed run produced a dedicated per-station section naming all three. The original reader had not reached the block |
+> | 3, `X km/h (Y kt)` inconsistent | **REPRODUCES** — "21.7 km/h (12 kt)" beside a bare "20-35 km/h" in the same forecast |
+> | 4, the verbless extended phrase | **UNSETTLED** — two readers complained, a third used it without comment. It was raised as a question and stays one |
+>
+> Defect 1 is the more interesting for having survived: the rule is stated in
+> the WIND DIRECTION block and evaded in the Winam Gulf section, which is item
+> 73's category 2 with the distance between rule and temptation measured in
+> thousands of lines.
+
+
 
 Found by the manual prompt harness at item 73's first cut, in the arm reading
 the UNCHANGED production prompt — so all four are defects in what ships today,
@@ -17855,3 +17882,61 @@ double**, because it is paid by both calls. That is the strongest argument
 item 73 has and it was not written down anywhere.
 
 Related: items 73, 77, 59 (the split), 128.
+
+
+## 130. The prompt harness was reading a third of the prompt · **Fixed 2026-09-14**
+
+Item 77's standing practice is to hand an archived prompt to a cold worker
+model. It said "hand both to a worker model"; what it actually did was hand
+over a FILE PATH, and that is not the same thing.
+
+**The user prompt is 6,079 lines. A default read returns 2,000.** Everything
+from line 1,753 onward — every pre-computed block, the verification results,
+the track record, the long-run review, the historical notes, and THE
+FORECASTER'S CALL itself — sits past that line. Only ISSUED, CALENDAR and
+HOURS AHEAD fall inside it, and HOURS AHEAD is the raw arrays.
+
+### How it surfaced
+
+Three readers across two runs reported a block missing that was demonstrably
+present, each a different block:
+
+| run | claimed missing | actually at line |
+|---|---|---|
+| the hourly cut's B arm | `synoptic_scale_pressure` | 5,920 |
+| C1 | `HISTORICAL NOTES` | 5,512 |
+| C2 | `synoptic_scale_pressure` | 4,529 |
+
+The first was reported to the operator as worker noise. It was not: it was
+systematic, it would recur on every run, and it produced exactly the finding
+an A/B is most likely to be believed on — an arm saying data went missing
+right after data was removed.
+
+### The fix, and it is confirmed
+
+Tell the reader the file's length, require explicit successive offset/limit
+reads that cover it, and make it report the line number of every block BEFORE
+writing anything. An incomplete read then shows up as an incomplete table
+rather than arriving disguised as a data gap.
+
+Re-run that way against the same prompt: all thirteen blocks located, correct
+line numbers, **no false absence**. The two blocks that had been "missing"
+three times between them were both found.
+
+### What it costs, stated plainly
+
+**Every harness conclusion drawn before this is worth less than it looked.**
+Item 128 lost one of its four defects to it. The rounding pass's probe — "any
+number stated to a precision you did not trust" — was meaningless in the runs
+where the reader never reached MODEL TRACK RECORD at line 5,112, which is
+where the float noise lived; the fixed run read it and raised nothing, which
+is the first real evidence that pass has.
+
+**And the noise floor stands regardless.** C1 and C2 received byte-identical
+prompts and disagreed anyway: different false absences, and a split on whether
+the Overview should name the thunder peak hour. That was measured on both arms
+equally, so the reading defect does not explain it away. An n=1 A/B on this
+instrument cannot separate a real effect from worker variance, and the fix
+does not change that — it removes a systematic false-negative, not the noise.
+
+Related: items 77 (whose method this amends), 73, 128.
