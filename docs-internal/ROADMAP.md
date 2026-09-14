@@ -16647,3 +16647,72 @@ field is a different question and is not blocked by it.
 
 Related: items 121 (the observed block, which already carries the solid half),
 83 and 65 (the comparison and the cloud data), 87, 100.
+
+## 124. A feed is the delivery path that needs no credentials · **Planned — raised 2026-09-14**
+
+Raised while answering whether GitHub can mail a subscriber list. It cannot —
+the failure emails an operator already gets are GitHub's NOTIFICATION system
+mailing them as an account with repo access, not a mailer, and no API adds an
+arbitrary address to it. GitHub supplies no mail transport at all; an SMTP
+action in a workflow still needs credentials, which is item 5's dead end.
+
+**RSS appears in this repo only as an INPUT** — Kenya Met's CAP feed, GDACS —
+and has never been considered as an output. That is the gap.
+
+### Why it may be the better DEFAULT, which is not the same as better
+
+Operator, 2026-09-14:
+
+> "I'm not sure anyone in my beta group is an RSS feed consumer, but it may be
+> a better default recommendation for OLW than the gmail dance."
+
+That framing is the item. This deployment's readers want email and the mailer
+stays — see item 121's mailer note and the review on 2026-09-14. The question
+is what a FORK should be told to do first, and the three paths cost very
+different things to stand up:
+
+| path | what a forker must do | reaches an inbox |
+|---|---|---|
+| Apps Script mailer | Google account, paste a file, set a trigger, add addresses by hand | yes |
+| Brevo (item 5) | register a domain, DKIM/SPF/DMARC, ~$15/yr, build a signup form | yes |
+| **a feed** | **nothing — it is a file in `docs/`** | no |
+
+A feed is the only one with no account, no secret, no DNS, no cost and no
+manual deployment step. For a fork whose author wants nothing to do with the
+app and has no domain, it is the only delivery that works on the day they
+publish their first forecast.
+
+**And it carries no PII**, which item 116 names as the one thing email
+reintroduces. There is no subscriber list to hold, lose, or migrate with
+consent. The same property means an operator cannot know who reads it, which
+is a real cost for a beta and a real feature for a public utility.
+
+### What it is
+
+An Atom feed written by `publish/pages.py` beside `archive/index.html`, from
+the same entries `build_archive_items` already enumerates, plus a
+`<link rel="alternate" type="application/atom+xml">` in the page head. This
+repo already knows that discovery pattern from the other end: item 2 probed
+Kenya Met's head for exactly that tag and recorded its absence.
+
+### The one design question, and item 104 sharpens it
+
+**One entry per DAY, updated — not one per issuance.** Atom has `<updated>`
+precisely for this, and a re-issue should revise the day's entry rather than
+append a second. Item 104 removed the two-runs-a-day structure and item 121
+made an hourly cron the expected shape, so a feed keyed on issuances would
+push up to twenty-four items a day at a reader who wanted one. The day is the
+unit a reader subscribes to; the issuance is an edit to it.
+
+That also decides the `<id>`: the day's permalink, stable across re-issues,
+with `<updated>` carrying `last_issued_at`.
+
+### What it does not solve
+
+It is not push. A reader must run a client, which is exactly why it does not
+replace the mailer for this deployment's beta group. It is an ADDITIONAL
+surface, and the cheapest one this project has available.
+
+Related: items 5 (the sending domain, and why email is hard), 3 (push-based
+mailer delivery), 116 (the PII email reintroduces), 2 (feed discovery, from
+the consuming end), 113.
