@@ -763,9 +763,11 @@ behaviour has been observed against real KMD posting patterns for a while.
 
 ---
 
-## 3. Push-based mailer delivery — replace Apps Script polling entirely · **On hold 2026-09-14, and its premise is stale**
+## 3. Push-based mailer delivery — replace Apps Script polling entirely · **On hold indefinitely (2026-09-14), and its premise is stale**
 
-**TWO REASONS NOT TO START IT.** Item 124 makes the mailer an example rather
+**ON HOLD INDEFINITELY, not scheduled behind something** — operator's call,
+2026-09-14. There is no date at which this becomes next. Two reasons, and
+either alone is enough. Item 124 makes the mailer an example rather
 than the recommendation, so building a better trigger for it spends effort on
 a path being retired. And the description below is nine days out of date:
 `daily.yml` and `evening_refresh.yml` were deleted on 2026-09-05 (`cc3e556`)
@@ -990,9 +992,11 @@ same quirk.
 
 ---
 
-## 5. Real sending domain for email · **On hold 2026-09-14 — the destination changed**
+## 5. Real sending domain for email · **On hold indefinitely (2026-09-14) — the destination changed**
 
-**DO NOT START THIS WITHOUT REOPENING THE DECISION.** Item 124 sets the
+**ON HOLD INDEFINITELY, not scheduled behind something.** There is no date
+at which this becomes next; it becomes live again only if item 124's
+direction is reversed. Operator's call, 2026-09-14. Item 124 sets that
 direction: the published page is the product, a feed is the delivery path
 that needs no credentials, and the mailer becomes an example rather than the
 recommendation. Every cost listed below — a domain, DKIM/SPF/DMARC, a signup
