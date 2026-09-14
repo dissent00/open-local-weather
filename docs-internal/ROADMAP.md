@@ -13597,8 +13597,79 @@ no sentence is left to mean "today" when today is two hours long.
 Labelled an observation, never a forecast, and the forecast number for the same
 header becomes tomorrow's.
 
-**8. The day-over-day comparison is recast against the forward window. NOT BUILT — confirmed 2026-09-14.** `compute_day_over_day` still builds `consensus_high` from the calendar `today_day0_predictions` and compares it against `yesterday_actual.high_c`, so both sides are calendar days. Item 118 bounded its PHRASES by the issuance hour (`_onset_is_ahead`), which is a different fix and is done; the QUANTITIES were not recast. Unlike items 5 and 7 this is not blocked — the comparison is prose-facing rather than a scored field, so no firewall stands in the way. What it needs is a decision about the other side: a forward window compared against yesterday's same window, or against yesterday's whole day. It is
+**8. The day-over-day comparison is recast against the forward window. NOT BUILT — confirmed 2026-09-14.** `compute_day_over_day` still builds `consensus_high` from the calendar `today_day0_predictions` and compares it against `yesterday_actual.high_c`, so both sides are calendar days. Item 118 bounded its PHRASES by the issuance hour (`_onset_is_ahead`), which is a different fix and is done; the QUANTITIES were not recast. Unlike items 5 and 7 this is not blocked — the comparison is prose-facing rather than a scored field, so no firewall stands in the way. What it needs is a decision about the other side. It is
 not suppressed at a late issuance and it is not keyed to the previous issuance.
+
+### Recast by the operator's own scenarios, 2026-09-14 — and "not suppressed" is withdrawn
+
+Asked what they want at each hour, the answer was a DAYPART GATE rather than a
+recast window:
+
+| local time | subject | comparison? |
+|---|---|---|
+| 03:00, 06:00 | the day ahead, now onward | yes, against a previous full day |
+| 15:00, 18:00 | the rest of today | **no** — "I've already lived enough of it that I don't care how it compares to yesterday" |
+| 20:00 | the rest of the night, AND tomorrow from sunrise | yes, against **today's DAYTIME observations** |
+
+**"It is not suppressed at a late issuance" is withdrawn.** That clause had no
+stated reasoning and the operator's mid-afternoon cases contradict it
+directly. A comparison is worth reading while the day is mostly ahead; by
+15:00 the reader has lived it.
+
+**The baseline is always a FULL PERIOD ALREADY LIVED, never a rolling 24 h.**
+That kills the "previous 24 hours" option and with it its blocker — a rolling
+baseline would reach into the current day, which `archive-api` serves as model
+output.
+
+**"Today's DAYTIME observations" dissolves the settling problem** rather than
+working around it. The unsettled part of a calendar day is the night; at 20:00
+the daytime window is closed, so its high, gust and rain are final. The
+measured table above is about whole-day values and does not constrain this.
+
+### Station on both sides, and the measurement that makes it mandatory
+
+At 20:00 only the STATION can observe today's daytime — the reanalysis serves
+the current day as model output. So the 20:00 comparison changes instrument,
+and the two instruments were measured against each other over the 40 cached
+days, station minus reanalysis:
+
+| dimension | mean offset | median | range | no-change band | % of band |
+|---|---|---|---|---|---|
+| `high_c` | **+0.49 °C** | +0.55 | -4.3 .. +2.6 | 1.0 °C | 49% |
+| `low_c` | +0.05 °C | -0.15 | -2.1 .. +2.1 | 1.0 °C | 5% |
+| `peak_wind_kmh` | **-14.19 km/h** | -16.17 | -40.3 .. +9.3 | 8.0 km/h | **177%** |
+| cloud, oktas→pct | **-15.31 pts** | -12.93 | -56.9 .. +37.5 | 12.5 pts | **122%** |
+
+**So mixing instruments is not a nuance, it is a break.** On wind and cloud
+the instrument difference alone exceeds the entire "no change" band — a day
+identical to today would be reported as windier or clearer purely because a
+different sensor was read. Station on BOTH sides is therefore mandatory rather
+than tidy; the offsets cancel and the bands stay honest.
+
+It also confirms item 44 on a longer record: +0.49 °C against its +0.43.
+
+### Which instrument is RIGHT is a different question, and this does not answer it
+
+The operator's view is that "the METAR observation is the best tool for
+sky/cloud cover other than satellite", and for describing WHAT A READER SAW
+that is hard to argue with — it is an instrument at the primary location, and
+item 121 already publishes it.
+
+**But it is the wrong basis for scoring MODELS, and the record says so
+sideways.** Cloud bias measured against the reanalysis is GFS -34.2 and ECMWF
++3.3 (item 123); re-based on the station every model moves about 15 points
+more negative, and all five look worse. Gridded models verify against a
+gridded analysis. That is a statement about like-for-like, not about truth.
+
+**And they are different STATISTICS, not only different instruments.**
+`station_cloud_oktas` is the mean cover across the day's METAR reports at one
+point, quantised to eighths — 12.5-point steps. `cloud_cover_pct` is a mean
+over hourly grid values. A 15-point gap is about one okta.
+
+So: station for the reader-facing comparison, reanalysis for model scoring,
+and neither called the truth. Satellite is the roadmapped tie-breaker.
+
+Related: item 123 (the sky in the Overview), 44 (the original offset), 100.
 
 *Why not the previous issuance.* In the app a forecast is issued when someone
 taps, so "what changed since last time" can be days old, and the opening's
