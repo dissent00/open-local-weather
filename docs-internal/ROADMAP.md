@@ -17735,3 +17735,82 @@ cold reader asked to write the thing surfaces a rule that is obeyed in one
 section and evaded in the next.
 
 Related: items 73 (categories 2 and 1), 77 (the harness), 83, 61, 62.
+
+## 129. A regression check over every prompt change, run before paring further · **Done 2026-09-14**
+
+Asked for by the operator before item 73's next cut: confirm that weeks of
+prompt fixes have not been quietly undone, up to and including the split.
+
+**Nothing has regressed.** The method is mechanical and repeatable, which is
+the point — the alternative is reading 61 commit messages and forming an
+impression.
+
+### Method
+
+This prompt encodes its hard rules as capitalised imperatives, so those are a
+usable fingerprint. For every commit that has touched `llm/prompt.py`, take
+the capitalised phrases of three words or more that the commit ADDED, and
+check each against the current file. A phrase that is gone is either a
+rewording or a loss, and only the losses need reading.
+
+    61 commits have touched llm/prompt.py
+    263 capitalised rules introduced across them
+     23 no longer present as exact text
+
+### The 23, read individually
+
+Every one is a rewording or a documented deletion. The three that would have
+cost something, and what carries them now:
+
+| introduced as | carried now by |
+|---|---|
+| `A METAR IS A POINT OBSERVATION...` / `DEW POINT, VISIBILITY AND CLOUD BASE ARE STILL NOT YOURS TO REPORT` | "You may reason FROM them - dew point is the moisture in 'high CAPE with modest moisture', and a cumulonimbus group is a storm somebody saw - but do not print the figures." |
+| `DO NOT STATE THE OBVIOUS OR THE UNACTIONABLE` | "Where a spent value does still matter, it goes in a subordinate clause AFTER what is coming, never ahead of it." |
+| `FIX IT BY MOVING THE PHRASE, NEVER BY EDITING IT` | "When a locked phrase cannot be made to fit any sentence you can build around it, use it as its own sentence and leave it - an awkward sentence is a bug to report upstream, not a licence to rewrite a value." |
+
+The third is STRONGER than what it replaced. `STATE NO NUMBER FROM YESTERDAY
+HERE AT ALL` is also on the list and is the documented deletion item 73
+category 1 is built on — the rule went when the fields did.
+
+`IS A CLAIM ABOUT THREE THINGS` became `A CLAIM ABOUT FOUR MEASUREMENTS` when
+the sky was added on 2026-09-09, which is the register working: a rule that
+changed because the world did, not one that was lost.
+
+### The split carried everything
+
+The highest-risk event, because one prompt became two and a rule could have
+landed in neither. Rebuilding the pre-split prompt at `12ba3a2~1` and
+comparing its rules against both halves at HEAD:
+
+    pre-split system prompt   47,054 chars, 71 capitalised rules
+    post-split, both halves   56,666 chars
+    rules not carried over    0
+
+The division is also the right shape. Judgment holds the commitment rules —
+`THIS IS A SCORED FORECAST, NOT A SUMMARY`, `COMMIT TO RAIN AT DAY`,
+`OMITTING A LEAD IS A LEGITIMATE ANSWER`. Narrative holds composition —
+`IT ARRIVES AS FINISHED SENTENCES`, `INSTABILITY BELONGS IN THE OVERVIEW WHEN
+CODE SAYS IT DOES`, `LEAVE A SPENT VALUE OUT`. Eighteen are in both.
+
+### One finding, and it is item 73's next question rather than a defect
+
+**HISTORICAL NOTES is governed by the JUDGMENT prompt only, and sent to both
+calls.** It is 27,775 characters, 16.8% of the user prompt, and the user
+prompt goes to the rendering call as well — so call two receives the largest
+block in the payload with no rule anywhere telling it what to do with it. It
+is the only block in that position; MODEL TRACK RECORD, LONG-RUN REVIEW and
+PRE-COMPUTED VERIFICATION are all governed in both halves.
+
+**Not obviously a cut.** `build_narrative_user_prompt`'s own comment records
+why the renderer gets the whole user message — "the Detailed Discussion, which
+names individual ground stations and quotes per-model CAPE, would have nothing
+to write from" — and the alternative it rejects is "the schema growing to do
+the prompt's job". So the question is narrower than "drop it": does the
+Detailed Discussion ever legitimately reach for a past miss, and if it does,
+does it need the whole block or a governing rule?
+
+**Whatever the answer, every character cut from the user prompt is worth
+double**, because it is paid by both calls. That is the strongest argument
+item 73 has and it was not written down anywhere.
+
+Related: items 73, 77, 59 (the split), 128.
