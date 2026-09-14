@@ -298,6 +298,38 @@
       "purpose": "refresh",
       "outcome": "http_503",
       "elapsed_s": 0.604
+    },
+    {
+      "at": "2026-09-14T15:38:59.947125+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 11.714
+    },
+    {
+      "at": "2026-09-14T15:39:41.662941+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 0.415
+    },
+    {
+      "at": "2026-09-14T15:40:42.080222+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 4.192
+    },
+    {
+      "at": "2026-09-14T15:42:46.274032+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_503",
+      "elapsed_s": 0.732
     }
   ]
 }
