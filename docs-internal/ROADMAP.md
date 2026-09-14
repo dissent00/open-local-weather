@@ -9691,7 +9691,68 @@ hash that will vary), item 28 (the removal trigger), item 68.
 
 ---
 
-## 79. A provider outage deserves a longer wait than a hiccup · **Weather fetches done 2026-09-09; the LLM half still Planned — and now has evidence**
+## 79. A provider outage deserves a longer wait than a hiccup · **LLM half SHIPPED 2026-09-14; weather fetches done 2026-09-09**
+
+> **SHIPPED as 30/60/420 across the same four attempts**, sized from the three
+> outages the ledger has now captured. The last attempt starts about 8.5
+> minutes in, against 3.5 before.
+>
+> **The attempt count did NOT move, and that was a correction mid-change.** A
+> first draft added a fifth attempt; `test_the_default_is_not_unlimited`
+> derives the worst case as issuances x calls x MAX_ATTEMPTS and went red,
+> because five attempts take it from 16 to 20 and this deployment's configured
+> cap is exactly 16 — which would have put the cap below its own worst case
+> and turned a bad provider day into a refused forecast. That is the failure
+> the cap exists to prevent rather than cause. This item's own text already
+> said delay is free and attempts are not; the guard caught the drift anyway.
+>
+> **A latent trap surfaced with it.** The anthropic and openai loops compute a
+> delay inside their failure branches on EVERY attempt including the last,
+> where nothing sleeps it. `base * 2 ** (attempt - 1)` returned a number
+> nobody used; an explicit schedule indexed out of range instead. `_retry_delay`
+> now answers 0 past the end and says why — the trap was always there and was
+> invisible.
+>
+> **`RETRY_AFTER_MAX_S` rose from 120s to 420s** with the schedule, keeping the
+> rule that we never sleep longer on a provider's say-so than on our own guess.
+> The margin against an implausible header narrowed a lot: a 600s Retry-After
+> was five times anything we would impose and is now under half again, so the
+> next widening has to re-read that rather than assume the gap is wide.
+>
+> **The app did not follow, and the divergence is recorded in its own code.**
+> `RetryPolicy.batch` said it matched these constants deliberately; it no
+> longer does. It sleeps in a background isolate woken by an alarm rather than
+> in a CI job, and whether either platform tolerates holding one for seven
+> minutes — or kills it and loses the run silently — is unmeasured. Matching
+> blindly could turn a recoverable outage into a no-forecast, which is worse
+> than giving up early and saying so. `RetryPolicy.interactive` must not
+> follow either way.
+>
+> **AND THE SAME AFTERNOON PRODUCED EVIDENCE THAT 8.5 MINUTES IS NOT ENOUGH
+> EITHER.** A manual re-trigger at 15:38 failed identically — four 503s,
+> 15:38:36 to 15:42:47 — which puts the 2026-09-14 outage at **42 minutes and
+> still running**, against a ledger whose longest previously observed recovery
+> was 6m47s. The widening shipped here would not have rescued today.
+>
+> That is not an argument for widening further, and this is the important
+> part: **the retry budget cannot be sized to cover a 40-minute outage without
+> becoming the wrong instrument.** Four attempts over 40 minutes means a
+> forecast arriving 40 minutes late, and the morning slot has a reader waiting.
+> What a long outage actually needs is a SEPARATE RUN LATER — which is
+> scheduling, not backoff — and that is item 108's territory, plus the slot
+> move the operator has already agreed to.
+>
+> **The spend cap is the sharp edge, and it bit today.** Each failed run costs
+> four calls of a sixteen-call day: two failures took it to 10/16, and a third
+> would leave too little for tomorrow morning. Re-triggering into an outage is
+> the one response that makes the next forecast less likely, and nothing in the
+> system says so — item 108 again, from the other side.
+>
+> **What is still open**, and this item said to settle it before picking a
+> number: the latest useful morning issuance. 03:01 UTC is 06:01 local and the
+> new schedule can deliver at ~06:11 on a bad day. That was judged acceptable
+> rather than decided, and a further widening should not happen until someone
+> answers it.
 
 > **THE EVENING SLOT FAILS AND THE MORNING SLOT NEVER HAS.** Measured
 > 2026-09-14 from the ledger's own outcome field, which has recorded every

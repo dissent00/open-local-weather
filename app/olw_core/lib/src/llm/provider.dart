@@ -131,9 +131,25 @@ class RetryPolicy {
     timeout: Duration(seconds: 75),
   );
 
-  /// Nobody is waiting. Matches the Python pipeline's constants deliberately:
-  /// same attempt count, same 30/60/120 schedule, same 90s ceiling, so the
-  /// two implementations fail the same way and one incident explains both.
+  /// Nobody is waiting. Matched the Python pipeline's constants deliberately
+  /// — same attempt count, same 30/60/120 schedule, same 90s ceiling, so the
+  /// two implementations failed the same way and one incident explained both.
+  ///
+  /// THEY DIVERGED ON 2026-09-14 and this is not yet resolved. Upstream item
+  /// 79 widened the server's last gap from 120s to 420s, sized from three
+  /// measured 503 storms, so the server now keeps trying for about 8.5
+  /// minutes where this keeps trying for about 3.5. The attempt count is
+  /// still the same, which is what the spend cap counts.
+  ///
+  /// NOT FOLLOWED HERE WITHOUT KNOWING WHAT IT COSTS. The server sleeps in a
+  /// CI job; this sleeps in a background isolate woken by an alarm, and
+  /// whether either platform lets it hold one for seven minutes — or kills it
+  /// and loses the run entirely — is a question nobody here has measured.
+  /// Matching blindly could turn a recoverable outage into a silent
+  /// no-forecast, which is worse than giving up early and saying so.
+  ///
+  /// [interactive] must NOT follow either way: a person holding a phone will
+  /// not wait out a provider incident, and that split is deliberate.
   static const batch = RetryPolicy(
     attempts: 4,
     baseDelay: Duration(seconds: 30),

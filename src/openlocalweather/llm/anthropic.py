@@ -61,14 +61,26 @@ REQUEST_TIMEOUT_S = 120
 # the exact class of failure that cost this project a whole run before
 # GeminiProvider grew retries, so it belongs here from the start.
 RETRYABLE_STATUS_CODES = frozenset({408, 409, 429, 500, 502, 503, 504, 529})
-MAX_ATTEMPTS = 4
-# 30s, 60s, 120s. Widened with Gemini's on 2026-09-04 — see gemini.py for
-# the reasoning and the measurement. No evidence from THIS provider drove
-# it; the argument is about how provider capacity recovers, which is not
-# a Gemini trait, and leaving two of the three on a schedule already
-# shown to be too tight would only hide the next occurrence.
-RETRY_BASE_DELAY_S = 30
-RETRY_AFTER_MAX_S = RETRY_BASE_DELAY_S * 2 ** (MAX_ATTEMPTS - 2)  # the longest we impose ourselves
+# 30s, 60s, 420s across four attempts. Kept in step with gemini.py, which
+# carries the reasoning and the measurement — the argument is about how
+# provider capacity recovers, which is not a Gemini trait, and leaving two of
+# the three on a schedule already shown to be too tight would only hide the
+# next occurrence.
+RETRY_DELAYS_S = (30, 60, 420)
+MAX_ATTEMPTS = len(RETRY_DELAYS_S) + 1
+RETRY_AFTER_MAX_S = max(RETRY_DELAYS_S)  # the longest we impose ourselves
+
+def _retry_delay(attempt: int) -> int:
+    """The wait before the NEXT attempt, or 0 when there will not be one.
+
+    The failure branches below compute a delay on EVERY attempt including the
+    last, where nothing sleeps it. The old `base * 2 ** (attempt - 1)` quietly
+    returned a number nobody used; an explicit schedule indexes out of range
+    instead, which is how this surfaced and is the better behaviour — the
+    trap was always there and was invisible.
+    """
+    return RETRY_DELAYS_S[attempt - 1] if attempt <= len(RETRY_DELAYS_S) else 0
+
 
 # Generous but bounded. The real production forecast measured ~2,350
 # output tokens, and roadmap item 14 (multiple audience voices) will grow
@@ -139,17 +151,17 @@ class AnthropicProvider:
                 if resp.status_code not in RETRYABLE_STATUS_CODES:
                     return resp
                 last_exc = LLMResponseError(f"Anthropic returned HTTP {resp.status_code}")
-                delay = _retry_after_seconds(resp) or RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                delay = _retry_after_seconds(resp) or _retry_delay(attempt)
             # Timeout before RequestException: it is a subclass, and it is the
             # one this measurement exists to separate from the rest.
             except requests.Timeout as e:
                 report_outcome(self.after_attempt, OUTCOME_TIMEOUT, started)
                 last_exc = e
-                delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                delay = _retry_delay(attempt)
             except requests.RequestException as e:
                 report_outcome(self.after_attempt, OUTCOME_ERROR, started)
                 last_exc = e
-                delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                delay = _retry_delay(attempt)
 
             if attempt < MAX_ATTEMPTS:
                 print(

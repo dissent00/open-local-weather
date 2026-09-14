@@ -100,23 +100,44 @@ REQUEST_TIMEOUT_S = 90
 # cron silently costs a whole day's forecast (and, downstream, that day's
 # verification check), so a few cheap retries are well worth it.
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
-MAX_ATTEMPTS = 4
-# 30s base: 30s, 60s, 120s — ~3.5 min of waiting across the four attempts.
+# THE SCHEDULE IS EXPLICIT, not a doubling, and it is sized from the ledger —
+# ROADMAP item 79, which asked for exactly this once a few outages had been
+# captured. Three have: 2026-09-08, 09-11 and 09-14, every one a 503 storm
+# starting at 15:01 UTC.
 #
-# The old 5/10/20 schedule spent its whole budget inside ~35 seconds, which
-# is the wrong shape for what actually goes wrong here. A 503 from this API
-# means capacity, and capacity comes back on the scale of minutes, not
-# seconds: four attempts crammed into half a minute all land inside the same
-# bad minute and all fail together. The 09-03 forecast run is the clean
-# example: four attempts, three of them dying on the 60s ceiling, the
-# whole burst over in 215 seconds.
+# THE ONE THAT RECOVERED IS THE MEASUREMENT. On 2026-09-11 the narrative call
+# failed at 15:03:52, timed out twice, and SUCCEEDED on its fourth attempt at
+# 15:10:39 — six minutes and forty-seven seconds after it first tried. The
+# 30/60/120 schedule earned its keep that day; the other two outages ran out
+# of attempts inside it and aborted.
 #
-# Widening the schedule costs no extra billable requests — the count is
-# still MAX_ATTEMPTS — and no time at all on a run that succeeds first try.
-# It only spends wall-clock on runs that were failing anyway, and it is the
-# one knob that turns "this minute is bad" into "these four minutes are bad"
-# before giving up.
-RETRY_BASE_DELAY_S = 30
+# AND THE OLD SHAPE PUNISHED A FAST REFUSAL, which is the part worth fixing.
+# Four attempts with fixed gaps cover a wall-clock window that depends on how
+# long the failures take to ARRIVE: 2026-09-08's four spanned 5.1 minutes
+# because one 503 took 67.6s, while 2026-09-14's spanned only 3.6 minutes
+# because every 503 came back in under 2.4 seconds. A provider refusing
+# instantly got LESS patience than one refusing slowly, which is backwards —
+# an instant 503 is the clearest signal capacity is gone and waiting is the
+# only thing that helps.
+#
+# SO THE DELAYS GREW AND THE ATTEMPT COUNT DID NOT, which is the whole point:
+# delay is free and attempts are not. `test_the_default_is_not_unlimited`
+# derives the worst case as issuances x calls x MAX_ATTEMPTS, so a fifth
+# attempt would take it from 16 to 20 and put this deployment's configured
+# cap of 16 BELOW its own worst case — turning a bad provider day into a
+# refused forecast, which is the failure the cap exists to prevent rather
+# than cause. That guard caught a first draft of this change.
+#
+# 30s and 60s still catch a blip. 420s means the last attempt starts about
+# 8.5 minutes in — roughly double the longest recovery actually observed,
+# where the old schedule gave up at 3.5.
+#
+# ONE SCHEDULE FOR BOTH FAILURE MODES, deliberately, and item 79 asked whether
+# they should differ. The ledger cannot say yet: it holds fifteen 503s and TWO
+# timeouts, both on the same afternoon, and both of those recovered with more
+# waiting. Two events is not a basis for a second schedule.
+RETRY_DELAYS_S = (30, 60, 420)
+MAX_ATTEMPTS = len(RETRY_DELAYS_S) + 1
 
 # gemini-3.x's reasoning-effort control. REST field is nested and camelCase
 # — generationConfig.thinkingConfig.thinkingLevel — confirmed empirically
@@ -203,7 +224,7 @@ class GeminiProvider:
                 last_exc = e
 
             if attempt < MAX_ATTEMPTS:
-                delay = RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
+                delay = RETRY_DELAYS_S[attempt - 1]
                 print(
                     f"Gemini call failed ({last_exc}); retrying in {delay}s "
                     f"(attempt {attempt}/{MAX_ATTEMPTS}).",

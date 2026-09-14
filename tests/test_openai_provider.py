@@ -261,7 +261,14 @@ def test_retry_after_header_is_honored(monkeypatch):
 
 def test_implausibly_long_retry_after_is_ignored(monkeypatch):
     """A ten-minute Retry-After is better handled by failing and letting the
-    next scheduled run pick it up than by blocking a CI job that long."""
+    next scheduled run pick it up than by blocking a CI job that long.
+
+    The margin narrowed on 2026-09-14. This ceiling was 120s when the test was
+    written, so 600s was five times anything we would impose; the schedule now
+    ends at 420s, so a ten-minute header is under half again as long. The rule
+    is unchanged — never sleep longer on a provider's say-so than on our own
+    guess — but it is no longer obviously true by inspection, and the next
+    widening should re-read this rather than assume the gap is still wide."""
     slept: list[float] = []
     import openlocalweather.llm.openai_compat as mod
 
@@ -277,7 +284,7 @@ def test_implausibly_long_retry_after_is_ignored(monkeypatch):
         )
         provider().generate("system", "user", GeminiForecastResponse)
 
-    assert slept == [mod.RETRY_BASE_DELAY_S], "should fall back to the normal backoff, not wait 600s"
+    assert slept == [mod.RETRY_DELAYS_S[0]], "should fall back to the normal backoff, not wait 600s"
 
 
 def test_the_retry_after_ceiling_tracks_our_own_longest_wait():
@@ -296,8 +303,5 @@ def test_the_retry_after_ceiling_tracks_our_own_longest_wait():
     import openlocalweather.llm.openai_compat as openai_mod
 
     for mod in (openai_mod, anthropic_mod):
-        longest_self_imposed = max(
-            mod.RETRY_BASE_DELAY_S * 2 ** (attempt - 1)
-            for attempt in range(1, mod.MAX_ATTEMPTS)
-        )
+        longest_self_imposed = max(mod.RETRY_DELAYS_S)
         assert mod.RETRY_AFTER_MAX_S == longest_self_imposed, mod.__name__
