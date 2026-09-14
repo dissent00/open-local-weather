@@ -15,7 +15,118 @@ follows `spec/README.md`.
 
 ---
 
-## Working order, as of 2026-09-10
+## Working order, as of 2026-09-14
+
+**The block below this one was four days old and wrong on its own top pick.**
+It named item 59 the strongest candidate; 59 shipped on 2026-09-11, the day
+after it was written. It said 80's measurement half was "still not built"; it
+is built, and has been recording since 2026-09-08. Both are preserved beneath
+for the reasoning that still holds, but a working order that recommends
+finished work is worse than none, so this one leads with how it was checked:
+every claim here was read out of the data on 2026-09-14, not carried forward.
+
+### THE ONE MEASUREMENT NOBODY HAD TAKEN
+
+The user prompt is **165,000 characters, about 41,000 tokens, sent twice per
+issuance** — the narrative call re-sends the judgment prompt with the call
+appended. Measured on 2026-09-14's issuance:
+
+| block | chars | share |
+|---|---|---|
+| **HOURS AHEAD through to HISTORICAL NOTES — raw model arrays** | **128,277** | **78%** |
+| MODEL TRACK RECORD | 15,409 | 9% |
+| LONG-RUN REVIEW | 6,717 | 4% |
+| PRE-COMPUTED VERIFICATION RESULTS | 6,487 | 4% |
+| DAY-OVER-DAY COMPARISON | 1,318 | 0.8% |
+| OBSERVED SO FAR TODAY | 927 | 0.6% |
+| everything else | ~5,000 | 3% |
+
+**268 arrays**: 46 per model across 5 models, 13 variables each repeated
+fifteen times over 30 hours.
+
+**Every pre-computed block this project has argued about is under one
+percent.** The day-over-day comparison — two full sessions of work, items 23,
+48, 83, 98, 104's contract item 8 — is 0.8% of what the forecaster reads.
+That is not an argument that the work was wasted; those blocks are what stop
+the model doing arithmetic. It is an argument about where the next hour goes.
+
+**And the bulk is not inert.** `windspeed_10m_max` is in there fifteen times —
+the sustained-wind field item 126 found "fetched and discarded" is in the
+prompt, just never extracted. So are `precipitation_sum` and
+`pressure_msl_mean`, daily variables sitting inside an hourly block.
+
+**IT GROWS.** Stored per entry since 2026-09-11:
+
+| date | input tokens |
+|---|---|
+| 2026-09-11 | 79,300 |
+| 2026-09-12 | 79,883 |
+| 2026-09-13 | 80,061 |
+| 2026-09-14 | 80,863 |
+
+About +390 tokens a day, monotonically, and 2026-09-14 added a block. Output
+runs 981 to 2,772 — a **30:1 input-to-output ratio**, so the prompt is
+essentially the whole cost. Item 76 says the prompt is the only asset that
+decays; it is also the only one that grows on its own.
+
+### Item 80's open question is ANSWERED, from its own instrument
+
+80 said "measure, then choose a number" and that the success distribution had
+never been observed. It has been since 2026-09-08 — `outcome` and `elapsed_s`
+on 31 attempts:
+
+| | |
+|---|---|
+| success latency | median **44.8s**, p90 64.1s, p95 **70.5s**, max 70.5s |
+| successes between 70s and 90s | **none** |
+| failures | 12 × HTTP 503, 2 × timeout |
+| 503 latency | 4.2s to 45.1s — fast, not hangs |
+| both 90.1s timeouts | 2026-09-11 15:04 and 15:07, inside that afternoon's 503 storm |
+
+**So 180s would rescue nothing and 90s is the right ceiling.** The success
+tail ends at 70.5s; the only two events at the ceiling sit inside a provider
+incident that was returning 503 in four seconds either side of them. The
+inference item 80 made from subtraction is now confirmed by direct
+measurement, which is what it asked for. What is left of 80 is the
+Interactions API move, and that is a question of when rather than whether.
+
+### What is buildable today, in order
+
+1. **73 — pare the prompt, by category rather than by length.** The
+   measurement above is what the item was waiting for and did not know it
+   had. Python-only, additive, needs no data to accumulate, and the
+   verification instrument is already recording. The strongest candidate by a
+   distance.
+2. **127 — store the day-over-day comparison.** Small, raised 2026-09-14, and
+   it is what would let anyone measure whether the Overview uses the sentence
+   it is handed. Item 126 was only measurable because the published gust IS
+   stored.
+3. **47 → 11 → 44.** Unchanged from the previous block and still right;
+   app-heavy, and item 98 is still the strongest argument for it.
+4. **20, then 60.** The previous block said "forty days is not enough for
+   either". There are now exactly 40 cached days, so this is at the threshold
+   rather than past it — revisit in October, not now.
+
+### Do NOT start anything data-dependent for about ten days
+
+Roughly ten items are waiting on rows rather than on work, and they cluster:
+
+| ~date | what unblocks |
+|---|---|
+| 2026-09-17 | the first scored window row — contract item 2, **0 so far** |
+| ~2026-09-20 | 87's cloud weighting and 123's cloud gate — **4 of 10** paired days on 2026-09-14 |
+| ~2026-09-23 | 99's regional areas — a fortnight from the sweep starting |
+| 2026-09-26 | contract item 3's decision, which unblocks 5 and 7; ten paired window rows |
+
+Plus 126 (does the forecaster act on the calibrated gust — the test is
+whether the published gust's 12.09 km/h deficit shrinks), 122, 35's narrative
+half and 95's anomaly half, all waiting on observed storm days.
+
+**That is the argument for 73 as much as its own merits are.** The next ten
+days are the wrong time to start anything that needs the record, and the right
+time for the one large item that needs nothing but the prompt.
+
+### The ordering as of 2026-09-10, kept for its reasoning
 
 **Nineteen items closed between 2026-09-04 and 2026-09-10** — 69, 79, 83,
 85, 86, 87 (twice), 89 through 97, 98's label and 51's first step. The block
@@ -9657,7 +9768,30 @@ operator suspected US morning load; 15:01 UTC is 11:01 Eastern, which fits.
 hypothesis. The 09-09 run never built one. The 09-08 failures were 503s — a
 service refusing — which a longer prompt does not cause.
 
-## 80. The synchronous call may be the wrong shape · **Measurement built, rest Planned**
+## 80. The synchronous call may be the wrong shape · **Measured and answered 2026-09-14; the Interactions move is what remains**
+
+> **THE MEASUREMENT THIS ITEM ASKED FOR EXISTS, AND IT SETTLES THE NUMBER.**
+> `outcome` and `elapsed_s` have been recorded on every attempt since
+> 2026-09-08 — 31 of them by 2026-09-14. The success distribution, which the
+> text below says "has never been observed directly", now has been:
+>
+> | | |
+> |---|---|
+> | success latency | median 44.8s, p90 64.1s, **p95 70.5s**, max 70.5s |
+> | successes between 70s and 90s | **none** |
+> | failures | 12 x HTTP 503, 2 x timeout |
+> | 503 latency | 4.2s to 45.1s — fast, not hangs |
+> | both 90.1s timeouts | 2026-09-11 15:04 and 15:07, inside that afternoon's 503 storm |
+>
+> **180s would rescue nothing; 90s is the right ceiling.** The success tail
+> ends at 70.5s and nothing has ever completed between there and the ceiling.
+> The two events AT the ceiling sit inside a provider incident returning 503
+> in four seconds either side of them — so they are the hung connections this
+> item inferred, now measured rather than subtracted.
+>
+> The sequence the item set — measure, then choose a number — held, and the
+> number it chose is the one already in place. What remains of 80 is the
+> Interactions API move, unchanged and still a question of when.
 
 Raised by the operator 2026-09-07, from two observations: that 60s looked
 "like a standard HTTP timeout", and a link to Gemini's background execution
