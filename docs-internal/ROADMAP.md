@@ -13526,6 +13526,43 @@ sentence, and the blend would join `window_predictions` and be scored by the
 window path already built. It is one prompt change and a handful of lines. It
 is the CONSEQUENCES that need the decision first.
 
+### Waiting for data — operator's decision 2026-09-14
+
+Nothing flips until the record can say whether the reframe changes anything.
+The raw models already run both series, so the wait costs nothing and the
+blend keeps growing its calendar record meanwhile.
+
+**When to look, computed rather than guessed:**
+
+| | date |
+|---|---|
+| first run whose window is scorable | 2026-09-15 |
+| first scored window in the record | **2026-09-17** |
+| ten paired checks | **2026-09-26** |
+| thirty paired checks | 2026-10-16 |
+
+The 2026-09-14 row is NOT the first — it predates `window_opened_local` and
+cannot be scored, which is recorded above. Run `olw window-vs-day`.
+
+**THE COMPARISON MEASURES THE CASE WHERE THE REFRAME MATTERS LEAST, and that
+has to be read with the table rather than discovered after it.**
+`compare_window_to_calendar` pairs on row 0, because row 0 is the issuance the
+calendar series is also drawn from and pairing anything else compares unlike
+things. But row 0 is the 06:00 run, and the 06:00 slot is precisely where a
+calendar day and a +24 h window agree most — measured earlier in this item,
+the high changes on NO day there and the low on about a third. **A small
+difference in that table is therefore weak evidence that the reframe does not
+matter.**
+
+**The strong case is the late issuance, and its evidence is already being
+collected.** `verify_closed_windows` scores EVERY row, not just row 0, so the
+18:00 issuance's window is stored and scored too. What it has no counterpart
+for is a calendar claim — the calendar series holds one row per day, row 0's.
+So the late-issuance evidence is not a window-versus-calendar comparison at
+all; it is row 1's window score against row 0's window score on the same day,
+which asks whether a later issuance is better informed. That is the question
+the whole reframe exists to make askable, and no view of it exists yet.
+
 **6. The published structure stays day-shaped, with explicit windows inside.**
 Not horizon-shaped. The familiar headers stay and every claim under them names
 the window it covers — `rest of today (22:01–24:00)`, `overnight (00:00–06:33,
