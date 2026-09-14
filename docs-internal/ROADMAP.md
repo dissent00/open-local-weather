@@ -13597,7 +13597,9 @@ no sentence is left to mean "today" when today is two hours long.
 Labelled an observation, never a forecast, and the forecast number for the same
 header becomes tomorrow's.
 
-**8. The day-over-day comparison is recast against the forward window. NOT BUILT — confirmed 2026-09-14.** `compute_day_over_day` still builds `consensus_high` from the calendar `today_day0_predictions` and compares it against `yesterday_actual.high_c`, so both sides are calendar days. Item 118 bounded its PHRASES by the issuance hour (`_onset_is_ahead`), which is a different fix and is done; the QUANTITIES were not recast. Unlike items 5 and 7 this is not blocked — the comparison is prose-facing rather than a scored field, so no firewall stands in the way. What it needs is a decision about the other side. It is
+**8. The day-over-day comparison is recast against the forward window. SHIPPED 2026-09-14** — as a DAYPART GATE rather than a recast window; see the stage notes below for why, and for the two plans withdrawn on the way. The paragraph that follows is the ORIGINAL statement of the item, left standing because the stages below argue against parts of it.
+
+*Original:* **The day-over-day comparison is recast against the forward window.** `compute_day_over_day` still builds `consensus_high` from the calendar `today_day0_predictions` and compares it against `yesterday_actual.high_c`, so both sides are calendar days. Item 118 bounded its PHRASES by the issuance hour (`_onset_is_ahead`), which is a different fix and is done; the QUANTITIES were not recast. Unlike items 5 and 7 this is not blocked — the comparison is prose-facing rather than a scored field, so no firewall stands in the way. What it needs is a decision about the other side. It is
 not suppressed at a late issuance and it is not keyed to the previous issuance.
 
 ### Recast by the operator's own scenarios, 2026-09-14 — and "not suppressed" is withdrawn
@@ -13626,7 +13628,43 @@ working around it. The unsettled part of a calendar day is the night; at 20:00
 the daytime window is closed, so its high, gust and rain are final. The
 measured table above is about whole-day values and does not constrain this.
 
-### Stage 1 shipped 2026-09-14; stage 2 has a blocker nobody had found
+### Contract item 8 is CLOSED — stages 1 and 2 both shipped 2026-09-14
+
+| | what shipped | commit |
+|---|---|---|
+| stage 1 | the daypart gate: `comparison_subject`, vector-pinned in both languages | `f32efac` |
+| 2, piece 1 | tomorrow's predictions reach the comparison when the subject is tomorrow | `78d0dff` |
+| 2, piece 2 | **WITHDRAWN** — the station baseline compared a gust to a sustained wind | `0ad7460` |
+| 2, piece 3 | the sentence names the days it means, in the past tense | `1a6f001` |
+| 2, wiring | sunset, tomorrow's numbers and today's baseline reach the pipeline | `9997172` |
+
+**What it is NOT is a recast window**, which is what the item asked for. The
+operator's five scenarios turned out to specify a GATE — a comparison earns
+its place while the day is mostly ahead — and the baseline is always a full
+period already lived, never a rolling 24 hours. That killed the settling
+problem rather than working around it.
+
+**Two plans were withdrawn on measurement, and both are worth more than the
+code was.** Piece 2's station baseline rested on a table that compared a
+station's max SUSTAINED wind against a reanalysis max GUST; withdrawing it
+produced item 126, which found the published gust running 12 km/h low and
+corrected it. And "it is not suppressed at a late issuance", asserted in the
+original item with no reasoning, is gone.
+
+**The evening subject is live but rarely reached HERE.** This deployment
+issues at 06:00 and 18:00, and 18:00 is before a sunset that sits near 18:40
+all year at this latitude. The consumer that reaches it is the app, where a
+forecast is issued whenever someone taps. Driven at 20:05 against the real
+pipeline it produces "Noticeably cooler than today (Tuesday) was."
+
+**And it is one clause thinner than the operator's example sentence.** "It
+will be cooler and breezier than today (Monday) was" loses "and breezier",
+because at 20:00 only the station has observed today and it files no gust —
+see `observed.observed_baseline`, where each exclusion is argued. Wind returns
+to the evening comparison when something can observe a gust here: item 122's
+satellite tie-breaker, or a station that files the group.
+
+### Stage 1 shipped 2026-09-14; stage 2 had a blocker nobody had found
 
 **The GATE is built** — `comparison_subject`, wired into
 `compute_day_over_day`, vector-pinned in both languages. Exercised at the
