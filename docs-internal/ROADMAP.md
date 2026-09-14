@@ -14459,6 +14459,28 @@ but **why, and whether it will happen again in the next few hours**:
   a cap refusal at 03:01 that will still be a refusal at 15:01 is a different
   morning from one that clears.
 
+### The smallest thing that works, and it does not need a cause
+
+**Operator's steer, 2026-09-14: roadmap it, not urgent.** Both instances so
+far had different causes — a spend-cap refusal and an upstream fault — and a
+notifier that enumerates causes will always be one cause behind. The outcome
+is the same either way and is one query:
+
+> Is there an entry in `data/log/` for today's local date, and if not, how
+> long has the day been running?
+
+That needs no knowledge of why, no new rails, and no change to the pipeline —
+`log_store.list_log_dates` and `today_in_tz` already answer it. It can run on
+its own schedule rather than inside the forecast job, which matters because
+the failure mode being detected is "the forecast job did not finish": a check
+that lives inside the thing it watches cannot report the thing it watches
+dying. The 2026-09-14 failure is exactly that shape — the run exited non-zero
+before anything could notify.
+
+Do the cause-separated email below AFTER this, not instead of it. The
+expensive version tells an operator what to do; the cheap version tells them
+to look, which is the part that was missing both times.
+
 ### The cheaper half, and it should come first
 
 **Nothing warns BEFORE the budget runs out.** Yesterday's exhaustion was
@@ -16387,3 +16409,77 @@ is why that sentence is here.
 
 Related: items 121 (which raised it), 104 (C7 and C9, and the write-once rule
 this must respect), 102, 100.
+
+## 123. The Overview reports how the sky CHANGED, so a persistently cloudy day is never mentioned · **Planned — raised 2026-09-14**
+
+Operator, on the 2026-09-14 forecast:
+
+> "What's unfortunate is that the overview decided not to note the both
+> observed and forecast cloudy skies today, which is actually interesting
+> information."
+
+Confirmed personally and by the METAR. The observed block said 5/8; the model
+consensus said 60%. Both agreed it was cloudy and the Overview said nothing.
+
+### It is not a prompt fault, and the model did not omit the sky
+
+**The comparison is a CHANGE sentence and the sky did not change.** Yesterday
+observed 59.3% cloud; today's consensus was 60.1%. A delta of 0.8 points sits
+well inside `CLOUD_CHANGE_BANDS_PCT`'s 12.5-point "similar cloud" band, so
+`describe_day_over_day` correctly said nothing about it and the Overview is
+explicitly forbidden from widening what the comparison leaves out — the rule
+that exists because "dry conditions continuing" was a real output.
+
+**And the narrative DID describe the sky, just not there:** Today's Forecast
+read "under partly cloudy skies transitioning to late afternoon convective
+development". So the gap is narrow and specific — no part of the OVERVIEW
+reports the sky as a STATE, because every sentence in it is either a
+comparison against yesterday or a look at the days ahead.
+
+### Before adding one, the number was measured — and it is weak
+
+Every day in the record carrying model cloud, against the reanalysis:
+
+| date | model min | max | spread | consensus | observed | error |
+|---|---|---|---|---|---|---|
+| 2026-09-10 | 14.0 | 84.5 | 70.5 | 51.4 | 44.2 | +7.2 |
+| 2026-09-11 | 34.5 | 73.0 | 38.5 | 55.2 | 49.6 | +5.6 |
+| 2026-09-12 | 27.3 | 83.2 | 55.9 | 54.0 | **32.7** | **+21.3** |
+| 2026-09-13 | 23.2 | 86.2 | 63.0 | 56.6 | 59.3 | -2.7 |
+| 2026-09-14 | 22.9 | 91.2 | 68.3 | 60.1 | — | — |
+
+**Median spread 63 points.** The models do not agree about cloud in any
+useful sense, and `consensus_cloud` is a bare `mean()` over that disagreement.
+On 2026-09-12 it would have published "cloudy" on a day the reanalysis
+recorded at 32.7%.
+
+**So the honest split is by SOURCE, not by section.** The observed sky is an
+instrument reading and is already published, in code, by item 121's block. The
+forecast sky is a mean over a 63-point spread. Putting the second one in the
+Overview — the most-read sentence in the product — would give the weakest
+number in the payload the most prominent position.
+
+**The precedent for what to do instead is already here.** `wind.py` does not
+publish a consensus direction unless the models agree: `consensus_direction`
+takes a gate and returns null below it, because "0.0 is a set that cancels out
+and genuinely has no mean direction". Cloud has a mean and no gate. Sizing one
+needs the spread measured against a real record, and this table is five days.
+
+### What it should probably be
+
+- **Gate the cloud claim on model agreement**, the way the wind direction is
+  gated, and let the Overview's sky clause appear only when the models
+  actually agree. On this table it would almost never fire, which is itself
+  the finding.
+- **Or say the disagreement**, which is this project's usual move — "models
+  split on cloud, 23% to 91%" is more honest and more interesting than
+  "partly cloudy", and a reader who can see the sky can use it.
+- **Not a mean presented as a fact.** That is the one option the table rules
+  out.
+
+**Sized against five days, which is not enough.** Cloud only entered the
+record with item 65, so revisit this table before choosing a gate rather than
+picking a number now — ROADMAP item 100 is why that sentence is here.
+
+Related: items 121 (the observed block, which already carries the solid half),
+83 and 65 (the comparison and the cloud data), 87, 100.
