@@ -38,10 +38,13 @@
   ],
   "sunrise": "06:34",
   "sunset": "18:41",
+  "prediction_rows": [],
+  "observed_so_far": null,
   "model_predictions": {
     "day0": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": "13:00",
         "precip_mm": 2.1,
@@ -56,6 +59,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": "16:00",
         "precip_mm": 2.5,
@@ -70,6 +74,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": true,
         "onset": "18:00",
         "precip_mm": 5.2,
@@ -84,6 +89,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.6,
@@ -98,6 +104,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.9,
@@ -112,6 +119,7 @@
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -126,6 +134,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": true,
         "onset": "16:00",
         "precip_mm": 11.3,
@@ -140,6 +149,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.4604651162790698,
@@ -154,6 +164,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 2.5,
@@ -170,6 +181,7 @@
     "day3": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.5,
@@ -184,6 +196,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 4.5,
@@ -198,6 +211,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 7.6,
@@ -212,6 +226,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.4,
@@ -226,6 +241,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 6.0,
@@ -240,6 +256,7 @@
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -254,6 +271,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 11.3,
@@ -268,6 +286,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.4604651162790698,
@@ -282,6 +301,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -298,6 +318,7 @@
     "day7": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 6.2,
@@ -312,6 +333,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 13.0,
@@ -326,6 +348,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -340,6 +363,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -354,6 +378,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.8,
@@ -368,6 +393,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 11.3,
@@ -382,6 +408,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.4604651162790698,
@@ -396,6 +423,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -417,8 +445,8 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "Day+3: All models accurately verified the precipitation event for the September 10th target date. Peak wind speeds were consistently under-forecasted across guidance, while Kenya Met over-forecasted the daytime high temperature by 3.7°C.",
       "note_sign_corrected_on": null
     },
     "day7": {
@@ -476,6 +504,7 @@
       "narrative_markdown": "## Overview\n\nMuch calmer than yesterday. Dry until evening thunderstorms, after a thundery day. Temperatures and winds much the same through Sunday, with rain becoming more likely.\n\n## Today's Forecast\n\nSunny intervals and warming temperatures will mark the morning, reaching a daytime high near 30°C / 86°F before cloud cover builds ahead of late afternoon and evening thunderstorms. Rainfall totals of 2.0 to 5.0 mm (0.08 to 0.20 in) are expected as showers develop between 16:00 and 19:00 EAT. Winds will blow from the south to southwest at 12 to 18 km/h (6 to 10 kt) from the S to SW, with localized thunderstorm gusts up to 32 km/h (17 kt). Solar UV exposure will peak at a Very High index of 8.7 around midday, requiring sun protection. Air quality according to CAMS model guidance is Moderate with a US AQI around 72 to 88, though stale ground readings from earlier this morning recorded a worst AQI of 174 at Dunga Beach. Overnight lows will drop to 18°C / 64°F under lingering cloud cover.\n\n## Extended Outlook\n\nThe three-day window through Sunday will bring warm daytime temperatures near 30°C / 86°F to 31°C / 88°F and overnight lows of 17°C / 63°F to 18°C / 64°F, with shower and thunderstorm chances steadily increasing each afternoon. Friday remains mostly dry with isolated showers, but Saturday (Day+2) and Sunday (Day+3) see stronger multi-model consensus for afternoon and evening thunderstorms yielding daily rainfall totals of 4.0 to 8.0 mm (0.16 to 0.31 in). Looking further into the 4 to 7 day range (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) with widespread heavy showers and potential daily rainfall exceeding 10.0 mm (0.39 in) as regional pressure drops.\n\n## Severe Weather / Hazard Potential\n\nConvective instability builds significantly across Nyanza Basin this afternoon and evening, supporting isolated to scattered thunderstorms. Model guidance shows a wide spread in peak CAPE, ranging from 390 J/kg on GFS up to 1,360 J/kg on ICON, 1,860 J/kg on ECMWF, and 3,910 J/kg on UKMO, with instability peaking around 18:00 EAT. Sudden, violent downdraft gusts well exceeding 35 km/h (19 kt) and localized heavy downpours are the primary hazards associated with any developing storm cell. Lightning risk is elevated during dusk and evening hours.\n\n## Winam Gulf — Conditions for Boaters\n\nSoutheasterly morning breezes across Winam Gulf at 8 to 12 km/h (4 to 6 kt) from the SE will shift to southwesterly during the afternoon, strengthening to 15 to 22 km/h (8 to 12 kt) from the SW. Wave activity will remain moderate during daylight hours. However, boaters and fishermen should exercise high caution from late afternoon through midnight as convective storms moving over the lake can produce sudden, dangerous downdraft gusts over 35 km/h (19 kt), localized squalls, and choppy water conditions. Plan to seek shore before dusk.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across East Africa. Pressure is also falling toward the south, southeast, and southwest, indicating a deepening large-scale feature building to the south, though this sampling locates a direction rather than a specific centre or front. Overhead MSLP across the Nyanza Basin sits at 1014 hPa and will drop slightly by 1.3 hPa over the next 24 hours. Regional pressure points show consistent 24-to-72-hour pressure falls toward 1012–1013 hPa by Friday and Saturday. These broad pressure falls combined with moist equatorial lake air will enhance boundary-layer convergence across the Winam Gulf corridor, driving afternoon thermal breezes and triggering convective uplift.\n\n### Forecaster Confidence Notes\n\nModel weighting today heavily favors ECMWF and ICON for near-term precipitation timing and convective placement. Long-run review findings at Day+0 establish Best Match (83% hit rate) as the strongest rain caller and GFS (57%) as the weakest, with GFS exhibiting an established systematic under-forecast of peak surface wind (+20.6 km/h mean error). Recent Day+0 verification from yesterday reinforced this pattern: ECMWF, ICON, UKMO, and Best Match correctly verified evening rain, while GFS missed with a false dry call. For the Kenya Meteorological Department (KMD) local bulletin, the national service calls for afternoon and evening thunderstorms in Kisumu with highs of 30°C / 86°F and lows of 19°C / 66°F—agreeing well with our synthesized call of 29.5°C / 85°F and wet conditions.\n\nLooking at extended range (Day+3 and Day+7), long-run review findings indicate usable data where no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from past runs with strong late-afternoon CAPE spreads (such as September 8th) highlight that GFS often suppresses convection while ECMWF and UKMO capture evening lake-breeze storms accurately; hence, confidence is high for evening storms today despite GFS's drier stance.\n\nRegarding air quality observations, ground sensors are currently stale (>3 hours old). The last reported values from midnight EAT were: Dunga Beach (AQI 174), Kisumu Airport (AQI 87), and Ochieng' Avenue (AQI 57). Live air quality assessment relies on CAMS model projections, which forecast US AQI values between 72 and 88 today.",
       "whatsapp_summary": "🌦️ Kisumu Weather (Thu Sep 10):\nSunny intervals this morning, reaching a warm high of 30°C (86°F). Thunderstorms & rain expected late afternoon into evening (16:00-19:00 EAT, 2-5mm). Caution on Winam Gulf for sudden storm gusts over 35 km/h. Low 18°C (64°F).",
       "generated_at_utc": "2026-09-10T03:02:29.331130Z",
+      "issued_local_time": null,
       "guidance_initialised_at": "2026-09-09T18:00:00Z",
       "guidance_age_hours": 9.023561074166667,
       "guidance_source": "observed",
@@ -522,6 +551,7 @@
     "narrative_markdown": "## Overview\n\nMuch calmer than yesterday. Dry until evening thunderstorms, after a thundery day. Temperatures and winds much the same through Sunday, with rain becoming more likely.\n\n## Today's Forecast\n\nSunny intervals and warming temperatures will mark the morning, reaching a daytime high near 30°C / 86°F before cloud cover builds ahead of late afternoon and evening thunderstorms. Rainfall totals of 2.0 to 5.0 mm (0.08 to 0.20 in) are expected as showers develop between 16:00 and 19:00 EAT. Winds will blow from the south to southwest at 12 to 18 km/h (6 to 10 kt) from the S to SW, with localized thunderstorm gusts up to 32 km/h (17 kt). Solar UV exposure will peak at a Very High index of 8.7 around midday, requiring sun protection. Air quality according to CAMS model guidance is Moderate with a US AQI around 72 to 88, though stale ground readings from earlier this morning recorded a worst AQI of 174 at Dunga Beach. Overnight lows will drop to 18°C / 64°F under lingering cloud cover.\n\n## Extended Outlook\n\nThe three-day window through Sunday will bring warm daytime temperatures near 30°C / 86°F to 31°C / 88°F and overnight lows of 17°C / 63°F to 18°C / 64°F, with shower and thunderstorm chances steadily increasing each afternoon. Friday remains mostly dry with isolated showers, but Saturday (Day+2) and Sunday (Day+3) see stronger multi-model consensus for afternoon and evening thunderstorms yielding daily rainfall totals of 4.0 to 8.0 mm (0.16 to 0.31 in). Looking further into the 4 to 7 day range (Monday through Thursday), lower-confidence guidance indicates a continuing unsettled pattern, peaking around Thursday (Day+7) with widespread heavy showers and potential daily rainfall exceeding 10.0 mm (0.39 in) as regional pressure drops.\n\n## Severe Weather / Hazard Potential\n\nConvective instability builds significantly across Nyanza Basin this afternoon and evening, supporting isolated to scattered thunderstorms. Model guidance shows a wide spread in peak CAPE, ranging from 390 J/kg on GFS up to 1,360 J/kg on ICON, 1,860 J/kg on ECMWF, and 3,910 J/kg on UKMO, with instability peaking around 18:00 EAT. Sudden, violent downdraft gusts well exceeding 35 km/h (19 kt) and localized heavy downpours are the primary hazards associated with any developing storm cell. Lightning risk is elevated during dusk and evening hours.\n\n## Winam Gulf — Conditions for Boaters\n\nSoutheasterly morning breezes across Winam Gulf at 8 to 12 km/h (4 to 6 kt) from the SE will shift to southwesterly during the afternoon, strengthening to 15 to 22 km/h (8 to 12 kt) from the SW. Wave activity will remain moderate during daylight hours. However, boaters and fishermen should exercise high caution from late afternoon through midnight as convective storms moving over the lake can produce sudden, dangerous downdraft gusts over 35 km/h (19 kt), localized squalls, and choppy water conditions. Plan to seek shore before dusk.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale pressure gradient across East Africa. Pressure is also falling toward the south, southeast, and southwest, indicating a deepening large-scale feature building to the south, though this sampling locates a direction rather than a specific centre or front. Overhead MSLP across the Nyanza Basin sits at 1014 hPa and will drop slightly by 1.3 hPa over the next 24 hours. Regional pressure points show consistent 24-to-72-hour pressure falls toward 1012–1013 hPa by Friday and Saturday. These broad pressure falls combined with moist equatorial lake air will enhance boundary-layer convergence across the Winam Gulf corridor, driving afternoon thermal breezes and triggering convective uplift.\n\n### Forecaster Confidence Notes\n\nModel weighting today heavily favors ECMWF and ICON for near-term precipitation timing and convective placement. Long-run review findings at Day+0 establish Best Match (83% hit rate) as the strongest rain caller and GFS (57%) as the weakest, with GFS exhibiting an established systematic under-forecast of peak surface wind (+20.6 km/h mean error). Recent Day+0 verification from yesterday reinforced this pattern: ECMWF, ICON, UKMO, and Best Match correctly verified evening rain, while GFS missed with a false dry call. For the Kenya Meteorological Department (KMD) local bulletin, the national service calls for afternoon and evening thunderstorms in Kisumu with highs of 30°C / 86°F and lows of 19°C / 66°F—agreeing well with our synthesized call of 29.5°C / 85°F and wet conditions.\n\nLooking at extended range (Day+3 and Day+7), long-run review findings indicate usable data where no model is meaningfully better than others yet within the 15-point noise floor. Historical notes from past runs with strong late-afternoon CAPE spreads (such as September 8th) highlight that GFS often suppresses convection while ECMWF and UKMO capture evening lake-breeze storms accurately; hence, confidence is high for evening storms today despite GFS's drier stance.\n\nRegarding air quality observations, ground sensors are currently stale (>3 hours old). The last reported values from midnight EAT were: Dunga Beach (AQI 174), Kisumu Airport (AQI 87), and Ochieng' Avenue (AQI 57). Live air quality assessment relies on CAMS model projections, which forecast US AQI values between 72 and 88 today.",
     "whatsapp_summary": "🌦️ Kisumu Weather (Thu Sep 10):\nSunny intervals this morning, reaching a warm high of 30°C (86°F). Thunderstorms & rain expected late afternoon into evening (16:00-19:00 EAT, 2-5mm). Caution on Winam Gulf for sudden storm gusts over 35 km/h. Low 18°C (64°F).",
     "generated_at_utc": "2026-09-10T03:02:29.331130Z",
+    "issued_local_time": null,
     "guidance_initialised_at": "2026-09-09T18:00:00Z",
     "guidance_age_hours": 9.023561074166667,
     "guidance_source": "observed",
@@ -539,8 +569,14 @@
     "finish_reason": null,
     "input_tokens": null,
     "output_tokens": null,
+    "response_schema_sha256": null,
+    "nullable_fields": null,
+    "narrative_findings": null,
+    "information_moved": null,
     "refreshed_at": "2026-09-10T15:02:43.497730Z",
     "trigger_source": "workflow_dispatch",
+    "issued_local_time": null,
+    "observations_local_time": null,
     "degradations": []
   }
 }
