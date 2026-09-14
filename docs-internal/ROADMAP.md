@@ -13643,20 +13643,30 @@ says tomorrow while its numbers and its wording are today-against-yesterday.
 Not a regression — that is what 20:00 produced before the gate — but it is
 not the design either.
 
-**STAGE 2'S BLOCKER: THERE IS NO DAY+1.** Comparing tomorrow to today needs
-tomorrow's forecast, and this pipeline extracts Day+0 from hourly and Day+3
-and Day+7 from daily. Day+1 is not extracted anywhere. The data is present —
-`primary_daily` carries eight days and
-`extract_day_n_predictions_from_daily(primary_daily, 1, MODELS)` would work
-today — but nothing calls it, so the 20:00 subject has nothing to describe.
+**CORRECTION, same day: DAY+1 IS ALREADY EXTRACTED.** An earlier draft of this
+section said it was "extracted nowhere". That was wrong and is corrected here
+rather than quietly edited, because the claim was load-bearing — it was the
+stated reason stage 2 was large.
 
-That makes stage 2 four things rather than one: extract Day+1; take the
-baseline from the station on both sides; reword for a tomorrow subject with
-day names and a past tense ("cooler than today (Monday) was"); and decide
-whether Day+1 joins the scored record or stays prose-only. **That last one is
-not obvious** — a new extracted lead that nothing scores is the shape item 121
-warned about, and a new lead that IS scored is a change to what the record
-means.
+`pipeline._locked_blocks` extracts days 1, 2 and 3 on every run, from the same
+daily source and the same model list as the scored Day+3 row, and hands them
+to `describe_extended_trend` for the NEXT THREE DAYS sentence. So tomorrow's
+forecast is already in hand on the path that would need it.
+
+**What is missing is narrower than a blocker.** Day+1 is extracted, used for
+prose, and neither stored nor scored. Stage 2 therefore needs the existing
+extraction threaded to a SECOND prose consumer, not a new lead.
+
+**And that settles the scoring question it looked like it raised.** A Day+1
+that feeds prose without being scored is not a new violation — it is exactly
+what the extended-trend sentence has always done. Scoring Day+1 is a separate
+item on its own merits, and there is a good one: this project scores Day+0,
+Day+3 and Day+7 and skips the horizon most readers actually plan against.
+That belongs in its own entry, not smuggled in through a prose comparison.
+
+So stage 2 is three things: thread the existing Day+1 to the comparison; take
+the baseline from the station on both sides; and reword for a tomorrow subject
+with day names and a past tense ("cooler than today (Monday) was").
 
 ### Station on both sides, and the measurement that makes it mandatory
 
