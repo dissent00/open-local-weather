@@ -248,7 +248,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     // The synthesised forecast came back intact.
@@ -308,7 +308,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     final d3 = run.day3Predictions.singleWhere((p) => p.model == blendModelId);
@@ -343,7 +343,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
@@ -385,7 +385,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, contains('EXTRACTED PER-MODEL PREDICTIONS'));
@@ -416,7 +416,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, contains('Unavailable — no review computed this run.'));
@@ -443,7 +443,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, isNot(contains('GROUND AQI')));
@@ -469,7 +469,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, isNot(contains('LOCAL BULLETIN')));
@@ -489,7 +489,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       localBulletinSourceName: 'Kenya Meteorological Department (KMD)',
       localBulletinText: 'Sunny intervals, light rains over a few places.',
     );
@@ -513,7 +513,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       groundStationsConfigured: true,
       groundAqiReadings: const [
         {'name': 'Kisumu Airport', 'aqi': 46, 'stale': false},
@@ -539,7 +539,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
     expect(run.response.todayNarrative, isNotEmpty);
     expect(llm.seenUserPrompt, contains('"air_quality": null'));
@@ -560,7 +560,7 @@ void main() {
         // Not what these tests exercise; passed explicitly because the
         // parameter is required, which is upstream item 104's rule — an
         // unwired block must fail to compile rather than read as absence.
-        calibratedGustKmh: null,
+        gustBias: null,
       ),
       throwsA(isA<OpenMeteoFetchError>()),
     );
@@ -581,7 +581,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
     expect(llm.seenUserPrompt, contains('synoptic_scale_pressure'));
     expect(llm.seenUserPrompt, contains('gradient_strength'));
@@ -602,7 +602,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       forwardHourly: const {
         'hourly': {
           'time': ['2026-08-19T12:00', '2026-08-19T15:00', '2026-08-19T18:00'],
@@ -626,7 +626,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       forwardHourly: const {
         'hourly': {
           'time': ['2026-08-19T12:00', '2026-08-19T15:00'],
@@ -648,7 +648,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       forwardHourly: const {
         'hourly': {
           'time': ['2026-08-19T12:00'],
@@ -676,7 +676,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, isNot(contains('no model supplied a CAPE series')));
@@ -698,7 +698,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, contains('REST OF TODAY ONLY'));
@@ -717,7 +717,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, isNot(contains('REST OF TODAY ONLY')));
@@ -739,7 +739,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(run.degradations.map((d) => d.code), ['hours_ahead_narrowed']);
@@ -770,7 +770,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     // Empty, not null. The distinction the Python side had to learn the hard
@@ -804,7 +804,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       groundStationsConfigured: true,
       groundAqiLastKnown:
           lastKnownGroundAqi(readings, DateTime.utc(2026, 8, 19, 9, 0))?.toJson(),
@@ -827,7 +827,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       earlierToday: const [
         {'time': '06:07', 'narrative': 'Warm and dry through the morning.'},
         {'time': '13:02', 'narrative': 'Cloud building over the lake.'},
@@ -857,7 +857,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
@@ -892,7 +892,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       // Midday, so the wind clause has anchors still ahead of it and item
       // 118 does not legitimately withhold it. An evening hour would make
       // this test pass for the wrong reason.
@@ -938,7 +938,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       nowLocal: DateTime.utc(2026, 8, 19, 15),
     );
 
@@ -963,7 +963,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
@@ -1003,7 +1003,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
@@ -1034,7 +1034,7 @@ void main() {
         // Not what these tests exercise; passed explicitly because the
         // parameter is required, which is upstream item 104's rule — an
         // unwired block must fail to compile rather than read as absence.
-        calibratedGustKmh: null,
+        gustBias: null,
         nowLocal: DateTime(2026, 8, 19, 18, 15),
       ),
       throwsA(isA<LlmResponseError>()),
@@ -1057,7 +1057,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       nowLocal: DateTime.utc(2026, 8, 11, 6, 15),
     );
 
@@ -1081,7 +1081,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
       observedSoFar: const ObservedSoFar(
         precipitation: true,
         precipitationOnset: '13:00',
@@ -1117,7 +1117,7 @@ void main() {
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
+      gustBias: null,
     );
 
     expect(llm.seenUserPrompt, contains('the station reported nothing measurable today'));
@@ -1131,10 +1131,6 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       yesterday: DateTime.utc(2026, 8, 18),
       publicWebpageUrl: 'https://example.com/',
-      // Not what these tests exercise; passed explicitly because the
-      // parameter is required, which is upstream item 104's rule — an
-      // unwired block must fail to compile rather than read as absence.
-      calibratedGustKmh: null,
       verificationContext: const <Object>[],
       trackRecordContext: const <Object>[],
       historicalLogs: const <Object>[],
@@ -1152,5 +1148,46 @@ void main() {
       contains('Unavailable — this run could not establish which model '
           'cycle its guidance came from.'),
     );
+  });
+
+  test('the gust bias reaches the prompt applied to THIS run\'s models',
+      () async {
+    // Upstream item 126. The map, not a finished number, because the number
+    // can only be computed once today's models have been read — and on a
+    // day's first run there is no earlier extraction to base one on, which is
+    // exactly when a scheduled forecast goes out.
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      gustBias: const {
+        'ecmwf_ifs025': 12.96,
+        'gfs_seamless': 16.47,
+        'icon_seamless': 12.76,
+        'ukmo_seamless': 13.05,
+        'best_match': 2.90,
+      },
+    );
+
+    expect(llm.seenUserPrompt, contains('CALIBRATED PEAK GUST'));
+    expect(llm.seenUserPrompt, isNot(contains('Unavailable - too few verified')));
+  });
+
+  test('no measured bias renders the gap rather than a quiet correction',
+      () async {
+    final llm = _StubProvider();
+    await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      gustBias: null,
+    );
+
+    expect(llm.seenUserPrompt, contains('Unavailable - too few verified'));
   });
 }

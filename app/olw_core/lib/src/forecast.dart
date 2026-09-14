@@ -3,6 +3,7 @@
 import 'daypart.dart';
 import 'solar.dart';
 import 'dates.dart';
+import 'calibration.dart';
 import 'comparison.dart';
 import 'scoring.dart';
 import 'config.dart';
@@ -207,15 +208,22 @@ Future<ForecastRun> generateForecast({
   Object? historicalLogs = const <Object>[],
   Object? reviewContext,
   Object? yesterdayActual,
-  /// The gust the record says to expect, or null when too little has been
-  /// verified to have measured a bias — calibration.dart.
+  /// Each model's measured gust bias, keyed by model id — calibration.dart.
+  /// Null or empty when too little has been verified to have measured one.
+  ///
+  /// THE MAP RATHER THAN THE FINISHED NUMBER, because the number can only be
+  /// computed once TODAY's models have been read, and that happens inside
+  /// this function. A caller handing over a scalar could only ever base it on
+  /// an earlier run's extraction — and on the first run of a day there is no
+  /// earlier extraction at all, so the correction would be absent exactly
+  /// where it matters most.
   ///
   /// REQUIRED, and that is the point. Upstream item 104's finding is that an
   /// optional block wired on one path and not the other renders as a
   /// legitimate absence and nobody can tell; a caller that has not decided
   /// what to pass here should fail to compile rather than quietly publish a
   /// gust the record says runs 12 km/h low.
-  required double? calibratedGustKmh,
+  required Map<String, double>? gustBias,
   Object? groundAqiReadings,
   Object? groundAqiSummary,
 
@@ -490,7 +498,14 @@ Future<ForecastRun> generateForecast({
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
     instability: instability?.toJson(),
     yesterdayActual: yesterdayActual,
-    calibratedGustKmh: calibratedGustKmh,
+    // Applied to THIS run's extraction, above. The Python pipeline calibrates
+    // over its Day+0 list WITH the persistence and climatology yardsticks in
+    // it; here they are added by the caller after the run, so this consensus
+    // is over the real models alone. Their corrections are small (+0.58 and
+    // +2.58 on the server's record) and the two numbers are close rather than
+    // equal — a prompt-facing figure, scored by nothing, and stated so the
+    // difference is not mistaken for a port bug.
+    calibratedGustKmh: calibratedGustConsensus(day0, gustBias),
     todayWeatherData: {
       'primary_today_hourly': hourly,
       'primary_extended_daily': daily,
