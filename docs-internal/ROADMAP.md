@@ -13349,6 +13349,35 @@ stored UTC would assume the zone and that `reconcile_now` never intervened,
 which is the re-derivation this field exists to avoid. Every row from the next
 run onward carries it.
 
+### The two series can now be compared — built 2026-09-14
+
+`olw window-vs-day` prints both Day+0 series side by side, per model, on the
+days that carry both. `review.compare_window_to_calendar` is the function; an
+analysis verb rather than anything the pipeline runs, in the same spirit as
+`divergence`.
+
+**It exists to settle contract item 3.** That decision is the operator's and
+is still open, and whichever way it goes it should be taken against a
+measurement of how far the two actually differ rather than against the
+argument for the reframe. Expect `WindowComparison` to be deleted once one
+series retires.
+
+**PAIRED, AND ONLY PAIRED.** A day counts only if it holds BOTH a scored
+window and a scorable Day+0, because a comparison across different day sets is
+not a comparison — it is two samples of different weather. Both sides of that
+guard are tested, and the first version of the test was wrong: its only
+excluded day was rejected by the window side, so blanking the calendar guard
+left it green. It now carries a day that only the calendar guard can reject.
+
+**The two sides are scored against DIFFERENT observations, deliberately** —
+the calendar claim against the calendar day, the window claim against the 24
+hours it covered. Scoring both against one observation would erase the
+difference being measured.
+
+**Nothing is paired yet**, and the verb says so rather than printing an empty
+table. The first scored window lands 2026-09-16, so the first real row lands
+with it.
+
 ### Contract item 3 is not available as written — measured 2026-09-14
 
 Item 3 says the existing Day+0 series is re-derived rather than frozen, and

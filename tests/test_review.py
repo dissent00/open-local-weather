@@ -758,3 +758,85 @@ def test_even_coverage_still_reads_per_model():
 
     assert "12 check(s) per model" in s, s
     assert "least-covered" not in s, s
+
+
+# --- ROADMAP item 104, contract item 2 vs 3: comparing the two series ------
+
+
+def _paired_day(d, *, day0_high, window_high, actual_high, window_actual_high):
+    """One day carrying both claims, scored against their own observations."""
+    from openlocalweather.models import IssuancePredictions, VerificationScore
+    e = entry(d, day0=[ModelPrediction(model="gfs_seamless", rain=False, high_c=day0_high)])
+    e.prediction_rows = [IssuancePredictions(
+        issued_at=datetime(d.year, d.month, d.day, 3, 0, tzinfo=timezone.utc),
+        predictions=e.model_predictions,
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=window_high)],
+        window_opened_local=datetime(d.year, d.month, d.day, 6, 0),
+        window_scores={"gfs_seamless": VerificationScore(
+            rain_correct=True, high_error_c=window_actual_high - window_high
+        )},
+        window_verified_at=datetime.now(timezone.utc),
+    )]
+    return e
+
+
+def test_the_two_series_are_compared_only_on_days_that_carry_both():
+    """ROADMAP item 104, contract item 3. The operator has to choose what
+    happens to the calendar series, and that choice needs the two compared —
+    but a comparison across different day sets is not a comparison, it is two
+    samples of different weather. Only days holding BOTH a scored window and a
+    scorable Day+0 count.
+    """
+    from openlocalweather.review import compare_window_to_calendar
+
+    logs, actuals = {}, {}
+    for i in range(4):
+        d = date(2026, 9, 1) + timedelta(days=i)
+        logs[d] = _paired_day(d, day0_high=30.0, window_high=28.0,
+                              actual_high=27.0, window_actual_high=27.5)
+        actuals[d] = DailyActual(rain=False, high_c=27.0)
+
+    # A fifth day with a Day+0 claim and no window — excluded by the window
+    # side of the pairing.
+    lonely = date(2026, 9, 5)
+    logs[lonely] = entry(lonely, day0=[ModelPrediction(model="gfs_seamless", rain=False, high_c=30.0)])
+    actuals[lonely] = DailyActual(rain=False, high_c=27.0)
+
+    # And a sixth with a SCORED WINDOW and no Day+0 claim for this model,
+    # which is excluded by the other side. Both guards need a day that only
+    # they can reject: the first version of this test had only the day above,
+    # so blanking the calendar guard left it green.
+    orphan = date(2026, 9, 6)
+    logs[orphan] = _paired_day(orphan, day0_high=30.0, window_high=28.0,
+                               actual_high=27.0, window_actual_high=27.5)
+    logs[orphan].model_predictions = ModelPredictionsByLead(day0=[])
+    logs[orphan].prediction_rows[0].predictions = ModelPredictionsByLead(day0=[])
+    actuals[orphan] = DailyActual(rain=False, high_c=27.0)
+
+    got = compare_window_to_calendar(
+        lambda d: logs.get(d), actuals, sorted(logs), models=["gfs_seamless"]
+    )
+    row = next(r for r in got if r.model == "gfs_seamless")
+
+    assert row.paired_checks == 4, "the day with no window must not be counted"
+    # Calendar called 30.0 against an observed 27.0 -> -3.0.
+    assert row.calendar_high_error_c == pytest.approx(-3.0)
+    # The window called 28.0 against its own 27.5 -> -0.5.
+    assert row.window_high_error_c == pytest.approx(-0.5)
+
+
+def test_a_record_with_no_scored_windows_compares_nothing():
+    """The live condition until 2026-09-16. Zero paired checks and null means,
+    not zeroes — a zero error would read as two series that agree perfectly."""
+    from openlocalweather.review import compare_window_to_calendar
+
+    d = date(2026, 9, 1)
+    logs = {d: entry(d, day0=[ModelPrediction(model="gfs_seamless", rain=False, high_c=30.0)])}
+    actuals = {d: DailyActual(rain=False, high_c=27.0)}
+
+    row = next(r for r in compare_window_to_calendar(
+        lambda x: logs.get(x), actuals, [d], models=["gfs_seamless"]
+    ) if r.model == "gfs_seamless")
+
+    assert row.paired_checks == 0
+    assert row.calendar_high_error_c is None and row.window_high_error_c is None

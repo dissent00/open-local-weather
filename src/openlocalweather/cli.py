@@ -71,7 +71,7 @@ from openlocalweather.pipeline import (
 )
 from openlocalweather.publish.email_gmail import GmailSMTPSender, parse_recipient_list
 from openlocalweather.publish.pages import GitHubPagesPublisher
-from openlocalweather.review import build_weekly_review
+from openlocalweather.review import build_weekly_review, compare_window_to_calendar
 from openlocalweather.store.actuals_cache import (
     as_date_dict,
     read_actuals_cache,
@@ -359,6 +359,57 @@ def _print_observations_refreshed(result, dry_run: bool) -> None:
     # wording of it.
     print(f"  observed:        {describe_observed_so_far(entry.observed_so_far, as_of=entry.meta.observations_local_time)}")
     print(f"  published:       {result.published}")
+
+
+def _run_window_vs_day(args: argparse.Namespace) -> int:
+    """Both Day+0 series, on the days that carry both — ROADMAP item 104's
+    contract items 2 and 3.
+
+    An analysis verb rather than anything the pipeline runs, in the same
+    spirit as `divergence`: it exists so a decision the operator has to take —
+    what happens to the calendar series when the window replaces it — is taken
+    against a measurement instead of against the argument for the reframe.
+    """
+    location = load_location_config(args.config)
+    cache = read_actuals_cache(args.data_dir)
+    rows = compare_window_to_calendar(
+        make_log_lookup(args.data_dir),
+        as_date_dict(cache.primary),
+        list_log_dates(args.data_dir),
+        models=scored_models(location.local_bulletin_model_id),
+    )
+
+    paired = max((r.paired_checks for r in rows), default=0)
+    if not paired:
+        print("No day yet carries both a scored window and a scorable Day+0.")
+        print(
+            "A window is scorable only once every hour it covers lies on a finished "
+            "day — see verify.scoring.window_is_scorable."
+        )
+        return 0
+
+    print(f"{'model':16} {'paired':>7} {'rain cal/win':>13} {'high cal/win':>15} {'cloud cal/win':>17}")
+    for r in rows:
+        if not r.paired_checks:
+            continue
+
+        def _pair(a, b, fmt="{:+.1f}"):
+            left = fmt.format(a) if a is not None else "-"
+            right = fmt.format(b) if b is not None else "-"
+            return f"{left} / {right}"
+
+        print(
+            f"{r.model:16} {r.paired_checks:>7} "
+            f"{f'{r.calendar_rain_correct}/{r.window_rain_correct}':>13} "
+            f"{_pair(r.calendar_high_error_c, r.window_high_error_c):>15} "
+            f"{_pair(r.calendar_cloud_error_pct, r.window_cloud_error_pct):>17}"
+        )
+
+    print()
+    print("Errors are observed minus forecast. The two sides are scored against")
+    print("DIFFERENT observations on purpose: the calendar claim against the calendar")
+    print("day, the window claim against the 24 hours it actually covered.")
+    return 0
 
 
 def _run_forecast(args: argparse.Namespace) -> int:
@@ -1123,6 +1174,13 @@ def main(argv: list[str] | None = None) -> int:
     rpd.add_argument("before")
     rpd.add_argument("after")
 
+    wvd = sub.add_parser(
+        "window-vs-day",
+        help="Both Day+0 series side by side, on the days that carry both — ROADMAP item 104.",
+    )
+    wvd.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    wvd.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+
     health = sub.add_parser(
         "check-health",
         help="Weekly health checks: model deprecation, repo staleness, data coverage.",
@@ -1139,6 +1197,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "forecast":
         return _run_forecast(args)
+    if args.command == "window-vs-day":
+        return _run_window_vs_day(args)
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)

@@ -622,3 +622,117 @@ def _describe_sufficiency(
                 "not included in the figure above.)"
             )
     return " ".join(parts)
+
+
+@dataclass
+class WindowComparison:
+    """One model's calendar-day series set beside its issuance-window series,
+    on the days that carry both — ROADMAP item 104, contract items 2 and 3.
+
+    THIS EXISTS TO SETTLE A DECISION, NOT TO BE PUBLISHED. Contract item 3
+    asks what happens to the existing Day+0 series when the window replaces
+    it, and that choice was left to the operator because 24 of 34 days cannot
+    be honestly re-derived. Whatever they choose, it should be chosen against
+    a measurement of how far the two actually differ. Expect this type to be
+    deleted once one series retires.
+    """
+
+    model: str
+    # Days holding BOTH a scored window and a scorable Day+0. A comparison
+    # across different day sets is not a comparison — it is two samples of
+    # different weather — so anything less than both is not counted.
+    paired_checks: int
+    calendar_rain_correct: int
+    window_rain_correct: int
+    calendar_high_error_c: float | None
+    window_high_error_c: float | None
+    calendar_low_error_c: float | None
+    window_low_error_c: float | None
+    calendar_cloud_error_pct: float | None
+    window_cloud_error_pct: float | None
+
+
+def compare_window_to_calendar(
+    log_lookup: LogLookup,
+    actuals: dict[date, DailyActual],
+    all_log_dates: list[date],
+    models: list[str],
+) -> list[WindowComparison]:
+    """Both series, per model, on the days that carry both.
+
+    THE TWO SIDES ARE SCORED AGAINST DIFFERENT OBSERVATIONS, and that is the
+    point rather than a flaw. The calendar claim is scored against the
+    calendar day; the window claim against the 24 hours it actually covered.
+    Scoring them against the same observation would erase the difference this
+    is measuring.
+
+    RECOMPUTED, NOT STORED, like every other long-run statistic here — the
+    window scores are on the rows and the calendar scores are derivable from
+    the stored predictions plus the actuals, so a figure that can only be
+    re-derived is a figure that can be checked.
+
+    Null means rather than zeroes when nothing is paired: two series that have
+    never been compared are not two series that agree perfectly.
+    """
+    rows: list[WindowComparison] = []
+
+    for model in models:
+        paired: list[tuple[VerificationScore, VerificationScore]] = []
+
+        for d in all_log_dates:
+            entry = log_lookup(d)
+            if entry is None or d not in actuals:
+                continue
+
+            window = _scored_window_for(entry, model)
+            if window is None:
+                continue
+
+            calendar = _calendar_day0_for(entry, actuals[d], model)
+            if calendar is None:
+                continue
+
+            paired.append((calendar, window))
+
+        rows.append(
+            WindowComparison(
+                model=model,
+                paired_checks=len(paired),
+                calendar_rain_correct=sum(1 for c, _ in paired if c.rain_correct),
+                window_rain_correct=sum(1 for _, w in paired if w.rain_correct),
+                calendar_high_error_c=mean([c.high_error_c for c, _ in paired]),
+                window_high_error_c=mean([w.high_error_c for _, w in paired]),
+                calendar_low_error_c=mean([c.low_error_c for c, _ in paired]),
+                window_low_error_c=mean([w.low_error_c for _, w in paired]),
+                calendar_cloud_error_pct=mean([c.cloud_error_pct for c, _ in paired]),
+                window_cloud_error_pct=mean([w.cloud_error_pct for _, w in paired]),
+            )
+        )
+
+    return rows
+
+
+def _scored_window_for(entry, model: str) -> VerificationScore | None:
+    """This day's scored window for one model, or None.
+
+    ROW 0 ONLY, deliberately. A day can hold several issuances and therefore
+    several windows, and averaging them would weight busy days more heavily —
+    the same trap contract item 4 records about scoring every row. Row 0 is
+    the issuance the calendar series is also drawn from, so pairing them
+    compares like with like.
+    """
+    for row in entry.prediction_rows[:1]:
+        if row.window_verified_at is not None and model in row.window_scores:
+            return row.window_scores[model]
+
+    return None
+
+
+def _calendar_day0_for(entry, observed: DailyActual, model: str) -> VerificationScore | None:
+    """This day's calendar Day+0 score for one model, re-derived."""
+    from openlocalweather.verify.scoring import score_prediction, scored_predictions
+
+    predicted = next(
+        (p for p in scored_predictions(entry).day0 if p.model == model), None
+    )
+    return score_prediction(predicted, observed, 0)
