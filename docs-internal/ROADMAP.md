@@ -763,7 +763,20 @@ behaviour has been observed against real KMD posting patterns for a while.
 
 ---
 
-## 3. Push-based mailer delivery — replace Apps Script polling entirely · **Planned**
+## 3. Push-based mailer delivery — replace Apps Script polling entirely · **On hold 2026-09-14, and its premise is stale**
+
+**TWO REASONS NOT TO START IT.** Item 124 makes the mailer an example rather
+than the recommendation, so building a better trigger for it spends effort on
+a path being retired. And the description below is nine days out of date:
+`daily.yml` and `evening_refresh.yml` were deleted on 2026-09-05 (`cc3e556`)
+and item 104 collapsed the pipeline to a single `forecast.yml` that can run at
+any frequency. Anyone reviving this must re-derive the "what it would replace"
+section against `forecast.yml` first, because the world it argues about no
+longer exists.
+
+The polling problems it names are real and still real — the hand-tuned
+offset, the silent miss when both schedulers are late — they are simply no
+longer worth solving.
 
 ### The idea
 
@@ -977,7 +990,19 @@ same quirk.
 
 ---
 
-## 5. Real sending domain for email · **Planned**
+## 5. Real sending domain for email · **On hold 2026-09-14 — the destination changed**
+
+**DO NOT START THIS WITHOUT REOPENING THE DECISION.** Item 124 sets the
+direction: the published page is the product, a feed is the delivery path
+that needs no credentials, and the mailer becomes an example rather than the
+recommendation. Every cost listed below — a domain, DKIM/SPF/DMARC, a signup
+form, migrating subscribers with their consent — is spent making the path
+this project is walking away from better.
+
+The reasoning under it stays correct and is worth keeping: it is the clearest
+statement in this repo of why email to real inboxes is hard, and item 124
+cites it. What changed is not the analysis but whether the destination is
+wanted.
 
 ### Where things stand
 
@@ -16352,6 +16377,14 @@ older than it. The live label is local where the entry knows its local clock.
   3. **Port the composer to JS** and pin it against
      `spec/vectors/observed_so_far.json`, which is what makes the Dart port
      trustworthy. Most work, most correct, and a third place to keep in step.
+
+  **ANSWERED 2026-09-14: option 1, leave it out.** Item 124 sets the mailer on
+  a path to deprecated/example-only once the feed exists, so a third
+  implementation of a composer — with a manual deploy, and no vector
+  conformance — would be the most expensive answer to the least durable
+  problem. The narrative already carries some of what the station saw,
+  because the block is in the prompt. Recorded in `mailer/README.md` under
+  what is deliberately absent, so the gap is not re-discovered as drift.
 - **THE APP HAS NO STATION SOURCE AT ALL.** `forecast.dart` passes
   `airport_metar: null` and now `observedSoFar: null`, explicitly and with the
   reason, so the app prints the gap line. Everything above is server-only
@@ -16706,6 +16739,45 @@ unit a reader subscribes to; the issuance is an edit to it.
 
 That also decides the `<id>`: the day's permalink, stable across re-issues,
 with `<updated>` carrying `last_issued_at`.
+
+### The plan, set by the operator 2026-09-14
+
+> "Let's plan on maintaining the mailer script/setup recommendation for a bit
+> longer while we get caught up on some roadmap items, sync it, and then mark
+> as deprecated/example only once we move to RSS."
+
+And the reasoning, which is the part that outlives the sequence:
+
+> "No PII, infinitely scalable by just focusing on the published web page,
+> which can be consumed by viewer-app, RSS, or just a bookmark on a phone
+> homepage or a browser."
+
+**THE PUBLISHED PAGE IS THE PRODUCT; EVERYTHING ELSE CONSUMES IT.** That is a
+statement about where effort goes, not only about delivery. A surface that
+reads the page costs nothing per reader and holds nothing about them; a
+surface that pushes to people costs a credential, a list, and a consent
+trail per reader.
+
+In order:
+
+1. **Keep the mailer working and recommended.** It is the only inbox path a
+   forker can stand up today, and the beta group reads email.
+2. **Catch up on roadmap items**, then **sync the mailer** once more against
+   whatever the page has gained. The 2026-09-14 review is the template: check
+   the page's blocks against both bodies, refresh the fixture FIRST.
+3. **Build the feed.**
+4. **Mark the mailer deprecated / example-only** — kept in the tree as a
+   worked example of the shape, not as the recommended path.
+
+### What this decides elsewhere, immediately
+
+- **Item 121's mailer question is answered: leave the observed block out.**
+  It offered three options, and the third — port `describe_observed_so_far`
+  to JS and pin it against the vectors — is now clearly wrong. A third
+  implementation, with a manual deploy, for a path scheduled to become an
+  example, is the most expensive answer to the least durable problem.
+- **Item 5 should not be started.** See its own entry.
+- **Item 3 should not be started, and was already stale.** See its own entry.
 
 ### What it does not solve
 

@@ -113,6 +113,18 @@ verification is sorted) means writing a `publish/email_brevo.py`
 `pipeline.py`'s dependency injection, no changes needed here or there.
 
 
+## Status: maintained now, example later
+
+**Operator's decision, 2026-09-14.** This mailer is maintained and recommended
+for now — it is the only inbox path a fork can stand up without a domain, and
+this deployment's readers use email. Once ROADMAP item 124's feed exists it
+becomes **deprecated / example-only**: kept in the tree as a worked example of
+the shape, not as the path a new deployment is told to take. The reasoning is
+item 124's — the published page is the product, and a surface that reads it
+costs nothing per reader and holds nothing about them.
+
+Until then it is kept in step, which is the rest of this section.
+
 ## Keeping it in step with the pipeline
 
 This file is deployed by hand, and it drifts. Sunrise and sunset reached the
@@ -140,8 +152,10 @@ So, when the pipeline gains a reader-facing field:
 
 - **The per-station Ground AQI section**, for the reason above — it would
   mean a second implementation of `aqi.py`'s staleness logic in JS.
-- **The observed-so-far block** (ROADMAP item 121). The entry stores the
-  READING, not the sentence, deliberately — so that the wording stays fixable
-  for every day already written. Rendering it here would mean a THIRD
-  implementation of `describe_observed_so_far`, after Python and Dart, and
-  one with no vector conformance. See ROADMAP item 121 for the options.
+- **The observed-so-far block** (ROADMAP item 121), decided 2026-09-14. The
+  entry stores the READING, not the sentence, deliberately — so the wording
+  stays fixable for every day already written. Rendering it here would mean a
+  THIRD implementation of `describe_observed_so_far`, after Python and Dart,
+  and one with no vector conformance and a manual deploy. Not worth it for a
+  path ROADMAP item 124 sets on course to become an example rather than the
+  recommendation.
