@@ -113,10 +113,17 @@ than an hour apart are refused as duplicate triggers.
    - **Body**: `{"ref":"main"}`
    - **Schedule**: whatever times you want issuances. Pick the first one
      inside an aligned model window (`cycle.py`) — this deployment uses
-     03:01 and 15:01 UTC, the crontab lines below. No need to offset off
-     the exact hour the way GitHub's own crons do; that trick works around
-     GitHub Actions' scheduler congestion specifically, which doesn't
-     apply to a dedicated cron service.
+     03:01 and 15:01 UTC, the crontab lines below. Offsetting off the exact
+     hour to dodge GitHub Actions' scheduler congestion does not apply to a
+     dedicated cron service — but PICK THE HOUR WITH THE PROVIDER IN MIND.
+     Measured on this deployment to 2026-09-14: the 03:01 slot has never
+     failed in five days of running, while the 15:01 slot failed on three of
+     seven, every time a burst of HTTP 503s refused in under a second. 15:01
+     UTC is the middle of the working day in both North America and Europe
+     and 03:01 is the middle of the night; on a free tier that is where an
+     overloaded provider shows up first. Prefer a slot inside the aligned
+     window that is NOT in the 14:00-22:00 UTC peak, and see ROADMAP item 79
+     for the measurement and its caveats.
 3. A successful dispatch returns HTTP 204 with an empty body — it means
    GitHub accepted the request to start a run, not that the run will
    succeed. This is now the only trigger — `forecast.yml` declares no

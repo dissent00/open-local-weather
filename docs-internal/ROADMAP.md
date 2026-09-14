@@ -9691,7 +9691,51 @@ hash that will vary), item 28 (the removal trigger), item 68.
 
 ---
 
-## 79. A provider outage deserves a longer wait than a hiccup · **Weather fetches done 2026-09-09; the LLM half still Planned**
+## 79. A provider outage deserves a longer wait than a hiccup · **Weather fetches done 2026-09-09; the LLM half still Planned — and now has evidence**
+
+> **THE EVENING SLOT FAILS AND THE MORNING SLOT NEVER HAS.** Measured
+> 2026-09-14 from the ledger's own outcome field, which has recorded every
+> attempt since 2026-09-08:
+>
+> | slot | days run | days failed | attempts | outcomes |
+> |---|---|---|---|---|
+> | 03:01 UTC | 5 | **0** | 7 | 7 x http_200 |
+> | 15:01 UTC | 7 | **3** | 20 | 7 x http_200, 11 x http_503, 2 x timeout |
+>
+> Failures on 2026-09-08, 2026-09-11 and 2026-09-14, every one of them a 503
+> storm starting at 15:01 and running through the whole retry budget. Today's
+> four attempts were refused in 0.8s, 0.5s, 2.4s and 0.6s — the provider
+> saying no instantly, not a hang and nothing to do with prompt size.
+>
+> **THE LIKELY CAUSE IS NOT THE MINUTE, IT IS THE HOUR.** 15:01 UTC is 11:01
+> on the US east coast and 16:01 in London — the middle of the working day
+> across both. 03:01 UTC is 23:01 and 04:01, when the West is asleep. A free
+> tier is exactly where that asymmetry would show up first, and it explains
+> the pattern better than cron congestion does.
+>
+> **Stated as a hypothesis, because the sample cannot separate the
+> alternatives.** Seven evening days and five morning ones. 2026-09-11 was a
+> provider-wide bad day — the operator's manual A/B runs at 08:30 and 11:47
+> were refused too — so on the narrowest reading it is two evening failures in
+> six days against none in five. The slot, the hour and the day-of-week are
+> all confounded and one week cannot untangle them.
+>
+> **What it changes about this item.** The LLM half was "planned" with no
+> evidence about how long an outage actually lasts. Now: today's storm
+> outlasted a 3.5-minute retry budget (30s + 60s + 120s across four attempts),
+> and 2026-09-11's ran 15:01 to 15:07. So a longer backoff is not obviously
+> the fix either — six minutes of waiting would have caught one of these and
+> might catch neither next time. The cheaper experiment is to MOVE THE SLOT
+> and watch, which costs nothing and tests the hypothesis directly.
+>
+> **And the morning forecast is already published when this happens**, so the
+> cost of an evening failure is a missed UPDATE rather than a missing day. The
+> abort behaved correctly: it refused rather than publishing a degraded
+> forecast, and the record shows one issuance rather than a broken one.
+>
+> Related: item 108 (nothing tells anybody the run failed except a GitHub
+> email), 111, and `ops/README.md`, whose advice on scheduling is amended
+> alongside this.
 
 > **Measured 2026-09-08, and this item is the one that fits.** A failed 15:01
 > refresh spent four attempts, every one `http_503`, at 4.228 / 4.564 /
