@@ -640,6 +640,18 @@ def test_vectors_observed_so_far():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_comparison_subject():
+    """Contract item 8's daypart gate. A client that showed a comparison at
+    15:00, or withheld one at 06:00, fails nothing else — the sentence is
+    simply present or absent, which reads as unremarkable weather rather than
+    as a bug."""
+    from openlocalweather.comparison import comparison_subject
+    for case in load("comparison_subject.json")["cases"]:
+        i = case["input"]
+        got = comparison_subject(i["issued_hour"], sunset_hour=i["sunset_hour"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_llm_should_reason():
     """The spending gate — items 121 and 120. The cases that matter are the
     three-valued ones: `guidance_is_newer=None` means NO BASIS and resolves
@@ -818,6 +830,7 @@ def test_every_vector_file_is_exercised():
         "wind_describe_shift.json",
         "observed_so_far.json",
         "llm_should_reason.json",
+        "comparison_subject.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

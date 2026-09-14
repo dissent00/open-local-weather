@@ -345,10 +345,26 @@ def compute_day_over_day(
     today_convective: bool | None = None,
     *,
     issued_hour: int | None,
+    sunset_hour: int | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for yesterday — a gap must read
-    as a gap, not as a day with unremarkable weather."""
+    as a gap, not as a day with unremarkable weather.
+
+    ALSO None WHEN THE HOUR HAS PASSED FOR IT — ROADMAP item 104, contract
+    item 8, and `comparison_subject` carries the reasoning. A comparison earns
+    its place while the day is mostly ahead; by mid-afternoon the reader has
+    lived it. The prompt already handles the null: "If DAY-OVER-DAY COMPARISON
+    is unavailable, simply omit the comparison rather than guessing or hedging
+    about its absence."
+
+    `sunset_hour` defaults to None so the morning half works for every caller
+    that has not been given one, and the evening pivot simply never fires
+    there. A missing boundary must not promote an afternoon into a comparison.
+    """
     if yesterday_actual is None:
+        return None
+
+    if comparison_subject(issued_hour, sunset_hour=sunset_hour) is None:
         return None
 
     consensus_high = mean([p.high_c for p in today_day0_predictions])

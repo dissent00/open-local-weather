@@ -77,7 +77,7 @@ from openlocalweather.models import (
     ModelPrediction,
     format_temp_high_low,
 )
-from openlocalweather.comparison import compute_day_over_day, describe_extended_trend
+from openlocalweather.comparison import compute_day_over_day, comparison_subject, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.disagreement import (
@@ -2739,8 +2739,19 @@ def export_day_over_day() -> None:
         # may not, because by then it is a claim about hours that have gone.
         ("evening thunder, issued in the morning", actual(),
          preds([29.0], rains=[True], mm=[8.0], onsets=["17:00"]), True, 6),
-        ("evening thunder, issued after the onset", actual(),
+        # SINCE CONTRACT ITEM 8's GATE this one demonstrates the gate rather
+        # than the onset bounding: an 18:00 issuance produces no comparison at
+        # all, so there is no phrase left to bound. Kept at 18:00 deliberately
+        # — it is the hour the operator named as one they do not want a
+        # comparison at, and a null here is the assertion.
+        ("evening thunder at 18:00 is gated off entirely", actual(),
          preds([29.0], rains=[True], mm=[8.0], onsets=["17:00"]), True, 18),
+        # Item 118's bounding still has to be exercised somewhere the gate
+        # lets a comparison through. An onset at 05:00 read at 08:00 has
+        # already happened, so the timing phrase must go while the comparison
+        # itself stays — which is the behaviour the 18:00 case used to carry.
+        ("an onset already past is not a timing phrase", actual(),
+         preds([29.0], rains=[True], mm=[8.0], onsets=["05:00"]), True, 8),
     ]
 
     cases = []
@@ -3361,6 +3372,55 @@ def export_llm_should_reason() -> None:
                 ),
             }
             for name, first, newer, disagreements, policy in cases
+        ],
+    )
+
+
+def export_comparison_subject() -> None:
+    """The daypart gate on the day-over-day comparison — ROADMAP item 104,
+    contract item 8.
+
+    THE OPERATOR'S FIVE SCENARIOS, pinned so both languages gate identically.
+    A client that showed a comparison at 15:00, or withheld one at 06:00,
+    would not fail anything else — the sentence would simply be present or
+    absent, which reads as the weather being unremarkable rather than as a
+    bug. That is the failure mode vectors exist for.
+
+    The boundary cases carry the decisions: noon is AFTERNOON, and the sunset
+    pivot is strictly after, so 18:00 on a day whose sun sets at 18:00 is
+    still today and produces nothing.
+    """
+    cases = [
+        ("03:00 — the whole day is ahead", 3, 18, "today"),
+        ("06:00 — the day is ahead", 6, 18, "today"),
+        ("11:00 — still morning", 11, 18, "today"),
+        ("noon is afternoon, the comparison has gone", 12, 18, None),
+        ("15:00 — lived enough of it", 15, 18, None),
+        ("18:00 — at sunset is still today", 18, 18, None),
+        ("19:00 — past sunset, the day ahead is tomorrow", 19, 18, "tomorrow"),
+        ("20:00 — the operator's evening case", 20, 18, "tomorrow"),
+        ("23:00 — still tomorrow", 23, 18, "tomorrow"),
+        # No sunset: the morning half works, the evening pivot never fires.
+        ("no sunset, morning still compares", 6, None, "today"),
+        ("no sunset, afternoon still does not", 15, None, None),
+        ("no sunset, evening does not promote", 20, None, None),
+        # Absence is not permission — _issued_hour returns 24 when the moment
+        # could not be established.
+        ("an unestablished clock compares nothing", 24, 18, None),
+        ("a null clock compares nothing", None, 18, None),
+    ]
+    write(
+        "comparison_subject.json",
+        "comparison_subject",
+        "Whether a day-over-day comparison appears at this hour and what it is "
+        "about: 'today', 'tomorrow', or null for not at all.",
+        [
+            {
+                "name": name,
+                "input": {"issued_hour": hour, "sunset_hour": sunset},
+                "expected": comparison_subject(hour, sunset_hour=sunset),
+            }
+            for name, hour, sunset, _ in cases
         ],
     )
 
@@ -3997,6 +4057,7 @@ def main() -> None:
     export_extended_trend()
     export_describe_day_rain()
     export_observed_so_far()
+    export_comparison_subject()
     export_llm_should_reason()
     export_describe_day_over_day()
     export_glossary()

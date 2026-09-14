@@ -97,13 +97,14 @@ absent values are `null`, never omitted keys.
 | `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |
 | `false_weekday_claims.json` | `false_weekday_claims` | Weekday/date pairings a narrative asserts that the calendar contradicts. Recorded against the entry and published anyway; a false alarm is worse than the defect. |
 | `dates_add_days.json` | `add_days` | 4 |
-| `day_over_day.json` | `compute_day_over_day` | 44 |
+| `day_over_day.json` | `compute_day_over_day` | 45 |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 20 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
 | `observed_so_far.json` | `describe_observed_so_far` | 15 |
 | `llm_should_reason.json` | `llm_should_reason` | 11 |
+| `comparison_subject.json` | `comparison_subject` | 14 |
 | `glossary.json` | `GLOSSARY` | 19 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
@@ -136,6 +137,7 @@ absent values are `null`, never omitted keys.
 | `wind_consensus_direction.json` | `consensus_direction` | The gated rose point, or null. Null is the correct and common answer here in the evening: measured 2026-09-10, model agreement runs 0.95 at midday while Lake Victoria's breeze is driven and 0.48 at 19:00 as it collapses. |
 | `observed_so_far.json` | `describe_observed_so_far` | What the station has already measured today, as one finished sentence — ROADMAP item 121, so a reader gets mid-day updates without an LLM call. Three of its six dimensions round, and the cases are the half-to-even ties rather than a spread: Dart's `.round()` goes half AWAY from zero and would publish 33 where Python publishes 32. The other half of the file is the three-valued contract — a `False` is reported because the station looked, a `null` is omitted because it did not, and a port that collapsed the two would say "no rain" on the strength of not having looked. |
 | `llm_should_reason.json` | `llm_should_reason` | Whether an issuance buys a judgment and a narrative, or refreshes what the station has seen and stops — ROADMAP item 121, with the policy item 120 leaves to the operator. Not arithmetic, and pinned anyway: item 120 settles that the same question is answered on both sides, so a divergence produces a client that spends where the server would not and nothing anywhere reports it. The cases that matter are three-valued — `guidance_is_newer` of `null` means NO BASIS and resolves toward spending, and `observation_disagreements` of `null` means the station was never read, which is not a contradiction. |
+| `comparison_subject.json` | `comparison_subject` | Whether a day-over-day comparison appears at this hour and what it is about — ROADMAP item 104, contract item 8, specified by the operator's own five scenarios. Pinned because a divergence here fails nothing else: the sentence is simply present or absent, which a reader takes for unremarkable weather rather than for a bug. The boundary cases carry the decisions — noon is AFTERNOON, and the sunset pivot is strictly after, so 18:00 on a day whose sun sets at 18:00 is still today. |
 | `wind_describe_shift.json` | `describe_wind_shift` | How the wind turns through the day, as one finished clause. The models disagree on a single daily bearing and agree on which way it turns — across-day agreement 0.98–0.99 at the anchor hours — so the shift is reported and the bearing usually is not. An anchor the models split on is dropped rather than guessed. |
 
 ### The cases that matter most

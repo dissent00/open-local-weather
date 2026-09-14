@@ -379,13 +379,57 @@ String? consensusOnset(List<ModelPrediction> predictions) {
 
 /// Null when there is no observed record for yesterday — a gap must read as
 /// a gap, not as a day with unremarkable weather.
+/// What a day-over-day comparison is ABOUT at a given hour, or null when it
+/// should not appear at all — upstream ROADMAP item 104, contract item 8.
+const String comparisonSubjectToday = 'today';
+const String comparisonSubjectTomorrow = 'tomorrow';
+
+/// Where a day stops being mostly ahead. Local noon, and it is the day's own
+/// midpoint rather than a round number that happens to look like one.
+const int comparisonMorningEndsHour = 12;
+
+/// Whether a day-over-day comparison is worth reading at this hour, and what
+/// it should be about.
+///
+/// THE OPERATOR'S FIVE SCENARIOS are the specification: the day ahead at
+/// 03:00 and 06:00, nothing at 15:00 or 18:00 — "I've already lived enough of
+/// it that I don't care how it compares to yesterday" — and tomorrow from
+/// sunrise at 20:00.
+///
+/// BOTH BOUNDARIES ARE THE DAY'S OWN. Noon separates a day mostly ahead from
+/// one mostly lived. SUNSET is where "the day ahead" stops meaning today,
+/// which is why 18:00 is suppressed and 20:00 is not on a day whose sun sets
+/// at 18:39. A fixed evening hour would put that pivot in the wrong place
+/// twice a year at latitude, and always for a fork somewhere else.
+///
+/// NULL WHEN THE CLOCK IS UNKNOWN, and null after sunset when there IS no
+/// sunset — a missing boundary must not promote an afternoon into a
+/// comparison.
+String? comparisonSubject(int? issuedHour, {int? sunsetHour}) {
+  if (issuedHour == null || issuedHour < 0 || issuedHour >= 24) return null;
+
+  if (issuedHour < comparisonMorningEndsHour) return comparisonSubjectToday;
+
+  if (sunsetHour != null && issuedHour > sunsetHour) {
+    return comparisonSubjectTomorrow;
+  }
+
+  return null;
+}
+
 DayOverDayComparison? computeDayOverDay(
   DailyActual? yesterdayActual,
   List<ModelPrediction> todayDay0Predictions, {
   bool? todayConvective,
   required int? issuedHour,
+  int? sunsetHour,
 }) {
   if (yesterdayActual == null) return null;
+
+  // The daypart gate — contract item 8. See comparisonSubject for why.
+  if (comparisonSubject(issuedHour, sunsetHour: sunsetHour) == null) {
+    return null;
+  }
 
   final consensusHigh = mean([for (final p in todayDay0Predictions) p.highC]);
   final consensusLow = mean([for (final p in todayDay0Predictions) p.lowC]);

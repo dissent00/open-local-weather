@@ -1,0 +1,119 @@
+{
+  "vector_format_version": 1,
+  "function": "comparison_subject",
+  "description": "Whether a day-over-day comparison appears at this hour and what it is about: 'today', 'tomorrow', or null for not at all.",
+  "cases": [
+    {
+      "name": "03:00 \u2014 the whole day is ahead",
+      "input": {
+        "issued_hour": 3,
+        "sunset_hour": 18
+      },
+      "expected": "today"
+    },
+    {
+      "name": "06:00 \u2014 the day is ahead",
+      "input": {
+        "issued_hour": 6,
+        "sunset_hour": 18
+      },
+      "expected": "today"
+    },
+    {
+      "name": "11:00 \u2014 still morning",
+      "input": {
+        "issued_hour": 11,
+        "sunset_hour": 18
+      },
+      "expected": "today"
+    },
+    {
+      "name": "noon is afternoon, the comparison has gone",
+      "input": {
+        "issued_hour": 12,
+        "sunset_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "15:00 \u2014 lived enough of it",
+      "input": {
+        "issued_hour": 15,
+        "sunset_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "18:00 \u2014 at sunset is still today",
+      "input": {
+        "issued_hour": 18,
+        "sunset_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "19:00 \u2014 past sunset, the day ahead is tomorrow",
+      "input": {
+        "issued_hour": 19,
+        "sunset_hour": 18
+      },
+      "expected": "tomorrow"
+    },
+    {
+      "name": "20:00 \u2014 the operator's evening case",
+      "input": {
+        "issued_hour": 20,
+        "sunset_hour": 18
+      },
+      "expected": "tomorrow"
+    },
+    {
+      "name": "23:00 \u2014 still tomorrow",
+      "input": {
+        "issued_hour": 23,
+        "sunset_hour": 18
+      },
+      "expected": "tomorrow"
+    },
+    {
+      "name": "no sunset, morning still compares",
+      "input": {
+        "issued_hour": 6,
+        "sunset_hour": null
+      },
+      "expected": "today"
+    },
+    {
+      "name": "no sunset, afternoon still does not",
+      "input": {
+        "issued_hour": 15,
+        "sunset_hour": null
+      },
+      "expected": null
+    },
+    {
+      "name": "no sunset, evening does not promote",
+      "input": {
+        "issued_hour": 20,
+        "sunset_hour": null
+      },
+      "expected": null
+    },
+    {
+      "name": "an unestablished clock compares nothing",
+      "input": {
+        "issued_hour": 24,
+        "sunset_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "a null clock compares nothing",
+      "input": {
+        "issued_hour": null,
+        "sunset_hour": 18
+      },
+      "expected": null
+    }
+  ]
+}

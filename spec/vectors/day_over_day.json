@@ -3117,7 +3117,7 @@
       }
     },
     {
-      "name": "evening thunder, issued after the onset",
+      "name": "evening thunder at 18:00 is gated off entirely",
       "input": {
         "yesterday_actual": {
           "rain": true,
@@ -3157,6 +3157,50 @@
         ],
         "today_convective": true,
         "issued_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "an onset already past is not a timing phrase",
+      "input": {
+        "yesterday_actual": {
+          "rain": true,
+          "high_c": 29.6,
+          "low_c": 18.8,
+          "peak_wind_kmh": 40.7,
+          "mslp_trend": -0.5,
+          "onset_hour": "08:00",
+          "precip_mm": 18.0,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "today_day0_predictions": [
+          {
+            "model": "m0",
+            "target_date": null,
+            "rain": true,
+            "onset": "05:00",
+            "precip_mm": 8.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 20.0,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "today_convective": true,
+        "issued_hour": 8
       },
       "expected": {
         "yesterday_high_c": 29.6,

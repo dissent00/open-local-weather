@@ -1361,6 +1361,22 @@ void main() {
     });
   });
 
+  group('comparison_subject', () {
+    test('the daypart gate matches Python', () {
+      // A divergence here fails nothing else: the comparison sentence is
+      // simply present or absent, which a reader takes for unremarkable
+      // weather rather than for a bug.
+      for (final c in casesOf('comparison_subject.json')) {
+        final i = c['input'] as Map;
+        expect(
+            comparisonSubject(i['issued_hour'] as int?,
+                sunsetHour: i['sunset_hour'] as int?),
+            equals(c['expected']),
+            reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -1400,6 +1416,7 @@ void main() {
       'describe_day_rain.json',
       'observed_so_far.json',
       'llm_should_reason.json',
+      'comparison_subject.json',
       'describe_day_over_day.json',
       'glossary.json',
       'temp_high_low.json',
