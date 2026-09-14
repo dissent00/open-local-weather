@@ -17388,6 +17388,33 @@ the baseline is green before AND after every mutation.
 
 Seven mutations killed on each side, with that assertion in place.
 
+### The app takes the MAP, not the number — corrected while wiring it
+
+`generateForecast` first took a finished `calibratedGustKmh`. That was wrong
+and was caught by writing the app's call: the calibrated gust can only be
+computed once TODAY's models have been read, and in Dart that happens inside
+`runForecast`. A caller handing over a scalar could only base it on an earlier
+run's extraction — and on a day's FIRST run there is none, which is exactly
+when a scheduled forecast goes out. So the parameter is now each model's bias,
+applied to the Day+0 list the run itself extracts.
+
+**The app derives the record rather than being handed it.** `AppState` keeps a
+track record in memory and nothing persists it, so the alarm isolate — which
+builds its own `ForecastRunner` and is the majority of runs — could never
+receive one. A parameter would have been wired on the tap path and not the
+scheduled one, which is the same defect one layer out. `runVerification`
+re-derives `avgWindErrorKmh10` and `checksInWindow10` from the persisted
+predictions and observations whatever prior record it is passed, so an empty
+prior gives the same two numbers, and there is no second copy to keep in step.
+
+**One divergence, stated rather than hidden.** The Python pipeline calibrates
+over a Day+0 list that already has the persistence and climatology yardsticks
+in it; the app adds those after the run, so its consensus is over the real
+models alone. Their corrections are small (+0.58 and +2.58) and the two
+numbers are close rather than equal.
+
+Ensemble re-pinned at `158419a` (`d103b57`).
+
 ### What was not checked
 
 Whether the same bias exists at Day+3 and Day+7 — `GUST_CALIBRATION_LEAD_DAYS`
