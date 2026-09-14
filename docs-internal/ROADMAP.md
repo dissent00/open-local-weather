@@ -16792,3 +16792,73 @@ surface, and the cheapest one this project has available.
 Related: items 5 (the sending domain, and why email is hard), 3 (push-based
 mailer delivery), 116 (the PII email reintroduces), 2 (feed discovery, from
 the consuming end), 113.
+
+## 125. A deployment path that does not depend on GitHub hosting anything · **Planned — raised 2026-09-14**
+
+Operator, 2026-09-14:
+
+> "They'll have to have github to mirror OLW, but then it would be nice for us
+> to at least document how to set this up on a local server. Everything
+> requiring github to host and publish web pages for free indefinitely seems
+> brittle."
+
+The distinction is the item. GitHub as the place a forker GETS the code is
+fine and is not the risk. GitHub as the thing that runs the schedule, holds
+the secrets and serves the site to readers, free, forever, is a bet on one
+company's pricing — and item 124 has just made the published page the product,
+which raises the cost of that bet rather than lowering it.
+
+### Measured first: the pipeline is already decoupled
+
+Checked 2026-09-14 rather than assumed, and the answer is better than it
+looks. **`src/` makes no GitHub API call at all.** Every GitHub reference in
+the pipeline is cosmetic:
+
+| what | what it actually does |
+|---|---|
+| `GitHubPagesPublisher` | writes HTML into a directory. No network, no API. Named for a deployment target it does not talk to. |
+| `_github_repo_slug()` | builds the "View source" link. Reads `GITHUB_REPOSITORY`, falls back to the git remote, then to `""` — a harmless broken link, non-fatal by design. |
+| `build_nav_links(base_url, github_repo)` | one nav URL. |
+
+The only GitHub API callers in the tree are `ops/trigger_workflow.sh`, which
+is a scheduler, and the Apps Script mailer, which item 124 is retiring.
+
+**So `olw forecast` is already a local-server CLI.** It fetches weather, writes
+`data/`, writes `docs/`, and stops. What is GitHub-shaped is the OPERATIONAL
+SHELL around it, and each part has an ordinary substitute:
+
+| GitHub does | locally |
+|---|---|
+| Actions schedules the run | cron, which `ops/trigger_workflow.sh` exists to replace on the GitHub side anyway |
+| Actions secrets hold the API key | environment, as the CLI already reads it |
+| Pages serves `docs/` | any static server pointed at `docs/` |
+| the workflow commits `data/` and `docs/` | a local `git commit`; the archive property depends on GIT, not on GitHub |
+
+That last row matters and is worth saying plainly: **"the archive is the
+product" survives self-hosting untouched.** It rests on the commit history,
+which a local repository has.
+
+### What the item actually is
+
+Mostly documentation — a `docs/DEPLOYING.md` covering cron, a static server,
+env vars, and the one-time `check-config` — plus two small honesty fixes that
+the measurement above exposes:
+
+- **`GitHubPagesPublisher` is misnamed.** It writes files to a directory and
+  has never spoken to GitHub. A forker reading the class list is told the
+  project is more coupled than it is. Renaming is churn and can ride along
+  with other work in that module rather than alone.
+- **The source link should be configurable.** `_github_repo_slug()` assumes
+  `github.com` in its URL parsing, so a self-hoster mirroring to Forgejo or
+  GitLab gets either a wrong link or an empty one. A `source_url` in
+  `location.yaml` would let them point at their own, or omit it.
+
+### What it is NOT
+
+Not a container, not an installer, not a hosted service. The point is a
+forker with a spare machine can read one page and be publishing, which is a
+documentation problem with two small code fixes attached — not a platform.
+
+Related: items 124 (which makes the page the product and so raises the stakes
+of where it is hosted), 5 and 3 (on hold indefinitely, the other half of
+reducing GitHub-shaped dependencies), 113.
