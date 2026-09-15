@@ -138,3 +138,30 @@ def test_a_completed_interaction_with_no_output_names_what_it_found(monkeypatch)
         })
         with pytest.raises(LLMResponseError, match="user_input.*thought"):
             provider().generate("sys", "user", Answer)
+
+
+def test_an_error_returned_as_a_LIST_is_still_reported():
+    """MEASURED 2026-09-15, and it cost a request to find.
+
+    A rejected submit came back as `[{"error": {...}}]` — Google wraps some
+    errors as a list — and code that went straight to `body.get("error")`
+    raised AttributeError instead of reporting the message. The request was
+    spent and its reason was lost, which is the worst outcome available: a
+    failure that costs and teaches nothing.
+    """
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, status_code=400, json=[
+            {"error": {"code": 400, "message": "Unknown name response_format",
+                       "status": "INVALID_ARGUMENT"}}
+        ])
+        with pytest.raises(LLMResponseError, match="Unknown name response_format"):
+            provider().generate("sys", "user", Answer)
+
+
+def test_the_raw_body_is_carried_even_when_the_shape_is_unrecognised():
+    """A message Google wrote and a body nobody expected are different
+    evidence, and whoever debugs this next wants both."""
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, status_code=400, json=["something unforeseen"])
+        with pytest.raises(LLMResponseError, match="something unforeseen"):
+            provider().generate("sys", "user", Answer)

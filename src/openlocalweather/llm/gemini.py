@@ -261,8 +261,21 @@ class GeminiProvider:
                 f"Gemini returned a non-JSON response (HTTP {resp.status_code}): {resp.text[:500]}"
             ) from e
 
+        # A JSON BODY IS NOT ALWAYS AN OBJECT, and this assumed it was. Nothing
+        # has bitten here — `generateContent` has always answered with a dict —
+        # but the sibling Interactions endpoint returned `[{"error": {...}}]`
+        # on 2026-09-15 and the identical two lines raised AttributeError
+        # instead of reporting the message, losing a paid request's only
+        # lesson. The shape exists at this vendor; hardening the one that has
+        # not seen it yet is cheaper than discovering it in production.
+        if not isinstance(body, dict):
+            raise LLMResponseError(
+                f"Gemini returned a JSON {type(body).__name__} rather than an object "
+                f"(HTTP {resp.status_code}): {resp.text[:500]}"
+            )
+
         if resp.status_code != 200 or "error" in body:
-            err = body.get("error", {})
+            err = body.get("error") or {}
             raise LLMResponseError(
                 f"Gemini error ({err.get('code', resp.status_code)}): "
                 f"{err.get('message', resp.text[:500])}"

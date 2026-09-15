@@ -102,6 +102,42 @@ POLL_DELAYS_S = (15, 15, 30, 60, 60)
 STEP_MODEL_OUTPUT = "model_output"
 
 
+def _error_message(resp: requests.Response, body) -> str | None:
+    """The error in a response, or None if there is not one.
+
+    A JSON BODY IS NOT ALWAYS AN OBJECT. Measured 2026-09-15: a rejected
+    Interactions submit came back as a LIST — Google wraps some errors as
+    `[{"error": {...}}]` — and code that went straight to `body.get("error")`
+    raised AttributeError instead of reporting the message. The request was
+    spent and its reason was lost, which is the worst outcome available: a
+    failure that costs and teaches nothing.
+
+    So every shape is handled, and the raw text is carried whatever happens.
+    An error nobody can read is barely better than no error at all.
+    """
+    payload = body
+    if isinstance(payload, list):
+        payload = next((item for item in payload if isinstance(item, dict)), {})
+    if not isinstance(payload, dict):
+        payload = {}
+
+    err = payload.get("error")
+    if resp.status_code == 200 and not err:
+        return None
+
+    if isinstance(err, dict):
+        code = err.get("code", resp.status_code)
+        message = err.get("message") or ""
+        status = err.get("status")
+        detail = " ".join(part for part in (message, f"({status})" if status else "") if part)
+    else:
+        code, detail = resp.status_code, ""
+
+    # The raw body ALWAYS, not only when the parse found nothing. A message
+    # Google wrote and a body nobody expected are different evidence, and the
+    # next person debugging this wants both.
+    return f"Interactions error ({code}): {detail or '(no message)'} — body: {resp.text[:600]}"
+
 class GeminiInteractionsProvider:
     def __init__(
         self,
@@ -212,12 +248,9 @@ class GeminiInteractionsProvider:
                             f"Interactions returned a non-JSON response "
                             f"(HTTP {resp.status_code}): {resp.text[:500]}"
                         ) from e
-                    if resp.status_code != 200 or "error" in body:
-                        err = body.get("error", {})
-                        raise LLMResponseError(
-                            f"Interactions error ({err.get('code', resp.status_code)}): "
-                            f"{err.get('message', resp.text[:500])}"
-                        )
+                    failure = _error_message(resp, body)
+                    if failure is not None:
+                        raise LLMResponseError(failure)
                     return body
                 last_exc = LLMResponseError(f"Gemini returned HTTP {resp.status_code}")
             except requests.Timeout as e:
