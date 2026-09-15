@@ -152,12 +152,19 @@ def poll(key: str, interaction_id: str) -> list[dict]:
                 INTERACTION_URL.format(id=interaction_id),
                 params={"key": key}, timeout=REQUEST_TIMEOUT_S,
             )
-            status = None
+            status, envelope = None, None
             try:
-                status = r.json().get("status")
+                body = r.json()
+                status = body.get("status")
+                # THE COMPLETED ENVELOPE IS THE WHOLE POINT and the first version
+                # of this recorded only `status`, which answered where the STATUS
+                # lives and not where the OUTPUT does — the one thing the run was
+                # bought to learn. Cost a request to notice, 2026-09-15.
+                envelope = _shape(body)
             except ValueError:
                 pass
             seen.append({"after_s": wait, "http": r.status_code, "status": status,
+                         "envelope": envelope,
                          "elapsed_s": round(time.monotonic() - started, 3)})
             if status in TERMINAL:
                 break
@@ -172,6 +179,10 @@ def main() -> int:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--model", default=os.environ.get("GEMINI_MODEL") or "gemini-3.6-flash")
     ap.add_argument("--trials", type=int, default=2)
+    ap.add_argument("--fetch", default="",
+                    help="GET one interaction by id and dump its envelope. For reading a "
+                         "job that has ALREADY been paid for rather than submitting a "
+                         "second one — a completed interaction is stored and re-readable.")
     ap.add_argument("--envelope-only", action="store_true",
                     help="ONE background submit, no synchronous leg, and poll it to a "
                          "terminal state. This answers a DIFFERENT question from the rest "
@@ -189,6 +200,23 @@ def main() -> int:
     ap.add_argument("--yes", action="store_true",
                     help="actually send. Without it nothing leaves the machine.")
     a = ap.parse_args()
+
+    if a.fetch:
+        key = os.environ.get("GEMINI_API_KEY") or ""
+        if not key:
+            raise SystemExit("GEMINI_API_KEY is not set")
+        if not a.yes:
+            print(f"DRY RUN — would GET {INTERACTION_URL.format(id=a.fetch)}")
+            print("one request. Re-run with --yes.")
+            return 0
+        r = requests.get(INTERACTION_URL.format(id=a.fetch),
+                         params={"key": key}, timeout=REQUEST_TIMEOUT_S)
+        print(f"HTTP {r.status_code}")
+        try:
+            print(json.dumps(_shape(r.json()), indent=2))
+        except ValueError:
+            print(r.text[:400])
+        return 0
 
     day, prompt = newest_prompt(Path(a.data_dir))
     if a.envelope_only:

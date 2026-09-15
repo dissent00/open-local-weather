@@ -19,3 +19,9 @@ app/**/pubspec.lock
 
 # Session handoff scratch — see the handoff skill
 .claude/handoff.md
+
+# Probe output — ROADMAP item 132. Written to the working directory by
+# tools/probe_background_submit.py, carries interaction ids, and is a
+# diagnostic artefact rather than part of the record.
+probe_envelope_*.json
+probe_background_*.json
