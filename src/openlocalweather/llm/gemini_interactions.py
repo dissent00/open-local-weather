@@ -171,20 +171,28 @@ class GeminiInteractionsProvider:
             "input": user_prompt,
             "system_instruction": system_prompt,
             "background": True,
-            # THE OPENAI-SHAPED CONVERTER, NOT THE GEMINI ONE, and that is
-            # deliberate rather than a slip. This API names the field
-            # `response_format` and returns `"object": "interaction"` — both
-            # OpenAI conventions — where `generateContent` takes
-            # `responseSchema` with `responseMimeType`. `to_strict_json_schema`
-            # is the converter `openai_compat` already uses and vector-tests.
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": response_schema.__name__,
-                    "strict": True,
-                    "schema": schema,
-                },
-            },
+            # THE SCHEMA ITSELF, with no envelope around it — measured, after
+            # guessing wrong. An OpenAI-shaped `{"type": "json_schema",
+            # "json_schema": {...}}` was refused on 2026-09-15 with a message
+            # that named the whole contract:
+            #
+            #   The value 'json_schema' is not supported for 'type' at
+            #   'response_format'. Supported values: 'image', 'array', 'audio',
+            #   'text', 'string', 'number', 'video', 'object', 'integer',
+            #   'boolean'.
+            #
+            # So `response_format` IS a JSON Schema, and its `type` is a schema
+            # type rather than a wrapper discriminator.
+            #
+            # THE CONVERTER CHOICE WAS RIGHT AND IS WORTH KEEPING FOR THE
+            # REASON, not the luck. `to_strict_json_schema` emits lowercase
+            # `object`/`array`/`integer`/`string`, which is exactly the list
+            # above; `to_gemini_schema`, sitting in the same module and
+            # belonging to the same vendor, emits `OBJECT`/`ARRAY` and would
+            # have been refused for a second reason. The field name and the
+            # `"object": "interaction"` envelope pointed at the OpenAI
+            # conventions, and on the types they were right.
+            "response_format": schema,
         }
 
         interaction = self._submit_with_retry(payload)

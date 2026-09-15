@@ -165,3 +165,26 @@ def test_the_raw_body_is_carried_even_when_the_shape_is_unrecognised():
         m.post(INTERACTIONS_URL, status_code=400, json=["something unforeseen"])
         with pytest.raises(LLMResponseError, match="something unforeseen"):
             provider().generate("sys", "user", Answer)
+
+
+def test_response_format_is_the_schema_itself_not_a_wrapper():
+    """MEASURED 2026-09-15, after guessing an OpenAI envelope and being told:
+
+        The value 'json_schema' is not supported for 'type' at
+        'response_format'. Supported values: ... 'object', 'integer', ...
+
+    So `response_format` IS a JSON Schema and its `type` is a schema type.
+    Asserted on the sent payload, because this is the one field whose shape
+    cost a request to learn and nothing else would notice it regressing.
+    """
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed())
+        provider().generate("sys", "user", Answer)
+        sent = m.request_history[0].json()
+
+    assert sent["response_format"]["type"] == "object", "a schema, not a wrapper"
+    assert "json_schema" not in sent["response_format"]
+    assert "verdict" in sent["response_format"]["properties"]
+    # Lowercase throughout: to_gemini_schema emits OBJECT/ARRAY and would be
+    # refused by the same endpoint for a second reason.
+    assert sent["response_format"]["properties"]["verdict"]["type"] == "string"
