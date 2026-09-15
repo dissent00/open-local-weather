@@ -172,6 +172,13 @@ def main() -> int:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--model", default=os.environ.get("GEMINI_MODEL") or "gemini-3.6-flash")
     ap.add_argument("--trials", type=int, default=2)
+    ap.add_argument("--envelope-only", action="store_true",
+                    help="ONE background submit, no synchronous leg, and poll it to a "
+                         "terminal state. This answers a DIFFERENT question from the rest "
+                         "of the probe and needs no episode: where does the generated text "
+                         "land in an Interactions response. That shape is what blocks "
+                         "writing a provider, and waiting for an outage to learn it would "
+                         "be waiting for the wrong thing.")
     ap.add_argument("--poll", action="store_true",
                     help="also follow each accepted submit to a terminal state. OFF by "
                          "default: ACCEPTANCE is the discriminator this probe exists for, "
@@ -184,18 +191,28 @@ def main() -> int:
     a = ap.parse_args()
 
     day, prompt = newest_prompt(Path(a.data_dir))
-    per_trial = 2 + (len(POLL_AT_S) if a.poll else 0)
+    if a.envelope_only:
+        a.trials, a.poll = 1, True
+    per_trial = (1 if a.envelope_only else 2) + (len(POLL_AT_S) if a.poll else 0)
     print(f"prompt: {day}'s archived user message, {len(prompt):,} chars (~{len(prompt)//4:,} tokens)")
     print(f"model:  {a.model}")
-    polls_note = (f" + up to {a.trials*len(POLL_AT_S)} polls" if a.poll
-                  else "; polling off, pass --poll to follow each job to a terminal state")
-    print(f"trials: {a.trials}  -> up to {a.trials * per_trial} requests "
-          f"({a.trials} sync + {a.trials} submit{polls_note})")
+    if a.envelope_only:
+        print(f"mode:   ENVELOPE ONLY — 1 submit + up to {len(POLL_AT_S)} polls, no sync leg.")
+        print("        Learns where generated text lands. Needs no episode.")
+    else:
+        polls_note = (f" + up to {a.trials*len(POLL_AT_S)} polls" if a.poll
+                      else "; polling off, pass --poll to follow each job to a terminal state")
+        print(f"trials: {a.trials}  -> up to {a.trials * per_trial} requests "
+              f"({a.trials} sync + {a.trials} submit{polls_note})")
     print("\nEVERY ONE OF THOSE COUNTS AGAINST THE PROVIDER'S DAILY LIMIT, refusals")
     print("included. The limit measured on 2026-09-15 was 20 a day, and a normal")
     print("forecast day already spends 4.\n")
-    print("Run this DURING an episode. If both legs succeed there was no episode")
-    print("and the trial says nothing.\n")
+    if a.envelope_only:
+        print("Run this ANY TIME. A successful submit is what teaches the shape, so a")
+        print("healthy provider is the good case here rather than a void one.\n")
+    else:
+        print("Run this DURING an episode. If both legs succeed there was no episode")
+        print("and the trial says nothing.\n")
 
     if not a.yes:
         print("DRY RUN — nothing sent. Re-run with --yes to spend.")
@@ -211,8 +228,10 @@ def main() -> int:
     trials = []
     for n in range(1, a.trials + 1):
         print(f"--- trial {n} ---", flush=True)
-        s = sync_call(key, a.model, prompt)
-        print(f"  sync:   HTTP {s.get('status')}  {s.get('elapsed_s')}s", flush=True)
+        s = {"leg": "sync", "skipped": "envelope-only"} if a.envelope_only else sync_call(
+            key, a.model, prompt)
+        if not a.envelope_only:
+            print(f"  sync:   HTTP {s.get('status')}  {s.get('elapsed_s')}s", flush=True)
         b = background_submit(key, a.model, prompt)
         print(f"  submit: HTTP {b.get('status')}  {b.get('elapsed_s')}s  "
               f"status={b.get('interaction_status')}", flush=True)
@@ -228,6 +247,20 @@ def main() -> int:
                        "at": datetime.now(timezone.utc).isoformat()})
 
     # THE ONLY READING THAT MEANS ANYTHING is a pair where the two legs differ.
+    if a.envelope_only:
+        env = trials[0]["submit"].get("envelope")
+        print("\n=== response envelope ===")
+        print(json.dumps(env, indent=2) if env else "  (no JSON body returned)")
+        for pl in trials[0]["polls"]:
+            print(f"  poll +{pl.get('after_s')}s: status={pl.get('status')}")
+        out = Path(a.out or f"probe_envelope_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json")
+        out.write_text(json.dumps({"model": a.model, "trials": trials}, indent=2))
+        print(f"\nwrote {out}")
+        print("\nNOTE: these requests are NOT in data/spend_ledger.json — this is a")
+        print("diagnostic tool, not the pipeline. Reconcile against the provider's")
+        print("dashboard rather than against our own count.")
+        return 0
+
     informative = [t for t in trials if t["sync"].get("status") != 200]
     both_fine = [t for t in trials if t["sync"].get("status") == 200]
     print("\n=== reading ===")
@@ -245,6 +278,9 @@ def main() -> int:
     out.write_text(json.dumps({"model": a.model, "prompt_day": day,
                                "prompt_chars": len(prompt), "trials": trials}, indent=2))
     print(f"\nwrote {out}")
+    print("\nNOTE: these requests are NOT in data/spend_ledger.json — this is a")
+    print("diagnostic tool, not the pipeline. Reconcile against the provider's")
+    print("dashboard rather than against our own count.")
     return 0
 
 
