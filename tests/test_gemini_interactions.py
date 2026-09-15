@@ -234,3 +234,51 @@ def test_the_default_path_makes_exactly_one_request():
         provider().generate("sys", "user", Answer)
 
     assert len(m.request_history) == 1
+
+
+# --- What the record keeps, when production switches endpoints ------------
+
+
+def test_thinking_effort_is_recorded():
+    """THE SECOND HALF OF A TWO-PART CHANGE, and the only visible half.
+
+    Switching production here also drops `thinkingLevel: "high"`, because this
+    endpoint is sent no equivalent. Without this number the record shows the
+    endpoint moving and not the thinking, and any later accuracy movement is
+    attributable to either one forever.
+    """
+    seen = []
+    body = completed()
+    body["usage"]["total_thought_tokens"] = 4096
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=body)
+        provider(after_response=seen.append).generate("sys", "user", Answer)
+
+    assert seen[0].thought_tokens == 4096
+
+
+def test_the_schema_facts_survive_the_switch():
+    """Item 102's instrument must not go dark on the run that changes the
+    endpoint. A gap here would read as "the schema stopped being recorded"
+    when the truth is "the provider forgot" — and the schema did not change."""
+    seen = []
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed())
+        provider(after_response=seen.append).generate("sys", "user", Answer)
+
+    assert seen[0].response_schema_sha256, "the schema fingerprint is recorded"
+    assert seen[0].nullable_fields is not None, "() means none, None means not said"
+
+
+def test_a_response_that_fails_the_schema_records_nothing():
+    """Fires AFTER validation, like generateContent. It fired before, which
+    was a divergence rather than a choice: a failed response produced no
+    forecast, and recording meta for it on one path and not the other would
+    put a seam in the record exactly where the endpoint changed."""
+    seen = []
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed(text='{"wrong_field": 1}'))
+        with pytest.raises(LLMResponseError):
+            provider(after_response=seen.append).generate("sys", "user", Answer)
+
+    assert seen == [], "no forecast, no row"

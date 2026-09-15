@@ -938,6 +938,18 @@ class LogEntryMeta(BaseModel):
     finish_reason: str | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # HOW MUCH THE MODEL THOUGHT — ROADMAP items 80 and 132, added
+    # 2026-09-15 for a production change that alters two things at once.
+    #
+    # `generateContent` is sent `thinkingLevel: "high"`. The Interactions
+    # endpoint is sent no equivalent, because whether it accepts one is
+    # unmeasured. So the run that switches endpoints also changes thinking
+    # effort, and without this the record would show the switch and not its
+    # second half — leaving any later accuracy movement attributable to
+    # either, forever.
+    #
+    # Sums both calls of a forecast, like the two fields above.
+    thought_tokens: int | None = None
     # WHICH RESPONSE SCHEMA produced this entry, and what it let the model
     # skip — ROADMAP items 59 and 102.
     #

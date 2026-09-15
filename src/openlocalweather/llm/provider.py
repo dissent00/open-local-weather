@@ -122,6 +122,25 @@ class ResponseMeta:
     finish_reason: str | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    # THINKING EFFORT — ROADMAP items 80 and 132, added 2026-09-15.
+    #
+    # Recorded because the production switch to the Interactions endpoint
+    # changes TWO things at once and this is the only one of them that can be
+    # seen from the record. `generateContent` is sent `thinkingLevel: "high"`;
+    # the Interactions endpoint is sent no equivalent, because whether it
+    # takes one is unmeasured and a silently-ignored setting is worse than an
+    # absent one. So the endpoint changes and the thinking effort changes
+    # with it.
+    #
+    # Both APIs report the count — `usageMetadata.thoughtsTokenCount` and
+    # `usage.total_thought_tokens` — and neither was being stored, so "did
+    # thinking actually drop, and by how much" was a question the record could
+    # not answer about its own change. That is the same shape as item 100: the
+    # ledger knew a call took 54.5 seconds and not what it spent them on.
+    #
+    # NOT a quality measure. It says how much the model thought, never how
+    # well. Pair it with the accuracy record, which is the thing that can.
+    thought_tokens: int | None = None
     # WHAT THE CALL WAS ALLOWED TO OMIT — ROADMAP items 59 and 102.
     #
     # These two describe the REQUEST, not how it ended, which is a real

@@ -72,7 +72,7 @@ from openlocalweather.llm.provider import (
     http_outcome,
     report_outcome,
 )
-from openlocalweather.llm.schema import to_strict_json_schema
+from openlocalweather.llm.schema import gemini_schema_facts, to_strict_json_schema
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -246,20 +246,42 @@ class GeminiInteractionsProvider:
             )
 
         text = _model_output_text(final)
+        try:
+            validated = response_schema.model_validate_json(text)
+        except ValidationError as e:
+            raise LLMResponseError(f"Interactions response failed schema validation: {e}") from e
+
+        # AFTER VALIDATION, matching `generateContent` — it fired before, here,
+        # and that was a divergence rather than a choice. A response that fails
+        # the schema produced no forecast, and recording meta for it would put
+        # a row in the record for a run that published nothing, on one path
+        # and not the other. Switching production between two providers that
+        # disagree about when this fires would put a seam in the record
+        # exactly where the endpoint changed.
         if self.after_response is not None:
             usage = final.get("usage") or {}
+            schema_sha256, nullable_fields = gemini_schema_facts(schema)
             self.after_response(
                 ResponseMeta(
                     finish_reason=status,
                     input_tokens=usage.get("total_input_tokens"),
                     output_tokens=usage.get("total_output_tokens"),
+                    # `total_thought_tokens` — measured in the probe envelope
+                    # 2026-09-15. The direct call DID think (an 8,160-character
+                    # thought signature came back); what is unknown is at what
+                    # level, which is what this number is here to show.
+                    thought_tokens=usage.get("total_thought_tokens"),
+                    # CARRIED ACROSS, or item 102's instrument goes dark on the
+                    # exact run that changes the endpoint. These describe the
+                    # schema as sent, and the switch does not change the
+                    # schema — so a gap here would read as "the schema stopped
+                    # being recorded" when the truth is "the provider forgot".
+                    response_schema_sha256=schema_sha256,
+                    nullable_fields=nullable_fields,
                 )
             )
 
-        try:
-            return response_schema.model_validate_json(text)
-        except ValidationError as e:
-            raise LLMResponseError(f"Interactions response failed schema validation: {e}") from e
+        return validated
 
     def _submit_with_retry(self, payload: dict) -> dict:
         """Submits, retrying on the same statuses and the same schedule as

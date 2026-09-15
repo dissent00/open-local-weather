@@ -447,6 +447,7 @@ def _combined_meta(judgment: ResponseMeta, narrative: ResponseMeta) -> ResponseM
         finish_reason=narrative.finish_reason,
         input_tokens=_sum(judgment.input_tokens, narrative.input_tokens),
         output_tokens=_sum(judgment.output_tokens, narrative.output_tokens),
+        thought_tokens=_sum(judgment.thought_tokens, narrative.thought_tokens),
         response_schema_sha256=combined_sha,
         nullable_fields=nullable,
     )
@@ -2059,6 +2060,7 @@ def _compose_log_entry(
             finish_reason=response_meta.finish_reason,
             input_tokens=response_meta.input_tokens,
             output_tokens=response_meta.output_tokens,
+            thought_tokens=response_meta.thought_tokens,
             response_schema_sha256=response_meta.response_schema_sha256,
             nullable_fields=_nullable_fields(last_response),
             narrative_findings=_narrative_findings(llm_response, today),

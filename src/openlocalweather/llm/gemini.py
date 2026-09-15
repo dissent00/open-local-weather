@@ -330,6 +330,7 @@ class GeminiProvider:
                     finish_reason=finish_reason,
                     input_tokens=usage.get("promptTokenCount"),
                     output_tokens=usage.get("candidatesTokenCount"),
+                    thought_tokens=usage.get("thoughtsTokenCount"),
                     response_schema_sha256=schema_sha256,
                     nullable_fields=nullable_fields,
                 )
