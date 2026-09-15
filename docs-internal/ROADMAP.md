@@ -10019,6 +10019,60 @@ service refusing — which a longer prompt does not cause.
 > that list, where `to_gemini_schema` emits `OBJECT`/`ARRAY` and would have
 > been refused a second time. Commit `5269c1b`.
 >
+> **ANSWERED 2026-09-15: THE INTERACTIONS ENDPOINT REPLIES DIRECTLY, AND THE
+> QUEUE QUESTION IS MOOT.** Asked without `background`, at production prompt
+> size (142,527 characters, ~35,631 tokens):
+>
+> - HTTP 200 in **19.982s**, `status: "completed"`
+> - the `model_output` step present **inline**, 4,296 characters
+> - **one request. No submit-then-poll, no poll loop, no poll accounting.**
+>
+> So the provider now defaults to `background=False`. The flag is kept, not
+> deleted — it is the right shape for a job genuinely slower than a client
+> wants to hold a connection for, and `_poll_to_terminal` already returns a
+> terminal submit without spending a poll, so both modes run one path.
+>
+> **This inverts the plan that was about to be adopted.** Making queue the
+> default was proposed on the reasonable theory that it would dodge the 503s.
+> Backgrounded, one call is a submit plus N polls — the first live run spent
+> roughly 3 requests where a direct call spends 1 — so two issuances of two
+> calls is ~12 requests a day against a limit of 20, versus ~4 direct. The
+> endpoint was being evaluated **to solve the daily-limit problem**; the queue
+> default would have trebled the request count while looking like the fix.
+> The measurement that caught it cost one request.
+>
+> **Two shapes seen, and the extraction was right to search rather than
+> index.** The background response's steps were `user_input / thought /
+> model_output`; the direct response's were `thought / model_output` with no
+> echoed input. `_model_output_text()` scans for `type == "model_output"`, so
+> both work — but anything that had assumed `steps[2]` would now be silently
+> reading a thought signature.
+>
+> **`service_tier: "standard"` is a field `generateContent` never returned.**
+> Unexplored. If tiers are what govern shedding, this is where that shows up,
+> and it is the first lead on WHY one endpoint might be more reliable than
+> the other rather than just whether it is.
+>
+> **RELIABILITY IS STILL NOT ESTABLISHED, and the counts flatter it.**
+> Interactions is 3 for 3 (two background, one direct); `generateContent` was
+> 1 for 6 on the morning of 2026-09-15. **Those were not taken at the same
+> time of day** — the 503s clustered at 03:01-03:12 UTC and every Interactions
+> call was 05:40-06:28 UTC — so time-of-day confounds the comparison
+> completely and the 3-for-3 is not evidence of anything yet.
+>
+> The paired probe is now the test that settles it, and it has been repaired
+> to be capable of settling it: it used to pair `generateContent` against
+> `interactions` + `background`, which differ in two ways at once, so a
+> divergence could not say which one mattered. Both legs are now a single
+> synchronous request with the endpoint as the only variable
+> (`--background-leg` restores the old pairing for the queue question
+> specifically). **Run it during an episode.**
+>
+> Also unchanged by any of this: `thinking_level` is not passed on the
+> interactions path, so adopting it as the default silently changes
+> generation config for the scored judgment call. Same model
+> (`gemini-3.6-flash`), so the accuracy record stays continuous.
+>
 > **THE LEDGER HOLE IS CLOSED — 2026-09-15, commit `dcc4782`.** Read the
 > note below first; this is what came of it.
 >

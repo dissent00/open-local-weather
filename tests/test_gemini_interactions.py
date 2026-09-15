@@ -188,3 +188,49 @@ def test_response_format_is_the_schema_itself_not_a_wrapper():
     # Lowercase throughout: to_gemini_schema emits OBJECT/ARRAY and would be
     # refused by the same endpoint for a second reason.
     assert sent["response_format"]["properties"]["verdict"]["type"] == "string"
+
+
+# --- Direct answers are the default (MEASURED 2026-09-15) -----------------
+
+
+def test_background_is_not_sent_by_default():
+    """THE REQUEST ARITHMETIC IS THE POINT, not a stylistic preference.
+
+    Backgrounded, one call is a submit plus N polls — the first live run spent
+    roughly 3 requests where a direct call spends 1. Two issuances of two
+    calls is ~12 a day against a limit of 20, versus ~4 direct. This endpoint
+    was being evaluated to solve the daily-limit problem, so a default that
+    trebles the request count would have made it worse while looking like a
+    fix.
+
+    Measured, not assumed: asked WITHOUT the flag the endpoint returned HTTP
+    200 in 19.982s with status "completed" and the model_output inline.
+    """
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed())
+        provider().generate("sys", "user", Answer)
+        sent = m.request_history[0].json()
+
+    assert "background" not in sent, "omitted, not sent as false — untested combination"
+
+
+def test_background_is_sent_only_when_asked_for():
+    """Kept rather than deleted: it is the right shape for a job slower than a
+    client wants to hold a connection for."""
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed(status="queued"))
+        m.get(INTERACTION_URL.format(id="v1_abc"), json=completed())
+        provider(background=True).generate("sys", "user", Answer)
+        sent = m.request_history[0].json()
+
+    assert sent["background"] is True
+
+
+def test_the_default_path_makes_exactly_one_request():
+    """The claim in one assertion. A direct call is one HTTP request, so the
+    ledger row and the provider's spend agree without a poll to reconcile."""
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json=completed())
+        provider().generate("sys", "user", Answer)
+
+    assert len(m.request_history) == 1

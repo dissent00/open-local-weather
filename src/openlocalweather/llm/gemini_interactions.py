@@ -147,6 +147,7 @@ class GeminiInteractionsProvider:
         after_attempt: AfterAttempt | None = None,
         after_response: AfterResponse | None = None,
         on_poll: Callable[[], None] | None = None,
+        background: bool = False,
     ):
         if not api_key:
             raise ValueError("GeminiInteractionsProvider requires a non-empty api_key.")
@@ -163,6 +164,29 @@ class GeminiInteractionsProvider:
         # they must never consume MAX_ATTEMPTS. A separate hook keeps those two
         # facts from being conflated by whoever wires this up.
         self.on_poll = on_poll
+        # DEFAULT FALSE, MEASURED 2026-09-15 — and this is the whole reason
+        # the queue question went away.
+        #
+        # Every sync-vs-async comparison before that date compared
+        # `generateContent` against this endpoint WITH `background`, which
+        # changes two things at once. Asked without it, the endpoint simply
+        # answers: HTTP 200 in 19.982s, `status: "completed"`, the
+        # `model_output` step present inline, 4,296 characters of narrative.
+        # One request, no polls.
+        #
+        # THE ARITHMETIC IS WHY IT MATTERS. A background call is 1 submit plus
+        # N polls — the first live run spent roughly 3 requests where the
+        # synchronous path spends 1. Against a daily limit of 20, two
+        # issuances of two calls is ~12 a day backgrounded against ~4 direct,
+        # and the entire problem this endpoint was being evaluated to solve IS
+        # the daily limit. Backgrounding by default would have made it worse
+        # while looking like a fix.
+        #
+        # `background=True` is kept, not deleted: it is the right shape for a
+        # job genuinely slower than a client wants to hold a connection for,
+        # and `_poll_to_terminal` already returns a submit that arrives
+        # terminal without spending a poll, so both modes run the same path.
+        self.background = background
 
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:
         schema = to_strict_json_schema(response_schema)
@@ -170,7 +194,6 @@ class GeminiInteractionsProvider:
             "model": self.model,
             "input": user_prompt,
             "system_instruction": system_prompt,
-            "background": True,
             # THE SCHEMA ITSELF, with no envelope around it — measured, after
             # guessing wrong. An OpenAI-shaped `{"type": "json_schema",
             # "json_schema": {...}}` was refused on 2026-09-15 with a message
@@ -194,6 +217,13 @@ class GeminiInteractionsProvider:
             # conventions, and on the types they were right.
             "response_format": schema,
         }
+
+        # Omitted rather than sent as false: `store=false` is incompatible
+        # with `background=true` (item 80), so this API does read these flags
+        # in combination, and sending a default we have not measured is how a
+        # run looks configured and behaves otherwise.
+        if self.background:
+            payload["background"] = True
 
         interaction = self._submit_with_retry(payload)
         interaction_id = interaction.get("id")

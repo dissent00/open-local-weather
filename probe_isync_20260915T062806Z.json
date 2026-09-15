@@ -1,0 +1,71 @@
+{
+  "model": "gemini-3.6-flash",
+  "result": {
+    "leg": "interactions_sync",
+    "status": 200,
+    "elapsed_s": 19.982,
+    "interaction_status": "completed",
+    "answered_inline": true,
+    "envelope": {
+      "id": "<str len 70>",
+      "status": "completed",
+      "usage": {
+        "total_tokens": "int",
+        "total_input_tokens": "int",
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": "int"
+          }
+        ],
+        "total_cached_tokens": "int",
+        "total_output_tokens": "int",
+        "total_tool_use_tokens": "int",
+        "total_thought_tokens": "int",
+        "raw_prompt_token": "int",
+        "model_invocation_token_counts": [
+          {
+            "prompt_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": "int"
+              }
+            ],
+            "candidates_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": "int"
+              }
+            ],
+            "thoughts_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": "int"
+              }
+            ]
+          }
+        ]
+      },
+      "created": "2026-09-15T06:28:05Z",
+      "updated": "2026-09-15T06:28:05Z",
+      "service_tier": "standard",
+      "steps": [
+        {
+          "signature": "<str len 8160>",
+          "type": "thought"
+        },
+        {
+          "content": [
+            {
+              "text": "<str len 4296>",
+              "type": "text"
+            }
+          ],
+          "type": "model_output"
+        }
+      ],
+      "object": "interaction",
+      "model": "gemini-3.6-flash"
+    }
+  }
+}

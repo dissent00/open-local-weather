@@ -259,6 +259,11 @@ def main() -> int:
                          "and polls are requests against the same 20-a-day ceiling. The "
                          "interaction id is recorded either way, so completion can be "
                          "checked later, by hand, outside the episode and for one request.")
+    ap.add_argument("--background-leg", action="store_true",
+                    help="pair generateContent against a BACKGROUND submit instead of a "
+                         "direct interactions call. The original pairing, kept for the "
+                         "queue question specifically — it confounds endpoint with "
+                         "execution mode, so it cannot tell you which one shed.")
     ap.add_argument("--interactions-sync", action="store_true",
                     help="ONE request: the Interactions endpoint with `background` OMITTED. "
                          "Answers whether the new endpoint will reply directly, which would "
@@ -298,10 +303,17 @@ def main() -> int:
         print(f"mode:   ENVELOPE ONLY — 1 submit + up to {len(POLL_AT_S)} polls, no sync leg.")
         print("        Learns where generated text lands. Needs no episode.")
     else:
-        polls_note = (f" + up to {a.trials*len(POLL_AT_S)} polls" if a.poll
-                      else "; polling off, pass --poll to follow each job to a terminal state")
+        # Polling only exists for the background leg. Offering --poll beside a
+        # direct call would advertise a request that has nothing to ask about.
+        if not a.background_leg:
+            polls_note = ""
+        elif a.poll:
+            polls_note = f" + up to {a.trials*len(POLL_AT_S)} polls"
+        else:
+            polls_note = "; polling off, pass --poll to follow each job to a terminal state"
+        second = "background submit" if a.background_leg else "interactions (direct)"
         print(f"trials: {a.trials}  -> up to {a.trials * per_trial} requests "
-              f"({a.trials} sync + {a.trials} submit{polls_note})")
+              f"({a.trials} generateContent + {a.trials} {second}{polls_note})")
     print("\nEVERY ONE OF THOSE COUNTS AGAINST THE PROVIDER'S DAILY LIMIT, refusals")
     print("included. The limit measured on 2026-09-15 was 20 a day, and a normal")
     print("forecast day already spends 4.\n")
@@ -367,8 +379,20 @@ def main() -> int:
             key, a.model, prompt)
         if not a.envelope_only:
             print(f"  sync:   HTTP {s.get('status')}  {s.get('elapsed_s')}s", flush=True)
-        b = background_submit(key, a.model, prompt)
-        print(f"  submit: HTTP {b.get('status')}  {b.get('elapsed_s')}s  "
+        # THE SECOND LEG IS `interactions` WITHOUT `background` unless asked
+        # otherwise — REPAIRED 2026-09-15, because the original pairing could
+        # not answer the question it was built for.
+        #
+        # It compared `generateContent` against `interactions` + `background`,
+        # which differ in TWO ways: the endpoint and the execution mode. A
+        # divergence would not have said which one mattered. Now both legs are
+        # a single synchronous request and the endpoint is the only variable,
+        # so a 503 on one and a 200 on the other means something.
+        if a.background_leg:
+            b = background_submit(key, a.model, prompt)
+        else:
+            b = interactions_sync(key, a.model, prompt)
+        print(f"  {b['leg']}: HTTP {b.get('status')}  {b.get('elapsed_s')}s  "
               f"status={b.get('interaction_status')}", flush=True)
         polls = []
         if a.poll and b.get("interaction_id"):
