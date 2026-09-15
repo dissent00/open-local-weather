@@ -500,7 +500,11 @@
           "wind_direction_deg": 224.0,
           "mslp_trend": -1.6999999999999318
         }
-      ]
+      ],
+      "window_opened_local": null,
+      "window_scores": {},
+      "window_verified_at": null,
+      "day_over_day": null
     }
   ],
   "observed_so_far": {
@@ -515,7 +519,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },

@@ -38,10 +38,13 @@
   ],
   "sunrise": "06:35",
   "sunset": "18:42",
+  "prediction_rows": [],
+  "observed_so_far": null,
   "model_predictions": {
     "day0": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.1,
@@ -56,6 +59,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": "13:00",
         "precip_mm": 4.8,
@@ -70,6 +74,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": true,
         "onset": "22:00",
         "precip_mm": 1.8,
@@ -84,6 +89,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.1,
@@ -98,6 +104,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": "16:00",
         "precip_mm": 1.5,
@@ -112,6 +119,7 @@
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -126,6 +134,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -140,6 +149,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.2075,
@@ -154,6 +164,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 2.5,
@@ -170,6 +181,7 @@
     "day3": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.7,
@@ -184,6 +196,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.2,
@@ -198,6 +211,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 2.3,
@@ -212,6 +226,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 1.6,
@@ -226,6 +241,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.7,
@@ -240,6 +256,7 @@
       },
       {
         "model": "kenya_met",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": null,
@@ -254,6 +271,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -268,6 +286,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.2075,
@@ -282,6 +301,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -298,6 +318,7 @@
     "day7": [
       {
         "model": "gfs_seamless",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 0.9,
@@ -312,6 +333,7 @@
       },
       {
         "model": "ecmwf_ifs025",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 15.4,
@@ -326,6 +348,7 @@
       },
       {
         "model": "icon_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -340,6 +363,7 @@
       },
       {
         "model": "ukmo_seamless",
+        "target_date": null,
         "rain": null,
         "onset": null,
         "precip_mm": null,
@@ -354,6 +378,7 @@
       },
       {
         "model": "best_match",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": 6.0,
@@ -368,6 +393,7 @@
       },
       {
         "model": "persistence",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 0.0,
@@ -382,6 +408,7 @@
       },
       {
         "model": "climatology",
+        "target_date": null,
         "rain": false,
         "onset": null,
         "precip_mm": 1.2075,
@@ -396,6 +423,7 @@
       },
       {
         "model": "olw_blend",
+        "target_date": null,
         "rain": true,
         "onset": null,
         "precip_mm": null,
@@ -422,7 +450,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -476,6 +504,7 @@
       "narrative_markdown": "## Overview\nWarm today with maximum temperatures feeling much like yesterday, before dry daytime conditions give way to evening showers. Thunderstorms are possible tonight peaking around 19:00 EAT as atmospheric instability develops, with models showing significant disagreement on shower timing; much the same through Thursday, with rain becoming more likely.\n\n## Today's Forecast\nTemperatures reaching a daytime high of 30°C / 86°F under sunny intervals through the morning and early afternoon. Peak solar UV exposure reaches a Very High index of 9.3 around midday. Ground air quality sensor readings are currently stale; the last reported reading was 74 AQI at Dunga Beach 3 hours ago, while CAMS model estimates indicate Moderate air quality (US AQI 85–92) across the city today. Surface winds will pick up from the SW at 18 km/h (10 kt) with gusts to 30 km/h (16 kt) during the afternoon. Rain probability increases late in the afternoon and into the evening (16:00 to 22:00 EAT) with potential isolated thunderstorms dropping around 2.5 mm (0.10 in) of rain locally. Temperatures will drop to an overnight low of 20°C / 68°F under partly to mostly cloudy skies.\n\n## Extended Outlook\nOver the next 3 days (Tuesday through Thursday), daytime maximum temperatures will remain steady around 30°C / 86°F to 32°C / 90°F. Rain chances gradually increase by Thursday as deeper moisture arrives across the Nyanza Basin. Looking ahead to the 4 to 7 day range (Friday through next Monday), guidance shows elevated uncertainty: ECMWF signals a much wetter trend by Day+7 with rainfall totals up to 15.4 mm (0.61 in), whereas GFS keeps conditions lighter and more isolated.\n\n## Severe Weather / Hazard Potential\nConvective instability is elevated across the basin today, with UKMO reaching a peak CAPE of 3,650 J/kg and ECMWF building to 1,420 J/kg around 19:00 EAT. Isolated thunderstorms capable of frequent lightning, sudden gusty winds, and brief heavy downpours are possible from late afternoon through dusk and overnight.\n\n## Lake Victoria — Conditions for Boaters\nMorning winds across open lake waters will blow from the SE at 15 km/h (8 kt), veering to the SW/W at 20 km/h (11 kt) in the afternoon with gusts reaching 33 km/h (18 kt). High instability over the lake water (CAPE exceeding 1,500–2,000 J/kg on UKMO and ECMWF) supports nocturnal thunderstorm activity over open waters overnight. Boaters and fishermen should exercise caution after dusk.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale gradient. Pressure overhead is falling as a large-scale trough deepens to the north and west. Regionally across the Nyanza Basin, mean sea-level pressure ranges from 1014.4 hPa to 1016.6 hPa today and shows a gentle 24-to-72 hour falling trend, which favors enhanced convective development when combined with lake-breeze convergence.\n\n### Forecaster Confidence Notes\nThe model guidance behind this issuance is at least 9 hours old (models were last all aligned at 18:00Z). In model evaluations at Day+0, Best Match holds the highest rain verification record (81% all-time), while GFS is the weakest (63% all-time). GFS also exhibits a persistent, established bias of over-forecasting peak surface wind speeds (+21.0 km/h mean error), so its raw wind gust outputs have been discounted. For today's call, Kenya Met forecasts sunny intervals in the morning followed by light showers and thunderstorms in the afternoon/night with a high of 30.0°C / 86°F and low of 20.0°C / 68°F. This aligns closely with the blended call and ECMWF/ICON convective timing. Historical verification notes from similar high-CAPE setups (such as August 19 and 20) show that GFS often missed nocturnal lake convection while ECMWF and ICON correctly captured localized rainfall; thus, higher weight is given to ECMWF/ICON for late-day precipitation probabilities. Individual ground AQI stations reporting includes Kisumu Airport (A418534: 54 AQI, stale), Ochieng' Avenue (A418300: stale), and Dunga Beach (A418504: 74 AQI, stale).",
       "whatsapp_summary": "🌦️ Kisumu Forecast (Mon Sep 7): Sunny & warm today near 30°C. Evening showers & thunderstorms possible after 16:00 EAT (65% chance) as instability rises. Winds SW 18 km/h. Lake boaters beware night storms.",
       "generated_at_utc": "2026-09-07T03:06:55.618758Z",
+      "issued_local_time": null,
       "guidance_initialised_at": "2026-09-06T18:00:00Z",
       "guidance_age_hours": 9.021934746666666,
       "guidance_source": "observed",
@@ -522,6 +551,7 @@
     "narrative_markdown": "## Overview\nWarm today with maximum temperatures feeling much like yesterday, before dry daytime conditions give way to evening showers. Thunderstorms are possible tonight peaking around 19:00 EAT as atmospheric instability develops, with models showing significant disagreement on shower timing; much the same through Thursday, with rain becoming more likely.\n\n## Today's Forecast\nTemperatures reaching a daytime high of 30°C / 86°F under sunny intervals through the morning and early afternoon. Peak solar UV exposure reaches a Very High index of 9.3 around midday. Ground air quality sensor readings are currently stale; the last reported reading was 74 AQI at Dunga Beach 3 hours ago, while CAMS model estimates indicate Moderate air quality (US AQI 85–92) across the city today. Surface winds will pick up from the SW at 18 km/h (10 kt) with gusts to 30 km/h (16 kt) during the afternoon. Rain probability increases late in the afternoon and into the evening (16:00 to 22:00 EAT) with potential isolated thunderstorms dropping around 2.5 mm (0.10 in) of rain locally. Temperatures will drop to an overnight low of 20°C / 68°F under partly to mostly cloudy skies.\n\n## Extended Outlook\nOver the next 3 days (Tuesday through Thursday), daytime maximum temperatures will remain steady around 30°C / 86°F to 32°C / 90°F. Rain chances gradually increase by Thursday as deeper moisture arrives across the Nyanza Basin. Looking ahead to the 4 to 7 day range (Friday through next Monday), guidance shows elevated uncertainty: ECMWF signals a much wetter trend by Day+7 with rainfall totals up to 15.4 mm (0.61 in), whereas GFS keeps conditions lighter and more isolated.\n\n## Severe Weather / Hazard Potential\nConvective instability is elevated across the basin today, with UKMO reaching a peak CAPE of 3,650 J/kg and ECMWF building to 1,420 J/kg around 19:00 EAT. Isolated thunderstorms capable of frequent lightning, sudden gusty winds, and brief heavy downpours are possible from late afternoon through dusk and overnight.\n\n## Lake Victoria — Conditions for Boaters\nMorning winds across open lake waters will blow from the SE at 15 km/h (8 kt), veering to the SW/W at 20 km/h (11 kt) in the afternoon with gusts reaching 33 km/h (18 kt). High instability over the lake water (CAPE exceeding 1,500–2,000 J/kg on UKMO and ECMWF) supports nocturnal thunderstorm activity over open waters overnight. Boaters and fishermen should exercise caution after dusk.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the northeast (1008 hPa) and highest toward the south (1019 hPa) — a 11 hPa spread, establishing a strong large-scale gradient. Pressure overhead is falling as a large-scale trough deepens to the north and west. Regionally across the Nyanza Basin, mean sea-level pressure ranges from 1014.4 hPa to 1016.6 hPa today and shows a gentle 24-to-72 hour falling trend, which favors enhanced convective development when combined with lake-breeze convergence.\n\n### Forecaster Confidence Notes\nThe model guidance behind this issuance is at least 9 hours old (models were last all aligned at 18:00Z). In model evaluations at Day+0, Best Match holds the highest rain verification record (81% all-time), while GFS is the weakest (63% all-time). GFS also exhibits a persistent, established bias of over-forecasting peak surface wind speeds (+21.0 km/h mean error), so its raw wind gust outputs have been discounted. For today's call, Kenya Met forecasts sunny intervals in the morning followed by light showers and thunderstorms in the afternoon/night with a high of 30.0°C / 86°F and low of 20.0°C / 68°F. This aligns closely with the blended call and ECMWF/ICON convective timing. Historical verification notes from similar high-CAPE setups (such as August 19 and 20) show that GFS often missed nocturnal lake convection while ECMWF and ICON correctly captured localized rainfall; thus, higher weight is given to ECMWF/ICON for late-day precipitation probabilities. Individual ground AQI stations reporting includes Kisumu Airport (A418534: 54 AQI, stale), Ochieng' Avenue (A418300: stale), and Dunga Beach (A418504: 74 AQI, stale).",
     "whatsapp_summary": "🌦️ Kisumu Forecast (Mon Sep 7): Sunny & warm today near 30°C. Evening showers & thunderstorms possible after 16:00 EAT (65% chance) as instability rises. Winds SW 18 km/h. Lake boaters beware night storms.",
     "generated_at_utc": "2026-09-07T03:06:55.618758Z",
+    "issued_local_time": null,
     "guidance_initialised_at": "2026-09-06T18:00:00Z",
     "guidance_age_hours": 9.021934746666666,
     "guidance_source": "observed",
@@ -539,8 +569,14 @@
     "finish_reason": null,
     "input_tokens": null,
     "output_tokens": null,
+    "response_schema_sha256": null,
+    "nullable_fields": null,
+    "narrative_findings": null,
+    "information_moved": null,
     "refreshed_at": "2026-09-07T15:02:42.056163Z",
     "trigger_source": "workflow_dispatch",
+    "issued_local_time": null,
+    "observations_local_time": null,
     "degradations": []
   }
 }
