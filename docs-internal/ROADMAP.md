@@ -10328,6 +10328,83 @@ So "bring your own model" is not a feature, it is an untested surface
 presented as one. A reader who types a model name and gets a worse forecast
 has no way to know that is what happened.
 
+### What the shape of the code should be — designed 2026-09-15
+
+Raised by the operator: *"what would it look like to support the google SDK as
+well as continue supporting raw HTTP/openai_compat? And the model choice
+determines the shape of the call."*
+
+That second sentence is this item's premise stated more precisely than the item
+states it. Sharpened: **the (vendor, API) pair determines the call shape, and
+the model determines which APIs can reach it.** Item 80 already met the
+consequence — `gemini-3.6-flash` is listed on the Interactions API model table
+and absent from the background-execution page, so "the narrower page misleads".
+A config that names a provider and a model is naming two of three axes.
+
+**1. `LLMProvider` is already the right seam and does not change.**
+`generate(system_prompt, user_prompt, response_schema) -> T` says nothing about
+transport. Submit-and-poll is an IMPLEMENTATION DETAIL: a provider can submit,
+poll to a terminal state and return the parsed result without the caller
+knowing. So the Interactions API is a fourth class implementing the same
+Protocol, exactly as `provider.py`'s own docstring prescribes — not a new
+abstraction.
+
+**2. THE SDK QUESTION IS ABOUT THE SEAMS, NOT THE API, and that is the whole
+answer.** Four things are implemented in our HTTP layer and nowhere else:
+
+| seam | what it does |
+|---|---|
+| `before_attempt` | writes the spend row BEFORE the call, so a crash cannot lose the count |
+| `after_attempt` | `report_outcome(outcome, elapsed_s)` — item 80's instrument |
+| `after_response` | input/output token counts onto the entry |
+| `_post_with_retry` | our 30/60/420 schedule and `RETRYABLE_STATUS_CODES` |
+
+An SDK does its own HTTP, its own retries and its own error types. Adopting
+`google-genai` means either configuring it to make exactly ONE attempt and
+surface the raw error — so our loop and our seams still wrap it — or losing the
+instrumentation that diagnosed everything in the week to 2026-09-15. The second
+is not acceptable: without `outcome` and `elapsed_s` the 503 story could not
+have been told at all, and item 79 could not have been sized.
+
+**Whether `google-genai` permits a single un-retried attempt is unknown and is
+the question to answer before adopting it.** If it does not, REST is the only
+option that keeps the seams — and the REST shapes are known:
+`POST /v1beta/interactions`, `GET /v1beta/interactions/{id}`.
+
+**3. What `LLM_PROVIDER` should become.** Today it is a vendor name that
+silently implies an API. It should name a ROW IN THIS ITEM'S MATRIX:
+
+    gemini               -> vendor google, API generateContent   (today, unchanged)
+    gemini-interactions  -> vendor google, API Interactions REST
+    anthropic            -> vendor anthropic, API messages
+    openai               -> any OpenAI-compatible endpoint
+
+`_build_llm_provider` is already a chain of per-name branches with per-name
+required env vars, so this is an added branch rather than a redesign — and it
+is where "what the code does about a row that is not there" becomes concrete:
+refuse, naming the combinations that ARE supported, rather than calling an
+untested one.
+
+**4. Polling versus the cap, which item 80 flagged and did not settle.** Polls
+are HTTP requests and DO count against the provider's daily limit — established
+2026-09-15 from the dashboard, where refusals count too. But a poll is not a
+retry ATTEMPT and must not consume `MAX_ATTEMPTS`. The resolution: record polls
+in the ledger with their own `purpose` so the cap arithmetic stays truthful,
+and keep them out of the attempt counter. The ledger already carries `purpose`;
+nothing new is needed but the discipline.
+
+**5. What is already shared, and why this is small.** `report_outcome` and
+`http_outcome` live in `provider.py`; `to_strict_json_schema` and
+`to_gemini_schema` in `schema.py`; the retry vocabulary is per-provider but
+identical by intent. A fourth provider reuses all of it. The work is a request
+shape, a poll loop and terminal-state handling — item 80's estimate, unchanged.
+
+**6. The router sits ABOVE all of this**, as a `FallbackProvider` holding an
+ordered list of matrix rows and delegating. Its two requirements are already
+met or specified: the record already names its producer (`meta.llm_model`,
+`meta.llm_provider`), and the matrix is what stops it falling back to a
+combination nobody has run.
+
 ### What replaces it
 
 **A supported matrix, small and stated.** Which (provider, model, API)
