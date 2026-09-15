@@ -53,6 +53,12 @@ from pathlib import Path
 
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from openlocalweather.llm.schema import (  # noqa: E402
+    GeminiForecastResponse,
+    to_strict_json_schema,
+)
+
 GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 INTERACTION_URL = "https://generativelanguage.googleapis.com/v1beta/interactions/{id}"
@@ -115,6 +121,88 @@ def sync_call(key: str, model: str, prompt: str) -> dict:
     except Exception as e:  # noqa: BLE001 - a probe reports, it does not raise
         return {"leg": "sync", "status": None, "error": str(e),
                 "elapsed_s": round(time.monotonic() - started, 3)}
+
+
+def judgment_schema_probe(key: str, model: str) -> dict:
+    """Does this endpoint accept the JUDGMENT schema? One request, tiny prompt.
+
+    RAISED 2026-09-15, before the first scheduled run on the new provider,
+    and it is the gap that run would otherwise have discovered the hard way.
+
+    The only schema ever sent to this endpoint is the NARRATIVE one, and it
+    happens to contain no unions — every `type` in it is a plain string. The
+    judgment schema is not like that. Ten of its fields are nullable and
+    convert to a LIST at `type`:
+
+        ['string', 'null'] x6, ['number', 'null'] x2, ['integer', 'null'] x2
+
+    and the endpoint's own refusal of `json_schema` enumerated the values it
+    accepts at `type` as SCALARS — 'string', 'number', 'integer', 'object',
+    'array', 'boolean'. It never said whether a list is allowed there.
+
+    So the judgment call is the untested half, and it is the half that
+    produces every scored field. A failure there loses the forecast that the
+    whole switch is being evaluated on, and the nullable unions cannot simply
+    be dropped to find out: ROADMAP item 102 recorded that every field which
+    has ever gone missing from a forecast is one of these.
+
+    The prompt is deliberately trivial. The question is whether the SCHEMA is
+    accepted, not whether the answer is any good, and the refusal we are
+    testing for arrives before generation.
+    """
+    started = time.monotonic()
+    schema = to_strict_json_schema(GeminiForecastResponse)
+    try:
+        r = requests.post(
+            INTERACTIONS_URL,
+            params={"key": key},
+            json={
+                "model": model,
+                "input": "Report a plausible forecast for a test. Brief.",
+                "response_format": schema,
+            },
+            timeout=REQUEST_TIMEOUT_S,
+        )
+        out = {"leg": "judgment_schema", "status": r.status_code,
+               "elapsed_s": round(time.monotonic() - started, 3)}
+        try:
+            body = r.json()
+            if isinstance(body, dict):
+                out["interaction_status"] = body.get("status")
+                out["answered_inline"] = _model_output_present(body)
+                # The point: did the nullable fields survive the round trip in
+                # a form the schema validator here will accept?
+                text = next(
+                    ("".join(c.get("text", "") for c in (step.get("content") or []))
+                     for step in (body.get("steps") or [])
+                     if isinstance(step, dict) and step.get("type") == "model_output"),
+                    "",
+                )
+                try:
+                    GeminiForecastResponse.model_validate_json(text)
+                    out["validates"] = True
+                except Exception as e:  # noqa: BLE001
+                    out["validates"] = False
+                    out["validation_error"] = str(e)[:300]
+            out["error"] = _error_message_for_probe(r, body)
+        except ValueError:
+            out["body_snippet"] = r.text[:400]
+        return out
+    except Exception as e:  # noqa: BLE001
+        return {"leg": "judgment_schema", "status": None, "error": str(e),
+                "elapsed_s": round(time.monotonic() - started, 3)}
+
+
+def _error_message_for_probe(r, body) -> str | None:
+    if r.status_code == 200:
+        return None
+    payload = body
+    if isinstance(payload, list):
+        payload = next((i for i in payload if isinstance(i, dict)), {})
+    err = payload.get("error") if isinstance(payload, dict) else None
+    if isinstance(err, dict):
+        return f"{err.get('code', r.status_code)}: {err.get('message', '')}"[:400]
+    return r.text[:400]
 
 
 def interactions_sync(key: str, model: str, prompt: str) -> dict:
@@ -259,6 +347,11 @@ def main() -> int:
                          "and polls are requests against the same 20-a-day ceiling. The "
                          "interaction id is recorded either way, so completion can be "
                          "checked later, by hand, outside the episode and for one request.")
+    ap.add_argument("--judgment-schema", action="store_true",
+                    help="ONE request, tiny prompt: does this endpoint accept the JUDGMENT "
+                         "schema? That schema has ten nullable fields which convert to a "
+                         "LIST at `type`, and the only schema ever sent here has none. It "
+                         "is the half that produces every scored field.")
     ap.add_argument("--background-leg", action="store_true",
                     help="pair generateContent against a BACKGROUND submit instead of a "
                          "direct interactions call. The original pairing, kept for the "
@@ -294,9 +387,17 @@ def main() -> int:
     if a.envelope_only:
         a.trials, a.poll = 1, True
     per_trial = (1 if a.envelope_only else 2) + (len(POLL_AT_S) if a.poll else 0)
-    print(f"prompt: {day}'s archived user message, {len(prompt):,} chars (~{len(prompt)//4:,} tokens)")
+    if a.judgment_schema:
+        # This mode does not send the archived prompt, and saying it does
+        # would misstate both the token cost and what is being tested.
+        print("prompt: a one-line throwaway — this mode tests the SCHEMA, not generation")
+    else:
+        print(f"prompt: {day}'s archived user message, {len(prompt):,} chars (~{len(prompt)//4:,} tokens)")
     print(f"model:  {a.model}")
-    if a.interactions_sync:
+    if a.judgment_schema:
+        print("mode:   JUDGMENT SCHEMA — exactly 1 request, trivial prompt.")
+        print("        Asks whether nullable unions are accepted. Needs no episode.")
+    elif a.interactions_sync:
         print("mode:   INTERACTIONS, NO BACKGROUND — exactly 1 request. No polls, no sync leg.")
         print("        Asks whether this endpoint answers directly. Needs no episode.")
     elif a.envelope_only:
@@ -317,7 +418,10 @@ def main() -> int:
     print("\nEVERY ONE OF THOSE COUNTS AGAINST THE PROVIDER'S DAILY LIMIT, refusals")
     print("included. The limit measured on 2026-09-15 was 20 a day, and a normal")
     print("forecast day already spends 4.\n")
-    if a.interactions_sync:
+    if a.judgment_schema:
+        print("Run this BEFORE the next scheduled run. It is a schema question, not an")
+        print("availability one.\n")
+    elif a.interactions_sync:
         # Needs no episode either: the question is whether the endpoint will
         # answer without `background`, and a healthy provider answers it best.
         # A void would only tell us the endpoint is also shedding.
@@ -333,11 +437,18 @@ def main() -> int:
     if not a.yes:
         print("DRY RUN — nothing sent. Re-run with --yes to spend.")
         print(f"\n  POST {INTERACTIONS_URL}")
-        body = {"model": a.model, "input": "<the archived prompt>"}
-        if not a.interactions_sync:
-            body["background"] = True
+        if a.judgment_schema:
+            body = {"model": a.model, "input": "<one throwaway line>",
+                    "response_format": "<the JUDGMENT schema, 2,620 chars>"}
+        else:
+            body = {"model": a.model, "input": "<the archived prompt>"}
+            if not a.interactions_sync:
+                body["background"] = True
         print("  " + json.dumps(body, indent=2).replace("\n", "\n  "))
-        if a.interactions_sync:
+        if a.judgment_schema:
+            print("\n  ONE request. The ten nullable fields are the question:")
+            print("  ['string','null'] x6, ['number','null'] x2, ['integer','null'] x2")
+        elif a.interactions_sync:
             print("\n  ONE request. `background` omitted — that is the question.")
         return 0
 
@@ -347,6 +458,30 @@ def main() -> int:
     # Printed so two runs can be compared by eye without either revealing the
     # key — see rerender_narrative.py for why that turned out to matter.
     print(f"credential: {len(key)} chars, {key[:4]}...{key[-4:]}\n")
+
+    if a.judgment_schema:
+        r = judgment_schema_probe(key, a.model)
+        print(f"  judgment schema: HTTP {r.get('status')}  {r.get('elapsed_s')}s")
+        print(f"  interaction status: {r.get('interaction_status')}")
+        print(f"  parsed into the model: {r.get('validates')}")
+        if r.get("error"):
+            print(f"  error: {r['error']}")
+        if r.get("validation_error"):
+            print(f"  validation: {r['validation_error']}")
+        if r.get("status") == 200 and r.get("validates"):
+            print("\nREAD: nullable unions are accepted. The judgment call is safe on this")
+            print("endpoint and the scheduled run can go ahead.")
+        elif r.get("status") == 200:
+            print("\nREAD: the schema was ACCEPTED but the answer did not validate. Read the")
+            print("validation error — the run would publish nothing on a failure like this.")
+        else:
+            print("\nREAD: REFUSED. The judgment call would fail on the next scheduled run,")
+            print("losing the scored half of the forecast. Revert llm_providers to `gemini`")
+            print("in config/location.yaml before the evening issuance.")
+        out = Path(a.out or f"probe_judgment_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json")
+        out.write_text(json.dumps({"model": a.model, "result": r}, indent=2))
+        print(f"\nwrote {out}")
+        return 0
 
     if a.interactions_sync:
         r = interactions_sync(key, a.model, prompt)
