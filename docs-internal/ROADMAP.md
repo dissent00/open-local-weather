@@ -19083,10 +19083,27 @@ Related: items 133, 102, 56.
 > roadmap for why, and that **if it disagrees with the code, the code is
 > right and this file has rotted again.**
 >
-> **`APP_ARCHITECTURE.md` is untouched and equally old** (2026-08-26). It is
-> the app's, so it wants the app's context — start from `~/ensemble`'s own
-> ROADMAP, and note that repo's item 18: the pin is three commits behind and
-> there is no interactions provider on the Dart side.
+> **`APP_ARCHITECTURE.md` handled 2026-09-15, differently and deliberately.**
+> It is not a description that rotted — it is a PLAN written before the app
+> existed, and the app shipped. Rewriting it would destroy the reasoning
+> (the Android/iOS scheduling asymmetry, the staleness prompt, why a hybrid
+> reader was the wrong turn) to describe something two other documents
+> already describe better.
+>
+> So it keeps its argument and gains a header saying what it is, where the
+> truth now lives (`~/ensemble`'s own docs, `app/olw_core/`, `spec/README.md`,
+> and ARCHITECTURE.md), and a plan-against-outcome table:
+>
+> | | planned | actual |
+> |---|---|---|
+> | Python `src/` | 3,200 NBNC | 13,757 — the estimate aged 4.3x |
+> | the port | ~2,166 lines | `olw_core/lib` 5,909 NBNC, 2.7x |
+> | keeping two languages in step | not planned at all | 55 cross-language vectors |
+>
+> **The item's remaining work is nil for these two files.** What it leaves
+> behind is the general question in its last section — whether a check can
+> notice a numeric claim going stale — and `MET_SERVICE_INTEGRATION.md`
+> (2026-08-19), which nobody has read against the code.
 
 Found during a review pass, not by anyone being misled yet — which is the
 only reason it is cheap to fix now.

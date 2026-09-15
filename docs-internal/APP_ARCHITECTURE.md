@@ -8,6 +8,40 @@ Companion to [ARCHITECTURE.md](ARCHITECTURE.md) (the Python pipeline) and
 
 ---
 
+> **THIS IS THE PLAN, WRITTEN 2026-08-26 BEFORE THE APP EXISTED. It shipped.**
+> Checked 2026-09-15 (ROADMAP item 136). Kept rather than rewritten, because
+> the reasoning below is still the reasoning — the Android/iOS scheduling
+> asymmetry, the staleness prompt, why spend control is a hard requirement,
+> why a hybrid reader was the wrong turn. Those arguments did not expire when
+> the code landed.
+>
+> **What did expire is every number and every open question.** Read this as a
+> record of what was decided and why, not as a description of what runs.
+>
+> **Where the truth now lives:**
+>
+> | | |
+> |---|---|
+> | the app as built | `~/ensemble` — its own `README.md`, `ROADMAP.md`, `docs/STORAGE.md`, `AGENTS.md` |
+> | the shared forecast logic | `app/olw_core/` in THIS repo, and `spec/README.md` for the change order |
+> | the server pipeline | `ARCHITECTURE.md` beside this file |
+>
+> **Plan against outcome, measured 2026-09-15:**
+>
+> | | planned | actual |
+> |---|---|---|
+> | Python `src/` | 3,200 NBNC lines | **13,757** — the estimate aged 4.3x |
+> | the port itself | ~2,166 lines across eight modules | **`olw_core/lib` 5,909 NBNC**, 2.7x the estimate |
+> | tests on the ported side | not estimated | `olw_core/test` **3,091 NBNC** |
+> | the app's own UI and platform code | not estimated | `~/ensemble/lib` **4,314 NBNC**, 31 files |
+> | keeping the two languages in step | not planned | **55 cross-language vectors** in `spec/vectors/`, which is the mechanism that actually does it |
+>
+> The port-scope table below was honest about its method and wrong about its
+> size, which is worth keeping visible: it measured the Python that existed
+> in August, and the answer to "how big is the port" turned out to depend on
+> how much the Python grew afterwards. Item 59's split, item 104's issuance
+> model and contract item 8 all landed after this was written.
+
 ## What it is
 
 A Flutter app (Android first, iOS to follow) that gives anyone a
