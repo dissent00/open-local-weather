@@ -18920,7 +18920,51 @@ Roughly 100 tokens, and the argument for trying it first is that it changes
 HOW the model reasons rather than what it is told — the cheapest intervention
 on offer and the one with the least new surface to be wrong.
 
-### 3. Pay for both by cutting, not adding
+### THE OPERATOR'S POSITION, 2026-09-15, and it reframes this section
+
+> *"big is fine if it works I guess, but we have to be watching that"*
+
+So this is not "cut the prompt". It is **bound it and watch it**, and a cut is
+only warranted where something is measurably not earning its tokens. Nothing
+watches it today.
+
+### What grows, measured 2026-09-15 — and it is not the record
+
+Over the twelve archived days:
+
+| | Sep 04 | Sep 14 | delta |
+|---|---|---|---|
+| `TODAY'S MULTI-MODEL GUIDANCE` | 126,579 | 140,074 | **+13,495** |
+| everything else (verification, track record, historical logs) | 22,925 | 24,903 | +1,978 |
+| **total user prompt** | **149,504** | **164,977** | **+10%** |
+
+**The intuition that the accumulating record inflates the prompt is wrong.**
+The model-data payload is 85% of the prompt and ~87% of the growth — roughly
+1,350 characters a day against the record's 200. Ten days added 15,473
+characters and nothing noticed.
+
+Sep 15 then reads 142,527, which is not a trend: it is item 73's
+`primary_today_hourly` cut landing. **Pruning here has always been manual and
+episodic — a person noticing, not a mechanism.**
+
+At ~1,350/day an unwatched prompt passes 200,000 characters inside two months.
+That is still inside Haiku's 200K-token context and nowhere near a hard limit,
+which is exactly why nothing has ever stopped it, and exactly why the operator
+is right that it needs watching rather than a one-off cut.
+
+**So the first build here is the instrument, not the edit.** The archive
+already stores every issuance's prompt, so growth is a query over
+`data/prompts/*.json` rather than new plumbing — the same shape as item 131's
+"cheap half already exists and nobody has run it". A recorded size per
+issuance, or an assertion that fails when a prompt-touching commit moves the
+total by more than some margin, turns silent drift into something that
+announces itself.
+
+A fork's day-one prompt is ~17.8K against Kisumu's 142.5K — an eighth, on the
+same prompt code and the same models (item 133's sandbox renderer). Almost
+everything in the difference is accumulated record and secondary sources.
+
+### 3. Where a cut is defensible, if one is wanted
 
 Long-context attention degrades non-uniformly and the middle suffers most, so
 6,234 numeric tokens of near-identical hourly material is not free: the model
