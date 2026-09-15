@@ -90,7 +90,29 @@ location:
   # 2 runs x 4 attempts = 8, and 10 left no room for a manual run or a replay.
   # 16 absorbs a bad day and still sits under the account's real 20/day quota.
   # See ROADMAP item 66.
-  max_llm_calls_per_24h: 16
+  # RAISED 16 -> 20 on 2026-09-15, TEMPORARILY, and the operator's own words
+  # are the reason to put it back: "That's the real number, not what I want to
+  # use but fine for this testing period."
+  #
+  # 20 is Google's actual RPD, so this cap now protects nothing on a normal
+  # day — it only stops a runaway loop. It was raised because 16 would have
+  # refused the evening issuance of 2026-09-15 before it made a single call:
+  # the rolling window held 14, thirteen of them 503 failures from the
+  # previous evening's run and that morning's, and a forecast needs 2. A cap
+  # sized for a healthy day had been filled entirely by an unhealthy one, and
+  # would have blocked the measurement set up to diagnose it.
+  #
+  # THE TARGET IS 2 PER RUN, not 8. Eight is four attempts times two calls,
+  # the retry storm, and it is what makes this project unusable for people
+  # whose whole daily allowance it would eat. Put this back to 16 — or lower
+  # — once the provider change is measured; the reason 16 was chosen has not
+  # stopped being true, it is just suspended.
+  #
+  # Rolling 24h at 20 is still at least as strict as Google's calendar-day
+  # 20, since any calendar day is itself a 24-hour window. What it does NOT
+  # cover is requests made outside the pipeline: the probes in tools/ call the
+  # endpoint directly and are not in the ledger.
+  max_llm_calls_per_24h: 20
 
   # WHICH API THIS DEPLOYMENT TALKS TO. Moved out of code and out of GitHub
   # repository variables on 2026-09-15 — neither was a place an operator

@@ -18420,6 +18420,26 @@ Related: items 70 (the hashes this rests on), 59 (the split that halves it),
 
 ## 132. The free tier will not carry this project, and the question is what replaces it · **Open — raised 2026-09-14, rewritten 2026-09-15**
 
+> **THE CAP IS TEMPORARILY 20 AND MUST GO BACK DOWN.** Raised from 16 on
+> 2026-09-15 for the provider-change measurement, with the operator naming it
+> as temporary in the same breath: *"That's the real number, not what I want
+> to use but fine for this testing period."*
+>
+> 20 is Google's own RPD, so at 20 this cap protects nothing on a normal day
+> — it only stops a runaway loop. It was raised because 16 would have refused
+> the evening issuance before it made a single call: the rolling window held
+> 14, THIRTEEN OF THEM 503 FAILURES from the previous evening's run and that
+> morning's, and a forecast needs 2. A cap sized for a healthy day had been
+> filled entirely by an unhealthy one, and would have blocked the measurement
+> set up to diagnose it. That is worth keeping as a finding in its own right:
+> the rolling window converts a bad day into a refused next day.
+>
+> **The target is 2 per run.** Eight is four attempts times two calls — the
+> retry storm — and it is what makes this project unusable for someone whose
+> whole daily allowance it eats. The reason 16 was chosen has not stopped
+> being true; it is suspended, not withdrawn.
+>
+
 > **REWRITTEN.** The first draft of this item read the failures as slot-shaped
 > and answered with scheduling. The provider dashboard says otherwise and the
 > operator's framing is the right one: *"This whole project falls apart if
