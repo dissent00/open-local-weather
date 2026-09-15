@@ -18302,6 +18302,36 @@ have happened — a forecast was one call and either worked or did not.
 for one call a day starts refusing at half the forecasts. The cap's default
 and its wording need revisiting before that lands, not after."* It landed.
 
+### OUR GUARD IS A DIFFERENT SHAPE FROM THE LIMIT IT PROTECTS
+
+Raised by the operator 2026-09-15: *"I think the cap resets on US days, not 24h
+period, not positive though."* The dashboard's axis is labelled UTC-8 and every
+US-timezone boundary tested puts 2026-09-14's eight failed calls and
+2026-09-15's six in the same bucket, which matches the dashboard's 15. So the
+provider's RPD is a CALENDAR DAY in a US zone. Ours is a ROLLING 24 HOURS.
+
+Measured at 05:07Z on 2026-09-15:
+
+| | used | resets |
+|---|---|---|
+| Google, calendar day | 14/20 | **08:00Z**, two hours away |
+| ours, rolling 24h | 14/16 | first frees **15:01Z**, nine hours away |
+
+**So for about seven hours our own guard would refuse a forecast the provider
+would have accepted.** After a bad afternoon the local cap extends the outage
+long past the provider's reset, which is the opposite of what it is for.
+
+**It is SAFE and that is not the point.** A rolling 16-in-24h guarantees at
+most 16 in any calendar day, so it cannot breach an RPD of 20. What it costs is
+availability, and it costs it precisely on the days already damaged.
+
+**The fix belongs with item 81's matrix.** A row should carry the provider's
+LIMITS and their reset SHAPE — RPD, RPM, TPM, and whether the day is rolling or
+a calendar day in some zone — so the local cap is DERIVED from the thing it is
+protecting rather than typed independently. Today `max_llm_calls_per_24h: 16`
+and an RPD of 20 are two unrelated numbers that happen not to collide, and
+nothing in the repo knows the second one exists.
+
 ### The economy drifted from 2 a day to 16
 
 | | requests/day |
