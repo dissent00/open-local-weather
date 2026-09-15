@@ -33,7 +33,7 @@ from openlocalweather.comparison import (  # noqa: E402
     describe_extended_trend,
     wind_warning,
 )
-from openlocalweather.dates import weekday_name  # noqa: E402
+from openlocalweather.dates import forward_calendar, weekday_name  # noqa: E402
 from openlocalweather.wind import (  # noqa: E402
     consensus_direction,
     describe_wind_shift,
@@ -52,6 +52,12 @@ from openlocalweather.fetch.open_meteo import (  # noqa: E402
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date  # noqa: E402
 from openlocalweather.instability import summarize_instability  # noqa: E402
 from openlocalweather.verify.scoring import mean  # noqa: E402
+from openlocalweather.config import LocationConfig, Point  # noqa: E402
+from openlocalweather.llm.prompt import (  # noqa: E402
+    build_judgment_prompt,
+    build_narrative_prompt,
+    build_user_prompt,
+)
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -177,6 +183,13 @@ def observe(loc: SandboxLocation) -> dict:
         out["error"] = f"{type(exc).__name__}: {exc}"
         return out
     out["local_today"] = local_today
+    # KEPT FOR --render-prompts, and only for that. Both payloads were already
+    # being fetched and dropped on the floor here once their summaries were
+    # computed; a prompt needs the extended daily verbatim, so the sweep now
+    # hands it on instead. `store()` names the keys it writes, so carrying
+    # these does not change a single byte of sandbox/data/.
+    out["daily"] = daily
+    out["hourly"] = hourly
 
     day0 = extract_day0_predictions_from_hourly(hourly, MODELS)
     actuals = bucket_hourly_by_date(archive)
@@ -247,6 +260,134 @@ def observe(loc: SandboxLocation) -> dict:
     return out
 
 
+PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+
+
+def _sandbox_location_config(loc: SandboxLocation) -> LocationConfig:
+    """A LocationConfig for a place that has no deployment behind it.
+
+    DELIBERATELY BARE. A sandbox location has no secondary point, no WAQI
+    stations, no met service and no accuracy record, and every one of those is
+    passed as absent rather than borrowed from Kisumu. Borrowing would render
+    a prompt no fork will ever see and quietly test the wrong document.
+    """
+    return LocationConfig(
+        region_name=loc.name,
+        primary_place_name=loc.name,
+        timezone=loc.timezone,
+        primary_point=Point(lat=loc.lat, lon=loc.lon),
+        metar_station_icao=loc.icao or "",
+        local_bulletin_source_name="",
+        local_bulletin_url="",
+    )
+
+
+def render_prompts(row: dict) -> dict[str, str] | None:
+    """The two system prompts and the user prompt, as a DAY-ONE FORK sees them.
+
+    WHY THIS IS WORTH RENDERING AT ALL, given the sandbox holds no record:
+    that absence is the realistic case, not a limitation. A new deployment on
+    its first morning has no verification history, no per-model track record,
+    no ground stations and no local bulletin, and the prompt has a branch for
+    each of those. Kisumu has exercised the present branch for weeks and the
+    absent branch not once since the record filled up. Twelve locations with
+    nothing behind them exercise it twelve times a day for free.
+
+    WHAT THIS IS NOT. It is not Kisumu's mature prompt and must never be read
+    as one. Blocks that depend on a record — verification, track record,
+    historical logs, AQI, the met bulletin, the synoptic ring — are absent
+    here because they are genuinely absent, so a finding from these prompts
+    is a finding about a fork's first day.
+
+    STILL ABSENT, AND GENUINELY SO: the issuance (a sweep is not an issuance,
+    so there are no forecast windows and no "as of" time), the secondary
+    point, the synoptic ring, AQI, METAR and the met bulletin. Those depend on
+    configuration or a record a fork does not have on day one. Anything that
+    is pure computation is passed — see `forward_calendar` below for why that
+    distinction is load-bearing.
+
+    Costs no LLM call. The fetch already happened in `observe()`, which
+    computed its summaries and dropped the payload on the floor; this keeps
+    it.
+    """
+    if row.get("error") or not row.get("local_today"):
+        return None
+
+    location = _sandbox_location_config(row["location"])
+    today = row["local_today"]
+    flags = dict(
+        # Both FALSE, and that is the whole point of the exercise — see above.
+        ground_stations_configured=False,
+        local_bulletin_configured=False,
+    )
+
+    user = build_user_prompt(
+        today=today,
+        yesterday=today - timedelta(days=1),
+        public_webpage_url="",
+        # Every one of these is None because the sandbox has no record, not
+        # because rendering is cutting a corner. `None` is "absent" throughout
+        # this codebase and the prompt already knows how to say so.
+        verification_context=None,
+        track_record_context=None,
+        historical_logs=None,
+        ground_aqi_readings=None,
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={
+            # `primary_today_hourly` is NOT sent, matching the pipeline —
+            # ROADMAP item 73's first cut. Keeping it here would render a
+            # prompt production stopped sending in September.
+            "primary_extended_daily": row.get("daily"),
+            "secondary_today_hourly": None,
+            "secondary_extended_daily": None,
+            "regional_pressure": None,
+            "air_quality": None,
+            "airport_metar": None,
+            "synoptic_scale_pressure": None,
+        },
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+        instability=asdict(row["instability"]) if row.get("instability") else None,
+        # PURE COMPUTATION, so a fork HAS these on day one and leaving them
+        # out would have been a rendering artifact rather than a real absence.
+        # The first render showed "CALENDAR: Unavailable", which no real
+        # deployment ever sees — `forward_calendar` needs only a date, and the
+        # sweep had already computed the trend for its own report. A prompt
+        # that understates what a fork is given produces findings about a
+        # document nobody is sent.
+        forward_calendar=forward_calendar(today),
+        extended_trend=row.get("trend"),
+        **flags,
+    )
+
+    return {
+        "judgment": build_judgment_prompt(location, is_reissue=False, **flags),
+        "narrative": build_narrative_prompt(location, is_reissue=False, **flags),
+        "user": user,
+    }
+
+
+def store_prompts(row: dict) -> Path | None:
+    """Writes the rendered prompts beside the data, one directory per place.
+
+    Plain text rather than JSON: these exist to be READ — by a person, or by
+    a worker model handed the file — and a prompt wrapped in JSON escaping is
+    a prompt nobody reads. Item 77's method is "hand both to a worker model
+    and read the prose", and this is the part of it that was done by hand.
+    """
+    rendered = render_prompts(row)
+    if rendered is None:
+        return None
+
+    out_dir = PROMPTS_DIR / slug(row["location"].name)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    day = row["local_today"].isoformat()
+    for name, text in rendered.items():
+        (out_dir / f"{day}.{name}.txt").write_text(text)
+    return out_dir
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--locations", nargs="*", help="names to include; default all")
@@ -255,6 +396,12 @@ def main() -> int:
                              "(see locations.py)")
     parser.add_argument("--store", action="store_true",
                         help="write each location's predictions and observations under sandbox/data/")
+    parser.add_argument("--render-prompts", action="store_true",
+                        help="also write the judgment, narrative and user prompts each location "
+                             "would be given, under sandbox/prompts/. Costs no LLM call — the "
+                             "fetch has already happened. These are a DAY-ONE FORK's prompts: no "
+                             "record, no stations, no bulletin, which is the branch Kisumu has "
+                             "not exercised since its record filled up.")
     args = parser.parse_args()
 
     fleet = {"global": FLEET, "nyanza": NYANZA, "all": FLEET + NYANZA}[args.fleet]
@@ -272,6 +419,8 @@ def main() -> int:
             continue
         if args.store:
             store(row)
+        if args.render_prompts:
+            store_prompts(row)
         cmp_ = row["comparison"]
         if cmp_ is None:
             print(f"  {loc.name:14} no observed record for yesterday")

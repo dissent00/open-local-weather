@@ -25,3 +25,10 @@ app/**/pubspec.lock
 # diagnostic artefact rather than part of the record.
 probe_envelope_*.json
 probe_background_*.json
+
+# Rendered sandbox prompts — regenerable from `sweep.py --render-prompts` and
+# ~210 KB a day across the fleet. The DATA they are rendered from is committed
+# (sandbox/data/) because Open-Meteo's forecast endpoint only ever answers
+# about now; a prompt is a pure function of that plus prompt.py, both of which
+# are in the repo, so committing the renders would store a derivation.
+sandbox/prompts/
