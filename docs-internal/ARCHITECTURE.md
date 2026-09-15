@@ -8,23 +8,36 @@ location.
 > the **generated GitHub Pages site** — anything put there gets published
 > publicly and overwritten by the pipeline. Internal docs live here.
 
+> **Checked against the code on 2026-09-15.** This document describes what is
+> TRUE and STABLE and cites `ROADMAP.md` for why; the roadmap is the argument,
+> this is the shape. It had gone 145 `src/` commits without a check (item 136)
+> and was wrong about the two things that matter most — the number of LLM
+> calls and the entry point — so if something here disagrees with the code,
+> **the code is right and this file has rotted again.**
+
 ## The one-paragraph version
 
-Every morning, GitHub Actions runs a Python pipeline that pulls raw
-forecasts from five weather models, scores *yesterday's* predictions
-against what actually happened, hands an LLM the raw disagreeing model data
-plus that scoring history, and asks it to write a forecast narrative. The
-result is committed back to this repo as JSON (git is the database),
-rendered to a static site, and emailed to subscribers. An optional evening
-run re-synthesizes the narrative on a fresher model cycle without touching
-the accuracy loop at all — see step 7. Over time the scoring history tells
+A Python pipeline pulls raw forecasts from five weather models, scores
+*yesterday's* predictions against what actually happened, and hands an LLM
+the raw disagreeing model data plus that scoring history. It does so in **two
+calls**: a JUDGMENT call that returns the scored commitment, and a NARRATIVE
+call that writes the prose and cannot touch a scored field. The result is
+committed back to this repo as JSON (git is the database), rendered to a
+static site, and emailed to subscribers. Over time the scoring history tells
 the LLM which models to trust, per variable and per lead time.
+
+There is **one entry point, `run_forecast`, and it does not branch on the
+clock** — the first run of a day owns verification and the day's predictions;
+every later run is an update that rewrites the narrative and preserves them.
+See *The two-call split* and *Every run is an issuance* below.
 
 ## Data flow
 
 ```
                     ┌─────────────────────────────────────┐
-                    │  GitHub Actions cron (~03:07 UTC)   │
+                    │  operator's crontab -> workflow_    │
+                    │  dispatch (03:01 / 15:01 UTC)       │
+                    │  forecast.yml declares NO schedule: │
                     └──────────────────┬──────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
@@ -55,11 +68,19 @@ the LLM which models to trust, per variable and per lead time.
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
-   │ 5. SYNTHESIZE     llm/prompt.py → llm/gemini.py                    │
-   │    LLM receives: raw disagreeing model data + PRE-COMPUTED scores  │
-   │    LLM produces: narrative, verification notes, skill summaries,   │
-   │                  and one blended "today_properties" call           │
-   │    LLM never does arithmetic.                                      │
+   │ 5. SYNTHESIZE     llm/prompt.py → the configured provider          │
+   │    TWO CALLS since 2026-09-11 (ROADMAP item 59 step 3):            │
+   │                                                                    │
+   │    5a. JUDGMENT   build_judgment_prompt → today_properties and     │
+   │                   extended_properties. THE SCORED COMMITMENT.      │
+   │    5b. NARRATIVE  build_narrative_prompt, handed 5a's answer as    │
+   │                   settled. Prose only — CANNOT alter a scored      │
+   │                   field. See "The two-call split" below.           │
+   │                                                                    │
+   │    Both receive raw disagreeing model data + PRE-COMPUTED scores.  │
+   │    The LLM never does arithmetic.                                  │
+   │    WHICH provider: config/location.yaml `llm_providers`, not code  │
+   │    and not a GitHub variable. LLM_PROVIDER env overrides it.       │
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
@@ -77,25 +98,70 @@ the LLM which models to trust, per variable and per lead time.
    │    GitHub raw and sends via MailApp. Not part of the pipeline.     │
    └────────────────────────────────────────────────────────────────────┘
 
-                    ┌─────────────────────────────────────┐
-                    │  GitHub Actions cron (~15:07 UTC)   │  optional, same
-                    └──────────────────┬──────────────────┘  concurrency
-                                       │                       group as above
-   ┌───────────────────────────────────▼────────────────────────────────┐
-   │ EVENING REFRESH   pipeline.run_refresh_pipeline()                  │
-   │    • repeats step 1 only (fresh guidance, later model cycle)       │
-   │    • re-runs step 5 in refresh mode (LLM sees the morning          │
-   │      narrative, writes an update — "what's changed", not a repeat) │
-   │    • merges narrative/today_properties into the EXISTING entry —   │
-   │      model_predictions/verification/generated_at_utc untouched     │
-   │    • republishes docs/; web-only, does not email                  │
-   │    • steps 2-4 (actuals, verify, extract) never run — nothing new  │
-   │      to verify mid-day, and predictions must stay what was         │
-   │      actually published at 6 AM                                    │
+   ┌────────────────────────────────────────────────────────────────────┐
+   │ A LATER RUN OF THE SAME DAY                                        │
+   │                                                                    │
+   │ There is no separate evening function. `run_refresh_pipeline` and  │
+   │ `run_daily_pipeline` were MERGED into `run_forecast` — item 104.   │
+   │ It resolves one question, "is there an entry for today already?",  │
+   │ and `_issue_forecast` branches on the answer:                      │
+   │                                                                    │
+   │    • repeats step 1 (fresh guidance, later model cycle)            │
+   │    • re-runs step 5 — the narrative prompt is told this is a       │
+   │      later issuance, so it writes what CHANGED, not a repeat       │
+   │    • steps 2-4 never run: nothing new to verify mid-day, and the   │
+   │      day's predictions must stay what was actually published       │
+   │    • republishes docs/; web-only, does not email                   │
+   │                                                                    │
+   │ WHY MERGED, and it is the opposite of what was expected: two       │
+   │ bodies of code could not be held in step by intent. Six fields     │
+   │ had already drifted between the two re-issue paths, plus a         │
+   │ ground-AQI merge one path skipped and an archive key that          │
+   │ destroyed the morning's stored prompt. The write-once rules now    │
+   │ live in ONE list in `_compose_log_entry`. See run_forecast's       │
+   │ docstring — it records the claim it used to make and why it was    │
+   │ wrong.                                                             │
    └────────────────────────────────────────────────────────────────────┘
 ```
 
 ## The load-bearing ideas
+
+### The two-call split, and the firewall it creates
+
+Since 2026-09-11 a forecast is two LLM calls, not one (ROADMAP item 59 step
+3). The JUDGMENT call returns `today_properties` and `extended_properties` —
+the numbers tomorrow scores. The NARRATIVE call is handed that answer **as
+settled** and writes prose.
+
+**A narrative-prompt change provably cannot move the accuracy record.** That
+is not a convention, it is the shape of the data flow: the scored fields are
+already fixed before the narrative prompt is built. It has two consequences
+worth knowing before changing anything:
+
+- Most prompt work here is narrative, and **none of it can be validated
+  against the record** — no amount of running it live produces evidence in
+  the ledger (item 131). It needs a different instrument: item 77's harness,
+  or item 129's static check.
+- A judgment-prompt change **is** measurable — rain accuracy, temperature
+  error, wind error and onset error all move or they do not. Items 133 and
+  134 are deliberately on that side of the line for exactly this reason.
+
+The judgment prompt is byte-identical whether or not this is a re-issue; only
+the narrative prompt branches. So the half that decides the scored numbers is
+the simpler half, on purpose.
+
+### Every run is an issuance, and the clock is not the axis
+
+`run_forecast` is the only entry point. It branches on whether the day
+already has an entry, never on the time of day:
+
+- the **first** run of a day owns verification and the day's
+  `model_predictions` — the numbers tomorrow scores
+- **every later** run is an update: narrative only, predictions preserved
+
+`prediction_rows` is append-only and row 0 is immutable. Those write-once
+rules live in one list in `_compose_log_entry`, which is the point of the
+merge — see item 104 and the data-flow note above.
 
 ### Git is the database
 
@@ -124,7 +190,17 @@ nothing downstream could detect. So:
 Numbers flow *into* the prompt as pre-computed context. They never flow back
 out of it.
 
-### Reasoning effort is turned up, deliberately
+### Reasoning effort is turned up — on one of the two Gemini paths
+
+> **As of 2026-09-15 this deployment runs `gemini-interactions`, which is NOT
+> sent a thinking level.** The Interactions API takes no measured equivalent
+> of `thinkingConfig`, and passing one that is silently ignored would be
+> worse than passing none — the run would look configured and behave
+> otherwise. So the paragraph below is true of `GeminiProvider`
+> (`generateContent`) and not of the provider currently configured. The
+> switch therefore changed two things at once, which is why `thought_tokens`
+> is now stored per log entry: it is the only way to see the second one.
+> ROADMAP items 80 and 132.
 
 `GeminiProvider` defaults to `thinkingConfig.thinkingLevel: "high"`
 (`GEMINI_THINKING_LEVEL` env var, `cli.py`) for the actual forecast
@@ -197,14 +273,23 @@ Break these and the system quietly stops being trustworthy:
 | An absent observation is `thunder=None`, never `False` | `fetch/metar.observed_thunder_by_date()` | A station that filed nothing is not a station that saw nothing |
 | The whole record is re-derivable from stored predictions plus refetched observations | `olw rebuild-record` | A correction to what was observed must reach every figure, not only days scored after the fix |
 | `docs/` is generated, never hand-edited | `publish/pages.py` | Overwritten every run |
+| `prediction_rows` is append-only and row 0 is immutable | one list in `pipeline._compose_log_entry` | A later issuance must not rewrite the numbers the day was scored on. Written twice, the two copies drifted in six fields — ROADMAP item 104 |
+| The narrative call cannot alter a scored field | the two-call split, `llm/prompt.py` | It is what makes the accuracy record a controlled measurement rather than an impression — items 59, 131 |
+| Every request that reaches a model is counted before it is made | `pipeline.attach_spend_cap`, guarded by `tests/test_spend_coverage.py` | The row is written BEFORE the call, so a crash mid-call still counts. Four callers have broken this rule once each; the guard is what stops the fifth |
 
 ## Extension points
 
 Designed to be swapped without touching pipeline logic:
 
-- **LLM provider** — implement `llm/provider.LLMProvider` (one method).
-  Groq/Cerebras/OpenRouter would each need their own JSON-schema adapter,
-  mirroring `llm/schema.to_gemini_schema()`.
+- **LLM provider** — implement `llm/provider.LLMProvider` (one method), then
+  add the name to `VALID_LLM_PROVIDERS` in that same module. Four ship today:
+  `gemini` (`generateContent`), `gemini-interactions` (the Interactions API),
+  `anthropic`, and `openai` — which covers OpenAI, OpenRouter, Groq, Together,
+  vLLM and Ollama. **A name there is a row in the supported matrix, not a
+  vendor** (item 81): `gemini` and `gemini-interactions` are the same vendor
+  and the same model reached through two APIs, and the API decides the shape
+  of the call. Each needs its own JSON-schema adapter — `to_gemini_schema()`
+  for `generateContent`, `to_strict_json_schema()` for the other three.
 - **Email** — implement `pipeline.EmailSender`. Currently satisfied by an
   external Apps Script instead; `publish/email_gmail.py` exists as a
   Python-native alternative if a domain gets set up.
@@ -213,7 +298,10 @@ Designed to be swapped without touching pipeline logic:
   *will* need rewriting per location; formats vary wildly and don't
   generalize.
 - **Location** — `config/location.yaml` only. That's the whole fork surface
-  for a new place.
+  for a new place, and since 2026-09-15 it is also where the PROVIDER is
+  named (`llm_providers`). Keys stay in the environment: a provider name is
+  configuration and belongs in version control where a change has a diff and
+  an author; an API key is a secret and must not be committed.
 
 Deliberately *not* abstracted: Open-Meteo itself. The multi-model design
 depends on its consistent `{variable}_{model}` field-naming convention
@@ -256,8 +344,14 @@ above; conflating the two manufactures fake skill scores.
 
 ## Testing
 
-219 tests, all offline and deterministic — no network, no LLM calls, no
-sleeps. `pytest -q` runs in under a second, and CI runs it on every push.
+1,217 tests, all offline and deterministic — no network, no LLM calls, no
+sleeps. `pytest -q` runs in a few seconds, and CI runs it on every push.
+(It said 219 until 2026-09-15, which is how item 136 was raised: a number
+nobody re-checked for three weeks.)
+
+Every new guard is expected to be MUTATION-TESTED — break the code, watch the
+test fail, put it back, watch it pass. Clear `__pycache__` between runs: a
+stale one made a correct file fail on 2026-09-10 and cost an hour.
 
 The verification/scoring module carries the deepest coverage on purpose:
 it's the part the project's credibility rests on. Its tests include
@@ -266,8 +360,9 @@ hand-computed rolling averages (checked with a calculator, not just
 the log, and the all-time idempotency guard.
 
 Not covered by CI, by design: live API calls and real LLM output are
-non-deterministic and burn quota. Use `olw run-daily --dry-run` for that —
+non-deterministic and burn quota. Use `olw forecast --dry-run` for that —
 it does everything real except writing files, publishing, and emailing.
+(`run-daily` was renamed; there is no such command.)
 
 The Apps Script mailer has its own harness (`node mailer/test_mailer.js`),
 also outside CI, since it doesn't run on GitHub Actions at all.

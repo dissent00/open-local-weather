@@ -19059,7 +19059,34 @@ Related: items 133, 102, 56.
 
 ---
 
-## 136. The architecture documents are 145 commits behind and README sends people there first · **Planned — raised 2026-09-15**
+## 136. The architecture documents are 145 commits behind and README sends people there first · **ARCHITECTURE.md rewritten 2026-09-15; APP_ARCHITECTURE.md still Planned**
+
+> **ARCHITECTURE.md is done.** Rewritten against the code the same day it was
+> raised, and every factual claim in it was executed rather than read off the
+> roadmap — provider tuple, `run_forecast` present, both old pipeline entry
+> points absent, the configured provider, and the `olw` subcommand list.
+> Verified while writing: the judgment prompt IS byte-identical across
+> `is_reissue` (18,364 either way) while the narrative differs (38,301 vs
+> 41,696), so the claim that the scored half is the simpler half is measured,
+> not inherited.
+>
+> What changed: the two-call split and its firewall added as a load-bearing
+> idea (it was absent entirely); the dead `run_refresh_pipeline` block
+> replaced with the issuance model and item 104's reason for the merge; the
+> trigger box corrected — GitHub's cron does not fire this, the operator's
+> crontab does; three invariants added (`prediction_rows` append-only, the
+> narrative firewall, spend counted before the call); the thinking-level
+> section qualified, since the configured provider is not sent one; 219 tests
+> → 1,217; `olw run-daily` → `olw forecast`, a command that exists.
+>
+> It now opens by saying it describes what is true and stable and cites the
+> roadmap for why, and that **if it disagrees with the code, the code is
+> right and this file has rotted again.**
+>
+> **`APP_ARCHITECTURE.md` is untouched and equally old** (2026-08-26). It is
+> the app's, so it wants the app's context — start from `~/ensemble`'s own
+> ROADMAP, and note that repo's item 18: the pin is three commits behind and
+> there is no interactions provider on the Dart side.
 
 Found during a review pass, not by anyone being misled yet — which is the
 only reason it is cheap to fix now.
