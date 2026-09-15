@@ -2,38 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-08T15:01:46.834510+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_503",
-      "elapsed_s": 4.228
-    },
-    {
-      "at": "2026-09-08T15:02:21.064328+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_503",
-      "elapsed_s": 4.564
-    },
-    {
-      "at": "2026-09-08T15:03:25.630654+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_503",
-      "elapsed_s": 67.593
-    },
-    {
-      "at": "2026-09-08T15:06:33.226080+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_503",
-      "elapsed_s": 5.429
-    },
-    {
       "at": "2026-09-09T03:01:38.949031+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -360,6 +328,38 @@
       "purpose": "forecast",
       "outcome": "http_503",
       "elapsed_s": 6.488
+    },
+    {
+      "at": "2026-09-15T15:04:18.747479+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_500",
+      "elapsed_s": 3.167
+    },
+    {
+      "at": "2026-09-15T15:04:51.916321+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_500",
+      "elapsed_s": 1.666
+    },
+    {
+      "at": "2026-09-15T15:05:53.584061+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_500",
+      "elapsed_s": 15.796
+    },
+    {
+      "at": "2026-09-15T15:13:09.381319+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "refresh",
+      "outcome": "http_500",
+      "elapsed_s": 5.101
     }
   ]
 }
