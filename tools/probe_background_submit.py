@@ -79,7 +79,15 @@ def _shape(value, depth: int = 0):
     if isinstance(value, dict):
         return {k: _shape(v, depth + 1) for k, v in value.items()}
     if isinstance(value, list):
-        return [_shape(value[0], depth + 1), f"<list of {len(value)}>"] if value else []
+        # EVERY ELEMENT, not the first one and a count. `steps` is a
+        # HETEROGENEOUS list — the echoed input, then the model's work — so
+        # summarising it by its head shows the prompt coming back and hides the
+        # output, which is the one thing a dump like this is bought for. Cost a
+        # second request to notice, 2026-09-15, after the polls cost the first.
+        # Capped only to stop a pathological response filling a terminal.
+        return [_shape(v, depth + 1) for v in value[:8]] + (
+            [f"<{len(value) - 8} more>"] if len(value) > 8 else []
+        )
     if isinstance(value, str):
         return value if len(value) <= 64 else f"<str len {len(value)}>"
     return type(value).__name__
