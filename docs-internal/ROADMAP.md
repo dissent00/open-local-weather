@@ -7342,12 +7342,22 @@ the split — and it fired on the rendering call, the recoverable side.
   call starts, so it is narrow; the fix is one more `except` clause and the
   question is whether a run stopped by the operator's own cap SHOULD publish
   a degraded page, which is a policy call rather than a bug.
-- **The `is_reissue=True` narrative prompt has never been called.** The
-  judgment prompt is byte-identical across both branches (18,398 either way),
-  so the half that decides the scored fields is the half already smoke-tested.
-  What is untried is the ~3,400 characters of LATER ISSUANCE that only the
-  evening refresh sees — vector-pinned and moved verbatim, and on the
-  recoverable side of the split, but untried.
+- ~~**The `is_reissue=True` narrative prompt has never been called.**~~
+  **SUPERSEDED 2026-09-13 — it has, and it works.** True when written on
+  2026-09-11. Item 8's own section records the verification: two live
+  issuances that day, 06:01 opening *"Cloudier than yesterday"* and 18:01
+  opening *"Updated model guidance confirms showers and thunderstorms remain
+  on track"*, which is the behaviour the branch exists to produce. The rest of
+  the note still holds and is why the risk was low: the judgment prompt is
+  byte-identical across both branches (18,398 either way), so the half that
+  decides the scored fields was already smoke-tested, and the ~3,400
+  characters of LATER ISSUANCE that only the evening refresh sees were
+  vector-pinned and moved verbatim.
+
+  Struck rather than deleted because the stale claim is the hazard. A cold
+  session reads this item before item 8's, finds "never been called", and
+  either re-runs a verification that exists or treats a working branch as
+  unproven. Two days is how long that took to become wrong.
 
 ### Order
 
@@ -9988,6 +9998,49 @@ hypothesis. The 09-09 run never built one. The 09-08 failures were 503s — a
 service refusing — which a longer prompt does not cause.
 
 ## 80. The synchronous call may be the wrong shape · **Measured and answered 2026-09-14; the Interactions move is what remains**
+
+> **THE FIRST LIVE INTERACTIONS CALL SUCCEEDED, 2026-09-15.** A full narrative
+> re-render of that morning's failed run, through
+> `GeminiInteractionsProvider` with `background: true`: system 38,301 + user
+> 143,000 characters, one submit, 3,972 characters of narrative returned. It
+> is one data point and proves possibility, not reliability — the synchronous
+> path had already returned HTTP 200 once that same morning at 03:02 before
+> failing five times around it. What it does establish is that the whole
+> envelope works end to end at production prompt size: submit, poll, extract,
+> strict schema. The remaining guesses are named in
+> `gemini_interactions.py`.
+>
+> **`response_format` is the schema itself.** Guessed as an OpenAI
+> `{"type": "json_schema", "json_schema": {...}}` wrapper and refused, with
+> the refusal naming the valid values for `type` — image, array, audio, text,
+> string, number, video, object, integer, boolean. Those are JSON Schema
+> types, so the field IS a schema. `to_strict_json_schema` was the right
+> converter for a reason worth keeping: it emits lowercase types, which is
+> that list, where `to_gemini_schema` emits `OBJECT`/`ARRAY` and would have
+> been refused a second time. Commit `5269c1b`.
+>
+> **THE CALL WAS NOT RECORDED, AND NEITHER WERE ITS POLLS.** Found while
+> checking the ledger after the run. `tools/rerender_narrative.py` builds its
+> provider with `cli._build_llm_provider()`, and the spend hooks are attached
+> in `pipeline.py:582` — not by the factory. So any tool that builds a
+> provider outside the pipeline spends the daily allowance invisibly. The
+> ledger shows 6 calls for 2026-09-15; Google's dashboard will show at least
+> two more. **This is the measurement hole sitting exactly where item 132 is
+> counting**, and a ledger that undercounts is worse than none here, because
+> the whole argument about RPD 20 rests on it.
+>
+> `on_poll` compounds it: the hook exists on the provider specifically so
+> polls could be counted, and **nothing anywhere supplies it** — not the
+> pipeline, not the factory, not the tools. Checked, not assumed. So even
+> wired into production today, the interactions path would report one request
+> where it made four or six.
+>
+> **The fix is to attach the hooks where the provider is built, not where it
+> is used**, so the ledger cannot be bypassed by a caller that forgets. Doing
+> it in `_build_llm_provider()` needs the data dir the factory does not
+> currently take — that is the design question, and it is worth answering
+> before the single-call mode lands, because that item's entire case is a
+> request count.
 
 > **THE MEASUREMENT THIS ITEM ASKED FOR EXISTS, AND IT SETTLES THE NUMBER.**
 > `outcome` and `elapsed_s` have been recorded on every attempt since
