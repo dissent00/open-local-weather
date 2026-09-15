@@ -117,6 +117,61 @@ def sync_call(key: str, model: str, prompt: str) -> dict:
                 "elapsed_s": round(time.monotonic() - started, 3)}
 
 
+def interactions_sync(key: str, model: str, prompt: str) -> dict:
+    """The Interactions endpoint WITHOUT `background`. The untested option.
+
+    RAISED 2026-09-15, and it may make the queue-vs-sync question moot. The
+    probe's "sync" leg calls `generateContent` — the OLD endpoint — so every
+    comparison so far has confounded two changes at once: a different endpoint
+    AND a different execution mode. Nobody has asked this endpoint for an
+    answer directly.
+
+    It matters because of arithmetic. A background submit is one request plus
+    N polls, and the first live run spent roughly three requests where the
+    synchronous path spends one. Against RPD 20 that is the difference between
+    ~4 requests a day and ~12, with no headroom for a retry. If the 503s come
+    from `generateContent`'s capacity rather than from synchronous execution
+    as such, then this leg is the whole fix: the new endpoint at one request a
+    call, and no poll loop to maintain.
+
+    If it returns a completed interaction, prefer it. If it refuses without
+    `background`, the poll cost is the price of the endpoint and the
+    enforcement question in `spend.record_poll` becomes urgent.
+    """
+    started = time.monotonic()
+    try:
+        r = requests.post(
+            INTERACTIONS_URL,
+            params={"key": key},
+            json={"model": model, "input": prompt},
+            timeout=REQUEST_TIMEOUT_S,
+        )
+        out = {"leg": "interactions_sync", "status": r.status_code,
+               "elapsed_s": round(time.monotonic() - started, 3)}
+        try:
+            body = r.json()
+            out["interaction_status"] = body.get("status") if isinstance(body, dict) else None
+            # THE WHOLE POINT OF THE LEG: did the answer come back in the
+            # submit response, or only an id to go and fetch?
+            out["answered_inline"] = bool(
+                isinstance(body, dict) and _model_output_present(body)
+            )
+            out["envelope"] = _shape(body)
+        except ValueError:
+            out["body_snippet"] = r.text[:400]
+        return out
+    except Exception as e:  # noqa: BLE001
+        return {"leg": "interactions_sync", "status": None, "error": str(e),
+                "elapsed_s": round(time.monotonic() - started, 3)}
+
+
+def _model_output_present(body: dict) -> bool:
+    return any(
+        step.get("type") == "model_output" for step in (body.get("steps") or [])
+        if isinstance(step, dict)
+    )
+
+
 def background_submit(key: str, model: str, prompt: str) -> dict:
     started = time.monotonic()
     # `store` is left at its default: item 80 recorded that store=false is
@@ -204,6 +259,10 @@ def main() -> int:
                          "and polls are requests against the same 20-a-day ceiling. The "
                          "interaction id is recorded either way, so completion can be "
                          "checked later, by hand, outside the episode and for one request.")
+    ap.add_argument("--interactions-sync", action="store_true",
+                    help="ONE request: the Interactions endpoint with `background` OMITTED. "
+                         "Answers whether the new endpoint will reply directly, which would "
+                         "make the poll cost avoidable entirely. No episode needed.")
     ap.add_argument("--out", default="")
     ap.add_argument("--yes", action="store_true",
                     help="actually send. Without it nothing leaves the machine.")
@@ -232,7 +291,10 @@ def main() -> int:
     per_trial = (1 if a.envelope_only else 2) + (len(POLL_AT_S) if a.poll else 0)
     print(f"prompt: {day}'s archived user message, {len(prompt):,} chars (~{len(prompt)//4:,} tokens)")
     print(f"model:  {a.model}")
-    if a.envelope_only:
+    if a.interactions_sync:
+        print("mode:   INTERACTIONS, NO BACKGROUND — exactly 1 request. No polls, no sync leg.")
+        print("        Asks whether this endpoint answers directly. Needs no episode.")
+    elif a.envelope_only:
         print(f"mode:   ENVELOPE ONLY — 1 submit + up to {len(POLL_AT_S)} polls, no sync leg.")
         print("        Learns where generated text lands. Needs no episode.")
     else:
@@ -243,7 +305,13 @@ def main() -> int:
     print("\nEVERY ONE OF THOSE COUNTS AGAINST THE PROVIDER'S DAILY LIMIT, refusals")
     print("included. The limit measured on 2026-09-15 was 20 a day, and a normal")
     print("forecast day already spends 4.\n")
-    if a.envelope_only:
+    if a.interactions_sync:
+        # Needs no episode either: the question is whether the endpoint will
+        # answer without `background`, and a healthy provider answers it best.
+        # A void would only tell us the endpoint is also shedding.
+        print("Run this ANY TIME. The question is the response SHAPE, not acceptance —")
+        print("a healthy provider is the good case here.\n")
+    elif a.envelope_only:
         print("Run this ANY TIME. A successful submit is what teaches the shape, so a")
         print("healthy provider is the good case here rather than a void one.\n")
     else:
@@ -253,8 +321,12 @@ def main() -> int:
     if not a.yes:
         print("DRY RUN — nothing sent. Re-run with --yes to spend.")
         print(f"\n  POST {INTERACTIONS_URL}")
-        print("  " + json.dumps({"model": a.model, "input": "<the archived prompt>",
-                                 "background": True}, indent=2).replace("\n", "\n  "))
+        body = {"model": a.model, "input": "<the archived prompt>"}
+        if not a.interactions_sync:
+            body["background"] = True
+        print("  " + json.dumps(body, indent=2).replace("\n", "\n  "))
+        if a.interactions_sync:
+            print("\n  ONE request. `background` omitted — that is the question.")
         return 0
 
     key = os.environ.get("GEMINI_API_KEY") or ""
@@ -263,6 +335,30 @@ def main() -> int:
     # Printed so two runs can be compared by eye without either revealing the
     # key — see rerender_narrative.py for why that turned out to matter.
     print(f"credential: {len(key)} chars, {key[:4]}...{key[-4:]}\n")
+
+    if a.interactions_sync:
+        r = interactions_sync(key, a.model, prompt)
+        print(f"  interactions (no background): HTTP {r.get('status')}  {r.get('elapsed_s')}s")
+        print(f"  interaction status: {r.get('interaction_status')}")
+        print(f"  answered inline:    {r.get('answered_inline')}")
+        print("\n=== response envelope ===")
+        print(json.dumps(r.get("envelope"), indent=2) if r.get("envelope")
+              else r.get("body_snippet") or "  (no JSON body)")
+        if r.get("answered_inline"):
+            print("\nREAD: the endpoint answers directly. One request per call, no polls —")
+            print("prefer this over background before making queue the default.")
+        elif r.get("status") == 200:
+            print("\nREAD: accepted but did NOT answer inline. The poll cost is the price")
+            print("of this endpoint; spend.record_poll's enforcement question is now live.")
+        else:
+            print("\nREAD: refused without background. Background is required, and the")
+            print("request arithmetic in item 132 has to absorb the polls.")
+        out = Path(a.out or f"probe_isync_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.json")
+        out.write_text(json.dumps({"model": a.model, "result": r}, indent=2))
+        print(f"\nwrote {out}")
+        print("\nNOTE: this request is NOT in data/spend_ledger.json — reconcile against")
+        print("the provider dashboard.")
+        return 0
 
     trials = []
     for n in range(1, a.trials + 1):

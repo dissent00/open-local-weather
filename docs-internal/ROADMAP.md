@@ -10019,6 +10019,56 @@ service refusing — which a longer prompt does not cause.
 > that list, where `to_gemini_schema` emits `OBJECT`/`ARRAY` and would have
 > been refused a second time. Commit `5269c1b`.
 >
+> **THE LEDGER HOLE IS CLOSED — 2026-09-15, commit `dcc4782`.** Read the
+> note below first; this is what came of it.
+>
+> The guard that was supposed to prevent exactly this,
+> `tests/test_spend_coverage.py`, existed and did not fire, because it
+> scanned `src/` and nothing else. Its own docstring says "the fourth caller
+> will do it again", and the fourth caller arrived through `tools/` — the one
+> route the scan was blind to. It now scans `tools/` as well, and
+> `rerender_narrative.py` attaches `attach_spend_cap` like every other
+> spender.
+>
+> **Polls are now recorded and still never refused**, via `spend.record_poll`,
+> wired to `on_poll` inside `attach_spend_cap` so no caller has to know the
+> provider polls. Both halves are deliberate and the second is the one that
+> matters: `record_attempt` raises when the window is full, and a poll that
+> raised would abandon a generation already paid for in order to save a
+> request that may not even be counted — item 59 step 3's failure by a new
+> road. The `-poll` suffix on `purpose` keeps them separable, so the
+> enforcement question can be decided on evidence rather than now.
+>
+> **Still uncounted:** `tools/probe_background_submit.py` calls the endpoint
+> with raw `requests` rather than `generate()`, so the AST guard cannot see
+> it. It prints that it is uncounted, which is the weaker fix.
+>
+> **THE QUESTION THE WHOLE QUEUE DECISION TURNS ON, and it is not answered.**
+> Whether Google's RPD counts a GET on an interaction is undocumented and has
+> never been observed here. The arithmetic: a background call is 1 submit + N
+> polls, and the first live run spent roughly 3 requests where the
+> synchronous path spends 1. At two issuances x two calls that is ~12 a day
+> against RPD 20 with no headroom for a retry, versus ~4 today. **If polls
+> count, making queue the default makes the cap problem worse, not better.**
+> The ledger could not answer this before today and can now.
+>
+> **A cheaper answer may exist, and it was never tested.** The probe's "sync"
+> leg calls `generateContent` — the OLD endpoint — so every comparison so far
+> confounds endpoint with execution mode. Nobody has asked the Interactions
+> endpoint for an answer without `background`. If it replies directly that is
+> one request on the new endpoint: the reliability question without the poll
+> cost and without a poll loop to maintain. `--interactions-sync` on the
+> probe is that test, costs one request, and needs no episode. **Run it
+> before deciding the default.**
+>
+> **What the reliability evidence actually is: n=1 against n=1.** One
+> Interactions success at production size, and one `generateContent` success
+> at 03:02 the same morning between five 503s. That is not yet a reason to
+> switch, and `thinking_level` is not passed on the interactions path, so
+> switching silently changes generation config for the scored judgment call.
+> The model is the same `gemini-3.6-flash`, so the accuracy record stays
+> continuous.
+>
 > **THE CALL WAS NOT RECORDED, AND NEITHER WERE ITS POLLS.** Found while
 > checking the ledger after the run. `tools/rerender_narrative.py` builds its
 > provider with `cli._build_llm_provider()`, and the spend hooks are attached
