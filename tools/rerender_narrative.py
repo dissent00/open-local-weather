@@ -70,6 +70,7 @@ from openlocalweather.llm.prompt import (  # noqa: E402
     build_narrative_user_prompt,
 )
 from openlocalweather.llm.schema import GeminiNarrativeResponse  # noqa: E402
+from openlocalweather.pipeline import attach_spend_cap  # noqa: E402
 from openlocalweather.store import log_store  # noqa: E402
 
 # The published call, as the renderer is given it. These are the fields
@@ -182,9 +183,28 @@ def main() -> int:
         return 0
 
     provider = _build_llm_provider()
+    # A REPAIR SPENDS THE SAME ALLOWANCE AS A FORECAST. Missing on the first
+    # version of this tool, and the run of 2026-09-15 went into Google's count
+    # and not into ours — which mattered more than usual, because item 132's
+    # whole argument is a request count and the ledger it argues from was
+    # already short. `tests/test_spend_coverage.py` now scans tools/ so the
+    # fifth caller fails a test instead of a budget.
+    #
+    # The cap is enforcement, not bookkeeping: assert_capacity refuses before
+    # the first call if the day cannot afford one, so a repair attempted
+    # against an exhausted allowance stops here rather than adding a 503 to
+    # the pile that caused it.
+    verify_spend, _ = attach_spend_cap(
+        provider,
+        data_dir,
+        max_calls=location.max_llm_calls_per_24h,
+        purpose="narrative-rerender",
+    )
     narrative: GeminiNarrativeResponse = provider.generate(
         system_prompt, user_prompt, GeminiNarrativeResponse
     )
+
+    verify_spend()
 
     entry.narrative_markdown = narrative.today_narrative
     entry.yesterday_verification_summary = narrative.yesterday_verification

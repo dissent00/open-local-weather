@@ -146,6 +146,7 @@ from openlocalweather.spend import (
     assert_capacity,
     complete_attempt,
     record_attempt,
+    record_poll,
 )
 from openlocalweather.synoptic import summarize_synoptic
 from openlocalweather.llm.provider import LLMProvider, ResponseMeta
@@ -584,6 +585,25 @@ def attach_spend_cap(
     # Optional on the Protocol, so a provider that never reports one leaves
     # the fields None — which reads as "did not say", not as zero.
     provider.after_response = _record_response
+
+    # POLLS, for providers that have them. `hasattr` rather than a try/except
+    # or a Protocol member because polling is one provider's implementation
+    # detail and the other three have no business growing a no-op hook for it.
+    #
+    # WIRED HERE FOR THE REASON IN THIS FUNCTION'S DOCSTRING: three callers
+    # previously re-implemented the rule locally and got three different
+    # subsets of it. `on_poll` existed on GeminiInteractionsProvider from the
+    # day it was written and NOTHING supplied it, so the first live background
+    # run on 2026-09-15 made a submit and roughly two polls and recorded one
+    # row of the three. Attaching it at the single seam is what stops that
+    # being rediscovered per caller.
+    if hasattr(provider, "on_poll"):
+        provider.on_poll = lambda: record_poll(
+            data_dir,
+            provider=type(provider).__name__,
+            model=getattr(provider, "model", "unknown"),
+            purpose=purpose,
+        )
 
     def _verify_recorded() -> None:
         """Complain if the provider went and called a model without saying so.

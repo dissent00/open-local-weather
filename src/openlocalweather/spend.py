@@ -317,6 +317,49 @@ def record_attempt(
     return used + 1
 
 
+def record_poll(
+    data_dir: str | Path,
+    *,
+    provider: str,
+    model: str,
+    purpose: str,
+) -> None:
+    """Records a status poll. VISIBLE IN THE LEDGER, AND NEVER REFUSES ONE.
+
+    A background submit is one request plus N polls, and item 80 left the
+    accounting open: "counting polls as spend would be wrong while counting
+    nothing would lose the retry visibility the cap was built for." Both
+    halves of that are right, which is why this is a third function rather
+    than an argument to [record_attempt].
+
+    **Recorded, because the question is open and unanswerable without this.**
+    Whether Google's RPD counts a GET on an interaction is not documented and
+    has never been observed here. The ledger is the only instrument that can
+    answer it — run a day, compare the row count against the provider
+    dashboard — and it cannot answer a question about rows it does not
+    contain. On 2026-09-14 the ledger held 10 rows against a dashboard
+    reading of 15, so the gap is already real and already unexplained.
+
+    **Never refuses, because refusing here would be the worst available
+    outcome.** [record_attempt] raises when the window is full; a poll that
+    raised would abandon a generation that has already been paid for, in
+    exchange for saving a request that may not even be counted. That is the
+    half-a-forecast failure of item 59 step 3, reached by a new road. So this
+    writes a row and returns, whatever the window holds.
+
+    The two are distinguishable in the ledger by the `-poll` suffix on
+    `purpose`, so a later reader can total them separately and decide the
+    enforcement question on evidence. Flip it here when that evidence exists.
+    """
+    records = read_ledger(data_dir)
+    now = datetime.now(timezone.utc)
+    records = prune(records, now)
+    records.append(
+        SpendRecord(at=now, provider=provider, model=model, purpose=f"{purpose}-poll")
+    )
+    _write_ledger(data_dir, records)
+
+
 def complete_attempt(
     data_dir: str | Path,
     *,

@@ -23,7 +23,22 @@ without counting fails here rather than on someone's bill.
 import ast
 import pathlib
 
-SRC = pathlib.Path(__file__).resolve().parents[1] / "src" / "openlocalweather"
+_ROOT = pathlib.Path(__file__).resolve().parents[1]
+SRC = _ROOT / "src" / "openlocalweather"
+
+# `tools/` SPENDS THE SAME QUOTA, and until 2026-09-15 this guard could not
+# see it. That is the fourth caller the docstring above predicted, and it
+# arrived by the one route the scan was blind to rather than by a new
+# function in the package: `tools/rerender_narrative.py` built a provider
+# through `cli._build_llm_provider()`, called `generate()` on a 181,000-
+# character prompt, and wrote no ledger row. Found by reading the ledger
+# after the run, which is how number 3 was found too.
+#
+# A one-off script is exactly where this keeps happening, because the cap
+# reads like a pipeline concern and a tool feels like it is outside the
+# system. It is not: the daily allowance is one number and Google does not
+# care which file asked.
+SCANNED = (SRC, _ROOT / "tools")
 
 CAP = "attach_spend_cap"
 
@@ -91,7 +106,7 @@ def _function(tree: ast.Module, name: str) -> ast.FunctionDef | None:
 
 
 def test_every_call_to_a_model_is_counted():
-    sources = {p: ast.parse(p.read_text()) for p in SRC.rglob("*.py")}
+    sources = {p: ast.parse(p.read_text()) for root in SCANNED for p in root.rglob("*.py")}
 
     call_sites = [
         (path, fn, line)
@@ -113,7 +128,7 @@ def test_every_call_to_a_model_is_counted():
             continue
         fn = _function(sources[path], fn_name)
         if fn is None or CAP not in _names_used(fn):
-            uncounted.append(f"{path.relative_to(SRC)}:{line} in {fn_name}()")
+            uncounted.append(f"{path.relative_to(_ROOT)}:{line} in {fn_name}()")
 
     assert not uncounted, (
         "these reach a model without attaching the spend cap:\n  "
@@ -126,7 +141,7 @@ def test_every_call_to_a_model_is_counted():
 def test_the_functions_that_delegate_are_really_capped_by_their_caller():
     """The allowlist above is a promise about somebody else's function. This
     checks that somebody else, so the promise cannot quietly become false."""
-    sources = {p: ast.parse(p.read_text()) for p in SRC.rglob("*.py")}
+    sources = {p: ast.parse(p.read_text()) for root in SCANNED for p in root.rglob("*.py")}
 
     for delegated in CAPPED_BY_CALLER:
         callers = []

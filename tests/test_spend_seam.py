@@ -443,3 +443,81 @@ def test_a_replay_is_counted_like_any_other_call(tmp_path, monkeypatch):
         "recorded under the wrong purpose — a ledger read later cannot tell a "
         "replay from the forecast it was meant to be compared against"
     )
+
+
+# --- Polls: recorded, never refused (ROADMAP item 80, 2026-09-15) ---------
+
+
+class _PollingProvider:
+    """A provider that polls, in the shape GeminiInteractionsProvider has.
+
+    Deliberately not the real one: this pins the SEAM — that attach_spend_cap
+    finds `on_poll` and supplies it — and a fake keeps the test from also
+    depending on the Interactions envelope, which is still being measured.
+    """
+
+    model = "fake-model"
+
+    def __init__(self, polls: int):
+        self.polls = polls
+        self.before_attempt = None
+        self.after_attempt = None
+        self.on_poll = None
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        self.before_attempt()
+        for _ in range(self.polls):
+            self.on_poll()
+        self.after_attempt("http_200", 1.0)
+        return "answer"
+
+
+def test_polls_are_recorded_and_marked_as_polls(tmp_path):
+    """One submit plus two polls is three rows, and a reader can tell which.
+
+    The first live background run made roughly this shape and left one row.
+    Without the suffix the ledger would say three forecasts.
+    """
+    from openlocalweather.pipeline import attach_spend_cap
+
+    provider = _PollingProvider(polls=2)
+    attach_spend_cap(provider, tmp_path, max_calls=20, purpose="forecast")
+
+    provider.generate("sys", "user", None)
+
+    purposes = [r.purpose for r in read_ledger(tmp_path)]
+    assert purposes == ["forecast", "forecast-poll", "forecast-poll"]
+
+
+def test_a_poll_is_never_refused_even_with_the_window_full(tmp_path):
+    """THE FAILURE THIS PREVENTS is abandoning work already paid for.
+
+    record_attempt raises when the window is full, which is right for a new
+    request and wrong for a poll: the generation is already running and
+    already billed. Refusing to ask about it saves a request that may not
+    even be counted, and throws away one that certainly was.
+    """
+    from openlocalweather.pipeline import attach_spend_cap
+
+    provider = _PollingProvider(polls=3)
+    # max_calls=1 — the submit fills the window exactly, so every poll that
+    # follows is over the line.
+    attach_spend_cap(provider, tmp_path, max_calls=1, purpose="forecast")
+
+    provider.generate("sys", "user", None)  # must not raise
+
+    rows = read_ledger(tmp_path)
+    assert len(rows) == 4, "the submit and all three polls are on the record"
+    assert sum(r.purpose.endswith("-poll") for r in rows) == 3
+
+
+def test_a_provider_without_polling_does_not_grow_the_hook(tmp_path):
+    """The hook is one provider's implementation detail. attach_spend_cap
+    must not invent it on the three that do not poll — a stray `on_poll`
+    attribute would read as a capability that is never called."""
+    from openlocalweather.pipeline import attach_spend_cap
+
+    provider = GeminiProvider(api_key="k", model="m")
+    attach_spend_cap(provider, tmp_path, max_calls=20, purpose="forecast")
+
+    assert not hasattr(provider, "on_poll")
