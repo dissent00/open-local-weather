@@ -116,14 +116,23 @@ than an hour apart are refused as duplicate triggers.
      03:01 and 15:01 UTC, the crontab lines below. Offsetting off the exact
      hour to dodge GitHub Actions' scheduler congestion does not apply to a
      dedicated cron service — but PICK THE HOUR WITH THE PROVIDER IN MIND.
-     Measured on this deployment to 2026-09-14: the 03:01 slot has never
-     failed in five days of running, while the 15:01 slot failed on three of
-     seven, every time a burst of HTTP 503s refused in under a second. 15:01
-     UTC is the middle of the working day in both North America and Europe
-     and 03:01 is the middle of the night; on a free tier that is where an
-     overloaded provider shows up first. Prefer a slot inside the aligned
-     window that is NOT in the 14:00-22:00 UTC peak, and see ROADMAP item 79
-     for the measurement and its caveats.
+     Measured to 2026-09-14, and CORRECTED 2026-09-15 because the headline
+     claim did not survive the next morning. It read "the 03:01 slot has
+     never failed in five days of running"; on 2026-09-15 that slot made six
+     attempts, five of them HTTP 503, and published without a narrative. The
+     15:01 slot had failed on three of seven.
+     So: BOTH slots have now failed, and the quiet-hours theory is weaker
+     than it looked. What still holds is the direction — 15:01 UTC is the
+     middle of the working day in North America and Europe, 03:01 is the
+     middle of the night, and a free tier sheds where demand is — but a
+     night slot is evidently not immunity. Prefer a slot inside the aligned
+     window that is NOT in the 14:00-22:00 UTC peak, expect it to fail
+     anyway, and see ROADMAP item 79 for the measurement and its caveats and
+     item 132 for what replaces scheduling as the answer.
+     THE NUMBERS ABOVE ARE A SMALL SAMPLE AND WILL AGE. Five days and seven
+     runs are not enough to rank two slots, which is exactly how the first
+     version of this paragraph came to state a five-day streak as a property
+     of the slot.
 3. A successful dispatch returns HTTP 204 with an empty body — it means
    GitHub accepted the request to start a run, not that the run will
    succeed. This is now the only trigger — `forecast.yml` declares no

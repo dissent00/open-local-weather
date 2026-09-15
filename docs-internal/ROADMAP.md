@@ -19029,3 +19029,72 @@ strictly worse than no verification at all.
 The check has to be mechanical, against the inputs, outside the model.
 
 Related: items 133, 102, 56.
+
+---
+
+## 136. The architecture documents are 145 commits behind and README sends people there first · **Planned — raised 2026-09-15**
+
+Found during a review pass, not by anyone being misled yet — which is the
+only reason it is cheap to fix now.
+
+### The measurement
+
+`docs-internal/ARCHITECTURE.md` was last touched **2026-08-26**, commit
+`a235862`. Since then:
+
+| | |
+|---|---|
+| commits to `src/` | **145** |
+| commits to `ROADMAP.md` | 245 |
+| `docs-internal/APP_ARCHITECTURE.md` last touched | 2026-08-26 (same) |
+| `docs-internal/MET_SERVICE_INTEGRATION.md` | 2026-08-19 |
+
+### Why it matters more than ordinary doc rot
+
+`README.md` names ARCHITECTURE.md as the entry point — *"how the system works
+and why, the invariants that keep it trustworthy"*. So it is the first thing a
+new contributor reads, and the first thing a cold session reads when it wants
+the shape of the system rather than the history. The roadmap holds the truth
+and is 245 commits ahead, but nobody is told to read it first, and it is
+18,000 lines.
+
+### Specific falsehoods, not just staleness
+
+- **"219 tests"** (line 259). The suite is **1,217**. Off by 5.5x.
+- **"The LLM call is required"** (line 181), singular. A forecast has been
+  TWO calls since item 59 step 3 shipped 2026-09-11 — a judgment call that
+  produces the scored commitment and a narrative call that cannot touch a
+  scored field. That split is the single most important structural fact about
+  this system now: it is why a narrative prompt change provably cannot move
+  the accuracy record (item 131), and the document that explains the
+  architecture does not mention it.
+- **Zero occurrences of `llm_providers` or `gemini-interactions`** — the
+  provider moved out of code into `config/location.yaml` on 2026-09-15 and
+  the endpoint changed the same day.
+
+### The fix, and the trap in it
+
+Rewriting these from the roadmap is the obvious move and the expensive one —
+245 commits of history to read. **The cheaper framing: ARCHITECTURE.md should
+describe what is TRUE and STABLE, and cite the roadmap for why.** Most of what
+has changed in 145 commits is reasoning that already has a home; what the
+document owes a reader is the current shape — two calls, the scored/prose
+firewall, where the provider is configured, what the invariants are — with
+item numbers beside each.
+
+**Do not simply date-stamp it.** A document that says "as of 2026-08-26" and
+is linked as the entry point still gives a wrong mental model to whoever
+reads it; it just makes the wrongness deniable.
+
+### Worth considering: a check that notices
+
+Every numeric claim in these documents is the kind that rots silently, and
+this project already treats "measured" as load-bearing. A test that greps
+ARCHITECTURE.md for `N tests` and asserts it matches the real count would
+have caught the 219 on the day it became wrong. Whether the same trick
+generalizes beyond the test count is the open question — most claims are
+prose, and a check that covers one number while implying it covers the
+document would be worse than none.
+
+Related: items 59 (the split the document is missing), 131, 132, 133, and
+`README.md`'s Documentation section.
