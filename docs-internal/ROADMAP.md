@@ -18841,6 +18841,25 @@ one right answer.
    `olw_core` or be recomputed there, which is the two-repo change order and
    a `spec/vectors` question.
 
+### The test fleet already exists, and was nearly missed
+
+`sandbox/` runs the deterministic half of the pipeline against **12 locations,
+Wellington to Ulaanbaatar** — Kisumu, Wellington, Reykjavik, Punta Arenas,
+Ulaanbaatar, Winnipeg, Phoenix, Alice Springs, Mumbai, Singapore, Shannon,
+Denver — and commits a daily sweep. It was built to answer "what does this
+deployment's weather hide", and it is also the instrument that says whether
+derived geography generalizes: coastal, continental, desert, tropical,
+sub-polar and high-altitude are all represented, and a derivation that only
+makes sense beside a lake will fail visibly on Ulaanbaatar.
+
+Any geography derivation should be run across `--fleet global` before it goes
+near the prompt. That is a sweep, not an experiment, and it costs no LLM call
+because the sandbox drives the deterministic half only.
+
+`--fleet nyanza` (6 points, 0-113 km) is the other half and belongs to item
+99, but it bears on the "when derived" question below: those points differ by
+geography every day, which is precisely the distinction this item is about.
+
 ### Why this may belong with item 41
 
 Item 41 (satellite) is the argument for fixing the FIELD rather than the
@@ -18851,7 +18870,7 @@ same two questions above — when derived, and how the app gets it. **Sequence
 this with item 41 rather than ahead of it** if that work starts first; the
 answers should be the same answers.
 
-Related: items 41, 134 (the prompt half), 135 (checking the output), 56.
+Related: items 41, 134 (the prompt half), 135 (checking the output), 99, 56, and `sandbox/`.
 
 ---
 
@@ -18909,6 +18928,19 @@ does value selection before it does meteorology. Item 73 already cut the
 prompt and dropped `primary_today_hourly` (13.2%) for this reason. More hourly
 series can go, or be pre-summarised in code.
 
+### The sandbox README already made half this argument
+
+Found 2026-09-15, after filing this item, which is the wrong order:
+
+> "Kisii is 500 m higher and will read 'cooler' forever."
+
+and, on neighbouring areas, *"a difference that is there every day is
+geography rather than news."* That is the same distinction this item draws
+between day-over-day and climatology, reached from the other direction and
+written down first. An anomaly against a normal is exactly what separates
+"news" from "geography", so item 99's neighbour problem and this item's
+climatology problem may share one instrument rather than two.
+
 ### Why this is unusually worth doing
 
 **Every change here lands on the JUDGMENT prompt, so every one is measurable
@@ -18919,7 +18951,7 @@ order and prompt-size cuts all move rain accuracy, temperature error, wind
 error and onset error, or they do not. Item 129's harness grades them offline
 first; the record grades them afterwards.
 
-Related: items 133, 131, 129, 73, 77, and contract item 8.
+Related: items 133, 131, 129, 99, 73, 77, `sandbox/README.md`, and contract item 8.
 
 ---
 
