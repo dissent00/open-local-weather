@@ -18757,3 +18757,199 @@ who will not pay cannot rest on one provider's goodwill. So:
 Related: items 79 (the backoff and why it stops here), 80 (the Interactions
 API, which changes this question again), 81 (the supported matrix), 108 (the
 catch-up run), 111, 26, and `ops/README.md`.
+
+---
+
+## 133. The model infers geography from a place name, and should be told it instead · **Planned — raised 2026-09-15**
+
+Raised by the operator after reading a published sentence and not being able
+to account for it: *"I know it said that, but I don't know why... I'm wary of
+the LLM propensity to hallucinate/invent... my thinking was to ensure that the
+inputs are good and verifiable, not just 'meteorologist sounding.'"*
+
+### The sentence, traced
+
+2026-09-15's narrative opened its synoptic discussion with:
+
+> "Daytime solar heating over land will establish strong lake-breeze
+> convergence along the Nyanza trough, anchoring intense evening storm
+> development."
+
+Traced against the actual prompts, word by word:
+
+| fragment | occurrences in the inputs | provenance |
+|---|---|---|
+| "lake-breeze convergence" | 1 | **the prompt's own rule**, near-verbatim: *"especially likely in the tropics and near large water bodies, where lake- and sea-breeze convergence drives convection at scales global models resolve poorly"* |
+| "Nyanza" | 3 | **config** — `region_name: "Nyanza Basin"`, which lands in the role line |
+| "trough" | **0** | the model |
+| "Victoria" | 0 | never named by either side |
+
+So roughly three-quarters of it is traceable to inputs, and the restrictive
+prompt is doing its job — it supplied the mechanism and the place name. What
+the model added was one noun and a definite article, and **that is where the
+risk concentrated**: "the Nyanza trough" asserts a named, established feature.
+The physics is plausible — the pressure ring showed an 11 hPa gradient — but
+nothing in the inputs granted the authority the phrasing claims. Whether
+"Nyanza trough" is real terminology in East African meteorology is not
+established here, and the inability to check it is the finding.
+
+**The failure mode is not wrong meteorology. It is borrowed authority through
+naming**, reached by inference from a place name the model recognised.
+
+### Why the fix cannot be prompt text
+
+The operator's constraint, stated the same day: *"this has to still be
+generalizable to any location."* `defaults.py` says the same thing in its own
+docstring — forking for a new place should only ever require editing
+`config/location.yaml`. So a hand-written block about Winam Gulf breezes or
+Nandi highlands is the wrong shape however true it is. It does not port, and
+a fork inherits a lie.
+
+### The inversion
+
+The prompt already handles the GENERIC half correctly. "In the tropics and
+near large water bodies" is location-agnostic, portable, and true anywhere.
+What is missing is the FACTS to attach it to. The model is never told that
+Kisumu sits ~8 km from a very large lake at ~1,187 m with terrain rising to
+the east — so it infers the geography from the name, which is exactly how
+"Nyanza trough" happened.
+
+Hand over **derived geography as data** and let the generic mechanism rules
+apply to it:
+
+- distance and bearing to significant water, and its approximate extent
+- elevation, and terrain gradient by direction
+- whatever else is decidable from a lat/lon alone
+
+All of it computes from `primary_point`, which every fork already sets. None
+of it is written by hand. And **some of it is already arriving unused** — the
+Open-Meteo payload carries `"elevation": 1187.0` and nothing draws the model's
+attention to it.
+
+This is the project's standing rule applied one level out: anything with one
+right answer is calculated in code and handed over as an answer. Geography has
+one right answer.
+
+### The two open questions, which are why this is its own item
+
+1. **When is it derived?** At config time, written into `location.yaml` by a
+   setup step a fork runs once — or per-run from the lat/lon. The first is
+   cheap and inspectable and goes stale if a fork edits coordinates; the
+   second costs a fetch and cannot drift.
+2. **How does the app get it?** The app builds forecasts on the Dart path with
+   its own providers. Anything derived server-side has to cross into
+   `olw_core` or be recomputed there, which is the two-repo change order and
+   a `spec/vectors` question.
+
+### Why this may belong with item 41
+
+Item 41 (satellite) is the argument for fixing the FIELD rather than the
+point. Geography is the static half of the same question: both are "what is
+true about this place, beyond the model grid". A satellite or radar source
+would also need per-location derivation from a lat/lon, and would face the
+same two questions above — when derived, and how the app gets it. **Sequence
+this with item 41 rather than ahead of it** if that work starts first; the
+answers should be the same answers.
+
+Related: items 41, 134 (the prompt half), 135 (checking the output), 56.
+
+---
+
+## 134. Climatology and a reasoning order — the two prompt changes that are measurable · **Planned — raised 2026-09-15**
+
+From the same discussion as item 133, and deliberately split from it: that
+item is about INPUTS, this one is about the prompt. Both were raised against
+the operator's own framing — *"my instinct is to throw more data at it"* — and
+the analysis argued the opposite on volume.
+
+### Measured first, 2026-09-15
+
+Grepped across both assembled system prompts: `climatolog`, `normal for`,
+`seasonal`, `long rains`, `short rains`, `ITCZ`, `monsoon`, `average high`,
+`anomaly`, `typical for`, `September` — **zero occurrences, every one**. The
+forecaster is given today's models, yesterday's outcome, and the track
+record, and is never told what is normal for this place at this time of year.
+
+The user prompt is 142,527 characters — ~35,631 tokens, 6,234 numeric tokens,
+13% of its characters being raw digits.
+
+### 1. What "normal" is, derived per location
+
+A forecaster's first instinct is the anomaly. "31.2°C" carries no information
+without "the September normal is X"; with it, the same number becomes a
+forecast rather than a reading. The day-over-day comparison of contract item 8
+is a real instrument but it compares today to YESTERDAY — weather to weather.
+Climatology is the other axis and the record has never had it.
+
+Derivable from Open-Meteo's historical endpoint for any lat/lon, which keeps
+item 133's generalizability constraint: computed in code, handed over as an
+answer, portable to any fork. Order of 200-400 tokens.
+
+**Open question before building:** whether Open-Meteo's historical reanalysis
+gives clean enough normals at this location to derive rather than hand-write.
+That is a query, not an experiment, and it is the first thing to check.
+
+### 2. Sequence the reasoning
+
+The judgment prompt's six governing rules are all PROHIBITIONS — what may not
+be claimed. That is correct for reliability and it is not the same thing as
+expertise. An expert follows a procedure: synoptic setup, then airmass and
+instability, then forcing and trigger, then timing, then local modification,
+then confidence.
+
+Roughly 100 tokens, and the argument for trying it first is that it changes
+HOW the model reasons rather than what it is told — the cheapest intervention
+on offer and the one with the least new surface to be wrong.
+
+### 3. Pay for both by cutting, not adding
+
+Long-context attention degrades non-uniformly and the middle suffers most, so
+6,234 numeric tokens of near-identical hourly material is not free: the model
+does value selection before it does meteorology. Item 73 already cut the
+prompt and dropped `primary_today_hourly` (13.2%) for this reason. More hourly
+series can go, or be pre-summarised in code.
+
+### Why this is unusually worth doing
+
+**Every change here lands on the JUDGMENT prompt, so every one is measurable
+against the accuracy record.** Item 131 records why that is rare: a narrative
+change provably cannot move a scored number, and most prompt work this project
+does — items 48, 67, 73, 83, 118, 128 — is narrative. Climatology, reasoning
+order and prompt-size cuts all move rain accuracy, temperature error, wind
+error and onset error, or they do not. Item 129's harness grades them offline
+first; the record grades them afterwards.
+
+Related: items 133, 131, 129, 73, 77, and contract item 8.
+
+---
+
+## 135. Check the narrative's proper nouns against its inputs · **Planned — raised 2026-09-15**
+
+Not requested; it fell out of item 133's trace and is the narrow, decidable
+answer to the concern that raised it.
+
+`claims.py` already exists for exactly this class of thing — *"the narrow set
+of claims that are decidable with certainty"* — and currently checks
+weekday/date pairings. **Every capitalised place or feature name in the
+narrative should appear somewhere in the inputs.** "Winam Gulf" passes
+(config), "Kericho" passes (the KMD bulletin), "the Nyanza trough" does not —
+"Nyanza" appears, the named feature does not.
+
+It generalizes to any location for free, because it is derived from that run's
+own inputs rather than from a list somebody wrote. Same reporting discipline
+as the rest of the module: record the finding, publish anyway. A wrong feature
+name costs the reader less than a discarded forecast, and the count is what
+says whether it is ever worth a retry.
+
+### What NOT to build, and this is the important half
+
+**Do not add a "cite your source" field to the response schema.** Asked which
+input supports a claim, a model produces a plausible attribution rather than a
+recalled one — there is no retrieval step to introspect, the phrase came from
+weights, and any citation generated afterwards is reconstruction. Self-reported
+provenance would read as verification while being the opposite of it, which is
+strictly worse than no verification at all.
+
+The check has to be mechanical, against the inputs, outside the model.
+
+Related: items 133, 102, 56.
