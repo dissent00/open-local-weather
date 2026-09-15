@@ -1,0 +1,12 @@
+{
+  "model": "gemini-3.6-flash",
+  "result": {
+    "leg": "judgment_schema",
+    "status": 200,
+    "elapsed_s": 9.521,
+    "interaction_status": "completed",
+    "answered_inline": true,
+    "validates": true,
+    "error": null
+  }
+}

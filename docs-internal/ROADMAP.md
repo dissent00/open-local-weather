@@ -10019,6 +10019,32 @@ service refusing — which a longer prompt does not cause.
 > that list, where `to_gemini_schema` emits `OBJECT`/`ARRAY` and would have
 > been refused a second time. Commit `5269c1b`.
 >
+> **BOTH SCHEMAS ARE ACCEPTED — 2026-09-15, and the second one was nearly
+> missed.** The judgment schema probe returned HTTP 200 in 9.521s, status
+> `completed`, and the returned JSON validated back into
+> `GeminiForecastResponse`.
+>
+> It was worth a request because the evidence looked better than it was. The
+> only schema ever sent to this endpoint was the NARRATIVE one, which happens
+> to contain no unions — every `type` in it is a plain string. The judgment
+> schema has ten nullable fields that convert to a list at `type`:
+> `['string','null']` x6, `['number','null']` x2, `['integer','null']` x2.
+> The endpoint's own refusal of `json_schema` had enumerated what it accepts
+> at `type` as scalars and said nothing about lists.
+>
+> So "the Interactions endpoint works" was resting entirely on the half that
+> produces prose, while the untested half produces every scored field — and
+> the first run to exercise it would have been a scheduled one, in the
+> evening slot that had already failed the day before. The nullable unions
+> could not have been dropped to route around it either: item 102 recorded
+> that every field which has ever gone missing from a forecast is one of
+> them.
+>
+> **The general lesson, which has now cost two probes to learn twice: a
+> measurement on one code path is evidence about that path.** The narrative
+> call and the judgment call differ in schema, prompt size and output shape;
+> "the provider works" was never a single claim.
+>
 > **ANSWERED 2026-09-15: THE INTERACTIONS ENDPOINT REPLIES DIRECTLY, AND THE
 > QUEUE QUESTION IS MOOT.** Asked without `background`, at production prompt
 > size (142,527 characters, ~35,631 tokens):
