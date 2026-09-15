@@ -18321,12 +18321,47 @@ submit has to be accepted before there is anything to poll."* Our record is 25
 refusals against 2 timeouts. Moving to submit-and-poll would fix the rarer
 failure and leave the common one untouched.
 
-**One hypothesis worth a cheap test.** A submit that only QUEUES work may be
-acceptable to an overloaded service when a full generation is not — accepting
-a job and running it later is exactly what a loaded scheduler can still do.
-That is speculation, and it is testable with a single submit during an
-episode. If true it changes the answer completely; if false the Interactions
-move stays a maintenance question rather than a fix.
+**One hypothesis worth a cheap test, and the probe is built.** A submit that
+only QUEUES work may be acceptable to an overloaded service when a full
+generation is not — accepting a job and running it later is exactly what a
+loaded scheduler can still do. **The API's own status enumeration includes
+`queued`**, which is the state of work taken on but not started, so the
+mechanism exists rather than being imagined.
+
+`tools/probe_background_submit.py` tests it and nothing else. Four decisions
+in it are the whole design:
+
+- **PAIRED**, because the pool changes second to second — 2026-09-15 refused
+  at 03:01:50, accepted at 03:02:28, refused at 03:02:55. A submit that
+  succeeds alone proves nothing; it has to succeed while a synchronous call
+  taken seconds earlier failed.
+- **THE REAL ARCHIVED PROMPT**, ~35,000 tokens. If shedding is at all
+  sensitive to request size, a toy probe is accepted where a forecast is not
+  and reports a false positive.
+- **ACCEPTANCE ONLY.** No response schema — whether `response_format` survives
+  `background` is a real question and a separate one, and mixing it in risks a
+  400 that muddies the single result this is for. Polling is off by default
+  for the same reason and because polls are requests too.
+- **DRY RUN BY DEFAULT.** Two trials is four requests against a ceiling of
+  twenty, on a day a forecast already spends four.
+
+**Run it DURING an episode.** Outside one both legs succeed, and the script
+says the trial is void rather than reporting a result.
+
+**What each outcome means.** Submit accepted while sync was refused: the
+hypothesis survives and item 132's answer changes — the Interactions move
+becomes a fix rather than maintenance. Both refused: the hypothesis is dead
+for that episode and item 80's original reading stands.
+
+**A finding that arrived with the research, 2026-09-15.** The Interactions API
+is documented SDK-first — the guide says to use `google-genai` 2.3.0+ and
+gives no REST shapes; the REST spec is in the API reference and is
+`POST /v1beta/interactions` with `GET /v1beta/interactions/{id}`. This project
+speaks raw HTTP to three providers deliberately, which is what lets
+`openai_compat` reach any compatible gateway. Adopting the Interactions API
+via the SDK would take on the first vendor SDK dependency here; via REST it
+would not, at the cost of tracking an interface Google documents for SDK users
+first. That is a decision item 28 should record before the move, not during.
 
 ### A Google-side runner is the wrong shape for THIS project
 
