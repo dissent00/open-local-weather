@@ -18158,12 +18158,85 @@ Related: items 70 (the hashes this rests on), 59 (the split that halves it),
 77 and 130 (the offline harness and its measured noise floor), 26 and 111
 (what it costs).
 
-## 132. A free tier that refuses at peak is a design constraint, not an incident · **Planned — raised 2026-09-14**
+## 132. The free tier will not carry this project, and the question is what replaces it · **Open — raised 2026-09-14, rewritten 2026-09-15**
+
+> **REWRITTEN.** The first draft of this item read the failures as slot-shaped
+> and answered with scheduling. The provider dashboard says otherwise and the
+> operator's framing is the right one: *"This whole project falls apart if
+> there's not a semi-reliable free api for a relatively small daily call."*
+> OLW exists for people in underserved areas, and those are not people who
+> will hold a paid API key. Everything below is written against that.
 
 Raised by the operator after two aborted evening runs in a week: *"highlights
 a problem with our model here if google will regularly be throttling/blocking
 free user calls."* And, on the proposed fix: *"switching the time may help me
 in Kisumu, but it's not a fix."* That second sentence is the item.
+
+### What the provider's own dashboard says
+
+| | limit | our peak |
+|---|---|---|
+| requests per minute | 5 | ~4 |
+| input tokens per minute | ~250K | ~100-130K, trending up |
+| requests per day | **20** | **15 on 2026-09-14** |
+
+**We are inside every one of them, and there has never been a 429.** 25 x 503,
+18 x 200, 2 timeouts across the whole record. So this is not throttling against
+a stated limit; it is a shared best-effort pool shedding free traffic. Google
+documents no SLA, no uptime commitment and no reliability statement for the
+free tier anywhere — checked 2026-09-15 against their troubleshooting and
+getting-started pages. The only statement about tiers is that paying raises
+your rate limits.
+
+**Their own 503 guidance is exponential backoff with an example of 1s, 2s, 4s,
+8s** — which is written for a transient blip, not for sustained shedding. Ours
+is 30/60/420 and it did not help on 2026-09-15.
+
+### The operator's error chart is the evidence our record could not give
+
+Their dashboard shows 503s per day from 2026-08-18: zero until about Aug 25,
+ones and twos to Sep 2, then 1-4 most days from Sep 3, and 13 on Sep 14.
+
+**That predates everything we changed.** Our own ledger cannot see it: outcome
+recording only began 2026-09-08, so the apparent "ramp" in OUR data is partly
+the instrument arriving. Theirs is not.
+
+### The three candidate causes, and what the record says about each
+
+| cause | verdict |
+|---|---|
+| **the default model changed** | **RULED OUT.** `gemini-3.6-flash` on every production call from 2026-08-21 to 2026-09-15. The one `gemini-3.8-flash` day is 2026-09-11, the operator's own `model-ab` run. |
+| **prompt size** | **CANNOT BE LINKED.** The prompt archive only reaches 2026-09-04, by which point the prompt was already ~150K characters and the 503s had been running ten days. It grew 10% after that, and after item 73's cuts today's is the smallest in the archive at 142.5K. |
+| **the prompt split** | **REAL, BUT NOT THE CAUSE.** 503s predate it by two weeks. What it did is doubled the exposure and invented a new failure mode. |
+
+### What the split actually did, and it is quantifiable
+
+Each request is an independent draw against a contended pool. If one request
+fails with probability p, a TWO-call forecast fails at roughly 2p. **The split
+approximately doubled the failure rate of a forecast with nothing changing at
+Google.**
+
+And it created the half-forecast: 2026-09-15's judgment call succeeded and its
+narrative call died, publishing figures with no prose. That is the first
+`narrative_unavailable` in 36 stored days, and before 2026-09-11 it could not
+have happened — a forecast was one call and either worked or did not.
+
+**The app's own roadmap predicted this and said to act first:** *"a cap sized
+for one call a day starts refusing at half the forecasts. The cap's default
+and its wording need revisiting before that lands, not after."* It landed.
+
+### The economy drifted from 2 a day to 16
+
+| | requests/day |
+|---|---|
+| the design, Aug 21 - Sep 1 | **2** |
+| after the split, normal day | 4 |
+| worst case with retries | **16** |
+| the provider's ceiling | **20** |
+
+A bad day now spends three quarters of the daily allowance FAILING. The 16-call
+cap was chosen deliberately and sits under 20 by good judgement rather than by
+being derived from it — nothing in the repo knows the limit is 20.
 
 ### The measured scale, which is smaller than a bad afternoon feels
 
@@ -18235,10 +18308,96 @@ abstraction supports it and it is the obvious move, and it would publish a
 forecast from an untested combination on precisely the days nobody is
 watching. Fall back only to a combination the matrix has a row for.
 
+### The Interactions API does not fix this, and item 80 already said why
+
+Re-read 2026-09-15 at the operator's suggestion, against the current docs.
+What changed since item 80's research: **the getting-started page is now
+written around the Interactions API**, with `background=True` and
+`interactions.get()` polling, and it no longer recommends `generateContent`
+for new projects. The deprecation has moved a step further.
+
+**But it addresses hangs, not refusals**, which item 80 stated plainly: *"a
+submit has to be accepted before there is anything to poll."* Our record is 25
+refusals against 2 timeouts. Moving to submit-and-poll would fix the rarer
+failure and leave the common one untouched.
+
+**One hypothesis worth a cheap test.** A submit that only QUEUES work may be
+acceptable to an overloaded service when a full generation is not — accepting
+a job and running it later is exactly what a loaded scheduler can still do.
+That is speculation, and it is testable with a single submit during an
+episode. If true it changes the answer completely; if false the Interactions
+move stays a maintenance question rather than a fix.
+
+### A Google-side runner is the wrong shape for THIS project
+
+The operator raised inverting the flow: something on Google's side calls
+Gemini and pushes to GitHub, rather than GitHub Actions calling Google.
+
+**It would not change the shedding** — same key, same tier, same pool.
+
+**And it would cost the thing the project is for.** OLW's distribution model
+is "fork a GitHub repo", which is why the workflows carry a FORKERS note and
+why `ops/README.md` exists. Requiring a GCP project, a billing-capable account
+and a second set of secrets raises the barrier for precisely the users in
+underserved areas this is built for. A fork that needs two clouds is not a
+fork.
+
+**The benefit it was reaching for is available without it.** Patient retrying
+across hours does not need Google's infrastructure: an hourly GitHub Actions
+run that exits immediately unless today's issuance is missing gives up to a
+dozen well-spaced attempts for the cost of a few API calls, because on a
+healthy day it makes none. That is item 108's catch-up run generalised, and it
+fits a shed pool far better than four attempts in eight minutes.
+
+### What the served forecast does and does not solve
+
+**Corrected by the operator 2026-09-15**, and the correction matters: *"The
+served forecast exists in a world where free api key users share their
+forecasts with each other, it doesn't get rid of the free api key
+requirement."*
+
+Right. Item 113's mode 3 viewer makes no LLM calls, but mode 3 is only useful
+if mode 4 sharers exist, and sharers hold free keys. It CONCENTRATES the
+dependency — a handful of producers instead of every user — which reduces the
+aggregate exposure and does not remove it. A shed sharer is a shed forecast
+for everyone reading them.
+
+### Where that leaves it
+
+The honest position is that **there is no contractual reliability on any free
+tier**, and a project whose premise is a reliable daily forecast for people
+who will not pay cannot rest on one provider's goodwill. So:
+
+1. **Halve the exposure.** A single-call mode — judgment only, narrative as an
+   upgrade — restores the original economy, halves the request count AND the
+   token volume, and is the only change that helps on every provider. The
+   app's owed table already asked for this.
+2. **A fallback router.** The codebase is unusually ready: `LLMProvider` with
+   three implementations, and `openai_compat` already defaults to
+   `response_format.json_schema` with `strict: true`, which is what OpenAI,
+   OpenRouter and compatible gateways speak. A router is a wrapper that
+   delegates, not a rewrite.
+   - **The record already names its producer** — `meta.llm_model` and
+     `meta.llm_provider` are stored per entry — so a fallback cannot silently
+     make `olw_blend`'s track record span two forecasters. That prerequisite
+     is already met.
+   - **The prompt is model-coupled** (items 76, 81): ~38,000 characters tuned
+     to one model's failure modes, and nothing distinguishes a rule the next
+     model needs from a workaround for this one. Item 130 fixed the harness
+     that reads a candidate's output against real archived inputs, so this is
+     now checkable BEFORE a reader sees it. Do not fall back to a combination
+     the matrix has no row for.
+3. **The hourly catch-up run**, above — cheap, and the right shape for
+   shedding.
+4. **Evaluate alternatives against a constraint set, not a brand.** Strict
+   JSON schema output is non-negotiable; ~35K input tokens per call after
+   item 73's cuts, two calls per forecast, ~140K/day at two issuances; RPD and
+   TPM with headroom for a retry; and predictability at a scheduled time,
+   which is the one Google is failing and the hardest to read off a docs page.
+
 ### Order
 
-1. **Move the slot** — free, tests the hypothesis that explains every observed
-   loss, and worth doing whatever else follows.
+1. **Move the slot** — free, and worth doing whatever else follows.
 2. **A catch-up run after a missed one.** 2026-09-14's outage ran 42 minutes,
    longer than any retry budget should try to cover — item 79 records why
    widening further is the wrong instrument. A re-attempt at +60 to +90
