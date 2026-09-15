@@ -131,14 +131,22 @@ jobs:
       - name: Forecast
         env:
           # --- LLM provider selection (see QUICKSTART.md) ---
-          # Leave all of these unset to use Gemini, the default.
+          # WHICH provider is named in config/location.yaml (`llm_providers`),
+          # not here — moved 2026-09-15. LLM_PROVIDER below still OVERRIDES
+          # that file when it is set, which is how a one-off run tries another
+          # provider without a commit; leave it unset for the configured one.
+          # The rest of these are per-provider settings and keys.
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
           LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
           LLM_JSON_MODE: ${{ vars.LLM_JSON_MODE }}
           LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          # --- Gemini (the default provider) ---
+          # --- Gemini: BOTH APIs, one key ---
+          # `gemini` (generateContent) and `gemini-interactions` (the
+          # Interactions API) are the same vendor and the same model reached
+          # two ways, so they share GEMINI_API_KEY and GEMINI_MODEL. Switching
+          # between them in location.yaml needs no change here.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Which trigger produced this run. Recorded into the log entry so a
           # dead workflow_dispatch path is visible in the committed record
