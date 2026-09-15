@@ -62,6 +62,7 @@ from openlocalweather.llm.anthropic import AnthropicProvider
 from openlocalweather.llm.gemini import GeminiProvider
 from openlocalweather.llm.gemini_interactions import GeminiInteractionsProvider, LLMResponseError
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
+from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
@@ -118,19 +119,9 @@ DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 # it uses Gemini's own default.
 DEFAULT_GEMINI_THINKING_LEVEL = "high"
 
-# Which LLMProvider implementation to build. "gemini" keeps this project's
-# original free-tier path and is the default so existing deployments (and
-# every doc written before multi-provider support) keep working with no
-# environment changes at all. "openai" selects OpenAICompatProvider, which
-# covers OpenAI, OpenRouter, Groq, Together, vLLM and Ollama — see that
-# module's docstring.
-DEFAULT_LLM_PROVIDER = "gemini"
-# ROADMAP item 81: a name here is a ROW IN THE SUPPORTED MATRIX, not a vendor.
-# `gemini` and `gemini-interactions` are the same vendor and the same model
-# reached by two different APIs, and the API is what determines the shape of
-# the call — which is why the vendor alone was never enough to name a
-# combination.
-VALID_LLM_PROVIDERS = ("gemini", "gemini-interactions", "anthropic", "openai")
+# DEFAULT_LLM_PROVIDER and VALID_LLM_PROVIDERS live in `llm/provider.py`, with
+# the reasoning for what a name in that tuple means. They moved there so
+# `config.py` can validate against them without inverting the dependency.
 
 
 def _github_repo_slug() -> str:
@@ -196,16 +187,37 @@ def _env(name: str, default: str = "") -> str:
     return os.environ.get(name, "").strip() or default
 
 
-def _build_llm_provider(*, thinking_level: str | None = None):
-    """Builds the configured LLMProvider from the environment.
+def _build_llm_provider(
+    *, thinking_level: str | None = None, providers: list[str] | None = None
+):
+    """Builds the configured LLMProvider.
 
     Secrets and endpoints come from env vars, never CLI args, for the same
     reason as everything else here — they'd otherwise land in shell history
     and process listings. `thinking_level` is Gemini-specific and simply
     ignored by other providers; check-health passes None because a factual
     model-lookup doesn't need extended reasoning.
+
+    WHICH provider, though, comes from `config/location.yaml` — `providers`
+    is `location.llm_providers` — and the environment only OVERRIDES it.
+    That order is the point of the change on 2026-09-15.
+
+    The name used to live in a code constant that nothing set, so the live
+    deployment ran on the default and switching it meant either editing a
+    constant or defining a repository variable in a web UI. Neither is where
+    an operator looks, and neither leaves a reviewable trace: a variable
+    changed in a browser has no diff, no commit message and no history. The
+    provider is now a line in the deployment's own config, beside the call cap
+    it is inseparable from.
+
+    The environment override stays because it is genuinely useful and costs
+    nothing: `LLM_PROVIDER=gemini-interactions ... tools/rerender_narrative.py`
+    is how a one-off runs against a different provider without editing a
+    committed file, which is exactly how this endpoint was first driven.
     """
-    provider_name = _env("LLM_PROVIDER", DEFAULT_LLM_PROVIDER).lower()
+    provider_name = (
+        _env("LLM_PROVIDER") or (providers or [DEFAULT_LLM_PROVIDER])[0]
+    ).lower()
 
     if provider_name == "gemini":
         api_key = _env("GEMINI_API_KEY")
@@ -316,7 +328,9 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     data_path = Path(data_dir)
 
     gemini_thinking_level = _env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None
-    llm_provider = _build_llm_provider(thinking_level=gemini_thinking_level)
+    llm_provider = _build_llm_provider(
+        thinking_level=gemini_thinking_level, providers=location.llm_providers
+    )
     waqi_token = _env("WAQI_TOKEN")
 
     publisher = _build_pages_publisher(location, data_path, docs_dir, public_webpage_url)
@@ -578,9 +592,13 @@ def _days_since_last_commit() -> int:
     last_commit = datetime.fromtimestamp(int(result.stdout.strip()), tz=timezone.utc)
     return (datetime.now(timezone.utc) - last_commit).days
 def _run_check_health(args: argparse.Namespace) -> int:
+    # Loaded before the provider is built, not after: since 2026-09-15 the
+    # config names the provider, so building first would have quietly used
+    # the default while the deployment asked for something else.
+    location = load_location_config(args.config)
     # No thinking_level: the deprecation check is a factual lookup, not the
     # multi-step reasoning the forecast pipeline asks for.
-    llm = _build_llm_provider(thinking_level=None)
+    llm = _build_llm_provider(thinking_level=None, providers=location.llm_providers)
     # Counted like any other call, through the SAME function the pipeline
     # and the replay use. This had its own near-copy until 2026-09-10, which
     # silently omitted the fail-closed check and the shout when a provider
@@ -591,7 +609,6 @@ def _run_check_health(args: argparse.Namespace) -> int:
     # A refusal is caught below and reported as a skipped check, which is the
     # right outcome: being out of budget is a real answer, not a reason to
     # spend anyway.
-    location = load_location_config(args.config)
     attach_spend_cap(
         llm,
         Path(args.data_dir),

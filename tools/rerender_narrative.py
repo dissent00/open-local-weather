@@ -182,7 +182,7 @@ def main() -> int:
         print("\nDRY RUN — nothing sent. Re-run with --yes.")
         return 0
 
-    provider = _build_llm_provider()
+    provider = _build_llm_provider(providers=location.llm_providers)
     # A REPAIR SPENDS THE SAME ALLOWANCE AS A FORECAST. Missing on the first
     # version of this tool, and the run of 2026-09-15 went into Google's count
     # and not into ours — which mattered more than usual, because item 132's

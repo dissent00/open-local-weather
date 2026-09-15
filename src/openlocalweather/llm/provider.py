@@ -18,6 +18,29 @@ from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
 
+# THE PROVIDER VOCABULARY, here rather than in cli.py so that `config.py` can
+# validate against it — moved 2026-09-15 when provider selection became a
+# config field. cli.py is the top of the stack and importing it from config
+# would invert the dependency; `defaults.py` is the wrong home for the
+# opposite reason, since its own docstring reserves it for constants that are
+# NOT per-deployment, and this one is exactly that.
+#
+# ROADMAP item 81: A NAME HERE IS A ROW IN THE SUPPORTED MATRIX, NOT A VENDOR.
+# `gemini` and `gemini-interactions` are the same vendor and the same model
+# reached by two different APIs, and the API is what determines the shape of
+# the call — the request body, where the answer lands, how structured output
+# is requested, whether there is a job to poll. That is why the vendor alone
+# was never enough to name a combination.
+#
+# "openai" selects OpenAICompatProvider, which covers OpenAI, OpenRouter,
+# Groq, Together, vLLM and Ollama — see that module's docstring.
+VALID_LLM_PROVIDERS = ("gemini", "gemini-interactions", "anthropic", "openai")
+
+# The fallback for a deployment whose config does not name one. Gemini because
+# it is the one with a free tier, and this project exists for people who will
+# not be holding a paid API key.
+DEFAULT_LLM_PROVIDER = "gemini"
+
 T = TypeVar("T", bound=BaseModel)
 
 

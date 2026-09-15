@@ -148,6 +148,22 @@ two tabs, and the distinction matters — *Secrets* are hidden in logs,
 *Variables* stay readable, which makes a typo'd model name debuggable
 instead of showing up as `***`.
 
+> **Which provider you use is set in `config/location.yaml`, not here.**
+> Edit `llm_providers` in that file and commit it — it sits beside
+> `max_llm_calls_per_24h`, and a change to it has a diff and an author.
+> Only the API **key** belongs in GitHub, because a key must never be
+> committed.
+>
+> ```yaml
+>   llm_providers:
+>     - gemini          # or gemini-interactions, anthropic, openai
+> ```
+>
+> The `LLM_PROVIDER` repository variable still works and overrides the file,
+> which is useful for trying a provider without a commit. The variables in
+> the tables below that are *not* `LLM_PROVIDER` — model ids, base URLs — are
+> still set in GitHub.
+
 ### If you're using Gemini (the default)
 
 Under the **Secrets** tab → *New repository secret*:
@@ -156,7 +172,12 @@ Under the **Secrets** tab → *New repository secret*:
 |---|---|
 | `GEMINI_API_KEY` | your key from Step 3 |
 
-That's all. No variables needed — Gemini is the default.
+That's all — Gemini is the default in `location.yaml`.
+
+Gemini has two APIs and this project supports both. `gemini` uses
+`generateContent`; `gemini-interactions` uses the newer Interactions API,
+which takes the same key and the same model. They are separate entries
+because the API determines the shape of the call, not just the vendor.
 
 ### If you're using Anthropic Claude
 
@@ -166,11 +187,11 @@ That's all. No variables needed — Gemini is the default.
 |---|---|
 | `LLM_API_KEY` | your Anthropic key |
 
-**Variables** tab:
+Set `llm_providers: [anthropic]` in `config/location.yaml`, then under
+**Variables**:
 
 | Name | Value |
 |---|---|
-| `LLM_PROVIDER` | `anthropic` |
 | `LLM_MODEL` | e.g. `claude-sonnet-5` — check [the model list](https://docs.claude.com/en/docs/about-claude/models) for current ids |
 
 ### If you're using OpenAI, OpenRouter, Groq, or anything OpenAI-compatible
@@ -181,11 +202,11 @@ That's all. No variables needed — Gemini is the default.
 |---|---|
 | `LLM_API_KEY` | your key for that service |
 
-**Variables** tab:
+Set `llm_providers: [openai]` in `config/location.yaml`, then under
+**Variables**:
 
 | Name | Value |
 |---|---|
-| `LLM_PROVIDER` | `openai` |
 | `LLM_MODEL` | the model id, e.g. `gpt-4.1` or `meta-llama/llama-3.3-70b-instruct` |
 | `LLM_BASE_URL` | see below |
 

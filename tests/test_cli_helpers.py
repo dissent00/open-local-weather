@@ -331,3 +331,52 @@ def test_check_health_does_not_fail_when_there_is_nothing_to_compare(monkeypatch
 
     assert cli.main(_health_argv(tmp_path)) == 0
     assert "not checked" in capsys.readouterr().out
+
+
+# --- Provider selection moved to config, 2026-09-15 (ROADMAP items 81, 132) --
+
+
+def test_the_config_names_the_provider(monkeypatch):
+    """THE POINT OF THE MOVE. It used to come from a code constant that
+    nothing set, so the live deployment ran on the default and switching meant
+    editing code or defining a repository variable in a web UI — which leaves
+    no diff, no commit message and no author."""
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+
+    built = _build_llm_provider(providers=["gemini-interactions"])
+
+    assert type(built).__name__ == "GeminiInteractionsProvider"
+
+
+def test_the_environment_still_overrides_the_config(monkeypatch):
+    """Kept because it costs nothing and is how this endpoint was first
+    driven: LLM_PROVIDER=... tools/rerender_narrative.py runs a one-off
+    against a different provider without editing a committed file."""
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+
+    built = _build_llm_provider(providers=["gemini-interactions"])
+
+    assert type(built).__name__ == "GeminiProvider"
+
+
+def test_no_config_and_no_env_still_builds_the_default(monkeypatch):
+    """A deployment whose config predates the field keeps working."""
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+
+    assert type(_build_llm_provider()).__name__ == "GeminiProvider"
+
+
+def test_the_live_config_is_what_we_think_it_is():
+    """Reads the deployment's OWN config, not a fixture.
+
+    The change this pins is a one-line edit to a YAML file, and every other
+    test here would pass just as happily with that line absent or misspelt.
+    """
+    from openlocalweather.config import load_location_config
+
+    assert load_location_config("config/location.yaml").llm_providers == [
+        "gemini-interactions"
+    ]

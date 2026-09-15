@@ -10,12 +10,14 @@ happen.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import yaml
 from openlocalweather.reasoning import LLMRefreshPolicy
+from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Point(BaseModel):
@@ -109,6 +111,77 @@ class LocationConfig(BaseModel):
     # Counts CALLS, not forecasts — one forecast can cost several attempts
     # when a provider is flaky.
     max_llm_calls_per_24h: int = DEFAULT_MAX_LLM_CALLS_PER_24H
+
+    # WHICH PROVIDER THIS DEPLOYMENT USES — moved here 2026-09-15, from a
+    # code constant that could only be overridden through the environment.
+    #
+    # It belongs beside `max_llm_calls_per_24h` because it is the same KIND of
+    # decision: operator policy about how this deployment talks to a model,
+    # not forecast logic and not a secret. The cap has lived here since it
+    # existed; the provider was the odd one out.
+    #
+    # The argument for keeping it in the environment was that a committed
+    # choice makes every fork carry a diff. That argument does not apply to
+    # THIS file: it is this deployment's own config — forks start from
+    # `location.example.yaml` — and it already holds coordinates, a METAR
+    # station and a call cap that no fork would share.
+    #
+    # Keys stay in the environment, and that distinction is the real one. A
+    # provider NAME is configuration and belongs in version control where a
+    # change to it is reviewable and attributable. An API KEY is a secret and
+    # must never be committed. Splitting them was treating one decision as
+    # two.
+    #
+    # A LIST, not a string, and that is deliberate rather than premature.
+    # Item 81's fallback question — what happens when one provider sheds — is
+    # answered by an ORDER, and a schema that takes a single name would have
+    # to be migrated to express one. Today only the first entry is used and
+    # the validator says so out loud, so the shape is honest about what it
+    # does; adding the fallback later is then a change to behaviour and not
+    # to everyone's config file.
+    llm_providers: list[str] = [DEFAULT_LLM_PROVIDER]
+
+    @field_validator("llm_providers")
+    @classmethod
+    def _known_providers(cls, v: list[str]) -> list[str]:
+        """Rejects a name nothing can build, and says that only the first is
+        used.
+
+        THE FAILURE THIS PREVENTS IS A SILENT FALLBACK TO GEMINI. A typo'd
+        provider name would otherwise reach `_build_llm_provider`, miss every
+        branch and raise — or worse, if the branch order ever changes, build
+        something the operator did not ask for. Caught at load, it names the
+        valid set instead.
+
+        The warning on extra entries is the honest half of shipping a list
+        before the thing that consumes it. The shape is right for item 81's
+        fallback order and the schema should not have to change again to get
+        there; today only `[0]` is read, and an operator who writes a second
+        entry deserves to be told it does nothing rather than to discover it
+        during an outage.
+        """
+        if not v:
+            raise ValueError(
+                "llm_providers must name at least one provider; "
+                f"expected one of {', '.join(VALID_LLM_PROVIDERS)}."
+            )
+
+        unknown = [name for name in v if name.lower() not in VALID_LLM_PROVIDERS]
+        if unknown:
+            raise ValueError(
+                f"unknown llm_providers {unknown}: expected "
+                f"{', '.join(VALID_LLM_PROVIDERS)}."
+            )
+
+        if len(v) > 1:
+            print(
+                f"WARNING: llm_providers names {len(v)} providers and only the "
+                f"first ({v[0]}) is used. Fallback ordering is ROADMAP item 81 "
+                f"and is not built yet — the rest are ignored.",
+                file=sys.stderr,
+            )
+
+        return [name.lower() for name in v]
 
     # When a LATER issuance of a day may spend an LLM call — ROADMAP items 121
     # and 120. Observations refresh in code on every run regardless; this

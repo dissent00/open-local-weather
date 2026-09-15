@@ -102,3 +102,19 @@ location:
   # Note this is orthogonal to max_llm_calls_per_24h, which is a hard
   # ceiling. This decides whether a particular run deserves to spend at all.
   llm_refresh_policy: "new_cycle_only"
+
+  # Which API to talk to. One of: gemini, gemini-interactions, anthropic,
+  # openai. Defaults to gemini if this key is absent.
+  #
+  # Only the FIRST entry is used today. The list shape is for a future
+  # fallback order (ROADMAP item 81); a second entry loads with a warning
+  # saying it is ignored.
+  #
+  # THE API KEY IS NEVER SET HERE. It comes from the environment — a GitHub
+  # Actions secret, or a local env var. The provider NAME is configuration
+  # and belongs in version control, where a change to it has a diff and an
+  # author; the KEY is a secret and must not be committed. LLM_PROVIDER in
+  # the environment still overrides this, which is how a one-off run tries a
+  # different provider without editing a committed file.
+  llm_providers:
+    - gemini
