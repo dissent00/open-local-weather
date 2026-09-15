@@ -17,6 +17,33 @@ follows `spec/README.md`.
 
 ## Working order, as of 2026-09-14
 
+> **CHECKED 2026-09-15 — three of its numbers moved and its top question is
+> answered.** Read this first; the block below still holds everywhere it is
+> not corrected here.
+>
+> - **The prompt is 142,527 characters, not 165,000.** Item 73's
+>   `primary_today_hourly` cut landed 2026-09-15. The share table below is
+>   still directionally right — the raw model arrays remain the overwhelming
+>   bulk — but every absolute figure in it is one cut out of date.
+> - **"IT GROWS" is right, and the growth is NOT where this block implies.**
+>   Measured 2026-09-15 across the archive: the guidance payload went
+>   126,579 → 140,074 between Sep 4 and Sep 14 while the whole accumulated
+>   record moved 22,925 → 24,903. 85% of the prompt and 87% of the growth is
+>   model data, not the record. Item 134 carries the table.
+> - **The provider changed.** `llm_providers` in `config/location.yaml` now
+>   names `gemini-interactions`, and the endpoint answers in one request
+>   without polling — item 80. The cap is temporarily 20, not 16, and must go
+>   back down — item 132.
+> - **Items 133-136 were raised 2026-09-15** and none are in the order below:
+>   geography as derived data, climatology and reasoning order, the
+>   proper-noun check, and the architecture documents being 145 src commits
+>   stale.
+>
+> **The next action is not in this block either**: read the 2026-09-15 18:01
+> issuance, the first real forecast on the new endpoint. See `.claude/`
+> handoff or item 80.
+
+
 **The block below this one was four days old and wrong on its own top pick.**
 It named item 59 the strongest candidate; 59 shipped on 2026-09-11, the day
 after it was written. It said 80's measurement half was "still not built"; it
