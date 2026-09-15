@@ -66,6 +66,24 @@ REQUEST_TIMEOUT_S = 90
 POLL_AT_S = (20, 60, 180)
 
 
+def _shape(value, depth: int = 0):
+    """The structure of a response, without its contents.
+
+    What a provider implementation needs is which KEYS exist and what types
+    they hold. What it does not need, and what must not land in a file, is the
+    generated text or anything echoed back from the prompt — so strings are
+    reported by length unless they are short enough to be a status or an id.
+    """
+    if depth > 6:
+        return "<deeper>"
+    if isinstance(value, dict):
+        return {k: _shape(v, depth + 1) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_shape(value[0], depth + 1), f"<list of {len(value)}>"] if value else []
+    if isinstance(value, str):
+        return value if len(value) <= 64 else f"<str len {len(value)}>"
+    return type(value).__name__
+
 def newest_prompt(data_dir: Path) -> tuple[str, str]:
     """The most recent archived user prompt, so the probe weighs what a
     forecast weighs."""
@@ -108,8 +126,16 @@ def background_submit(key: str, model: str, prompt: str) -> dict:
             body = r.json()
             out["interaction_id"] = body.get("id") or body.get("name")
             out["interaction_status"] = body.get("status")
+            # THE WHOLE ENVELOPE, because building a provider against a guessed
+            # response shape is how requests get burned discovering it. The API
+            # reference gives the REQUEST fields and not where generated text
+            # lands, so one accepted submit is worth more than any amount of
+            # reading. Kept shallow — keys and types, with only short strings
+            # verbatim — so a prompt echo or a key cannot end up in a file that
+            # gets committed.
+            out["envelope"] = _shape(body)
         except ValueError:
-            out["body_snippet"] = r.text[:200]
+            out["body_snippet"] = r.text[:400]
         return out
     except Exception as e:  # noqa: BLE001
         return {"leg": "background_submit", "status": None, "error": str(e),
