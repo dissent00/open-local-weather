@@ -1,0 +1,161 @@
+"""Rebuild a day's narrative from the judgment call that already succeeded.
+
+ROADMAP items 132 and 127. On 2026-09-15 the judgment call went through at
+03:02:28 and every narrative attempt was refused, so the figures published with
+no write-up — the first `narrative_unavailable` in 36 stored days, and a
+failure mode the prompt split invented.
+
+THE EXPENSIVE HALF SURVIVED. The scored call is made, stored and immutable;
+what is missing is prose. So a repair is ONE request rather than two, which
+against a ceiling of 20 a day is the difference between affordable and not.
+
+### What it does NOT touch
+
+`prediction_rows` and every scored field. Row 0 is what tomorrow verifies
+against and it is write-once — the whole accuracy record rests on that. This
+rewrites `narrative_markdown`, the verification summary and the degradation
+note, and nothing else. A repair that could move a scored number would be a
+worse problem than the one it fixes.
+
+### Why the judgment is rebuilt from the ENTRY
+
+The prompt archive stores what was SENT and not what came back, so the
+judgment object itself is gone. What survives is the published call on the
+entry, which is the same numbers — `build_narrative_user_prompt` only
+JSON-dumps them under THE FORECASTER'S CALL, so the renderer sees exactly what
+it would have seen.
+
+### What it does NOT restore, and this is a real loss
+
+`GeminiNarrativeResponse` also carries `verification_notes` and
+`skill_profile_summaries`, which a normal run writes back onto YESTERDAY's
+prediction rows — the mechanism the prompt calls "the actual mechanism that
+improves future forecasts". This writes neither.
+
+Two reasons, and the second is the one that decides it. They belong to other
+days' entries, so restoring them means a repair reaching across files it was
+not asked to touch. And a note written now would describe a verification that
+happened at 03:02 under a prompt that failed, which is not the same note the
+run would have written — it would be a plausible reconstruction landing in a
+record that is read as evidence for weeks.
+
+So the day is repaired for the READER and the learning loop keeps the gap. That
+is the honest trade and it should be visible rather than quietly patched.
+
+### The flags have to match production or the prompt is a different one
+
+`build_narrative_prompt` branches on `is_reissue` and on whether ground
+stations and a met service are configured. The archive stores
+`narrative_prompt_sha256`, so the right combination is not guessed: this sweeps
+them and refuses unless one reproduces the stored hash. Guessing would rebuild
+a prompt production never used and quietly test the wrong thing.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import itertools
+import json
+import os
+import sys
+from datetime import date
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from openlocalweather.config import load_location_config  # noqa: E402
+from openlocalweather.llm.prompt import (  # noqa: E402
+    build_narrative_prompt,
+    build_narrative_user_prompt,
+)
+from openlocalweather.llm.schema import GeminiNarrativeResponse  # noqa: E402
+from openlocalweather.store import log_store  # noqa: E402
+
+# The published call, as the renderer is given it. These are the fields
+# `today_properties` carries; anything the entry does not hold is simply absent
+# rather than invented, which is the same rule every other block here follows.
+CALL_FIELDS = (
+    "rain_expected", "onset_window", "peak_wind_kmh", "temp_high_c", "temp_low_c",
+    "mslp_trend_24h", "synoptic_pattern", "uv_index_max", "air_quality_aqi",
+)
+
+
+def matching_flags(location, target_sha: str) -> dict:
+    for ground, bulletin, reissue in itertools.product((True, False), repeat=3):
+        flags = dict(is_reissue=reissue, ground_stations_configured=ground,
+                     local_bulletin_configured=bulletin)
+        built = build_narrative_prompt(location, **flags)
+        if hashlib.sha256(built.encode()).hexdigest() == target_sha:
+            return flags
+    raise SystemExit(
+        "no flag combination reproduces the archived narrative prompt hash — the "
+        "prompt has changed since that issuance, so a re-render would send a "
+        "different prompt than the one that failed. Refusing rather than guessing."
+    )
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", default="config/location.yaml")
+    ap.add_argument("--data-dir", default="data")
+    ap.add_argument("--date", default="", help="defaults to the newest archived prompt")
+    ap.add_argument("--yes", action="store_true", help="actually call. Otherwise nothing is sent.")
+    a = ap.parse_args()
+
+    data_dir = Path(a.data_dir)
+    day = a.date or sorted(p.stem for p in (data_dir / "prompts").glob("*.json"))[-1]
+    archive = json.loads((data_dir / "prompts" / f"{day}.json").read_text())
+    issuance = archive["issuances"][0]
+
+    entry = log_store.read_log_entry(data_dir, date.fromisoformat(day))
+    if entry is None:
+        raise SystemExit(f"no stored entry for {day}")
+
+    degradations = [d.code for d in (entry.meta.degradations or [])]
+    call = {f: getattr(entry, f, None) for f in CALL_FIELDS}
+
+    location = load_location_config(a.config)
+    flags = matching_flags(location, issuance["narrative_prompt_sha256"])
+    system_prompt = build_narrative_prompt(location, **flags)
+    user_prompt = build_narrative_user_prompt(issuance["user_prompt"], call)
+
+    print(f"day:          {day}")
+    print(f"degradations: {degradations or 'none'}")
+    print(f"flags:        {flags}  (reproduce the archived hash)")
+    print(f"narrative:    {len(entry.narrative_markdown or '')} chars stored now")
+    print(f"prompts:      system {len(system_prompt):,} + user {len(user_prompt):,} chars")
+    print(f"provider:     {os.environ.get('LLM_PROVIDER') or 'gemini (default)'}")
+
+    if "narrative_unavailable" not in degradations:
+        print("\nNOTE: this day carries no narrative_unavailable degradation. Re-rendering")
+        print("would replace a write-up that was produced normally.")
+
+    if not a.yes:
+        print("\nDRY RUN — nothing sent. Re-run with --yes.")
+        return 0
+
+    from openlocalweather.cli import _build_llm_provider  # noqa: PLC0415 - env is read at call time
+
+    provider = _build_llm_provider()
+    narrative: GeminiNarrativeResponse = provider.generate(
+        system_prompt, user_prompt, GeminiNarrativeResponse
+    )
+
+    entry.narrative_markdown = narrative.today_narrative
+    entry.yesterday_verification_summary = narrative.yesterday_verification
+    # THE DEGRADATION GOES because it is no longer true: the write-up exists.
+    # Left in place it would tell a reader the page is short when it is not.
+    entry.meta.degradations = [
+        d for d in (entry.meta.degradations or []) if d.code != "narrative_unavailable"
+    ]
+    log_store.write_log_entry(data_dir, entry)
+
+    print(f"\nwrote {len(narrative.today_narrative):,} chars of narrative to {day}")
+    print("prediction_rows and every scored field are untouched.")
+    print("Run `olw rebuild` to regenerate the published pages.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

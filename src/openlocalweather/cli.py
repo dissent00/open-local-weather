@@ -59,7 +59,8 @@ from openlocalweather.health_check import (
 from openlocalweather.llm.anthropic import DEFAULT_BASE_URL as DEFAULT_ANTHROPIC_BASE_URL
 from openlocalweather.llm.anthropic import DEFAULT_MAX_TOKENS as DEFAULT_ANTHROPIC_MAX_TOKENS
 from openlocalweather.llm.anthropic import AnthropicProvider
-from openlocalweather.llm.gemini import GeminiProvider, LLMResponseError
+from openlocalweather.llm.gemini import GeminiProvider
+from openlocalweather.llm.gemini_interactions import GeminiInteractionsProvider, LLMResponseError
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
@@ -124,7 +125,12 @@ DEFAULT_GEMINI_THINKING_LEVEL = "high"
 # covers OpenAI, OpenRouter, Groq, Together, vLLM and Ollama — see that
 # module's docstring.
 DEFAULT_LLM_PROVIDER = "gemini"
-VALID_LLM_PROVIDERS = ("gemini", "anthropic", "openai")
+# ROADMAP item 81: a name here is a ROW IN THE SUPPORTED MATRIX, not a vendor.
+# `gemini` and `gemini-interactions` are the same vendor and the same model
+# reached by two different APIs, and the API is what determines the shape of
+# the call — which is why the vendor alone was never enough to name a
+# combination.
+VALID_LLM_PROVIDERS = ("gemini", "gemini-interactions", "anthropic", "openai")
 
 
 def _github_repo_slug() -> str:
@@ -209,6 +215,22 @@ def _build_llm_provider(*, thinking_level: str | None = None):
             api_key=api_key,
             model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
             thinking_level=thinking_level,
+        )
+
+    if provider_name == "gemini-interactions":
+        api_key = _env("GEMINI_API_KEY")
+        if not api_key:
+            raise SystemExit(
+                "GEMINI_API_KEY environment variable is required "
+                "(LLM_PROVIDER=gemini-interactions)."
+            )
+        # NO `thinking_level`. It is a `generationConfig` field on
+        # `generateContent`; whether this API takes an equivalent is unmeasured,
+        # and passing one that is silently ignored would be worse than not
+        # passing it — the run would look configured and behave otherwise.
+        return GeminiInteractionsProvider(
+            api_key=api_key,
+            model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
         )
 
     if provider_name == "anthropic":
