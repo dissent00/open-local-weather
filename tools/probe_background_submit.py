@@ -260,6 +260,9 @@ def main() -> int:
     key = os.environ.get("GEMINI_API_KEY") or ""
     if not key:
         raise SystemExit("GEMINI_API_KEY is not set")
+    # Printed so two runs can be compared by eye without either revealing the
+    # key — see rerender_narrative.py for why that turned out to matter.
+    print(f"credential: {len(key)} chars, {key[:4]}...{key[-4:]}\n")
 
     trials = []
     for n in range(1, a.trials + 1):

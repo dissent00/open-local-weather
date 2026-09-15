@@ -126,6 +126,15 @@ def main() -> int:
     print(f"narrative:    {len(entry.narrative_markdown or '')} chars stored now")
     print(f"prompts:      system {len(system_prompt):,} + user {len(user_prompt):,} chars")
     print(f"provider:     {os.environ.get('LLM_PROVIDER') or 'gemini (default)'}")
+    # A FINGERPRINT, NOT THE KEY. On 2026-09-15 a submit was refused with
+    # ACCESS_TOKEN_TYPE_UNSUPPORTED minutes after the probe had been accepted
+    # against the same endpoint with the same auth mechanism — so the first
+    # thing to rule out is that the two runs used different credentials. That
+    # is answerable by eye and costs no requests, which is the only reason this
+    # is printed at all.
+    key = os.environ.get("GEMINI_API_KEY") or ""
+    print(f"credential:   {'set, ' + str(len(key)) + ' chars, ' + key[:4] + '...' + key[-4:]
+                           if len(key) >= 8 else 'MISSING or too short'}")
 
     if "narrative_unavailable" not in degradations:
         print("\nNOTE: this day carries no narrative_unavailable degradation. Re-rendering")
