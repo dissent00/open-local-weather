@@ -22,7 +22,7 @@ import requests
 from pathlib import Path
 
 from openlocalweather import __version__
-from openlocalweather.config import load_location_config
+from openlocalweather.config import LocationConfig, load_location_config
 from openlocalweather.verify.scoring import scored_predictions
 from openlocalweather.coverage import (
     actionable,
@@ -273,6 +273,44 @@ def _build_llm_provider(*, thinking_level: str | None = None):
     )
 
 
+def _build_pages_publisher(
+    location: LocationConfig, data_path: Path, docs_dir: str, public_webpage_url: str
+) -> GitHubPagesPublisher | None:
+    """The publisher, or None when no absolute base URL was given.
+
+    Publisher needs an absolute base URL to build sane nav links (see
+    publish/pages.py's module docstring) — skip it gracefully rather than
+    publish broken-relative-link pages if none was given, same "None = skip"
+    pattern pipeline.py already uses for publisher/email_sender.
+
+    EXTRACTED 2026-09-15 so a repair tool can republish a stored day without
+    running a forecast. There is no `olw` command that re-renders pages from
+    an entry already on disk — pages are written as a side effect of the
+    forecast run — so `tools/rerender_narrative.py` had repaired the log and
+    then told the operator to run a command that does not exist. Rebuilding
+    the pages needs exactly this object and nothing else from the pipeline,
+    and duplicating its five providers in a tool is how the two drift.
+    """
+    if not public_webpage_url:
+        return None
+
+    return GitHubPagesPublisher(
+        docs_dir=Path(docs_dir),
+        location=location,
+        base_url=public_webpage_url,
+        github_repo=_github_repo_slug(),
+        all_dates_provider=lambda: list_log_dates(data_path),
+        entry_provider=make_log_lookup(data_path),
+        review_provider=lambda: build_weekly_review(
+            log_lookup=make_log_lookup(data_path),
+            actuals=as_date_dict(read_actuals_cache(data_path).primary),
+            all_log_dates=list_log_dates(data_path),
+            today=today_in_tz(location.timezone),
+            models=scored_models(location.local_bulletin_model_id),
+        ),
+    )
+
+
 def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_webpage_url: str) -> PipelineDeps:
     location = load_location_config(config_path)
     data_path = Path(data_dir)
@@ -281,27 +319,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
     llm_provider = _build_llm_provider(thinking_level=gemini_thinking_level)
     waqi_token = _env("WAQI_TOKEN")
 
-    # Publisher needs an absolute base URL to build sane nav links (see
-    # publish/pages.py's module docstring) — skip it gracefully rather than
-    # publish broken-relative-link pages if none was given, same "None =
-    # skip" pattern pipeline.py already uses for publisher/email_sender.
-    publisher = None
-    if public_webpage_url:
-        publisher = GitHubPagesPublisher(
-            docs_dir=Path(docs_dir),
-            location=location,
-            base_url=public_webpage_url,
-            github_repo=_github_repo_slug(),
-            all_dates_provider=lambda: list_log_dates(data_path),
-            entry_provider=make_log_lookup(data_path),
-            review_provider=lambda: build_weekly_review(
-                log_lookup=make_log_lookup(data_path),
-                actuals=as_date_dict(read_actuals_cache(data_path).primary),
-                all_log_dates=list_log_dates(data_path),
-                today=today_in_tz(location.timezone),
-                models=scored_models(location.local_bulletin_model_id),
-            ),
-        )
+    publisher = _build_pages_publisher(location, data_path, docs_dir, public_webpage_url)
 
     # Gmail SMTP direct-send — see publish/email_gmail.py's module
     # docstring for why this path was chosen over a third-party ESP.

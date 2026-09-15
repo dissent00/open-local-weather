@@ -101,6 +101,17 @@ def main() -> int:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--date", default="", help="defaults to the newest archived prompt")
     ap.add_argument("--yes", action="store_true", help="actually call. Otherwise nothing is sent.")
+    ap.add_argument(
+        "--publish-only",
+        action="store_true",
+        help="Republish docs/ from the stored entry. Sends nothing and calls no model.",
+    )
+    ap.add_argument("--docs-dir", default="docs", help="Path to the docs/ (GitHub Pages) directory")
+    ap.add_argument(
+        "--public-url",
+        default=os.environ.get("OLW_PUBLIC_URL", ""),
+        help="Public site URL. Without it the repaired day is written to the log but not republished.",
+    )
     a = ap.parse_args()
 
     data_dir = Path(a.data_dir)
@@ -132,19 +143,43 @@ def main() -> int:
     # thing to rule out is that the two runs used different credentials. That
     # is answerable by eye and costs no requests, which is the only reason this
     # is printed at all.
-    key = os.environ.get("GEMINI_API_KEY") or ""
-    print(f"credential:   {'set, ' + str(len(key)) + ' chars, ' + key[:4] + '...' + key[-4:]
-                           if len(key) >= 8 else 'MISSING or too short'}")
+    # BOTH OF THESE ARE ABOUT A CALL, so neither belongs on --publish-only,
+    # which makes none. Printed there they actively mislead: a fingerprint
+    # implies a credential is about to be used, and the overwrite warning
+    # describes a re-render that is not going to happen.
+    if not a.publish_only:
+        key = os.environ.get("GEMINI_API_KEY") or ""
+        print(f"credential:   {'set, ' + str(len(key)) + ' chars, ' + key[:4] + '...' + key[-4:]
+                               if len(key) >= 8 else 'MISSING or too short'}")
 
-    if "narrative_unavailable" not in degradations:
-        print("\nNOTE: this day carries no narrative_unavailable degradation. Re-rendering")
-        print("would replace a write-up that was produced normally.")
+        if "narrative_unavailable" not in degradations:
+            print("\nNOTE: this day carries no narrative_unavailable degradation. Re-rendering")
+            print("would replace a write-up that was produced normally.")
+
+    # Imported here rather than at module scope because the provider factory
+    # reads the environment at call time.
+    from openlocalweather.cli import (  # noqa: PLC0415
+        _build_llm_provider,
+        _build_pages_publisher,
+    )
+
+    if a.publish_only:
+        # THE REPAIR MINUS THE CALL. A render that succeeded and a publish that
+        # did not is one state; so is a day repaired before this tool could
+        # republish at all, which is how 2026-09-15 ended up needing it. Both
+        # want the pages rebuilt from what is already on disk, and neither
+        # should spend a request to get it — the narrative is already stored.
+        publisher = _build_pages_publisher(location, data_dir, a.docs_dir, a.public_url)
+        if publisher is None:
+            raise SystemExit("--publish-only needs --public-url, or nav links break.")
+
+        publisher.publish(entry)
+        print(f"\nrepublished docs/ from the stored entry for {day}. Nothing was sent.")
+        return 0
 
     if not a.yes:
         print("\nDRY RUN — nothing sent. Re-run with --yes.")
         return 0
-
-    from openlocalweather.cli import _build_llm_provider  # noqa: PLC0415 - env is read at call time
 
     provider = _build_llm_provider()
     narrative: GeminiNarrativeResponse = provider.generate(
@@ -162,7 +197,23 @@ def main() -> int:
 
     print(f"\nwrote {len(narrative.today_narrative):,} chars of narrative to {day}")
     print("prediction_rows and every scored field are untouched.")
-    print("Run `olw rebuild` to regenerate the published pages.")
+
+    # REPUBLISHING IS PART OF THE REPAIR, not a follow-up the operator is
+    # told to do. The first version of this tool printed "Run `olw rebuild`",
+    # which is not a command — there is none that re-renders pages from a
+    # stored entry, because pages are written as a side effect of a forecast
+    # run. So the instruction sent the operator to an argparse error, and the
+    # nearest real command, `rebuild-record`, is actively the wrong one: it
+    # re-derives the ACCURACY record from freshly fetched observations and
+    # says in its own docstring that it does not touch narratives.
+    publisher = _build_pages_publisher(location, data_dir, a.docs_dir, a.public_url)
+    if publisher is None:
+        print("\nNOT REPUBLISHED — no --public-url, so pages would carry broken nav links.")
+        print(f"Pass --public-url to rebuild docs/ for {day}.")
+        return 0
+
+    publisher.publish(entry)
+    print(f"republished docs/ from the stored entry for {day}")
     return 0
 
 
