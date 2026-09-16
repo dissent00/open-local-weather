@@ -10046,6 +10046,70 @@ service refusing — which a longer prompt does not cause.
 > that list, where `to_gemini_schema` emits `OBJECT`/`ARRAY` and would have
 > been refused a second time. Commit `5269c1b`.
 >
+> **FIRST FULL DAY ON THE ENDPOINT, 2026-09-16 — one clean run, one failure,
+> and a claim of mine was wrong.**
+>
+> | run | calls | outcome |
+> |---|---|---|
+> | 2026-09-15 15:01 (later issuance) | 4 attempts, one call | **4 x HTTP 500**, aborted, nothing published |
+> | 2026-09-16 03:01 (first issuance) | 2 | **2 x HTTP 200**, 31.7s and 68.2s, clean |
+>
+> **The morning is the best this project has had.** Two requests, two
+> successes, no retries — exactly the 2-per-run shape the whole exercise is
+> aiming at, against mornings that had been spending six attempts for five
+> 503s and a half-forecast.
+>
+> **THE FAILURE IS HTTP 500, NOT 503**, which is a different animal from the
+> capacity shedding this switch was made to dodge. And the pattern is
+> suspicious in a specific way: the run that failed was a LATER ISSUANCE,
+> which under item 104 makes exactly one call — the narrative, with
+> `is_reissue=True`. That branch has never run on this endpoint.
+>
+> **I said on 2026-09-15 that "both halves of the forecast are now proven on
+> this endpoint". That was wrong, and the error is worth naming.** Both
+> SCHEMAS were proven. The re-issue narrative PROMPT was not: the live
+> re-render swept flags and used `is_reissue=False`, and the judgment probe
+> used a one-line prompt. Worse, I struck this item's own note reading *"The
+> `is_reissue=True` narrative prompt has never been called"* as superseded —
+> it was superseded for `generateContent`, which two live issuances had
+> exercised, and I carried that verification across an endpoint change where
+> it did not hold.
+>
+> The re-issue narrative prompt is 41,696 characters against a first
+> issuance's 38,301, and the run also feeds back the morning's published
+> narrative (`earlier_today`), so the evening request is the largest the
+> pipeline makes.
+>
+> **Two live hypotheses, and one request separates them:**
+>
+> 1. **The re-issue path is refused or breaks something** — our untested
+>    branch, our fault, fixable.
+> 2. **Google 500s under size or load at that hour** — capacity by another
+>    code, and the 15:01 slot's history supports it (item 79, and
+>    `ops/README.md` now records that BOTH slots have failed).
+>
+> Against (1): this API returns a clean, *informative* 400 for a malformed
+> request — that is how `response_format` was learned. Against (2): the
+> morning of the same endpoint was flawless. **Send the re-issue narrative
+> prompt once on a healthy morning. A reproducible 500 is (1); a success is
+> (2).**
+>
+> **FOUR REQUESTS WERE SPENT ON THOSE 500s AND TAUGHT NOTHING** — the retry
+> path built the exception as `f"Gemini returned HTTP {status}"` and dropped
+> `resp.text`, so the body was captured only when the status was NOT
+> retryable, which is to say only for failures that do not recur. Fixed
+> 2026-09-16; the body now rides on both paths and "empty body" is recorded
+> as its own evidence.
+>
+> **THE THINKING-LEVEL FEAR WAS LARGELY UNFOUNDED, and the instrument built
+> for it paid on day one.** The 2026-09-16 entry records
+> `thought_tokens: 4139`. This project measured `thinkingLevel: "high"` at
+> **4,235** thinking tokens on its real prompt, and "low" at 739. So the
+> Interactions default sits within 2% of the "high" it replaced, not down at
+> "low". The switch changed two things, and the second one turns out to have
+> moved almost not at all — which could not have been said at all without
+> `thought_tokens`, added the day before for exactly this.
+>
 > **BOTH SCHEMAS ARE ACCEPTED — 2026-09-15, and the second one was nearly
 > missed.** The judgment schema probe returned HTTP 200 in 9.521s, status
 > `completed`, and the returned JSON validated back into

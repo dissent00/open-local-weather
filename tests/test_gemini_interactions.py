@@ -282,3 +282,27 @@ def test_a_response_that_fails_the_schema_records_nothing():
             provider(after_response=seen.append).generate("sys", "user", Answer)
 
     assert seen == [], "no forecast, no row"
+
+
+def test_a_retryable_failure_carries_its_body():
+    """MEASURED COST: four requests on 2026-09-15's 15:01 issuance, and the
+    whole record of them is "Gemini returned HTTP 500".
+
+    The body was read only when the status was NOT retryable, so precisely
+    the failures worth diagnosing — the ones that recur and retry — were the
+    ones that explained nothing. A capacity failure and a payload this
+    endpoint will never accept look identical without it.
+    """
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, status_code=500, text="backend overloaded: model shard 3")
+        with pytest.raises(LLMResponseError, match="backend overloaded"):
+            provider().generate("sys", "user", Answer)
+
+
+def test_an_empty_retryable_body_says_so_rather_than_nothing():
+    """"empty body" is evidence too — it distinguishes a server that said
+    nothing from a provider that dropped what it said."""
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, status_code=503, text="")
+        with pytest.raises(LLMResponseError, match="empty body"):
+            provider().generate("sys", "user", Answer)

@@ -312,7 +312,25 @@ class GeminiInteractionsProvider:
                     if failure is not None:
                         raise LLMResponseError(failure)
                     return body
-                last_exc = LLMResponseError(f"Gemini returned HTTP {resp.status_code}")
+                # THE BODY, ON THE RETRYABLE PATH TOO — added 2026-09-16 after
+                # it cost four requests and taught nothing.
+                #
+                # `_error_message` exists because "a failure that costs and
+                # teaches nothing is the worst outcome available", and this
+                # line went straight past it: the body was read only when the
+                # status was NOT retryable. On 2026-09-15 the 15:01 issuance
+                # spent four attempts on HTTP 500 and the entire record of it
+                # is the string "Gemini returned HTTP 500" — no message, no
+                # reason, nothing to tell a capacity failure from a payload
+                # this endpoint will never accept.
+                #
+                # Truncated hard and never parsed: this path must not raise
+                # while building an error about a failure.
+                detail = (resp.text or "").strip()[:300]
+                last_exc = LLMResponseError(
+                    f"Gemini returned HTTP {resp.status_code}"
+                    + (f" — body: {detail}" if detail else " — empty body")
+                )
             except requests.Timeout as e:
                 report_outcome(self.after_attempt, OUTCOME_TIMEOUT, started)
                 last_exc = e
