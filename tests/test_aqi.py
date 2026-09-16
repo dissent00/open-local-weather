@@ -272,3 +272,51 @@ def test_merge_matches_stations_by_id_not_by_name():
 def test_merge_of_nothing_stored_is_the_fresh_list():
     fresh = [reading(aqi=44)]
     assert merge_ground_aqi([], fresh) == fresh
+
+
+def test_the_age_shown_and_the_age_judged_are_the_same_number():
+    """ROADMAP item 142, finding 5. The prompt tells the forecaster that stale
+    means MORE THAN three hours old, and then hands it
+    `"hours_old": 3.0, "stale": true` — because the age was rounded for
+    display and compared unrounded. A reading 3.04 hours old displays as 3.0
+    and judges as stale, and the model is told to trust both halves.
+
+    ONE VALUE, ONE COMPARISON — item 154's shape. The fix is not to round
+    differently but to judge the number that is shown, so the two cannot
+    disagree by construction. Confirmed live on the 2026-09-16 prompt before
+    fixing.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from openlocalweather.aqi import STALE_THRESHOLD_HOURS, hours_old, is_stale
+    from openlocalweather.models import GroundAQIReading
+
+    now = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
+    # 3.04 hours: displays as 3.0, and used to judge as stale.
+    reading = GroundAQIReading(
+        name="Somewhere", station_id="X", aqi=42,
+        measured_at=now - timedelta(hours=3, minutes=2, seconds=24),
+    )
+    shown = round(hours_old(reading, now), 1)
+    assert shown == STALE_THRESHOLD_HOURS, "the display rounds to exactly the threshold"
+    assert is_stale(reading, now) is False, (
+        f"shown as {shown}h against a threshold of MORE THAN "
+        f"{STALE_THRESHOLD_HOURS}h, so it must not also be flagged stale"
+    )
+
+
+def test_a_reading_past_the_threshold_at_display_precision_is_still_stale():
+    """The other half — without it the fix above could pass by never flagging
+    anything."""
+    from datetime import datetime, timedelta, timezone
+
+    from openlocalweather.aqi import hours_old, is_stale
+    from openlocalweather.models import GroundAQIReading
+
+    now = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
+    reading = GroundAQIReading(
+        name="Somewhere", station_id="X", aqi=42,
+        measured_at=now - timedelta(hours=3, minutes=20),
+    )
+    assert round(hours_old(reading, now), 1) == 3.3
+    assert is_stale(reading, now) is True

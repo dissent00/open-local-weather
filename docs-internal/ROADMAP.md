@@ -19851,7 +19851,7 @@ LATER ISSUANCE block carried the same placeholder instruction — but the
 rewrite removed the surrounding "your job is an UPDATE" framing that made it
 read as an override of the workflow. It is now starker.
 
-**2. `HISTORICAL NOTES` flattens three-valued to two.** The reader found
+**2. MOOT 2026-09-16 — the block and its payload builder are both gone with item 147.** `HISTORICAL NOTES` flattened three-valued to two. The reader found
 `"day0_verified": false, "day0_note": null` for all three scored target
 dates, while every `MODEL TRACK RECORD` row carries
 `"last_verified_target_date": "2026-09-15"` — scoring HAS run. Checked
@@ -19874,11 +19874,24 @@ the published page verbatim because the prompt correctly forbids editing a
 locked value, and item 120 tells the model to report it upstream rather than
 fix it. This is upstream.
 
-**5. `"hours_old": 3.0, "stale": true` beside "stale = more than 3 hours
+**5. FIXED 2026-09-16. `"hours_old": 3.0, "stale": true` beside "stale = more than 3 hours
 old".** Not a logic bug: `aqi.is_stale` uses `age > STALE_THRESHOLD_HOURS`
 and the real age is fractionally over 3. But `hours_old` is rounded for
 display, so the model is handed an apparent contradiction and told to trust
 both halves.
+
+**Finding 5's fix, and what it exposed.** `is_stale` now judges the age at
+DISPLAY precision, so the number shown and the number judged are one number
+and cannot disagree — item 154's shape again. The cost is that a reading
+between 3.00 and 3.05 hours old is now fresh, which is a distinction the
+threshold was never chosen finely enough to make.
+
+**THE VECTOR COULD NOT HAVE CAUGHT THIS.** Its four cases were 0.5, 7.2, null
+and 0.5 — none within an hour of the threshold — so a port judging the
+unrounded age and one judging the displayed age agreed on every case while
+disagreeing in the only window that matters. Two boundary cases are pinned
+now (3.04 and 3.06), and reverting the Dart side fails on them. Third time
+today that a contract proved the ports agree without proving either right.
 
 **6. Five fields arrive with real data and no instruction:** `rain_brier`,
 `convective_correct`, `cloud_error_pct`, `mslp_trend`, `cloud_cover_pct`.

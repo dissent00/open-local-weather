@@ -778,9 +778,21 @@ def export_aqi() -> None:
     stale = reading("Beach", 171, 7.2)
     no_ts = reading("Unknown", 99, None)
     no_aqi = reading("NoComposite", None, 0.5)
+    # THE BOUNDARY, which nothing covered until 2026-09-16. The four cases
+    # above are 0.5, 7.2, null and 0.5 — none within an hour of the threshold,
+    # so a port judging the UNROUNDED age and one judging the DISPLAYED age
+    # agreed on every one of them while disagreeing on the only window where
+    # it matters. Item 142's finding 5 lived in that window: 3.04 hours shows
+    # as 3.0 and used to flag stale, against a prompt saying stale means MORE
+    # THAN three hours.
+    just_over = reading("Boundary", 55, 3.04)
+    past_at_display = reading("PastAtDisplay", 55, 3.06)
 
     staleness_cases = []
-    for r, label in [(fresh, "fresh"), (stale, "stale"), (no_ts, "no timestamp"), (no_aqi, "fresh but no composite aqi")]:
+    for r, label in [(fresh, "fresh"), (stale, "stale"), (no_ts, "no timestamp"),
+                     (no_aqi, "fresh but no composite aqi"),
+                     (just_over, "3.04h — displays as the threshold, so NOT stale"),
+                     (past_at_display, "3.06h — displays past the threshold, so stale")]:
         staleness_cases.append(
             {
                 "name": label,

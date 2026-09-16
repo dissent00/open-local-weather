@@ -15,13 +15,38 @@ double? hoursOld(GroundAqiReading reading, DateTime now) {
   return now.difference(measured).inMicroseconds / Duration.microsecondsPerHour;
 }
 
+/// The precision the age is SHOWN at, everywhere it is shown — upstream
+/// ROADMAP item 142, finding 5.
+const int staleDisplayDecimals = 1;
+
 /// True if the reading is stale OR of unknown freshness.
 ///
 /// Both are excluded from the confident range for the same reason; they are
 /// only worded differently where they're surfaced to a reader.
+///
+/// JUDGED AT DISPLAY PRECISION — upstream item 142, finding 5. The prompt
+/// tells the forecaster stale means MORE THAN three hours, and the payload
+/// handed it `"hours_old": 3.0, "stale": true`: the age was rounded to a
+/// tenth for display and compared unrounded, so anything between 3.00 and
+/// 3.05 showed as exactly the threshold and judged past it.
+///
+/// Rounding first makes the two agree by construction. `_roundHalfEven`
+/// rather than Dart's `.round()` for the usual reason — see models.dart.
 bool isStale(GroundAqiReading reading, DateTime now) {
   final age = hoursOld(reading, now);
-  return age == null || age > staleThresholdHours;
+  if (age == null) return true;
+  final shown = _roundHalfEven(age * 10) / 10;
+  return shown > staleThresholdHours;
+}
+
+/// Matches Python's `round()`, which is half-to-EVEN. Local to this file
+/// because aqi.dart imports nothing from models.dart.
+int _roundHalfEven(double v) {
+  final floor = v.floorToDouble();
+  final diff = v - floor;
+  if (diff > 0.5) return floor.toInt() + 1;
+  if (diff < 0.5) return floor.toInt();
+  return floor.toInt().isEven ? floor.toInt() : floor.toInt() + 1;
 }
 
 /// Deterministic range and worst-station summary across ground stations.

@@ -78,6 +78,44 @@
         "hours_old": 0.5,
         "is_stale": false
       }
+    },
+    {
+      "name": "3.04h \u2014 displays as the threshold, so NOT stale",
+      "input": {
+        "reading": {
+          "name": "Boundary",
+          "station_id": "boundary",
+          "aqi": 55,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T02:57:36Z"
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": 3.04,
+        "is_stale": false
+      }
+    },
+    {
+      "name": "3.06h \u2014 displays past the threshold, so stale",
+      "input": {
+        "reading": {
+          "name": "PastAtDisplay",
+          "station_id": "pastatdisplay",
+          "aqi": 55,
+          "pm25": null,
+          "pm10": null,
+          "measured_at": "2026-08-11T02:56:24Z"
+        },
+        "now": "2026-08-11T06:00:00+00:00",
+        "stale_threshold_hours": 3.0
+      },
+      "expected": {
+        "hours_old": 3.06,
+        "is_stale": true
+      }
     }
   ]
 }

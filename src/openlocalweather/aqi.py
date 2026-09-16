@@ -40,12 +40,34 @@ def hours_old(reading: GroundAQIReading, now: datetime | None = None) -> float |
     return (now - reading.measured_at).total_seconds() / 3600
 
 
+# The precision the age is SHOWN at, everywhere it is shown — ROADMAP item
+# 142, finding 5. Named rather than repeated, because the bug was that the
+# display rounded and the judgement did not.
+STALE_DISPLAY_DECIMALS = 1
+
+
 def is_stale(reading: GroundAQIReading, now: datetime | None = None) -> bool:
     """True if stale OR of unknown freshness — both are treated the same
     way (excluded from the confident range), just worded differently
-    wherever they're surfaced to a reader."""
+    wherever they're surfaced to a reader.
+
+    JUDGED AT DISPLAY PRECISION, and that is the fix rather than an
+    approximation — ROADMAP item 142, finding 5. The prompt tells the
+    forecaster that stale means MORE THAN three hours, and the payload handed
+    it `"hours_old": 3.0, "stale": true`: the age was rounded to a tenth for
+    display and compared unrounded, so anything between 3.00 and 3.05 showed
+    as exactly the threshold and judged past it. The model was told to trust
+    both halves of a contradiction.
+
+    Rounding first makes the two agree BY CONSTRUCTION rather than by
+    coincidence of precision — the same move as ROADMAP item 154's other
+    instances: one value, one comparison, rather than two values for one
+    question. What it costs is that a reading between 3.00 and 3.05 hours old
+    is now fresh, which is a distinction the threshold was never chosen finely
+    enough to make.
+    """
     age = hours_old(reading, now)
-    return age is None or age > STALE_THRESHOLD_HOURS
+    return age is None or round(age, STALE_DISPLAY_DECIMALS) > STALE_THRESHOLD_HOURS
 
 
 @dataclass

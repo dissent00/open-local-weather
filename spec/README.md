@@ -83,7 +83,7 @@ absent values are `null`, never omitted keys.
 
 | File | Function | Cases |
 |---|---|---|
-| `aqi_staleness.json` | `hours_old / is_stale` | 4 |
+| `aqi_staleness.json` | `hours_old / is_stale` | 6 |
 | `aqi_summary.json` | `summarize_ground_aqi` | 6 |
 | `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
 | `aqi_merge.json` | `merge_ground_aqi` | 9 |
