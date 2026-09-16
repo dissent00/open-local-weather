@@ -19236,7 +19236,7 @@ Related: items 59 (the split the document is missing), 131, 132, 133, and
 
 ---
 
-## 137. Two axes decide one run, and only one of them is about information · **Decision and storage SHIPPED 2026-09-16; two naming decisions left**
+## 137. Two axes decide one run, and only one of them is about information · **SHIPPED 2026-09-16 except the commit-subject naming (remnant 3)**
 
 Raised by the operator reading the 15:01 failure: *"Reissue should only be
 happening if there's no updated model data... This is no longer a time-of-day
@@ -19441,11 +19441,26 @@ DIFFERENT subject at all, or just `"forecast"` like the first? Collapsing them
 is the most faithful to the model and loses a distinction the archive can
 currently be read for at a glance.
 
-**4 — `purpose="forecast-reissue"`** is written into `data/spend_ledger.json`
-on every call. Renaming is one line and costs nothing technically, but the
-ledger already holds rows saying `refresh` and `forecast`, so a third spelling
-for the same thing makes the ledger harder to read, not easier. Worth deciding
-together with 3 so the record ends up with one vocabulary rather than three.
+**4 — SHIPPED. The ledger now says `forecast` for every forecast run**, on the
+operator's decision, 2026-09-16: *"Collapse them both to 'forecast' in the
+ledger — every run is a fresh forecast."*
+
+The argument for keeping the labels apart — that a reader wants to know which
+issuance of the day a call belonged to — does not survive inspection. Every
+row carries `at`, so the ledger already answered that by counting rows within
+a date; the label was a weaker second copy of what the timestamp holds
+exactly. `health-check` and `replay` stay distinct because they are different
+ACTIVITIES, not different runs of the same one.
+
+Historical rows keep `refresh` and `forecast-reissue`. All three mean the same
+thing and nothing re-writes history.
+
+**Pinned, because nothing pinned the old behaviour.** Collapsing the labels
+broke no test — the distinction had never been asserted, so the collapse would
+not have been either, and the next person to reintroduce a second spelling
+would have got a green suite. `test_every_forecast_run_files_under_one_purpose`
+drives two real runs on one day and mutation-tested against the old
+expression.
 
 Related: items 104 (the contract, whose opening sentence is the operator's
 frame), 8 (why the branch stays), 80 (the 500), 40 (`is_reissue` is

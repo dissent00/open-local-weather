@@ -2915,24 +2915,29 @@ def _issue_forecast(
         deps.llm_provider,
         deps.data_dir,
         max_calls=location.max_llm_calls_per_24h,
-        # Kept distinct in the spend ledger, which is the one place the
-        # difference is still worth recording: a re-issue is a second call on
-        # the same day and an operator reading the ledger wants to see that.
-        # "forecast-reissue", NOT "refresh" — renamed 2026-09-16.
+        # ONE LABEL, BECAUSE EVERY RUN IS A FRESH FORECAST — ROADMAP item 137,
+        # the operator's decision 2026-09-16.
         #
-        # Both are forecasts. The old label came from the twice-a-day tool
-        # item 104 removed, and it made the ledger assert a distinction the
-        # system no longer draws: a later issuance with a fresh model cycle
-        # builds a forecast, and "refresh" reads as something lesser. It was
-        # actively misleading on 2026-09-15, where four HTTP 500s were filed
-        # under "refresh" for a run that had new guidance and was doing the
-        # full job.
+        # This field held three spellings for one activity. "refresh" came
+        # from the twice-a-day tool item 104 removed and read as something
+        # lesser — it was actively misleading on 2026-09-15, where four HTTP
+        # 500s were filed under "refresh" for a run that had new guidance and
+        # was doing the full job. It was renamed to "forecast-reissue" earlier
+        # the same day, which was no better: it kept asserting a distinction
+        # the system had stopped drawing.
         #
-        # The distinction IS worth keeping — which issuance of the day this
-        # was, is a real question to ask the ledger later — so this names it
-        # rather than dropping it. Rows before this date say "refresh"; the
-        # two mean the same thing and nothing re-writes history.
-        purpose="forecast" if first_issuance else "forecast-reissue",
+        # THE ARGUMENT FOR KEEPING IT DOES NOT SURVIVE INSPECTION. It was that
+        # an operator reading the ledger wants to see which issuance of the
+        # day a call belonged to — but every row carries `at`, so the ledger
+        # already answers that, by counting rows within a date. The label was
+        # a second, weaker copy of information the timestamp holds exactly.
+        #
+        # Other purposes stay distinct because they are different ACTIVITIES,
+        # not different runs of the same one: "health-check" and "replay" buy
+        # something that is not a forecast. Rows before this date still say
+        # "refresh" and "forecast-reissue"; all three mean the same thing and
+        # nothing re-writes history.
+        purpose="forecast",
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
     _call, _call_meta = _generate_forecast(

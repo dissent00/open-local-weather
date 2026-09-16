@@ -3971,3 +3971,43 @@ def test_the_stored_comparison_carries_both_gusts(tmp_path, monkeypatch):
     # bias yet, and the point is that the pair is re-derivable at all.
     assert hasattr(stored, "today_consensus_peak_wind_kmh")
     assert hasattr(stored, "today_calibrated_peak_wind_kmh")
+
+
+def test_every_forecast_run_files_under_one_purpose(tmp_path):
+    """ROADMAP item 137, the operator's decision 2026-09-16: every run is a
+    fresh forecast, so the ledger uses one label for all of them.
+
+    THE FIELD HELD THREE SPELLINGS FOR ONE ACTIVITY — "refresh", then
+    "forecast-reissue", beside "forecast" — and the argument for keeping them
+    apart was that a reader wants to know which issuance of the day a call
+    belonged to. Every row carries `at`, so the ledger already answered that
+    by counting rows within a date; the label was a weaker second copy of what
+    the timestamp holds exactly.
+
+    PINNED BECAUSE NOTHING PINNED THE OLD BEHAVIOUR. Collapsing the labels
+    broke no test, which means the distinction had never been asserted and the
+    collapse would not be either — the next person to reintroduce a second
+    spelling would get a green suite.
+    """
+    from openlocalweather.spend import read_ledger
+
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    later_llm = FakeLLMProvider(
+        GeminiForecastResponse(
+            yesterday_verification="n/a",
+            verification_notes=[],
+            skill_profile_summaries=[],
+            today_properties=TodayProperties(
+                rain=False, rain_expected="Still unlikely",
+                temp_high_c=25.0, temp_low_c=17.0, temp_high_low="25°C / 77°F",
+            ),
+            today_narrative="## Overview\nA second forecast, later in the day.",
+        )
+    )
+    issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
+
+    purposes = [e.purpose for e in read_ledger(tmp_path)]
+    assert purposes == ["forecast"] * 4, (
+        f"a later run must file under the same label as the first: {purposes}"
+    )
