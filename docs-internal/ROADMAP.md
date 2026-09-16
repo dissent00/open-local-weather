@@ -5059,7 +5059,7 @@ fork does not belong in a permanent archive.
 
 ---
 
-## 51. Tell a blip from a death · **Planned**
+## 51. Tell a blip from a death · **Step 1 shipped 2026-09-09; steps 2 and 3 already existed via 53.4 — the aligned-window health check is what remains**
 
 Raised by Conor on 2026-08-28, from the third outcome in item 50's
 aligned-window check: "we're relying on a lot of free/open sources here, and
@@ -5133,6 +5133,11 @@ precedent for "more than one, because a single failed fetch is noise" — a
 starting point per source, not a global.
 
 ### The specific debt this pays off first
+
+> **Status checked 2026-09-16.** The Working Order recorded on 2026-09-10 that
+> step 1 shipped and steps 2 and 3 were already built by 53.4's generic
+> `check_recent_degradations`; the heading said Planned for six days after.
+> This section is what is left.
 
 `check-health`'s aligned-window check reports NOT_CHECKED and exits 0 when
 the metadata endpoint says nothing, because a blip must not go red. A
@@ -10024,7 +10029,7 @@ operator suspected US morning load; 15:01 UTC is 11:01 Eastern, which fits.
 hypothesis. The 09-09 run never built one. The 09-08 failures were 503s — a
 service refusing — which a longer prompt does not cause.
 
-## 80. The synchronous call may be the wrong shape · **Measured and answered 2026-09-14; the Interactions move is what remains**
+## 80. The synchronous call may be the wrong shape · **Measured and answered 2026-09-14; the Interactions move SHIPPED 2026-09-15 and is production — reliability is two days of evidence**
 
 > **THE FIRST LIVE INTERACTIONS CALL SUCCEEDED, 2026-09-15.** A full narrative
 > re-render of that morning's failed run, through
