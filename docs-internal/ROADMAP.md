@@ -19836,6 +19836,36 @@ item 19, which answers the same question from the other side.
 > caches. Everything below was written before this reframing and still
 > describes the mechanism correctly.
 
+> **THE STATION'S WIND DOES NOT ENTER THIS AT ALL — checked 2026-09-16 after
+> the operator asked whether Kisumu's thin infrastructure changes the
+> design.** It does not, and the reason is worth writing down because the
+> instinct is the other way.
+>
+> - **HKKI DOES report wind.** Today's ob is `07002KT` — 070° at 2 knots.
+>   What it has never filed is a GUST GROUP (`07002G18KT`), which
+>   `sandbox/README.md` records as why convective gusts cannot be observed
+>   here at all.
+> - **But `_apply_station_observations` stamps only THUNDER and
+>   PRECIPITATION.** The station never supplies wind to the record.
+> - **The scored observation is ERA5**, and it is gust-to-gust:
+>   `pick_series(h, "wind_gusts_10m", "windgusts_10m", ...)` against an
+>   archive request that includes `windgusts_10m`. So forecast gusts are
+>   compared with reanalysis gusts — the quantities match, and the earlier
+>   worry about `windgusts_10m_max` versus METAR `sknt` does not apply on
+>   this path.
+>
+> **So the ashore wind field can be scored the same way in every deployment**,
+> station or no station, which is the portable answer and the one to build.
+>
+> **What Kisumu's gap actually costs is an upgrade nobody has built.** Where a
+> station DOES file gust groups, a measured gust is better ground truth than
+> ERA5 at ~9-25 km — especially for convective gusts, which a reanalysis grid
+> smooths away, and which are the whole reason item 126 exists. That is a
+> generalizable enhancement, not a Kisumu workaround. This deployment cannot
+> validate it, which is precisely what the sandbox fleet is for: item 133
+> recommends Hong Kong (VHHH) partly because it files gust groups and Kisumu
+> never has.
+
 ## 144a. The same finding, as first diagnosed
 
 Item 142's cold read reported `CALIBRATED PEAK GUST` (40.0) and the call's
