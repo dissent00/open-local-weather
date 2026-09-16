@@ -21,9 +21,25 @@ worse problem than the one it fixes.
 
 The prompt archive stores what was SENT and not what came back, so the
 judgment object itself is gone. What survives is the published call on the
-entry, which is the same numbers — `build_narrative_user_prompt` only
-JSON-dumps them under THE FORECASTER'S CALL, so the renderer sees exactly what
-it would have seen.
+entry plus the blend's own scored rows, and between them they rebuild
+`GeminiJudgmentResponse` — the exact object `build_narrative_user_prompt`
+JSON-dumps under THE FORECASTER'S CALL.
+
+**THIS PARAGRAPH USED TO CLAIM MORE THAN IT DELIVERED, and the correction is
+the finding.** It read: *"the published call on the entry, which is the same
+numbers ... so the renderer sees exactly what it would have seen."* It was
+not. The tool sent a FLAT dict of nine fields; production sends a nested
+object of two — `today_properties` with THIRTEEN fields and
+`extended_properties`, a list. So a re-render was handing the model a
+materially narrower call than a real run does: no `rain`, no `onset_hour`,
+no `precip_mm`, no `rain_probability_pct`, and nothing at all about Day+3 or
+Day+7, against a system prompt that says in terms *"YOUR PROSE MUST AGREE
+WITH THEM"* of `today_properties` AND `extended_properties`.
+
+Found on 2026-09-16 by item 77's harness — twice, because the first
+correction trusted this docstring instead of reading
+`build_narrative_user_prompt`. A false "measured" claim in a comment costs
+more than no comment, which this repo already knew and this is the proof.
 
 ### What it does NOT restore, and this is a real loss
 
@@ -73,14 +89,84 @@ from openlocalweather.llm.prompt import (  # noqa: E402
 from openlocalweather.llm.schema import GeminiNarrativeResponse  # noqa: E402
 from openlocalweather.pipeline import attach_spend_cap  # noqa: E402
 from openlocalweather.store import log_store  # noqa: E402
+from openlocalweather.verify.scoring import scored_predictions  # noqa: E402
+from openlocalweather.defaults import BLEND_MODEL_ID  # noqa: E402
 
-# The published call, as the renderer is given it. These are the fields
-# `today_properties` carries; anything the entry does not hold is simply absent
-# rather than invented, which is the same rule every other block here follows.
-CALL_FIELDS = (
+# `today_properties`, split by WHERE each field survives.
+#
+# Nine are published on the entry; the other four live only on the blend's own
+# Day+0 scored row, because they are the numbers the record grades rather than
+# the ones the page prints. Both halves are needed: production sends all
+# thirteen, and a renderer told nothing about `rain` or `onset_hour` is being
+# asked to agree with a call it cannot see.
+CALL_FIELDS_ON_ENTRY = (
     "rain_expected", "onset_window", "peak_wind_kmh", "temp_high_c", "temp_low_c",
     "mslp_trend_24h", "synoptic_pattern", "uv_index_max", "air_quality_aqi",
 )
+# (TodayProperties name, attribute on the scored blend row)
+CALL_FIELDS_ON_BLEND = (
+    ("rain", "rain"),
+    ("onset_hour", "onset"),
+    ("precip_mm", "precip_mm"),
+    ("rain_probability_pct", "rain_probability_pct"),
+)
+
+
+def _blend_row(entry, lead: str):
+    """The blend's own scored row at this lead, or None.
+
+    `olw_blend` is the call the record grades. Any other model here would be
+    an input to the call rather than the call itself.
+    """
+    rows = getattr(scored_predictions(entry), lead, []) or []
+    return next((p for p in rows if p.model == BLEND_MODEL_ID), None)
+
+
+def _rebuild_judgment(entry) -> dict:
+    """`GeminiJudgmentResponse` as the narrative call receives it.
+
+    SHAPE FIRST, VALUES SECOND. The renderer is handed
+    `judgment.model_dump()`, which is two keys — `today_properties` and
+    `extended_properties`. Handing it a flat dict of the same numbers is not
+    the same document: rules addressing `today_properties.temp_high_c` by
+    path have no referent, and a prompt that says the prose must agree with
+    `extended_properties` is arguing about something absent.
+
+    `extended_properties` carries only what `ExtendedDayProperties` holds —
+    lead time, rain, probability — so it rebuilds exactly from the blend's
+    Day+3 and Day+7 rows with nothing invented.
+    """
+    today = {f: getattr(entry, f, None) for f in CALL_FIELDS_ON_ENTRY}
+
+    day0 = _blend_row(entry, "day0")
+    if day0 is None:
+        # REFUSE RATHER THAN SEND A NARROWER CALL. `rain` is non-nullable on
+        # TodayProperties, so without the blend row the rebuilt object does
+        # not even validate — and the failure this tool exists to avoid is
+        # exactly handing the model a call that is not the one production
+        # sends. A day with no blend row cannot be re-rendered faithfully, so
+        # it is not re-rendered.
+        raise SystemExit(
+            f"no {BLEND_MODEL_ID} Day+0 row on {entry.date}: the forecaster's call "
+            "cannot be rebuilt, and a partial one would render a prompt production "
+            "never sent. Refusing rather than guessing."
+        )
+
+    for name, attr in CALL_FIELDS_ON_BLEND:
+        today[name] = getattr(day0, attr, None)
+
+    extended = []
+    for lead_days, lead in ((3, "day3"), (7, "day7")):
+        row = _blend_row(entry, lead)
+        if row is None:
+            continue
+        extended.append({
+            "lead_time_days": lead_days,
+            "rain": row.rain,
+            "rain_probability_pct": row.rain_probability_pct,
+        })
+
+    return {"today_properties": today, "extended_properties": extended}
 
 
 def matching_flags(location, target_sha: str) -> dict:
@@ -126,7 +212,7 @@ def main() -> int:
         raise SystemExit(f"no stored entry for {day}")
 
     degradations = [d.code for d in (entry.meta.degradations or [])]
-    call = {f: getattr(entry, f, None) for f in CALL_FIELDS}
+    call = _rebuild_judgment(entry)
 
     location = load_location_config(a.config)
     flags = matching_flags(location, issuance["narrative_prompt_sha256"])
