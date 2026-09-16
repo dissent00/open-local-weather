@@ -20947,5 +20947,55 @@ gap to paper over — it is the evidence gate becoming visible, which is the
 whole point. Worth confirming with the operator that a blank summary reads as
 "nothing established yet" rather than as a fault.
 
+### ARE THE SIX A DATA-GATHERING FAULT? No — but one label says they are
+
+The operator's read: *"To me it seems like we're missing data that should be
+reviewed and get a finding."* Checked 2026-09-16, and the six split cleanly.
+
+**Three have data and no bias worth claiming** — correct silence:
+`ecmwf` Day+3 (wind +6.8 against a 8.0 threshold), `best_match` Day+3 (+0.8),
+`kenya_met` Day+0. All have 10 checks in window and full all-time counts.
+
+**Three have NO CHECKS AT ALL, ever** — `icon_seamless` Day+7,
+`ukmo_seamless` Day+7, `kenya_met` Day+7, all at `all_time_checks: 0`.
+
+**And that is not a gap in our gathering.** Tested live against Open-Meteo on
+2026-09-16, eight forecast days requested for all five models:
+
+| model | days returned non-null |
+|---|---|
+| gfs_seamless | 8 of 8 |
+| ecmwf_ifs025 | 8 of 8 |
+| best_match | 8 of 8 |
+| **icon_seamless** | **7 of 8 — Day+7 is null** |
+| **ukmo_seamless** | **7 of 8 — Day+7 is null** |
+
+ICON and UKMO forecast Day+0 through Day+6 and stop. `kenya_met` is a five-day
+service. So all three are exactly what the judgment prompt already states:
+*"A MODEL MISSING FROM A LEAD DOES NOT FORECAST THAT FAR... that is its nature
+rather than a gap in the data."*
+
+### THE LABEL CONTRADICTS THAT RULE, and that is the real finding
+
+All three zero-check rows carry the same generated summary:
+
+> *"Insufficient data yet to characterize performance at Day+7."*
+
+**"Yet" is wrong, and it is the word that made this look like a data fault.**
+It says the checks have not accumulated; the truth is that they never will,
+because the model does not forecast that far. A forecaster reading it is told
+to expect the gap to close, and treats an ABSENT model as an unproven one.
+
+The two states need different words, and the prompt already distinguishes
+them:
+- *"No verified checks at Day+7 yet"* — real, and true of a model that does
+  forecast that far but has not been scored enough.
+- *"Does not forecast at this lead"* — true here, and a permanent property.
+
+Cheap to fix and worth doing before item 149's recommendation lands: if the
+skill summary is to narrate the review's findings, a row with no findings
+BECAUSE THE MODEL IS ABSENT must not read the same as a row with no findings
+because the evidence is thin.
+
 Related: items 147, 142 finding 3, 18 (accuracy improving is the
 differentiator), and `review.py`'s header.
