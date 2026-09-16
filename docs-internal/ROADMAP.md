@@ -17569,6 +17569,35 @@ today), 114 and 109 (the spend this removes rather than rations).
 
 ## 122. The station's onset is recorded and never scored, while the reanalysis's is · **Planned — raised 2026-09-13**
 
+> **DIRECTION SET 2026-09-16.** The operator, on being told a METAR station
+> currently supplies only thunder and precipitation while the scored
+> observation is ERA5: *"I would think that real world observations should
+> weigh very heavily in fact on how we judge our models."*
+>
+> That is a standing preference and it points this item, 121 and 146 the same
+> way: **where a real instrument measured the thing, it should be what the
+> record scores against, and a reanalysis is the fallback rather than the
+> default.** Today it is the other way round on every dimension.
+>
+> **Two things stand between here and there, and neither is a preference.**
+> First, QUANTITY MATCHING — item 144: the station files `sknt`, a sustained
+> wind, and the forecast is a gust, so on THAT dimension the station is not
+> measuring what is forecast and weighing it heavily would be weighing the
+> gust factor as weather. Item 146 is the fix and it is a different quantity,
+> not a better source for the same one. Second, COVERAGE — a station reports
+> when it reports; ERA5 covers every hour of every day. A record that scores
+> against the station when present and the reanalysis when not is scoring
+> against two different instruments and calling the result one number, which
+> is the error class item 126 withdrew a whole plan over.
+>
+> So the direction is settled and the sequencing is not: match the quantities
+> first (146), then decide per dimension which instrument the record trusts,
+> and record WHICH ONE scored each row so the two are never silently mixed.
+> `observed.py` already holds the per-dimension comparison this needs —
+> station minus reanalysis, measured over 40 days — which is the evidence to
+> decide on rather than the instinct.
+
+
 Raised while answering a different question. The operator asked whether a
 day's observation readings should all be kept, so that the record could catch
 the forecaster's onset timing drifting:
