@@ -21125,6 +21125,56 @@ is precisely why this needed spelling out. A prompt that misdescribes its own
 rules teaches the reader to distrust the citations, so it now says what rule 2
 actually covers and why this is separate.
 
+### HARNESS RUN 2026-09-16 — PASSED, and the instruction did its job
+
+Both calls driven through Haiku, with the prompts built by
+`replay.frozen_cases()` and the narrative user message assembled by
+`build_narrative_user_prompt(user_prompt, judgment)` from the REAL validated
+judgment object. That pairing is stated here because it is the step item 142
+records getting wrong twice: the prompts were not hand-assembled and the
+forecaster's call was not a hand-made dict.
+
+Both responses validated against their schemas and `merge_forecast_response`
+built the combined shape.
+
+**The change was exercised, not just rendered.** Shown `gfs_seamless` at Day+0
+— eight verified checks, a 62.5% rain figure in the track record, and NO
+review finding — the model wrote *"No findings established at this lead."*
+Its own account of why:
+
+> *"The instruction's explicit warning against using the track record
+> percentages (62.5% in this case) when the review declined to make a finding
+> was the entire point — it prevented me from re-introducing the small-sample
+> error the gate exists to prevent."*
+
+That is the exact behaviour the rewrite was for, on the exact shape that
+previously produced an ungated claim.
+
+**Item 144 held too, incidentally.** With no gust data in the case, both wind
+fields came back null — the model did not fill one from the other, which is
+the failure the split was built to prevent.
+
+### TWO FINDINGS FROM THE COLD READ, neither a bug in this change
+
+**1. The "fully populated" vector is not.** `temp_low_c` is REQUIRED by the
+judgment schema and the case supplies no low temperature for any model, so the
+run had to derive one from climatology — which rule 6 forbids inventing.
+Production is fine: `EXTRACTED PER-MODEL PREDICTIONS` carries `low_c` per
+model (20.0 and 18.0 on 2026-09-16). So this is a gap in the FROZEN CORPUS,
+and it matters because `replay.py` depends on that corpus being representative
+— a case named "fully populated" that cannot fill a required field will make
+every future replay of that field meaningless. Worth fixing before the corpus
+is trusted for an A/B.
+
+**2. The ground-AQI blocks read as contradictory to a careful reader**, and a
+second model has now tripped on the same ground item 142's finding 5 covers.
+The prompt DOES explain it — the summary excludes stale readings by design —
+but `GROUND AQI STATIONS` listing a value while `GROUND AQI SUMMARY` says "no
+station reported a numeric AQI right now" needs the staleness paragraph to
+reconcile, and the reader met them in the other order. Finding 5 is confirmed
+still live on the 2026-09-16 prompt: `"hours_old": 3.0, "stale": true` against
+an instruction defining stale as MORE THAN three hours.
+
 ### WHAT IS NOT SETTLED, and it is the operator's
 
 Twelve of the eighteen (model, lead) pairs have at least one finding; **six do
