@@ -52,12 +52,21 @@ void main() {
       expect(visible, containsAll(defaultModels));
     });
 
-    test('the baselines are NOT withheld here', () {
-      // Their exclusion from the prompt is the pipeline's, applied where the
-      // MODEL TRACK RECORD block is built. Duplicating it here would put two
-      // files in charge of one rule, and the last time a filter like this was
-      // duplicated it leaked in exactly one of the three places it lived.
-      expect(modelsVisibleToTheForecaster(), containsAll(baselineModelIds));
+    test('the baselines are withheld too, exactly as the Python is', () {
+      // This test used to assert the OPPOSITE, on the stated grounds that
+      // the baseline exclusion "is the pipeline's, applied where the MODEL
+      // TRACK RECORD block is built". That was wrong when it was written
+      // (2026-09-05): `models_visible_to_the_forecaster` in defaults.py had
+      // hidden the baselines since 2026-08-31, and the pipeline passes ITS
+      // result everywhere the forecaster's model set is needed — the track
+      // record, the verification scores and the long-run review. A port
+      // that leaves them in would build the app's review over a different
+      // model set from the server's, and the review is what `ensemble` item
+      // 12 is about to put in the app's prompt.
+      final visible = modelsVisibleToTheForecaster();
+      for (final id in baselineModelIds) {
+        expect(visible, isNot(contains(id)));
+      }
     });
   });
 

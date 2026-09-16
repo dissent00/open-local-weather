@@ -95,7 +95,8 @@ List<String> scoredModels({String localBulletinModelId = ''}) => [
       if (localBulletinModelId.isNotEmpty) localBulletinModelId,
     ];
 
-/// [scoredModels] minus our own blend — what the forecaster is shown.
+/// [scoredModels] minus our own blend and the baselines — what the
+/// forecaster is shown. Mirrors `models_visible_to_the_forecaster`.
 ///
 /// THE BLEND IS SCORED, STORED AND PUBLISHED. It is withheld from the
 /// forecaster's own context, and this is a deliberate standing rule rather
@@ -112,10 +113,22 @@ List<String> scoredModels({String localBulletinModelId = ''}) => [
 /// Off everywhere it ships, including on a phone: a deployment cannot run the
 /// experiment that would justify enabling it after the fact, because once
 /// enabled there is no un-self-aware baseline left to compare against.
-List<String> modelsVisibleToTheForecaster({String localBulletinModelId = ''}) =>
-    scoredModels(localBulletinModelId: localBulletinModelId)
-        .where((m) => m != blendModelId)
-        .toList();
+///
+/// THE BASELINES ARE WITHHELD FOR AN ADJACENT REASON, and this port left
+/// them in until 2026-09-16. Persistence and climatology are the floor the
+/// real guidance has to clear, not opinions about the weather; handed
+/// "persistence: 65% at Day+0" the forecaster would weigh it as a sixth
+/// model's view, which is circular — persistence's only input is an
+/// observation it already has. The Python has hidden them since 2026-08-31.
+/// The divergence went unnoticed because nothing on the app side CALLED this
+/// function; `ensemble` item 12 is the first caller, and it builds the
+/// prompt's long-run review over this list.
+List<String> modelsVisibleToTheForecaster({String localBulletinModelId = ''}) {
+  final hidden = {blendModelId, ...baselineModelIds};
+  return scoredModels(localBulletinModelId: localBulletinModelId)
+      .where((m) => !hidden.contains(m))
+      .toList();
+}
 
 /// Lead times tracked and scored independently.
 const List<int> leadTimesDays = [0, 3, 7];
