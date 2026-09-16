@@ -180,6 +180,14 @@ def test_vectors_extract_day0():
         check(case, extract_day0_predictions_from_hourly(i["hourly_multi_model"], i["models"], i["threshold"]))
 
 
+def test_vectors_forecast_horizon():
+    from openlocalweather.extract import forecast_horizon_days
+
+    for case in load("forecast_horizon.json")["cases"]:
+        i = case["input"]
+        check(case, forecast_horizon_days(i["daily_multi_model"], i["model"]))
+
+
 def test_vectors_extract_day_n():
     for case in load("extract_day_n.json")["cases"]:
         i = case["input"]
@@ -867,6 +875,7 @@ def test_every_vector_file_is_exercised():
         "scoring_rain_pct_trend.json",
         "extract_day0.json",
         "extract_day_n.json",
+        "forecast_horizon.json",
         "extract_onset_hour.json",
         "aqi_staleness.json",
         "aqi_summary.json",

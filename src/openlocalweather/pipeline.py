@@ -132,6 +132,7 @@ from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm import forecast_call
 from openlocalweather.llm.forecast_call import generate_forecast
 from openlocalweather.llm.prompt_size import measure_prompt
+from openlocalweather.extract import forecast_horizon_days
 from openlocalweather.llm.prompt import (
     build_judgment_prompt,
     build_narrative_prompt,
@@ -187,6 +188,7 @@ from openlocalweather.models import (
     SOURCE_STATION,
     DEGRADATION_SUN_TIMES,
     DEGRADATION_EXTENDED_OUTLOOK,
+    DEGRADATION_DAILY_GUIDANCE_UNREADABLE,
     DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
     LocalBulletinRecord,
     DailyActual,
@@ -749,6 +751,12 @@ def _track_record_payload(entries, models: set | list) -> list[dict]:
             continue
 
         row = entry.model_dump()
+        # NOT SENT YET — ROADMAP item 150, step 3 decides how the forecaster
+        # is told a lead is beyond a source's reach. Until then the stored
+        # horizon stays out of the prompt: found by driving the real CLI
+        # before and after step 2, where the archived prompt grew by 36
+        # nulls nobody had decided to send.
+        row.pop("forecast_horizon_days", None)
         if summary_carries_a_figure(entry.skill_profile_summary) or (
             # ROADMAP item 142, finding 3. A summary whose direction words
             # contradict its own row's measured error is a false claim the
@@ -1317,6 +1325,29 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
                     "record for this run, so nothing is scored at those leads, and "
                     "the Overview's closing trend clause is omitted rather than "
                     "guessed."
+                ),
+            )
+        )
+    # THE SCHEMA EVENT — ROADMAP item 150. A 200 with no readable precipitation
+    # array for ANY model is what a provider rename looks like, and read
+    # naively it says every model forecasts nothing. Recorded as its own
+    # degradation so the reach observer records nothing and the weekly
+    # degradation watcher sees it recur. A fetch that FAILED is the branch
+    # above and already carries its own code.
+    if primary_daily and all(forecast_horizon_days(primary_daily, m) is None for m in MODELS):
+        degradations.append(
+            RunDegradation(
+                code=DEGRADATION_DAILY_GUIDANCE_UNREADABLE,
+                summary=(
+                    "The seven-day outlook arrived but none of it could be read. "
+                    "Where this forecast says nothing about the days ahead, that "
+                    "is missing data rather than a settled week."
+                ),
+                detail=(
+                    "The extended daily response carried no non-null precipitation "
+                    "array for any model. That is the shape of a variable rename "
+                    "upstream, not of short forecasts, so no forecast reach was "
+                    "recorded from this run and Day+3 / Day+7 are absent."
                 ),
             )
         )
@@ -1944,6 +1975,45 @@ def _with_merged_ground_aqi(
     )
 
 
+def observe_forecast_reach(
+    primary_daily: dict,
+    degradations: list[RunDegradation],
+    *,
+    met_service_present: bool,
+    met_service_day3_present: bool,
+    met_service_model_id: str,
+) -> dict[str, int] | None:
+    """How far each source forecast on this run — ROADMAP item 150, step 1.
+
+    VOID ON A DEGRADED RUN, NOT ZERO. A fetch that failed or came back
+    unreadable is indistinguishable, from the arrays alone, from a source
+    that genuinely reaches that far; recording it would let one bad morning
+    read as a shortened horizon. Absence is absence, the same three-valued
+    discipline as everywhere else in this record.
+
+    The met service is the reach of what THIS pipeline extracts from the
+    bulletin — a Day+3 prediction when the daily bulletin parsed, Day+0
+    otherwise — because that, not what the service publishes, is what can be
+    scored. Absent when neither parsed.
+    """
+    codes = {d.code for d in degradations}
+    if not primary_daily or codes & {DEGRADATION_EXTENDED_OUTLOOK, DEGRADATION_DAILY_GUIDANCE_UNREADABLE}:
+        return None
+
+    reach: dict[str, int] = {}
+    for model in MODELS:
+        horizon = forecast_horizon_days(primary_daily, model)
+        if horizon is not None:
+            reach[model] = horizon
+
+    if met_service_day3_present:
+        reach[met_service_model_id] = 3
+    elif met_service_present:
+        reach[met_service_model_id] = 0
+
+    return reach
+
+
 def _compose_log_entry(
     deps: PipelineDeps,
     guidance: ForwardGuidance,
@@ -2063,6 +2133,13 @@ def _compose_log_entry(
         guidance_initialised_at=guidance.guidance_cycle.initialised_at,
         guidance_age_hours=guidance.guidance_cycle.age_hours,
         guidance_source=guidance.guidance_cycle.source,
+        forecast_reach=observe_forecast_reach(
+            guidance.primary_daily,
+            guidance.degradations,
+            met_service_present=guidance.met_service_prediction is not None,
+            met_service_day3_present=guidance.met_service_prediction_day3 is not None,
+            met_service_model_id=deps.location.local_bulletin_model_id,
+        ),
         meta=LogEntryMeta(
             generated_at_utc=datetime.now(timezone.utc),
             llm_provider=type(deps.llm_provider).__name__,

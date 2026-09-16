@@ -171,6 +171,28 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
 /// An index past a model's array means its forecast horizon does not reach
 /// that far (UKMO stops around 7.2 days), which is recorded as unknown
 /// (`rain: null`) — never as "no rain".
+/// The furthest day index at which this model's precipitation sum is a
+/// value — how far the source forecast on THIS fetch. Upstream ROADMAP item
+/// 150; mirrors `forecast_horizon_days`, pinned by
+/// spec/vectors/forecast_horizon.json.
+///
+/// Derived from the response, never declared, because a declared horizon
+/// goes stale the day a provider extends a model. Precipitation sets the
+/// reach because it is what [extractDayNPredictionsFromDaily] uses to say a
+/// lead is beyond the model, and where the scored rain call comes from. Null
+/// means no value at any lead: not observed, never zero.
+int? forecastHorizonDays(Map<String, Object?> dailyMultiModel, String model) {
+  final daily = dailyMultiModel['daily'];
+  if (daily is! Map<String, Object?> || daily.isEmpty) return null;
+
+  final precipArr = _series(daily, 'precipitation_sum', model);
+  int? reached;
+  for (var i = 0; i < precipArr.length; i++) {
+    if (precipArr[i] != null) reached = i;
+  }
+  return reached;
+}
+
 List<ModelPrediction> extractDayNPredictionsFromDaily(
   Map<String, Object?> dailyMultiModel,
   int dayIndex,

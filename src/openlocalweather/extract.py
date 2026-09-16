@@ -133,6 +133,35 @@ def extract_day0_predictions_from_hourly(
     return predictions
 
 
+def forecast_horizon_days(daily_multi_model: dict, model: str) -> int | None:
+    """The furthest day index at which this model's precipitation sum is a
+    value — how far the source forecast on THIS fetch. ROADMAP item 150.
+
+    DERIVED, NOT DECLARED. A declared horizon goes stale silently the day a
+    provider extends a model; what the response carried is a fact already
+    in hand. Measured 2026-09-16: gfs, ecmwf and best_match reached Day+7,
+    icon Day+6, ukmo Day+5 — and ukmo had read Day+6 the day before, which
+    is why the stored figure is the maximum over clean runs, not this one.
+
+    PRECIPITATION SETS THE REACH, operator's choice, because it is the
+    variable `extract_day_n_predictions_from_daily` itself uses to say "this
+    model's horizon doesn't reach this lead" and where the scored rain call
+    comes from. A model whose temperature outruns its precipitation still
+    cannot be scored on rain there. None means the model had no value at
+    any lead, which is "not observed", never zero.
+
+    Reads the series the way the extractor does (`pick_series`, suffixed
+    then unsuffixed key), so the two cannot disagree about which array is
+    the model's.
+    """
+    if not daily_multi_model or not daily_multi_model.get("daily"):
+        return None
+    d = daily_multi_model["daily"]
+    precip_arr = pick_series(d, f"precipitation_sum_{model}", "precipitation_sum")
+    reached = [i for i, v in enumerate(precip_arr) if v is not None]
+    return max(reached) if reached else None
+
+
 def extract_day_n_predictions_from_daily(
     daily_multi_model: dict, day_index: int, models: list[str], threshold: float = RAIN_THRESHOLD_MM
 ) -> list[ModelPrediction]:

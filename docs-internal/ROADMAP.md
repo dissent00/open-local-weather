@@ -21373,7 +21373,7 @@ improving is the differentiator), and `review.py`'s header.
 
 ---
 
-## 150. No source declares how far it forecasts, and the lead grid is global · **Planned — raised 2026-09-16**
+## 150. No source declares how far it forecasts, and the lead grid is global · **Steps 1 and 2 SHIPPED 2026-09-16 — reach observed per run, horizon on the row; step 3's label and step 4 are Planned**
 
 The operator, after item 149 found `icon_seamless` and `ukmo_seamless` labelled
 *"insufficient data yet"* at a lead they do not forecast at all:
@@ -21495,6 +21495,57 @@ with a perfectly healthy response and no array under the name we asked for —
 path reads as "this model does not forecast that far" all the way down. So a
 horizon that collapses for ALL leads at once, on a run with no degradation
 recorded, should be treated as a schema event and raised, never stored.
+
+### Steps 1 and 2 shipped 2026-09-16
+
+**Design settled with the operator first**: precipitation sets the reach
+(it is what the extractor uses to say a lead is beyond a model, and where
+the scored rain call comes from); the met service is recorded as the reach
+of what THIS pipeline extracts (3 with a Day+3 bulletin prediction, 0 with
+Day+0 only), which is the number that governs scoring whatever KMD
+publishes.
+
+**Step 1.** `extract.forecast_horizon_days` reads the furthest non-null
+precipitation index per model, ported to Dart and pinned by
+`spec/vectors/forecast_horizon.json` — nine cases built from the real
+2026-09-16 shape. `observe_forecast_reach` records it per run on the entry as
+`forecast_reach`: None on a run whose seven-day fetch failed or came back
+unreadable, a model with no value simply absent. The schema event the item
+named is its own degradation, `daily_guidance_unreadable`: a 200 with no
+readable precipitation array for ANY model records no reach and shows up in
+the weekly degradation watcher.
+
+**Measured while building: the reach moves.** ukmo read Day+6 on 09-15 (the
+table above) and Day+5 on 09-16; icon Day+6 both days. That is the argument
+for the maximum rule, made by the data before the rule was written.
+
+**Step 2.** `verify.pipeline.derive_forecast_horizons` walks every entry
+from the all-time start and keeps the maximum per source; it is written onto
+each of the model's rows as `TrackRecordEntry.forecast_horizon_days`,
+re-derived every verification like the all-time counts, so it self-heals
+and survives rebuild-record. A retraction is impossible by construction; the
+"several clean runs agreeing" rule is named and not built. Today's own reach
+lands on the row at the next verification, one day behind, because the entry
+is composed after verification runs. The Dart row carries the field and the
+app leaves it null — it keeps no per-run record to derive from, owed there
+under item 4.
+
+**Two guards, both seen to fail.** The derivation test as first written put
+the shorter reading BEFORE the longer one in date order, and a mutation that
+kept the latest reading instead of the maximum passed it; the test now has
+the short day later, and the same mutation fails it. And the real CLI driven
+before and after step 2 showed the archived prompt grown by 36 nulls: the
+row's new field had reached MODEL TRACK RECORD through `model_dump`. It is
+now popped from the prompt payload until step 3 decides the wording, with a
+test. After that fix: both transcripts byte-identical, and the written entry
+and track record differ by exactly the two new fields. 1269 Python and 187
+Dart tests.
+
+**Step 3 is where the value lands and is not built**: `review.py` marks a
+model with zero checks as unscored (`checks == 0`) whatever the reason; with
+the horizon on the row it can say *"does not forecast at this lead"* for
+icon and ukmo at Day+7 instead of *"insufficient data yet"* — item 149's
+label, with a real distinction behind it.
 
 Related: items 149, 146, 144, 122, 121, 133, 102 (the coverage watcher, which
 is the same defect class caught in a different field), and `docs-internal/

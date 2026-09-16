@@ -551,3 +551,43 @@ def test_the_forecast_window_and_the_observed_window_cover_the_same_hours():
     assert observed is not None
     assert forecast.high_c == observed.high_c, "the two sides picked different hours"
     assert forecast.low_c == observed.low_c, "the two sides picked different hours"
+
+
+# ---------------------------------------------------------------------------
+# forecast_horizon_days — ROADMAP item 150, step 1
+# ---------------------------------------------------------------------------
+
+from openlocalweather.extract import forecast_horizon_days  # noqa: E402
+
+
+def _daily(**arrays):
+    return {"daily": {"time": [f"2026-09-{16 + i}" for i in range(8)], **arrays}}
+
+
+def test_horizon_is_the_furthest_day_with_a_precipitation_value():
+    # The real 2026-09-16 shape: eight days requested, ukmo populated to
+    # index 5 and null beyond, while its temperature reaches further. The
+    # reach is defined on precipitation_sum, the variable the extractor
+    # itself uses to say "this model's horizon doesn't reach this lead".
+    daily = _daily(
+        precipitation_sum_ukmo_seamless=[0.0, 1.2, 0.0, 0.0, 3.1, 0.0, None, None],
+        temperature_2m_max_ukmo_seamless=[28.0] * 8,
+    )
+    assert forecast_horizon_days(daily, "ukmo_seamless") == 5
+
+
+def test_horizon_counts_a_zero_as_a_value():
+    daily = _daily(precipitation_sum_gfs_seamless=[0.0] * 8)
+    assert forecast_horizon_days(daily, "gfs_seamless") == 7
+
+
+def test_horizon_is_none_when_the_model_has_no_value_at_all():
+    daily = _daily(precipitation_sum_icon_seamless=[None] * 8)
+    assert forecast_horizon_days(daily, "icon_seamless") is None
+    assert forecast_horizon_days(daily, "ecmwf_ifs025") is None
+    assert forecast_horizon_days({}, "ecmwf_ifs025") is None
+
+
+def test_horizon_falls_back_to_the_unsuffixed_key_like_the_extractor():
+    daily = _daily(precipitation_sum=[0.0, 0.0, 0.5, None])
+    assert forecast_horizon_days(daily, "best_match") == 2

@@ -1,0 +1,429 @@
+{
+  "vector_format_version": 1,
+  "function": "forecast_horizon_days",
+  "description": "The furthest day index at which a model's precipitation sum is a value on this fetch \u2014 how far the source forecast. Precipitation sets the reach because it is what the extractor uses to say a lead is beyond the model, and where the scored rain call comes from. None means no value at any lead: not observed, never zero.",
+  "cases": [
+    {
+      "name": "gfs reaches Day+7",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_ecmwf_ifs025": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_icon_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null
+            ],
+            "precipitation_sum_ukmo_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null,
+              null
+            ],
+            "precipitation_sum_best_match": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "model": "gfs_seamless"
+      },
+      "expected": 7
+    },
+    {
+      "name": "icon reaches Day+6",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_ecmwf_ifs025": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_icon_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null
+            ],
+            "precipitation_sum_ukmo_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null,
+              null
+            ],
+            "precipitation_sum_best_match": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "model": "icon_seamless"
+      },
+      "expected": 6
+    },
+    {
+      "name": "ukmo reaches Day+5 \u2014 and read Day+6 the day before, hence the maximum rule",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_ecmwf_ifs025": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_icon_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null
+            ],
+            "precipitation_sum_ukmo_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null,
+              null
+            ],
+            "precipitation_sum_best_match": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "model": "ukmo_seamless"
+      },
+      "expected": 5
+    },
+    {
+      "name": "a zero is a value \u2014 a dry week reaches as far as a wet one",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "model": "gfs_seamless"
+      },
+      "expected": 7
+    },
+    {
+      "name": "all-null array is not observed, not zero",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_icon_seamless": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "model": "icon_seamless"
+      },
+      "expected": null
+    },
+    {
+      "name": "a model absent from the response is not observed",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_gfs_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_ecmwf_ifs025": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "precipitation_sum_icon_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null
+            ],
+            "precipitation_sum_ukmo_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null,
+              null
+            ],
+            "precipitation_sum_best_match": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "model": "kenya_met"
+      },
+      "expected": null
+    },
+    {
+      "name": "temperature outrunning precipitation does not extend the reach",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum_ukmo_seamless": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              null,
+              null
+            ],
+            "temperature_2m_max_ukmo_seamless": [
+              28.0,
+              28.0,
+              28.0,
+              28.0,
+              28.0,
+              28.0,
+              28.0,
+              28.0
+            ]
+          }
+        },
+        "model": "ukmo_seamless"
+      },
+      "expected": 5
+    },
+    {
+      "name": "unsuffixed key, as the extractor falls back",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-16",
+              "2026-09-17",
+              "2026-09-18",
+              "2026-09-19",
+              "2026-09-20",
+              "2026-09-21",
+              "2026-09-22",
+              "2026-09-23"
+            ],
+            "precipitation_sum": [
+              0.0,
+              0.0,
+              0.5,
+              null
+            ]
+          }
+        },
+        "model": "best_match"
+      },
+      "expected": 2
+    },
+    {
+      "name": "empty payload",
+      "input": {
+        "daily_multi_model": {},
+        "model": "gfs_seamless"
+      },
+      "expected": null
+    }
+  ]
+}

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import sys
-from datetime import date, datetime, timezone
+from datetime import timedelta, date, datetime, timezone
 
 from openlocalweather.dates import prediction_row_date_for_target
 from openlocalweather.defaults import (
@@ -64,6 +64,26 @@ class VerificationRunResult:
     newly_verified: list[tuple[date, int]] = field(default_factory=list)
 
 
+def derive_forecast_horizons(log_lookup: LogLookup, start: date, end: date) -> dict[str, int]:
+    """Maximum observed reach per source over every entry from `start` to
+    `end` inclusive — ROADMAP item 150. A maximum by construction: a
+    source's reach does not retract, a fetch's does, and an entry whose run
+    was degraded stored None and is skipped here."""
+    horizons: dict[str, int] = {}
+    d = start
+    while d <= end:
+        entry = log_lookup(d)
+        d += timedelta(days=1)
+        if entry is None or entry.forecast_reach is None:
+            continue
+
+        for model, reach in entry.forecast_reach.items():
+            if reach > horizons.get(model, -1):
+                horizons[model] = reach
+
+    return horizons
+
+
 def run_deterministic_verification_and_scoring(
     log_lookup: LogLookup,
     prior_track_record: TrackRecord,
@@ -89,6 +109,15 @@ def run_deterministic_verification_and_scoring(
     yesterday_actual = actuals_primary.get(yesterday)
     lead_time_results: list[LeadTimeResult] = []
     newly_verified: list[tuple[date, int]] = []
+
+    # THE FURTHEST LEAD EACH SOURCE HAS EVER FORECAST ON A CLEAN RUN —
+    # ROADMAP item 150, step 2. Re-derived from every entry's observed reach
+    # rather than carried forward, for the same reason as all-time above: a
+    # figure that can be re-derived can be checked, and this one must never
+    # retract. Entries written before the observation shipped carry None and
+    # contribute nothing. Runs on the day of verification have not been
+    # composed yet, so today's own reach lands tomorrow.
+    horizon_by_model = derive_forecast_horizons(log_lookup, all_time_start, today)
 
     for k in lead_times_days:
         target_row_date = prediction_row_date_for_target(yesterday, k)
@@ -182,6 +211,7 @@ def run_deterministic_verification_and_scoring(
             track_entry.avg_cloud_error_pct_10 = short.cloud_err if k == 0 else None
             track_entry.cloud_checks_in_window_10 = short.cloud_checks if k == 0 else 0
             track_entry.checks_in_window_10 = short.checks_found
+            track_entry.forecast_horizon_days = horizon_by_model.get(model)
             track_entry.last_updated = today
             # No longer load-bearing for correctness (re-derivation cannot
             # double-count), but still a useful record of when this pair

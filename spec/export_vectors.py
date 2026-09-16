@@ -1028,6 +1028,50 @@ def export_bucketing() -> None:
 
 
 
+def export_forecast_horizon() -> None:
+    """ROADMAP item 150, step 1. The real 2026-09-16 shape, reduced: eight
+    days requested, and each model populated to a different index."""
+    from openlocalweather.extract import forecast_horizon_days
+
+    def daily(reach_by_model, extra=None):
+        arrays = {}
+        for model, reach in reach_by_model.items():
+            arrays[f"precipitation_sum_{model}"] = [0.0] * (reach + 1) + [None] * (7 - reach)
+        return {"daily": {"time": [f"2026-09-{16 + i}" for i in range(8)], **arrays, **(extra or {})}}
+
+    measured = daily({"gfs_seamless": 7, "ecmwf_ifs025": 7, "icon_seamless": 6, "ukmo_seamless": 5, "best_match": 7})
+    scenarios = [
+        ("gfs reaches Day+7", measured, "gfs_seamless"),
+        ("icon reaches Day+6", measured, "icon_seamless"),
+        ("ukmo reaches Day+5 — and read Day+6 the day before, hence the maximum rule", measured, "ukmo_seamless"),
+        ("a zero is a value — a dry week reaches as far as a wet one", daily({"gfs_seamless": 7}), "gfs_seamless"),
+        ("all-null array is not observed, not zero", daily({}, {"precipitation_sum_icon_seamless": [None] * 8}), "icon_seamless"),
+        ("a model absent from the response is not observed", measured, "kenya_met"),
+        ("temperature outrunning precipitation does not extend the reach",
+         daily({"ukmo_seamless": 5}, {"temperature_2m_max_ukmo_seamless": [28.0] * 8}), "ukmo_seamless"),
+        ("unsuffixed key, as the extractor falls back", daily({}, {"precipitation_sum": [0.0, 0.0, 0.5, None]}), "best_match"),
+        ("empty payload", {}, "gfs_seamless"),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"daily_multi_model": payload, "model": model},
+            "expected": forecast_horizon_days(payload, model),
+        }
+        for name, payload, model in scenarios
+    ]
+    write(
+        "forecast_horizon.json",
+        "forecast_horizon_days",
+        "The furthest day index at which a model's precipitation sum is a value "
+        "on this fetch — how far the source forecast. Precipitation sets the "
+        "reach because it is what the extractor uses to say a lead is beyond "
+        "the model, and where the scored rain call comes from. None means no "
+        "value at any lead: not observed, never zero.",
+        cases,
+    )
+
+
 def export_llm_schemas() -> None:
     """Exports the exact provider-dialect schemas generated from the forecast
     response model.
@@ -4538,6 +4582,7 @@ def main() -> None:
     export_extract()
     export_aqi()
     export_bucketing()
+    export_forecast_horizon()
     export_llm_schemas()
     export_system_prompt()
     export_user_prompt()

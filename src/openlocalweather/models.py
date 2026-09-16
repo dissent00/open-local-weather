@@ -901,6 +901,13 @@ DEGRADATION_EXTENDED_OUTLOOK = "extended_outlook_unavailable"
 # failing would suppress a perfectly good seven-day outlook for the town.
 # Splitting them also lets step two threshold each source on its own.
 DEGRADATION_SECONDARY_EXTENDED_OUTLOOK = "secondary_extended_outlook_unavailable"
+# The seven-day fetch answered HTTP 200 and no model in it carried a readable
+# precipitation array — ROADMAP item 150. Distinct from the fetch failing:
+# this is the shape a provider rename produces (`fetch/open_meteo.py` already
+# records one), and read naively it would say every model forecasts nothing.
+# A run carrying it records no forecast reach, and the degradation watcher
+# sees it recur.
+DEGRADATION_DAILY_GUIDANCE_UNREADABLE = "daily_guidance_unreadable"
 # THE WRITE-UP FAILED AND THE FORECAST DID NOT — ROADMAP item 59 step 3.
 #
 # The only degradation here that is not a missing INPUT. Everything above
@@ -1464,6 +1471,21 @@ class DailyLogEntry(BaseModel):
     guidance_initialised_at: datetime | None = None
     guidance_age_hours: float | None = None
     guidance_source: str | None = None
+    # HOW FAR EACH SOURCE FORECAST ON THIS RUN, in days, keyed by model id —
+    # ROADMAP item 150, step 1. Observed from the response, never declared.
+    #
+    # None on a run whose seven-day fetch failed or came back unreadable, and
+    # on every entry written before this shipped: "not observed", which is
+    # not "reaches nothing". A source with no value at any lead on an
+    # otherwise clean run is simply absent from the dict. The met service is
+    # the reach of what THIS pipeline extracts from its bulletin (3 with a
+    # Day+3 prediction, 0 with Day+0 only), which is the number that governs
+    # scoring whatever the service publishes.
+    #
+    # The horizon the record reports is derived from these at verification
+    # as the MAXIMUM over clean runs (TrackRecordEntry.forecast_horizon_days),
+    # so one short morning can never shorten a model's recorded reach.
+    forecast_reach: dict[str, int] | None = None
 
     meta: LogEntryMeta
 
@@ -1639,6 +1661,14 @@ class TrackRecordEntry(BaseModel):
     # here cannot be right for long.
     skill_profile_summary: str | None = None
     notes: str = ""
+    # THE FURTHEST LEAD THIS SOURCE HAS EVER FORECAST ON A CLEAN RUN — ROADMAP
+    # item 150, step 2. Same value on the model's every row; None until any
+    # run has observed it. Re-derived at verification from each entry's
+    # `forecast_reach`, like the all-time counts, so it self-heals and
+    # survives rebuild-record. It is a maximum by construction: a model's
+    # reach does not retract, a fetch's does. A genuine retraction would need
+    # several clean runs agreeing, and that rule is not built.
+    forecast_horizon_days: int | None = None
 
 
 # A lead time is not a measurement. "At Day+0" is the only digit a summary is

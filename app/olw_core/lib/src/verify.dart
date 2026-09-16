@@ -205,6 +205,7 @@ class TrackRecordEntry {
     this.avgMslpTrendErrorHpa10,
     this.checksInWindow10 = 0,
     this.lastUpdated,
+    this.forecastHorizonDays,
   });
 
   final String model;
@@ -224,6 +225,13 @@ class TrackRecordEntry {
   double? avgMslpTrendErrorHpa10;
   int checksInWindow10;
   DateTime? lastUpdated;
+
+  /// The furthest lead this source has ever forecast on a clean run —
+  /// upstream ROADMAP item 150, step 2. Null until observed. The pipeline
+  /// derives it at verification from each entry's observed reach; this app
+  /// keeps no per-run record to derive from yet (owed under item 4), so it
+  /// stays null here and the field exists so the two rows share a shape.
+  int? forecastHorizonDays;
 }
 
 /// What one lead time produced when scored against yesterday.

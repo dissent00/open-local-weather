@@ -190,6 +190,20 @@ void main() {
       }
     });
 
+    test('forecast_horizon_days', () {
+      for (final c in casesOf('forecast_horizon.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expect(
+          forecastHorizonDays(
+            i['daily_multi_model'] as Map<String, Object?>,
+            i['model'] as String,
+          ),
+          c['expected'],
+          reason: 'case "${c['name']}"',
+        );
+      }
+    });
+
     test('extract_day_n_predictions_from_daily', () {
       for (final c in casesOf('extract_day_n.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1507,6 +1521,7 @@ void main() {
       'wind_consensus_direction.json',
       'wind_describe_shift.json',
       'extract_day_n.json',
+      'forecast_horizon.json',
       'extract_onset_hour.json',
       'aqi_staleness.json',
       'aqi_summary.json',
