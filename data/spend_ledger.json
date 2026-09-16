@@ -368,6 +368,38 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 68.17
+    },
+    {
+      "at": "2026-09-16T15:01:35.380374+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 20.245
+    },
+    {
+      "at": "2026-09-16T15:01:55.629684+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_500",
+      "elapsed_s": 38.029
+    },
+    {
+      "at": "2026-09-16T15:03:03.660921+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 5.001
+    },
+    {
+      "at": "2026-09-16T15:04:08.664352+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 30.105
     }
   ]
 }
