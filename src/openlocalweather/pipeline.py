@@ -2205,10 +2205,23 @@ def _compose_log_entry(
             "sunrise": issuance.sunrise or existing_entry.sunrise,
             "sunset": issuance.sunset or existing_entry.sunset,
             "local_bulletin": existing_entry.local_bulletin or issuance.local_bulletin,
-            # Snapshotted exactly ONCE, by whichever run first finds it unset,
-            # so it keeps the day's TRUE morning content. Re-snapshotting on a
-            # later issuance would replace it with an already-updated version.
-            "morning_issuance": existing_entry.morning_issuance or snapshot,
+            # NO LONGER WRITTEN — ROADMAP item 137.
+            #
+            # `morning_issuance` held the day's first issuance back when a day
+            # had at most two, and it kept being set long after
+            # `earlier_issuances` superseded it: every later run stored the
+            # SAME snapshot twice, once under a name from the dead
+            # morning/evening model. `issuance_log()` has preferred
+            # `earlier_issuances` throughout, so the duplicate was read by
+            # nothing but `publish/pages.py`, which now goes through
+            # `issuance_log()` as well.
+            #
+            # CARRIED FORWARD, NOT CLEARED. An entry that already has one
+            # keeps it: this record is an archive, and blanking a field on
+            # re-issue would edit what an earlier run actually stored. New
+            # days simply never gain one — see `issuance_log`'s docstring on
+            # why both shapes are read forever.
+            "morning_issuance": existing_entry.morning_issuance,
             "earlier_issuances": [*existing_entry.earlier_issuances, snapshot],
             "meta": issuance.meta.model_copy(
                 update={

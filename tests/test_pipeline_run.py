@@ -924,15 +924,23 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     assert scored_predictions(refresh_result.log_entry) == original_predictions
 
 
-def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
-    """Real bug fixed: the morning narrative used to be silently gone the
-    moment a refresh landed — recoverable only from git history, not from
-    anything the site or data file exposed. morning_issuance must capture
-    exactly what the morning run actually published, before the refresh
-    overwrites the top-level fields with the evening's new values."""
+def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
+    """Real bug fixed: the first run's narrative used to be silently gone the
+    moment a later one landed — recoverable only from git history, not from
+    anything the site or data file exposed.
+
+    ASSERTED THROUGH `issuance_log()`, NOT A FIELD — ROADMAP item 137. The
+    store moved from `morning_issuance` to `earlier_issuances` and this
+    property did not; an assertion naming either one tests the storage rather
+    than the guarantee, and would have to be rewritten again next time."""
     morning_deps = make_deps(tmp_path)
     morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
-    assert morning_result.log_entry.morning_issuance is None, "a fresh morning entry has nothing to snapshot yet"
+    assert len(morning_result.log_entry.issuance_log()) == 1, (
+        "a day's first entry has exactly one issuance and nothing to preserve"
+    )
+    assert morning_result.log_entry.morning_issuance is None, (
+        "and no day written from here on gains the legacy field"
+    )
 
     evening_llm = FakeLLMProvider(
         GeminiForecastResponse(
@@ -948,8 +956,12 @@ def test_refresh_snapshots_morning_issuance_before_overwriting(tmp_path):
     )
     refresh_result = issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
 
-    snapshot = refresh_result.log_entry.morning_issuance
-    assert snapshot is not None, "morning_issuance must be populated once a refresh has happened"
+    log = refresh_result.log_entry.issuance_log()
+    assert len(log) == 2, "a second issuance must not replace the first"
+    snapshot = log[0]
+    assert refresh_result.log_entry.morning_issuance is None, (
+        "and it is preserved WITHOUT the legacy duplicate — item 137"
+    )
     assert snapshot.rain_expected == "Unlikely"  # FakeLLMProvider's default morning response
     assert snapshot.temp_high_c == 27.0
     assert "Dry and warm" in snapshot.narrative_markdown
@@ -994,8 +1006,9 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
     # Still the TRUE morning values (FakeLLMProvider's default), not the
     # first refresh's "Light rain" — that would mean the real morning
     # issuance got silently replaced by an intermediate refreshed state.
-    assert second_result.log_entry.morning_issuance.rain_expected == "Unlikely"
-    assert "Dry and warm" in second_result.log_entry.morning_issuance.narrative_markdown
+    first = second_result.log_entry.issuance_log()[0]
+    assert first.rain_expected == "Unlikely"
+    assert "Dry and warm" in first.narrative_markdown
     # And the top-level fields reflect the LATEST (second) refresh.
     assert second_result.log_entry.rain_expected == "Heavy rain"
 
@@ -1552,8 +1565,7 @@ def test_three_issuances_are_all_recoverable_from_the_stored_entry(tmp_path):
     assert len(entry.earlier_issuances) == 2
     assert "Dry and warm" in entry.earlier_issuances[0].narrative_markdown, "first, oldest first"
     assert "SECOND" in entry.earlier_issuances[1].narrative_markdown, "second, no longer lost"
-    assert entry.morning_issuance is not None
-    assert "Dry and warm" in entry.morning_issuance.narrative_markdown, "still the first"
+    assert "Dry and warm" in entry.issuance_log()[0].narrative_markdown, "still the first"
 
     log = entry.issuance_log()
     assert [i.narrative_markdown for i in log] == [
@@ -1707,11 +1719,10 @@ def test_a_forced_re_run_keeps_the_days_history(tmp_path):
     """
     entry, _ = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
-    assert entry.morning_issuance is not None
-    assert entry.morning_issuance.narrative_markdown == "## Overview\nDry and warm.", (
+    assert entry.issuance_log()[0].narrative_markdown == "## Overview\nDry and warm.", (
         "the morning issuance must stay the MORNING's, not the last run's"
     )
-    assert entry.meta.generated_at_utc == entry.morning_issuance.generated_at_utc, (
+    assert entry.meta.generated_at_utc == entry.issuance_log()[0].generated_at_utc, (
         "generated_at_utc records when this entry first existed"
     )
     assert entry.meta.refreshed_at is not None, (
@@ -1725,8 +1736,8 @@ def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
     and the morning's narrative is the one being overwritten."""
     entry, _ = _forced_rerun(tmp_path, "## Overview\nSecond run.", after_refresh=False)
 
-    assert entry.morning_issuance is not None
-    assert entry.morning_issuance.narrative_markdown == "## Overview\nDry and warm."
+    assert len(entry.issuance_log()) == 2
+    assert entry.issuance_log()[0].narrative_markdown == "## Overview\nDry and warm."
 
 
 def test_a_forced_re_run_is_told_its_verification_is_already_written(tmp_path):

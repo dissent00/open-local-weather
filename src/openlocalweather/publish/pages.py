@@ -33,7 +33,7 @@ from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
 from openlocalweather.dates import format_date
 from openlocalweather.glossary import GLOSSARY
-from openlocalweather.models import DailyLogEntry
+from openlocalweather.models import DailyLogEntry, IssuanceSnapshot
 from openlocalweather.review import WeeklyReview
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -74,16 +74,48 @@ def _narrative_html(entry: DailyLogEntry) -> str:
     return narrative_to_html(entry.narrative_markdown)
 
 
+def _first_issuance(entry: DailyLogEntry) -> IssuanceSnapshot | None:
+    """The day's FIRST issuance, or None when the day was issued once —
+    ROADMAP item 137.
+
+    READ THROUGH `issuance_log()`, WHICH IS WHY THIS EXISTS. Every call site
+    here used to test `entry.morning_issuance` directly, which is a leftover
+    of the dead morning/evening model and was duplicated into
+    `earlier_issuances` on every later run. `issuance_log()` already reads
+    both record shapes and prefers the newer one, so going through it lets
+    the duplicate stop being written without orphaning the pages it feeds.
+
+    THE ARCHIVE IS NOT MIGRATED. Entries committed before `earlier_issuances`
+    existed carry the first issuance only under the legacy name, and they
+    keep rendering through `issuance_log()`'s fallback branch — see its
+    docstring for why editing history is the one fix not available here.
+
+    ONE ISSUANCE IS NOT A FIRST ISSUANCE. A day with a single run has nothing
+    to disambiguate itself from, and a second page would duplicate the main
+    one. That is exactly what `morning_issuance is None` used to mean, so the
+    guard is unchanged in behaviour for both shapes.
+
+    NOT NAMED "morning". The first issuance of the day is the morning one in
+    THIS deployment because of when its crons fire; a deployment whose first
+    run lands in the evening would be described wrongly by that name. The
+    published URL keeps its `-morning` suffix for now — those links are live
+    and renaming them orphans the archive — which is a separate decision from
+    what the code calls it.
+    """
+    log = entry.issuance_log()
+    return log[0] if len(log) > 1 else None
+
+
 def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
     """Reconstructs what `entry` looked like right before an evening
     refresh overwrote it, as a full DailyLogEntry — not just the raw
     IssuanceSnapshot fields — so the exact same forecast_page
     template renders it with zero morning/evening-aware branching baked
-    into the template itself. Only ever called when entry.morning_issuance
-    is not None. `morning_issuance` is cleared on the result (nothing to
-    nest — a page showing the morning issuance has no "morning within the
-    morning" concept)."""
-    m = entry.morning_issuance
+    into the template itself. Only ever called when `_first_issuance` returns
+    something. Both issuance stores are cleared on the result (nothing to
+    nest — a page showing the first issuance has no "first within the first"
+    concept)."""
+    m = _first_issuance(entry)
     assert m is not None
     return entry.model_copy(
         update={
@@ -102,6 +134,7 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
             "narrative_markdown": m.narrative_markdown,
             "whatsapp_summary": m.whatsapp_summary,
             "morning_issuance": None,
+            "earlier_issuances": [],
             # This issuance's own gaps, not the current one's — see
             # RunDegradation. Without the override an archived morning page
             # would report whatever the EVENING run happened to be missing,
@@ -161,8 +194,8 @@ def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
     not always the same instant anyway.
     """
     if morning:
-        assert entry.morning_issuance is not None
-        first = entry.morning_issuance
+        first = _first_issuance(entry)
+        assert first is not None
         if first.issued_local_time:
             return f"Issued {first.issued_local_time}"
         return f"Issued {first.generated_at_utc.strftime('%H:%M UTC')}"
@@ -312,7 +345,7 @@ def build_archive_items(
     for d in sorted(dates, reverse=True):
         entry = entry_provider(d)
         slug = format_date(d)
-        if entry is None or entry.morning_issuance is None:
+        if entry is None or _first_issuance(entry) is None:
             # No entry yet (shouldn't normally happen — all_dates_provider
             # is derived from what's on disk) or never refreshed: exactly
             # one issuance, no label needed to disambiguate it.
@@ -394,7 +427,7 @@ class GitHubPagesPublisher:
                 )
             )
 
-        if entry.morning_issuance is not None:
+        if _first_issuance(entry) is not None:
             morning_page = archive_dir / f"{format_date(entry.date)}-morning.html"
             if force or not morning_page.exists():
                 morning_page.write_text(

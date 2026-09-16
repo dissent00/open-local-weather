@@ -1002,3 +1002,62 @@ def test_a_snapshot_records_the_local_clock_of_the_issuance_that_made_it():
     entry.meta.issued_local_time = "22:14"
 
     assert entry.to_issuance_snapshot().issued_local_time == "22:14"
+
+
+# --- the first issuance, read from either record shape — ROADMAP item 137 ----
+
+
+def _modern_refreshed_entry(d=date(2026, 8, 11)):
+    """The shape a run writes once `morning_issuance` stops being set: the
+    first issuance lives ONLY in `earlier_issuances`."""
+    entry = _refreshed_entry(d)
+    first = entry.morning_issuance
+    assert first is not None
+    return entry.model_copy(
+        update={"morning_issuance": None, "earlier_issuances": [first]}
+    )
+
+
+def test_the_first_issuance_page_does_not_need_the_legacy_field():
+    """ROADMAP item 137. `morning_issuance` is a leftover of the dead
+    morning/evening model and is written on every later issuance, duplicating
+    `earlier_issuances[0]`. The publisher must read the day's first issuance
+    through `issuance_log()` — the accessor that already handles both record
+    shapes — so the duplicate can stop being written without orphaning the
+    page it feeds.
+    """
+    from openlocalweather.publish.pages import _first_issuance
+
+    modern = _modern_refreshed_entry()
+    assert modern.morning_issuance is None
+
+    first = _first_issuance(modern)
+    assert first is not None, "a day with two issuances has a first one"
+    assert first.rain_expected == "Dry all day", "and it is the EARLIER content"
+
+    view = _entry_as_morning_view(modern)
+    assert view.rain_expected == "Dry all day"
+    assert "Morning: dry and warm" in view.narrative_markdown
+    assert _issuance_label(modern, morning=True) is not None
+
+
+def test_a_legacy_entry_still_finds_its_first_issuance():
+    """The archive is this project's record and is never migrated — see
+    `issuance_log`'s docstring. Every entry committed before this change
+    carries the first issuance ONLY under the legacy name, and must keep
+    rendering exactly as it did."""
+    from openlocalweather.publish.pages import _first_issuance
+
+    legacy = _refreshed_entry()
+    assert legacy.earlier_issuances == []
+
+    first = _first_issuance(legacy)
+    assert first is not None and first.rain_expected == "Dry all day"
+
+
+def test_a_day_issued_once_has_no_first_issuance_page():
+    """One issuance is not a first issuance: there is nothing to disambiguate
+    it from, and a second page would duplicate the main one."""
+    from openlocalweather.publish.pages import _first_issuance
+
+    assert _first_issuance(make_entry(date(2026, 8, 11))) is None
