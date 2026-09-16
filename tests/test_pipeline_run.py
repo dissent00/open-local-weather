@@ -101,6 +101,15 @@ class FakeLLMProvider:
             today_properties=TodayProperties(
                 rain=False,
                 rain_expected="Unlikely",
+                # ROADMAP item 144. BOTH POINTS, AND THEY DIFFER — the real
+                # pair from 2026-09-16, the day the ashore section published
+                # the Gulf's 41. The fixture carried no gust at all before,
+                # which meant every assertion about the scored wind passed on
+                # a null and would have passed with the wiring deleted. This
+                # is also the model stub `tools/drive_forecast_cli.py` drives,
+                # so the harness could not exercise the split either.
+                peak_wind_primary_kmh=32.8,
+                peak_wind_secondary_kmh=41.0,
                 temp_high_c=27.0,
                 temp_low_c=18.0,
                 temp_high_low="27°C / 81°F",
@@ -375,10 +384,13 @@ def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
 
     assert blend.high_c == result.log_entry.temp_high_c
     assert blend.low_c == result.log_entry.temp_low_c
-    # Absent, never zero: peak_wind_kmh in today_properties is the SECONDARY
-    # point's and mslp_trend_24h is prose, so scoring either against the
-    # primary point's observations would compare two different things.
-    assert blend.wind_kmh is None
+    # ITEM 144: the PRIMARY point's gust is scored and the secondary's is not.
+    # This asserted `is None` until 2026-09-16 with a reason the split made
+    # false, and it passed because the fixture supplied no gust — so it would
+    # have gone on passing with the wiring deleted.
+    assert blend.wind_kmh == 32.8, "the ashore gust is what the record observes"
+    assert blend.wind_kmh != 41.0, "the Gulf's gust must never reach the scored row"
+    # mslp_trend_24h is prose, so it stays absent for the original reason.
     assert blend.mslp_trend is None
 
 
