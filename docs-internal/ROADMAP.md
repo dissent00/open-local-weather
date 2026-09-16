@@ -18511,6 +18511,16 @@ Related: items 70 (the hashes this rests on), 59 (the split that halves it),
 
 ## 132. The free tier will not carry this project, and the question is what replaces it · **Open — raised 2026-09-14, rewritten 2026-09-15**
 
+> **HELD AT 20, operator's call 2026-09-16.** Two days on the Interactions
+> endpoint is one clean day against one 500-storm, which is not a reliability
+> trend, so the headroom stays until there are more days. Still temporary, and
+> still the wrong number for a normal day — see below for why 16 was chosen.
+>
+> **The retry storm is LOWER priority than this item implies, same call.** The
+> endpoint answers in one request without polling, so the storms this item was
+> sized against may already be rarer; gather days before spending effort on
+> the retry count.
+>
 > **THE CAP IS TEMPORARILY 20 AND MUST GO BACK DOWN.** Raised from 16 on
 > 2026-09-15 for the provider-change measurement, with the operator naming it
 > as temporary in the same breath: *"That's the real number, not what I want
@@ -19575,7 +19585,13 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Planned — raised 2026-09-16**
+## 139. The window is scored and nobody reads it · **Planned — raised 2026-09-16; BLOCKED ON DATA until 2026-09-17**
+
+> **Decide nothing before reading the first scorable window**, operator's call
+> 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
+> ends — and one window is the entire evidence base for whether the window is
+> a better basis than the calendar day. Both shapes offered here (make it
+> readable, or make it the reported basis) are bets on data nobody has seen.
 
 The operator's decision, 2026-09-16: *"Score every call moving forward, but we
 don't need to re-derive. Scoring on the first of the day was fine
