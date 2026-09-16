@@ -20361,6 +20361,26 @@ true, and the conclusion drawn from it — that wind cannot be checked here —
 does not follow. **The models forecast both quantities. The answer to a
 sustained observation is a sustained forecast, not silence.**
 
+### THIS WAS ALREADY KNOWN, AND THE ITEM SHOULD SAY SO
+
+**Not a new finding.** The Working Order at the top of this file has said
+since 2026-09-14 that `windspeed_10m_max` "is in there fifteen times — the
+sustained-wind field item 126 found *fetched and discarded* is in the prompt,
+just never extracted", alongside `precipitation_sum` and `pressure_msl_mean`,
+daily variables sitting inside an hourly block.
+
+So the gap was recorded two days before this item was raised, and raising it
+as fresh is a method failure worth naming: the Working Order is the first
+thing to read and was not read. What IS new here is the operator's framing —
+that the answer is to compare LIKE WITH LIKE rather than to give up on wind —
+and the measurement below showing the archive supplies the matching
+observation.
+
+**It also joins two items that were not connected.** Item 73 wants the prompt
+pared by category, and this variable is 15 of the 268 arrays it would cut. If
+73 cuts it before this item reads it, the data stops arriving. Sequence
+matters: extract first, or cut with this in mind.
+
 ### THE DATA IS ALREADY BEING PAID FOR AND THROWN AWAY
 
 - `DAILY_VARS` requests `windspeed_10m_max` beside `windgusts_10m_max`
