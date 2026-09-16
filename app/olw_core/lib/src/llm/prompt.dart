@@ -181,7 +181,7 @@ $groundAqiQualityNote
 "Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.''',
     'hours_ahead': '''HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, and it is the ONLY hourly series you have for this location: the calendar day's hours are no longer sent. For the hours already elapsed, read OBSERVED SO FAR TODAY, which is what the station measured rather than what a model expected.''',
     'sun_times': '''The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, and never estimate sunset from latitude or season yourself.''',
-    'reissue': '''$verificationBlock''',
+    'verification': '''$verificationBlock''',
     'the_call': '''THE CALL HAS ALREADY BEEN MADE, AND IT IS NOT YOURS TO REVISIT.
 
 The user message carries "THE FORECASTER'S CALL" - the blended today_properties and extended_properties, decided by a forecaster given the same data you have, in a separate call made before this one. Those values are what the record SCORES against tomorrow's observations, beside GFS and ECMWF. They are settled.
@@ -410,7 +410,7 @@ ${b['issuance_time']}
 ${b['hours_ahead']}
 
 ${b['sun_times']}
-${b['reissue']}
+${b['verification']}
 ---
 
 ${b['the_call']}
