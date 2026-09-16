@@ -19401,8 +19401,14 @@ day is this*).
 > record is graded on the row.
 >
 > **DETECTION ONLY, SO FAR.** Nothing yet acts on the code: the prompt is not
-> told, and nothing stops the model naming a future window anyway. That is
-> shape 3 below, and it is still the real answer.
+> told, and nothing stops the model naming a future window anyway.
+>
+> **SHAPE 3 SPLIT IN TWO ON 2026-09-16 — item 140.** "Code sets the onset"
+> is right for the PROSE and wrong for the RECORD: setting it from the
+> observation would score zero error and enter the accuracy record as skill.
+> The operator's answer is that onset is **N/A** for a window that opens
+> after the rain, not correct. So: suppress the claim, do not score the fact,
+> and the question a reader actually has becomes duration — item 141.
 
 Raised by the operator while deciding whether dropping EARLIER TODAY loses
 anything: *"say we forecast dry morning, thunderstorms starting at 1800. Then
@@ -19464,3 +19470,159 @@ the real answer and wants the scored-field question settled with it.
 Related: items 121 (observations are facts), 137 (the sensor-contradiction
 answer this feeds), 122 (the station's onset is recorded and never scored),
 and contract item 8.
+
+---
+
+## 139. The window is scored and nobody reads it · **Planned — raised 2026-09-16**
+
+The operator's decision, 2026-09-16: *"Score every call moving forward, but we
+don't need to re-derive. Scoring on the first of the day was fine
+historically."* Then, on the mechanism: *"yes, build the window scorer, that's
+definitely the right way to handle it."*
+
+**THE SCORER ALREADY EXISTS.** Checked before building anything.
+`verify.scoring.verify_closed_windows` is wired into `_verify_recent_windows`
+and runs on every first issuance. It has simply never had a scorable window:
+
+| row | `window_opened_local` | scorable |
+|---|---|---|
+| 2026-09-14 | `None` — written the day the field shipped, before it was populated | never |
+| 2026-09-15 | `2026-09-15T06:00` | **2026-09-17** |
+| 2026-09-16 | `2026-09-16T06:00` | 2026-09-18 |
+
+`window_is_scorable` gates on the CALENDAR, not the 24-hour clock, because
+`archive-api.open-meteo.com` serves the current day with model output mixed
+in — fifteen future stamps carrying temperatures, measured 2026-09-14. So a
+window is scorable only once the last day it touches has ended, which is a
+~48-hour lag by design. **Nothing is broken; the first real scored window
+lands on 2026-09-17's run.**
+
+### So what is actually left
+
+Not the scorer. Making the window **the basis the record reports**, rather
+than a parallel series accumulating beside the Day+0 one that nobody reads.
+
+**Why the operator's decision REQUIRES this** — scoring every issuance on the
+existing Day+0 basis would inflate skill mechanically, and worse the later
+the run. Contract item 2 said it first: *"At 06:00 a quarter of the calendar
+day is already spent... at 22:00, ninety percent. Day+0 is therefore ALREADY
+part hindcast."* A 20:00 row scores better than a 06:00 row because less of
+the day is left to be wrong about.
+
+**The consequence that decides it:** under Day+0-per-issuance, adding a third
+daily run would make the published accuracy figures jump, and nothing on the
+page would explain why. For a project whose pitch is a verifiable record, a
+headline number that drifts upward as runs are added is the worst kind of
+wrong — it looks like improvement.
+
+The window makes every issuance the same KIND of claim, the next 24 hours, so
+a 06:00 row and a 22:00 row are comparable by construction.
+
+### The discontinuity, and why it is acceptable
+
+The operator asked for no re-derivation, and that holds: the two series are
+separable per row — `issued_at` and the `window_*` fields are both stored —
+so the Day+0 history stands as the historical basis and the window starts
+fresh. What must NOT happen is the two being averaged into one figure, or a
+reader being shown a number whose basis changed mid-series without a mark.
+
+### Order
+
+1. Wait for 2026-09-17 and read the first scored window against the Day+0
+   score for the same issuance. That is a free comparison and it is the only
+   check that the scorer agrees with reality before anything depends on it.
+2. Then decide what the published pages and `track_record.json` report.
+
+Related: items 104 (contract item 2, which specified this), 140, 141, 131.
+
+---
+
+## 140. A window that opens after the rain has no onset to predict · **Planned — raised 2026-09-16**
+
+From item 138's unanswered question — what "onset" means for a window opening
+mid-event — settled by the operator on 2026-09-16:
+
+> *"I'm imagining that we forecast an onset later than what actually
+> occurred. We'd need to score our onset as wrong ... Onset becomes NA for
+> that window as it's already happened ... it would be wrong to report an
+> 1800 onset on a 1600 run where rain started at 1500."*
+
+Three distinct things, which is why it read as tangled:
+
+1. **The first call is scored as wrong.** A 06:00 issuance predicting 18:00
+   when rain began at 15:00 missed, and nothing about a later run softens
+   that. The record is doing its job.
+2. **The later window has no onset to predict.** Rain began before it opened,
+   so onset is **N/A for that window — not zero error.** This is what kills
+   the free win item 138 shape 3 would otherwise create: code setting the
+   onset from the observation would score 0 and enter the record as skill.
+   N/A scores nothing.
+3. **The question becomes duration** — item 141.
+
+### What this settles about item 138 shape 3
+
+"Code sets the onset when the station measured it" is right for the PROSE and
+wrong for the RECORD. The observation should stop the forecast printing a
+future onset that has already passed; it must not become a scored prediction.
+So shape 3 splits: suppress the claim, do not score the fact.
+
+### Open, and needs deciding before building
+
+Whether the passed onset is still STORED on the window row for learning — the
+operator raised it and left it open: *"or we update the data to show it for
+our records and learning"*. Storing it as an OBSERVATION is clearly useful
+and clearly not a prediction; the risk is a later reader treating a stored
+number as a forecast. Item 122 is the same question one layer down — the
+station's onset is recorded and never scored — and the two should be answered
+once.
+
+Related: items 138, 122, 139, 141.
+
+---
+
+## 141. When the rain has already started, the forecast owes duration, not onset · **Planned — raised 2026-09-16**
+
+The third of item 140's three things, and the only one that is new capability
+rather than a correction.
+
+The operator: *"attempt to see if the updated model indicates how long rain
+will continue, and report that in the forecast as it's useful information."*
+
+Nothing in the schema, the prompt or the models carries this. `onset_window`
+and `onset_hour` answer WHEN IT STARTS; there is no field for when it stops,
+and a reader at 16:00 in the rain is asking exactly that. It is a scored-field
+addition, which is the heaviest kind of change here, and it should not be
+attempted before items 139 and 140 settle what a window scores.
+
+### Where the data would come from, and why this links to item 41
+
+The models give hourly precipitation forward, so a crude "rain continues
+through HH:00" is derivable from `HOURS AHEAD` without any new source. But
+the operator's own framing points past that:
+
+> *"this is a good item to link to the radar and satellite roadmap items as
+> those views could at least give us some indication of near-term
+> conditions"*
+
+That is right, and it is the strongest argument yet for item 41. Duration is
+a NOWCASTING question — the next one to three hours — which is exactly where
+global NWP is weakest and where geostationary IR and radar are strongest.
+Item 41 already records the case: cloud-top brightness temperature every 15
+minutes, and deep convection with a signature that is hard to miss. A storm
+whose cloud tops are still cooling is not about to stop; one warming is.
+
+So the sequence is not "add a duration field" but:
+
+1. **Cheap version first** — duration from the model hourlies already in the
+   prompt, phrased with the uncertainty that deserves. Establishes whether
+   the field is useful at all before anything is fetched.
+2. **Then item 41**, if the cheap version shows the question is worth
+   answering well. Radar and satellite earn their complexity on nowcasting
+   specifically, and duration is the first thing this project has wanted that
+   NWP genuinely cannot do.
+
+`docs-internal/RADAR_SATELLITE_REGIONAL_OBSERVATIONS_HANDOFF.md` is the prior
+art and should be read before either.
+
+Related: items 41 (satellite — this is its strongest use case), 140, 138,
+139, 122.
