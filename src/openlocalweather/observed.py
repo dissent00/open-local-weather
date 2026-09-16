@@ -25,7 +25,7 @@ against the Dart port, so reordering it is a behaviour change.
 
 from __future__ import annotations
 
-from openlocalweather.models import SOURCE_STATION, DailyActual, ObservedSoFar
+from openlocalweather.models import LowDivergence, SOURCE_STATION, DailyActual, ObservedSoFar
 from openlocalweather.models import format_temp_c
 
 
@@ -182,3 +182,41 @@ def observed_baseline(observed: ObservedSoFar | None) -> DailyActual | None:
             if value is not None
         },
     )
+
+
+def describe_low_divergence(divergence: LowDivergence | None, station_name: str) -> str | None:
+    """The overnight-low footnote, or None when there is nothing to footnote —
+    ROADMAP item 143, part 3.
+
+    A FACT ABOUT ONE STATION, NOT A CLAIM ABOUT THE BASIN. The operator's
+    framing is the specification: "the airport reported 20 against the
+    forecast of 18.2. It's not saying nowhere in the area hit 18.2, just that
+    the airport didn't." So the sentence names the place and both numbers, and
+    asserts nothing about anywhere else. A measuring station can be warmer
+    than the country around it and the forecast can be wrong, and this cannot
+    tell which — saying it plainly is the honest shape.
+
+    SILENCE IS THE DEFAULT. Only a `notable` divergence gets a sentence. Item
+    143 records why: the operator does not want this in front of a reader on
+    an ordinary morning, and a footnote that appears every day stops being
+    read on the day it matters.
+
+    WHY CODE WRITES IT RATHER THAN THE MODEL. Item 142 found that OBSERVED SO
+    FAR TODAY and THE FORECASTER'S CALL both arrive locked verbatim and
+    disagreed about the same quantity, so the instruction set REQUIRED
+    publishing two lows for one day — the thing rule 1 exists to prevent. The
+    forecast escaped it only by taking the other branch of "use it VERBATIM or
+    not at all". A pre-computed sentence is the way out: there is now exactly
+    one sanctioned form of words that mentions both, and the model's only
+    choice is whether to use it.
+    """
+    if divergence is None or not divergence.notable:
+        return None
+
+    return (
+        f"{station_name} recorded an overnight low of "
+        f"{format_temp_c(divergence.observed_c, decimals=1)} against a forecast of "
+        f"{format_temp_c(divergence.forecast_c, decimals=1)}. That is this one station, not the wider "
+        f"area: it does not say nowhere reached the forecast low."
+    )
+

@@ -89,7 +89,8 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
         update={
             "rain_expected": m.rain_expected,
             "onset_window": m.onset_window,
-            "peak_wind_kmh": m.peak_wind_kmh,
+            "peak_wind_primary_kmh": m.peak_wind_primary_kmh,
+            "peak_wind_secondary_kmh": m.peak_wind_secondary_kmh,
             "temp_high_c": m.temp_high_c,
             "temp_low_c": m.temp_low_c,
             "temp_high_low_display": m.temp_high_low_display,

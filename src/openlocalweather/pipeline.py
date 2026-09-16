@@ -157,15 +157,21 @@ from openlocalweather.llm.schema import (
     TodayProperties,
     merge_forecast_response,
 )
-from openlocalweather.observed import describe_observed_so_far, observed_baseline
+from openlocalweather.observed import (
+    describe_low_divergence,
+    describe_observed_so_far,
+    observed_baseline,
+)
 from openlocalweather.reasoning import llm_should_reason
 from openlocalweather.verify.scoring import verify_closed_windows
 from openlocalweather.disagreement import (
     StandingCall,
+    low_divergence,
     observation_disagreements,
 )
 from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
+    LowDivergence,
     DayOverDayComparison,
     IssuancePredictions,
     ObservedSoFar,
@@ -838,6 +844,7 @@ def _build_forecast_prompt(
     yesterday_actual: Any,
     calibrated_wind_kmh: float | None,
     extended_days: list[list],
+    overnight_low_divergence: LowDivergence | None,
 ) -> str:
     """The user prompt, built in the one place it is built.
 
@@ -894,7 +901,7 @@ def _build_forecast_prompt(
         yesterday_actual=yesterday_actual,
         **_locked_blocks(
             guidance, day0_predictions, today, observed_so_far, calibrated_wind_kmh,
-            extended_days,
+            extended_days, overnight_low_divergence, deps.location,
         ),
         review_context=review_context,
         today_weather_data={
@@ -930,6 +937,8 @@ def _locked_blocks(
     observed: ObservedSoFar | None,
     calibrated_wind_kmh: float | None,
     extended_days: list[list],
+    overnight_low_divergence: LowDivergence | None,
+    location: LocationConfig,
 ) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
@@ -978,6 +987,16 @@ def _locked_blocks(
         "observed_so_far": describe_observed_so_far(
             observed,
             as_of=guidance.issuance.local_time if guidance.issuance else None,
+        ),
+        # ROADMAP item 143, part 3. None on most runs and that is the design:
+        # the block disappears entirely rather than printing an "Unavailable"
+        # line, because nothing is unavailable — there is simply nothing worth
+        # a reader's attention. NAMED, never "the station": a footnote that
+        # does not say which place it describes reads as a claim about the
+        # whole area, which is the one thing it must not say.
+        "low_divergence_note": describe_low_divergence(
+            overnight_low_divergence,
+            location.metar_station_name or location.metar_station_icao,
         ),
         # The periods this issuance covers, each with the hours it means —
         # item 104. Derived from the issuance's own horizon, so the prompt
@@ -1643,12 +1662,23 @@ def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
         # ROADMAP item 58. Without this line the field would be collected and
         # never checked, which is the one outcome worse than not asking.
         rain_probability_pct=tp.rain_probability_pct,
-        # Deliberately absent, not zero. peak_wind_kmh in today_properties is
-        # the SECONDARY point's, and mslp_trend_24h is prose; scoring either
-        # against the primary point's observations would be comparing two
-        # different things. A null reads as "not forecast" everywhere in this
-        # record, which is the truthful answer until both are structured.
-        wind_kmh=None,
+        # SCORED AT LAST — ROADMAP item 144. This was `None` for as long as
+        # `today_properties` had one wind field, because that field was the
+        # SECONDARY point's and scoring it against the primary point's
+        # observations would have compared two different places. The split
+        # gives the blend a wind call at the place the record observes, so the
+        # null is no longer the truthful answer — it would now be discarding a
+        # forecast that exists.
+        #
+        # THE QUANTITIES MATCH, checked 2026-09-16. The observation side is
+        # ERA5 gust (`pick_series(h, "wind_gusts_10m", ...)`) and this is a
+        # forecast gust, so it is gust against gust. The METAR station does not
+        # enter it: `_apply_station_observations` stamps only thunder and
+        # precipitation, and HKKI has never filed a gust group at all.
+        #
+        # The SECONDARY point's wind stays unscored, and `mslp_trend_24h`
+        # stays prose, so both remain null here for the original reason.
+        wind_kmh=tp.peak_wind_primary_kmh,
         mslp_trend=None,
     )
 
@@ -1742,7 +1772,37 @@ def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
         # blend row carries the "HH:MM" the record is graded on, and grading
         # is what an observation should be allowed to contradict.
         onset_hour=blend.onset if blend is not None else None,
+        # FROM THE ENTRY, not the blend row — ROADMAP item 143. The scored row
+        # carries no low; `temp_low_c` on the entry IS the blended call and is
+        # what tomorrow's verification grades, so it is the number the
+        # station's reading should be allowed to diverge from.
+        temp_low_c=entry.temp_low_c,
     )
+
+
+def _overnight_low_is_settled(guidance: ForwardGuidance) -> bool | None:
+    """Whether the night behind this issuance is over — ROADMAP item 143.
+
+    A minimum only falls, so a station sitting ABOVE the called low proves
+    nothing until the coldest part of the night has passed. Sunrise is that
+    line: `observed.low_c` is the lowest reading of the calendar day so far,
+    and after sunrise it is not going to be beaten.
+
+    THREE-VALUED. None means the sun times were unavailable, so this run does
+    not KNOW whether the night is over — see `daypart_without_sun`, which is
+    the same absence. It is not False, because False would license the
+    opposite claim on the same missing data.
+    """
+    issuance = getattr(guidance, "issuance", None)
+    now_local = getattr(guidance, "issued_at_local", None)
+    if issuance is None or now_local is None:
+        return None
+
+    sunrise = _clock_on(now_local, getattr(issuance, "sunrise", None))
+    if sunrise is None:
+        return None
+
+    return now_local >= sunrise
 
 
 def _observed_so_far(location: LocationConfig, today: date) -> ObservedSoFar | None:
@@ -1800,6 +1860,7 @@ def _information_moved(
     against the first few days anyone happens to look at.
     """
     recency = _guidance_recency_payload(guidance, existing_entry) or {}
+    settled = _overnight_low_is_settled(guidance)
 
     return InformationMoved(
         first_issuance_of_day=existing_entry is None,
@@ -1807,7 +1868,22 @@ def _information_moved(
         observation_disagreements=(
             None
             if observed is None
-            else observation_disagreements(_standing_call(existing_entry), observed)
+            else observation_disagreements(
+                _standing_call(existing_entry), observed, low_is_settled=settled
+            )
+        ),
+        # STORED ON EVERY RUN, not only when it fires — ROADMAP item 143, part
+        # 4. The question the operator wants answered is whether the station
+        # runs warmer than the forecast or the forecast low is the problem,
+        # and nothing can answer it until the per-day gap is on the record.
+        # A divergence that was not worth printing is exactly the kind of row
+        # that answers it.
+        low_divergence=(
+            None
+            if observed is None
+            else low_divergence(
+                _standing_call(existing_entry), observed, low_is_settled=settled
+            )
         ),
     )
 
@@ -1962,7 +2038,8 @@ def _compose_log_entry(
         date=today,
         rain_expected=tp.rain_expected,
         onset_window=tp.onset_window,
-        peak_wind_kmh=tp.peak_wind_kmh,
+        peak_wind_primary_kmh=tp.peak_wind_primary_kmh,
+        peak_wind_secondary_kmh=tp.peak_wind_secondary_kmh,
         temp_high_c=tp.temp_high_c,
         temp_low_c=tp.temp_low_c,
         temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
@@ -2795,6 +2872,7 @@ def _issue_forecast(
         today,
         day0_predictions=day0_predictions,
         observed_so_far=observed_so_far,
+        overnight_low_divergence=information_moved.low_divergence,
         verification_context=verification_context,
         model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,

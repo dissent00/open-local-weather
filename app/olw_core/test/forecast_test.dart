@@ -58,6 +58,8 @@ final _llmPayload = {
   'today_properties': {
     'rain_expected': 'Yes — showers likely this afternoon',
     'onset_window': '13:00-16:00',
+    'peak_wind_primary_kmh': 32.8,
+    'peak_wind_secondary_kmh': 41.0,
     'temp_high_c': 27.5,
     'temp_low_c': 18.0,
         'rain': true,
@@ -271,8 +273,16 @@ void main() {
     final blend = run.day0Predictions.singleWhere((p) => p.model == blendModelId);
     expect(blend.highC, run.response.todayProperties.tempHighC);
     expect(blend.rain, run.response.todayProperties.rain);
-    expect(blend.windKmh, isNull,
-        reason: 'absent, never zero — peakWindKmh is the secondary point');
+    // ITEM 144: the PRIMARY point's gust is scored, the secondary's is not.
+    // The fixture carries both and they differ, which is the point — this
+    // assertion used to expect null and would have passed unchanged if the
+    // wiring were deleted, because the old fixture supplied no gust at all.
+    // The two numbers here are the real ones from 2026-09-16, the day the
+    // narrative published the Gulf's 41 in the ashore section.
+    expect(blend.windKmh, 32.8,
+        reason: 'the ashore gust is the one the record observes');
+    expect(blend.windKmh, isNot(41.0),
+        reason: "the secondary point's gust must never reach the scored row");
 
     // today_properties is a call about TODAY, so it never produces an
     // extended row — an unscoreable placeholder in the record. A blend row at

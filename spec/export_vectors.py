@@ -83,6 +83,7 @@ from openlocalweather.comparison import compute_day_over_day, comparison_subject
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.disagreement import (
+    low_divergence,
     StandingCall,
     observation_disagreements,
 )
@@ -1274,7 +1275,7 @@ def export_user_prompt() -> None:
         "cold start matters most, because each 'Unavailable' string is what "
         "stops a gap being read as a measurement — and the last case is its "
         "mirror: where a source was never configured, the block is absent "
-        "rather than reported unavailable.",
+        "rather than reported unavailable. The last case covers the overnight-low footnote, which is absent on every ordinary morning and would otherwise be pinned by nothing.",
         [
             case("fully populated", full),
             case("a later issuance — differs only by its issuance hour", refresh, verification_already_written=True),
@@ -1284,6 +1285,21 @@ def export_user_prompt() -> None:
             case(
                 "no local met service configured — the bulletin block is absent",
                 dict(full, local_bulletin_configured=False),
+            ),
+            # ITEM 143. The footnote is ABSENT from every case above, which is
+            # the ordinary morning and would let a port implement nothing at
+            # all and still pass. This case is the one that pins the block.
+            case(
+                "the overnight low diverged — the footnote block appears",
+                dict(
+                    full,
+                    low_divergence_note=(
+                        "Kisumu International Airport recorded an overnight low of "
+                        "20.0°C / 68.0°F against a forecast of 18.2°C / 64.8°F. That "
+                        "is this one station, not the wider area: it does not say "
+                        "nowhere reached the forecast low."
+                    ),
+                ),
             ),
         ],
     )
@@ -2324,6 +2340,83 @@ def export_system_prompt() -> None:
 
 
 
+def export_low_divergence() -> None:
+    """ROADMAP item 143. The station's overnight low against the standing call.
+
+    VECTOR-LOCKED SEPARATELY FROM THE DISAGREEMENT LIST, because the two
+    answer different questions and a port that merged them would be wrong in
+    a way nothing would report. `observation_disagreements` decides whether an
+    LLM CALL IS BOUGHT, and only a near-freezing divergence is allowed to buy
+    one. This decides what is MEASURED AND STORED, and it runs on every day
+    the comparison is possible — including the ordinary mornings that buy
+    nothing, which are the days that will eventually answer whether the
+    station runs warm or the forecast low is the problem.
+
+    THE ASYMMETRY IS THE CASE THAT MATTERS, as it is everywhere in this
+    module. A minimum only falls, so a reading BELOW the call settles it at
+    any hour while one ABOVE it waits for sunrise — and a port that skipped
+    the gate would print a divergence on a night that was still running.
+    """
+    scenarios = [
+        ("the founding case: 20.0 observed against a call of 18.2", 18.2, 20.0, True),
+        ("the same gap, before sunrise, is not yet a comparison", 18.2, 20.0, False),
+        ("a night whose end is unknown is not a comparison either", 18.2, 20.0, None),
+        ("inside the wide band, measured but not notable", 18.2, 19.0, True),
+        ("exactly at the wide band fires", 18.2, 21.2, True),
+        ("near freezing, the band tightens", -0.5, 2.0, True),
+        ("near freezing and inside even the tight band", 0.2, 0.9, True),
+        ("colder than called needs no sunrise", 2.0, -1.0, False),
+        ("colder than called, far from freezing, is notable but not decisive",
+         25.0, 21.0, False),
+        ("no standing low is no comparison", None, 20.0, True),
+        ("no station low is no comparison", 18.2, None, True),
+    ]
+
+    cases = []
+    for name, called, seen, settled in scenarios:
+        got = low_divergence(
+            StandingCall(temp_low_c=called),
+            ObservedSoFar(low_c=seen),
+            low_is_settled=settled,
+        )
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "standing": {"temp_low_c": called},
+                    "observed": {"low_c": seen},
+                    "low_is_settled": settled,
+                },
+                "expected": None
+                if got is None
+                else {
+                    "forecast_c": got.forecast_c,
+                    "observed_c": got.observed_c,
+                    "delta_c": round(got.delta_c, 10),
+                    "margin_c": got.margin_c,
+                    "notable": got.notable,
+                    "decisive": got.decisive,
+                },
+            }
+        )
+
+    write(
+        "low_divergence.json",
+        "low_divergence",
+        "ROADMAP item 143. How far the station's overnight low sits from the "
+        "standing call, measured on every run that can make the comparison "
+        "and stored whether or not it is worth printing. `delta_c` is "
+        "OBSERVED MINUS FORECAST, so positive means the station came in "
+        "WARMER than the call. `notable` is worth a reader's footnote; "
+        "`decisive` is worth an LLM call, and is `notable` AND near freezing "
+        "-- two degrees is nothing at 20C and is the difference between ice "
+        "and no ice at 2C. A reading ABOVE the call requires the night to be "
+        "over (`low_is_settled` true, never null); one BELOW it settles at "
+        "any hour, because a minimum only falls.",
+        cases,
+    )
+
+
 def export_observation_disagreements() -> None:
     """ROADMAP item 104, C2's third trigger, and it decides whether an LLM
     call is made rather than what one says.
@@ -2334,33 +2427,60 @@ def export_observation_disagreements() -> None:
     wrong. The margin and the asymmetry are the cases that matter — see
     disagreement.py for why a maximum only rises.
     """
-    # Each scenario is (name, (rain, high_call, onset_call), (precipitation,
-    # high_obs, onset_obs)). The onset triple was added with item 138.
+    # Each scenario is (name, (rain, high_call, onset_call, low_call),
+    # (precipitation, high_obs, onset_obs, low_obs), low_is_settled). The
+    # onset slot was added with item 138 and the low slot with item 143.
     scenarios = [
-        ("rain observed while the call said dry", (False, 30.0, None), (True, None, None)),
-        ("no rain YET does not contradict a rain call", (True, 30.0, None), (False, None, None)),
-        ("the observed high has already passed the call", (False, 30.0, None), (False, 33.0, None)),
-        ("a high below the call is not a contradiction", (False, 30.0, None), (False, 24.0, None)),
-        ("just under the margin does not fire", (False, 30.0, None), (False, 31.9, None)),
-        ("exactly at the margin fires", (False, 30.0, None), (False, 32.0, None)),
-        ("absent observations contradict nothing", (False, 30.0, None), (None, None, None)),
-        ("absent standing call contradicts nothing", (None, None, None), (True, 99.0, None)),
-        ("both fire, in a stable order", (False, 30.0, None), (True, 35.0, None)),
+        ("rain observed while the call said dry", (False, 30.0, None, None), (True, None, None, None), True),
+        ("no rain YET does not contradict a rain call", (True, 30.0, None, None), (False, None, None, None), True),
+        ("the observed high has already passed the call", (False, 30.0, None, None), (False, 33.0, None, None), True),
+        ("a high below the call is not a contradiction", (False, 30.0, None, None), (False, 24.0, None, None), True),
+        ("just under the margin does not fire", (False, 30.0, None, None), (False, 31.9, None, None), True),
+        ("exactly at the margin fires", (False, 30.0, None, None), (False, 32.0, None, None), True),
+        ("absent observations contradict nothing", (False, 30.0, None, None), (None, None, None, None), True),
+        ("absent standing call contradicts nothing", (None, None, None, None), (True, 99.0, None, None), True),
+        ("both fire, in a stable order", (False, 30.0, None, None), (True, 35.0, None, None), True),
         # ITEM 138: the call is right about the day and wrong about the hour,
         # which every test above is blind to.
-        ("onset already passed", (True, 30.0, "18:00"), (True, None, "14:00")),
-        ("onset inside the forecast's own resolution", (True, 30.0, "18:00"), (True, None, "17:30")),
-        ("rain later than called is not a contradiction", (True, 30.0, "14:00"), (True, None, "18:00")),
-        ("exactly at the onset margin fires", (True, 30.0, "18:00"), (True, None, "17:00")),
-        ("an unpadded hour still parses", (True, 30.0, "18:00"), (True, None, "9:00")),
-        ("no called onset says nothing", (True, 30.0, None), (True, None, "14:00")),
+        ("onset already passed", (True, 30.0, "18:00", None), (True, None, "14:00", None), True),
+        ("onset inside the forecast's own resolution", (True, 30.0, "18:00", None), (True, None, "17:30", None), True),
+        ("rain later than called is not a contradiction", (True, 30.0, "14:00", None), (True, None, "18:00", None), True),
+        ("exactly at the onset margin fires", (True, 30.0, "18:00", None), (True, None, "17:00", None), True),
+        ("an unpadded hour still parses", (True, 30.0, "18:00", None), (True, None, "9:00", None), True),
+        ("no called onset says nothing", (True, 30.0, None, None), (True, None, "14:00", None), True),
+        # ITEM 143: the observed low. ONLY THE NEAR-FREEZING CASES REACH THIS
+        # LIST — the gap is measured on every run and stored, but membership
+        # here buys an LLM call, so an ordinary warm-morning divergence is
+        # deliberately absent from the result. `low_divergence.json` pins the
+        # measurement itself; this pins only what it is allowed to SPEND.
+        ("the founding case: warmer station, far from freezing, buys nothing",
+         (None, None, None, 18.2), (None, None, None, 20.0), True),
+        ("the same gap near freezing is decisive",
+         (None, None, None, -0.5), (None, None, None, 2.0), True),
+        ("an unsettled night makes a warmer reading prove nothing",
+         (None, None, None, -0.5), (None, None, None, 2.0), False),
+        ("colder than called settles without waiting for sunrise",
+         (None, None, None, 2.0), (None, None, None, -1.0), False),
+        ("a night whose end is UNKNOWN resolves to silence",
+         (None, None, None, -0.5), (None, None, None, 2.0), None),
+        ("no station low says nothing", (None, None, None, -0.5), (None, None, None, None), True),
     ]
 
     cases = []
-    for name, (rain, high_call, onset_call), (precipitation, high_obs, onset_obs) in scenarios:
-        standing = StandingCall(rain=rain, temp_high_c=high_call, onset_hour=onset_call)
+    for (
+        name,
+        (rain, high_call, onset_call, low_call),
+        (precipitation, high_obs, onset_obs, low_obs),
+        settled,
+    ) in scenarios:
+        standing = StandingCall(
+            rain=rain, temp_high_c=high_call, onset_hour=onset_call, temp_low_c=low_call
+        )
         observed = ObservedSoFar(
-            precipitation=precipitation, high_c=high_obs, precipitation_onset=onset_obs
+            precipitation=precipitation,
+            high_c=high_obs,
+            precipitation_onset=onset_obs,
+            low_c=low_obs,
         )
         cases.append(
             {
@@ -2370,14 +2490,19 @@ def export_observation_disagreements() -> None:
                         "rain": rain,
                         "temp_high_c": high_call,
                         "onset_hour": onset_call,
+                        "temp_low_c": low_call,
                     },
                     "observed": {
                         "precipitation": precipitation,
                         "high_c": high_obs,
                         "precipitation_onset": onset_obs,
+                        "low_c": low_obs,
                     },
+                    "low_is_settled": settled,
                 },
-                "expected": observation_disagreements(standing, observed),
+                "expected": observation_disagreements(
+                    standing, observed, low_is_settled=settled
+                ),
             }
         )
 
@@ -3947,7 +4072,8 @@ def export_blend_prediction() -> None:
 
     def tp(**over):
         base = dict(
-            rain_expected="Evening showers", onset_window=None, peak_wind_kmh=24.0,
+            rain_expected="Evening showers", onset_window=None,
+            peak_wind_primary_kmh=32.8, peak_wind_secondary_kmh=41.0,
             temp_high_c=30.0, temp_low_c=18.0, rain=True, onset_hour="16:00",
             precip_mm=2.5, rain_probability_pct=65, mslp_trend_24h="-0.4 hPa",
             synoptic_pattern="Troughing", uv_index_max="9.4", air_quality_aqi="88",
@@ -3961,15 +4087,26 @@ def export_blend_prediction() -> None:
         ("a committed zero survives, because 0 is falsy in both languages",
          tp(rain=False, rain_probability_pct=0, precip_mm=0.0)),
         ("no onset, because nothing crossed the threshold", tp(onset_hour=None)),
+        # ITEM 144. The two gusts DIFFER in every case above, and they are the
+        # real pair from 2026-09-16 — the day the ashore section published the
+        # Gulf's 41. A port that carried the wrong one, or carried neither,
+        # would fail here and pass everywhere else.
+        ("no ashore gust offered — absent, never the other point's",
+         tp(peak_wind_primary_kmh=None)),
     ]
 
     write(
         "blend_prediction.json",
         "_blend_prediction",
-        "The blended forecaster's Day+0 row. peak_wind_kmh and mslp_trend_24h "
-        "are deliberately NOT carried — the first is the secondary point's and "
-        "the second is prose, so scoring either against the primary point's "
-        "observations would compare two different things.",
+        "The blended forecaster's Day+0 row. `wind_kmh` carries "
+        "`peak_wind_primary_kmh` and ONLY that: item 144 split the one "
+        "ambiguous wind field in two, and the ashore one describes the place "
+        "the record observes, so it is scorable where the secondary point's "
+        "is not. `peak_wind_secondary_kmh` and `mslp_trend_24h` are "
+        "deliberately NOT carried — the first is a different place and the "
+        "second is prose, and scoring either against the primary point's "
+        "observations would compare two different things. The inputs here "
+        "give the two points DIFFERENT gusts on purpose.",
         [
             {"name": name, "input": t.model_dump(), "expected": _blend_prediction(t).model_dump()}
             for name, t in cases
@@ -4345,6 +4482,7 @@ def main() -> None:
     export_spend()
     export_verification()
     export_observation_disagreements()
+    export_low_divergence()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

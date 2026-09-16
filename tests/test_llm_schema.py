@@ -128,7 +128,7 @@ def test_schema_facts_names_every_nullable_field_by_path():
     # the four that never dropped are not. That pairing is the whole reason
     # this is recorded; see ROADMAP item 59's "what does NOT separate the six".
     assert "/today_properties/mslp_trend_24h" in nullable
-    assert "/today_properties/peak_wind_kmh" in nullable
+    assert "/today_properties/peak_wind_secondary_kmh" in nullable
     assert "/today_properties/air_quality_aqi" in nullable
     assert "/today_properties/rain_expected" not in nullable
     assert "/today_properties/temp_high_c" not in nullable
@@ -169,3 +169,16 @@ def test_schema_facts_hash_is_stable_across_rebuilds():
     b, _ = gemini_schema_facts(to_gemini_schema(GeminiForecastResponse))
 
     assert a == b
+
+
+def test_today_properties_names_both_wind_points():
+    """ROADMAP item 144. One ambiguous `peak_wind_kmh` published the Gulf's
+    gust in the ashore section on 2026-09-16; the fix is two named fields."""
+    from openlocalweather.llm.schema import TodayProperties
+
+    fields = TodayProperties.model_fields
+    assert "peak_wind_primary_kmh" in fields, "the ashore wind has no field"
+    assert "peak_wind_secondary_kmh" in fields, "the Gulf's wind must keep its own"
+    assert "peak_wind_kmh" not in fields, (
+        "the ambiguous name must be gone, not kept beside the explicit ones"
+    )

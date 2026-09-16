@@ -295,6 +295,7 @@ def detect_trigger_regression(
 # entries in which all three were filled.
 #
 #   peak_wind_kmh    37.4 on 09-08, None on 09-09, 09-10, 09-11
+#                    (now peak_wind_secondary_kmh — item 144)
 #   mslp_trend_24h   "-0.2 hPa (Steady)" on 09-08, "" after
 #   air_quality_aqi  "88 US AQI (Moderate, CAMS Model)" on 09-08, None after
 #
@@ -309,9 +310,16 @@ def detect_trigger_regression(
 # day. `onset_window` is excluded for the reason `onset` is excluded above:
 # it is populated only when rain onset is forecast, and was null on 19 of the
 # record's first 32 entries, so watching it would alert on every dry spell.
+#
+# `peak_wind_primary_kmh` is excluded BY THAT SAME RULE — ROADMAP item 144.
+# The 2026-09-16 split gave the ashore wind its own field and `_blend_prediction`
+# now scores it, so an absence surfaces as an unscored day exactly like the
+# other scored fields. The secondary point's stays here because nothing scores
+# it: it is still the number "boaters would act on" and still reaches no other
+# check. The name changed in the split; the 09-09..11 gap above is this field's.
 NARRATED_FIELDS = (
     "rain_expected",
-    "peak_wind_kmh",
+    "peak_wind_secondary_kmh",
     "mslp_trend_24h",
     "synoptic_pattern",
     "uv_index_max",
@@ -361,7 +369,7 @@ def _narrated_present(entry, field: str) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     # Numeric fields are present at any value. `bool(value)` would read a
-    # peak_wind_kmh of 0.0 as absent, which is a real reading and not a gap.
+    # a gust of 0.0 as absent, which is a real reading and not a gap.
     return True
 
 

@@ -96,3 +96,31 @@ String? _sky(double? oktas) {
   // reports stays comparable with a single one.
   return 'sky ${roundLikePython(oktas, 0).toInt()}/8';
 }
+
+/// The overnight-low footnote, or null when there is nothing to footnote —
+/// upstream item 143.
+///
+/// A FACT ABOUT ONE STATION, NOT A CLAIM ABOUT THE BASIN. The sentence names
+/// the place and both numbers and asserts nothing about anywhere else: a
+/// measuring station can be warmer than the country around it and the
+/// forecast can be wrong, and this cannot tell which.
+///
+/// SILENCE IS THE DEFAULT. Only a [LowDivergence.notable] gap gets a
+/// sentence, because a footnote that appears every day stops being read on
+/// the day it matters.
+///
+/// WHY CODE WRITES IT RATHER THAN THE MODEL. OBSERVED SO FAR TODAY and THE
+/// FORECASTER'S CALL both arrive locked verbatim and can disagree about the
+/// same quantity, so the instruction set REQUIRED publishing two lows for one
+/// day. A pre-computed sentence is the way out: there is exactly one
+/// sanctioned form of words that mentions both, and the model's only choice
+/// is whether to use it.
+String? describeLowDivergence(LowDivergence? divergence, String stationName) {
+  if (divergence == null || !divergence.notable) return null;
+
+  return '$stationName recorded an overnight low of '
+      '${formatTempC(divergence.observedC, decimals: 1)} against a forecast of '
+      '${formatTempC(divergence.forecastC, decimals: 1)}. That is this one '
+      'station, not the wider area: it does not say nowhere reached the '
+      'forecast low.';
+}

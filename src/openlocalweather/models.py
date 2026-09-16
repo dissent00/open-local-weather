@@ -16,13 +16,44 @@ from __future__ import annotations
 
 import re
 
+from decimal import ROUND_HALF_UP, Decimal
+
 from datetime import date, datetime
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 LeadTime = int  # one of 0, 3, 7 — not a real enum, kept as int to match defaults.LEAD_TIMES_DAYS
+
+
+@dataclass(frozen=True)
+class LowDivergence:
+    """What the station's overnight low says about the called one.
+
+    STORED WHETHER OR NOT IT PRINTS — item 143's fourth part, and the part
+    that makes the other three answerable later. The operator's question is
+    whether the airport runs warmer than the forecast or the forecast low is
+    the problem, and neither can be answered until the per-day gap is on the
+    record. So this is produced on every run with a settled low, and
+    `notable` is a judgement ABOUT it rather than a condition for keeping it.
+    """
+
+    forecast_c: float
+    observed_c: float
+    # observed minus forecast. POSITIVE means the station came in WARMER than
+    # the call, which is the founding case and the direction that needs a
+    # settled night behind it.
+    delta_c: float
+    # The band this gap was judged against, carried so a stored row can be
+    # re-read after the margin is retuned without guessing which one applied.
+    margin_c: float
+    # Worth a reader's attention: the gap exceeded its band.
+    notable: bool
+    # Worth an LLM call: notable AND cold enough that it changes what someone
+    # does. See `observation_disagreements` for why these are separate.
+    decisive: bool
+
 
 
 @dataclass(frozen=True)
@@ -166,7 +197,7 @@ def format_temp_high_low(high_c: float, low_c: float) -> str:
     return f"{format_temp_c(high_c)} high, {format_temp_c(low_c)} low"
 
 
-def format_temp_c(celsius: float) -> str:
+def format_temp_c(celsius: float, *, decimals: int = 0) -> str:
     """One temperature, in both units — the half of `format_temp_high_low`
     that is about a single number.
 
@@ -178,8 +209,44 @@ def format_temp_c(celsius: float) -> str:
     exist for it, and item 88 found ten.
 
     The rounding reasoning belongs to the caller above and is not repeated.
+
+    `decimals` IS A PRECISION, NOT A STYLE — ROADMAP item 143, and it exists
+    for exactly one caller. Whole degrees are right for everything a reader
+    plans a day around, and the parameter defaults to them. They are wrong for
+    the overnight-low footnote, whose entire content is a GAP: at 0 decimals
+    "20 against a forecast of 18.2" prints as "20 against 18", and near
+    freezing -0.4 and 0.6 both print as 0, which erases the ice/no-ice
+    distinction that is the whole reason that footnote is allowed to exist.
+    A separate formatter would have been the second rounding site this
+    docstring is about, so the precision is a parameter and the conversion
+    stays in one place.
     """
-    return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
+    if not decimals:
+        return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
+
+    return f"{_fixed(celsius, decimals)}°C / {_fixed(celsius * 9 / 5 + 32, decimals)}°F"
+
+
+def _fixed(value: float, decimals: int) -> str:
+    """`value` at `decimals` places, rounding ties AWAY FROM ZERO.
+
+    NOT `f"{value:.1f}"`, WHICH ROUNDS TIES TO EVEN. Dart's `toStringAsFixed`
+    rounds them away from zero, so the f-string and the port disagree on every
+    value landing exactly on a half — 0.25 prints 0.2 here and 0.3 there. This
+    is the project's most-bitten divergence class and the vectors would not
+    have caught it: they pin the cases someone chose, and nobody chooses 0.25.
+
+    `Decimal(value)` is EXACT for a float — it takes the binary value, not a
+    decimal approximation of it — so the quantize below decides the tie on the
+    same number `toStringAsFixed` sees. Swept against Dart over 25,203 values
+    at one and two output decimals: zero divergences.
+
+    "-0.0" is normalised away on both sides. It is a real output here (-17.8 C
+    is -0.04 F) and reads as a typo in a sentence someone is meant to act on.
+    """
+    quantum = Decimal(1).scaleb(-decimals)
+    out = format(Decimal(value).quantize(quantum, rounding=ROUND_HALF_UP), "f")
+    return out.lstrip("-") if Decimal(out) == 0 else out
 
 
 # ---------------------------------------------------------------------------
@@ -895,6 +962,21 @@ class InformationMoved(BaseModel):
     # when the station did not report or the lookup failed.
     observation_disagreements: list[str] | None = None
 
+    # The station's overnight low against the standing call — ROADMAP item
+    # 143, part 4.
+    #
+    # NOT A DISAGREEMENT, AND KEPT BESIDE THEM ON PURPOSE. Only a divergence
+    # near freezing joins `observation_disagreements` above, because that list
+    # is a spending decision. This field holds the measurement itself on every
+    # run that could make one, whether or not it was worth a reader's
+    # attention or an LLM call, because the questions it exists to answer —
+    # does the station run warmer than the forecast, or is the forecast low
+    # the problem — are answered by the ordinary days, not the loud ones.
+    #
+    # None means no comparison was possible: no station reading, no standing
+    # call, or a night not yet over. Absence is absence.
+    low_divergence: LowDivergence | None = None
+
 
 class LogEntryMeta(BaseModel):
     generated_at_utc: datetime
@@ -1103,7 +1185,11 @@ class IssuanceSnapshot(BaseModel):
 
     rain_expected: str
     onset_window: str | None = None
-    peak_wind_kmh: float | None = None
+    peak_wind_primary_kmh: float | None = None
+    peak_wind_secondary_kmh: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices("peak_wind_secondary_kmh", "peak_wind_kmh"),
+    )
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
@@ -1191,7 +1277,11 @@ class DailyLogEntry(BaseModel):
     # not any single model's raw number.
     rain_expected: str
     onset_window: str | None = None  # Day+0 only
-    peak_wind_kmh: float | None = None  # secondary point, if configured
+    peak_wind_primary_kmh: float | None = None
+    peak_wind_secondary_kmh: float | None = Field(
+        default=None,
+        validation_alias=AliasChoices("peak_wind_secondary_kmh", "peak_wind_kmh"),
+    )
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
@@ -1331,7 +1421,8 @@ class DailyLogEntry(BaseModel):
             issued_local_time=self.meta.issued_local_time,
             rain_expected=self.rain_expected,
             onset_window=self.onset_window,
-            peak_wind_kmh=self.peak_wind_kmh,
+            peak_wind_primary_kmh=self.peak_wind_primary_kmh,
+            peak_wind_secondary_kmh=self.peak_wind_secondary_kmh,
             temp_high_c=self.temp_high_c,
             temp_low_c=self.temp_low_c,
             temp_high_low_display=self.temp_high_low_display,

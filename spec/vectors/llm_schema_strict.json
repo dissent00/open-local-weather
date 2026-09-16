@@ -68,7 +68,13 @@
                   "null"
                 ]
               },
-              "peak_wind_kmh": {
+              "peak_wind_primary_kmh": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "peak_wind_secondary_kmh": {
                 "type": [
                   "number",
                   "null"
@@ -129,7 +135,8 @@
             "required": [
               "rain_expected",
               "onset_window",
-              "peak_wind_kmh",
+              "peak_wind_primary_kmh",
+              "peak_wind_secondary_kmh",
               "temp_high_c",
               "temp_low_c",
               "rain",

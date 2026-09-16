@@ -469,7 +469,8 @@ void main() {
         rain: false,
         rainExpected: 'Yes — showers likely',
         onsetWindow: '13:00-16:00',
-        peakWindKmh: 28.4,
+        peakWindPrimaryKmh: 31.2,
+        peakWindSecondaryKmh: 28.4,
         tempHighC: 27.5,
         tempLowC: 18.0,
         mslpTrend24h: 'Falling slowly',
@@ -480,7 +481,10 @@ void main() {
       final json = original.toJson();
       expect(json['rain_expected'], original.rainExpected);
       expect(json['temp_high_c'], 27.5);
-      expect(json['peak_wind_kmh'], 28.4);
+      // Item 144: BOTH points round-trip, and under names that cannot be
+      // swapped. A client that kept one key would drop the ashore gust.
+      expect(json['peak_wind_primary_kmh'], 31.2);
+      expect(json['peak_wind_secondary_kmh'], 28.4);
 
       final back = TodayProperties.fromJson(json);
       expect(back.rainExpected, original.rainExpected);
@@ -500,7 +504,8 @@ void main() {
       );
       final back = TodayProperties.fromJson(sparse.toJson());
       expect(back.onsetWindow, isNull);
-      expect(back.peakWindKmh, isNull);
+      expect(back.peakWindPrimaryKmh, isNull);
+      expect(back.peakWindSecondaryKmh, isNull);
       expect(back.synopticPattern, isNull);
     });
   });

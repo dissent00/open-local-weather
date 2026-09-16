@@ -88,7 +88,7 @@ absent values are `null`, never omitted keys.
 | `aqi_last_known.json` | `last_known_ground_aqi` | 6 |
 | `aqi_merge.json` | `merge_ground_aqi` | 9 |
 | `round_hours_to_tenths.json` | `round_hours_to_tenths` | 16 |
-| `blend_prediction.json` | `_blend_prediction` | 4 |
+| `blend_prediction.json` | `_blend_prediction` | 5 |
 | `extended_blend_predictions.json` | `_extended_blend_predictions` | 6 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 6 |
 | `coverage.json` | `detect_coverage` | 6 |
@@ -117,8 +117,9 @@ absent values are `null`, never omitted keys.
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
 | `llm_system_prompt.json` | `build_judgment_prompt` + `build_narrative_prompt` | 7 |
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
-| `observation_disagreements.json` | `observation_disagreements` | 15 |
-| `llm_user_prompt.json` | `build_user_prompt` | 6 |
+| `observation_disagreements.json` | `observation_disagreements` | 21 |
+| `low_divergence.json` | `low_divergence` | 11 |
+| `llm_user_prompt.json` | `build_user_prompt` | 7 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 28 |

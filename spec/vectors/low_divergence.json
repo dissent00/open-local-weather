@@ -1,0 +1,199 @@
+{
+  "vector_format_version": 1,
+  "function": "low_divergence",
+  "description": "ROADMAP item 143. How far the station's overnight low sits from the standing call, measured on every run that can make the comparison and stored whether or not it is worth printing. `delta_c` is OBSERVED MINUS FORECAST, so positive means the station came in WARMER than the call. `notable` is worth a reader's footnote; `decisive` is worth an LLM call, and is `notable` AND near freezing -- two degrees is nothing at 20C and is the difference between ice and no ice at 2C. A reading ABOVE the call requires the night to be over (`low_is_settled` true, never null); one BELOW it settles at any hour, because a minimum only falls.",
+  "cases": [
+    {
+      "name": "the founding case: 20.0 observed against a call of 18.2",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": true
+      },
+      "expected": {
+        "forecast_c": 18.2,
+        "observed_c": 20.0,
+        "delta_c": 1.8,
+        "margin_c": 3.0,
+        "notable": false,
+        "decisive": false
+      }
+    },
+    {
+      "name": "the same gap, before sunrise, is not yet a comparison",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": false
+      },
+      "expected": null
+    },
+    {
+      "name": "a night whose end is unknown is not a comparison either",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": null
+      },
+      "expected": null
+    },
+    {
+      "name": "inside the wide band, measured but not notable",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 19.0
+        },
+        "low_is_settled": true
+      },
+      "expected": {
+        "forecast_c": 18.2,
+        "observed_c": 19.0,
+        "delta_c": 0.8,
+        "margin_c": 3.0,
+        "notable": false,
+        "decisive": false
+      }
+    },
+    {
+      "name": "exactly at the wide band fires",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 21.2
+        },
+        "low_is_settled": true
+      },
+      "expected": {
+        "forecast_c": 18.2,
+        "observed_c": 21.2,
+        "delta_c": 3.0,
+        "margin_c": 3.0,
+        "notable": true,
+        "decisive": false
+      }
+    },
+    {
+      "name": "near freezing, the band tightens",
+      "input": {
+        "standing": {
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "low_c": 2.0
+        },
+        "low_is_settled": true
+      },
+      "expected": {
+        "forecast_c": -0.5,
+        "observed_c": 2.0,
+        "delta_c": 2.5,
+        "margin_c": 1.0,
+        "notable": true,
+        "decisive": true
+      }
+    },
+    {
+      "name": "near freezing and inside even the tight band",
+      "input": {
+        "standing": {
+          "temp_low_c": 0.2
+        },
+        "observed": {
+          "low_c": 0.9
+        },
+        "low_is_settled": true
+      },
+      "expected": {
+        "forecast_c": 0.2,
+        "observed_c": 0.9,
+        "delta_c": 0.7,
+        "margin_c": 1.0,
+        "notable": false,
+        "decisive": false
+      }
+    },
+    {
+      "name": "colder than called needs no sunrise",
+      "input": {
+        "standing": {
+          "temp_low_c": 2.0
+        },
+        "observed": {
+          "low_c": -1.0
+        },
+        "low_is_settled": false
+      },
+      "expected": {
+        "forecast_c": 2.0,
+        "observed_c": -1.0,
+        "delta_c": -3.0,
+        "margin_c": 1.0,
+        "notable": true,
+        "decisive": true
+      }
+    },
+    {
+      "name": "colder than called, far from freezing, is notable but not decisive",
+      "input": {
+        "standing": {
+          "temp_low_c": 25.0
+        },
+        "observed": {
+          "low_c": 21.0
+        },
+        "low_is_settled": false
+      },
+      "expected": {
+        "forecast_c": 25.0,
+        "observed_c": 21.0,
+        "delta_c": -4.0,
+        "margin_c": 3.0,
+        "notable": true,
+        "decisive": false
+      }
+    },
+    {
+      "name": "no standing low is no comparison",
+      "input": {
+        "standing": {
+          "temp_low_c": null
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": true
+      },
+      "expected": null
+    },
+    {
+      "name": "no station low is no comparison",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": null
+        },
+        "low_is_settled": true
+      },
+      "expected": null
+    }
+  ]
+}

@@ -126,3 +126,41 @@ def test_nothing_measured_is_not_a_quiet_day():
     the error class that cost a published forecast on 2026-08-29."""
     assert observed_baseline(None) is None
     assert observed_baseline(ObservedSoFar(precipitation=True)) is None
+
+
+# --- the overnight-low footnote — ROADMAP item 143, part 3 -------------------
+
+
+def test_the_footnote_names_the_station_and_both_numbers():
+    """A fact about ONE station, not a claim about the basin. The operator's
+    wording: "the airport reported 20 against the forecast of 18.2. It's not
+    saying nowhere in the area hit 18.2, just that the airport didn't." """
+    from openlocalweather.models import LowDivergence
+    from openlocalweather.observed import describe_low_divergence
+
+    div = LowDivergence(
+        forecast_c=18.2, observed_c=20.0, delta_c=1.8,
+        margin_c=1.0, notable=True, decisive=False,
+    )
+    got = describe_low_divergence(div, "Kisumu International Airport")
+
+    assert got is not None
+    assert "Kisumu International Airport" in got
+    # Both units, via the ONE formatter — never a second rounding site.
+    assert "20.0°C" in got and "18.2°C" in got, (
+        "the tenth is the content — 18.2 rounded to 18 makes the gap 2, not 1.8"
+    )
+    assert "°F" in got, "the project renders every temperature in both units"
+
+
+def test_a_divergence_nobody_needs_produces_no_footnote():
+    """The default is silence. A gap inside its band is stored and not said."""
+    from openlocalweather.models import LowDivergence
+    from openlocalweather.observed import describe_low_divergence
+
+    quiet = LowDivergence(
+        forecast_c=18.2, observed_c=19.0, delta_c=0.8,
+        margin_c=3.0, notable=False, decisive=False,
+    )
+    assert describe_low_divergence(quiet, "Kisumu International Airport") is None
+    assert describe_low_divergence(None, "Kisumu International Airport") is None

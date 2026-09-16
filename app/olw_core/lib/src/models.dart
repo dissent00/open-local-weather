@@ -81,8 +81,47 @@ class ObservedSoFar {
   final double? cloudOktas;
 }
 
+/// What the station's overnight low says about the called one — upstream
+/// item 143.
+///
+/// STORED WHETHER OR NOT IT PRINTS, which is what makes the other parts
+/// answerable later: whether the station runs warmer than the forecast or the
+/// forecast low is the problem is answered by the ordinary days, not the loud
+/// ones. [notable] is a judgement ABOUT this, not a condition for keeping it.
+class LowDivergence {
+  const LowDivergence({
+    required this.forecastC,
+    required this.observedC,
+    required this.deltaC,
+    required this.marginC,
+    required this.notable,
+    required this.decisive,
+  });
+
+  final double forecastC;
+  final double observedC;
+
+  /// Observed minus forecast. POSITIVE means the station came in WARMER than
+  /// the call, which is the founding case and the direction that needs a
+  /// settled night behind it.
+  final double deltaC;
+
+  /// The band this gap was judged against, carried so a stored row can be
+  /// re-read after the margin is retuned without guessing which one applied.
+  final double marginC;
+
+  /// Worth a reader's attention: the gap exceeded its band.
+  final bool notable;
+
+  /// Worth an LLM call: [notable] AND cold enough to change what someone
+  /// does. Separate from [notable] because membership in the disagreement
+  /// list is a spending decision.
+  final bool decisive;
+}
+
 const String disagreementRainWhileDry = 'rain_observed_while_dry_called';
 const String disagreementHighExceeded = 'high_already_exceeded';
+const String disagreementLowDiverges = 'observed_low_diverges';
 const String disagreementOnsetAlreadyPassed = 'onset_already_passed';
 
 /// How far above the standing high an observation must sit before it counts.
@@ -114,8 +153,40 @@ String formatTempHighLow(double highC, double lowC) =>
 ///
 /// The rounding reasoning belongs to [formatTempHighLow] above and is not
 /// repeated.
-String formatTempC(double celsius) =>
-    '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F';
+/// [decimals] IS A PRECISION, NOT A STYLE — upstream item 143, and it exists
+/// for exactly one caller. Whole degrees are right for everything a reader
+/// plans a day around and remain the default. They are wrong for the
+/// overnight-low footnote, whose entire content is a GAP: at 0 decimals "20
+/// against a forecast of 18.2" prints as "20 against 18", and near freezing
+/// -0.4 and 0.6 both print as 0, erasing the ice/no-ice distinction that is
+/// the only reason that footnote is allowed to exist.
+///
+/// THE TWO PRECISIONS ROUND TIES DIFFERENTLY, ON PURPOSE, AND THIS IS THE
+/// PART TO READ BEFORE CHANGING ANYTHING. At 0 decimals the tie goes to EVEN,
+/// because that is what Python's `round()` does and [_roundHalfEven] exists to
+/// match it. At more than 0 it goes AWAY FROM ZERO, because that is what
+/// `toStringAsFixed` does natively here and Python's side quantizes with
+/// ROUND_HALF_UP to match. Each precision is pinned to whichever rule both
+/// languages can express with a primitive; the alternative was hand-rolling
+/// exact decimal arithmetic in Dart to chase Python's `format`, which is more
+/// code in the place this project has been bitten most.
+///
+/// DO NOT "SIMPLIFY" THIS BY SCALING. Multiplying by 10^d, rounding, and
+/// dividing back was tried on 2026-09-16 and diverged from Python on 569 of
+/// 13,202 swept values: the multiplication lands a value like -59.85 exactly
+/// on a representable half that it was not on before, and the rounding then
+/// answers a different question. The committed pair was swept over the same
+/// 13,202 values at 1 and 2 input decimals with zero divergences.
+String formatTempC(double celsius, {int decimals = 0}) => decimals == 0
+    ? '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F'
+    : '${_noNegativeZero(celsius.toStringAsFixed(decimals))}°C / '
+        '${_noNegativeZero((celsius * 9 / 5 + 32).toStringAsFixed(decimals))}°F';
+
+/// "-0.0" is a real output of both languages here — -17.8 C is -0.04 F — and
+/// it is not wrong so much as unreadable in a sentence a person is meant to
+/// act on. Normalised identically on both sides rather than left to differ.
+String _noNegativeZero(String fixed) =>
+    double.parse(fixed) == 0 ? fixed.replaceFirst('-', '') : fixed;
 
 /// Matches Python's `round()`, which is half-to-EVEN.
 ///

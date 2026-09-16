@@ -4,10 +4,12 @@ import pytest
 
 from openlocalweather.disagreement import (
     DISAGREEMENT_HIGH_EXCEEDED,
+    DISAGREEMENT_LOW_DIVERGES,
     DISAGREEMENT_ONSET_ALREADY_PASSED,
     DISAGREEMENT_RAIN_WHILE_DRY,
     ObservedSoFar,
     StandingCall,
+    low_divergence,
     observation_disagreements,
 )
 
@@ -160,3 +162,75 @@ def test_no_called_onset_or_no_observed_onset_says_nothing():
         (StandingCall(rain=True, onset_hour="18:00"), ObservedSoFar(precipitation=True)),
     ):
         assert DISAGREEMENT_ONSET_ALREADY_PASSED not in observation_disagreements(standing, observed)
+
+
+# --- the observed low against the standing call — ROADMAP item 143 -----------
+
+
+def test_a_warmer_station_low_is_recorded_but_is_not_a_contradiction():
+    """The founding case: OBSERVED SO FAR said "low so far 20C" beside a
+    standing temp_low_c of 18.2, at 06:01 with the night over.
+
+    RECORDED, NOT SPENT. The operator's framing is that this is "more of a
+    footnote" and "isn't a key item to read about in the morning" — and every
+    code in `observation_disagreements` buys an LLM call under
+    `new_cycle_or_contradiction`. So a divergence this far from freezing is
+    measured and stored and buys nothing.
+    """
+    standing = StandingCall(temp_low_c=18.2)
+    observed = ObservedSoFar(low_c=20.0)
+
+    div = low_divergence(standing, observed, low_is_settled=True)
+    assert div is not None
+    assert div.delta_c == pytest.approx(1.8)
+    assert div.notable is False, "1.8C at 20C is inside the wide band"
+    assert div.decisive is False
+
+    assert observation_disagreements(standing, observed, low_is_settled=True) == []
+
+
+def test_the_same_gap_near_freezing_is_decisive():
+    """Two degrees is nothing at 20C and decisive at 2C, because it is the
+    difference between ice and no ice — the operator's words, and the whole
+    reason the band is not one number."""
+    standing = StandingCall(temp_low_c=-0.5)
+    observed = ObservedSoFar(low_c=2.0)
+
+    div = low_divergence(standing, observed, low_is_settled=True)
+    assert div is not None
+    assert div.notable is True
+    assert div.decisive is True
+    assert DISAGREEMENT_LOW_DIVERGES in observation_disagreements(
+        standing, observed, low_is_settled=True
+    )
+
+
+def test_an_unsettled_night_makes_a_warmer_reading_prove_nothing():
+    """Before sunrise the night may still get colder, so a station sitting
+    ABOVE the called low has settled nothing — the same asymmetry that governs
+    the high, pointed the other way."""
+    standing = StandingCall(temp_low_c=-0.5)
+    observed = ObservedSoFar(low_c=2.0)
+
+    assert low_divergence(standing, observed, low_is_settled=False) is None
+    assert observation_disagreements(standing, observed, low_is_settled=False) == []
+
+
+def test_a_colder_reading_settles_the_call_at_any_hour():
+    """A minimum only falls. A station already BELOW the called low has proved
+    the call too high whether or not the night is over, so this one does not
+    wait for sunrise."""
+    standing = StandingCall(temp_low_c=2.0)
+    observed = ObservedSoFar(low_c=-1.0)
+
+    div = low_divergence(standing, observed, low_is_settled=False)
+    assert div is not None, "colder than called is settled without a sunrise gate"
+    assert div.delta_c == pytest.approx(-3.0)
+    assert div.decisive is True
+
+
+def test_no_divergence_without_both_numbers():
+    """Absence is absence. A station that did not report a low, and a day with
+    no standing call, both yield None rather than a zero divergence."""
+    assert low_divergence(StandingCall(temp_low_c=18.2), ObservedSoFar(), low_is_settled=True) is None
+    assert low_divergence(StandingCall(), ObservedSoFar(low_c=20.0), low_is_settled=True) is None

@@ -19,11 +19,15 @@
 /// the day is not over. Treating the symmetric case as a contradiction would
 /// re-forecast every dry morning of every wet day.
 ///
-/// WHAT IS DELIBERATELY ABSENT. There is no wind test, though the station
-/// reports wind and `todayProperties` carries `peakWindKmh`. They describe
-/// DIFFERENT PLACES — that field is the wind at the secondary point and the
-/// station sits at the primary — so comparing them would report a
-/// disagreement between two places as a disagreement with reality.
+/// WHAT IS DELIBERATELY ABSENT. There is still no wind test, and upstream
+/// item 144 CHANGED THE REASON without changing the answer. It used to be
+/// PLACE: one wind field, the secondary point's, against a station at the
+/// primary. The split gave the ashore wind its own field, so that objection
+/// is gone. What remains is QUANTITY — the station side is `sknt`, the max
+/// SUSTAINED wind, because METAR files a gust group only when a gust occurs
+/// and none appeared on any of 932 rows in a 45-day sample, while the
+/// forecast side is a GUST. Pairing them would read the gust factor as
+/// weather.
 library;
 
 import 'models.dart';
@@ -33,10 +37,18 @@ import 'models.dart';
 /// [rain] is the SCORED boolean, taken from the blend's own Day+0 row rather
 /// than from the prose — the prose may hedge and the record does not.
 class StandingCall {
-  const StandingCall({this.rain, this.tempHighC, this.onsetHour});
+  const StandingCall({
+    this.rain,
+    this.tempHighC,
+    this.onsetHour,
+    this.tempLowC,
+  });
 
   final bool? rain;
   final double? tempHighC;
+
+  /// The called overnight minimum — upstream item 143.
+  final double? tempLowC;
 
   /// "HH:MM", the hour the standing call put the rain's arrival at. Separate
   /// from [rain] because a call can be right about the DAY and wrong about
@@ -72,6 +84,7 @@ List<String> observationDisagreements(
   ObservedSoFar observed, {
   double tempMarginC = tempContradictionMarginC,
   int onsetMarginMin = onsetContradictionMarginMin,
+  bool? lowIsSettled,
 }) {
   final found = <String>[];
 
@@ -96,5 +109,77 @@ List<String> observationDisagreements(
     found.add(disagreementOnsetAlreadyPassed);
   }
 
+  // ONLY THE DECISIVE ONES REACH THIS LIST — upstream item 143.
+  //
+  // Membership here is a SPENDING decision: `llmShouldReason` treats any code
+  // as grounds to buy a judgment call and a narrative. An ordinary divergence
+  // is a footnote and footnotes do not re-forecast a day, so only the
+  // near-freezing case — where it is the difference between ice and no ice —
+  // is a contradiction. The gap itself is measured and stored regardless; see
+  // [lowDivergence].
+  final divergence =
+      lowDivergence(standing, observed, lowIsSettled: lowIsSettled);
+  if (divergence != null && divergence.decisive) {
+    found.add(disagreementLowDiverges);
+  }
+
   return found;
+}
+
+/// How far the station's overnight low must sit from the called one before it
+/// is worth a reader's attention — upstream item 143.
+///
+/// TWO WIDTHS, BECAUSE ONE NUMBER CANNOT BE RIGHT. Two degrees is nothing at
+/// 20 C and decisive at 2 C, where it is the difference between ice and no
+/// ice. STEPPED, NOT INTERPOLATED: a smooth taper would imply the shape of
+/// the relationship is understood, and it is not.
+const double lowDivergenceMarginC = 3.0;
+const double lowDivergenceFreezingMarginC = 1.0;
+
+/// At or below this, the tight margin applies and the divergence is treated
+/// as decision-grade. 4 C rather than 0 because ground frost forms while the
+/// air is still above freezing.
+const double nearFreezingC = 4.0;
+
+/// The gap between the station's overnight low and the standing call, or null
+/// when there is no settled comparison to make — upstream item 143.
+///
+/// THE ASYMMETRY, POINTED THE OTHER WAY. This library's header records that a
+/// maximum only rises, so an observed high ABOVE the call settles it. A
+/// minimum only FALLS, so the mirror holds: a station already BELOW the
+/// called low has proved the call too high at any hour, while one sitting
+/// ABOVE it has proved nothing until the night is over.
+///
+/// THREE-VALUED, and null is not false. Null [lowIsSettled] means the sun
+/// times were unavailable, so the caller does not KNOW whether the night is
+/// over, and unknown resolves to silence for the warmer case.
+LowDivergence? lowDivergence(
+  StandingCall standing,
+  ObservedSoFar observed, {
+  required bool? lowIsSettled,
+  double marginC = lowDivergenceMarginC,
+  double freezingMarginC = lowDivergenceFreezingMarginC,
+}) {
+  final called = standing.tempLowC;
+  final seen = observed.lowC;
+  if (called == null || seen == null) return null;
+
+  final delta = seen - called;
+
+  // Colder than called is settled on its own. Warmer needs the night behind
+  // it, and `== true` rather than truthiness because null must not pass.
+  if (delta > 0 && lowIsSettled != true) return null;
+
+  final nearFreezing = (called < seen ? called : seen) <= nearFreezingC;
+  final band = nearFreezing ? freezingMarginC : marginC;
+  final notable = delta.abs() >= band;
+
+  return LowDivergence(
+    forecastC: called,
+    observedC: seen,
+    deltaC: delta,
+    marginC: band,
+    notable: notable,
+    decisive: notable && nearFreezing,
+  );
 }

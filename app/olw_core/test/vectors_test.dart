@@ -394,14 +394,60 @@ void main() {
             rain: s['rain'] as bool?,
             tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
             onsetHour: s['onset_hour'] as String?,
+            tempLowC: (s['temp_low_c'] as num?)?.toDouble(),
           ),
           ObservedSoFar(
             precipitation: o['precipitation'] as bool?,
             highC: (o['high_c'] as num?)?.toDouble(),
             precipitationOnset: o['precipitation_onset'] as String?,
+            lowC: (o['low_c'] as num?)?.toDouble(),
           ),
+          lowIsSettled: i['low_is_settled'] as bool?,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
+  group('low divergence', () {
+    test('low_divergence matches Python exactly', () {
+      // Upstream item 143, and pinned SEPARATELY from the disagreement list
+      // beside it because the two answer different questions. That list
+      // decides whether an LLM CALL IS BOUGHT and only admits the
+      // near-freezing case; this decides what is MEASURED AND STORED, and it
+      // runs on every day the comparison can be made. A port that implemented
+      // only the first would store nothing on the ordinary mornings, which
+      // are the days that will eventually answer whether the station runs
+      // warm or the forecast low does.
+      for (final c in casesOf('low_divergence.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final s = i['standing'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final got = lowDivergence(
+          StandingCall(tempLowC: (s['temp_low_c'] as num?)?.toDouble()),
+          ObservedSoFar(lowC: (o['low_c'] as num?)?.toDouble()),
+          lowIsSettled: i['low_is_settled'] as bool?,
+        );
+
+        final expected = c['expected'] as Map<String, Object?>?;
+        if (expected == null) {
+          expect(got, isNull, reason: 'case "${c['name']}"');
+          continue;
+        }
+
+        expect(got, isNotNull, reason: 'case "${c['name']}"');
+        expect(got!.forecastC, closeTo(expected['forecast_c'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.observedC, closeTo(expected['observed_c'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.deltaC, closeTo(expected['delta_c'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.marginC, closeTo(expected['margin_c'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.notable, equals(expected['notable']),
+            reason: 'case "${c['name']}"');
+        expect(got.decisive, equals(expected['decisive']),
+            reason: 'case "${c['name']}"');
       }
     });
   });
@@ -880,6 +926,10 @@ void main() {
           guidanceRecency: i['guidance_recency'],
           groundStationsConfigured: i['ground_stations_configured'] as bool,
           localBulletinConfigured: i['local_bulletin_configured'] as bool,
+          // Absent from every case but one — upstream item 143. The block
+          // is silent on an ordinary morning, so without that case a port
+          // could implement none of it and still pass here.
+          lowDivergenceNote: i['low_divergence_note'] as String?,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -1464,6 +1514,7 @@ void main() {
       'llm_schema_gemini.json',
       'llm_schema_split.json',
       'observation_disagreements.json',
+      'low_divergence.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
       'llm_user_prompt.json',

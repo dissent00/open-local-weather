@@ -97,10 +97,11 @@ from openlocalweather.defaults import BLEND_MODEL_ID  # noqa: E402
 # Nine are published on the entry; the other four live only on the blend's own
 # Day+0 scored row, because they are the numbers the record grades rather than
 # the ones the page prints. Both halves are needed: production sends all
-# thirteen, and a renderer told nothing about `rain` or `onset_hour` is being
+# fourteen, and a renderer told nothing about `rain` or `onset_hour` is being
 # asked to agree with a call it cannot see.
 CALL_FIELDS_ON_ENTRY = (
-    "rain_expected", "onset_window", "peak_wind_kmh", "temp_high_c", "temp_low_c",
+    "rain_expected", "onset_window", "peak_wind_primary_kmh",
+    "peak_wind_secondary_kmh", "temp_high_c", "temp_low_c",
     "mslp_trend_24h", "synoptic_pattern", "uv_index_max", "air_quality_aqi",
 )
 # (TodayProperties name, attribute on the scored blend row)

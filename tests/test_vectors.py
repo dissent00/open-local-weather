@@ -577,9 +577,48 @@ def test_vectors_observation_disagreements():
     for case in load("observation_disagreements.json")["cases"]:
         i = case["input"]
         got = observation_disagreements(
-            StandingCall(**i["standing"]), ObservedSoFar(**i["observed"])
+            StandingCall(**i["standing"]),
+            ObservedSoFar(**i["observed"]),
+            low_is_settled=i["low_is_settled"],
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_low_divergence():
+    """ROADMAP item 143 — the measurement, pinned separately from the trigger.
+
+    The disagreement vector beside this one pins what the divergence is
+    allowed to SPEND; this pins what it RECORDS, which runs on every day the
+    comparison can be made. A port that only implemented the first would
+    store nothing on the ordinary mornings, and the ordinary mornings are the
+    ones that answer whether the station runs warm or the forecast low does.
+    """
+    from openlocalweather.disagreement import (
+        ObservedSoFar,
+        StandingCall,
+        low_divergence,
+    )
+
+    for case in load("low_divergence.json")["cases"]:
+        i = case["input"]
+        got = low_divergence(
+            StandingCall(**i["standing"]),
+            ObservedSoFar(**i["observed"]),
+            low_is_settled=i["low_is_settled"],
+        )
+        if case["expected"] is None:
+            assert got is None, f"vector case failed: {case['name']}"
+            continue
+
+        assert got is not None, f"vector case failed: {case['name']}"
+        assert {
+            "forecast_c": got.forecast_c,
+            "observed_c": got.observed_c,
+            "delta_c": round(got.delta_c, 10),
+            "margin_c": got.margin_c,
+            "notable": got.notable,
+            "decisive": got.decisive,
+        } == case["expected"], f"vector case failed: {case['name']}"
 
 
 def test_vectors_comparison_for_prompt():
@@ -840,6 +879,7 @@ def test_every_vector_file_is_exercised():
         "llm_system_prompt.json",
         "llm_schema_split.json",
         "observation_disagreements.json",
+        "low_divergence.json",
         "llm_user_prompt.json",
         "weekly_review.json",
         "synoptic.json",

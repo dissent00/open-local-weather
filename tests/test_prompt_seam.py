@@ -114,6 +114,22 @@ DEFERENCES: tuple[tuple[str, str], ...] = (
         "section: the prose field may carry a range and the scored one may "
         "not. Since the split it also names where the decision was made.",
     ),
+    (
+        'TWO GUST FIGURES, ONE PER PLACE, AND THEY ARE NOT INTERCHANGEABLE. '
+        '"peak_wind_primary_kmh" is the gust ASHORE, at the place Today\'s Forecast '
+        'describes, and it belongs there and in any other section about conditions on '
+        'land; "peak_wind_secondary_kmh" is the secondary point\'s and belongs only in '
+        "that point's own section.",
+        "Deference, and the field is scored only because ROADMAP item 144 made "
+        "it scorable. It decides no value: it says which of two GIVEN gusts "
+        "goes in which section. That rule cannot live in the judgment prompt, "
+        "because the judgment call has no sections — it returns two numbers "
+        "and never writes prose. Read it beside the bug it closes: with ONE "
+        "wind field the narrative used the same number in both sections and "
+        "published Winam Gulf's 41 km/h under Today's Forecast on 2026-09-16. "
+        "It is a rendering rule, in the only document where rendering rules "
+        "are read.",
+    ),
 )
 
 

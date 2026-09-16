@@ -270,7 +270,7 @@ NARRATED_TODAY = date(2026, 9, 12)
 def _narrated_entry(d: date, **overrides) -> DailyLogEntry:
     fields = {
         "rain_expected": "Isolated Evening Thunderstorms",
-        "peak_wind_kmh": 22.4,
+        "peak_wind_secondary_kmh": 22.4,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing to the northeast",
         "uv_index_max": "9.4",
@@ -382,19 +382,19 @@ def test_an_empty_record_yields_no_narrated_findings():
 
 
 def test_flags_the_wind_number_nobody_scores():
-    """peak_wind_kmh went None on the same three days as the other two, and it
+    """peak_wind_secondary_kmh went None on the same three days as the other two, and it
     is never scored — item 5 — so no other check in this project would ever
     see it go. A float, not a string: the third shape this has to handle."""
-    lookup = _narrated_history(10, {"peak_wind_kmh": lambda i: None if i < 3 else 22.4})
+    lookup = _narrated_history(10, {"peak_wind_secondary_kmh": lambda i: None if i < 3 else 22.4})
     findings = detect_narrated_coverage(lookup, NARRATED_TODAY)
 
-    gap = _narrated(findings, "peak_wind_kmh")
+    gap = _narrated(findings, "peak_wind_secondary_kmh")
     assert gap is not None and gap.kind == "regression"
 
 
 def test_a_zero_reading_is_present_not_absent():
     """`bool(0.0)` is False, so the obvious emptiness test would report a dead
     calm as a data gap."""
-    lookup = _narrated_history(10, {"peak_wind_kmh": 0.0})
+    lookup = _narrated_history(10, {"peak_wind_secondary_kmh": 0.0})
 
-    assert _narrated(detect_narrated_coverage(lookup, NARRATED_TODAY), "peak_wind_kmh") is None
+    assert _narrated(detect_narrated_coverage(lookup, NARRATED_TODAY), "peak_wind_secondary_kmh") is None

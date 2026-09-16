@@ -22,21 +22,33 @@ ever prove a forecast too LOW, never too high:
 Treating the symmetric case as a contradiction would re-forecast every dry
 morning of every wet day, which is the opposite of what C2 is for.
 
-WHAT IS DELIBERATELY ABSENT, AND WHY. There is no wind test, though the
-station reports wind and `today_properties` carries `peak_wind_kmh`. **They
-describe different places.** That field is the wind at the SECONDARY point —
-the prompt says so in terms, "NOT at the primary location" — while the METAR
-station sits at the primary. Comparing them would report a disagreement
-between two places as a disagreement between a forecast and reality, and
-would do it most often when the two places genuinely differ, which is exactly
-when the forecast is hardest.
+WHAT IS DELIBERATELY ABSENT, AND WHY. There is still no wind test, and
+ROADMAP item 144 CHANGED THE REASON without changing the answer.
+
+It used to be a question of PLACE: there was one wind field, it was the
+secondary point's, and the METAR station sits at the primary, so comparing
+them would have reported a disagreement between two places as a disagreement
+between forecast and reality. Item 144 split the field, so
+`peak_wind_primary_kmh` now describes the station's own place and that
+objection is gone.
+
+What remains is QUANTITY, and it is the harder one. `observed.py` records it:
+the station side is `sknt`, the max SUSTAINED wind, because METAR files a
+gust group only when a gust occurs and none appeared on any of 932 rows in a
+45-day sample. The forecast side is a GUST. Pairing them would read the gust
+factor as weather, which is the error item 126 records withdrawing a whole
+plan over. This deployment cannot observe a gust at all.
+
+So the test is absent for the reason that a deployment whose station DOES
+file gust groups would not share — see item 144 on why that is a
+generalizable upgrade rather than a Kisumu workaround.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from openlocalweather.models import ObservedSoFar
+from openlocalweather.models import LowDivergence, ObservedSoFar
 
 # What the forecast already committed to, from the standing issuance.
 #
@@ -52,11 +64,16 @@ class StandingCall:
     # from `rain` because a call can be right about the DAY and wrong about
     # the HOUR, which is the whole case item 138 was raised on.
     onset_hour: str | None = None
+    # The called overnight minimum — ROADMAP item 143. Read from the standing
+    # issuance like the rest of this, and compared against what the station
+    # actually recorded rather than against a later model run.
+    temp_low_c: float | None = None
 
 
 DISAGREEMENT_RAIN_WHILE_DRY = "rain_observed_while_dry_called"
 DISAGREEMENT_HIGH_EXCEEDED = "high_already_exceeded"
 DISAGREEMENT_ONSET_ALREADY_PASSED = "onset_already_passed"
+DISAGREEMENT_LOW_DIVERGES = "observed_low_diverges"
 
 # How far above the standing high an observation must sit before it counts.
 #
@@ -91,6 +108,97 @@ TEMP_CONTRADICTION_MARGIN_C = 2.0
 # late, and missing one is cheaper than re-forecasting every drizzle.
 ONSET_CONTRADICTION_MARGIN_MIN = 60
 
+# How far the station's overnight low must sit from the called one before it
+# is worth a reader's attention — ROADMAP item 143.
+#
+# TWO WIDTHS, BECAUSE ONE NUMBER CANNOT BE RIGHT. Two degrees is nothing at
+# 20 C and decisive at 2 C, where it is the difference between ice and no ice.
+# A single delta would either shout on every ordinary morning or stay silent
+# on the one morning the reader needed it.
+#
+# STEPPED, NOT INTERPOLATED, and that is a claim about what is known. A smooth
+# taper would imply the shape of the relationship is understood; it is not.
+# The step says only "colder than this, be more sensitive", which is the whole
+# of what the operator's ice/no-ice case establishes.
+#
+# WHAT IS MEASURED HERE, AND WHAT IS NOT — the distinction matters, because
+# the neighbouring margins in this module are unmeasured in BOTH senses and
+# this one is not.
+#
+# Measured: the instrument floor. `observed.py` records station-minus-
+# reanalysis over 40 days at -0.05 C on the LOW, against a 1.0 C band — the
+# low is very nearly unbiased here, better than the +0.49 C on the high. So
+# both widths clear the instrument comfortably and neither can fire on the
+# thermometer rather than on the weather, which is the failure
+# TEMP_CONTRADICTION_MARGIN_C is written to avoid.
+#
+# Not measured: how often a real gap of a given size appears, and at what
+# width a reader starts being told something useful. That needs observed
+# station lows set against standing calls across the record, which is exactly
+# what `low_divergence` stores on every run whether or not it fires. Revisit
+# the widths against that record, never against a convenient sample; item 100
+# has the cost of the alternative.
+LOW_DIVERGENCE_MARGIN_C = 3.0
+LOW_DIVERGENCE_FREEZING_MARGIN_C = 1.0
+
+# At or below this, the tight margin applies and the divergence is treated as
+# decision-grade. 4 C rather than 0 because ground frost forms while the air
+# is still above freezing, so a reader deciding about ice is already exposed
+# before the air reading reaches zero.
+NEAR_FREEZING_C = 4.0
+
+
+def low_divergence(
+    standing: StandingCall,
+    observed: ObservedSoFar,
+    *,
+    low_is_settled: bool | None,
+    margin_c: float = LOW_DIVERGENCE_MARGIN_C,
+    freezing_margin_c: float = LOW_DIVERGENCE_FREEZING_MARGIN_C,
+) -> LowDivergence | None:
+    """The gap between the station's overnight low and the standing call, or
+    None when there is no settled comparison to make.
+
+    THE ASYMMETRY, POINTED THE OTHER WAY. This module's header records that a
+    maximum only rises, so an observed high ABOVE the call settles it. A
+    minimum only FALLS, so the mirror holds: a station already BELOW the
+    called low has proved the call too high at any hour, while one sitting
+    ABOVE it has proved nothing until the night is over — the night can still
+    get colder. `low_is_settled` is that gate and only the warmer case needs
+    it.
+
+    THREE-VALUED, and None is not False. `low_is_settled` is None when the sun
+    times were unavailable, which means the caller does not KNOW whether the
+    night is over. Unknown resolves to silence for the warmer case: claiming a
+    divergence on a night that may still be running is the one error that puts
+    a wrong number in front of a reader.
+    """
+    called = standing.temp_low_c
+    seen = observed.low_c
+    if called is None or seen is None:
+        return None
+
+    delta = seen - called
+
+    # Colder than called is settled on its own. Warmer needs the night behind
+    # it, and `low_is_settled is True` rather than truthiness because None
+    # must not pass.
+    if delta > 0 and low_is_settled is not True:
+        return None
+
+    near_freezing = min(called, seen) <= NEAR_FREEZING_C
+    band = freezing_margin_c if near_freezing else margin_c
+    notable = abs(delta) >= band
+
+    return LowDivergence(
+        forecast_c=called,
+        observed_c=seen,
+        delta_c=delta,
+        margin_c=band,
+        notable=notable,
+        decisive=notable and near_freezing,
+    )
+
 
 def _minutes(hhmm: str | None) -> int | None:
     """"HH:MM" as minutes past midnight, or None if it is not that.
@@ -120,6 +228,7 @@ def observation_disagreements(
     *,
     temp_margin_c: float = TEMP_CONTRADICTION_MARGIN_C,
     onset_margin_min: int = ONSET_CONTRADICTION_MARGIN_MIN,
+    low_is_settled: bool | None = None,
 ) -> list[str]:
     """Codes for every way the observation settles against the standing call.
 
@@ -156,5 +265,22 @@ def observation_disagreements(
     seen = _minutes(observed.precipitation_onset)
     if called is not None and seen is not None and seen <= called - onset_margin_min:
         found.append(DISAGREEMENT_ONSET_ALREADY_PASSED)
+
+    # ONLY THE DECISIVE ONES REACH THIS LIST — ROADMAP item 143.
+    #
+    # `reasoning.llm_should_reason` treats any code here as grounds to buy a
+    # judgment call and a narrative, so membership is a SPENDING decision and
+    # not a reporting one. The operator's framing splits exactly there: an
+    # ordinary divergence "isn't a key item to read about in the morning
+    # before going to work", while one near freezing "could mean ice or not".
+    # So the gap is computed and stored on every run, and only the cold case
+    # is a contradiction.
+    #
+    # In a deployment that never approaches freezing this can never fire, and
+    # that is the correct behaviour rather than a gap: there, the divergence
+    # is a footnote and footnotes do not re-forecast a day.
+    divergence = low_divergence(standing, observed, low_is_settled=low_is_settled)
+    if divergence is not None and divergence.decisive:
+        found.append(DISAGREEMENT_LOW_DIVERGES)
 
     return found

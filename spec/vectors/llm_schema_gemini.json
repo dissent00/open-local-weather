@@ -64,7 +64,11 @@
                 "type": "STRING",
                 "nullable": true
               },
-              "peak_wind_kmh": {
+              "peak_wind_primary_kmh": {
+                "type": "NUMBER",
+                "nullable": true
+              },
+              "peak_wind_secondary_kmh": {
                 "type": "NUMBER",
                 "nullable": true
               },

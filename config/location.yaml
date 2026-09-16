@@ -53,6 +53,7 @@ location:
       lon: 34.4731
 
   metar_station_icao: "HKKI"
+  metar_station_name: "Kisumu International Airport"
 
   # Verified manually at waqi.info (aqicn.org). Kisumu Airport carried over
   # from the Apps Script config; Ochieng' Avenue and Dunga Beach added to

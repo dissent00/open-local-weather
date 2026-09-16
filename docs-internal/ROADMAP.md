@@ -19734,7 +19734,7 @@ Related: items 77 (the method, which needs the pairing note), 130, 129, 100,
 
 ---
 
-## 143. The observed low diverges from the forecast and nobody is told · **Planned — raised 2026-09-16**
+## 143. The observed low diverges from the forecast and nobody is told · **SHIPPED 2026-09-16**
 
 Found by item 142's cold read: `OBSERVED SO FAR TODAY` reported *"low so far
 20°C"* while `THE FORECASTER'S CALL` gave `temp_low_c: 18.2` for the same day.
@@ -19796,9 +19796,69 @@ stored record that learns which side is wrong. The default is silence.
 Related: items 138 (the same shape, onset), 122, 142, 121, and `ensemble`
 item 19, which answers the same question from the other side.
 
+### What shipped, 2026-09-16 — and the one place the design changed
+
+All four parts, with one correction to part 1 that the code forced.
+
+**Part 1 detects it, but NOT the way the item said.** `disagreement.low_divergence`
+returns a `LowDivergence` — forecast, observed, signed delta, the band applied,
+`notable`, `decisive` — and it runs on every issuance that can make the
+comparison. Putting the code straight onto `observation_disagreements` as
+written would have been wrong: `reasoning.py:109` treats ANY member of that
+list as grounds to buy a judgment call and a narrative, so a footnote would
+have bought a re-forecast. The operator's own framing splits exactly there —
+"isn't a key item to read about in the morning" against "could mean ice or
+not" — so **only `decisive` joins the list**, and `decisive` is `notable` AND
+near freezing. In this deployment that can essentially never fire, which is
+the correct behaviour and costs nothing.
+
+**The asymmetry needed a gate the item did not mention.** This module's
+header records that a maximum only rises. A minimum only FALLS, so the mirror
+holds: a station BELOW the called low has settled it at any hour, while one
+ABOVE it has proved nothing until the night is over — the founding case is
+the second kind. `_overnight_low_is_settled` is that gate and it is
+three-valued: null sun times mean the run does not KNOW, and unknown resolves
+to silence rather than to a claim.
+
+**Part 2's band is stepped, and part of it turned out to be MEASURED.** 3.0 C
+away from freezing, 1.0 C at or below 4 C. The comment first said "unmeasured"
+on both counts and that was too pessimistic: `observed.py` records
+station-minus-reanalysis over 40 days at **-0.05 C on the low** against a
+1.0 C band, so the instrument floor IS known and both widths clear it. What is
+not known is the width at which a reader is told something useful, and part 4
+is what will answer it.
+
+**Part 3 is written by CODE, not by the model**, and it lives INSIDE
+`OBSERVED SO FAR TODAY` rather than as its own block. Two reasons. The
+sentence is a fact about the observed low, which is already there. And
+`test_prompt_seam` checks the system prompt's inventory against an ARCHIVED
+user prompt, so a new numbered heading fails until a run has archived one.
+`describe_low_divergence` names the station — new config field
+`metar_station_name`, falling back to the ICAO — and the block is ABSENT on an
+ordinary morning: no "Unavailable" line, because nothing is unavailable.
+
+**Part 4 stores it on `InformationMoved.low_divergence`**, on every run,
+notable or not. The ordinary days are the ones that answer whether the station
+runs warm or the forecast low is the problem.
+
+**A rounding trap, caught by sweeping rather than by the vectors.** The
+footnote needs one decimal — at whole degrees "20 against a forecast of 18.2"
+prints as "20 against 18", and near freezing -0.4 and 0.6 both print as 0,
+erasing the exact distinction the footnote exists for. `format_temp_c` gained a
+`decimals` parameter rather than growing a second rounding site. The first
+implementation scaled by 10, rounded half-to-even and scaled back, and
+**diverged from Dart on 569 of 13,202 swept values** — multiplying lands a
+value like -59.85 exactly on a representable half it was not on before. The
+committed pair uses `toStringAsFixed` in Dart and `Decimal(v).quantize(...,
+ROUND_HALF_UP)` in Python, which agree by construction: **0 divergences over
+25,203 values**. Note the consequence — the 0-decimal path ties to EVEN and the
+decimal path ties AWAY FROM ZERO, each pinned to what both languages express
+natively. The vectors would never have caught this; they pin the cases someone
+chose, and nobody chooses 0.25.
+
 ---
 
-## 144. There is no ashore wind field, so the shore forecast published the lake's gust · **Raised 2026-09-16**
+## 144. There is no ashore wind field, so the shore forecast published the lake's gust · **SHIPPED 2026-09-16**
 
 > **REFRAMED the same day by the operator, and the reframing is the fix:**
 >
@@ -19865,6 +19925,63 @@ item 19, which answers the same question from the other side.
 > validate it, which is precisely what the sandbox fleet is for: item 133
 > recommends Hong Kong (VHHH) partly because it files gust groups and Kisumu
 > never has.
+
+### What shipped, 2026-09-16
+
+`today_properties.peak_wind_kmh` is gone. In its place:
+`peak_wind_primary_kmh` (the primary place, ashore) and
+`peak_wind_secondary_kmh` (the secondary point). Named STRUCTURALLY rather
+than ashore/marine because `secondary_point` is generic in config — it carries
+a name and a section label and nothing says water, so a deployment may point
+it at a ridge. The prompt names the actual places; the field names only have
+to be impossible to swap.
+
+**The prompt was contradicting itself, and that half is fixed too.** The field
+list defined the one wind field as the Gulf's while `CALIBRATED PEAK GUST`
+said *"START YOUR `peak_wind_kmh` FROM THIS NUMBER"* about a Kisumu figure. No
+answer could satisfy both. The calibration instruction now points at
+`peak_wind_primary_kmh`, which is what it always meant.
+
+**The narrative prompt gained a prohibition, not a mapping.** A mapping ("use
+X here, Y there") reads as a default a later paragraph might override. The
+rule names both fields, says which section each belongs to, and forbids
+printing one place's gust in the other's section or one figure as though it
+covered both. It is allowlisted in `test_prompt_seam`'s `DEFERENCES` — the
+firewall correctly flagged it, because `peak_wind_primary_kmh` is now scored,
+and the entry records WHY it is deference: it decides no value, it says which
+of two given gusts goes where, and the judgment call has no sections to say
+that in.
+
+**The blend is now wind-scored.** `_blend_prediction`'s `wind_kmh=None` was
+deliberate and is no longer truthful: the ashore field describes the place the
+record observes, and the quantities match (forecast gust against ERA5 gust).
+The secondary point's stays unscored and `mslp_trend_24h` stays prose, both
+for the original reason. `coverage.NARRATED_FIELDS` watches the secondary one
+and NOT the primary, by that module's own rule that a scored field's absence
+already surfaces as an unscored day.
+
+**Old records still read.** `peak_wind_secondary_kmh` carries an
+`AliasChoices` including the old key, so every entry written before the split
+still loads its Gulf number — verified against 2026-09-15's stored 42.1.
+Without it pydantic would have ignored the unknown key and the tile would have
+gone empty on archived pages that rendered correctly for a week. The alias is
+read-only: new entries serialize under the explicit name.
+
+**The measured claim in `CALIBRATED PEAK GUST` was qualified, not quoted.**
+"the published gust came in 12.09 km/h BELOW what was observed" is item 126's
+founding measurement, and it pairs a gust PUBLISHED for the secondary point
+against observations at the primary — the very confusion this item fixes. The
+per-model corrections behind the calibrated number are primary-vs-primary and
+remain sound. The prompt now says the direction is informative and the size is
+not yet established for this field.
+
+**Two holes in the contract, found by looking rather than by a failure.**
+`blend_prediction.json` expected `wind_kmh=None` in all four cases — the
+exporter still passed `peak_wind_kmh=24.0`, which pydantic silently ignored
+once the field was gone, so a port could have skipped the new wiring and
+passed. A fifth case and two differing gusts now pin it. The Dart unit test had
+the same shape: it asserted null with a reason that the split made false, and
+would have passed with the wiring deleted.
 
 ## 144a. The same finding, as first diagnosed
 

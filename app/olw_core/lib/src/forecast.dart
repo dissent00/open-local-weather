@@ -188,11 +188,16 @@ ModelPrediction blendPrediction(TodayProperties tp) => ModelPrediction(
       // falsy in both languages, and a builder testing truthiness rather than
       // nullness turns "no chance of rain" into "declined to answer".
       rainProbabilityPct: tp.rainProbabilityPct,
-      // Deliberately absent, not zero. peakWindKmh is the SECONDARY point's
-      // and mslpTrend24h is prose; scoring either against the primary point's
-      // observations would compare two different things, and a null reads as
-      // "not forecast" everywhere in this record.
-      windKmh: null,
+      // SCORED AT LAST — upstream item 144. This was null for as long as
+      // todayProperties had ONE wind field, because that field was the
+      // SECONDARY point's and scoring it against the primary point's
+      // observations would have compared two different places. The split
+      // gives the blend a wind call at the place the record observes, so a
+      // null here would now discard a forecast that exists.
+      //
+      // The secondary point's wind stays unscored and mslpTrend24h stays
+      // prose, so both remain null for the original reason.
+      windKmh: tp.peakWindPrimaryKmh,
       mslpTrend: null,
     );
 

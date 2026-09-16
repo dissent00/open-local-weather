@@ -79,6 +79,14 @@ class LocationConfig(BaseModel):
     secondary_point: SecondaryPoint = Field(default_factory=SecondaryPoint)
     region_points: list[RegionPoint] = Field(default_factory=list)
     metar_station_icao: str = ""
+    # How to NAME that station to a reader — ROADMAP item 143.
+    #
+    # The divergence footnote is a fact about ONE station, not a claim about
+    # the basin, and it only reads that way if it names the place: "the
+    # airport reported 20C against a forecast of 18.2C" tells a reader what to
+    # do with it, while "HKKI reported 20C" does not. Empty falls back to the
+    # ICAO, which is ugly but never wrong.
+    metar_station_name: str = ""
     waqi_stations: list[WaqiStation] = Field(default_factory=list)
     local_bulletin_url: str = ""
     local_bulletin_source_name: str = ""

@@ -77,7 +77,27 @@ class TodayProperties(BaseModel):
 
     rain_expected: str = Field(max_length=MAX_DISPLAY_STRING)
     onset_window: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)  # Day+0 only
-    peak_wind_kmh: float | None = None  # secondary point, if configured
+    # TWO POINTS, TWO FIELDS — ROADMAP item 144.
+    #
+    # There used to be one `peak_wind_kmh`, defined as the SECONDARY point's,
+    # and the ashore wind had nowhere to land. The narrative, holding one gust
+    # number, used it in both sections: on 2026-09-16 "Today's Forecast" — the
+    # ASHORE forecast — published "peak gusts reach 41", which was Winam Gulf's
+    # figure. Kisumu's own per-model Day+0 max that day was 32.8 and its
+    # calibrated consensus 40.0.
+    #
+    # The prompt had BOTH instructions and they contradicted each other: the
+    # field list said this was the Gulf's, while CALIBRATED PEAK GUST (Kisumu,
+    # bias-corrected) said "START YOUR peak_wind_kmh FROM THIS NUMBER". A
+    # single field could not satisfy both, so the fix is a field, not a
+    # rewording.
+    #
+    # NAMED STRUCTURALLY, not "ashore"/"marine". `secondary_point` is generic
+    # in config — it carries a name and a section label and nothing says water
+    # — so a deployment may point it at a ridge or a pass. The prompt names the
+    # actual places; these names only have to be impossible to swap.
+    peak_wind_primary_kmh: float | None = None
+    peak_wind_secondary_kmh: float | None = None  # secondary point, if configured
     temp_high_c: float
     temp_low_c: float
 

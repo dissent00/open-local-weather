@@ -45,6 +45,19 @@ from openlocalweather.defaults import HISTORICAL_LOOKBACK_DAYS, ROLLING_WINDOW_L
 
 
 
+
+# The one place the narrative prompt may name a scored wind field — ROADMAP
+# item 144. It POINTS AT the two fields; it does not decide either, which is
+# what keeps it on the renderer's side of the firewall `test_prompt_seam`
+# enforces. See DEFERENCES there for the same reasoning from the test's side.
+SECTION_GUST_RULE = (
+    '\n   - TWO GUST FIGURES, ONE PER PLACE, AND THEY ARE NOT INTERCHANGEABLE. '
+    '"peak_wind_primary_kmh" is the gust ASHORE, at the place Today\'s Forecast '
+    'describes, and it belongs there and in any other section about conditions on '
+    'land; "peak_wind_secondary_kmh" is the secondary point\'s and belongs only in '
+    "that point's own section."
+)
+
 def _blocks(
     location: LocationConfig,
     historical_lookback_days: int,
@@ -166,6 +179,32 @@ VERIFICATION IS ALREADY WRITTEN FOR THIS DAY. Yesterday's actuals do not change 
     )
     secondary_guidance_note = f" and {location.secondary_point.name}" if secondary_enabled else ""
 
+    # ROADMAP item 144. TWO GUSTS, AND THE SECTIONS MUST NOT SWAP THEM.
+    #
+    # Before the split there was one wind field and the narrative used it in
+    # both sections, which is how "peak gusts reach 41" — Winam Gulf's figure —
+    # was published under "Today's Forecast" on 2026-09-16. The judgment call
+    # now carries one gust per place, so the only remaining way to get this
+    # wrong is to print the other section's number, and that is what this
+    # forbids in terms.
+    #
+    # WORDED AS A PROHIBITION, not a mapping. A mapping ("use X here, Y there")
+    # reads as a default that a later paragraph might override; a prohibition
+    # has nothing to override it with.
+    wind_section_rule = (
+        SECTION_GUST_RULE + (
+            f" That second section is the {location.secondary_point.section_label} "
+            f"section, for {location.secondary_point.name}. Never print one place's "
+            f"gust in the other's section, and never print a single gust figure as "
+            f"though it covered both: they are different places and they differ. If "
+            f"one of them is null, that section says nothing about gusts rather than "
+            f"borrowing the other."
+            if secondary_enabled
+            else " No secondary location is configured here, so that second figure is "
+            "null and nothing in this forecast describes another place's wind."
+        )
+    )
+
     # ROADMAP item 59, found by the 2026-09-10 cold reading. This read
     # "(secondary point)" and nothing in the prompt defines "point", so the
     # reader could not tell whether it meant "take this from the secondary
@@ -182,6 +221,22 @@ VERIFICATION IS ALREADY WRITTEN FOR THIS DAY. Yesterday's actuals do not change 
         '"secondary_today_hourly" in TODAY\'S MULTI-MODEL GUIDANCE and nowhere else'
         if secondary_enabled
         else "no secondary location is configured here, so leave this null"
+    )
+
+    # ROADMAP item 144, and the reason the field exists at all.
+    #
+    # THE PROMPT USED TO CONTRADICT ITSELF. There was one wind field, the
+    # list defined it as the secondary point's, and CALIBRATED PEAK GUST
+    # further down said "START YOUR peak_wind_kmh FROM THIS NUMBER" about a
+    # PRIMARY-point figure. No answer could satisfy both, and on 2026-09-16
+    # the narrative published the Gulf's 41 km/h in the ashore section.
+    #
+    # Each note now names its own place, and the two are written to be read
+    # side by side — the contrast is the instruction.
+    primary_wind_note = (
+        f"the wind at {location.primary_place_name} itself — what someone ASHORE "
+        "will feel, and the gust the accuracy record scores you on. Start it from "
+        "CALIBRATED PEAK GUST, which is this place, bias-corrected"
     )
 
 
@@ -279,6 +334,7 @@ You have no way to change them from here. The schema you return does not contain
 {local_met_naming_rule}""",
         "formatting": f"""FORMATTING RULES:
    - Wind always as "X km/h (Y kt)", e.g. "23 km/h (12 kt)". Knots = km/h ÷ 1.852. THE BEARING IS PRE-COMPUTED AND OFTEN ABSENT: "WIND DIRECTION" in the user message carries one rose point when the models share one and null when they do not, because a compass bearing cannot be averaged and a set of models pointing different ways has no mean direction. When it carries a point, append "from the [POINT]"; when it is null, SAY NOTHING ABOUT DIRECTION - not "variable", not "shifting", not a guess from the raw arrays. Never derive a bearing yourself: measured here, agreement runs 0.95 at midday and 0.48 in the evening, so the hours you would most want to name are the hours nobody agrees on.
+{wind_section_rule}
    - "WIND SHIFT" carries a finished clause for how the wind turns through the day - "northeasterly overnight, turning southwest by midday" - or nothing. Use it VERBATIM where it belongs, in Today's Forecast and in any secondary-location section. It is the best-supported wind fact this location has: the models disagree about a single daily bearing and agree about which way it turns. An anchor they split on has already been dropped, so do not fill the gap.
    - Temperatures always as "0°C / 32°F" format.
    - Rain in both mm and inches.
@@ -290,7 +346,7 @@ You have no way to change them from here. The schema you return does not contain
    Do not state the obvious or the unactionable. A forecast is read by someone deciding what to do next. "The UV index has dropped to zero following sunset" is true, unsurprising, and useless - the reader can see it is dark. Where a variable is irrelevant at the issuance hour, OMIT it rather than reporting its null state: no UV after dark, no "peak temperature already occurred" unless the number itself still matters for what comes next. This is the same discipline as not narrating hours already passed - say the things that change what someone does.
 
    {air_quality_guidance}""",
-        "today_props": f"""today_properties FIELDS, ALL OF THEM: rain (true/false), rain_expected, rain_probability_pct, onset_window (Day+0 only), onset_hour (Day+0 only), precip_mm, peak_wind_kmh ({secondary_wind_note}), temp_high_c and temp_low_c (plain numbers, Celsius - the display string in both units is COMPUTED from these in code, do not produce one), mslp_trend_24h, synoptic_pattern, uv_index_max, air_quality_aqi. The paragraphs below govern several of these; the list above is the complete set, and a field introduced only below is not optional for being introduced there. This is your synthesized BLENDED call across all models - genuine reasoning, not any one model's raw number.
+        "today_props": f"""today_properties FIELDS, ALL OF THEM: rain (true/false), rain_expected, rain_probability_pct, onset_window (Day+0 only), onset_hour (Day+0 only), precip_mm, peak_wind_primary_kmh ({primary_wind_note}), peak_wind_secondary_kmh ({secondary_wind_note}), temp_high_c and temp_low_c (plain numbers, Celsius - the display string in both units is COMPUTED from these in code, do not produce one), mslp_trend_24h, synoptic_pattern, uv_index_max, air_quality_aqi. The paragraphs below govern several of these; the list above is the complete set, and a field introduced only below is not optional for being introduced there. This is your synthesized BLENDED call across all models - genuine reasoning, not any one model's raw number.
 
    THIS IS A SCORED FORECAST, NOT A SUMMARY. Your blended call is stored as a prediction and verified against tomorrow's observations exactly like GFS or ECMWF, and it is published on the accuracy page beside them. The fields "rain" (true/false), "onset_hour" ("HH:MM" local, Day+0 only) and "precip_mm" are that commitment in machine-readable form; "rain_expected" and "onset_window" are the same calls in prose for the reader. They must AGREE - prose that hedges toward rain while "rain" is false is a forecast that cannot be held to anything, and the disagreement is now visible in the record rather than hidden in a sentence.
 
@@ -709,6 +765,7 @@ def build_user_prompt(
     # Composed in code because an observation is a fact, and facts are not
     # asked of the model here.
     observed_so_far: str | None = None,
+    low_divergence_note: str | None = None,
     forecast_windows: Any = None,
     forward_calendar: Any = None,
 ) -> str:
@@ -761,6 +818,28 @@ def build_user_prompt(
     # and "Unavailable" against a station that was never configured reads as
     # a fetch that failed. The system prompt drops its ground-station
     # guidance in the same case — see `_blocks`.
+    # ROADMAP item 143, part 3, and it lives INSIDE the observed block on
+    # purpose.
+    #
+    # Item 142 found the defect this closes: OBSERVED SO FAR TODAY and THE
+    # FORECASTER'S CALL both arrive locked verbatim and disagreed about the
+    # overnight low — "low so far 20C" beside temp_low_c 18.2 at 06:01, with
+    # the night already over. The instruction set therefore REQUIRED
+    # publishing two lows for one quantity, which rule 1 exists to prevent,
+    # and the model escaped only by taking the other branch of "use it
+    # VERBATIM or not at all".
+    #
+    # A new numbered block was the obvious shape and is the wrong one twice
+    # over: `test_prompt_seam` checks the system prompt's inventory against an
+    # ARCHIVED user prompt, so a new heading fails until a run has archived
+    # one; and the sentence is a fact ABOUT the observed low, which is already
+    # here. Nesting it means the reconciliation arrives in the same breath as
+    # the thing it reconciles.
+    #
+    # EMPTY ON AN ORDINARY MORNING, which is most of them. Silence is the
+    # designed default, not a fallback, so this costs nothing when there is
+    # nothing to say — no "Unavailable" line, because nothing is unavailable.
+    low_divergence_block = f"\n\nOVERNIGHT LOW FOOTNOTE (pre-computed by code, and the ONLY sanctioned way to mention both the observed low and the called one. Use it VERBATIM or not at all. It is a footnote: it belongs late and small, and it must not displace what the reader came for. Do NOT reconcile the two numbers yourself, do not average them, and do not present either as correcting the other — a station can sit warmer than the country around it and a forecast low can be wrong, and nothing here can tell you which happened):\n{low_divergence_note}" if low_divergence_note else ""
     ground_aqi_block = (
         f"""
 
@@ -900,11 +979,11 @@ WIND DIRECTION (pre-computed by code — one rose point the models actually shar
 WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
 {wind_shift if wind_shift else "Unavailable — omit any claim about the wind turning."}
 
-CALIBRATED PEAK GUST (pre-computed by code: the models' Day+0 consensus gust with each model's OWN measured bias added back, from the record's own measured "actual minus predicted" at Day+0. MODEL TRACK RECORD shows you that figure for the models it lists; the consensus behind this number also includes internal yardsticks whose rows are deliberately withheld from you, so do not try to reconstruct it from what is in front of you. START YOUR "peak_wind_kmh" FROM THIS NUMBER, not from the raw per-model gusts in EXTRACTED PER-MODEL PREDICTIONS. Those are the uncorrected forecasts and they are in your context because they are what gets SCORED, not because they are the best estimate. This is not a judgement call being taken from you: measured over 32 days, the published gust came in 12.09 km/h BELOW what was observed, median 10.15, on a day-over-day band of 8.0 km/h — while the track record sitting in this same prompt said in words that every model under-forecasts peak wind. You may still depart from it, and a departure is exactly what a forecaster is for; say so in the Forecaster Confidence Notes and say which way and why. What you may not do is quietly average the raw model gusts back in, which is the behaviour this block exists to end):
+CALIBRATED PEAK GUST (pre-computed by code: the models' Day+0 consensus gust with each model's OWN measured bias added back, from the record's own measured "actual minus predicted" at Day+0. MODEL TRACK RECORD shows you that figure for the models it lists; the consensus behind this number also includes internal yardsticks whose rows are deliberately withheld from you, so do not try to reconstruct it from what is in front of you. START YOUR "peak_wind_primary_kmh" FROM THIS NUMBER, not from the raw per-model gusts in EXTRACTED PER-MODEL PREDICTIONS. Those are the uncorrected forecasts and they are in your context because they are what gets SCORED, not because they are the best estimate. This is not a judgement call being taken from you: the track record sitting in this same prompt says in words that every model under-forecasts peak wind, and the per-model corrections behind this number are measured from that same record at this same place. A published-gust shortfall of about 12 km/h was also measured over 32 days, but that measurement compared a gust published for the SECONDARY point against observations at this one, so treat its direction as informative and its size as not yet established for this field. You may still depart from it, and a departure is exactly what a forecaster is for; say so in the Forecaster Confidence Notes and say which way and why. What you may not do is quietly average the raw model gusts back in, which is the behaviour this block exists to end):
 {f"{calibrated_gust_kmh} km/h" if calibrated_gust_kmh is not None else "Unavailable - too few verified checks to have measured a bias yet. Reason from the raw per-model gusts, and expect them to run low."}
 
 OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — MEASURED, not forecast, and the only block here that describes hours the reader has already lived. Use it VERBATIM or not at all. IT IS NOT A FORECAST AND MUST NOT BE WEIGHED AGAINST ONE: where it and the call disagree, the observation happened and the forecast did not, so say what was measured and do not reconcile them. A NEGATIVE IN IT IS A MEASUREMENT — "no rain" means the station reported and saw none, which is worth telling a reader at midday; a dimension that is simply absent was not measured and you may say nothing about it. This is the one place you may write in the PAST TENSE about today, and the clause it earns is short: a reader who was rained on at 15:00 and is told the day was dry stops believing the rest):
-{observed_so_far if observed_so_far else "Unavailable — the station reported nothing measurable today. Say nothing about what has already happened."}{ground_aqi_block}{local_bulletin_block}
+{observed_so_far if observed_so_far else "Unavailable — the station reported nothing measurable today. Say nothing about what has already happened."}{low_divergence_block}{ground_aqi_block}{local_bulletin_block}
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — the direction lives in these fields and nowhere else. Most stored notes that had it backwards were corrected on 2026-09-10 and say so; the ones that could not be verified mechanically were left alone rather than guessed at):
 {_json(verification_context)}

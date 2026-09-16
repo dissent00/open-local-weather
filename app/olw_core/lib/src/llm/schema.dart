@@ -95,7 +95,8 @@ Map<String, Object?> _geminiTodayProperties() => {
       'properties': {
         'rain_expected': {'type': 'STRING'},
         'onset_window': {'type': 'STRING', 'nullable': true},
-        'peak_wind_kmh': {'type': 'NUMBER', 'nullable': true},
+        'peak_wind_primary_kmh': {'type': 'NUMBER', 'nullable': true},
+        'peak_wind_secondary_kmh': {'type': 'NUMBER', 'nullable': true},
         'temp_high_c': {'type': 'NUMBER'},
         'temp_low_c': {'type': 'NUMBER'},
         'rain': {'type': 'BOOLEAN'},
@@ -192,7 +193,10 @@ Map<String, Object?> _strictTodayProperties() => {
         'onset_window': {
           'type': ['string', 'null']
         },
-        'peak_wind_kmh': {
+        'peak_wind_primary_kmh': {
+          'type': ['number', 'null']
+        },
+        'peak_wind_secondary_kmh': {
           'type': ['number', 'null']
         },
         'temp_high_c': {'type': 'number'},
@@ -217,7 +221,8 @@ Map<String, Object?> _strictTodayProperties() => {
       'required': [
         'rain_expected',
         'onset_window',
-        'peak_wind_kmh',
+        'peak_wind_primary_kmh',
+        'peak_wind_secondary_kmh',
         'temp_high_c',
         'temp_low_c',
         'rain',
@@ -299,7 +304,12 @@ String? _bounded(Object? value, String field) {
 class TodayProperties {
   final String rainExpected;
   final String? onsetWindow;
-  final double? peakWindKmh;
+  /// TWO POINTS, TWO FIELDS — ROADMAP item 144. There used to be one
+  /// `peakWindKmh` defined as the SECONDARY point's, and the ashore wind had
+  /// nowhere to land, so the narrative used the same number in both sections
+  /// and published Winam Gulf's gust under Today's Forecast on 2026-09-16.
+  final double? peakWindPrimaryKmh;
+  final double? peakWindSecondaryKmh;
   final double tempHighC;
   final double tempLowC;
   /// Computed from [tempHighC] and [tempLowC], never parsed. The model used
@@ -338,7 +348,8 @@ class TodayProperties {
   const TodayProperties({
     required this.rainExpected,
     this.onsetWindow,
-    this.peakWindKmh,
+    this.peakWindPrimaryKmh,
+    this.peakWindSecondaryKmh,
     required this.tempHighC,
     required this.tempLowC,
     required this.rain,
@@ -354,7 +365,8 @@ class TodayProperties {
   factory TodayProperties.fromJson(Map<String, Object?> j) => TodayProperties(
         rainExpected: _bounded(j['rain_expected'], 'rain_expected')!,
         onsetWindow: _bounded(j['onset_window'], 'onset_window'),
-        peakWindKmh: _toDouble(j['peak_wind_kmh']),
+        peakWindPrimaryKmh: _toDouble(j['peak_wind_primary_kmh']),
+        peakWindSecondaryKmh: _toDouble(j['peak_wind_secondary_kmh']),
         tempHighC: _toDouble(j['temp_high_c'])!,
         tempLowC: _toDouble(j['temp_low_c'])!,
         rain: j['rain'] as bool,
@@ -377,7 +389,8 @@ class TodayProperties {
   Map<String, Object?> toJson() => {
         'rain_expected': rainExpected,
         'onset_window': onsetWindow,
-        'peak_wind_kmh': peakWindKmh,
+        'peak_wind_primary_kmh': peakWindPrimaryKmh,
+        'peak_wind_secondary_kmh': peakWindSecondaryKmh,
         'temp_high_c': tempHighC,
         'temp_low_c': tempLowC,
         'rain': rain,
@@ -492,7 +505,11 @@ Map<String, Object?> geminiJudgmentSchema() => {
               'type': 'STRING',
               'nullable': true,
             },
-            'peak_wind_kmh': {
+            'peak_wind_primary_kmh': {
+              'type': 'NUMBER',
+              'nullable': true,
+            },
+            'peak_wind_secondary_kmh': {
               'type': 'NUMBER',
               'nullable': true,
             },
@@ -712,7 +729,10 @@ Map<String, Object?> strictJudgmentSchema() => {
             'onset_window': {
               'type': ['string', 'null'],
             },
-            'peak_wind_kmh': {
+            'peak_wind_primary_kmh': {
+              'type': ['number', 'null'],
+            },
+            'peak_wind_secondary_kmh': {
               'type': ['number', 'null'],
             },
             'temp_high_c': {
@@ -746,7 +766,7 @@ Map<String, Object?> strictJudgmentSchema() => {
               'type': ['string', 'null'],
             },
           },
-          'required': ['rain_expected', 'onset_window', 'peak_wind_kmh', 'temp_high_c', 'temp_low_c', 'rain', 'onset_hour', 'precip_mm', 'rain_probability_pct', 'mslp_trend_24h', 'synoptic_pattern', 'uv_index_max', 'air_quality_aqi'],
+          'required': ['rain_expected', 'onset_window', 'peak_wind_primary_kmh', 'peak_wind_secondary_kmh', 'temp_high_c', 'temp_low_c', 'rain', 'onset_hour', 'precip_mm', 'rain_probability_pct', 'mslp_trend_24h', 'synoptic_pattern', 'uv_index_max', 'air_quality_aqi'],
           'additionalProperties': false,
           'description': 'The LLM\'s synthesized, BLENDED call across all models — genuine\nreasoning, not any one model\'s raw number. Only rain_expected, rain,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code.',
         },

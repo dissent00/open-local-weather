@@ -9,13 +9,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "rain_observed_while_dry_called"
@@ -27,13 +30,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": false,
           "high_c": null,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -43,13 +49,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 33.0,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "high_already_exceeded"
@@ -61,13 +70,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 24.0,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -77,13 +89,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 31.9,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -93,13 +108,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 32.0,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "high_already_exceeded"
@@ -111,13 +129,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -127,13 +148,16 @@
         "standing": {
           "rain": null,
           "temp_high_c": null,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": 99.0,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -143,13 +167,16 @@
         "standing": {
           "rain": false,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": 35.0,
-          "precipitation_onset": null
-        }
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "rain_observed_while_dry_called",
@@ -162,13 +189,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": "18:00"
+          "onset_hour": "18:00",
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "14:00"
-        }
+          "precipitation_onset": "14:00",
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "onset_already_passed"
@@ -180,13 +210,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": "18:00"
+          "onset_hour": "18:00",
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "17:30"
-        }
+          "precipitation_onset": "17:30",
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -196,13 +229,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": "14:00"
+          "onset_hour": "14:00",
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "18:00"
-        }
+          "precipitation_onset": "18:00",
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     },
@@ -212,13 +248,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": "18:00"
+          "onset_hour": "18:00",
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "17:00"
-        }
+          "precipitation_onset": "17:00",
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "onset_already_passed"
@@ -230,13 +269,16 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": "18:00"
+          "onset_hour": "18:00",
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "9:00"
-        }
+          "precipitation_onset": "9:00",
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": [
         "onset_already_passed"
@@ -248,13 +290,134 @@
         "standing": {
           "rain": true,
           "temp_high_c": 30.0,
-          "onset_hour": null
+          "onset_hour": null,
+          "temp_low_c": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
-          "precipitation_onset": "14:00"
-        }
+          "precipitation_onset": "14:00",
+          "low_c": null
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "the founding case: warmer station, far from freezing, buys nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 20.0
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "the same gap near freezing is decisive",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 2.0
+        },
+        "low_is_settled": true
+      },
+      "expected": [
+        "observed_low_diverges"
+      ]
+    },
+    {
+      "name": "an unsettled night makes a warmer reading prove nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 2.0
+        },
+        "low_is_settled": false
+      },
+      "expected": []
+    },
+    {
+      "name": "colder than called settles without waiting for sunrise",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": 2.0
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": -1.0
+        },
+        "low_is_settled": false
+      },
+      "expected": [
+        "observed_low_diverges"
+      ]
+    },
+    {
+      "name": "a night whose end is UNKNOWN resolves to silence",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 2.0
+        },
+        "low_is_settled": null
+      },
+      "expected": []
+    },
+    {
+      "name": "no station low says nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true
       },
       "expected": []
     }
