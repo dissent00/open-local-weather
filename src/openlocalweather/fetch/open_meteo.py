@@ -63,6 +63,12 @@ ARCHIVE_HOURLY_VARS = (
 )
 AIR_QUALITY_HOURLY_VARS = "pm10,pm2_5,european_aqi,us_aqi"
 
+# The observed gust, under either spelling the archive has used. Deliberately
+# NOT followed by windspeed_10m: that is a different quantity, and a fallback
+# that substitutes it would put a sustained wind in the gust's column of the
+# accuracy record without anything reporting it — ROADMAP item 146, step 1.
+ARCHIVE_GUST_KEYS = ("wind_gusts_10m", "windgusts_10m")
+
 
 class OpenMeteoFetchError(RuntimeError):
     """A core Open-Meteo fetch failed (network error or non-200 response)."""
@@ -501,10 +507,15 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     approach work — "what actually happened on date X" for any X in the
     fetched range becomes a single dict lookup.
 
-    Wind gust fallback matches the original pipeline exactly: if the
-    windgusts_10m ARRAY is present in the response at all, it's used for
-    every hour (even hours where that specific value is null); only if the
-    whole array is absent does the response fall back to windspeed_10m.
+    WIND IS THE GUST OR NOTHING — ROADMAP item 146, step 1. This used to
+    fall back to windspeed_10m when the gust array was absent, and a
+    sustained wind would then have been scored as a gust: one field, two
+    quantities, the exact shape item 144 was raised on, landing in the
+    observed side that `avg_wind_error_kmh_10` and the CALIBRATED PEAK GUST
+    are built from. Item 146 measured on 2026-09-16 that it never fired —
+    120 of 120 archive hours carried a gust — so the record is clean; the
+    fallback is removed while that is still true. An absent gust array now yields an
+    absent peak wind, which the scorer already skips. See ARCHIVE_GUST_KEYS.
     """
     if not hourly_json or not hourly_json.get("hourly"):
         return {}
@@ -513,7 +524,7 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     temp_arr = h.get("temperature_2m") or []
     precip_arr = h.get("precipitation") or []
     cloud_arr = h.get("cloud_cover") or []
-    wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m", "wind_speed_10m", "windspeed_10m")
+    wind_arr = pick_series(h, *ARCHIVE_GUST_KEYS)
     pressure_arr = h.get("pressure_msl") or []
 
     by_date: dict[str, dict[str, list]] = {}
@@ -581,7 +592,7 @@ def bucket_hourly_window(
     temp_arr = h.get("temperature_2m") or []
     precip_arr = h.get("precipitation") or []
     cloud_arr = h.get("cloud_cover") or []
-    wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m", "wind_speed_10m", "windspeed_10m")
+    wind_arr = pick_series(h, *ARCHIVE_GUST_KEYS)
     pressure_arr = h.get("pressure_msl") or []
 
     def _at(series: list, i: int):

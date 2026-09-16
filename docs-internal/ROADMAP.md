@@ -20547,7 +20547,7 @@ Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
 
 ---
 
-## 146. Compare sustained to sustained, and gust to gust · **Planned — raised 2026-09-16**
+## 146. Compare sustained to sustained, and gust to gust · **Step 1 SHIPPED 2026-09-16; steps 2-4 Planned**
 
 The operator, 2026-09-16, reading item 145's claim that a wind deviation
 cannot be offered here:
@@ -20642,6 +20642,25 @@ portability argument item 144 settled for the gust.
 4. **Then reconsider what the forecast REPORTS.** A reader ashore arguably
    wants the sustained wind and the gust, not the gust alone — that is a
    product question and belongs after the plumbing, not before.
+
+### Step 1 shipped 2026-09-16 — the fallback refuses
+
+`bucket_hourly_by_date` and `bucket_hourly_window` read the gust under either
+spelling (`ARCHIVE_GUST_KEYS`) and nothing else; an absent gust array is an
+absent peak wind, which `score_prediction` already skips. Same change in
+`bucketHourlyByDate`, and the vector case that pinned the fallback now pins
+its refusal. Mutation-tested both ways: the inverted Python test failed on the
+old code, and putting the fallback back into the Dart fails exactly that
+vector case. 1250 Python and 185 Dart tests green; the record is untouched
+because the fallback had never fired.
+
+**A second divergence went with it, and no vector had covered it.** The two
+languages disagreed on an ALL-NULL gust array beside a populated windspeed:
+Python's `pick_series` skips a series with no non-null value, so it fell
+through to the sustained wind; Dart keyed on the array's presence and kept
+the nulls. The existing vector's "present with nulls" case has one real hour,
+which is why it never saw this. Both now yield an absent wind — verified by
+running the Python on that exact shape.
 
 ### What NOT to do
 

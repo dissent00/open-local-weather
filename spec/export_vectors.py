@@ -954,7 +954,8 @@ def export_bucketing() -> None:
             "pressure_msl": [1013.0, 1013.5],
         }
     }
-    # windgusts absent entirely: only then does windspeed_10m apply.
+    # windgusts absent entirely: wind is ABSENT, never the sustained speed
+    # wearing the gust's name — ROADMAP item 146, step 1.
     speed_fallback = {
         "hourly": {
             "time": ["2026-08-11T00:00", "2026-08-11T01:00"],
@@ -996,7 +997,7 @@ def export_bucketing() -> None:
     scenarios = [
         ("multi-day split, onset and aggregates per day", multi_day),
         ("gust array present with nulls — no windspeed substitution", gusts_with_nulls),
-        ("gust array absent — falls back to windspeed", speed_fallback),
+        ("gust array absent — wind is absent, not the sustained speed", speed_fallback),
         ("a precipitation total on an exact rounding tie", rounding_tie),
         ("the archive's own cloud is a mean, and an absent hour is not clear",
          cloudy),
@@ -1020,8 +1021,8 @@ def export_bucketing() -> None:
         "per calendar date — the definition of 'what actually happened' that "
         "every verification score is measured against. Wind uses the "
         "windgusts_10m ARRAY if it is present at all (even where individual "
-        "hours are null); windspeed_10m applies only when the gust array is "
-        "absent entirely.",
+        "hours are null); an absent gust array yields an absent peak wind, "
+        "never windspeed_10m, which is a different quantity (item 146).",
         cases,
     )
 

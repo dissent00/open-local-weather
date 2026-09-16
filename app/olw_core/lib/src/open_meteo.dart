@@ -373,11 +373,15 @@ class OpenMeteoClient {
 /// per calendar date — the definition of "what actually happened" that every
 /// verification score is measured against.
 ///
-/// Wind fallback matters and is subtle: if the `windgusts_10m` ARRAY is
-/// present at all it is used for every hour, *even hours where that
-/// individual value is null*. `windspeed_10m` applies only when the gust
-/// array is absent entirely. Substituting windspeed for null gust hours
-/// would quietly mix two different measurements into one series.
+/// WIND IS THE GUST OR NOTHING — upstream ROADMAP item 146, step 1. This
+/// used to fall back to `windspeed_10m` when the gust array was absent, and a
+/// sustained wind would then have been scored as a gust: one field, two
+/// quantities, the shape item 144 was raised on, landing in the observed side
+/// the accuracy record and the gust calibration are built from. Item 146
+/// measured on 2026-09-16 that it never fired, so the fallback is removed
+/// while the record is still clean. An absent gust array yields an absent peak
+/// wind, which the scorer already skips. Mirrors `ARCHIVE_GUST_KEYS` in
+/// `fetch/open_meteo.py`, pinned by spec/vectors/bucket_hourly_by_date.json.
 Map<DateTime, DailyActual> bucketHourlyByDate(
   Map<String, Object?> hourlyJson, {
   double threshold = rainThresholdMm,
@@ -393,11 +397,8 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
   final tempArr = nums(hourly['temperature_2m']);
   final precipArr = nums(hourly['precipitation']);
   final cloudArr = nums(hourly['cloud_cover']);
-  // Presence of the ARRAY decides, not presence of values within it.
-  final gusts = hourly['windgusts_10m'];
-  final windArr = (gusts is List && gusts.isNotEmpty)
-      ? nums(gusts)
-      : nums(hourly['windspeed_10m']);
+  // Either spelling the archive has used for the gust, and nothing else.
+  final windArr = nums(hourly['wind_gusts_10m'] ?? hourly['windgusts_10m']);
   final pressureArr = nums(hourly['pressure_msl']);
 
   double? at(List<double?> a, int i) => i < a.length ? a[i] : null;

@@ -137,7 +137,10 @@ def test_bucket_hourly_by_date_aggregates_correctly():
     assert result[d2].onset_hour is None
 
 
-def test_bucket_hourly_by_date_wind_falls_back_to_windspeed_when_gusts_array_absent():
+def test_bucket_hourly_by_date_wind_is_absent_when_gusts_array_absent():
+    # ROADMAP item 146, step 1. This used to fall back to windspeed_10m, which
+    # is a SUSTAINED wind wearing the gust's name — the shape item 144 was
+    # raised on, landing in the observed side the record scores against.
     hourly_json = {
         "hourly": {
             "time": ["2026-08-11T00:00", "2026-08-11T06:00"],
@@ -148,7 +151,7 @@ def test_bucket_hourly_by_date_wind_falls_back_to_windspeed_when_gusts_array_abs
         }
     }
     result = bucket_hourly_by_date(hourly_json)
-    assert result[date(2026, 8, 11)].peak_wind_kmh == pytest.approx(25.0)
+    assert result[date(2026, 8, 11)].peak_wind_kmh is None
 
 
 def test_bucket_hourly_by_date_handles_missing_values_in_arrays():

@@ -1,7 +1,7 @@
 {
   "vector_format_version": 1,
   "function": "bucket_hourly_by_date",
-  "description": "Splits a flat multi-day hourly archive response into one DailyActual per calendar date \u2014 the definition of 'what actually happened' that every verification score is measured against. Wind uses the windgusts_10m ARRAY if it is present at all (even where individual hours are null); windspeed_10m applies only when the gust array is absent entirely.",
+  "description": "Splits a flat multi-day hourly archive response into one DailyActual per calendar date \u2014 the definition of 'what actually happened' that every verification score is measured against. Wind uses the windgusts_10m ARRAY if it is present at all (even where individual hours are null); an absent gust array yields an absent peak wind, never windspeed_10m, which is a different quantity (item 146).",
   "cases": [
     {
       "name": "multi-day split, onset and aggregates per day",
@@ -166,7 +166,7 @@
       }
     },
     {
-      "name": "gust array absent \u2014 falls back to windspeed",
+      "name": "gust array absent \u2014 wind is absent, not the sustained speed",
       "input": {
         "hourly_json": {
           "hourly": {
@@ -199,7 +199,7 @@
           "rain": false,
           "high_c": 19.0,
           "low_c": 18.0,
-          "peak_wind_kmh": 16.0,
+          "peak_wind_kmh": null,
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
@@ -216,7 +216,6 @@
             "rain": "era5_archive",
             "high_c": "era5_archive",
             "low_c": "era5_archive",
-            "peak_wind_kmh": "era5_archive",
             "mslp_trend": "era5_archive",
             "precip_mm": "era5_archive"
           }
