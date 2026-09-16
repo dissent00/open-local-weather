@@ -20822,7 +20822,7 @@ Related: items 73, 112, 111, 132, 134, 147, and `ensemble` item 12.
 
 ---
 
-## 149. The track record narrates itself too · **Raised 2026-09-16 — for discussion, deliberately not decided**
+## 149. The track record narrates itself too · **Raised 2026-09-16 — measured, and a recommendation stands: narrate the findings, not the numbers**
 
 Found while measuring item 147, and the operator asked for it to be taken
 separately rather than swept up: *"I'm interested in that additional block, so
@@ -20886,6 +20886,66 @@ Do NOT decide this on item 147's momentum. The notes lost on a measurement —
 27 of 67 mechanically corrected — and no equivalent measurement has been taken
 here. Take it first: how many of the 18 summaries disagree with the figures in
 their own row?
+
+### THE MEASUREMENT, TAKEN 2026-09-16 — and it clears the summaries
+
+The question this item said to answer first was how many of the 18 summaries
+disagree with the figures in their own row. **None of them do.** Day+0 wind,
+which is the dimension with the most findings:
+
+| model | Day+0 wind error | review finding | skill summary |
+|---|---:|---|---|
+| gfs_seamless | +15.2 | under-forecasts (established) | "strong tendency to under-forecast" |
+| ecmwf_ifs025 | +14.1 | under-forecasts (established) | "regularly run lower than observed" |
+| ukmo_seamless | +14.1 | under-forecasts (established) | "under-forecasted" |
+| icon_seamless | +13.5 | under-forecasts (established) | **no wind clause** |
+| best_match | +4.3 | **none — refused** | **"slight under-estimation of peak wind speeds"** |
+| kenya_met | none | none | correctly silent |
+
+Directions are right against the stored signs in every case, and the strength
+even modulates — "strong" at +15.2, "slight" at +4.3. **This is nothing like
+item 147's notes**, where 27 of 67 had to be mechanically corrected, and the
+reason is in the instruction: summaries may not quote a figure, because the
+figures move underneath them. Item 147's notes quoted freely.
+
+### BUT THEY DRIFT FROM THE REVIEW IN BOTH DIRECTIONS, and that is the finding
+
+`REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0`. At +4.3, **the review deliberately
+refuses to claim a wind bias for `best_match` — and the summary asserts one
+anyway.** At +13.5 the review states an established one for `icon_seamless` —
+and the summary drops it.
+
+So the summary **asserts what the review withheld and omits what the review
+established.** Rule 2 does not catch it: that rule governs RANKING models, and
+a single-model bias claim is not a ranking. **This is the one place a
+model-level claim escapes the review's evidence gate.**
+
+### RECOMMENDATION: narrate the FINDINGS, not the numbers
+
+Not "leave it" and not "cut it" — the third shape, and the operator's own
+framing is the argument: *"if an LLM review should follow the mathematical
+review in a more defined way than this does, then maybe this is even a path to
+better learning."*
+
+Today the summary reasons from the raw track record — rolling 10/30 stats,
+ungated. Point the instruction at `LONG-RUN REVIEW` instead and the gating
+comes for free: it could not assert `best_match`'s sub-threshold bias, and it
+could not silently drop `icon_seamless`'s established one. No new machinery —
+the findings are already in the payload with `claim`, `evidence` and
+`confidence`, and rule 3 already forbids upgrading a stated confidence.
+
+It also makes `review.py`'s header true rather than aspirational: *"The LLM
+narrates findings; it never computes one."* Right now it narrates NUMBERS,
+which is exactly how it ends up making claims the findings refused.
+
+**Coverage, measured before recommending it: 12 of the 18 (model, lead) pairs
+have at least one review finding; 6 have none** — `ecmwf` Day+3, `icon` Day+7,
+`ukmo` Day+7, `best_match` Day+3, `kenya_met` Day+0 and Day+7. So the
+instruction must say what to write for a pair with nothing gated behind it,
+and **the honest answer is nothing.** A third of the rows going quiet is not a
+gap to paper over — it is the evidence gate becoming visible, which is the
+whole point. Worth confirming with the operator that a blank summary reads as
+"nothing established yet" rather than as a fault.
 
 Related: items 147, 142 finding 3, 18 (accuracy improving is the
 differentiator), and `review.py`'s header.
