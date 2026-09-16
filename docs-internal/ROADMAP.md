@@ -19236,7 +19236,7 @@ Related: items 59 (the split the document is missing), 131, 132, 133, and
 
 ---
 
-## 137. Two axes decide one run, and only one of them is about information · **SHIPPED 2026-09-16 except the commit-subject naming (remnant 3)**
+## 137. Two axes decide one run, and only one of them is about information · **SHIPPED 2026-09-16**
 
 Raised by the operator reading the 15:01 failure: *"Reissue should only be
 happening if there's no updated model data... This is no longer a time-of-day
@@ -19426,20 +19426,30 @@ the rest was removed. Same word, same question as 3.
 comment warning about mis-pairing. The harness's own scenario name
 (`2-reissue`) went with it.
 
-### The two that are left, and both are DECISIONS about the record
+### The last two, which were DECISIONS about the record rather than tidying
 
-Neither is internal tidying, which is why they were not just done.
+**3 — SHIPPED. Every forecast run commits as `"forecast"`**, on the
+operator's decision, 2026-09-16. `RUN_KIND_FIRST` and `RUN_KIND_REISSUE`
+collapsed into `RUN_KIND_FORECAST`, and `forecast.yml` lost the branch that
+mapped the second to the subject `"forecast refresh"`. Both of those words
+were dead — `run_refresh_pipeline` no longer exists, and a later run with new
+model guidance does the full job rather than something lesser.
 
-**3 — `RUN_KIND_REISSUE`** is grepped by `.github/workflows/forecast.yml`,
-which maps it to the commit subject `"forecast refresh"`. Both words are dead:
-`run_refresh_pipeline` no longer exists, and "refresh" implies re-rendering
-where the run actually produces a new forecast. Renaming means changing the
-workflow in the same commit, and it changes the vocabulary of the archive's
-own git history from that point on. There is also a live question underneath
-it: if every forecast is a fresh forecast, should a day's second run get a
-DIFFERENT subject at all, or just `"forecast"` like the first? Collapsing them
-is the most faithful to the model and loses a distinction the archive can
-currently be read for at a glance.
+**WHAT WAS DROPPED WAS THE KIND, NOT THE FACT.** Whether a run is the day's
+first issuance is still real and still used: `ForecastRunResult.first_issuance`
+drives `verification_already_written` and which summary the CLI prints. It is a
+fact about ORDER, and this field is called run-KIND. Ordering is carried by
+commit timestamps, exactly as the spend ledger's `at` carries it there.
+
+**The contract is now enforced instead of asserted.** The RUN_KIND_* block has
+said "Change the strings and change the workflow with them" the whole time,
+and nothing checked it — which is precisely how `run-kind: reissue` outlived
+the concept it named, still printed, still grepped, still choosing a commit
+subject nobody had chosen in weeks.
+`test_the_workflow_only_greps_run_kinds_the_cli_can_print` closes both
+directions: a workflow grepping a string the CLI never prints is a branch that
+can never fire and quietly flattens the archive, and a CLI printing a kind the
+workflow ignores is the same drift the cheaper way round. Mutation-tested.
 
 **4 — SHIPPED. The ledger now says `forecast` for every forecast run**, on the
 operator's decision, 2026-09-16: *"Collapse them both to 'forecast' in the

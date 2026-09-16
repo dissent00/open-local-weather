@@ -368,11 +368,26 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
 # What kind of run this turned out to be, on its own line and first.
 #
 # A contract, not decoration: .github/workflows/forecast.yml greps for these
-# to pick a commit subject, because one workflow now produces both kinds and
-# "forecast:" against every commit would flatten the archive's own history.
-# Change the strings and change the workflow with them.
-RUN_KIND_FIRST = "run-kind: first"
-RUN_KIND_REISSUE = "run-kind: reissue"
+# to pick a commit subject, because one workflow produces several kinds and
+# one subject for all of them would flatten the archive's own history.
+# Change the strings and change the workflow with them —
+# `test_workflows.py` now enforces that rather than leaving it to this
+# sentence, which is how "reissue" survived the concept it named.
+#
+# ONE KIND FOR EVERY FORECAST — ROADMAP item 137, the operator's decision
+# 2026-09-16: "every run is a fresh forecast". There were two, `first` and
+# `reissue`, and the workflow mapped the second to the commit subject
+# "forecast refresh". Both words were dead: `run_refresh_pipeline` no longer
+# exists, and a later run with new model guidance does the full job rather
+# than something lesser.
+#
+# WHAT WAS DROPPED WAS THE KIND, NOT THE FACT. Whether this was the day's
+# first issuance is still real and still used — `ForecastRunResult.
+# first_issuance` drives `verification_already_written` and which summary is
+# printed below. It is a fact about ORDER, not about kind, and this field is
+# called run-KIND. A reader who needs the ordering reads the timestamps, as
+# the spend ledger does.
+RUN_KIND_FORECAST = "run-kind: forecast"
 RUN_KIND_SKIPPED = "run-kind: skipped"
 # A run that refreshed what the station has seen and reasoned nothing —
 # ROADMAP item 121. The outcome an hourly cron should mostly produce, and the
@@ -394,9 +409,9 @@ def _print_first_issuance(result, dry_run: bool) -> None:
         print(entry.narrative_markdown)
 
 
-def _print_re_issue(result, dry_run: bool) -> None:
+def _print_later_issuance(result, dry_run: bool) -> None:
     entry = result.log_entry
-    print(f"Forecast re-issued for {result.today} (dry_run={dry_run}).")
+    print(f"Forecast issued again for {result.today} (dry_run={dry_run}).")
     print(f"  rain_expected:   {entry.rain_expected}")
     print(f"  temp:            {entry.temp_high_low_display}")
     print(f"  synoptic:        {entry.synoptic_pattern}")
@@ -548,13 +563,15 @@ def _run_forecast(args: argparse.Namespace) -> int:
         return 0
 
     # The RUN's own answer, not its type's — see pipeline.ForecastRunResult.
-    if result.first_issuance:
-        print(RUN_KIND_FIRST)
-        _print_first_issuance(result, args.dry_run)
-        return 0
+    print(RUN_KIND_FORECAST)
 
-    print(RUN_KIND_REISSUE)
-    _print_re_issue(result, args.dry_run)
+    # The SUMMARY still differs — a later run has a standing forecast to
+    # describe itself against and the first does not. That is a difference in
+    # what there is to say, not in what kind of run it was.
+    if result.first_issuance:
+        _print_first_issuance(result, args.dry_run)
+    else:
+        _print_later_issuance(result, args.dry_run)
     return 0
 
 

@@ -185,10 +185,16 @@ jobs:
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           # The commit subject follows what the run actually did. `olw
-          # forecast` prints "run-kind: first|reissue|observed|skipped" as its
-          # first line for exactly this — see RUN_KIND_* in cli.py. One
-          # subject for every kind would flatten the archive's own history,
-          # and the archive is the product.
+          # forecast` prints "run-kind: forecast|observed|skipped" as its
+          # first line for exactly this — see RUN_KIND_* in cli.py.
+          #
+          # EVERY FORECAST COMMITS AS "forecast" — ROADMAP item 137, the
+          # operator's decision 2026-09-16. A day's second run used to commit
+          # as "forecast refresh", which asserted a distinction the system had
+          # stopped drawing: a later run with new model guidance builds a
+          # forecast, and "refresh" reads as something lesser. The ordering is
+          # not lost — commit timestamps carry it — and the distinctions that
+          # remain are between different ACTIVITIES.
           #
           # "observations" is ROADMAP item 121's run: the station reading was
           # refreshed and nothing was reasoned, for no LLM spend. It gets its
@@ -196,9 +202,7 @@ jobs:
           # from real forecasts cannot answer how much of the record was
           # actually forecast.
           SUBJECT="forecast"
-          if grep -q "^run-kind: reissue$" "$RUNNER_TEMP/forecast.log"; then
-            SUBJECT="forecast refresh"
-          elif grep -q "^run-kind: observed$" "$RUNNER_TEMP/forecast.log"; then
+          if grep -q "^run-kind: observed$" "$RUNNER_TEMP/forecast.log"; then
             SUBJECT="observations"
           fi
 

@@ -130,3 +130,41 @@ def test_the_spend_ledger_is_committed_even_when_the_run_fails():
             "no status function has success() ANDed into it by GitHub, which "
             "is precisely how the ledger was lost"
         )
+
+
+def test_the_workflow_only_greps_run_kinds_the_cli_can_print():
+    """ROADMAP item 137. `cli.py`'s RUN_KIND_* block says "Change the strings
+    and change the workflow with them", and nothing checked it — which is how
+    `run-kind: reissue` outlived the concept it named, still printed, still
+    grepped, and mapping to a commit subject nobody had chosen in weeks.
+
+    BOTH DIRECTIONS MATTER AND THEY FAIL DIFFERENTLY. A workflow grepping a
+    string the CLI never prints is a branch that silently never fires: the
+    archive quietly loses a distinction and every run looks ordinary. A CLI
+    printing a kind the workflow ignores is the cheaper mistake but the same
+    drift, and it is the one that was live.
+    """
+    import re
+
+    from openlocalweather import cli
+
+    text = (REPO_ROOT / ".github" / "workflows" / "forecast.yml").read_text()
+    grepped = set(re.findall(r'grep -q "\^(run-kind: [a-z]+)\$"', text))
+    assert grepped, "no run-kind grep found — did the commit-subject step move?"
+
+    printed = {
+        v for k, v in vars(cli).items()
+        if k.startswith("RUN_KIND_") and isinstance(v, str)
+    }
+
+    assert grepped <= printed, (
+        f"forecast.yml greps for {sorted(grepped - printed)}, which cli.py "
+        f"never prints. That branch can never fire."
+    )
+    # The CLI may print a kind the workflow does not branch on — "forecast"
+    # and "skipped" both fall through to the default subject on purpose — so
+    # this direction is reported rather than asserted.
+    assert printed <= grepped | {cli.RUN_KIND_FORECAST, cli.RUN_KIND_SKIPPED}, (
+        f"cli.py prints {sorted(printed - grepped)}, which the workflow "
+        f"ignores. If that is deliberate, add it to this allowance and say why."
+    )
