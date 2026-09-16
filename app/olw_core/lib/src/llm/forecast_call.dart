@@ -78,7 +78,6 @@ Future<ForecastCall> generateForecastResponse({
   } on LlmResponseError catch (e) {
     narrative = const NarrativeResponse(
       yesterdayVerification: narrativeUnavailableVerification,
-      verificationNotes: [],
       skillProfileSummaries: [],
       todayNarrative: narrativeUnavailableMarkdown,
     );

@@ -20552,7 +20552,7 @@ Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.
 
 ---
 
-## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **DECIDED 2026-09-16 — cut both, stop writing the notes; build Planned**
+## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **SHIPPED 2026-09-16**
 
 The operator, walking through the prompt block by block:
 
@@ -20678,6 +20678,35 @@ setup-matching a thing this project still wants and has no computed form for?
 If the latter, the honest answer may be a narrower block — recent notes only,
 or notes for days whose synoptic pattern resembles today's — rather than 30
 days of everything.
+
+### SHIPPED 2026-09-16, in two halves
+
+**The block, from both calls.** 27,781 characters measured against the live
+2026-09-16 prompt — 20.2% of it, sent on both calls, so 55,562 per issuance.
+Removing it orphaned `_visible_note` and `_corrected_on`, which existed only
+to shape that payload; five tests went with them.
+
+**The notes, no longer written.** `verification_notes` is off
+`GeminiNarrativeResponse`, both prompt instructions are gone — the reading one
+in the judgment prompt and the writing one in the narrative prompt, which
+claimed outright to be *"the actual mechanism that improves future
+forecasts"* — and `tools/fix_note_signs.py` is deleted, since it existed only
+to repair these notes and nothing reads them now. `LeadTimeVerification.note`
+and `note_sign_corrected_on` remain as FIELDS because the archive carries
+them; new days leave both null.
+
+**The error-sign convention survived, and was checked rather than assumed.**
+The deleted writing instruction also taught OBSERVED MINUS FORECAST. That
+statement still stands in the user prompt's `PRE-COMPUTED VERIFICATION
+RESULTS` header, beside the fields it governs, which is where it belongs.
+
+**A defect the tests could not catch, found by reading the diff.** Renumbering
+the inventory after removing its third entry matched the SIX RULES block
+first, leaving the rules as 1,2,3,4,4,5 under a heading saying six. THE
+VECTORS PASSED: the same edit was made to both languages, so Python and Dart
+agreed exactly — on the wrong numbers. A cross-language contract proves the
+ports match; it cannot prove either is right. `test_every_numbered_list_in_
+the_prompts_is_sequential` now closes that, mutation-tested.
 
 ### DECIDED 2026-09-16 — option 3, and the notes stop being written
 

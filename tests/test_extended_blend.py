@@ -89,7 +89,6 @@ from datetime import date
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     TodayProperties,
-    VerificationNote,
 )
 from tests.test_pipeline_run import issue  # noqa: F401
 from openlocalweather.store import log_store
@@ -104,7 +103,6 @@ TODAY = date(2026, 8, 11)
 def _response_with(extended):
     return GeminiForecastResponse(
         yesterday_verification="Fine.",
-        verification_notes=[VerificationNote(lead_time_days=0, note="Accurate.")],
         skill_profile_summaries=[],
         today_properties=TodayProperties(
             rain=False,

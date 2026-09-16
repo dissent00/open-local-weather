@@ -35,14 +35,19 @@ def test_optional_field_is_nullable_string():
 
 
 def test_array_of_nested_objects_resolves_ref():
+    # RE-POINTED, NOT DELETED — ROADMAP item 147. The example used to be
+    # `verification_notes`, which is gone with the learning loop it fed. The
+    # property under test is the CONVERTER's, not that field's: an array of
+    # nested objects arrives as a `$ref` that has to be resolved, and
+    # `skill_profile_summaries` is the same shape.
     schema = to_gemini_schema(GeminiForecastResponse)
-    notes = schema["properties"]["verification_notes"]
-    assert notes["type"] == "ARRAY"
-    item = notes["items"]
+    summaries = schema["properties"]["skill_profile_summaries"]
+    assert summaries["type"] == "ARRAY"
+    item = summaries["items"]
     assert item["type"] == "OBJECT"
     assert item["properties"]["lead_time_days"] == {"type": "INTEGER"}
-    assert item["properties"]["note"] == {"type": "STRING"}
-    assert set(item["required"]) == {"lead_time_days", "note"}
+    assert item["properties"]["summary"] == {"type": "STRING"}
+    assert set(item["required"]) == {"model", "lead_time_days", "summary"}
 
 
 def test_nested_object_with_required_and_optional_fields():

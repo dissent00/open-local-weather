@@ -15,11 +15,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class VerificationNote(BaseModel):
-    lead_time_days: int
-    note: str
-
-
 class SkillProfileSummaryItem(BaseModel):
     model: str
     lead_time_days: int
@@ -191,7 +186,6 @@ class GeminiNarrativeResponse(BaseModel):
     """
 
     yesterday_verification: str
-    verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
     today_narrative: str
 
@@ -209,7 +203,6 @@ class GeminiNarrativeResponse(BaseModel):
 # two pinned vectors in both languages before it was noticed.
 class GeminiForecastResponse(BaseModel):
     yesterday_verification: str
-    verification_notes: list[VerificationNote] = Field(default_factory=list)
     skill_profile_summaries: list[SkillProfileSummaryItem] = Field(default_factory=list)
     today_properties: TodayProperties
     # ROADMAP item 72. Empty is a legitimate answer and the default:
@@ -239,7 +232,6 @@ def merge_forecast_response(
     """
     return GeminiForecastResponse(
         yesterday_verification=narrative.yesterday_verification,
-        verification_notes=narrative.verification_notes,
         skill_profile_summaries=narrative.skill_profile_summaries,
         today_properties=judgment.today_properties,
         extended_properties=judgment.extended_properties,

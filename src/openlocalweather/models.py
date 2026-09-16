@@ -681,10 +681,23 @@ class VerificationScore(BaseModel):
 class LeadTimeVerification(BaseModel):
     """Verification status for one lead time on one log entry.
 
-    `note` starts empty and is patched in on a LATER run, once the target
-    date this entry's prediction was aiming at has actually arrived and been
-    scored — see verify/pipeline.py. This is the one place a daily run
-    writes back into a *past* day's file rather than only creating today's.
+    `verified` is patched in on a LATER run, once the target date this entry's
+    prediction was aiming at has actually arrived and been scored — see
+    verify/pipeline.py. This is the one place a daily run writes back into a
+    *past* day's file rather than only creating today's.
+
+    `note` IS NO LONGER WRITTEN — ROADMAP item 147, 2026-09-16. It held a
+    2-3 sentence account of that lead time's hit/miss pattern, written by the
+    model and fed back to the model through the HISTORICAL NOTES block. The
+    block is gone: the loop it served had been broken since item 59 split the
+    call in two, and the weekly review does the same job from the raw record
+    with evidence and confidence attached.
+
+    THE FIELDS STAY BECAUSE THE ARCHIVE DOES. Every entry written before that
+    date carries a note, and several carry `note_sign_corrected_on` too;
+    removing the fields would make those days unreadable, and this project
+    does not migrate its own record — see `issuance_log` for the same rule
+    stated at greater length. New days simply leave both null.
     """
 
     verified: bool = False

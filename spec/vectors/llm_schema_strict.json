@@ -14,25 +14,6 @@
           "yesterday_verification": {
             "type": "string"
           },
-          "verification_notes": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "lead_time_days": {
-                  "type": "integer"
-                },
-                "note": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "lead_time_days",
-                "note"
-              ],
-              "additionalProperties": false
-            }
-          },
           "skill_profile_summaries": {
             "type": "array",
             "items": {
@@ -184,7 +165,6 @@
         },
         "required": [
           "yesterday_verification",
-          "verification_notes",
           "skill_profile_summaries",
           "today_properties",
           "extended_properties",

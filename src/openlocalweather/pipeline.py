@@ -2301,16 +2301,15 @@ def _write_back_verification(
     itself is idempotent; the notes and summaries written here are not, which
     is why the whole block moves together.
     """
-    notes_by_lead = {n.lead_time_days: n.note for n in llm_response.verification_notes}
+    # THE NOTE IS NO LONGER WRITTEN — ROADMAP item 147. What is still written
+    # is `verified`, which is a FACT about whether the row was scored and has
+    # nothing to do with the prose that used to accompany it. Entries from
+    # before this change keep the notes they have; the archive is not migrated.
     for row_date, lead_time_days in verification_result.newly_verified:
         historical_entry = log_lookup(row_date)
         if historical_entry is None:
             continue
-        verification_field = historical_entry.verification.for_lead(lead_time_days)
-        verification_field.verified = True
-        note = notes_by_lead.get(lead_time_days)
-        if note:
-            verification_field.note = note
+        historical_entry.verification.for_lead(lead_time_days).verified = True
         log_store.write_log_entry(deps.data_dir, historical_entry)
 
     summaries_by_key = {

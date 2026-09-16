@@ -42,17 +42,6 @@ Map<String, Object?> geminiForecastSchema() => {
       'type': 'OBJECT',
       'properties': {
         'yesterday_verification': {'type': 'STRING'},
-        'verification_notes': {
-          'type': 'ARRAY',
-          'items': {
-            'type': 'OBJECT',
-            'properties': {
-              'lead_time_days': {'type': 'INTEGER'},
-              'note': {'type': 'STRING'},
-            },
-            'required': ['lead_time_days', 'note'],
-          },
-        },
         'skill_profile_summaries': {
           'type': 'ARRAY',
           'items': {
@@ -129,18 +118,6 @@ Map<String, Object?> strictForecastSchema() => {
       'type': 'object',
       'properties': {
         'yesterday_verification': {'type': 'string'},
-        'verification_notes': {
-          'type': 'array',
-          'items': {
-            'type': 'object',
-            'properties': {
-              'lead_time_days': {'type': 'integer'},
-              'note': {'type': 'string'},
-            },
-            'required': ['lead_time_days', 'note'],
-            'additionalProperties': false,
-          },
-        },
         'skill_profile_summaries': {
           'type': 'array',
           'items': {
@@ -177,7 +154,6 @@ Map<String, Object?> strictForecastSchema() => {
       },
       'required': [
         'yesterday_verification',
-        'verification_notes',
         'skill_profile_summaries',
         'today_properties',
         'extended_properties',
@@ -239,14 +215,6 @@ Map<String, Object?> _strictTodayProperties() => {
     };
 
 double? _toDouble(Object? v) => v == null ? null : (v as num).toDouble();
-
-class VerificationNote {
-  final int leadTimeDays;
-  final String note;
-  const VerificationNote(this.leadTimeDays, this.note);
-  factory VerificationNote.fromJson(Map<String, Object?> j) =>
-      VerificationNote((j['lead_time_days'] as num).toInt(), j['note'] as String);
-}
 
 class SkillProfileSummaryItem {
   final String model;
@@ -447,7 +415,6 @@ class ExtendedDayProperties {
 
 class ForecastResponse {
   final String yesterdayVerification;
-  final List<VerificationNote> verificationNotes;
   final List<SkillProfileSummaryItem> skillProfileSummaries;
   final TodayProperties todayProperties;
 
@@ -459,7 +426,6 @@ class ForecastResponse {
 
   const ForecastResponse({
     required this.yesterdayVerification,
-    required this.verificationNotes,
     required this.skillProfileSummaries,
     required this.todayProperties,
     this.extendedProperties = const [],
@@ -468,9 +434,6 @@ class ForecastResponse {
 
   factory ForecastResponse.fromJson(Map<String, Object?> j) => ForecastResponse(
         yesterdayVerification: j['yesterday_verification'] as String,
-        verificationNotes: ((j['verification_notes'] as List?) ?? const [])
-            .map((e) => VerificationNote.fromJson(e as Map<String, Object?>))
-            .toList(),
         skillProfileSummaries:
             ((j['skill_profile_summaries'] as List?) ?? const [])
                 .map((e) =>
@@ -591,21 +554,6 @@ Map<String, Object?> geminiNarrativeSchema() => {
         'yesterday_verification': {
           'type': 'STRING',
         },
-        'verification_notes': {
-          'type': 'ARRAY',
-          'items': {
-            'type': 'OBJECT',
-            'properties': {
-              'lead_time_days': {
-                'type': 'INTEGER',
-              },
-              'note': {
-                'type': 'STRING',
-              },
-            },
-            'required': ['lead_time_days', 'note'],
-          },
-        },
         'skill_profile_summaries': {
           'type': 'ARRAY',
           'items': {
@@ -669,13 +617,11 @@ class JudgmentResponse {
 /// seam, and it is structural rather than a matter of what the prompt says.
 class NarrativeResponse {
   final String yesterdayVerification;
-  final List<VerificationNote> verificationNotes;
   final List<SkillProfileSummaryItem> skillProfileSummaries;
   final String todayNarrative;
 
   const NarrativeResponse({
     required this.yesterdayVerification,
-    required this.verificationNotes,
     required this.skillProfileSummaries,
     required this.todayNarrative,
   });
@@ -683,9 +629,6 @@ class NarrativeResponse {
   factory NarrativeResponse.fromJson(Map<String, Object?> j) =>
       NarrativeResponse(
         yesterdayVerification: j['yesterday_verification'] as String,
-        verificationNotes: ((j['verification_notes'] as List?) ?? const [])
-            .map((e) => VerificationNote.fromJson(e as Map<String, Object?>))
-            .toList(),
         skillProfileSummaries:
             ((j['skill_profile_summaries'] as List?) ?? const [])
                 .map((e) =>
@@ -707,7 +650,6 @@ ForecastResponse mergeForecastResponse(
 ) =>
     ForecastResponse(
       yesterdayVerification: narrative.yesterdayVerification,
-      verificationNotes: narrative.verificationNotes,
       skillProfileSummaries: narrative.skillProfileSummaries,
       todayProperties: judgment.todayProperties,
       extendedProperties: judgment.extendedProperties,
@@ -804,22 +746,6 @@ Map<String, Object?> strictNarrativeSchema() => {
         'yesterday_verification': {
           'type': 'string',
         },
-        'verification_notes': {
-          'type': 'array',
-          'items': {
-            'type': 'object',
-            'properties': {
-              'lead_time_days': {
-                'type': 'integer',
-              },
-              'note': {
-                'type': 'string',
-              },
-            },
-            'required': ['lead_time_days', 'note'],
-            'additionalProperties': false,
-          },
-        },
         'skill_profile_summaries': {
           'type': 'array',
           'items': {
@@ -843,7 +769,7 @@ Map<String, Object?> strictNarrativeSchema() => {
           'type': 'string',
         },
       },
-      'required': ['yesterday_verification', 'verification_notes', 'skill_profile_summaries', 'today_narrative'],
+      'required': ['yesterday_verification', 'skill_profile_summaries', 'today_narrative'],
       'additionalProperties': false,
       'description': 'What the rendering call returns: prose, and only prose.\n\nTHE SEAM IS THIS CLASS. Nothing here is scored, and there is no field a\nscored value could be written into, so the rendering call cannot revise\nthe forecast however its prompt is later edited. That separation used to\nbe a property of where a paragraph sat inside one string — see\ntests/test_prompt_seam.py, which still checks the weaker claim because a\nprompt can still be edited and this cannot.',
     };

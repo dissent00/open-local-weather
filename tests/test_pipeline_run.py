@@ -25,7 +25,7 @@ from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import NullBulletinFetcher
 from openlocalweather.llm.provider import ResponseMeta
-from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties, VerificationNote
+from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     DailyLogEntry,
     GroundAQIReading,
@@ -96,7 +96,6 @@ class FakeLLMProvider:
     def _default_response(self) -> GeminiForecastResponse:
         return GeminiForecastResponse(
             yesterday_verification="All models did fine yesterday.",
-            verification_notes=[VerificationNote(lead_time_days=0, note="Rain call was accurate.")],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
                 rain=False,
@@ -474,7 +473,7 @@ def _seed_yesterday_log_entry(tmp_path, d: date) -> None:
     log_store.write_log_entry(tmp_path, entry)
 
 
-def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
+def test_yesterdays_prediction_gets_verified(tmp_path):
     today = date(2026, 8, 11)
     yesterday = date(2026, 8, 10)
     _seed_yesterday_log_entry(tmp_path, yesterday)
@@ -482,7 +481,6 @@ def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
     llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="Correct no-rain call.",
-            verification_notes=[VerificationNote(lead_time_days=0, note="Rain correctly not predicted.")],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
                 rain=False,
@@ -498,49 +496,10 @@ def test_yesterdays_prediction_gets_verified_and_noted(tmp_path):
 
     patched = log_store.read_log_entry(tmp_path, yesterday)
     assert patched.verification.day0.verified is True
-    assert patched.verification.day0.note == "Rain correctly not predicted."
-
-
-def test_a_forced_re_run_does_not_rewrite_yesterdays_verification_note(tmp_path):
-    """A later issuance returns a PLACEHOLDER for the verification fields, by
-    design. Those must not reach a historical row that was scored this
-    morning — the note on yesterday's entry is the record of what was checked,
-    not of what the last run of today happened to say."""
-    today, yesterday = date(2026, 8, 11), date(2026, 8, 10)
-    _seed_yesterday_log_entry(tmp_path, yesterday)
-
-    morning = FakeLLMProvider(
-        GeminiForecastResponse(
-            yesterday_verification="Correct no-rain call.",
-            verification_notes=[VerificationNote(lead_time_days=0, note="Rain correctly not predicted.")],
-            skill_profile_summaries=[],
-            today_properties=TodayProperties(
-                rain=False,
-                rain_expected="Unlikely", temp_high_c=27.0, temp_low_c=18.0, temp_high_low="27°C / 81°F"
-            ),
-            today_narrative="## Overview\nDry.",
-        )
-    )
-    issue(make_deps(tmp_path, llm=morning), today=today, dry_run=False)
-
-    forced = FakeLLMProvider(
-        morning.response.model_copy(
-            update={
-                "yesterday_verification": "No new verification this run.",
-                "verification_notes": [
-                    VerificationNote(lead_time_days=0, note="No new verification this run.")
-                ],
-            }
-        )
-    )
-    issue(make_deps(tmp_path, llm=forced), today=today, dry_run=False)
-
-    assert log_store.read_log_entry(tmp_path, yesterday).verification.day0.note == (
-        "Rain correctly not predicted."
-    )
-    assert log_store.read_log_entry(tmp_path, today).yesterday_verification_summary == (
-        "Correct no-rain call."
-    )
+    # The NOTE is no longer written — ROADMAP item 147. `verified` is the fact
+    # this test is about; the prose that used to accompany it was the learning
+    # loop, and the loop moved to the review.
+    assert patched.verification.day0.note is None
 
 
 def test_publisher_and_email_sender_invoked_when_configured(tmp_path):
@@ -904,7 +863,6 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
     evening_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a — refresh",
-            verification_notes=[],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
                 rain=False,
@@ -945,7 +903,6 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
     evening_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a — refresh",
-            verification_notes=[],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
                 rain=False,
@@ -981,8 +938,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
 
     first_refresh_llm = FakeLLMProvider(
         GeminiForecastResponse(
-            yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
-            today_properties=TodayProperties(
+            yesterday_verification="n/a",            today_properties=TodayProperties(
                 rain=False,
                 rain_expected="Light rain", temp_high_c=24.0, temp_low_c=16.0, temp_high_low="24°C / 75°F"
             ),
@@ -993,8 +949,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
 
     second_refresh_llm = FakeLLMProvider(
         GeminiForecastResponse(
-            yesterday_verification="n/a", verification_notes=[], skill_profile_summaries=[],
-            today_properties=TodayProperties(
+            yesterday_verification="n/a",            today_properties=TodayProperties(
                 rain=False,
                 rain_expected="Heavy rain", temp_high_c=22.0, temp_low_c=15.0, temp_high_low="22°C / 72°F"
             ),
@@ -2974,22 +2929,6 @@ def test_the_verification_block_hides_the_blend_and_the_baselines_too(tmp_path):
         assert hidden not in system_prompt
 
 
-def contaminated_provider() -> FakeLLMProvider:
-    """A provider whose verification note names the blend, the way the real
-    forecaster's notes did while it could see the blend's scores."""
-    response = FakeLLMProvider()._default_response()
-    response.verification_notes = [
-        VerificationNote(
-            lead_time_days=0,
-            note=(
-                "Day+0: ECMWF, ICON, Kenya Met, Best Match, and OLW blend "
-                "correctly verified the rain event, with ECMWF catching onset."
-            ),
-        )
-    ]
-    return FakeLLMProvider(response)
-
-
 
 
 def summarising_provider(summary: str) -> FakeLLMProvider:
@@ -3852,7 +3791,6 @@ def test_every_forecast_run_files_under_one_purpose(tmp_path):
     later_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a",
-            verification_notes=[],
             skill_profile_summaries=[],
             today_properties=TodayProperties(
                 rain=False, rain_expected="Still unlikely",
