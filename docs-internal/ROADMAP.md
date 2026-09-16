@@ -19856,6 +19856,41 @@ decimal path ties AWAY FROM ZERO, each pinned to what both languages express
 natively. The vectors would never have caught this; they pin the cases someone
 chose, and nobody chooses 0.25.
 
+### OPEN: 3.0 C may be too wide, and it suppresses the founding case
+
+Measured after shipping, and it is the first number that actually sizes this.
+`olw_blend` at Day+0 carries a mean low error of **-0.21 C** against ERA5 over
+the 10-day window, and `observed.py` records station-minus-reanalysis at
+**-0.05 C** on the low. So the expected station-versus-called divergence is
+around a quarter of a degree, and the 3.0 C band sits about twelve times that.
+
+Per-model Day+0 mean low error, same window, for scale:
+
+| model | mean low error (observed − forecast) |
+|---|---|
+| persistence | -0.12 |
+| best_match | -0.14 |
+| gfs_seamless | -0.17 |
+| **olw_blend** | **-0.21** |
+| kenya_met | -0.25 |
+| climatology | +0.34 |
+| ecmwf_ifs025 | -0.52 |
+| ukmo_seamless | +1.15 |
+| icon_seamless | -2.79 |
+
+**The consequence is concrete: the founding case does not print.** 2026-09-16
+observed 20.0 against a called 18.2, a gap of 1.8 C — roughly seven times the
+blend's mean error, which reads as unusual, and yet inside the 3.0 band. The
+operator used that exact pair to illustrate what a footnote should say.
+
+**NOT RETUNED HERE, DELIBERATELY.** These are MEANS, and a threshold wants a
+SPREAD: a band set from a mean is the mistake item 100 costs are recorded for,
+and it would be the second time. What the record cannot yet supply is the
+distribution of per-day station-versus-called gaps, which is precisely what
+part 4 now stores on every run. Revisit once there are enough days to see the
+shape, or lower it deliberately as a product call — it is one constant,
+`LOW_DIVERGENCE_MARGIN_C`, and the vectors pin the behaviour either way.
+
 ---
 
 ## 144. There is no ashore wind field, so the shore forecast published the lake's gust · **SHIPPED 2026-09-16**
