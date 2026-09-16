@@ -19304,6 +19304,64 @@ back as `earlier_today`). If the 500 is a payload problem rather than
 capacity, this is the payload — and it is the branch that has never run on
 the Interactions endpoint. See item 80.
 
+### REVIEWED 2026-09-16 at the operator's request — the design IS built, and there is ONE leftover
+
+Asked to check the last few days' work, because *"maybe the older bits didn't
+get removed."* They didn't. One rule, and its delete condition was met on
+2026-09-14.
+
+**The operator's stated design, and where each half lives:**
+
+| the rule | built? | where |
+|---|---|---|
+| no new model data → report sensors, note staleness, **no LLM at all** | **yes** | `reasoning.llm_should_reason` + `llm_refresh_policy: new_cycle_only`. Its own docstring: *"no judgment and no narrative are bought"* |
+| new model data → build a forecast, worded by **the receiver's local hour** | **yes** | `daypart.classify_phase` + `_horizon_for(phase, now, sunrise)` — *"What matters most to someone reading at this hour"* |
+| the day-over-day opening follows the hour, not the run number | **yes** | `comparison.comparison_subject(issued_hour, sunset_hour)` — C8, shipped 2026-09-14 from the operator's five scenarios |
+
+Measured, sunset 18:00: `03,06,09 -> "today"`, `12,15,18 -> None`,
+`20,22 -> "tomorrow"`. **`is_reissue` is not a parameter — the gate cannot
+see it.**
+
+### The leftover: rule 2 of the LATER ISSUANCE block
+
+`prompt.py:123` still says, on every later issuance:
+
+> "THIS REPLACES THE DAY-OVER-DAY OPENING ... on a later issuance, do not
+> open with the comparison against yesterday at all."
+
+That rule is now either redundant or actively wrong, and never right:
+
+- **12:00-18:00** — the gate already returns `None`, so no comparison block
+  reaches the prompt. The rule argues about a section that is not there.
+- **03:00-09:00 and 20:00+** — the gate says show it and the rule says never
+  open with it. **Two instructions claiming the same first sentence**, which
+  is the exact defect item 8 described and expected the recast to end.
+- It fires on the case the operator raised: an hourly cron's SECOND run at
+  06:00 is a later issuance in a hour the gate says is comparison-worthy.
+
+**Item 8's own condition has been met.** It reads *"Delete it with C8's
+recast, not before"*, and C8 shipped 2026-09-14 — as the gate above.
+
+**Item 8's text is ALSO stale on this point.** It says *"C8 says it is recast
+and explicitly NOT suppressed."* `comparison_subject`'s docstring withdraws
+that in terms: *"THIS WITHDRAWS 'it is not suppressed at a late issuance',
+which contract item 8 asserted without reasoning."* The gate is later and
+wins; item 8's paragraph needs the same correction this one does.
+
+### The other three rules are NOT vestigial
+
+- **Rule 1 (LATER ISSUANCE context)** — the reader has genuinely read an
+  earlier forecast today. True regardless of axis.
+- **Rule 3 (NO NEW GUIDANCE IS AN ANSWER)** — unreachable under
+  `new_cycle_only`, because no new cycle means no call. Live only under
+  policy `ALWAYS`. Conditional, not dead.
+- **Rule 4 (BREVITY IS NOT OMISSION)** — still doing work.
+
+So the old morning/evening model is vestigial in its DECISION, as the
+operator says, and the block that expresses it is three-quarters still
+earning its place. Delete rule 2; keep the rest until something replaces
+them.
+
 ### Order
 
 Settle the framing question first; it is a decision, not a build. If the
