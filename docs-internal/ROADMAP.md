@@ -19156,7 +19156,9 @@ That is still inside Haiku's 200K-token context and nowhere near a hard limit,
 which is exactly why nothing has ever stopped it, and exactly why the operator
 is right that it needs watching rather than a one-off cut.
 
-**So the first build here is the instrument, not the edit.** The archive
+**So the first build here is the instrument, not the edit.** *Built
+2026-09-16 as item 148 step 1: `olw prompt-size` is the query below, and
+every run now stores its own sizes.* The archive
 already stores every issuance's prompt, so growth is a query over
 `data/prompts/*.json` rather than new plumbing — the same shape as item 131's
 "cheap half already exists and nobody has run it". A recorded size per
@@ -20992,7 +20994,7 @@ improving over time is the differentiator), 100.
 
 ---
 
-## 148. Nothing measures the prompt, and nothing stops it growing · **Planned — raised 2026-09-16**
+## 148. Nothing measures the prompt, and nothing stops it growing · **Step 1 SHIPPED 2026-09-16 — measured and stored per run; the warning (2) and the ceiling (3) are Planned**
 
 The operator, after item 147's measurements: *"your notes on prompt size - I
 think we have an item, or at least some discussion, about monitoring and maybe
@@ -21049,6 +21051,53 @@ matters more there than on the server — and `ensemble` item 12 is about to
 make the app's prompt BIGGER by wiring in the record it currently lacks. Doing
 12 without this is how the app acquires the server's growth problem in one
 step.
+
+### Step 1 shipped 2026-09-16 — the instrument
+
+`llm/prompt_size.py` sizes the rendered user prompt per block, by the
+template's own convention for a header (an all-caps phrase at column 0
+ending in a colon), and `LogEntryMeta.prompt_size` stores it on every run
+beside `input_tokens`, with the two system prompts' sizes — which the archive
+hashes and never keeps. `olw prompt-size` re-derives every archived issuance
+with the same rule and checks the stored figure against it for the latest
+run, so a change to the rule cannot silently re-base the series. The
+guidance block is split per source, operator's choice: it is 35% of the
+prompt and where item 134 measured the growth.
+
+**Design settled with the operator before building:** characters not tokens
+(tokens are the provider's and already stored; characters are what both
+prior tables used); stored on the entry AND derived from the archive, not
+one or the other; header-level plus the guidance block's seven sources.
+
+**The header list is pinned by a test on purpose.** A block written in a
+different style is folded into its predecessor silently, which is the one
+way this instrument can lie; adding a block means adding it to
+`tests/test_prompt_size.py`.
+
+**Proved by driving the real CLI before and after**: both transcripts
+byte-identical, and the written entry differs by exactly the new field.
+1258 tests.
+
+**What the first read of the archive already says**, which nobody had seen
+laid out:
+
+| issuance | user chars | delta | what it was |
+|---|---:|---:|---|
+| 2026-09-14 03:52 | 164,977 | +453 | |
+| 2026-09-15 03:12 | 142,527 | **-22,450** | item 73's `primary_today_hourly` cut |
+| 2026-09-16 03:03 | 141,798 | -729 | |
+| 2026-09-16 15:04 | 137,271 | -4,527 | a later issuance sends a verification note, not scores (-4,945) |
+
+**HISTORICAL NOTES was still 27,781 characters at 15:04** — item 147's cut
+shipped after that run, so it lands on 2026-09-17's 03:01 and the verb will
+show it as `gone`. That is the instrument doing on day one what the item was
+raised for.
+
+**Not built here, deliberately:** the growth warning (step 2) needs this
+series to exist first, and the ceiling (step 3) needs item 132's economics.
+The app has no prompt archive and no meta on its stored forecast, so its half
+is a storage decision under `ensemble` item 4 — recorded in that repo's owed
+table. No Dart port until the app measures; then with a vector.
 
 Related: items 73, 112, 111, 132, 134, 147, and `ensemble` item 12.
 

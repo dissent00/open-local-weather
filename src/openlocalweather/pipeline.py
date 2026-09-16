@@ -131,6 +131,7 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm import forecast_call
 from openlocalweather.llm.forecast_call import generate_forecast
+from openlocalweather.llm.prompt_size import measure_prompt
 from openlocalweather.llm.prompt import (
     build_judgment_prompt,
     build_narrative_prompt,
@@ -1957,6 +1958,7 @@ def _compose_log_entry(
     day_over_day: DayOverDayComparison | None,
     judgment_prompt: str,
     narrative_prompt: str,
+    user_prompt: str,
     last_response: Any,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
@@ -2073,6 +2075,9 @@ def _compose_log_entry(
             input_tokens=response_meta.input_tokens,
             output_tokens=response_meta.output_tokens,
             thought_tokens=response_meta.thought_tokens,
+            # Sized here, from the same strings the archive hashes, so the
+            # stored figure and the archived prompt describe one issuance.
+            prompt_size=measure_prompt(judgment_prompt, narrative_prompt, user_prompt),
             response_schema_sha256=response_meta.response_schema_sha256,
             nullable_fields=_nullable_fields(last_response),
             narrative_findings=_narrative_findings(llm_response, today),
@@ -2981,6 +2986,7 @@ def _issue_forecast(
         ),
         judgment_prompt=judgment_prompt,
         narrative_prompt=narrative_prompt,
+        user_prompt=user_prompt,
         last_response=_last_response,
     )
 

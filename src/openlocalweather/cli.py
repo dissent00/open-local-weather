@@ -436,6 +436,71 @@ def _print_observations_refreshed(result, dry_run: bool) -> None:
     print(f"  published:       {result.published}")
 
 
+def _run_prompt_size(args: argparse.Namespace) -> int:
+    """The prompt, sized per block over the archive — ROADMAP item 148, step 1.
+
+    An analysis verb, read-only. Item 134 measured that the prompt grew 10%
+    in ten days and "nothing noticed", and items 134 and 147 each rebuilt the
+    per-block table by hand; this is that table as a query. It re-derives
+    every issuance from the archived user prompt with the same rule the
+    pipeline stores under `meta.prompt_size`, and checks the two agree for
+    the latest run, so a change to the rule cannot silently re-base the
+    series.
+    """
+    from openlocalweather.llm.prompt_size import prompt_block_sizes
+    from openlocalweather.store.prompt_archive import list_archived_dates, read_prompt_archive
+
+    issuances: list[tuple[str, dict[str, int]]] = []
+    for d in list_archived_dates(args.data_dir):
+        for issuance in read_prompt_archive(args.data_dir, d):
+            issuances.append((issuance["issued_at"], prompt_block_sizes(issuance["user_prompt"])))
+
+    if not issuances:
+        print("No archived prompts under data/prompts/.")
+        return 0
+
+    shown = issuances[-args.last:]
+    print(f"{'issued_at':27} {'user chars':>11} {'delta':>8}")
+    previous_total = None
+    for issued_at, sizes in shown:
+        total = sum(v for k, v in sizes.items() if "/" not in k)
+        delta = "" if previous_total is None else f"{total - previous_total:+d}"
+        print(f"{issued_at:27} {total:>11,} {delta:>8}")
+        previous_total = total
+
+    latest_at, latest = issuances[-1]
+    before = issuances[-2][1] if len(issuances) > 1 else {}
+    print()
+    print(f"Blocks of the latest issuance ({latest_at}), delta against the one before:")
+    print(f"{'block':52} {'chars':>8} {'delta':>8}")
+    for name, chars in sorted(latest.items(), key=lambda kv: -kv[1]):
+        delta = f"{chars - before[name]:+d}" if name in before else "new" if before else ""
+        print(f"{name:52} {chars:>8,} {delta:>8}")
+    for name in before:
+        if name not in latest:
+            print(f"{name:52} {'-':>8} {'gone':>8}")
+
+    # The stored figure against the re-derived one, for the same run.
+    dates = list_log_dates(args.data_dir)
+    entry = make_log_lookup(args.data_dir)(dates[-1]) if dates else None
+    stored = entry.meta.prompt_size if entry is not None else None
+    print()
+    if stored is None:
+        print("Stored size: none — the latest entry predates item 148 step 1.")
+        return 0
+    if stored.blocks == latest and stored.user_prompt_chars == sum(
+        v for k, v in latest.items() if "/" not in k
+    ):
+        print("Stored size matches the archive re-derivation for the latest run.")
+        return 0
+
+    print("STORED SIZE DISAGREES with the archive re-derivation for the latest run:")
+    for name in sorted(set(stored.blocks) | set(latest)):
+        if stored.blocks.get(name) != latest.get(name):
+            print(f"  {name}: stored {stored.blocks.get(name)} vs re-derived {latest.get(name)}")
+    return 1
+
+
 def _run_window_vs_day(args: argparse.Namespace) -> int:
     """Both Day+0 series, on the days that carry both — ROADMAP item 104's
     contract items 2 and 3.
@@ -1337,6 +1402,13 @@ def main(argv: list[str] | None = None) -> int:
     wvd.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
     wvd.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
 
+    psz = sub.add_parser(
+        "prompt-size",
+        help="Every archived issuance's prompt, sized per block, with deltas — ROADMAP item 148.",
+    )
+    psz.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    psz.add_argument("--last", type=int, default=10, help="How many issuances to list (default 10)")
+
     evl = sub.add_parser(
         "early-vs-late",
         help="Is a later issuance better informed? The day's first window against its last.",
@@ -1364,6 +1436,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_window_vs_day(args)
     if args.command == "early-vs-late":
         return _run_early_vs_late(args)
+    if args.command == "prompt-size":
+        return _run_prompt_size(args)
 
     if args.command == "rebuild-record":
         return _run_rebuild_record(args)

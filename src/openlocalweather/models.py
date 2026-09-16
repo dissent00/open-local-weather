@@ -1030,6 +1030,26 @@ class InformationMoved(BaseModel):
     low_divergence: LowDivergence | None = None
 
 
+class PromptSize(BaseModel):
+    """What the run's prompts measured, in characters — ROADMAP item 148.
+
+    Stored per run rather than derived from the prompt archive, because the
+    archive is a separate store the health check and the published record do
+    not read, and because the two system prompts are hashed there and never
+    kept. `olw prompt-size` re-derives the user-prompt half from the archive
+    and checks it against this, so a change to the measuring rule announces
+    itself instead of silently re-basing the series.
+    """
+
+    user_prompt_chars: int
+    judgment_prompt_chars: int
+    narrative_prompt_chars: int
+    # Per block, in prompt order, keyed by the block's header; the guidance
+    # block's sources follow it as "TODAY'S MULTI-MODEL GUIDANCE/<source>".
+    # See llm/prompt_size.py for the rule that finds a block.
+    blocks: dict[str, int] = Field(default_factory=dict)
+
+
 class LogEntryMeta(BaseModel):
     generated_at_utc: datetime
     llm_provider: str
@@ -1084,6 +1104,9 @@ class LogEntryMeta(BaseModel):
     #
     # Sums both calls of a forecast, like the two fields above.
     thought_tokens: int | None = None
+    # ROADMAP item 148, step 1. None on every entry written before it
+    # shipped, which is "not measured" and never "empty".
+    prompt_size: PromptSize | None = None
     # WHICH RESPONSE SCHEMA produced this entry, and what it let the model
     # skip — ROADMAP items 59 and 102.
     #
