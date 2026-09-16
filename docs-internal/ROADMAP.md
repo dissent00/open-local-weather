@@ -20999,3 +20999,93 @@ because the evidence is thin.
 
 Related: items 147, 142 finding 3, 18 (accuracy improving is the
 differentiator), and `review.py`'s header.
+
+---
+
+## 150. No source declares how far it forecasts, and the lead grid is global · **Planned — raised 2026-09-16**
+
+The operator, after item 149 found `icon_seamless` and `ukmo_seamless` labelled
+*"insufficient data yet"* at a lead they do not forecast at all:
+
+> *"we change/add data sources regularly... If I add a METAR station to
+> Kisumu, does the review see that right away or need to have an adjustment to
+> code as well? And do we need to label everything in the review with a
+> forecast window when it goes in? Fine for the big models, but each nation or
+> things like simulated radar or whatnot all may come with varying forward
+> looking time periods."*
+
+Both halves are right, and the second is the architectural one.
+
+### WHAT ADDING A SOURCE COSTS TODAY — checked 2026-09-16
+
+| adding | config? | code? | does the review pick it up? |
+|---|---|---|---|
+| a METAR station | `metar_station_icao` | none | **no, and correctly — it is an OBSERVATION source, not a forecast one** |
+| an Open-Meteo model | none | `MODELS` in `defaults.py` is a hardcoded list | yes, automatically, via `scored_models()` |
+| a national met service | `local_bulletin_url`, `local_bulletin_source_name`, `local_bulletin_model_id` | **yes** — `fetch/bulletin/` holds `kenya_kmd.py`, `kenya_kmd_daily.py` and two bespoke parsers | yes, automatically, via `scored_models()` |
+
+**So nothing is config-only, and the review is not the part that needs
+adjusting.** Once a source is in `scored_models()` the review scores it with
+no further work. The cost is in FETCHING and PARSING, which is per-source by
+nature.
+
+**The METAR answer has a sharper edge worth recording.** Adding a station
+changes less than it looks like it should: `_apply_station_observations`
+stamps only THUNDER and PRECIPITATION, and the scored observation is ERA5
+(item 144). So a new station does not change what the review scores against at
+all. Whether it SHOULD is items 121, 122 and 146's territory — where a station
+files gust groups it is better ground truth than a reanalysis grid — and this
+item does not settle it.
+
+### THE REAL GAP: NOTHING DECLARES A HORIZON
+
+`LEAD_TIMES_DAYS = [0, 3, 7]` is a single global constant applied to every
+source identically. **No source, anywhere, says how far ahead it forecasts.**
+Measured live 2026-09-16, eight days requested:
+
+| source | reaches |
+|---|---|
+| gfs_seamless, ecmwf_ifs025, best_match | Day+7 |
+| icon_seamless, ukmo_seamless | **Day+6 — null at Day+7** |
+| kenya_met | a five-day service |
+
+The record therefore carries three (model, lead) rows that can never be filled,
+labelled as though they are merely waiting — the defect item 149 found.
+
+**And it gets worse with exactly the sources the operator names.** A national
+bulletin may run three days; a nowcast or simulated-radar product may run
+two to six HOURS. A global `[0, 3, 7]` day-grid cannot describe those at all,
+and a source whose whole output lies inside Day+0 would be scored once and
+look like a model that forecasts nothing.
+
+### DERIVE IT, DO NOT DECLARE IT
+
+The obvious fix is a `max_lead_days` field per source. Prefer deriving it from
+what the source actually returns, for one reason: **a declared horizon goes
+stale silently.** Providers extend models — the day Open-Meteo pushes ICON to
+eight days, a declared 6 keeps a real forecast out of the record and nothing
+reports it. What the source returned is a fact this pipeline already has in
+hand on every fetch.
+
+Shape, in order:
+
+1. **Record per source, per fetch, the furthest lead that came back non-null.**
+   Cheap; the arrays are already in memory.
+2. **Store the observed horizon on the track record row**, so the review can
+   ask "is this lead beyond this source's reach?" instead of inferring it from
+   a zero check count that also means "new source".
+3. **Then fix item 149's label** with a real distinction behind it: *"does not
+   forecast at this lead"* versus *"no verified checks yet"*.
+4. **Only then consider sub-daily sources.** A horizon in DAYS cannot express
+   a two-hour nowcast, and item 149's labels should not be built in a way that
+   assumes days — but designing the sub-daily lead grid before anything needs
+   it would be building for a source that does not exist. Leave the door open;
+   do not walk through it yet.
+
+**A derived horizon is also self-defending for new sources.** Add one and its
+reach is learned on the first fetch, with no entry in a table anyone has to
+remember to update — which is the failure mode `MODELS` already has, being a
+hardcoded list.
+
+Related: items 149, 146, 144, 122, 121, 133, and `docs-internal/
+MET_SERVICE_INTEGRATION.md`.
