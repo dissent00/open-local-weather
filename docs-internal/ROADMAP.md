@@ -21433,7 +21433,7 @@ this defect class in the NARRATED fields and does not watch this one.
 
 ---
 
-## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Raised 2026-09-16**
+## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Step 1 SHIPPED 2026-09-16**
 
 The operator, on being shown that `gust` and `p01i` are excluded from the
 METAR request because a 45-day sample found them empty and constant:
@@ -21480,13 +21480,49 @@ measurement it rests on is now over a month old, taken on one station, at one
 airport, whose reporting practice is not a law of nature — HKKI could file a
 gust group tomorrow and this project would never learn it.
 
-### What to build, and the cheap version is most of the value
+### STEP 1 SHIPPED 2026-09-16 — and the plan as first written was wrong
 
-1. **Request the excluded columns; do not READ them.** Asking for `gust` and
-   `p01i` costs nothing — same request, more columns — and turns "invisible
-   forever" into "recorded and ignored". The exclusion stays exactly as item
-   45 decided; what changes is that it becomes reviewable. This is the whole
-   fix for the second gap and it is nearly free.
+**"Request them and do not read them" does not achieve this item's own
+principle.** Requesting is not recording: the rows are parsed into
+`StationWeather`/`StationReadings` and dropped, so a requested-but-unread
+column would vanish exactly as completely as an unrequested one. The
+principle needs the ANSWER to land somewhere durable, not the data.
+
+**Worse, widening the read set would have broken the daily parse.**
+`observed_station_data` indexes the archive response POSITIONALLY (`r[3:]`),
+so a column added to `ARCHIVE_DATA_COLUMNS` shifts every index and puts a
+gust where a wind speed belongs — the exact quantity confusion item 144 was
+raised on, introduced by the fix for a different problem.
+
+**What shipped instead:** `ARCHIVE_WATCHED_COLUMNS` is requested by the
+WEEKLY HEALTH CHECK on its own request, via a new `extra_columns` argument
+that APPENDS — so the daily path is untouched and its positional parse cannot
+shift. `check_watched_columns` counts how many rows carry a usable value and
+says nothing when the answer is zero, which it will be for years.
+
+`health_check.py` is the right home rather than the record: it is already the
+module for assumptions that can silently go stale — a model deprecated, a
+window drifted — and a 45-day exclusion measured against one station in August
+is exactly that shape.
+
+**A CONSTANT IS NOT A MEASUREMENT.** `0.00` counts as absent, for the same
+reason item 45 excluded `p01i`: this station files it on every row including
+hours its own report says rain fell. Counting it would report the exclusion
+overturned on the first run.
+
+**Verified live, 2026-09-16, and the offsets checked against a real row**
+rather than assumed — a silent off-by-one would report "no change" forever:
+
+```
+  [0] station = HKKI      [4] sknt  = 4.00
+  [1] valid   = ...       [5] gust  = M
+  [2] metar   = ...       [6] p01i  = 0.00
+  [3] tmpf    = 69.80
+```
+
+Across 221 rows over seven days, neither column carried a value. Item 45's
+August finding still describes this station in September — and is now a
+repeating measurement rather than a one-off.
 2. **A fourth kind: `became_available`.** Present now, absent throughout the
    prior window. The mirror of `regression`, and the one nothing looks for.
    Alert it quietly — it is good news and needs a human decision, not a page.

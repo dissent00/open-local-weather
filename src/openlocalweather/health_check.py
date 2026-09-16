@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Sequence
 from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -499,4 +500,90 @@ def check_cap_feed(
         status=CapFeedStatus.FRESH,
         message=f"newest CAP alert is {age} day(s) old.",
         days_since_newest=age,
+    )
+
+
+# Values the archive uses for "nothing here", plus the one value that is a
+# measurement everywhere except in this column — ROADMAP item 152 and item 45.
+# `T` is the trace marker. `0.00` is what HKKI files for p01i on every row,
+# including hours whose own report carries -RA, which is why item 45 excluded
+# the column rather than reading it: a constant is not a measurement.
+_NOT_A_VALUE = {"", "M", "T", "0.00", "0.0", "0"}
+
+
+@dataclass(frozen=True)
+class WatchedColumnCheck:
+    """Whether a column this project decided to ignore has started arriving."""
+
+    rows: int
+    present: dict[str, int]
+    changed: bool
+    message: str
+
+
+def check_watched_columns(
+    rows: Sequence[Sequence[str]],
+    *,
+    watched: Sequence[str],
+    read_column_count: int,
+) -> WatchedColumnCheck:
+    """Count how many rows carry a usable value in each WATCHED column.
+
+    ROADMAP item 152. `gust` and `p01i` are excluded from what the pipeline
+    READS, on measurements that were correct when taken. This does not undo
+    those decisions — nothing here feeds a forecast. It exists so that the
+    decisions can be REVISITED, which the exclusions themselves made
+    impossible: a column nobody requests produces no series, so no watcher
+    could ever see it start working.
+
+    QUIET WHEN NOTHING CHANGED, and that is load-bearing. The expected answer
+    is zero on every column, every week, for years. A check that announced
+    that would be a check nobody reads by the time it matters — the same
+    reasoning `coverage.py` gives for counting `never_published` without
+    alerting on it.
+
+    A CONSTANT IS NOT A MEASUREMENT. `0.00` counts as absent for exactly the
+    reason item 45 excluded `p01i` in the first place: this station files it
+    on every row, including hours its own report says rain fell. Reading a
+    constant as data is how a confident "no rain" got into the record on days
+    it rained, and counting one here would report the exclusion overturned on
+    the first run.
+
+    POSITIONAL BY CONTRACT. The archive returns station, valid, then the
+    requested columns in order, so the watched ones begin after the read ones.
+    `read_column_count` is passed rather than imported so this stays pure and
+    a caller cannot silently disagree with it.
+    """
+    present = {name: 0 for name in watched}
+    first_watched = 2 + read_column_count
+
+    for row in rows:
+        for offset, name in enumerate(watched):
+            i = first_watched + offset
+            if i < len(row) and str(row[i]).strip() not in _NOT_A_VALUE:
+                present[name] += 1
+
+    arrived = [name for name, n in present.items() if n]
+    if not arrived:
+        return WatchedColumnCheck(
+            rows=len(rows),
+            present=present,
+            changed=False,
+            message=(
+                f"No change: none of {', '.join(watched)} carried a value across "
+                f"{len(rows)} row(s). The exclusions still describe this station."
+            ),
+        )
+
+    detail = ", ".join(f"{name} on {present[name]} of {len(rows)} row(s)" for name in arrived)
+    return WatchedColumnCheck(
+        rows=len(rows),
+        present=present,
+        changed=True,
+        message=(
+            f"A column this project excluded has started arriving: {detail}. "
+            f"The exclusion was measured when it was taken and may no longer "
+            f"describe this station — see ROADMAP items 152 and 45 before "
+            f"reading it into the record."
+        ),
     )

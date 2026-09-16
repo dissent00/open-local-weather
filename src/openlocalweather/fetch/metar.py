@@ -428,11 +428,41 @@ def station_readings_by_date(
 ARCHIVE_DATA_COLUMNS = ("metar", "tmpf", "sknt")
 
 
+# COLLECTED BUT NEVER READ — ROADMAP item 152.
+#
+# These are the columns the comment above excludes, and the exclusions are
+# still correct: `gust` was missing on all 932 rows of a 45-day sample because
+# METAR files a gust group only when a gust occurs, and `p01i` is filed as a
+# constant 0.00 here including on hours whose own report carries -RA.
+#
+# THE PROBLEM WAS THAT THE EXCLUSION REMOVED ITS OWN FALSIFIER. A column
+# nobody requests produces no series, so nothing could ever notice it starting
+# to work. Both decisions were made in August 2026 against one station, and a
+# station's reporting practice is not a law of nature — HKKI could file a gust
+# group tomorrow and this project would never learn it.
+#
+# NOT ADDED TO ARCHIVE_DATA_COLUMNS, deliberately. The daily parse is
+# POSITIONAL (`r[3:]` in observed_station_data), so widening the read set
+# would shift every index and put a gust where a wind speed belongs — the
+# exact quantity confusion item 144 was raised on. These are requested by the
+# WEEKLY HEALTH CHECK on its own request instead, which costs the daily path
+# nothing and puts the answer where assumptions that can silently go stale are
+# already checked.
+ARCHIVE_WATCHED_COLUMNS = ("gust", "p01i")
+
+
 def fetch_metar_archive_rows(
-    icao: str, start: date, end: date
+    icao: str, start: date, end: date, extra_columns: Sequence[str] = ()
 ) -> list[Sequence[str]] | None:
     """Raw CSV rows from the ASOS archive: station, valid, then
-    ARCHIVE_DATA_COLUMNS.
+    ARCHIVE_DATA_COLUMNS, then `extra_columns`.
+
+    `extra_columns` APPENDS, and appending is the whole of its safety —
+    ROADMAP item 152. The daily parse indexes this response POSITIONALLY, so a
+    column inserted anywhere but the end would shift a wind speed into a
+    temperature's place. Nothing on the daily path passes it; the weekly
+    health check does, to ask whether a column this project excluded has
+    started arriving.
 
     Split out from fetch_metar_archive so one request can serve both the raw
     reports and the structured readings. The request carries a 90-second
@@ -444,7 +474,7 @@ def fetch_metar_archive_rows(
 
     params = {
         "station": icao,
-        "data": ",".join(ARCHIVE_DATA_COLUMNS),
+        "data": ",".join((*ARCHIVE_DATA_COLUMNS, *extra_columns)),
         "year1": start.year, "month1": start.month, "day1": start.day,
         "year2": end.year, "month2": end.month, "day2": end.day,
         "tz": "UTC",

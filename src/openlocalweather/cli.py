@@ -37,6 +37,7 @@ from openlocalweather.defaults import (
     scored_models,
 )
 from openlocalweather.dates import add_days, today_in_tz
+from openlocalweather.defaults import WATCHED_COLUMN_LOOKBACK_DAYS
 from openlocalweather.fetch import metar as metar_fetch
 from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
@@ -53,6 +54,7 @@ from openlocalweather.health_check import (
     cap_feed_woke_up,
     check_cap_feed,
     check_recent_degradations,
+    check_watched_columns,
     check_model_deprecation,
     check_repo_staleness,
 )
@@ -748,6 +750,33 @@ def _run_check_health(args: argparse.Namespace) -> int:
         print(f"  OK — {degradation.message}")
     else:
         print(f"  {degradation.message}")
+
+    # ROADMAP item 152. Has a column this project decided to ignore started
+    # arriving? The exclusions in fetch/metar.py were measured and correct
+    # when taken, and they removed the evidence that could overturn them — a
+    # column nobody requests produces no series. This is the only place that
+    # asks, and it asks on its own request so the daily parse, which is
+    # positional, is untouched.
+    #
+    # NOT A FAILURE EITHER WAY. A column that started arriving is news for a
+    # person to act on, not a broken pipeline, so it never sets `ok = False`.
+    if location.metar_station_icao:
+        print("Checking columns this project excluded...")
+        watched_rows = metar_fetch.fetch_metar_archive_rows(
+            location.metar_station_icao,
+            add_days(today_in_tz(location.timezone), -WATCHED_COLUMN_LOOKBACK_DAYS),
+            today_in_tz(location.timezone),
+            extra_columns=metar_fetch.ARCHIVE_WATCHED_COLUMNS,
+        )
+        if watched_rows is None:
+            print("  Station archive unreachable; no column check this run.")
+        else:
+            watched = check_watched_columns(
+                watched_rows,
+                watched=metar_fetch.ARCHIVE_WATCHED_COLUMNS,
+                read_column_count=len(metar_fetch.ARCHIVE_DATA_COLUMNS),
+            )
+            print(f"  {'NOTICE: ' if watched.changed else 'OK — '}{watched.message}")
 
     # ROADMAP item 2. Two questions, and only one of them is a failure: is the
     # warning feed still answering, and has it said anything lately?

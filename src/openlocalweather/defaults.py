@@ -400,6 +400,15 @@ REVIEW_COMPARISON_MIN_GAP_PCT = 15.0
 
 # Mean signed error large enough to call a systematic bias rather than
 # scatter. Roughly the point where a forecast user would notice.
+# How far back the weekly check looks when asking whether an excluded column
+# has started arriving — ROADMAP item 152.
+#
+# SHORT ON PURPOSE. The question is "is this station filing it NOW", not "has
+# it ever", so a long window would keep reporting a column that arrived once
+# in March. Seven days is one health-check interval, so consecutive runs cover
+# the record continuously without overlapping it into a permanent yes.
+WATCHED_COLUMN_LOOKBACK_DAYS = 7
+
 REVIEW_TEMP_BIAS_THRESHOLD_C = 1.0
 REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0
 # Cloud is the noisiest field in this record by a wide margin. Measured on

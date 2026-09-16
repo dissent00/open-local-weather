@@ -369,3 +369,63 @@ def test_a_lost_seven_day_outlook_accumulates_like_any_other_gap():
         [[_deg("extended_outlook_unavailable")], [_deg("secondary_extended_outlook_unavailable")]]
     )
     assert mixed.status is DegradationStatus.ISOLATED
+
+
+# --- watched columns — ROADMAP item 152 --------------------------------------
+
+
+def test_a_column_that_starts_arriving_is_reported():
+    """ROADMAP item 152. `gust` and `p01i` are excluded from the READ set on a
+    measurement: HKKI filed no gust group on any of 932 rows, and filed p01i
+    as a constant 0.00. Both decisions were right and both were made in
+    August 2026 against one station.
+
+    THE PROBLEM IS THAT THE EXCLUSION REMOVED ITS OWN FALSIFIER. A column
+    nobody requests produces no series, so no watcher however good could ever
+    notice it starting to work. A station that begins filing gust groups would
+    be invisible forever.
+    """
+    from openlocalweather.health_check import check_watched_columns
+
+    # station, valid, metar, tmpf, sknt, gust, p01i
+    rows = [
+        ["HKKI", "2026-09-16 06:00", "METAR...", "69.8", "4.0", "M", "0.00"],
+        ["HKKI", "2026-09-16 07:00", "METAR...", "71.6", "6.0", "22.0", "0.00"],
+        ["HKKI", "2026-09-16 08:00", "METAR...", "73.4", "8.0", "24.0", "0.00"],
+    ]
+    got = check_watched_columns(rows, watched=("gust", "p01i"), read_column_count=3)
+
+    assert got.present["gust"] == 2, "two rows carried a gust"
+    assert got.present["p01i"] == 0, "a constant 0.00 is not a measurement"
+    assert got.rows == 3
+    assert got.changed is True, "gust arriving is the whole point of watching"
+    assert "gust" in got.message
+
+
+def test_a_column_that_is_still_absent_says_nothing_loudly():
+    """The normal case, and it must stay quiet. A check that fires every week
+    on an expected absence is a check nobody reads — the same reasoning
+    `coverage.py` gives for reporting `never_published` without alerting."""
+    from openlocalweather.health_check import check_watched_columns
+
+    rows = [
+        ["HKKI", "2026-09-16 06:00", "METAR...", "69.8", "4.0", "M", "0.00"],
+        ["HKKI", "2026-09-16 07:00", "METAR...", "71.6", "6.0", "M", "T"],
+    ]
+    got = check_watched_columns(rows, watched=("gust", "p01i"), read_column_count=3)
+
+    assert got.present == {"gust": 0, "p01i": 0}
+    assert got.changed is False
+    assert "unchanged" in got.message.lower() or "no change" in got.message.lower()
+
+
+def test_a_trace_is_not_a_measurement_and_neither_is_a_constant_zero():
+    """`T` is the archive's trace marker and `0.00` is what HKKI files on
+    every row including hours its own report says `-RA`. Counting either as a
+    value would report the exclusion as overturned on the first run."""
+    from openlocalweather.health_check import check_watched_columns
+
+    rows = [["HKKI", "2026-09-16 06:00", "M...", "69.8", "4.0", "M", v] for v in ("0.00", "T", "M", "")]
+    got = check_watched_columns(rows, watched=("p01i",), read_column_count=3)
+    assert got.present["p01i"] == 0
+    assert got.changed is False
