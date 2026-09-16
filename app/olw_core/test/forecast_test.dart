@@ -816,7 +816,7 @@ void main() {
     expect(llm.seenUserPrompt, contains('"stations_reporting": 2'));
   });
 
-  test('a later issuance is told it is one, and shown every earlier narrative', () async {
+  test('a run whose verification is already written is told so, and shown every earlier narrative', () async {
     final llm = _StubProvider();
     await generateForecast(
       client: mockClient(),
@@ -833,7 +833,7 @@ void main() {
         {'time': '13:02', 'narrative': 'Cloud building over the lake.'},
       ],
     );
-    expect(llm.seenSystemPrompt, contains('LATER ISSUANCE'));
+    expect(llm.seenSystemPrompt, contains('VERIFICATION IS ALREADY WRITTEN'));
     expect(llm.seenUserPrompt, contains('EARLIER TODAY'));
     // A list, not one narrative: the number of runs a day is the operator's
     // choice, and the third needs to know about the second.

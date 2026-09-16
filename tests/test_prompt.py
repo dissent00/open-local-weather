@@ -207,100 +207,39 @@ def test_system_prompt_refresh_block_absent_by_default():
     assert "LATER ISSUANCE" not in prompt
 
 
-def test_system_prompt_reissue_block_present_when_requested():
-    prompt = build_system_prompt(KISUMU, is_reissue=True)
-    assert "LATER ISSUANCE" in prompt
-    assert "EARLIER TODAY" in prompt
-    assert "not a repeat" in prompt
-    assert 'empty array for "skill_profile_summaries"' in prompt
+def test_the_verification_block_says_only_that_verification_is_written():
+    """WHAT THIS BLOCK STOPPED BEING, 2026-09-16.
 
+    It was four rules for a LATER ISSUANCE, from when OLW was a twice-a-day
+    tool. Every run is now a fresh forecast and the reader does not care when
+    the last one ran, so three of the four went with the concept — the UPDATE
+    framing, "NO NEW GUIDANCE IS AN ANSWER" (unreachable: no new cycle means
+    no call), and "BREVITY IS NOT OMISSION" (its substance is in the base
+    prompt, checked before deleting).
 
-def test_a_later_issuance_is_allowed_to_say_nothing_has_changed():
-    """The most likely honest answer for a second run four hours later, and
-    the one a model will avoid unless told it is acceptable — padding an
-    update to look thorough is exactly how a forecast starts repeating itself."""
-    prompt = build_system_prompt(KISUMU, is_reissue=True)
-    assert "nothing material has changed" in prompt
-    assert "Do not manufacture change" in prompt
-
-
-def test_todays_forecast_covers_the_hours_ahead_not_the_calendar_day():
-    """The gap the first live run exposed. The Overview became time-aware and
-    this section did not, because its entire instruction was five words:
-    "(temps, rain, wind, UV index, air quality)" — a whole-day checklist.
-
-    Issued at 16:45 it produced "peak UV index will reach 9.0 around noon",
-    which is wrong twice: noon had gone, and nothing could be done about it.
+    What is left is about VERIFICATION and nothing else, which is why it is
+    keyed on verification rather than on which run this is.
     """
-    prompt = build_system_prompt(KISUMU)
-    assert "next 12-18 hours" in prompt
-    assert "HOURS AHEAD" in prompt
-    assert "NEVER THE FUTURE TENSE FOR SOMETHING PAST" in prompt
+    prompt = build_system_prompt(KISUMU, verification_already_written=True)
+
+    assert "VERIFICATION IS ALREADY WRITTEN" in prompt
+    assert 'empty array for "skill_profile_summary"' in prompt
+
+    # The retired concept must not come back by the side door.
+    for gone in ("LATER ISSUANCE", "EARLIER TODAY", "not a repeat",
+                 "NO NEW GUIDANCE IS AN ANSWER", "BREVITY IS NOT OMISSION"):
+        assert gone not in prompt, f"{gone!r} is the retired reissue concept"
 
 
-def test_a_spent_value_is_omitted_rather_than_narrated_in_past_tense():
-    """Item 67. The rule above was written to stop the future tense being used
-    for a past event, and it over-corrected into instructing the past tense
-    instead. Its worked example — the part a model copies — said to state the
-    spent UV peak, and the model duly opened Today's Forecast with it:
+def test_the_base_prompt_still_carries_what_the_deleted_rule_protected():
+    """"BREVITY IS NOT OMISSION" guarded the met service against being
+    dropped as "nothing changed". It was safe to delete only because the base
+    prompt says it anyway — this is that check, kept so the deletion stays
+    safe."""
+    prompt = build_system_prompt(KISUMU, verification_already_written=False)
 
-        "As dusk falls and sunset approaches at 18:43 local time, daytime
-        highs near 31°C / 88°F and solar UV exposure are in the past."
-
-    Three facts nobody can act on, two of them already in the published stat
-    block, spending the first sentence of the section a reader opened to find
-    out what happens next.
-
-    So both halves are pinned here: the old two-branch phrasing and its
-    example must stay gone, and omission must be the stated default — while
-    the original point, no future tense for something past, survives intact.
-    """
-    prompt = build_system_prompt(KISUMU)
-
-    assert "past tense, or left out" not in prompt
-    assert "Say the day's peak UV was 9 around midday" not in prompt
-
-    assert "LEAVE A SPENT VALUE OUT" in prompt
-    assert "OPEN ON WHAT IS STILL AHEAD" in prompt
-
-    # The error the old rule existed to prevent. Still prevented.
-    assert 'peak UV index will reach 9.0 around noon" is wrong twice' in prompt
-
-
-def test_the_time_aware_section_must_not_change_what_gets_scored():
-    """today_properties stays a whole-day call.
-
-    Those values are scored against the day's observations and compared
-    against every other day in the record. Narrowing temp_high_c to "the next
-    12 hours" would leave the record internally inconsistent — and silently,
-    since every individual entry would still look reasonable."""
-    prompt = build_system_prompt(KISUMU)
-    # Reworded by the split (ROADMAP item 59 step 3): the renderer is no
-    # longer the thing that made the call, so the firewall now points at a
-    # value it was GIVEN. The property being guarded is unchanged — a rule
-    # about the hours ahead must not narrow a field scored across the day.
-    assert "THE CALL YOU WERE GIVEN describes the WHOLE calendar day" in prompt
-    assert "temp_high_c is the day's high whether or not it has already happened" in prompt
-
-
-def test_a_later_issuance_may_be_brief_but_may_not_drop_content():
-    """A real regression, caught on the live 18:07 run of 2026-08-22.
-
-    The met service was named 1-3 times in each of the previous three days'
-    refreshes and ZERO times in that one. Its data was present throughout —
-    kenya_met sat in day0 and day3 model_predictions and the 629-character
-    bulletin was stored — so nothing was lost upstream. The new LATER ISSUANCE
-    block pushed brevity hard enough ("do not restate at length", "say so
-    plainly and move on") that the model economised by dropping a peer model
-    entirely rather than by shortening prose.
-
-    Saying "nothing changed since this morning" IS a statement about the met
-    service. Silence is not.
-    """
-    prompt = build_system_prompt(KISUMU, is_reissue=True)
-    assert "BREVITY IS NOT OMISSION" in prompt
-    assert "local met service is still a peer model" in prompt
-    assert "every heading below appears on every issuance" in prompt
+    assert "peer model" in prompt
+    assert "Forecaster Confidence Notes" in prompt
 
 
 def test_instability_is_treated_as_a_disagreement_axis():
@@ -358,7 +297,7 @@ def test_every_run_is_told_to_lead_with_what_matters_now():
 def test_system_prompt_reissue_does_not_disturb_heading_order():
     # The reissue block is instructional text, not a narrative heading —
     # must not add or reorder the actual ## headings the LLM is told to use.
-    prompt = build_system_prompt(KISUMU, is_reissue=True)
+    prompt = build_system_prompt(KISUMU, verification_already_written=True)
     top_level = [t for level, t in headings(prompt) if level == "##"]
     assert top_level == [
         "Overview",
@@ -743,3 +682,22 @@ def test_the_field_table_survives_a_list_of_dicts():
     )
 
     assert got == {"regional_pressure": [{"latitude": -0.1054, "pressure_msl_mean": 1014.7}]}
+
+
+def test_a_first_issuance_is_never_told_verification_is_already_written():
+    """THE FAILURE THIS PREVENTS DESTROYS A DAY'S SCORING, silently.
+
+    The block tells the model to return a one-line PLACEHOLDER for
+    yesterday_verification and an empty skill_profile_summary. On the day's
+    first run that is the only chance to write the real thing — the actuals
+    have just been fetched and scored — so emitting it unconditionally would
+    replace a day's verification with the word "unchanged" and nothing would
+    raise.
+
+    Found by mutation on 2026-09-16: making the block unconditional passed
+    every other test in this file.
+    """
+    prompt = build_system_prompt(KISUMU, verification_already_written=False)
+
+    assert "VERIFICATION IS ALREADY WRITTEN" not in prompt
+    assert "placeholder" not in prompt.lower()

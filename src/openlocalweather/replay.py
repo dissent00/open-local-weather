@@ -156,13 +156,13 @@ def frozen_cases() -> list[ReplayCase]:
                 name=case["name"],
                 judgment_prompt=build_judgment_prompt(
                     location,
-                    is_reissue=reissue,
+                    verification_already_written=reissue,
                     ground_stations_configured=ground,
                     local_bulletin_configured=bulletin,
                 ),
                 narrative_prompt=build_narrative_prompt(
                     location,
-                    is_reissue=reissue,
+                    verification_already_written=reissue,
                     ground_stations_configured=ground,
                     local_bulletin_configured=bulletin,
                 ),

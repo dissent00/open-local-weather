@@ -44,7 +44,8 @@ is the honest trade and it should be visible rather than quietly patched.
 
 ### The flags have to match production or the prompt is a different one
 
-`build_narrative_prompt` branches on `is_reissue` and on whether ground
+`build_narrative_prompt` branches on `verification_already_written` and on
+whether ground
 stations and a met service are configured. The archive stores
 `narrative_prompt_sha256`, so the right combination is not guessed: this sweeps
 them and refuses unless one reproduces the stored hash. Guessing would rebuild
@@ -84,7 +85,7 @@ CALL_FIELDS = (
 
 def matching_flags(location, target_sha: str) -> dict:
     for ground, bulletin, reissue in itertools.product((True, False), repeat=3):
-        flags = dict(is_reissue=reissue, ground_stations_configured=ground,
+        flags = dict(verification_already_written=reissue, ground_stations_configured=ground,
                      local_bulletin_configured=bulletin)
         built = build_narrative_prompt(location, **flags)
         if hashlib.sha256(built.encode()).hexdigest() == target_sha:

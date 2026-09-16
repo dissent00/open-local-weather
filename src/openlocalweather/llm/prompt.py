@@ -50,7 +50,7 @@ def _blocks(
     historical_lookback_days: int,
     rolling_window_short: int,
     rolling_window_long: int,
-    is_reissue: bool,
+    verification_already_written: bool,
     ground_stations_configured: bool,
     local_bulletin_configured: bool,
     extended_outlook_available: bool,
@@ -115,17 +115,39 @@ def _blocks(
 
     local_bulletin_checklist_item = "the local bulletin, " if local_bulletin_configured else ""
 
-    reissue_block = (
+    # WHAT THIS BLOCK IS NOW, and what it stopped being — 2026-09-16.
+    #
+    # It used to be four rules for a LATER ISSUANCE, written when OLW was a
+    # twice-a-day tool with a morning forecast and an evening update. The
+    # operator's settled frame retires that: every run is a fresh forecast,
+    # what varies is whether new model data arrived, and the reader "doesn't
+    # care when the last forecast was run". Three of the four rules died with
+    # the concept:
+    #
+    #   - "Your job is an UPDATE, not a repeat" — there is no update. A run
+    #     with new guidance is a forecast; a run without it does not reach a
+    #     model at all (`reasoning.llm_should_reason`).
+    #   - "NO NEW GUIDANCE IS AN ANSWER" — unreachable under
+    #     `new_cycle_only`: no new cycle means no call to tell it to.
+    #   - "BREVITY IS NOT OMISSION" — it existed to stop the model dropping
+    #     required content because it thought it was "just an update".
+    #     Checked before deleting: the met service as a peer model, the
+    #     Forecaster Confidence Notes and the track record are all stated in
+    #     the base prompt, so the substance stays and only the restatement
+    #     goes.
+    #
+    # WHAT SURVIVES IS NOT ABOUT ISSUANCES AT ALL. It is about verification,
+    # and it is keyed on verification rather than on which run this is —
+    # yesterday's actuals do not change during the day, so a run on a day
+    # whose verification is already written has nothing to verify. Without
+    # this the model writes a second verification over the top of the real
+    # one; `_compose_log_entry` defends against that by carrying the stored
+    # value forward, and this stops the pointless generation upstream.
+    verification_block = (
         """
 
-LATER ISSUANCE (this run only): a forecast for today has already been published — see EARLIER TODAY in the user message, which lists each previous issuance with the time it went out. Yesterday's actuals do not change during the day, so no new verification has happened: write a brief one-line placeholder for "yesterday_verification" and "verification_notes" noting this, and return an empty array for "skill_profile_summaries". Those three fields are read but NOT stored on a later issuance, so their wording does not matter; just do not leave them empty or invent verification that did not occur.
-
-Your job is an UPDATE, not a repeat. Say what has changed since the last issuance, and keep the reader on what is still AHEAD of them rather than recapping hours they have already lived through. THE OVERVIEW'S OPENING IS NOT YOURS TO DECIDE HERE: code has already gated it on the reader's local hour - see DAY-OVER-DAY COMPARISON, which is simply absent when the hour does not warrant it. Follow the Overview section as written. A reader opening a 22:00 update wants tonight, tomorrow morning and onward; the day's high and the day's UV are settled facts they experienced, and leading with them spends the most valuable sentence in the forecast on nothing. A real evening update opened "With evening underway, daytime highs near 32C / 90F and solar UV exposure are in the past", which tells the reader only that the day they just lived is over. If the honest summary is that little has changed, say that and then say what is coming. If nothing material has changed, say so plainly in a sentence and move on - a reader who has already read today's earlier forecast is asking "is it still right?", and the honest answer to that is often "yes", said briefly. Do not manufacture change to justify the update, and do not restate the earlier forecast at length in order to look thorough. Only revisit the extended outlook if the fresher model cycle actually moved it.
-
-NO NEW GUIDANCE IS AN ANSWER. GUIDANCE RECENCY carries "newer_than_previous_issuance". When it is false, no new model cycle has landed since the forecast you are updating: whatever has changed, the models did not change their minds - the hours simply advanced. Say so plainly, keep the update short, and do not hunt for differences to justify it. "No new model guidance since this morning; the picture is unchanged, and here is what is still ahead" is a better update than a paragraph rewritten to look like news. When it is true, a newer cycle HAS landed, and a change you report is a real change of mind rather than the day moving on.
-
-BREVITY IS NOT OMISSION. Being an update licenses you to say "little has changed" instead of repeating a paragraph. It does NOT license dropping content this forecast is required to carry. In particular the local met service is still a peer model with its own track record and must still be weighed and named in the Forecaster Confidence Notes, exactly as on a first issuance - "nothing changed since this morning" is a statement ABOUT it, not a reason to stop mentioning it. The same holds for the sections themselves: every heading below appears on every issuance, however short its content."""
-        if is_reissue
+VERIFICATION IS ALREADY WRITTEN FOR THIS DAY. Yesterday's actuals do not change while today runs, so nothing new has been verified since it was written: write a brief one-line placeholder for "yesterday_verification" and "verification_notes" saying so, and return an empty array for "skill_profile_summary". Do not re-derive yesterday's scores, and do not restate the verification you can see in the user message — it has already been published and stored, and a second version of it can only disagree with the first."""
+        if verification_already_written
         else ""
     )
 
@@ -204,7 +226,7 @@ Use each finding at the confidence it states and do not upgrade it - "provisiona
 "Tonight" means the whole stretch from dusk through to dawn, as WHAT MATTERS NOW spells out - not just the evening.""",
         "hours_ahead": f"""HOURS AHEAD gives the hour-by-hour multi-model guidance from the current hour forward, and it is the ONLY hourly series you have for this location: the calendar day's hours are no longer sent. For the hours already elapsed, read OBSERVED SO FAR TODAY, which is what the station measured rather than what a model expected.""",
         "sun_times": f"""The sun times in ISSUED are computed in code and correct for this location and date. State them if useful, and never estimate sunset from latitude or season yourself.""",
-        "reissue": f"""{reissue_block}""",
+        "verification": f"""{verification_block}""",
         "the_call": f"""THE CALL HAS ALREADY BEEN MADE, AND IT IS NOT YOURS TO REVISIT.
 
 The user message carries "THE FORECASTER'S CALL" - the blended today_properties and extended_properties, decided by a forecaster given the same data you have, in a separate call made before this one. Those values are what the record SCORES against tomorrow's observations, beside GFS and ECMWF. They are settled.
@@ -304,7 +326,7 @@ def build_judgment_prompt(
     historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
-    is_reissue: bool = False,
+    verification_already_written: bool = False,
     ground_stations_configured: bool = True,
     local_bulletin_configured: bool = True,
     extended_outlook_available: bool = True,
@@ -326,7 +348,7 @@ def build_judgment_prompt(
         historical_lookback_days,
         rolling_window_short,
         rolling_window_long,
-        is_reissue,
+        verification_already_written,
         ground_stations_configured,
         local_bulletin_configured,
         extended_outlook_available,
@@ -379,7 +401,7 @@ def build_narrative_prompt(
     historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
-    is_reissue: bool = False,
+    verification_already_written: bool = False,
     ground_stations_configured: bool = True,
     local_bulletin_configured: bool = True,
     extended_outlook_available: bool = True,
@@ -401,7 +423,7 @@ def build_narrative_prompt(
         historical_lookback_days,
         rolling_window_short,
         rolling_window_long,
-        is_reissue,
+        verification_already_written,
         ground_stations_configured,
         local_bulletin_configured,
         extended_outlook_available,
@@ -434,7 +456,7 @@ def build_narrative_prompt(
 {b["hours_ahead"]}
 
 {b["sun_times"]}
-{b["reissue"]}
+{b["verification"]}
 ---
 
 {b["the_call"]}
@@ -716,7 +738,7 @@ def build_user_prompt(
     to be a single `morning_narrative`, because the day is no longer assumed
     to have exactly two runs: an operator may schedule two or five, and each
     one after the first needs to know what its readers have already been
-    told. See the builders' `is_reissue`.
+    told. See the builders' `verification_already_written`.
 
     `issuance` is a DayPart — the local time, the part of the day, and what a
     reader at this hour actually wants. Before it existed the prompt carried a

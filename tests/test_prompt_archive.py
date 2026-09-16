@@ -161,7 +161,7 @@ def test_the_evening_refresh_archives_its_own_prompt_not_the_mornings(tmp_path):
     """The bug a store-level test cannot see.
 
     Both paths build a `system_prompt` and a `user_prompt` local, and the
-    refresh's differ from the morning's — `is_reissue=True` alone makes them
+    refresh's differ from the morning's — `verification_already_written=True` alone makes them
     different documents. Archiving the wrong local would produce an archive
     that looks complete, replays cleanly, and answers about the wrong run.
     """

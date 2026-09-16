@@ -233,7 +233,8 @@ class ForecastRunResult:
     `first_issuance` is that property. ROADMAP item 104, step 2.
 
     It is the same question the entry already answers as
-    `InformationMoved.first_issuance_of_day` and the prompt as `is_reissue`.
+    `InformationMoved.first_issuance_of_day`, and the narrative prompt as
+    `verification_already_written`.
     All three read `existing_entry`, which `run_forecast` resolves once and
     passes down. Do not compute a fourth.
 
@@ -2729,7 +2730,12 @@ def _issue_forecast(
     # verb was typed. Told otherwise it writes a fresh morning-style forecast
     # over one the readers have already had, and emails it as the day's first.
     prompt_flags = dict(
-        is_reissue=not first_issuance,
+        # KEYED ON VERIFICATION, NOT ON WHICH RUN THIS IS — 2026-09-16.
+        # The block it gates says only "this day's verification is already
+        # written"; that is true exactly when the day already has an entry,
+        # so the value is unchanged and the MEANING is not. The old name
+        # asserted a morning/evening distinction the system no longer draws.
+        verification_already_written=not first_issuance,
         ground_stations_configured=ground_stations_configured,
         local_bulletin_configured=local_bulletin_configured,
         extended_outlook_available=extended_outlook_available,

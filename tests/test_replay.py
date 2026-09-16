@@ -167,7 +167,7 @@ def test_each_case_is_paired_with_its_own_system_prompt():
     refresh = by_name["evening refresh carries the morning narrative"].narrative_prompt
     first = by_name["fully populated"].narrative_prompt
     assert refresh != first
-    assert "LATER ISSUANCE" in refresh
+    assert "VERIFICATION IS ALREADY WRITTEN" in refresh
     assert "LATER ISSUANCE" not in first
 
 

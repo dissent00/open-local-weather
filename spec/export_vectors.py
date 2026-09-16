@@ -2265,7 +2265,7 @@ def export_system_prompt() -> None:
     ]
 
     cases = []
-    for name, loc, is_reissue, overrides in scenarios:
+    for name, loc, verification_already_written, overrides in scenarios:
         kwargs = {
             "historical_lookback_days": HISTORICAL_LOOKBACK_DAYS,
             "rolling_window_short": ROLLING_WINDOW_SHORT,
@@ -2288,15 +2288,15 @@ def export_system_prompt() -> None:
                             "section_label": loc.secondary_point.section_label,
                         },
                     },
-                    "is_reissue": is_reissue,
+                    "verification_already_written": verification_already_written,
                     **kwargs,
                 },
                 "expected": {
                     "judgment": build_judgment_prompt(
-                        loc, is_reissue=is_reissue, **kwargs
+                        loc, verification_already_written=verification_already_written, **kwargs
                     ),
                     "narrative": build_narrative_prompt(
-                        loc, is_reissue=is_reissue, **kwargs
+                        loc, verification_already_written=verification_already_written, **kwargs
                     ),
                 },
             }

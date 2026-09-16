@@ -1064,7 +1064,7 @@ def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_pat
     issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
 
     system_prompt, user_prompt = evening_llm.system_prompts, evening_llm.user_prompts
-    assert "LATER ISSUANCE" in system_prompt
+    assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
     assert "EARLIER TODAY" in user_prompt
     assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
 
@@ -1700,13 +1700,13 @@ def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
     assert entry.morning_issuance.narrative_markdown == "## Overview\nDry and warm."
 
 
-def test_a_forced_re_run_is_told_it_is_a_later_issuance(tmp_path):
+def test_a_forced_re_run_is_told_its_verification_is_already_written(tmp_path):
     """Otherwise it writes a fresh morning-style forecast over one its readers
     have already read, and emails it as though it were the day's first."""
     _, forced = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
     system_prompt, user_prompt = forced.system_prompts, forced.user_prompts
-    assert "LATER ISSUANCE" in system_prompt
+    assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
     assert "Evening refresh." in user_prompt, "shown what has already been published"
 
 
@@ -2649,7 +2649,7 @@ def test_a_later_issuance_stores_the_blend_it_actually_made(tmp_path):
 def test_run_daily_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path):
     """`olw run-daily` is reachable for a day that already has an entry, and
     the body already treats that as a later issuance — it is where the prompt's
-    `is_reissue` comes from. So first_issuance is a predicate here, not the
+    `verification_already_written` comes from. So first_issuance is a predicate here, not the
     constant True that the function's name invites.
 
     The CLI cannot reach this: `olw forecast` dispatches to run_refresh_pipeline

@@ -471,16 +471,16 @@ Future<ForecastRun> generateForecast({
     'newer_than_previous_issuance': null,
   };
 
-  final isReissue = earlierToday != null && earlierToday.isNotEmpty;
+  final verificationAlreadyWritten = earlierToday != null && earlierToday.isNotEmpty;
   final judgmentPrompt = buildJudgmentPrompt(
     location,
-    isReissue: isReissue,
+    verificationAlreadyWritten: verificationAlreadyWritten,
     groundStationsConfigured: groundStationsConfigured,
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
   );
   final narrativePrompt = buildNarrativePrompt(
     location,
-    isReissue: isReissue,
+    verificationAlreadyWritten: verificationAlreadyWritten,
     groundStationsConfigured: groundStationsConfigured,
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
   );

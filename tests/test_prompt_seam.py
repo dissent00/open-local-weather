@@ -195,7 +195,7 @@ def _branches() -> list[tuple[str, str, str]]:
             historical_lookback_days=i["historical_lookback_days"],
             rolling_window_short=i["rolling_window_short"],
             rolling_window_long=i["rolling_window_long"],
-            is_reissue=i["is_reissue"],
+            verification_already_written=i["verification_already_written"],
             ground_stations_configured=i["ground_stations_configured"],
             local_bulletin_configured=i["local_bulletin_configured"],
             extended_outlook_available=i["extended_outlook_available"],
