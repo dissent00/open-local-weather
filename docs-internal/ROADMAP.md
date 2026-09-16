@@ -19236,7 +19236,7 @@ Related: items 59 (the split the document is missing), 131, 132, 133, and
 
 ---
 
-## 137. Two axes decide one run, and only one of them is about information · **Planned — raised 2026-09-16**
+## 137. Two axes decide one run, and only one of them is about information · **The DECISION shipped 2026-09-16; storage and naming remnants remain**
 
 Raised by the operator reading the 15:01 failure: *"Reissue should only be
 happening if there's no updated model data... This is no longer a time-of-day
@@ -19369,6 +19369,60 @@ answer is "new guidance means a full forecast", then `is_reissue` stops being
 `not first_issuance` and starts being something like `not information_moved`,
 which is the same shape `llm_should_reason` already uses — and the two axes
 become one.
+
+### What shipped 2026-09-16, and the framing question DISSOLVED
+
+The Order above says to settle first whether `is_reissue` should become
+`not information_moved`. It did not need settling, because the field was not
+an axis at all — it was a badly-named question about VERIFICATION. Yesterday's
+actuals are verified once per day whichever run does it, so
+`verification_already_written = not first_issuance` is simply correct, and has
+nothing to do with whether information moved. Renaming it made the supposed
+second axis disappear rather than resolving it.
+
+Shipped: rule 2 deleted; `is_reissue` → `verification_already_written`
+throughout; `reissue_block` → `verification_block` (3,196 → 519 chars); the
+`EARLIER TODAY` block and its parameter removed; the app's call site and
+`_timeOfDay` removed.
+
+### WHAT REMAINS, and it is cleanup rather than design
+
+Checked 2026-09-16. `olw_core` and the app are clean — their "morning" and
+"evening" mentions are ordinary weather prose. Everything below is server-side.
+
+**1. `morning_issuance` is still WRITTEN on every re-issue.**
+`pipeline.py`'s write-once block sets `existing_entry.morning_issuance or
+snapshot`, and the same snapshot is appended to `earlier_issuances`. So a
+re-issue stores the identical object twice, once under a name from the dead
+concept. `issuance_log()` already PREFERS `earlier_issuances`, so the value
+written today is read by nothing except item 2.
+
+**2. The morning-page publisher is keyed on it.** `publish/pages.py` builds a
+separate archived page for what the day's first issuance said, guarded on
+`morning_issuance is not None`. The CONCEPT is worth keeping — the evidence it
+is used is in `docs/archive/`, which has `-morning` pages for 09-10, 09-11 and
+09-13 and none for the days that were never re-issued. What is vestigial is
+the NAME and the KEY.
+
+*The clean fix for 1 and 2 together*: have the publisher read `issuance_log()`
+— the accessor that already reads both shapes — take `[0]` for the first
+issuance and guard on `len(...) > 1`. Old records keep working through the
+legacy branch, new records stop carrying the duplicate, and the page can be
+renamed to what it actually is. Do not migrate the archive; `issuance_log()`'s
+docstring records why.
+
+**3. `RUN_KIND_REISSUE = "run-kind: reissue"`** in `cli.py`, and the
+"Forecast re-issued for ..." line beside it. NOT a free rename: the comment
+above it records that `.github/workflows/forecast.yml` greps these strings to
+choose a commit subject, so the workflow changes in the same commit. Note the
+distinction itself is still real and worth keeping — first run of the day
+versus a later one — so only the WORD is vestigial.
+
+**4. `purpose="forecast-reissue"`** in `pipeline.py`, introduced the same day
+the rest was removed. Same word, same question as 3.
+
+**5. `replay.py` names a local `reissue`** while holding
+`verification_already_written`. One line, and misleading to the next reader.
 
 Related: items 104 (the contract, whose opening sentence is the operator's
 frame), 8 (why the branch stays), 80 (the 500), 40 (`is_reissue` is
