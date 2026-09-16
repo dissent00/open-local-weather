@@ -21159,3 +21159,90 @@ is the same defect class caught in a different field), and `docs-internal/
 MET_SERVICE_INTEGRATION.md`.
 
 
+
+---
+
+## 151. The station's day readings fail silently, and have on 14 of the last 16 days · **Raised 2026-09-16 — found in production**
+
+Found while reading the 15:01 run, immediately after the operator said of item
+150's derived horizons: *"We just need handling for data format changes/fetch
+failures. I guess this happens elsewhere though."* This is that gap, already
+live, in a different source.
+
+### The measurement
+
+`observed_so_far` on the stored entries:
+
+| days examined | `observed_so_far` present | absent |
+|---|---|---|
+| 2026-09-01 .. 2026-09-16 (16) | **2** — 09-14, 09-15 | **14** |
+
+**And the data was there.** The same fetch, run by hand at 15:20 on 2026-09-16
+— nineteen minutes after the run that stored `null` — returns a full day:
+
+```
+StationWeather(thunder=False, precipitation=False, cloud_oktas=1.9)
+StationReadings(high_c=33.0, low_c=18.0, peak_wind_kmh=35.19)
+```
+
+**And nothing anywhere says it failed.** `meta.degradations` is `[]` for the
+run. The GitHub Actions log contains no station message of any kind — checked
+by grep for `station`, `observ`, `HKKI` and `unavailable`; the only hit is the
+Gemini 503.
+
+### WHY IT IS SILENT, and it is structural rather than bad luck
+
+`_observed_so_far` has four ways out and **only one of them says anything**:
+
+| exit | says something? |
+|---|---|
+| no station configured | no — correct, that is configuration |
+| the fetch raised | **yes** — prints to stderr |
+| `weather is None and readings is None` | **no** |
+| neither dict has an entry for `today` | **no** |
+
+So three of four exits return `None` with no print, no degradation, and no
+field on the record distinguishing "the station said nothing" from "we never
+got an answer". Reading the archive afterwards, the two are identical.
+
+`DEGRADATION_METAR` exists and is recorded — but on the OTHER METAR path, the
+`airport_metar` block for the prompt. That path succeeded on 2026-09-16, which
+is why `degradations` is empty while the day's readings were absent. **Two
+fetches, one station, one of them reports failure and the other does not.**
+
+### WHAT IT COSTS, which is three features rather than a block
+
+- **`OBSERVED SO FAR TODAY` is absent**, so the forecaster is told nothing
+  about the hours the reader has already lived — item 121's whole point.
+- **C2's third trigger never fires.** `observation_disagreements` is `null`,
+  not `[]`, on every one of those days: the code correctly reports that
+  nothing was looked at, and nothing acts on the difference.
+- **Item 143's divergence never computes.** It was shipped 2026-09-16 and
+  stores `low_divergence: null` for the same reason. The footnote cannot fire
+  and the per-day record the threshold was supposed to be re-tuned against
+  will not accumulate.
+
+So an item shipped today is inert, and would have looked like a design failure
+in a fortnight rather than a plumbing one.
+
+### First moves
+
+1. **Make the silent exits speak.** Each of the three needs its own message
+   and a degradation, because they mean different things: no data returned,
+   versus data returned that does not cover today. One code with a detail
+   string is enough — `RunDegradation` already carries `summary` and `detail`.
+2. **Then find out which one fires**, and only then fix the cause. Diagnosing
+   before instrumenting is how this went unnoticed for two weeks.
+3. **Distinguish absent from empty on the record.** `observed_so_far: null`
+   currently means both "the station reported nothing" and "we never asked
+   successfully". Three-valued, as everywhere else here.
+
+**A likely cause worth testing first, not assuming:** the archive endpoint may
+not carry the current day until some lag has passed, in which case a 06:01
+local run legitimately finds nothing and an 18:01 one should not. That the two
+present days are 09-14 and 09-15 — the two days around when item 121 landed —
+is worth explaining rather than waving at.
+
+Related: items 150 (the same class, raised in the abstract an hour earlier),
+143, 121, 122, 104's C2, and 102 — the coverage watcher, which catches exactly
+this defect class in the NARRATED fields and does not watch this one.
