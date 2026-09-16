@@ -1624,6 +1624,87 @@ class TrackRecordEntry(BaseModel):
 _LEAD_TIME_REFERENCE = re.compile(r"Day\+\d")
 
 
+# Words that say which way a model's error runs, and which quantity they are
+# about — ROADMAP item 142, finding 3.
+#
+# THE CONVENTION IS OBSERVED MINUS FORECAST, stated in the prompt beside the
+# fields it governs: a POSITIVE error means the model came in UNDER what
+# happened, a NEGATIVE one that it came in OVER. So "over-forecasts" and
+# "warm bias" both imply a NEGATIVE error, and "under-forecasts" and "cold
+# bias" a POSITIVE one.
+#
+# READ CLAUSE BY CLAUSE, because a real summary makes two claims about two
+# quantities in one sentence: *"over-forecasts overnight minimum temperatures
+# and under-forecasts wind"* is both right and wrong depending which half you
+# read. Matching direction and quantity across a whole summary would pair the
+# first direction with the second quantity and invent a contradiction.
+_SAYS_OVER = ("over-forecast", "overforecast", "warm bias", "runs warm", "running warm", "too warm")
+_SAYS_UNDER = ("under-forecast", "underforecast", "cold bias", "cool bias", "runs cold",
+               "running cold", "too cold", "runs cool")
+_MEANS_LOWS = ("overnight", "minimum", "nocturnal", "lows", "low temperature")
+_MEANS_WIND = ("wind", "gust")
+
+
+def _clauses(summary: str) -> list[str]:
+    """Split on the joins a summary actually uses. Kept here rather than
+    inline so the split and the reasoning above stay together."""
+    import re as _re
+
+    return [c for c in _re.split(r"[,;.]| and | but | though | while ", summary.lower()) if c.strip()]
+
+
+def summary_contradicts_its_row(
+    summary: str | None,
+    *,
+    low_error_c: float | None = None,
+    wind_error_kmh: float | None = None,
+) -> bool:
+    """Whether a stored skill summary asserts a direction its own row's
+    measured error contradicts — ROADMAP item 142, finding 3.
+
+    THE CASES THIS WAS BUILT ON, all three still stored on 2026-09-16:
+    ICON Day+0 carries `avg_temp_low_error_c_10: -2.8`, which means it ran
+    WARM, beside "a persistent nocturnal cold bias". UKMO Day+3 carries
+    `+1.63` — it ran COLD — beside "over-forecasts overnight minimum
+    temperatures". best_match Day+3 says peak wind is "over-forecasted" while
+    its wind error is positive, which is under-forecasting. LONG-RUN REVIEW
+    agrees with every sign and contradicts every summary.
+
+    A CHECK RATHER THAN A ONE-OFF CORRECTION. Item 149 changed how summaries
+    are WRITTEN — they narrate the review's findings now, whose directions
+    come from code — so new ones should be right. This exists for the stale
+    ones, and for the case that makes a one-off insufficient: a summary for a
+    pair that stops being refreshed is frozen exactly as it is.
+
+    CONSERVATIVE ON PURPOSE. A true result WITHHOLDS the summary from the
+    forecaster, so a false positive silences a true statement. A clause naming
+    no direction, no quantity, or both directions at once is left alone.
+    """
+    if not summary:
+        return False
+
+    measured = {"lows": low_error_c, "wind": wind_error_kmh}
+
+    for clause in _clauses(summary):
+        says_over = any(w in clause for w in _SAYS_OVER)
+        says_under = any(w in clause for w in _SAYS_UNDER)
+        if says_over == says_under:
+            continue
+
+        for quantity, words in (("lows", _MEANS_LOWS), ("wind", _MEANS_WIND)):
+            if not any(w in clause for w in words):
+                continue
+            error = measured.get(quantity)
+            if error is None or error == 0:
+                continue
+            # "over" claims a negative error; "under" claims a positive one.
+            claimed_negative = says_over
+            if claimed_negative != (error < 0):
+                return True
+
+    return False
+
+
 def summary_carries_a_figure(summary: str | None) -> bool:
     """Whether a stored skill summary quotes a number, and so cannot be fed
     back.

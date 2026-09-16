@@ -19860,7 +19860,7 @@ against storage: the 2026-09-15 entry holds `day0_verified: None`, not
 not verified", which is this project's own absence-is-absence rule broken in
 the one place the model reads it.
 
-**3. Stored skill summaries contradict the error-sign convention.** ICON at
+**3. FIXED 2026-09-16. Stored skill summaries contradict the error-sign convention.** ICON at
 Day+0 carries `avg_temp_low_error_c_10: -2.8` — negative, so the model ran
 WARM — beside a summary reading *"a persistent nocturnal cold bias on minimum
 temperatures"*. `LONG-RUN REVIEW` agrees with the sign and contradicts the
@@ -19879,6 +19879,29 @@ old".** Not a logic bug: `aqi.is_stale` uses `age > STALE_THRESHOLD_HOURS`
 and the real age is fractionally over 3. But `hours_old` is rounded for
 display, so the model is handed an apparent contradiction and told to trust
 both halves.
+
+**Finding 3's fix, and why it is a check rather than a correction.**
+`summary_contradicts_its_row` withholds a summary whose direction words
+contradict its own row's measured error, on the same seam that already
+withholds a summary quoting a figure. Item 149 changed how summaries are
+WRITTEN, so new ones should be right — but a summary for a (model, lead) pair
+that stops being refreshed is frozen exactly as it is, which is what makes a
+one-off correction insufficient. `tools/fix_note_signs.py` was the one-off
+equivalent for notes, and it is gone with item 147.
+
+**IT READS CLAUSE BY CLAUSE, and the reason is in the data.** UKMO Day+3 says
+*"over-forecasts overnight minimum temperatures and under-forecasts wind"* —
+the wind half is RIGHT and the temperature half is backwards. Matching a
+direction to a quantity across the whole summary would pair the first
+direction with the second quantity and be wrong twice.
+
+**The first version caught one case of three, and running it against the real
+record is the only reason that is known.** It looked only at temperature, and
+only for phrasings taken from the one example in this item — so it missed
+UKMO's wording entirely and best_match's claim, which is about wind. All three
+are caught now, and 15 of the record's 18 summaries are kept, which is the
+negative control: a check that withheld everything would have passed every
+test written for it.
 
 **Finding 1's fix, and the second defect in the same text.** The conditional
 block now says in terms that it OVERRIDES WORKFLOW STEP 1, naming the two

@@ -178,6 +178,7 @@ from openlocalweather.models import (
     InformationMoved,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
+    summary_contradicts_its_row,
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
     DEGRADATION_STATION_READINGS,
@@ -747,7 +748,19 @@ def _track_record_payload(entries, models: set | list) -> list[dict]:
             continue
 
         row = entry.model_dump()
-        if summary_carries_a_figure(entry.skill_profile_summary):
+        if summary_carries_a_figure(entry.skill_profile_summary) or (
+            # ROADMAP item 142, finding 3. A summary whose direction words
+            # contradict its own row's measured error is a false claim the
+            # forecaster is told to reason from, beside a LONG-RUN REVIEW
+            # finding that says the opposite. Withheld on the same seam and
+            # for the same reason as a quoted figure: the row is still worth
+            # showing, and the summary is the part that cannot be trusted.
+            summary_contradicts_its_row(
+                entry.skill_profile_summary,
+                low_error_c=getattr(entry, "avg_temp_low_error_c_10", None),
+                wind_error_kmh=getattr(entry, "avg_wind_error_kmh_10", None),
+            )
+        ):
             # The figure is withheld rather than the row: the stats are still
             # worth showing, and the summary is the part the sample cannot
             # support.
