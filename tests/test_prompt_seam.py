@@ -399,3 +399,54 @@ def _numbered_blocks(prompt: str):
             )
             yield heading, "\n".join(lines[start:i])
             start = None
+
+
+def test_the_prompts_never_quote_a_near_miss_of_a_response_field():
+    """A field name the prompt asks for must be the one the schema has.
+
+    FOUND 2026-09-16 (ROADMAP item 142, finding 1's neighbour). Both prompts
+    said `"skill_profile_summary"` in three places while the schema field is
+    `skill_profile_summaries`. The runs still filled the right field, because
+    the response schema is sent alongside and constrains the shape — so
+    nothing failed and nothing would have. What broke was the INSTRUCTION: a
+    reader following the prompt looks for a field that is not there, which is
+    finding 7's block-name drift applied to a schema field.
+
+    SINGULAR/PLURAL ONLY, deliberately. A general "every quoted identifier
+    must be a schema field" check cannot work here — the prompts quote payload
+    keys, block names and JSON paths that are not response fields at all. The
+    near-miss is the failure that actually happens, because the names are
+    written from memory.
+    """
+    from openlocalweather.llm.schema import (
+        GeminiJudgmentResponse,
+        GeminiNarrativeResponse,
+        TodayProperties,
+    )
+
+    fields = set()
+    for model in (GeminiJudgmentResponse, GeminiNarrativeResponse, TodayProperties):
+        fields |= set(model.model_fields)
+
+    offences = []
+    for name, judgment, narrative in _branches():
+        for which, prompt in (("judgment", judgment), ("narrative", narrative)):
+            for field in sorted(fields):
+                # -ies/-y as well as -s/-. The first version of this check
+                # only stripped a trailing "s", so the singular of
+                # "skill_profile_summaries" came out as "summarie" and the
+                # guard passed on the very bug it was written for. Caught by
+                # mutating the fix back in.
+                if field.endswith("ies"):
+                    variants = {field[:-3] + "y"}
+                elif field.endswith("s"):
+                    variants = {field[:-1]}
+                else:
+                    variants = {field + "s", field + "es"}
+                for near in variants:
+                    if near in fields:
+                        continue  # both spellings are real fields
+                    if f'"{near}"' in prompt:
+                        offences.append(f"{name}/{which}: quotes \"{near}\", schema has \"{field}\"")
+
+    assert not offences, "the prompt asks for fields that do not exist: " + "; ".join(sorted(set(offences)))

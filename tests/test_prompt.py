@@ -221,7 +221,13 @@ def test_the_verification_block_says_only_that_verification_is_written():
     prompt = build_system_prompt(KISUMU, verification_already_written=True)
 
     assert "VERIFICATION IS ALREADY WRITTEN" in prompt
-    assert 'empty array for "skill_profile_summary"' in prompt
+    # PLURAL — the schema field is `skill_profile_summaries`, and the prompt
+    # asked for a singular that does not exist. ROADMAP item 142, finding 1's
+    # neighbour; `test_prompt_seam` now guards the class.
+    assert 'empty array for "skill_profile_summaries"' in prompt
+    # And the block must say it outranks WORKFLOW STEP 1, which asks
+    # unconditionally for the very fields this one suppresses — finding 1.
+    assert "OVERRIDES WORKFLOW STEP 1" in prompt
 
     # The retired concept must not come back by the side door.
     for gone in ("LATER ISSUANCE", "EARLIER TODAY", "not a repeat",

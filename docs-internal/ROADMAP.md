@@ -19838,7 +19838,7 @@ the way it is convenient to reconstruct.
 
 ### The findings that stand, worst first
 
-**1. Two instructions fight over the verification fields.** System line 42
+**1. FIXED 2026-09-16. Two instructions fight over the verification fields.** System line 42
 (`VERIFICATION IS ALREADY WRITTEN`) requires a one-line placeholder and an
 empty `skill_profile_summary`; WORKFLOW STEP 1 requires a 2-3 sentence
 summary, one note per lead time, and a summary per model/lead pair — 3 notes
@@ -19879,6 +19879,26 @@ old".** Not a logic bug: `aqi.is_stale` uses `age > STALE_THRESHOLD_HOURS`
 and the real age is fractionally over 3. But `hours_old` is rounded for
 display, so the model is handed an apparent contradiction and told to trust
 both halves.
+
+**Finding 1's fix, and the second defect in the same text.** The conditional
+block now says in terms that it OVERRIDES WORKFLOW STEP 1, naming the two
+fields step 1 asks for unconditionally and stating which wins. The conflict
+was narrower than when raised — item 147 removed `verification_notes` from
+both sides — but live for `yesterday_verification` and the summaries.
+
+**AND THE PROMPT WAS ASKING FOR A FIELD THAT DOES NOT EXIST.** Both prompts
+said `"skill_profile_summary"` in three places; the schema field is
+`skill_profile_summaries`. Runs filled the right field anyway, because the
+response schema is sent alongside and constrains the shape — so nothing failed
+and nothing would have. What broke was the INSTRUCTION: a reader following the
+prompt looks for a field that is not there, which is finding 7's block-name
+drift applied to a schema field.
+
+`test_the_prompts_never_quote_a_near_miss_of_a_response_field` guards the
+class. **Its first version passed the mutation**: it generated the singular by
+stripping a trailing "s", so the singular of "summaries" came out "summarie"
+and the guard was blind to the exact bug it was written for. Caught by
+mutating the fix back in, which is the only reason it works.
 
 **Finding 5's fix, and what it exposed.** `is_stale` now judges the age at
 DISPLAY precision, so the number shown and the number judged are one number
