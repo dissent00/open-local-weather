@@ -19731,3 +19731,137 @@ and stand.
 
 Related: items 77 (the method, which needs the pairing note), 130, 129, 100,
 102, 122.
+
+---
+
+## 143. The observed low diverges from the forecast and nobody is told · **Planned — raised 2026-09-16**
+
+Found by item 142's cold read: `OBSERVED SO FAR TODAY` reported *"low so far
+20°C"* while `THE FORECASTER'S CALL` gave `temp_low_c: 18.2` for the same day.
+At 06:01, near sunrise, the overnight low has happened — so 18.2 is
+unreachable. Both blocks are locked verbatim, so the instruction set REQUIRES
+publishing two lows for one quantity, which is exactly what rule 1 exists to
+prevent.
+
+It did not reach the page only because the model took the other branch of
+*"use it VERBATIM or not at all"*. The defect is live and latent.
+
+### The operator's framing, 2026-09-16, and it is not "suppress one"
+
+> *"The measuring station may well be warmer than nearby areas, or the
+> forecast low could be off. What I'd like to see happen, and this is the crux
+> of this project in a way, is that the model reports this sometimes. When it
+> makes sense to. When observed diverges 'a lot' from forecast. And then it's
+> more of a footnote — the airport reported 20 against the forecast of 18.2.
+> It's not saying nowhere in the area hit 18.2, just that the airport didn't."*
+
+And on why it is usually not worth a reader's attention:
+
+> *"this isn't a key item to read about in the morning before going to work,
+> especially if it's fairly close to the forecast... unless we're talking the
+> difference between 0 and 2 degrees c, which could mean ice or not."*
+
+So neither of the two options originally offered — suppress the call's low, or
+gate the observed block by hour — is right. Both throw the information away.
+
+### Four parts, in order
+
+**1. Detect it in code.** A divergence code on
+`disagreement.observation_disagreements`, the same shape as item 138's
+`ONSET_ALREADY_PASSED`: the station's measured low against the standing
+`temp_low_c`. Cheap, and it makes the case countable before anything is
+printed.
+
+**2. The threshold cannot be one number.** Two degrees is nothing at 20°C and
+decisive at 2°C, because it is the difference between ice and no ice. So the
+band tightens toward freezing rather than being a fixed delta — and like item
+138's onset margin, the honest width is unmeasured until part 4 has a record.
+
+**3. If it is printed, it is a FOOTNOTE THAT NAMES THE PLACE.** "the airport
+reported 20 against a forecast of 18.2" — a fact about one station, not a
+claim about the basin. The station name is already in `location.yaml`.
+
+**4. Store it whether or not it prints.** The learning value the operator
+names — *"if the airport is always 2 degrees warmer than the forecast low, or
+if the forecast low was the problem"* — needs the per-day divergence recorded
+before it can answer anything. This is item 122's question for a second field,
+and the two should share one answer.
+
+### The reader flow this produces
+
+Overnight low forecast; last night's observed low when it earns the space —
+probably when it differs a lot, definitely near or below freezing; and a
+stored record that learns which side is wrong. The default is silence.
+
+Related: items 138 (the same shape, onset), 122, 142, 121, and `ensemble`
+item 19, which answers the same question from the other side.
+
+---
+
+## 144. The gust calibration is computed, prompted, and points at the wrong place · **Raised 2026-09-16**
+
+Item 142's cold read reported `CALIBRATED PEAK GUST` (40.0) and the call's
+`peak_wind_kmh` (41.0) as two locked numbers for one quantity. **They are not
+one quantity, and that is the finding.**
+
+- `CALIBRATED PEAK GUST` is `calibrated_gust_consensus(day0_predictions, ...)`
+  and `day0_predictions` comes from `primary_hourly` — it is **Kisumu**.
+- `peak_wind_kmh` is, in the prompt's own words, *"the wind at Winam Gulf, NOT
+  at Kisumu, Kenya — a different place"*, to be taken from
+  `secondary_today_hourly` *"and nowhere else"*.
+
+### The defect
+
+`CALIBRATED PEAK GUST` says **"START YOUR `peak_wind_kmh` FROM THIS NUMBER"** —
+instructing the model to begin a Winam Gulf figure from a Kisumu one, while
+the field's own description sends it to the Gulf series and nowhere else. Two
+instructions, and one points at the wrong location.
+
+**The model follows the right one.** 2026-09-16 published `peak_wind_kmh:
+41.0`, which is EXACTLY `wind_gusts_10m_best_match` max at Winam Gulf.
+`today_calibrated_peak_wind_kmh` on the entry is `None`. So item 126's
+calibration is computed every run, injected into the prompt, and reaches
+nothing.
+
+The failure mode if a model ever obeys the other instruction is worse than the
+waste: a Kisumu number published as the Gulf's wind, for boaters.
+
+### And item 126's founding measurement compares two places
+
+**Reproduced 2026-09-16 over the record:** pairing the published gust with the
+PRIMARY observation gives mean **+11.82 km/h** and median **+10.15** across 34
+days. Item 126 reports +12.09 and +10.15 on 32 days — the same measurement,
+two days older.
+
+That measurement pairs a **Winam Gulf forecast** with a **Kisumu
+observation**, so the 12.09 km/h it attributes to model under-forecasting
+also contains however much of the difference is simply water versus land.
+
+**The code already states the principle this breaks.**
+`pipeline._blend_prediction` leaves wind out of the scored blend row and says
+why: *"peak_wind_kmh in today_properties is the SECONDARY point's ... scoring
+either against the primary point's observations would be comparing two
+different things."* The record refuses the comparison; the item that justified
+a shipped feature made it.
+
+**This does NOT mean the calibration is wrong.** It is computed from Kisumu
+models against Kisumu-measured per-model bias, and is internally consistent.
+What is unproven is the 12.09 figure used to argue for it.
+
+### What to do
+
+1. **Fix the instruction.** Either point `CALIBRATED PEAK GUST` at a Kisumu
+   field the call actually carries, or say plainly that it is Kisumu's and not
+   the Gulf's and stop telling the model to start `peak_wind_kmh` from it.
+   Until then ~1,400 characters of prompt argue for something that never
+   happens.
+2. **Re-measure item 126's premise** against a like-for-like pair — the
+   primary consensus gust versus the primary observation — and record whether
+   the bias survives. The calibration stands or falls on that, not on the
+   published-gust figure.
+3. **Decide whether the Gulf gets its own calibration.** It has its own
+   models and its own actuals cache; what it does not have is verification,
+   which reads `actuals_primary` only (zero references to secondary in
+   `verify/`).
+
+Related: items 126, 142, 104, and `_blend_prediction`'s comment.
