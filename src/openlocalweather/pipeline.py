@@ -2834,7 +2834,21 @@ def _issue_forecast(
         # Kept distinct in the spend ledger, which is the one place the
         # difference is still worth recording: a re-issue is a second call on
         # the same day and an operator reading the ledger wants to see that.
-        purpose="forecast" if first_issuance else "refresh",
+        # "forecast-reissue", NOT "refresh" — renamed 2026-09-16.
+        #
+        # Both are forecasts. The old label came from the twice-a-day tool
+        # item 104 removed, and it made the ledger assert a distinction the
+        # system no longer draws: a later issuance with a fresh model cycle
+        # builds a forecast, and "refresh" reads as something lesser. It was
+        # actively misleading on 2026-09-15, where four HTTP 500s were filed
+        # under "refresh" for a run that had new guidance and was doing the
+        # full job.
+        #
+        # The distinction IS worth keeping — which issuance of the day this
+        # was, is a real question to ask the ledger later — so this names it
+        # rather than dropping it. Rows before this date say "refresh"; the
+        # two mean the same thing and nothing re-writes history.
+        purpose="forecast" if first_issuance else "forecast-reissue",
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
     _call, _call_meta = _generate_forecast(
