@@ -17596,6 +17596,45 @@ today), 114 and 109 (the spend this removes rather than rations).
 > `observed.py` already holds the per-dimension comparison this needs —
 > station minus reanalysis, measured over 40 days — which is the evidence to
 > decide on rather than the instinct.
+>
+> **WHAT THE STATION ACTUALLY FILES, measured 2026-09-16 over 41 rows.** The
+> operator asked whether `high_c/low_c/peak_wind_kmh` was the whole of it. It
+> is not — the raw report also yields thunder, precipitation, onset and cloud
+> oktas — and the columns tell a sharper story:
+>
+> | column | populated | used |
+> |---|---|---|
+> | `tmpf` | 41/41 | yes — high/low |
+> | `sknt` | 41/41 | yes — sustained wind |
+> | **`alti`** | **41/41** | **no** |
+> | `dwpf`, `relh`, `vsby` | 41/41 | no |
+> | `drct` | 33/41 | no |
+> | `mslp` | **0/41** | not filed here |
+> | `gust` | 0/41 | correctly excluded — item 45 |
+> | `p01i` | 41/41, every value `0.00` | correctly excluded — item 45 |
+>
+> Both exclusions re-confirmed on today's data, independently of the 45-day
+> sample they were made on.
+>
+> **`alti` IS THE ONE THAT MATTERS FOR THIS ITEM.** The record scores
+> `mslp_error_hpa` — pressure is a graded dimension — and it grades it against
+> reanalysis while the station reports a pressure every hour of every day and
+> has never been asked. That is the cleanest instance of the operator's
+> principle anywhere in the record: a SCORED quantity with a real instrument
+> reading sitting unused.
+>
+> **It is not a drop-in, and the reason is the altitude.** `alti` is a QNH
+> altimeter setting, not MSLP, and `mslp` itself is empty on all 41 rows. The
+> two differ by a temperature correction that grows with elevation, and the
+> primary point sits at 1,131 m. So this is a conversion with a real error
+> term, to be measured against the reanalysis series before it is trusted —
+> exactly the `observed.py` comparison that already exists for temperature.
+> Measure first; the instinct is right and the arithmetic is not free.
+>
+> **Units are correct throughout, checked the same day** after the operator
+> asked: `tmpf` is converted `(F-32)*5/9` and `sknt` by 1.852, which is exact.
+> The live 35.19 km/h is 19.0 knots to the decimal. The field names say what
+> they hold.
 
 
 Raised while answering a different question. The operator asked whether a
