@@ -284,3 +284,49 @@ def test_the_renderer_has_nowhere_to_put_a_scored_field():
     # Derived, like everything else here: a newly-scored leaf field must not
     # appear at the top level of the narrative response either.
     assert not (_scored_fields() & returnable), sorted(_scored_fields() & returnable)
+
+
+def test_every_block_the_system_prompt_names_exists_in_the_user_message():
+    """THE DRIFT THAT MAKES A READER REPORT A PRESENT BLOCK AS MISSING.
+
+    ROADMAP item 142. The system prompt's "You are provided with" list named
+    HISTORICAL VERIFICATION NOTES, LONG-RUN REVIEW FINDINGS and REGIONAL
+    PRESSURE SNAPSHOT. The payload has HISTORICAL NOTES, LONG-RUN REVIEW, and
+    no header at all for the third — it is a JSON key nested inside the
+    guidance. A cold reader following the list reported three blocks missing
+    that were present under other names, which is also how item 130's false
+    reports happened.
+
+    This pins the INVENTORY against a real payload. It does not pin the six
+    rules or the workflow steps, which are instructions rather than blocks.
+    """
+    import json
+    import re
+    from pathlib import Path
+
+    from openlocalweather.config import load_location_config
+
+    archive = sorted(Path("data/prompts").glob("*.json"))[-1]
+    user = json.loads(archive.read_text())["issuances"][0]["user_prompt"]
+    system = build_narrative_prompt(
+        load_location_config("config/location.yaml"),
+        verification_already_written=False,
+        ground_stations_configured=True,
+        local_bulletin_configured=True,
+    )
+
+    inventory = system[system.index("You are provided with:"):]
+    inventory = inventory[: inventory.index("\n\n")]
+
+    missing = []
+    for line in inventory.splitlines():
+        name = re.match(r"\d+\. ([A-Z][A-Z' ]{6,})", line)
+        if name and name.group(1).strip() not in user:
+            missing.append(name.group(1).strip())
+
+    assert not missing, (
+        f"the system prompt says the model is given {missing}, and no block "
+        f"with that heading is in the user message. Either rename the block "
+        f"or rename the claim — a reader following this list reports present "
+        f"blocks as missing."
+    )
