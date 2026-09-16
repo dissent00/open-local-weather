@@ -857,6 +857,13 @@ class GroundAQIReading(BaseModel):
 DEGRADATION_HOURS_AHEAD_NARROWED = "hours_ahead_narrowed"
 DEGRADATION_SUN_TIMES = "sun_times_unavailable"
 DEGRADATION_METAR = "metar_unavailable"
+# The station's DAY READINGS, which is a different fetch from the one above —
+# ROADMAP item 151. `metar_unavailable` covers the current observation the
+# prompt prints; this covers the day's accumulated rows that the disagreement
+# checks and item 143's divergence read. They fail independently: on
+# 2026-09-16 the first succeeded and the second returned nothing, which is why
+# the run recorded no degradation at all while three features sat inert.
+DEGRADATION_STATION_READINGS = "station_readings_unavailable"
 DEGRADATION_SYNOPTIC = "synoptic_unavailable"
 # ROADMAP items 51 and 79. The seven-day outlook failing used to abort the
 # whole run: on 2026-09-09 `forecast_days=8` read-timed out three times and

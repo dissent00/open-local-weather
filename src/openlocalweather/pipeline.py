@@ -181,6 +181,7 @@ from openlocalweather.models import (
     summary_carries_a_figure,
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
+    DEGRADATION_STATION_READINGS,
     DEGRADATION_SYNOPTIC,
     SOURCE_STATION,
     DEGRADATION_SUN_TIMES,
@@ -1806,45 +1807,90 @@ def _overnight_low_is_settled(guidance: ForwardGuidance) -> bool | None:
     return now_local >= sunrise
 
 
-def _observed_so_far(location: LocationConfig, today: date) -> ObservedSoFar | None:
-    """What the station has already reported today.
+def _observed_so_far(
+    location: LocationConfig, today: date
+) -> tuple[ObservedSoFar | None, RunDegradation | None]:
+    """What the station has already reported today, and why not when it has not.
 
     BEST EFFORT, and None on every failure path. A station that did not answer
     is not a station reporting agreement — returning an empty ObservedSoFar
     would say "nothing contradicts the call" on the strength of having not
     looked, which is the error class that cost a published forecast on
     2026-08-29.
+
+    IT NOW SAYS WHICH KIND OF NOTHING — ROADMAP item 151, and the second
+    return value is the whole fix. This had four exits and only the exception
+    printed; the other two returned None in silence. Measured 2026-09-16:
+    `observed_so_far` was absent on 14 of the last 16 stored days with nothing
+    anywhere recording it, while the same fetch by hand nineteen minutes after
+    a run returned a full day. Three features were inert — the OBSERVED SO FAR
+    TODAY block, C2's third trigger, and item 143's divergence, which shipped
+    that morning and could not fire.
+
+    THE TWO EMPTY EXITS MEAN DIFFERENT THINGS and are reported separately. No
+    rows at all is a source or a network problem; rows that do not cover today
+    is a lag, and a 06:00 run legitimately hits it where an 18:00 run should
+    not. Collapsing them into one message would leave the record unable to
+    say which, which is the defect this fixes rather than a refinement of it.
+
+    NO STATION CONFIGURED IS NOT A DEGRADATION. RunDegradation's own docstring
+    draws that line — a location running as configured is not running degraded
+    — and blurring it makes the field mean nothing within a week.
     """
     if not location.metar_station_icao:
-        return None
+        return None, None
+
+    icao = location.metar_station_icao
+
+    def gap(detail: str) -> RunDegradation:
+        return RunDegradation(
+            code=DEGRADATION_STATION_READINGS,
+            summary=(
+                "The nearest airport's readings for today were not available, so "
+                "this forecast could not be checked against what has already "
+                "been measured locally."
+            ),
+            detail=detail,
+        )
 
     try:
         weather, readings = metar_fetch.observed_station_data(
-            location.metar_station_icao, today, today, location.timezone
+            icao, today, today, location.timezone
         )
     except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
         print(f"Station observations unavailable ({e}); no disagreement check.", file=sys.stderr)
-        return None
+        return None, gap(f"Fetching {icao}'s readings for {today} raised: {e}")
 
     # Returns a pair of Nones rather than raising when the station has no
     # data — a shape worth guarding explicitly, because the tuple unpacks
     # fine and only fails at the .get() two lines later.
     if weather is None and readings is None:
-        return None
+        print(f"Station {icao} returned no rows for {today}.", file=sys.stderr)
+        return None, gap(
+            f"{icao} returned no rows at all for {today}. The request "
+            "succeeded and the response was empty."
+        )
 
     seen = weather.get(today) if weather else None
     measured = readings.get(today) if readings else None
     if seen is None and measured is None:
-        return None
+        print(f"Station {icao} returned rows, none covering {today}.", file=sys.stderr)
+        return None, gap(
+            f"{icao} returned rows but none covering {today} itself — the "
+            "archive had not reached today's date at the moment of this run."
+        )
 
-    return ObservedSoFar(
-        precipitation=seen.precipitation if seen is not None else None,
-        precipitation_onset=seen.precipitation_onset if seen is not None else None,
-        thunder=seen.thunder if seen is not None else None,
-        cloud_oktas=seen.cloud_oktas if seen is not None else None,
-        high_c=measured.high_c if measured is not None else None,
-        low_c=measured.low_c if measured is not None else None,
-        peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
+    return (
+        ObservedSoFar(
+            precipitation=seen.precipitation if seen is not None else None,
+            precipitation_onset=seen.precipitation_onset if seen is not None else None,
+            thunder=seen.thunder if seen is not None else None,
+            cloud_oktas=seen.cloud_oktas if seen is not None else None,
+            high_c=measured.high_c if measured is not None else None,
+            low_c=measured.low_c if measured is not None else None,
+            peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
+        ),
+        None,
     )
 
 
@@ -2715,7 +2761,13 @@ def _issue_forecast(
     # 121 puts it IN the prompt, shared with the record below so the two
     # cannot describe different observations, and now also the BASELINE an
     # evening comparison measures tomorrow against — see observed_baseline.
-    observed_so_far = _observed_so_far(location, today)
+    observed_so_far, observed_gap = _observed_so_far(location, today)
+    if observed_gap is not None:
+        # Appended to the guidance's own list because that is what reaches
+        # `meta.degradations` — see ROADMAP item 151. The station is read
+        # AFTER guidance is built, so this is the one degradation that cannot
+        # be raised where the others are.
+        guidance.degradations.append(observed_gap)
 
     # THE GUST THE RECORD SAYS TO EXPECT — calibration.py, which carries the
     # out-of-sample validation and the reason this is not applied to the

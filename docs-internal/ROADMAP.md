@@ -21201,7 +21201,7 @@ MET_SERVICE_INTEGRATION.md`.
 
 ---
 
-## 151. The station's day readings fail silently, and have on 14 of the last 16 days · **Raised 2026-09-16 — found in production**
+## 151. The station's day readings fail silently, and have on 14 of the last 16 days · **Step 1 SHIPPED 2026-09-16; the cause is still unknown, by design**
 
 Found while reading the 15:01 run, immediately after the operator said of item
 150's derived horizons: *"We just need handling for data format changes/fetch
@@ -21275,6 +21275,32 @@ in a fortnight rather than a plumbing one.
 3. **Distinguish absent from empty on the record.** `observed_so_far: null`
    currently means both "the station reported nothing" and "we never asked
    successfully". Three-valued, as everywhere else here.
+
+### STEP 1 SHIPPED 2026-09-16 — instrumented, NOT diagnosed
+
+`_observed_so_far` now returns `(reading, degradation)`. The two silent exits
+each get their own message and their own `detail`, because they mean different
+things and the record could not previously say which happened:
+
+- **no rows at all** — a source or network problem.
+- **rows, but none covering today** — a lag, which a 06:00 run may legitimately
+  hit and an 18:00 run should not.
+
+`DEGRADATION_STATION_READINGS` is a NEW code rather than a reuse of
+`metar_unavailable`, because they are genuinely different fetches: on
+2026-09-16 the first succeeded and the second returned nothing, which is
+exactly why that run recorded no degradation while three features sat inert.
+No station configured still produces no degradation — `RunDegradation`'s own
+docstring draws that line and blurring it makes the field meaningless.
+
+The degradation is appended to `guidance.degradations` because that is the list
+that reaches `meta.degradations`; the station is read after guidance is built,
+so this is the one degradation that cannot be raised where the others are.
+
+**THE CAUSE IS STILL UNKNOWN AND THAT IS THE POINT.** Nothing here diagnoses
+anything. The next run that fails will say which exit it took, and the
+diagnosis follows from the record rather than from a guess — which is the
+order this defect survived two weeks by not following.
 
 **A likely cause worth testing first, not assuming:** the archive endpoint may
 not carry the current day until some lag has passed, in which case a 06:01

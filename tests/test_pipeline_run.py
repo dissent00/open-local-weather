@@ -4011,3 +4011,69 @@ def test_every_forecast_run_files_under_one_purpose(tmp_path):
     assert purposes == ["forecast"] * 4, (
         f"a later run must file under the same label as the first: {purposes}"
     )
+
+
+# --- the station's day readings, when they do not arrive — ROADMAP item 151 --
+
+
+def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch):
+    """ROADMAP item 151, found in production.
+
+    `observed_so_far` was absent on 14 of 16 stored days with NOTHING on the
+    record saying so: `_observed_so_far` had four exits and only the exception
+    path printed, so "the station said nothing" and "we never got an answer"
+    were indistinguishable afterwards. Three features depended on it — the
+    OBSERVED SO FAR TODAY block, C2's third trigger, and item 143's divergence
+    — and all three were quietly inert.
+
+    The degradation is what makes the difference visible. It is the same
+    machinery item 53.4 built for the forward hourly fetch, for the same
+    reason: a stderr line inside a CI log is not somewhere anyone looks until
+    a reader has been rained on.
+    """
+    from openlocalweather.config import load_location_config
+    from openlocalweather.models import DEGRADATION_STATION_READINGS
+    from openlocalweather.pipeline import _observed_so_far
+    from openlocalweather.fetch import metar as metar_fetch
+
+    location = load_location_config("config/location.yaml")
+
+    # (what the fetch returns, why it is a gap)
+    cases = {
+        "the station had no rows at all": (None, None),
+        "rows, but none covering today": ({}, {}),
+    }
+    for name, payload in cases.items():
+        monkeypatch.setattr(
+            metar_fetch, "observed_station_data", lambda *a, **k: payload
+        )
+        observed, gap = _observed_so_far(location, date(2026, 8, 11))
+
+        assert observed is None, name
+        assert gap is not None, f"{name}: returned None and said nothing"
+        assert gap.code == DEGRADATION_STATION_READINGS, name
+        assert gap.detail, f"{name}: no detail, so the two exits stay indistinguishable"
+
+    # And the two exits must not produce the SAME detail, or the record still
+    # cannot say which happened — which is the whole defect.
+    details = set()
+    for payload in cases.values():
+        monkeypatch.setattr(
+            metar_fetch, "observed_station_data", lambda *a, **k: payload
+        )
+        details.add(_observed_so_far(location, date(2026, 8, 11))[1].detail)
+    assert len(details) == 2, f"both exits report the same thing: {details}"
+
+
+def test_no_station_configured_is_not_a_degradation():
+    """A location with no station is running AS CONFIGURED. RunDegradation's
+    own docstring draws this line, and blurring it makes the field mean
+    nothing within a week."""
+    from openlocalweather.config import load_location_config
+    from openlocalweather.pipeline import _observed_so_far
+
+    location = load_location_config("config/location.yaml").model_copy(
+        update={"metar_station_icao": ""}
+    )
+    observed, gap = _observed_so_far(location, date(2026, 8, 11))
+    assert observed is None and gap is None
