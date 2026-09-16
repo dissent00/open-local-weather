@@ -21087,5 +21087,46 @@ reach is learned on the first fetch, with no entry in a table anyone has to
 remember to update — which is the failure mode `MODELS` already has, being a
 hardcoded list.
 
-Related: items 149, 146, 144, 122, 121, 133, and `docs-internal/
+### THE HAZARD DERIVATION CREATES, AND THE MACHINERY THAT ALREADY ANSWERS IT
+
+The operator, agreeing to derive: *"We just need handling for data format
+changes/fetch failures. I guess this happens elsewhere though."* It does, and
+the hazard is real enough to name before anyone builds this.
+
+**A FAILED FETCH LOOKS EXACTLY LIKE A SHORTENED HORIZON.** A source that
+returns six days because the provider truncated the response, or three because
+the request half-failed, or none because it 503'd, is indistinguishable — from
+the arrays alone — from a source that genuinely reaches that far. Derive
+naively and one bad morning permanently shortens a model's recorded reach, and
+the record then refuses to score leads the model really does forecast. That is
+worse than the declared-horizon staleness this design was chosen to avoid,
+because it is silent AND self-inflicted.
+
+**The answer is already in the codebase and must be reused rather than
+reinvented**: `RunDegradation` and the `DEGRADATION_*` constants
+(`metar_unavailable`, `synoptic_unavailable`,
+`extended_outlook_unavailable`, and the rest) record per run which sources
+failed to deliver. The rule follows from them:
+
+- **A horizon observation from a degraded run is VOID**, not zero. Absence is
+  absence — the same three-valued discipline as everywhere else in this
+  record.
+- **The stored horizon is the MAXIMUM ever observed on a clean run**, never
+  the latest. A model's reach does not retract; a fetch's does.
+- **A genuine retraction therefore needs evidence**, not one quiet morning —
+  several clean runs agreeing on a shorter reach, which is the same shape as
+  the review's own evidence gating.
+
+**Format changes are the other half and are NOT covered by degradations.** A
+provider renaming `windgusts_10m_max` to `wind_gusts_10m_max` returns HTTP 200
+with a perfectly healthy response and no array under the name we asked for —
+`fetch/open_meteo.py` already carries a comment about exactly that rename. That
+path reads as "this model does not forecast that far" all the way down. So a
+horizon that collapses for ALL leads at once, on a run with no degradation
+recorded, should be treated as a schema event and raised, never stored.
+
+Related: items 149, 146, 144, 122, 121, 133, 102 (the coverage watcher, which
+is the same defect class caught in a different field), and `docs-internal/
 MET_SERVICE_INTEGRATION.md`.
+
+
