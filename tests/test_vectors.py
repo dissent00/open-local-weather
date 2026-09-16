@@ -451,7 +451,8 @@ def test_vectors_weekly_review():
                 temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
                 narrative_markdown="n",
                 model_predictions=ModelPredictionsByLead(
-                    day0=[ModelPrediction(**p) for p in by_lead.get("0", [])]
+                    day0=[ModelPrediction(**p) for p in by_lead.get("0", [])],
+                    day3=[ModelPrediction(**p) for p in by_lead.get("3", [])],
                 ),
                 meta=LogEntryMeta(
                     generated_at_utc=datetime(2026, 8, 21, tzinfo=timezone.utc),
@@ -468,6 +469,7 @@ def test_vectors_weekly_review():
             today=date.fromisoformat(i["today"]),
             models=i["models"],
             lead_times_days=i["lead_times_days"],
+            forecast_horizons=i.get("forecast_horizons"),
         )
         expected = case["expected"]
         name = case["name"]

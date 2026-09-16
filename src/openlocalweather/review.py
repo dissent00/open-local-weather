@@ -198,8 +198,18 @@ def build_weekly_review(
     today: date,
     models: list[str] = MODELS,
     lead_times_days: list[int] = LEAD_TIMES_DAYS,
+    forecast_horizons: dict[str, int] | None = None,
 ) -> WeeklyReview:
-    """Computes the full review deterministically. No LLM, no I/O."""
+    """Computes the full review deterministically. No LLM, no I/O.
+
+    `forecast_horizons` is each source's furthest lead ever forecast here
+    (`TrackRecordEntry.forecast_horizon_days`, ROADMAP item 150). A model
+    with zero checks at a lead BEYOND its horizon is not waiting for data;
+    it does not forecast there, and the review says which. Absent or empty,
+    every zero-check model reads as unscored, which is what this did before
+    the horizon existed — the app passes nothing until it stores one.
+    """
+    horizons = forecast_horizons or {}
     yesterday = add_days(today, -1)
     earliest = min(all_log_dates) if all_log_dates else yesterday
 
@@ -278,12 +288,22 @@ def build_weekly_review(
         days_verified=days_verified,
         cells=cells,
     )
-    review.findings = _derive_findings(cells, lead_times_days)
-    review.data_sufficiency = _describe_sufficiency(review, cells, lead_times_days)
+    review.findings = _derive_findings(cells, lead_times_days, horizons)
+    review.data_sufficiency = _describe_sufficiency(review, cells, lead_times_days, horizons)
     return review
 
 
-def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list[Finding]:
+def beyond_reach(model: str, lead_time_days: int, horizons: dict[str, int]) -> bool:
+    """Whether this lead lies past the furthest the source has ever forecast
+    here. Unknown horizon means not beyond — the claim needs evidence."""
+    horizon = horizons.get(model)
+    return horizon is not None and horizon < lead_time_days
+
+
+def _derive_findings(
+    cells: list[SkillCell], lead_times_days: list[int], horizons: dict[str, int] | None = None
+) -> list[Finding]:
+    horizons = horizons or {}
     findings: list[Finding] = []
 
     for k in lead_times_days:
@@ -479,8 +499,12 @@ def _derive_findings(cells: list[SkillCell], lead_times_days: list[int]) -> list
                 ))
 
         # --- Gaps worth naming ---------------------------------------------
-        unscored = [c for c in at_lead if c.checks == 0]
-        if len(unscored) == len(at_lead) and at_lead:
+        # A model that does not forecast this far is not a gap in the
+        # record — ROADMAP item 150. Only the models that reach this lead
+        # can leave it unverified.
+        reaching = [c for c in at_lead if not beyond_reach(c.model, k, horizons)]
+        unscored = [c for c in reaching if c.checks == 0]
+        if len(unscored) == len(reaching) and reaching:
             findings.append(Finding(
                 kind="gap",
                 claim=f"Day+{k} has never been verified here.",
@@ -500,8 +524,12 @@ def _confidence_rank(label: str) -> int:
 
 
 def _describe_sufficiency(
-    review: WeeklyReview, cells: list[SkillCell], lead_times_days: list[int]
+    review: WeeklyReview,
+    cells: list[SkillCell],
+    lead_times_days: list[int],
+    horizons: dict[str, int] | None = None,
 ) -> str:
+    horizons = horizons or {}
     """The "how much data do I have, and how much do I trust it" statement.
 
     Always produced, and deliberately per-lead-time rather than one blanket
@@ -560,7 +588,13 @@ def _describe_sufficiency(
         comparable = [c for c in at_lead if c.checks >= REVIEW_MIN_CHECKS_FOR_COMPARISON]
         richest = max((c.checks for c in at_lead), default=0)
         behind = sorted(c.model for c in at_lead if 0 < c.checks < richest)
-        unscored = sorted(c.model for c in at_lead if c.checks == 0)
+        # Two kinds of zero, and only one of them is "yet" — item 149 found
+        # the stored label promising data that was never coming. A model
+        # beyond its horizon is named as such; the rest are unscored.
+        beyond = sorted(c.model for c in at_lead if beyond_reach(c.model, k, horizons))
+        unscored = sorted(
+            c.model for c in at_lead if c.checks == 0 and not beyond_reach(c.model, k, horizons)
+        )
 
         # "per model" asserts a figure EVERY model has. `checks` is the
         # weakest scored model's coverage, so when coverage is uneven that
@@ -620,6 +654,12 @@ def _describe_sufficiency(
                 f"({', '.join(unscored)} {'has' if len(unscored) == 1 else 'have'} "
                 f"no verified checks at Day+{k} yet and {'is' if len(unscored) == 1 else 'are'} "
                 "not included in the figure above.)"
+            )
+        if beyond:
+            parts.append(
+                f"({', '.join(beyond)} {'does' if len(beyond) == 1 else 'do'} not forecast "
+                f"at Day+{k} and {'is' if len(beyond) == 1 else 'are'} not included in the "
+                "figure above.)"
             )
     return " ".join(parts)
 

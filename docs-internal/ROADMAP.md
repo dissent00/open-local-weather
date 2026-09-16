@@ -21373,7 +21373,7 @@ improving is the differentiator), and `review.py`'s header.
 
 ---
 
-## 150. No source declares how far it forecasts, and the lead grid is global · **Steps 1 and 2 SHIPPED 2026-09-16 — reach observed per run, horizon on the row; step 3's label and step 4 are Planned**
+## 150. No source declares how far it forecasts, and the lead grid is global · **Steps 1-3 SHIPPED 2026-09-16 — reach observed, horizon on the row, label and review from it; step 4 (sub-daily) Planned; the app's half owed under its item 4**
 
 The operator, after item 149 found `icon_seamless` and `ukmo_seamless` labelled
 *"insufficient data yet"* at a lead they do not forecast at all:
@@ -21541,11 +21541,53 @@ test. After that fix: both transcripts byte-identical, and the written entry
 and track record differ by exactly the two new fields. 1269 Python and 187
 Dart tests.
 
-**Step 3 is where the value lands and is not built**: `review.py` marks a
-model with zero checks as unscored (`checks == 0`) whatever the reason; with
-the horizon on the row it can say *"does not forecast at this lead"* for
-icon and ukmo at Day+7 instead of *"insufficient data yet"* — item 149's
-label, with a real distinction behind it.
+### Step 3 shipped 2026-09-16 — the label is written by code
+
+**Item 149's prompt fix could not reach the three rows, and the record says
+so.** Checked before designing: hours after that prompt change, icon, ukmo
+and kenya_met at Day+7 still stored *"Insufficient data yet to characterize
+performance at Day+7."* The model is only asked for a summary on pairs "that
+has a result today"; those pairs never have one; and a pair the model does
+not return keeps whatever text it had. So the wording lived in a place the
+prompt could never rewrite.
+
+**The row.** `_merge_skill_summaries` writes *"Does not forecast at this
+lead; its guidance here reaches Day+N."* onto any row whose stored horizon is
+shorter than its lead, and ignores the model's text for that pair. Named
+reach, operator's choice — a lead is the one digit the summaries rule allows.
+Rows within reach, and rows with no horizon yet, are untouched. The label
+lands on the real three rows at the first verification after a run has
+recorded its reach: 2026-09-18's morning run, because today's entries carry
+none and verification runs before the day's entry is composed.
+
+**The review.** `build_weekly_review` takes the per-source horizon map, in
+both languages. Its sufficiency line now splits zero-check models into those
+beyond reach — *"(icon_seamless, ukmo_seamless do not forecast at Day+7 and
+are not included in the figure above.)"* — and the rest, which keep "no
+verified checks yet"; the "Day+k has never been verified here" finding
+considers only models that reach k. Without the map the output is identical
+to before, so the twenty existing vector cases did not move; a twenty-first
+pins the split. The pipeline passes the map read off the same rows the label
+is written from, and the site build reads it from the stored record, so the
+row and the review cannot disagree.
+
+**The prompt did not change**, operator's choice: the label reaches the
+forecaster as the row's summary text inside MODEL TRACK RECORD and the
+review line names the models beyond reach, so words carry it and the numeric
+horizon stays out of the payload as step 2 left it.
+
+**Proof.** Both mutations seen to fail — the merge with its label removed,
+and the sufficiency split with the horizon ignored — in Python and in Dart.
+The real CLI driven before and after is byte-identical on all three
+artefacts, which proves only that nothing moves where no model is short: the
+driven fixture reaches Day+7 for every model. 1274 Python and 187 Dart tests.
+
+**The app is not at the same place, and that is owed, not forgotten.** The
+operator's condition on approving this step: the app gets the same treatment
+or it is mapped and implemented on both sides. `ensemble`'s owed table now
+lists every piece the app lacks from items 148 and 150 — per-run reach,
+horizon derivation, the row label, the review map — all waiting on its item
+4 for somewhere to store a per-run observation.
 
 Related: items 149, 146, 144, 122, 121, 133, 102 (the coverage watcher, which
 is the same defect class caught in a different field), and `docs-internal/

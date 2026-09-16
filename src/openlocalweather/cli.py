@@ -68,6 +68,7 @@ from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVID
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
+    forecast_horizons_of,
     ObservationsRefreshed,
     attach_spend_cap,
     PipelineDeps,
@@ -321,6 +322,8 @@ def _build_pages_publisher(
             all_log_dates=list_log_dates(data_path),
             today=today_in_tz(location.timezone),
             models=scored_models(location.local_bulletin_model_id),
+            # The same stored horizons the row labels are written from.
+            forecast_horizons=forecast_horizons_of(read_track_record(data_path).entries),
         ),
     )
 

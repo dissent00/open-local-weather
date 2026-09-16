@@ -1445,10 +1445,15 @@ def export_weekly_review() -> None:
             )
         return logs, actuals
 
-    def _review_vector_case(name, logs, actuals, models_here, review):
+    def _review_vector_case(name, logs, actuals, models_here, review, *,
+                            lead_times_days=(0,), forecast_horizons=None):
         """One case's JSON, shared by every builder below so the shape cannot
         drift between them — a case missing a field would silently stop
-        testing that field while the suite stayed green."""
+        testing that field while the suite stayed green.
+
+        `forecast_horizons` is written only when a case passes one, so every
+        case written before item 150 stays byte-identical."""
+        by_lead = {0: "day0", 3: "day3", 7: "day7"}
         return {
             "name": name,
             "input": {
@@ -1457,14 +1462,16 @@ def export_weekly_review() -> None:
                 # (row date, lead time) rather than a log-entry shape.
                 "predictions": {
                     _iso(d): {
-                        "0": [p.model_dump() for p in e.model_predictions.day0]
+                        str(k): [p.model_dump() for p in getattr(e.model_predictions, by_lead[k])]
+                        for k in lead_times_days
                     }
                     for d, e in sorted(logs.items())
                 },
                 "actuals": {_iso(d): a.model_dump() for d, a in sorted(actuals.items())},
                 "today": _iso(today),
                 "models": models_here,
-                "lead_times_days": [0],
+                "lead_times_days": list(lead_times_days),
+                **({"forecast_horizons": forecast_horizons} if forecast_horizons else {}),
             },
             "expected": {
                 "period_start": _iso(review.period_start),
@@ -1844,6 +1851,33 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, ["alpha", "beta"], review)
 
+    def beyond_reach_case(name: str):
+        """ROADMAP item 150, step 3. `short` forecasts Day+0 only; at Day+3 it
+        has zero checks like a newcomer would, and the review must say it
+        does not forecast there rather than that it has none "yet". Item
+        149 found the stored label promising data that was never coming."""
+        models_here = ["alpha", "beta", "short"]
+        logs, actuals = build(12, 10, 3)
+        for e in logs.values():
+            e.model_predictions = ModelPredictionsByLead(
+                day0=[*e.model_predictions.day0,
+                      ModelPrediction(model="short", rain=True, high_c=26.0, low_c=18.0)],
+                day3=[ModelPrediction(model="alpha", rain=True, high_c=26.0, low_c=18.0),
+                      ModelPrediction(model="beta", rain=True, high_c=26.0, low_c=18.0)],
+            )
+        horizons = {"short": 0}
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0, 3],
+            forecast_horizons=horizons,
+        )
+        return _review_vector_case(name, logs, actuals, models_here, review,
+                                   lead_times_days=(0, 3), forecast_horizons=horizons)
+
     def newcomer_case(name: str):
         """A model added today, with no verified checks at all.
 
@@ -1916,6 +1950,9 @@ def export_weekly_review() -> None:
             ),
             newcomer_case(
                 "a never-scored model is named, not used as the headline",
+            ),
+            beyond_reach_case(
+                "a model beyond its horizon does not forecast there — no 'yet'",
             ),
         ],
     )

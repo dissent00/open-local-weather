@@ -97,3 +97,92 @@ def test_the_stored_horizon_does_not_reach_the_prompt_before_step_3():
     (row,) = _track_record_payload([entry], ["gfs_seamless"])
     assert "forecast_horizon_days" not in row
     assert row["model"] == "gfs_seamless"
+
+
+# ---------------------------------------------------------------------------
+# Step 3: the label, and the review's two kinds of zero
+# ---------------------------------------------------------------------------
+
+from openlocalweather.pipeline import _merge_skill_summaries, beyond_reach_summary, forecast_horizons_of  # noqa: E402
+from openlocalweather.review import build_weekly_review  # noqa: E402
+from openlocalweather.models import DailyActual, ModelPredictionsByLead  # noqa: E402
+from tests.test_pipeline import actual  # noqa: E402
+
+
+def _row(model, lead, horizon=None, summary=None):
+    return TrackRecordEntry(
+        model=model, lead_time_days=lead, forecast_horizon_days=horizon, skill_profile_summary=summary
+    )
+
+
+def test_a_row_beyond_its_reach_is_labelled_by_code_and_the_model_text_is_ignored():
+    stale = "Insufficient data yet to characterize performance at Day+7."
+    beyond = _row("icon_seamless", 7, horizon=6, summary=stale)
+    within = _row("gfs_seamless", 7, horizon=7, summary=stale)
+    unknown = _row("kenya_met", 7, horizon=None, summary=stale)
+    _merge_skill_summaries(
+        [beyond, within, unknown],
+        {
+            ("icon_seamless", 7): "Runs warm at Day+7.",   # never had a result; must not land
+            ("gfs_seamless", 7): "Runs warm at Day+7.",
+        },
+    )
+    assert beyond.skill_profile_summary == beyond_reach_summary(6)
+    assert "Day+6" in beyond.skill_profile_summary and "yet" not in beyond.skill_profile_summary
+    assert within.skill_profile_summary == "Runs warm at Day+7."
+    assert unknown.skill_profile_summary == stale, "no horizon, no claim — the old text stands"
+
+
+def test_the_label_persists_when_the_model_returns_nothing_for_the_pair():
+    row = _row("ukmo_seamless", 7, horizon=5, summary="Insufficient data yet ...")
+    _merge_skill_summaries([row], {})
+    assert row.skill_profile_summary == beyond_reach_summary(5)
+
+
+def test_horizons_are_read_off_the_rows():
+    rows = [_row("icon_seamless", 0, 6), _row("icon_seamless", 7, 6), _row("gfs_seamless", 0, None)]
+    assert forecast_horizons_of(rows) == {"icon_seamless": 6}
+
+
+def _review_with_short_model(horizons):
+    today = date(2026, 9, 17)
+    logs, actuals = {}, {}
+    for back in range(1, 13):
+        d = today - timedelta(days=back)
+        entry = log_entry(d, day0=[
+            prediction(model="alpha", rain=True),
+            prediction(model="beta", rain=True),
+            prediction(model="short", rain=True),
+        ])
+        entry.model_predictions = ModelPredictionsByLead(
+            day0=entry.model_predictions.day0,
+            day3=[prediction(model="alpha", rain=True), prediction(model="beta", rain=True)],
+        )
+        logs[d] = entry
+        actuals[d] = actual(rain=True)
+    return build_weekly_review(
+        log_lookup=lambda d: logs.get(d),
+        actuals=actuals,
+        all_log_dates=sorted(logs),
+        today=today,
+        models=["alpha", "beta", "short"],
+        lead_times_days=[0, 3],
+        forecast_horizons=horizons,
+    )
+
+
+def test_the_review_names_a_model_beyond_its_reach_instead_of_promising_data():
+    with_horizon = _review_with_short_model({"short": 0})
+    assert "short does not forecast at Day+3" in with_horizon.data_sufficiency
+    assert "short has no verified checks at Day+3 yet" not in with_horizon.data_sufficiency
+
+    without = _review_with_short_model(None)
+    assert "short has no verified checks at Day+3 yet" in without.data_sufficiency
+    assert "does not forecast" not in without.data_sufficiency
+
+
+def test_a_lead_nobody_reaches_is_not_called_unverified():
+    # alpha and beta reach Day+3 and are scored there, so no gap finding;
+    # `short` beyond its reach must not create one either way.
+    review = _review_with_short_model({"short": 0})
+    assert not [f for f in review.findings if f.kind == "gap"]

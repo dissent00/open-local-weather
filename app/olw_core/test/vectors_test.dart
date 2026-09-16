@@ -843,6 +843,8 @@ void main() {
           today: DateTime.parse(i['today'] as String),
           models: (i['models'] as List).cast<String>(),
           leadTimesDays: (i['lead_times_days'] as List).cast<int>(),
+          forecastHorizons:
+              (i['forecast_horizons'] as Map?)?.cast<String, int>(),
         );
 
         final expected = c['expected'] as Map<String, Object?>;

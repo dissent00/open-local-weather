@@ -2410,11 +2410,49 @@ def _write_back_verification(
     summaries_by_key = {
         (s.model, s.lead_time_days): s.summary for s in llm_response.skill_profile_summaries
     }
-    for entry in verification_result.updated_track_record.entries:
+    _merge_skill_summaries(verification_result.updated_track_record.entries, summaries_by_key)
+    track_record_store.write_track_record(deps.data_dir, verification_result.updated_track_record)
+
+
+def beyond_reach_summary(forecast_horizon_days: int) -> str:
+    """The code-written skill summary for a lead past a source's reach.
+    A lead is the one digit the summaries rule allows."""
+    return f"Does not forecast at this lead; its guidance here reaches Day+{forecast_horizon_days}."
+
+
+def _merge_skill_summaries(entries: list, summaries_by_key: dict[tuple[str, int], str]) -> None:
+    """Writes this run's skill summaries onto the rows — ROADMAP item 150,
+    step 3.
+
+    A ROW BEYOND ITS SOURCE'S REACH IS LABELLED BY CODE, and the model's text
+    for it is ignored. Item 149 rewrote the prompt so the model would stop
+    saying "insufficient data yet" about a lead a source never reaches, and
+    the three rows kept saying it anyway: the model is only asked for a
+    summary on pairs "that has a result today", those pairs never have one,
+    and a pair the model does not return keeps whatever it had. Measured
+    2026-09-16, hours after that prompt change: icon, ukmo and kenya_met at
+    Day+7 still stored the "yet". The horizon is a fact the record holds, so
+    the record writes the label and keeps writing it.
+    """
+    for entry in entries:
+        horizon = entry.forecast_horizon_days
+        if horizon is not None and horizon < entry.lead_time_days:
+            entry.skill_profile_summary = beyond_reach_summary(horizon)
+            continue
+
         summary = summaries_by_key.get((entry.model, entry.lead_time_days))
         if summary:
             entry.skill_profile_summary = summary
-    track_record_store.write_track_record(deps.data_dir, verification_result.updated_track_record)
+
+
+def forecast_horizons_of(entries: list) -> dict[str, int]:
+    """Each source's stored horizon, from its track record rows — the same
+    value the row label is written from, so the review and the row agree."""
+    horizons: dict[str, int] = {}
+    for entry in entries:
+        if entry.forecast_horizon_days is not None:
+            horizons[entry.model] = max(horizons.get(entry.model, -1), entry.forecast_horizon_days)
+    return horizons
 
 
 def _refresh_observations_only(
@@ -2919,6 +2957,7 @@ def _issue_forecast(
             all_log_dates=log_store.list_log_dates(deps.data_dir),
             today=today,
             models=forecaster_models,
+            forecast_horizons=forecast_horizons_of(track_record_entries),
         )
     )
     # The same extracted values that get scored, handed to the LLM so its

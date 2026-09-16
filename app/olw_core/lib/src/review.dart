@@ -239,7 +239,16 @@ WeeklyReview buildWeeklyReview({
   required DateTime today,
   List<String> models = defaultModels,
   List<int> leadTimesDays = leadTimesDays_,
+
+  /// Each source's furthest lead ever forecast here — upstream ROADMAP item
+  /// 150 (`TrackRecordEntry.forecastHorizonDays`). A model with zero checks
+  /// at a lead BEYOND its horizon does not forecast there, and the review
+  /// says so instead of promising data. Null or empty reads every zero-check
+  /// model as unscored, which is what this did before the horizon existed;
+  /// the app passes nothing until it stores one (its item 4).
+  Map<String, int>? forecastHorizons,
 }) {
+  final horizons = forecastHorizons ?? const <String, int>{};
   final yesterday = addDays(today, -1);
   final sortedDates = [...allLogDates]..sort();
   final earliest = sortedDates.isEmpty ? yesterday : sortedDates.first;
@@ -322,7 +331,7 @@ WeeklyReview buildWeeklyReview({
     if (actualFor(d) != null) daysVerified++;
   }
 
-  final findings = _deriveFindings(cells, leadTimesDays);
+  final findings = _deriveFindings(cells, leadTimesDays, horizons);
   final review = WeeklyReview(
     periodStart: earliest,
     periodEnd: yesterday,
@@ -332,6 +341,7 @@ WeeklyReview buildWeeklyReview({
     findings: findings,
     dataSufficiency: _describeSufficiency(
       allLogDates.length, earliest, yesterday, daysVerified, cells, leadTimesDays,
+      horizons,
     ),
   );
   return review;
@@ -364,7 +374,18 @@ int _fewestChecks(List<SkillCell> cells) {
   return fewest;
 }
 
-List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
+/// Whether this lead lies past the furthest the source has ever forecast
+/// here. An unknown horizon is not beyond — the claim needs evidence.
+bool beyondReach(String model, int leadTimeDays, Map<String, int> horizons) {
+  final horizon = horizons[model];
+  return horizon != null && horizon < leadTimeDays;
+}
+
+List<Finding> _deriveFindings(
+  List<SkillCell> cells,
+  List<int> leadTimesDays, [
+  Map<String, int> horizons = const {},
+]) {
   final findings = <Finding>[];
 
   for (final k in leadTimesDays) {
@@ -573,8 +594,13 @@ List<Finding> _deriveFindings(List<SkillCell> cells, List<int> leadTimesDays) {
     }
 
     // --- Gaps worth naming --------------------------------------------------
-    final unscored = atLead.where((c) => c.checks == 0).length;
-    if (atLead.isNotEmpty && unscored == atLead.length) {
+    // A model that does not forecast this far is not a gap in the record —
+    // upstream item 150. Only the models that reach this lead can leave it
+    // unverified.
+    final reaching =
+        atLead.where((c) => !beyondReach(c.model, k, horizons)).toList();
+    final unscored = reaching.where((c) => c.checks == 0).length;
+    if (reaching.isNotEmpty && unscored == reaching.length) {
       findings.add(Finding(
         kind: 'gap',
         claim: 'Day+$k has never been verified here.',
@@ -595,8 +621,9 @@ String _describeSufficiency(
   DateTime periodEnd,
   int daysVerified,
   List<SkillCell> cells,
-  List<int> leadTimesDays,
-) {
+  List<int> leadTimesDays, [
+  Map<String, int> horizons = const {},
+]) {
   final parts = <String>[
     'Reviewed $daysWithPredictions day(s) of stored forecasts '
         '(${formatDate(periodStart)} to ${formatDate(periodEnd)}), of which '
@@ -632,8 +659,19 @@ String _describeSufficiency(
         .map((c) => c.model)
         .toList()
       ..sort());
-    final unscored =
-        (atLead.where((c) => c.checks == 0).map((c) => c.model).toList()..sort());
+    // Two kinds of zero, and only one of them is "yet" — upstream item 149
+    // found the stored label promising data that was never coming. A model
+    // beyond its horizon is named as such; the rest are unscored.
+    final beyond = (atLead
+        .where((c) => beyondReach(c.model, k, horizons))
+        .map((c) => c.model)
+        .toList()
+      ..sort());
+    final unscored = (atLead
+        .where((c) => c.checks == 0 && !beyondReach(c.model, k, horizons))
+        .map((c) => c.model)
+        .toList()
+      ..sort());
 
     // WHETHER MODELS CAN BE RANKED IS THE RANKING GATE'S QUESTION, NOT THIS
     // ONE'S — ROADMAP item 85. `checks` is the weakest scored model's
@@ -693,6 +731,12 @@ String _describeSufficiency(
           'no verified checks at Day+$k yet and '
           '${unscored.length == 1 ? 'is' : 'are'} '
           'not included in the figure above.)');
+    }
+    if (beyond.isNotEmpty) {
+      parts.add('(${beyond.join(', ')} '
+          '${beyond.length == 1 ? 'does' : 'do'} not forecast '
+          'at Day+$k and ${beyond.length == 1 ? 'is' : 'are'} not included in the '
+          'figure above.)');
     }
   }
   return parts.join(' ');

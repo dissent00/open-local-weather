@@ -127,7 +127,7 @@ absent values are `null`, never omitted keys.
 | `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 7 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |
-| `weekly_review.json` | `build_weekly_review` | 20 |
+| `weekly_review.json` | `build_weekly_review` | 21 |
 | `solar.json` | `sun_times` | Sunrise and sunset for a LOCAL date, computed from latitude, longitude and the location's UTC offset. Whole minutes, truncated. The midnight sun is midnight to midnight; polar night is a span of zero. |
 | `daypart.json` | `summarize_daypart` | Where the issuance moment sits in the day. Sun-relative, so the same clock time is a different part of the day at another latitude. Every string is written into the prompt verbatim. |
 | `forecast_windows.json` | `forecast_windows` | The horizon's named periods with explicit, contiguous, non-overlapping clock bounds, the first starting at the issuance itself. A day is named by weekday whenever it is not the issuance's own date or the run is at night, so two issuances either side of midnight name one day the same way. |
