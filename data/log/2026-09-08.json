@@ -38,6 +38,8 @@
   ],
   "sunrise": "06:35",
   "sunset": "18:41",
+  "prediction_rows": [],
+  "observed_so_far": null,
   "model_predictions": {
     "day0": [
       {
@@ -433,8 +435,8 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "Day+7: GFS, ECMWF, and Best Match successfully verified precipitation for September 8th. ECMWF under-forecasted peak wind by 10.8 km/h and over-forecasted low temperature by 1.3°C, while Best Match over-forecasted surface wind by 4.7 km/h.",
       "note_sign_corrected_on": null
     }
   },
@@ -460,11 +462,15 @@
     "finish_reason": null,
     "input_tokens": null,
     "output_tokens": null,
+    "thought_tokens": null,
     "response_schema_sha256": null,
     "nullable_fields": null,
+    "narrative_findings": null,
     "information_moved": null,
     "refreshed_at": null,
     "trigger_source": "workflow_dispatch",
+    "issued_local_time": null,
+    "observations_local_time": null,
     "degradations": []
   }
 }

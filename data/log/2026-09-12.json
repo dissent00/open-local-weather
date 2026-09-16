@@ -38,6 +38,8 @@
   ],
   "sunrise": "06:33",
   "sunset": "18:40",
+  "prediction_rows": [],
+  "observed_so_far": null,
   "model_predictions": {
     "day0": [
       {
@@ -428,8 +430,8 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "Day+3: Rain calls for September 12th verified correctly across GFS, ECMWF, ICON, UKMO, and Kenya Met, whereas Best Match failed to verify. Numerical models consistently under-forecasted peak surface wind speeds by 11 to 15 km/h.",
       "note_sign_corrected_on": null
     },
     "day7": {
@@ -460,10 +462,12 @@
     "finish_reason": "STOP",
     "input_tokens": 79883,
     "output_tokens": 2589,
+    "thought_tokens": null,
     "response_schema_sha256": "976e4b88ae418fbc125372e11fc11299cd03754810876d52587aabdc054792fb",
     "nullable_fields": [
       "/whatsapp_summary"
     ],
+    "narrative_findings": null,
     "information_moved": {
       "first_issuance_of_day": true,
       "guidance_is_newer": null,
@@ -471,6 +475,8 @@
     },
     "refreshed_at": null,
     "trigger_source": "workflow_dispatch",
+    "issued_local_time": null,
+    "observations_local_time": null,
     "degradations": []
   }
 }

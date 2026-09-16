@@ -555,8 +555,8 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
-      "note": null,
+      "verified": true,
+      "note": "Day+0: All models correctly verified the precipitation call for September 15th. ECMWF and Best Match captured daytime high temperatures within 0.3°C of observations, while GFS over-forecasted surface wind speeds and most other numerical models under-forecasted peak wind speeds by 10 to 11 km/h.",
       "note_sign_corrected_on": null
     },
     "day3": {
@@ -592,6 +592,7 @@
     "finish_reason": "STOP",
     "input_tokens": 64067,
     "output_tokens": 302,
+    "thought_tokens": null,
     "response_schema_sha256": "cdf8d7ac344b55d54ba1d063439d3a08aee1d04581598d647ea4f3a23b9ce494",
     "nullable_fields": [
       "/extended_properties[]/rain_probability_pct",
