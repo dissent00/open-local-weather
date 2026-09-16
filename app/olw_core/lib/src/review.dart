@@ -175,6 +175,39 @@ class Finding {
   final int checks;
 }
 
+/// The parts of a review the forecaster reasons from — and no more.
+///
+/// Mirrors `_review_prompt_payload` in the Python pipeline, key for key. It
+/// deliberately omits the per-cell skill table: the prompt already carries
+/// rolling stats in MODEL TRACK RECORD, and a second table of raw per-model
+/// percentages would invite exactly the by-eye ranking the findings gate
+/// exists to prevent. The findings ARE the cross-model conclusions, already
+/// gated on sample size, and their absence is information rather than an
+/// omission.
+///
+/// Lives here rather than in the app because the app is the only caller
+/// today and would otherwise own the shape of a block the server also sends
+/// (`ensemble` item 12). Not vector-pinned: the Python function is private
+/// to pipeline.py, so the key list below is checked by a test against the
+/// names as the Python spells them.
+Map<String, Object?> reviewPromptPayload(WeeklyReview review) => {
+      'period_start': formatDate(review.periodStart),
+      'period_end': formatDate(review.periodEnd),
+      'days_with_predictions': review.daysWithPredictions,
+      'days_verified': review.daysVerified,
+      'data_sufficiency': review.dataSufficiency,
+      'findings': [
+        for (final f in review.findings)
+          {
+            'kind': f.kind,
+            'claim': f.claim,
+            'evidence': f.evidence,
+            'confidence': f.confidence,
+            'checks': f.checks,
+          },
+      ],
+    };
+
 class WeeklyReview {
   const WeeklyReview({
     required this.periodStart,
