@@ -20481,3 +20481,143 @@ finished making it unambiguous. This item ADDS a quantity; it does not
 redefine the one that exists.
 
 Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.
+
+---
+
+## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **Planned — raised 2026-09-16**
+
+The operator, walking through the prompt block by block:
+
+> *"HISTORICAL NOTES - what's it for? My instinct is that this is part of our
+> model's learning process. Otherwise why have it?"*
+
+and then, on being shown what it is:
+
+> *"we have a weekly review that is meant to be doing some of this work
+> scoring models, I'm not sure if it predates this work or not, or if it
+> overlaps."*
+
+Both instincts are right. It IS the learning mechanism, it DOES overlap the
+weekly review, and the overlap is not duplication — **the two embody opposite
+epistemics, and the weaker one is four times the size.**
+
+### What the block is
+
+`_historical_logs_payload` sends the last 30 stored entries. Per day: the
+date, that day's `rain_expected`, and for each of Day+0/+3/+7 a `verified`
+flag, the verification note **the model itself wrote on a previous run**, and
+a marker saying whether that note's error signs were mechanically corrected.
+
+**27,018 characters, 19.1% of a 141,798-character user prompt, sent on BOTH
+calls of every issuance.**
+
+### THE INSTRUCTION IS IN THE CALL THAT CANNOT ACT ON IT
+
+The judgment prompt carries the brief, and it is a good one:
+
+> *"LEARNING FROM PAST MISSES... You write those notes in Step 1 for exactly
+> this purpose, and they are worth nothing if no run ever reads them. Before
+> you finalise the narrative, look for a past entry whose SETUP resembles
+> today's... say so in the Forecaster Confidence Notes... A recorded miss that
+> repeats without ever being recognised is the most expensive kind, because
+> the record shows it was avoidable."*
+
+Now read it against the schemas item 59 split apart:
+
+| | judgment call | narrative call |
+|---|---|---|
+| returns | `today_properties`, `extended_properties` | `yesterday_verification`, `verification_notes`, `skill_profile_summaries`, `today_narrative` |
+| gets the block | yes | yes |
+| gets the instruction | **yes** | **no — one inventory line, nothing else** |
+
+Every clause addresses the narrative call. *"Before you finalise the
+narrative"* — the judgment call does not write one. *"Say so in the Forecaster
+Confidence Notes"* — those are inside `today_narrative`. *"You write those
+notes in Step 1"* — `verification_notes` is a narrative output.
+
+**The instruction was written for the pre-split single forecaster and stayed
+where it was when the call was cut in two.** The same shape as item 137's
+morning/evening leftovers, in a more expensive place: 19% of both prompts,
+unusable in one call and unbriefed in the other.
+
+### WHAT THE BLOCK ACTUALLY CONTAINS, measured 2026-09-16
+
+| | |
+|---|---|
+| rows | 30 |
+| note slots (3 leads × 30 days) | 90 |
+| slots carrying a note | 67 |
+| empty slots | 23 |
+| characters of actual note prose | 15,437 |
+| **share of the 27,018 that is prose** | **57%** |
+| **notes whose error signs were MECHANICALLY CORRECTED** | **27 of 67 — 40%** |
+
+So 43% of the block is JSON scaffolding and nulls, and two in five of the
+surviving notes were factually wrong about error direction until a script
+fixed them on 2026-09-10 (item 142, finding 3, records that they can still
+contradict the convention).
+
+### THE REVIEW IS THE SAME JOB DONE PROPERLY, AT A QUARTER THE SIZE
+
+`review.py`'s own header states the principle that condemns the notes:
+
+> *"Reviews are always regenerated from the raw record, never built on top of
+> a previous review, for the same reason the rolling stats are stateless: an
+> error that can propagate forward is an error that never gets corrected."*
+
+**`HISTORICAL NOTES` is precisely the thing that rule forbids** — a model's
+prior prose fed back to the model, which is error propagation by
+construction, and the 40% correction rate is what it looks like in practice.
+
+| | LONG-RUN REVIEW | HISTORICAL NOTES |
+|---|---|---|
+| size | 6,475 | 27,018 |
+| built by | code, from the raw record | the LLM, on past runs |
+| gated on evidence | yes — claims refused below a check count, comparisons refused below sampling noise | no |
+| carries confidence | yes, per finding | no |
+| can propagate an error forward | no, by design | yes, and did — 27 notes |
+| content | 20 findings, each `claim` + `evidence` + `confidence` | 67 notes, 23 empty slots |
+
+### THE DATES SAY THIS WENT THE WRONG WAY
+
+| | |
+|---|---|
+| 2026-08-11 | `historical_logs` ships in the first prompt commit — it is original |
+| 2026-08-19 | `review.py` ships: *"findings gated on evidence, not just computed"* |
+| 2026-08-27 | `LEARNING FROM PAST MISSES` is ADDED |
+
+The prose mechanism was reinforced with a dedicated instruction **eight days
+after the computed mechanism that answers the same question already existed.**
+Nobody compared them at the time, which is what this item is for.
+
+### The decision, and it is the operator's
+
+1. **Move the instruction to the narrative prompt.** Cheapest, restores the
+   loop as designed, costs no tokens. Does nothing about the substrate.
+2. **Move instruction AND block to the narrative call only.** Saves 27,018
+   characters on the judgment call, which needs no prose to produce numbers.
+3. **Cut the block and let the review carry the learning.** Saves 27,018
+   characters on BOTH calls — 19% of each — and removes the one input in this
+   prompt that can propagate a stale error forward. The risk to weigh: the
+   review's findings are per-model and aggregate, while a note can describe a
+   SETUP ("the same disagreement between the same models on a marginal
+   convective call"), which is what the instruction actually asks to match on.
+   Nothing computed currently replaces that.
+
+**Option 3's gap is the real question**, and it is worth stating plainly: does
+the review's evidence-gated aggregate learning replace setup-matching, or is
+setup-matching a thing this project still wants and has no computed form for?
+If the latter, the honest answer may be a narrower block — recent notes only,
+or notes for days whose synoptic pattern resembles today's — rather than 30
+days of everything.
+
+**DO NOT DECIDE THIS ON PROMPT SIZE ALONE.** Item 134 wants the prompt pared
+and this is the second-largest block, which makes it a tempting cut for the
+wrong reason. It is 19% of the bill; it is also the only thing here that was
+ever meant to make the forecaster better over time. Cutting it to save tokens
+without answering the question above would be trading the project's stated
+purpose for its running cost.
+
+Related: items 59 (the split that orphaned the instruction), 137 (the same
+leftover shape), 142 findings 3 and 6, 134 (prompt size), 18 (accuracy
+improving over time is the differentiator), 100.
