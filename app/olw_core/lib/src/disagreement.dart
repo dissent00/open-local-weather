@@ -133,6 +133,12 @@ List<String> observationDisagreements(
 /// 20 C and decisive at 2 C, where it is the difference between ice and no
 /// ice. STEPPED, NOT INTERPOLATED: a smooth taper would imply the shape of
 /// the relationship is understood, and it is not.
+///
+/// A DEFAULT, NOT AN ANSWER — upstream item 145 and this repo's item 20. What
+/// counts as "a lot" depends on who is reading, so this becomes a tunable the
+/// reader can change rather than a number to keep re-guessing. The reporting
+/// band is safe to expose; a threshold reaching [observationDisagreements]
+/// decides SPENDING and is not.
 const double lowDivergenceMarginC = 3.0;
 const double lowDivergenceFreezingMarginC = 1.0;
 

@@ -20085,3 +20085,107 @@ What is unproven is the 12.09 figure used to argue for it.
    `verify/`).
 
 Related: items 126, 142, 104, and `_blend_prediction`'s comment.
+
+---
+
+## 145. "A significant deviation" is the reader's call, not ours · **Planned — raised 2026-09-16**
+
+The operator, 2026-09-16, on being shown that item 143's band would suppress
+the case item 143 was raised on:
+
+> *"app user in advanced settings should be able to tune what is 'significant
+> deviation' for any forecast vs observed, and then have it reported on. If
+> they choose to change from the defaults."*
+
+and, immediately after:
+
+> *"add this to the docs as a tunable setting in OLW"*
+
+So this is not an app feature with a server dependency. It is a SETTING,
+belonging in `config/location.yaml` beside `max_llm_calls_per_24h` and
+`llm_refresh_policy`, which the app then surfaces in advanced settings.
+`ensemble` item 20 is the app half.
+
+### Why, and item 143 is the argument
+
+`LOW_DIVERGENCE_MARGIN_C` was set at 3.0 by reasoning. The record, measured
+immediately afterwards, says the blend's Day+0 low error averages -0.21 C and
+the station runs -0.05 C against reanalysis — so the band sits about twelve
+times the expected gap, and drops a 1.8 C divergence the operator had just
+named as worth a footnote. The honest conclusion is not that 3.0 should have
+been 1.5. It is that **no single number is right for every reader**, and this
+project already knows it: item 6 calls the secondary point's gust "exactly the
+number boaters would act on", and a boater, a frost-sensitive grower and
+someone walking to work do not share a threshold.
+
+### THE HAZARD, WHICH IS THE WHOLE DESIGN
+
+**A deviation threshold is two settings wearing one name.** Item 143 already
+split them and the split is the seam this needs:
+
+| | what it decides | cost of tuning |
+|---|---|---|
+| `notable` | is this worth TELLING the reader | none |
+| `decisive` | is this worth BUYING a judgment call and a narrative | real, and against a fixed cap |
+
+`reasoning.llm_should_reason` treats ANY member of `observation_disagreements`
+as grounds to spend under `new_cycle_or_contradiction`. A tunable that reaches
+that list is a tunable that multiplies paid calls.
+
+**So the reporting band is freely tunable and the spending band is not.**
+Fixed, or bounded, or stated in terms of what it will cost. This project's
+stated purpose is people in underserved areas who will not be buying an API
+key; a setting that quietly multiplies spend fails precisely the reader it
+exists for.
+
+Note that the live default is `new_cycle_only`, so today nothing in that list
+spends at all — which makes this the right moment to build the distinction,
+before a policy change makes it expensive to have got wrong.
+
+### THE SCORED RECORD DOES NOT MOVE
+
+A deployment's band changes what it SAYS. It must not change what is SCORED,
+or two deployments would disagree about the accuracy of the same forecast and
+the cross-deployment record would stop meaning anything. Reporting and scoring
+are separate today and this must keep them so — the first test to write here.
+
+### What already exists
+
+- **Every threshold is already a keyword parameter with a default**:
+  `temp_margin_c` and `onset_margin_min` on `observation_disagreements`,
+  `margin_c` and `freezing_margin_c` on `low_divergence`, and the same names
+  in `olw_core`. The seam exists; what is missing is config and plumbing.
+- **`LowDivergence.margin_c` is stored on every row**, so a row records which
+  band judged it. A retune does not corrupt stored history, and a stored gap
+  can be re-judged against a new band with no refetch — which is what makes
+  "and then have it reported on" a query rather than a rebuild.
+- **The vectors pin the FUNCTIONS, not the constants** — the cases pass
+  thresholds explicitly where it matters — so making these configurable does
+  not invalidate the contract.
+
+### Which dimensions can honestly be offered
+
+"Any forecast vs observed" is the right ambition and is not today's inventory:
+
+| dimension | available | why not |
+|---|---|---|
+| overnight low | yes | item 143 |
+| daytime high | yes | `DISAGREEMENT_HIGH_EXCEEDED` |
+| rain, yes/no | yes | `DISAGREEMENT_RAIN_WHILE_DRY` |
+| rain onset hour | yes | item 138 |
+| peak gust | **no** | item 144: the station files `sknt`, a SUSTAINED wind; the forecast is a GUST. Pairing them reads the gust factor as weather |
+| precipitation amount | **no** | a METAR reports that rain fell, never how much |
+
+A gust threshold becomes available wherever a station files gust groups, which
+item 144 records as a generalizable upgrade and item 133 recommends VHHH to
+validate. Offering a control that cannot be computed would be worse than
+offering none.
+
+### Where the setting lands
+
+`config/location.yaml`, documented in place the way the rest of that file is,
+and mentioned in `QUICKSTART.md` beside the other spend-adjacent settings once
+it exists — not before, because QUICKSTART is read by someone setting up a
+real deployment and must not describe a key that does nothing.
+
+Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.

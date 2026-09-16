@@ -133,7 +133,17 @@ ONSET_CONTRADICTION_MARGIN_MIN = 60
 # TEMP_CONTRADICTION_MARGIN_C is written to avoid.
 #
 # Not measured: how often a real gap of a given size appears, and at what
-# width a reader starts being told something useful. That needs observed
+# width a reader starts being told something useful.
+#
+# AND THAT SECOND ONE IS NOT A NUMBER ANYONE HERE CAN FIND — ITEM 145. It
+# depends on who is reading: a frost-sensitive grower and someone walking to
+# work do not share a threshold, and picking one for both is what produced a
+# band twelve times the expected gap. The direction is now a TUNABLE SETTING
+# in `config/location.yaml`, surfaced in the app's advanced settings, not a
+# better guess here. Read item 145 before retuning this constant — and note
+# the hazard it turns on: this one is safe to expose because it only decides
+# what is SAID, while a threshold that reaches `observation_disagreements`
+# decides what is SPENT. That needs observed
 # station lows set against standing calls across the record, which is exactly
 # what `low_divergence` stores on every run whether or not it fires. Revisit
 # the widths against that record, never against a convenient sample; item 100
