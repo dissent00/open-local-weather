@@ -19731,7 +19731,7 @@ Related: items 41 (satellite — this is its strongest use case), 140, 138,
 
 ---
 
-## 142. What a cold read of the prompt found · **Raised 2026-09-16 — seven findings, none fixed yet**
+## 142. What a cold read of the prompt found · **Raised 2026-09-16 — 4 and 7 fixed, five open**
 
 Item 77's manual harness, run after the day's three prompt changes. A worker
 model was given the narrative system prompt and a real archived user message
@@ -19826,10 +19826,24 @@ own list reports three blocks missing that are present under other names.
 
 ### Order
 
-Nothing is fixed. Re-run the harness CORRECTLY PAIRED first: the narrative
-reading above was produced without the forecaster's call, so every judgement
-it made about prose quality is suspect. Findings 1-7 are independent of that
-and stand.
+**UPDATED 2026-09-16. Three are fixed and the pairing is done; four stand.**
+
+- **4 (`a 11 hPa spread`) — FIXED**, `_article_for` in `synoptic.py`. It was
+  live on the site.
+- **7 (block-name drift) — FIXED.** The system prompt's inventory now names
+  the blocks the payload actually carries, and `test_prompt_seam` checks the
+  inventory against an archived user prompt so it cannot drift again.
+- **The harness pairing — DONE**, and the method failure is recorded above.
+  The narrative half of both earlier runs stays suspect; nothing has re-read
+  it since.
+
+**Still open: 1, 2, 3, 5, 6.** 1 and 5 are the ones to take first — 1 has two
+instructions fighting over the same fields, which is the class rule 1 exists
+to prevent, and 5 is a contradiction a reader can see in a single line. 2 is
+the three-valued flattening and is the most likely to change a forecast. 6
+(five fields with data and no instruction) is really item 134's prompt-size
+question wearing a different hat: `HISTORICAL NOTES` is 27,018 characters,
+19% of the narrative user prompt, and carries no instruction at all.
 
 Related: items 77 (the method, which needs the pairing note), 130, 129, 100,
 102, 122.
