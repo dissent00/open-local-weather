@@ -27,14 +27,12 @@ void main(List<String> args) {
     out.add({
       'judgment': buildJudgmentPrompt(
         location,
-        historicalLookbackDaysArg: i['historical_lookback_days'] as int,
         rollingWindowShortArg: i['rolling_window_short'] as int,
         rollingWindowLongArg: i['rolling_window_long'] as int,
         verificationAlreadyWritten: i['verification_already_written'] as bool,
       ),
       'narrative': buildNarrativePrompt(
         location,
-        historicalLookbackDaysArg: i['historical_lookback_days'] as int,
         rollingWindowShortArg: i['rolling_window_short'] as int,
         rollingWindowLongArg: i['rolling_window_long'] as int,
         verificationAlreadyWritten: i['verification_already_written'] as bool,

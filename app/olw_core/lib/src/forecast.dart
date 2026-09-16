@@ -210,7 +210,6 @@ Future<ForecastRun> generateForecast({
   List<String> models = defaultModels,
   Object? verificationContext = const <Object>[],
   Object? trackRecordContext = const <Object>[],
-  Object? historicalLogs = const <Object>[],
   Object? reviewContext,
   Object? yesterdayActual,
   /// Each model's measured gust bias, keyed by model id — calibration.dart.
@@ -499,7 +498,6 @@ Future<ForecastRun> generateForecast({
     publicWebpageUrl: publicWebpageUrl,
     verificationContext: verificationContext,
     trackRecordContext: trackRecordContext,
-    historicalLogs: historicalLogs,
     groundAqiReadings: groundAqiReadings,
     groundAqiSummary: groundAqiSummary,
     groundAqiLastKnown: groundAqiLastKnown,

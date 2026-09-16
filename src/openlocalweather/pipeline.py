@@ -113,7 +113,6 @@ from openlocalweather.defaults import (
     ACTUALS_BATCH_LOOKBACK_DAYS,
     BASELINE_MODEL_IDS,
     BLEND_MODEL_ID,
-    HISTORICAL_LOOKBACK_DAYS,
     MODELS,
     WEEKLY_BATCH_WEEKDAY,
     models_visible_to_the_forecaster,
@@ -191,7 +190,6 @@ from openlocalweather.models import (
     DailyActual,
     DailyLogEntry,
     GroundAQIReading,
-    LeadTimeVerification,
     LogEntryMeta,
     ModelPrediction,
     ModelPredictionsByLead,
@@ -728,78 +726,6 @@ def _clock_on(day: datetime, hhmm: str | None) -> datetime | None:
     return day.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
 
-def _visible_note(note: str | None, hidden_model_id: str | None) -> str | None:
-    """A stored note, or None when it names a model the forecaster never sees.
-
-    Defined once here because it was defined twice: an identical nested copy
-    sat in run_daily_pipeline and another in run_refresh_pipeline, both closing
-    over `location`. See `models_visible_to_the_forecaster` for why the blend
-    and the baselines are withheld — a note that names one leaks a model the
-    prompt has just been told does not exist.
-
-    THE LEAK SEEDED THE NOTES IT IS FED — item 90. Filtering the scores block
-    stops NEW contamination and does nothing about the notes written while the
-    forecaster could see those scores; one of them tells it its own blend
-    called a rain event correctly.
-
-    DROPPED WHOLE, not redacted. "ECMWF, ICON, Kenya Met, Best Match, and
-    correctly verified the rain event" is worse than a gap, and a gap is
-    already how this prompt says there is nothing to report. The log itself is
-    untouched, so the archive stays true to what was written.
-
-    (That reasoning sat as a comment on a call site in EACH pipeline. Step 1
-    moved the payload into `_build_forecast_prompt` and left both calls behind
-    computing a value nothing read; deleting them would have deleted the only
-    copy of the above, so it lives here, beside the rule it explains.)
-    """
-    if note_names_a_hidden_model(note, hidden_model_id):
-        return None
-
-    return note
-
-
-def _historical_logs_payload(
-    data_dir: Path, today: date, hidden_model_id: str | None
-) -> list[dict]:
-    """The last HISTORICAL_LOOKBACK_DAYS of stored entries, as the prompt reads
-    them.
-
-    ROADMAP item 104. This loop existed twice, character for character, in
-    run_daily_pipeline and run_refresh_pipeline — the only difference being
-    that the refresh built its own `log_lookup` first. Two copies of a payload
-    the prompt depends on is the shape that has already cost this project the
-    three blocks the evening run silently omitted; a field added to one copy
-    reaches half the issuances and nothing says which half.
-
-    `visible_note` and `_corrected_on` are applied here rather than by the
-    caller for the same reason: the note a reader sees and the note the record
-    stores are not the same string, and deciding that twice is deciding it
-    twice differently.
-    """
-    log_lookup = log_store.make_log_lookup(data_dir)
-    lookback_start = add_days(today, -HISTORICAL_LOOKBACK_DAYS)
-
-    payload: list[dict] = []
-    for stored_date in log_store.list_log_dates(data_dir):
-        if not (lookback_start <= stored_date < today):
-            continue
-
-        entry = log_lookup(stored_date)
-        if entry is None:
-            continue
-
-        row = {"date": format_date(stored_date), "rain_expected": entry.rain_expected}
-        for lead in (0, 3, 7):
-            verification = entry.verification.for_lead(lead)
-            note = _visible_note(verification.note, hidden_model_id)
-            row[f"day{lead}_verified"] = verification.verified
-            row[f"day{lead}_note"] = note
-            row[f"day{lead}_note_sign_corrected_on"] = _corrected_on(verification, note)
-        payload.append(row)
-
-    return payload
-
-
 def _track_record_payload(entries, models: set | list) -> list[dict]:
     """The rolling stats the forecaster is shown, with unsafe summaries hidden.
 
@@ -880,9 +806,6 @@ def _build_forecast_prompt(
         verification_context=verification_context,
         model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,
-        historical_logs=_historical_logs_payload(
-            deps.data_dir, today, deps.location.local_bulletin_model_id
-        ),
         ground_aqi_readings=_ground_aqi_prompt_payload(guidance),
         ground_aqi_summary=(
             asdict(guidance.ground_aqi_summary)
@@ -1683,37 +1606,6 @@ def _blend_prediction(tp: TodayProperties) -> ModelPrediction:
         wind_kmh=tp.peak_wind_primary_kmh,
         mslp_trend=None,
     )
-
-
-def _corrected_on(lead: LeadTimeVerification, visible: str | None) -> str | None:
-    """Whether this note's error signs were checked against the record.
-
-    The prompt tells the forecaster that a note carrying this marker was
-    verified against the stored prediction and observation, and that a note
-    WITHOUT it has not been checked. That instruction shipped on 2026-09-10
-    reading off a field the payload did not carry: `historical_logs` projects
-    eight named fields per day and this was not one of them, so every note
-    arrived unmarked and the forecaster was told, in effect, to trust none of
-    them — including the 43 that had just been corrected. Found by the item 77
-    cold reading of the same commit, which duly refused to lean on any stored
-    note's sign language.
-
-    A date, not a boolean: which day the correction ran is worth keeping, and
-    it is what the log actually stores.
-
-    TAKES THE VISIBLE NOTE, not just the lead, and returns nothing when the
-    note was dropped. Item 90 drops a note naming a hidden model WHOLE rather
-    than redacting it, because a gap is already how this prompt says there is
-    nothing to report. The first version of this function read the log
-    directly and so outlived its own note: five markers stood beside a null
-    note, each one saying a note had been here and had been checked. That is
-    the residue shape item 90 exists to prevent, and the second cold reading
-    counted all five.
-    """
-    if visible is None or not lead.note_sign_corrected_on:
-        return None
-
-    return format_date(lead.note_sign_corrected_on)
 
 
 def _review_prompt_payload(review: WeeklyReview) -> dict[str, Any]:

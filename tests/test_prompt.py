@@ -101,10 +101,11 @@ def test_system_prompt_mentions_key_design_principles():
     assert "Plain text throughout. No emojis." in prompt
 
 
-def test_system_prompt_interpolates_rolling_windows_and_lookback():
-    prompt = build_system_prompt(KISUMU, historical_lookback_days=45, rolling_window_short=7, rolling_window_long=21)
+def test_system_prompt_interpolates_rolling_windows():
+    # The lookback assertion went with ROADMAP item 147: HISTORICAL NOTES was
+    # the only block whose length this configured, and the block is gone.
+    prompt = build_system_prompt(KISUMU, rolling_window_short=7, rolling_window_long=21)
     assert "rolling 7-check/21-check/all-time" in prompt
-    assert "past 45 days" in prompt
     assert "last 7-check" in prompt
     assert "longer-term (21-check/all-time)" in prompt
 
@@ -133,7 +134,6 @@ def test_user_prompt_includes_dates_and_url():
         public_webpage_url="https://dissent00.github.io/open-local-weather/",
         verification_context={"lead_time_results": []},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,
@@ -157,7 +157,6 @@ def test_user_prompt_serializes_ground_aqi_readings_and_summary_when_present():
         public_webpage_url="https://example.org",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[
             {"name": "Kisumu Airport", "station_id": "A418534", "aqi": 42, "pm25": 18.0, "pm10": 30.0},
             {"name": "Dunga Beach", "station_id": "A418504", "aqi": 90, "pm25": 40.0, "pm10": 12.0},
@@ -186,7 +185,6 @@ def test_user_prompt_includes_weather_data_sections():
         public_webpage_url="https://example.org",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,
@@ -326,7 +324,7 @@ def test_the_days_earlier_narratives_are_never_sent():
     """
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
-        verification_context={}, track_record_context=[], historical_logs=[],
+        verification_context={}, track_record_context=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
     )
@@ -360,7 +358,6 @@ def test_user_prompt_includes_yesterdays_observed_conditions():
         public_webpage_url="https://example.com/",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual={"rain": True, "high_c": 29.4, "low_c": 18.0},
@@ -383,7 +380,6 @@ def test_user_prompt_says_so_when_yesterday_is_unavailable():
         public_webpage_url="https://example.com/",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,
@@ -402,7 +398,6 @@ def _user_prompt_with_review(review_context):
         public_webpage_url="https://example.com/",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,
@@ -481,7 +476,7 @@ def test_user_prompt_carries_the_extracted_predictions_that_get_scored():
     prompt = build_user_prompt(
         today=date(2026, 8, 19), yesterday=date(2026, 8, 18),
         public_webpage_url="https://example.com/",
-        verification_context={}, track_record_context=[], historical_logs=[],
+        verification_context={}, track_record_context=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None,
         today_weather_data={}, local_bulletin_source_name="", local_bulletin_text="",
         model_predictions_context={
@@ -526,7 +521,7 @@ def test_user_prompt_forwards_every_weather_key_the_pipeline_sends():
     prompt = build_user_prompt(
         today=date(2026, 8, 19), yesterday=date(2026, 8, 18),
         public_webpage_url="https://example.com/",
-        verification_context={}, track_record_context=[], historical_logs=[],
+        verification_context={}, track_record_context=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None,
         today_weather_data={k: f"SENTINEL_{k}" for k in sent},
         local_bulletin_source_name="", local_bulletin_text="",
@@ -591,7 +586,6 @@ def test_the_calendar_days_hourly_series_is_not_sent():
         public_webpage_url="https://example.org",
         verification_context={},
         track_record_context=[],
-        historical_logs=[],
         ground_aqi_readings=[],
         ground_aqi_summary=None,
         yesterday_actual=None,

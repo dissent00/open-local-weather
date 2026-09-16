@@ -481,7 +481,6 @@ void main() {
             ),
         );
         String build(String Function(LocationConfig, {
-          int historicalLookbackDaysArg,
           int rollingWindowShortArg,
           int rollingWindowLongArg,
           bool verificationAlreadyWritten,
@@ -491,7 +490,6 @@ void main() {
         }) builder) =>
             builder(
               location,
-              historicalLookbackDaysArg: i['historical_lookback_days'] as int,
               rollingWindowShortArg: i['rolling_window_short'] as int,
               rollingWindowLongArg: i['rolling_window_long'] as int,
               verificationAlreadyWritten: i['verification_already_written'] as bool,
@@ -912,7 +910,6 @@ void main() {
           publicWebpageUrl: i['public_webpage_url'] as String,
           verificationContext: i['verification_context'],
           trackRecordContext: i['track_record_context'],
-          historicalLogs: i['historical_logs'],
           groundAqiReadings: i['ground_aqi_readings'],
           groundAqiSummary: i['ground_aqi_summary'],
           yesterdayActual: i['yesterday_actual'],

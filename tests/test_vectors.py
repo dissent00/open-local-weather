@@ -547,7 +547,6 @@ def test_vectors_system_prompt():
             ),
         )
         flags = dict(
-            historical_lookback_days=i["historical_lookback_days"],
             rolling_window_short=i["rolling_window_short"],
             rolling_window_long=i["rolling_window_long"],
             verification_already_written=i["verification_already_written"],

@@ -208,7 +208,6 @@ def _branches() -> list[tuple[str, str, str]]:
             ),
         )
         flags = dict(
-            historical_lookback_days=i["historical_lookback_days"],
             rolling_window_short=i["rolling_window_short"],
             rolling_window_long=i["rolling_window_long"],
             verification_already_written=i["verification_already_written"],
@@ -346,3 +345,57 @@ def test_every_block_the_system_prompt_names_exists_in_the_user_message():
         f"or rename the claim — a reader following this list reports present "
         f"blocks as missing."
     )
+
+
+def test_every_numbered_list_in_the_prompts_is_sequential():
+    """A numbered list that skips or repeats is a prompt that contradicts
+    itself about how many things there are.
+
+    WHY THIS EXISTS, 2026-09-16. Item 147 removed one entry from the "You are
+    provided with" inventory, and the renumbering that followed matched the
+    SIX RULES block first — leaving the rules as 1,2,3,4,4,5 under a heading
+    saying there are six, and the inventory as 1,2,3,5,6,6,7.
+
+    THE VECTORS DID NOT CATCH IT, AND COULD NOT. The same edit was made to
+    both languages, so Python and Dart agreed exactly — on the wrong numbers.
+    Cross-language vectors prove the two ports match; they cannot prove either
+    is right. That is what this test is for, and it is the general lesson: a
+    mistake made identically on both sides is invisible to a contract that
+    only compares the sides.
+    """
+    import re
+
+    for name, prompt in _branches_flat():
+        for heading, body in _numbered_blocks(prompt):
+            numbers = [int(n) for n in re.findall(r"(?m)^(\d+)\. [A-Z]", body)]
+            if len(numbers) < 2:
+                continue
+            assert numbers == list(range(1, len(numbers) + 1)), (
+                f"{name}: the list under {heading!r} is numbered {numbers}, "
+                f"which skips or repeats"
+            )
+
+
+def _branches_flat():
+    for name, judgment, narrative in _branches():
+        yield f"{name} (judgment)", judgment
+        yield f"{name} (narrative)", narrative
+
+
+def _numbered_blocks(prompt: str):
+    """Each run of consecutive `N. ` lines, with the line above it as a label."""
+    import re
+
+    lines = prompt.split("\n")
+    start = None
+    for i, line in enumerate(lines + [""]):
+        if re.match(r"^\d+\. [A-Z]", line):
+            if start is None:
+                start = i
+            continue
+        if start is not None:
+            heading = next(
+                (l.strip()[:60] for l in reversed(lines[:start]) if l.strip()), "?"
+            )
+            yield heading, "\n".join(lines[start:i])
+            start = None

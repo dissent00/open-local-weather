@@ -59,8 +59,7 @@ from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
 def _iso(d):
     return d.isoformat()
 from openlocalweather.defaults import (
-    HISTORICAL_LOOKBACK_DAYS,
-    RAIN_THRESHOLD_MM,
+        RAIN_THRESHOLD_MM,
     ROLLING_WINDOW_LONG,
     ROLLING_WINDOW_SHORT,
 )
@@ -1110,7 +1109,6 @@ def export_user_prompt() -> None:
         "public_webpage_url": "https://example.com/",
         "verification_context": [{"lead_time_days": 0, "per_model_scores": {"gfs_seamless": {"rain_correct": True}}}],
         "track_record_context": [{"model": "gfs_seamless", "lead_time_days": 0, "rain_pct": 62.5}],
-        "historical_logs": [{"date": "2026-08-18", "rain_expected": "Yes"}],
         "ground_aqi_readings": [{"name": "Dunga Beach", "aqi": 42}],
         "ground_aqi_summary": {"lowest": 40, "highest": 55, "worst_station": "Dunga Beach"},
         "yesterday_actual": {"high_label": "about the same", "rain_contrast": "drier"},
@@ -1218,7 +1216,6 @@ def export_user_prompt() -> None:
         "public_webpage_url": "https://example.com/",
         "verification_context": [],
         "track_record_context": [],
-        "historical_logs": [],
         "ground_aqi_readings": [],
         "ground_aqi_summary": None,
         "yesterday_actual": None,
@@ -1235,7 +1232,6 @@ def export_user_prompt() -> None:
         "public_webpage_url": "https://example.com/",
         "verification_context": [],
         "track_record_context": [],
-        "historical_logs": [],
         "ground_aqi_readings": [],
         "ground_aqi_summary": None,
         "yesterday_actual": None,
@@ -2271,7 +2267,7 @@ def export_system_prompt() -> None:
             "non-default window sizes interpolate",
             plain,
             False,
-            {"historical_lookback_days": 14, "rolling_window_short": 5, "rolling_window_long": 20},
+            {"rolling_window_short": 5, "rolling_window_long": 20},
         ),
         # A fork that polls no ground stations. Every ground-station passage
         # drops out rather than being softened: a deployment cannot report a
@@ -2293,7 +2289,6 @@ def export_system_prompt() -> None:
     cases = []
     for name, loc, verification_already_written, overrides in scenarios:
         kwargs = {
-            "historical_lookback_days": HISTORICAL_LOOKBACK_DAYS,
             "rolling_window_short": ROLLING_WINDOW_SHORT,
             "rolling_window_long": ROLLING_WINDOW_LONG,
             "ground_stations_configured": True,

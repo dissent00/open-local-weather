@@ -137,7 +137,8 @@ def frozen_cases() -> list[ReplayCase]:
         i = dict(case["input"])
         ground = i.get("ground_stations_configured", True)
         bulletin = i.get("local_bulletin_configured", True)
-# WHICH SYSTEM PROMPT PAIRS WITH THIS CASE.
+
+        # WHICH SYSTEM PROMPT PAIRS WITH THIS CASE.
         #
         # This used to read `bool(i.get("earlier_today"))` — the payload of
         # already-published narratives doubled as the signal for "this day
@@ -149,6 +150,14 @@ def frozen_cases() -> list[ReplayCase]:
         # first-run system prompt, which is the mismatched-pair bug the
         # lookup above also guards.
         already_verified = bool(i.pop("verification_already_written", False))
+
+        # ARCHIVED CASES PREDATE ITEM 147 AND STILL CARRY IT. `historical_logs`
+        # was cut from the prompt on 2026-09-16 along with the learning loop it
+        # fed; every case recorded before that day still has the key, and
+        # `**i` would hand it to a builder that no longer takes it. Dropped
+        # rather than migrated, for the reason the archive is never migrated:
+        # the stored case is a true account of what that run was given.
+        i.pop("historical_logs", None)
 
         user = build_user_prompt(
             today=date.fromisoformat(i.pop("today")),

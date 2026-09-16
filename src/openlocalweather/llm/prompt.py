@@ -41,7 +41,7 @@ from datetime import date
 from typing import Any
 
 from openlocalweather.config import LocationConfig
-from openlocalweather.defaults import HISTORICAL_LOOKBACK_DAYS, ROLLING_WINDOW_LONG, ROLLING_WINDOW_SHORT
+from openlocalweather.defaults import ROLLING_WINDOW_LONG, ROLLING_WINDOW_SHORT
 
 
 
@@ -60,7 +60,6 @@ SECTION_GUST_RULE = (
 
 def _blocks(
     location: LocationConfig,
-    historical_lookback_days: int,
     rolling_window_short: int,
     rolling_window_long: int,
     verification_already_written: bool,
@@ -257,15 +256,18 @@ VERIFICATION IS ALREADY WRITTEN FOR THIS DAY. Yesterday's actuals do not change 
         "provided_with": f"""You are provided with:
 1. PRE-COMPUTED VERIFICATION RESULTS for yesterday, at Day+0, Day+3, and Day+7 lead times (per model: rain hit/miss, and where applicable onset/wind/temp/pressure errors).
 2. MODEL TRACK RECORD (rolling {rolling_window_short}-check/{rolling_window_long}-check/all-time stats per model per lead time, already computed).
-3. HISTORICAL NOTES (past {historical_lookback_days} days).
-4. TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days) for {location.primary_place_name}{secondary_guidance_note}.
-5. Multi-point MSLP across {location.region_name}, as "regional_pressure" INSIDE the guidance block above — it has no heading of its own.
-6. LONG-RUN REVIEW (cross-model conclusions drawn in code from the entire stored record, each with its own evidence and confidence).
-7. EXTRACTED PER-MODEL PREDICTIONS - each model's Day+0/Day+3/Day+7 call, already pulled out of the raw guidance in code, EVERY ONE OF THEM FOR {location.primary_place_name}. These are the exact values that will be scored against tomorrow's observations, and they include the local met service alongside the numerical models where one is configured. A MODEL MISSING FROM A LEAD DOES NOT FORECAST THAT FAR: a local met service publishing one day ahead appears at Day+0 and not at Day+3 or Day+7, and that is its nature rather than a gap in the data.
-8. CALENDAR and FORECAST WINDOWS, at the top of the user message. Both are pre-computed and both carry their own instructions; follow them as written.
+3. TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days) for {location.primary_place_name}{secondary_guidance_note}.
+4. Multi-point MSLP across {location.region_name}, as "regional_pressure" INSIDE the guidance block above — it has no heading of its own.
+5. LONG-RUN REVIEW (cross-model conclusions drawn in code from the entire stored record, each with its own evidence and confidence).
+6. EXTRACTED PER-MODEL PREDICTIONS - each model's Day+0/Day+3/Day+7 call, already pulled out of the raw guidance in code, EVERY ONE OF THEM FOR {location.primary_place_name}. These are the exact values that will be scored against tomorrow's observations, and they include the local met service alongside the numerical models where one is configured. A MODEL MISSING FROM A LEAD DOES NOT FORECAST THAT FAR: a local met service publishing one day ahead appears at Day+0 and not at Day+3 or Day+7, and that is its nature rather than a gap in the data.
+7. CALENDAR and FORECAST WINDOWS, at the top of the user message. Both are pre-computed and both carry their own instructions; follow them as written.
 {secondary_data_note}""",
         "weighting": f"""WEIGHTING EVIDENCE: When recent (last {rolling_window_short}-check) verification results conflict with a model's longer-term ({rolling_window_long}-check/all-time) track record, weight the recent evidence more heavily in your reasoning - the long-term stats exist to catch slow, systematic bias, not to override what's actually happening lately. State explicitly in the Forecaster Confidence Notes when you're doing this. Each (model, lead time) entry in MODEL TRACK RECORD carries a pre-computed "rain_pct_trend" ("improving" / "declining" / "stable" / null) and "rain_pct_trend_delta" - already the recent-vs-longer-term comparison described above, done in code. Use this field as given; a null trend means there isn't yet enough history in one of the windows to call it either way, and you should say so rather than guessing. When a model's trend is "declining" for a lead time you're relying on, name that explicitly and explain how it affects your confidence - this is exactly the kind of divergence the track record exists to catch.""",
-        "past_misses": f"""LEARNING FROM PAST MISSES: HISTORICAL NOTES carries the verification notes written on previous runs - each one a specific, recorded account of how a past forecast went wrong. You write those notes in Step 1 for exactly this purpose, and they are worth nothing if no run ever reads them. Before you finalise the narrative, look for a past entry whose SETUP resembles today's - the same synoptic pattern, the same disagreement between the same models, the same marginal call on timing or convection. When you find one, say so in the Forecaster Confidence Notes and say what it changes: "the last two days with this pattern both over-forecast the afternoon rain, so I am leaning drier than the consensus". A recorded miss that repeats without ever being recognised is the most expensive kind, because the record shows it was avoidable. If nothing in the notes resembles today, say nothing - do not manufacture a resemblance to appear thorough.{local_met_model_block}""",
+        # ROADMAP item 147. The LEARNING FROM PAST MISSES instruction
+        # that used to open this key is gone with the block it read.
+        # What stays is the met-service paragraph it was concatenated to,
+        # which is unrelated and was only ever here by adjacency.
+        "local_met_model": f"""{local_met_model_block}""",
         "review_findings": f"""LONG-RUN REVIEW FINDINGS: The user message carries a REVIEW section: conclusions computed in code across the whole stored record, each carrying the evidence and confidence that produced it, plus a "data_sufficiency" statement of how much the record currently supports. These are the ONLY cross-model, long-run comparative claims you may make. Each one is gated on sample size in code - a ranking is emitted only when both models have enough verified checks AND their gap exceeds the sampling-noise floor.
 
 The consequence matters: IF NO RANKING FINDING IS PRESENT FOR A LEAD TIME, THE RECORD DOES NOT YET SUPPORT RANKING MODELS AT THAT LEAD TIME. Say so plainly, and do NOT construct your own ranking by comparing the raw percentages in MODEL TRACK RECORD. That comparison has already been performed in code and deliberately withheld because the sample is too small to support it. Eyeballing those percentages yourself would reintroduce precisely the small-sample error the gate exists to prevent - an 8-check record can easily show one model 35 points "ahead" purely by chance. The same applies to bias claims: if no bias finding names a model, do not assert one from the error numbers yourself.
@@ -380,7 +382,6 @@ def _numbered(sections: list[tuple[str, str]]) -> str:
 
 def build_judgment_prompt(
     location: LocationConfig,
-    historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
     verification_already_written: bool = False,
@@ -402,7 +403,6 @@ def build_judgment_prompt(
     """
     b = _blocks(
         location,
-        historical_lookback_days,
         rolling_window_short,
         rolling_window_long,
         verification_already_written,
@@ -431,7 +431,7 @@ def build_judgment_prompt(
 
 {b["weighting"]}
 
-{b["past_misses"]}
+{b["local_met_model"]}
 
 {b["review_findings"]}
 
@@ -455,7 +455,6 @@ def build_judgment_prompt(
 
 def build_narrative_prompt(
     location: LocationConfig,
-    historical_lookback_days: int = HISTORICAL_LOOKBACK_DAYS,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,
     rolling_window_long: int = ROLLING_WINDOW_LONG,
     verification_already_written: bool = False,
@@ -477,7 +476,6 @@ def build_narrative_prompt(
     """
     b = _blocks(
         location,
-        historical_lookback_days,
         rolling_window_short,
         rolling_window_long,
         verification_already_written,
@@ -737,7 +735,6 @@ def build_user_prompt(
     public_webpage_url: str,
     verification_context: Any,
     track_record_context: Any,
-    historical_logs: Any,
     ground_aqi_readings: Any,
     ground_aqi_summary: Any,
     yesterday_actual: Any,
@@ -991,8 +988,6 @@ PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these.
 MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
 {_json(track_record_context)}
 
-HISTORICAL NOTES (last {HISTORICAL_LOOKBACK_DAYS} days):
-{_json(historical_logs)}
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):
 {_json(review_context) if review_context is not None else "Unavailable — no review computed this run."}

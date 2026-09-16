@@ -1141,7 +1141,6 @@ void main() {
       publicWebpageUrl: 'https://example.com/',
       verificationContext: const <Object>[],
       trackRecordContext: const <Object>[],
-      historicalLogs: const <Object>[],
       groundAqiReadings: const <Object>[],
       groundAqiSummary: null,
       yesterdayActual: null,
