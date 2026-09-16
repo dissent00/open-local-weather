@@ -148,7 +148,7 @@ def frozen_cases() -> list[ReplayCase]:
         # Getting this wrong replays a later-issuance case against a
         # first-run system prompt, which is the mismatched-pair bug the
         # lookup above also guards.
-        reissue = bool(i.pop("verification_already_written", False))
+        already_verified = bool(i.pop("verification_already_written", False))
 
         user = build_user_prompt(
             today=date.fromisoformat(i.pop("today")),
@@ -160,13 +160,13 @@ def frozen_cases() -> list[ReplayCase]:
                 name=case["name"],
                 judgment_prompt=build_judgment_prompt(
                     location,
-                    verification_already_written=reissue,
+                    verification_already_written=already_verified,
                     ground_stations_configured=ground,
                     local_bulletin_configured=bulletin,
                 ),
                 narrative_prompt=build_narrative_prompt(
                     location,
-                    verification_already_written=reissue,
+                    verification_already_written=already_verified,
                     ground_stations_configured=ground,
                     local_bulletin_configured=bulletin,
                 ),

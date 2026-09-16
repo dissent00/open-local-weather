@@ -223,7 +223,7 @@ def main() -> int:
     transcript: list[dict] = []
     for name, argv, narrative in [
         ("1-first", base, "## Overview\nDry and warm."),
-        ("2-reissue", base + ["--force"], "## Overview\nEvening update."),
+        ("2-later", base + ["--force"], "## Overview\nA second forecast, later in the day."),
         ("3-skipped", base, "## Overview\nShould never be asked for."),
     ]:
         code, text = run(data_dir, argv, narrative)
