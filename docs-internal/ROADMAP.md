@@ -19815,7 +19815,7 @@ Related: items 41 (satellite — this is its strongest use case), 140, 138,
 
 ---
 
-## 142. What a cold read of the prompt found · **Raised 2026-09-16 — 4 and 7 fixed, five open**
+## 142. What a cold read of the prompt found · **CLOSED 2026-09-16 — six fixed, one moot**
 
 Item 77's manual harness, run after the day's three prompt changes. A worker
 model was given the narrative system prompt and a real archived user message
@@ -19880,6 +19880,31 @@ and the real age is fractionally over 3. But `hours_old` is rounded for
 display, so the model is handed an apparent contradiction and told to trust
 both halves.
 
+**Finding 6's fix, and the list was slightly wrong.** The five fields live in
+TWO blocks, not one: `rain_brier`, `convective_correct` and `cloud_error_pct`
+are in PRE-COMPUTED VERIFICATION RESULTS, while `cloud_cover_pct` and
+`mslp_trend` are in EXTRACTED PER-MODEL PREDICTIONS. Each is now described
+where it appears rather than in one list somewhere else, which is the same
+reasoning the error-sign convention already follows.
+
+`convective_correct` got the most words, because the item is right that it is
+the one that matters: it is whether that model's THUNDER call verified, and on
+a day whose convective flag is true it says which model to weigh less. The
+prompt never mentioned it existed.
+
+`rain_brier` needed explaining rather than naming — a scoring rule is not
+readable from its value. The text gives the three anchors a reader needs: 0 is
+a confident correct call, 0.25 is what an even hedge scores whatever happens,
+and above that is confidence in the wrong direction.
+
+### ALL SEVEN ARE NOW CLOSED
+
+Six fixed, one moot. Findings 4 and 7 shipped on the day they were raised; 1,
+3, 5 and 6 on 2026-09-16; 2 went with item 147's cut. The item's own Order
+said to re-run the harness correctly paired first, and that was done — see
+item 149's harness run, which used `replay.frozen_cases()` and the real
+judgment object rather than a hand-built pair.
+
 **Finding 3's fix, and why it is a check rather than a correction.**
 `summary_contradicts_its_row` withholds a summary whose direction words
 contradict its own row's measured error, on the same seam that already
@@ -19936,7 +19961,7 @@ disagreeing in the only window that matters. Two boundary cases are pinned
 now (3.04 and 3.06), and reverting the Dart side fails on them. Third time
 today that a contract proved the ports agree without proving either right.
 
-**6. Five fields arrive with real data and no instruction:** `rain_brier`,
+**6. FIXED 2026-09-16. Five fields arrive with real data and no instruction:** `rain_brier`,
 `convective_correct`, `cloud_error_pct`, `mslp_trend`, `cloud_cover_pct`.
 `convective_correct` is the one that matters — arguably the most
 decision-relevant field in the verification block on a day whose convective
