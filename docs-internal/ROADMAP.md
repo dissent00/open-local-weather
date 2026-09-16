@@ -21601,3 +21601,64 @@ Related: items 149 (which surfaced this), 18 (accuracy improving is the
 differentiator), 100 (thresholds sized against the record), 145 (the same
 two-questions-one-number confusion, in the reporting bands), and `review.py`'s
 header on gating.
+
+---
+
+## 154. One value, two questions — a shape this codebase keeps producing · **Raised 2026-09-16 — a standing check, NOT a batch fix**
+
+Six items touched on 2026-09-16 turned out to be the same defect wearing
+different clothes. Recorded together because the pattern predicts where the
+next one is, which no single item can.
+
+| item | the one value | the two questions it answered |
+|---|---|---|
+| 137 | `is_reissue` | is this a later run of the day? / has yesterday's verification been written? |
+| 144 | `peak_wind_kmh` | what is the wind ashore? / what is it on the lake? |
+| 145 | one deviation threshold | should the reader be TOLD? / should a run SPEND on a call? |
+| 150 | `all_time_checks: 0` | not scored yet? / never will be, the model does not forecast here? |
+| 151 | `observed_so_far: null` | the station reported nothing? / we never got an answer? |
+| 153 | `REVIEW_TEMP_BIAS_THRESHOLD_C` | is this effect real? / is it big enough to mention? |
+
+### What they have in common, and it is not carelessness
+
+Every one began as a single correct value and acquired the second meaning
+LATER, as the system grew a distinction it did not originally have. `is_reissue`
+was unambiguous when a day held one issuance. `peak_wind_kmh` was unambiguous
+before a secondary point existed. A bias threshold answers one question
+perfectly well until somebody asks the record whether an effect is real.
+
+**So the smell is not a bad name. It is a value whose meaning was settled
+before a distinction existed, and never revisited when it did.** That is worth
+knowing because it points at WHEN to look: not at code review time, but
+whenever a new axis is introduced — a second point, a second call, a second
+issuance, a second reason a field can be empty.
+
+### The check, for a reviewer
+
+When a value drives a decision, ask what OTHER decision reads it. If two
+decisions read one value and they could ever want different answers, it is
+this shape. The fix has been the same move every time: split the value, name
+both halves so they cannot be swapped, and state which decision each one
+drives.
+
+### DO NOT BATCH-FIX THIS — the operator's instruction, 2026-09-16
+
+> *"let's review and fix the outstanding instances one by one to make sure the
+> fix is correct before applying it to everything"*
+
+Three instances remain open — 150, 151 and 153 — and they are NOT
+interchangeable despite the shared shape:
+
+- **151** is a missing DISTINCTION, and the fix is to report which case
+  occurred. Step 1 shipped; the cause is still unknown by design.
+- **150** is a missing FACT — nothing anywhere knows how far a source
+  forecasts — so it needs data collected before anything can be split.
+- **153** is a missing METHOD. The two questions are both answerable, but one
+  of them needs a statistic the cells do not currently carry.
+
+A batch fix would apply 151's shape to 153 and produce a second constant where
+a standard error is wanted. **Take them one at a time, confirm each fix
+behaves, and let the pattern be a lens rather than a recipe.**
+
+Related: 137, 144, 145, 150, 151, 153, and item 100 on thresholds sized
+against the record rather than against convenient samples.
