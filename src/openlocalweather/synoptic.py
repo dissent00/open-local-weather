@@ -125,6 +125,36 @@ def summarize_synoptic(payload: dict | None) -> SynopticSnapshot | None:
     return snapshot
 
 
+# Numbers whose NAME begins with a vowel sound, so they take "an".
+#
+# MEASURED ON THE LIVE SITE, 2026-09-16: "a 11 hPa spread" was published and
+# served to readers. It got there honestly — the prompt forbids the model
+# editing a locked value and tells it to report an awkward one upstream
+# instead (item 120), which is the right rule. This is upstream.
+#
+# English takes the article from the SOUND, not the spelling: "eight",
+# "eleven" and "eighteen" open with a vowel; "one", "seven", "nine" do not.
+# Eighty and eighteen-hundred inherit it, so the test is on the leading
+# digits rather than the value.
+_VOWEL_SOUND_NAMES = ("8", "11", "18")  # plus any two-digit 8x — see below
+
+
+def _article_for(value: int | float) -> str:
+    """"a" or "an", for a number about to be spoken aloud.
+
+    SCOPED TO ONE AND TWO DIGITS on purpose. A three-digit number is read
+    "one hundred and ten", which takes "a" again, so a prefix test would get
+    110 and 118 wrong in the other direction. This field is a pressure
+    gradient across 2,600 km — the record's largest is 11 hPa and anything
+    reaching three figures is a broken sensor, not a weather pattern.
+    """
+    digits = f"{value:.0f}"
+    if len(digits) > 2:
+        return "a"
+    # 8, 11, 18, and the eighties — "eight", "eleven", "eighteen", "eighty".
+    return "an" if digits in _VOWEL_SOUND_NAMES or digits.startswith("8") else "a"
+
+
 def _statements(s: SynopticSnapshot) -> list[str]:
     """Sentences bounded by what point sampling at this spacing can support.
 
@@ -139,7 +169,8 @@ def _statements(s: SynopticSnapshot) -> list[str]:
         lines.append(
             f"Across roughly 2,600 km, pressure is lowest toward the {low_dir} "
             f"({s.lowest_mslp_hpa:.0f} hPa) and highest toward the {high_dir} "
-            f"({s.highest_mslp_hpa:.0f} hPa) — a {s.gradient_hpa:.0f} hPa spread, "
+            f"({s.highest_mslp_hpa:.0f} hPa) — {_article_for(s.gradient_hpa)} "
+            f"{s.gradient_hpa:.0f} hPa spread, "
             f"a {s.gradient_strength} large-scale gradient."
         )
     low_trend = s.tendencies.get(s.lowest_label)

@@ -195,6 +195,26 @@ SynopticSnapshot? summarizeSynoptic(Map<String, Object?>? payload) {
 /// Note the vocabulary: "lower pressure lies to the northeast", never "a low
 /// is centred over Somalia". The ring cannot locate a centre — only which
 /// sampled direction is lowest.
+/// "a" or "an", for a number about to be spoken aloud — upstream item 142.
+///
+/// "a 11 hPa spread" was published and served to readers on 2026-09-16. It
+/// got there honestly: the prompt forbids the model editing a locked value
+/// and tells it to report an awkward one upstream instead. This is upstream.
+///
+/// English takes the article from the SOUND: 8, 11, 18 and the eighties open
+/// with a vowel. Scoped to one and two digits, because a three-digit number
+/// reads "one hundred and ten" and takes "a" again — and this field is a
+/// pressure gradient across 2,600 km, where three figures is a broken sensor
+/// rather than a weather pattern.
+String _articleFor(double value) {
+  final digits = _fmt0(value);
+  if (digits.length > 2) return 'a';
+  return (digits == '8' || digits == '11' || digits == '18' ||
+          digits.startsWith('8'))
+      ? 'an'
+      : 'a';
+}
+
 List<String> _statements(SynopticSnapshot s) {
   final lines = <String>[];
   final lowDir = _compassNames[s.lowestLabel] ?? s.lowestLabel;
@@ -203,7 +223,8 @@ List<String> _statements(SynopticSnapshot s) {
   if (s.gradientHpa != null) {
     lines.add('Across roughly 2,600 km, pressure is lowest toward the $lowDir '
         '(${_fmt0(s.lowestMslpHpa!)} hPa) and highest toward the $highDir '
-        '(${_fmt0(s.highestMslpHpa!)} hPa) — a ${_fmt0(s.gradientHpa!)} hPa spread, '
+        '(${_fmt0(s.highestMslpHpa!)} hPa) — ${_articleFor(s.gradientHpa!)} '
+        '${_fmt0(s.gradientHpa!)} hPa spread, '
         'a ${s.gradientStrength} large-scale gradient.');
   }
 

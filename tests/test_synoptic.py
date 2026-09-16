@@ -4,7 +4,7 @@ The bar these tests hold: the module must produce the sentence that was
 missing, and must NOT produce sentences the sampling can't support.
 """
 
-from openlocalweather.synoptic import summarize_synoptic
+from openlocalweather.synoptic import _article_for, summarize_synoptic
 
 # The live 2026-08-19 ring around Kisumu.
 LIVE = {
@@ -99,3 +99,25 @@ def test_ring_geometry_is_location_agnostic_and_stays_on_the_globe():
     for lat, lon, _ in synoptic_ring_points(0.0, 175.0):
         assert -180.0 <= lon <= 180.0
     assert len(synoptic_ring_points(0.0, 0.0)) == 9
+
+
+# --- The article in front of a number (ROADMAP item 142) -------------------
+
+
+def test_the_article_matches_the_number_it_precedes():
+    """MEASURED ON THE LIVE SITE, 2026-09-16: "a 11 hPa spread".
+
+    It reached readers because the prompt is RIGHT to forbid editing a
+    locked value — item 120 tells the model an awkward one is "a bug to
+    report upstream, not a licence to rewrite". This is upstream.
+
+    English takes the article from the SOUND, not the letter: 8, 11 and 18
+    begin with vowel sounds ("eight", "eleven", "eighteen") and take "an".
+    Every other magnitude this field reaches takes "a".
+    """
+    for hpa, expected in ((8, "an 8 hPa"), (11, "an 11 hPa"), (18, "an 18 hPa"),
+                          (1, "a 1 hPa"), (7, "a 7 hPa"), (12, "a 12 hPa"),
+                          (80, "an 80 hPa"), (9, "a 9 hPa"),
+                          # Three digits read "one hundred and ten" — "a" again.
+                          (110, "a 110 hPa"), (118, "a 118 hPa")):
+        assert _article_for(hpa) + f" {hpa} hPa" == expected, f"{hpa} hPa"
