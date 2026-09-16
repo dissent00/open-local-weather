@@ -2325,28 +2325,48 @@ def export_observation_disagreements() -> None:
     wrong. The margin and the asymmetry are the cases that matter — see
     disagreement.py for why a maximum only rises.
     """
+    # Each scenario is (name, (rain, high_call, onset_call), (precipitation,
+    # high_obs, onset_obs)). The onset triple was added with item 138.
     scenarios = [
-        ("rain observed while the call said dry", (False, 30.0), (True, None)),
-        ("no rain YET does not contradict a rain call", (True, 30.0), (False, None)),
-        ("the observed high has already passed the call", (False, 30.0), (False, 33.0)),
-        ("a high below the call is not a contradiction", (False, 30.0), (False, 24.0)),
-        ("just under the margin does not fire", (False, 30.0), (False, 31.9)),
-        ("exactly at the margin fires", (False, 30.0), (False, 32.0)),
-        ("absent observations contradict nothing", (False, 30.0), (None, None)),
-        ("absent standing call contradicts nothing", (None, None), (True, 99.0)),
-        ("both fire, in a stable order", (False, 30.0), (True, 35.0)),
+        ("rain observed while the call said dry", (False, 30.0, None), (True, None, None)),
+        ("no rain YET does not contradict a rain call", (True, 30.0, None), (False, None, None)),
+        ("the observed high has already passed the call", (False, 30.0, None), (False, 33.0, None)),
+        ("a high below the call is not a contradiction", (False, 30.0, None), (False, 24.0, None)),
+        ("just under the margin does not fire", (False, 30.0, None), (False, 31.9, None)),
+        ("exactly at the margin fires", (False, 30.0, None), (False, 32.0, None)),
+        ("absent observations contradict nothing", (False, 30.0, None), (None, None, None)),
+        ("absent standing call contradicts nothing", (None, None, None), (True, 99.0, None)),
+        ("both fire, in a stable order", (False, 30.0, None), (True, 35.0, None)),
+        # ITEM 138: the call is right about the day and wrong about the hour,
+        # which every test above is blind to.
+        ("onset already passed", (True, 30.0, "18:00"), (True, None, "14:00")),
+        ("onset inside the forecast's own resolution", (True, 30.0, "18:00"), (True, None, "17:30")),
+        ("rain later than called is not a contradiction", (True, 30.0, "14:00"), (True, None, "18:00")),
+        ("exactly at the onset margin fires", (True, 30.0, "18:00"), (True, None, "17:00")),
+        ("an unpadded hour still parses", (True, 30.0, "18:00"), (True, None, "9:00")),
+        ("no called onset says nothing", (True, 30.0, None), (True, None, "14:00")),
     ]
 
     cases = []
-    for name, (rain, high_call), (precipitation, high_obs) in scenarios:
-        standing = StandingCall(rain=rain, temp_high_c=high_call)
-        observed = ObservedSoFar(precipitation=precipitation, high_c=high_obs)
+    for name, (rain, high_call, onset_call), (precipitation, high_obs, onset_obs) in scenarios:
+        standing = StandingCall(rain=rain, temp_high_c=high_call, onset_hour=onset_call)
+        observed = ObservedSoFar(
+            precipitation=precipitation, high_c=high_obs, precipitation_onset=onset_obs
+        )
         cases.append(
             {
                 "name": name,
                 "input": {
-                    "standing": {"rain": rain, "temp_high_c": high_call},
-                    "observed": {"precipitation": precipitation, "high_c": high_obs},
+                    "standing": {
+                        "rain": rain,
+                        "temp_high_c": high_call,
+                        "onset_hour": onset_call,
+                    },
+                    "observed": {
+                        "precipitation": precipitation,
+                        "high_c": high_obs,
+                        "precipitation_onset": onset_obs,
+                    },
                 },
                 "expected": observation_disagreements(standing, observed),
             }

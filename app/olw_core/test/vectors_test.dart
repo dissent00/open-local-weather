@@ -393,10 +393,12 @@ void main() {
           StandingCall(
             rain: s['rain'] as bool?,
             tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
+            onsetHour: s['onset_hour'] as String?,
           ),
           ObservedSoFar(
             precipitation: o['precipitation'] as bool?,
             highC: (o['high_c'] as num?)?.toDouble(),
+            precipitationOnset: o['precipitation_onset'] as String?,
           ),
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');

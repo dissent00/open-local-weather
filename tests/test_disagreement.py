@@ -4,6 +4,7 @@ import pytest
 
 from openlocalweather.disagreement import (
     DISAGREEMENT_HIGH_EXCEEDED,
+    DISAGREEMENT_ONSET_ALREADY_PASSED,
     DISAGREEMENT_RAIN_WHILE_DRY,
     ObservedSoFar,
     StandingCall,
@@ -103,3 +104,59 @@ def test_both_can_fire_and_the_order_is_stable():
     )
 
     assert out == [DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_HIGH_EXCEEDED]
+
+
+# --- The onset that has already happened (ROADMAP item 138) ----------------
+
+
+def test_an_onset_already_observed_contradicts_a_later_called_one():
+    """THE OPERATOR'S CASE, 2026-09-16: "we forecast dry morning,
+    thunderstorms starting at 1800 ... sensor data showing rain already
+    started at 1400. I don't want us to call that dry until 1800 again."
+
+    Nothing caught this. `RAIN_WHILE_DRY` needs `standing.rain is False`, and
+    here the call says rain IS coming — it is right about the day and wrong
+    about the hour. Onset is scored at Day+0, so the run is graded on the
+    wrong number while the page contradicts itself.
+    """
+    found = observation_disagreements(
+        StandingCall(rain=True, onset_hour="18:00"),
+        ObservedSoFar(precipitation=True, precipitation_onset="14:00"),
+    )
+
+    assert DISAGREEMENT_ONSET_ALREADY_PASSED in found
+
+
+def test_an_onset_inside_the_forecast_resolution_is_not_a_contradiction():
+    """`onset_hour` is a point taken from a multi-hour WINDOW, so a
+    difference smaller than that window is agreement, not disagreement.
+    Firing here would re-forecast on the instrument."""
+    found = observation_disagreements(
+        StandingCall(rain=True, onset_hour="18:00"),
+        ObservedSoFar(precipitation=True, precipitation_onset="17:30"),
+    )
+
+    assert DISAGREEMENT_ONSET_ALREADY_PASSED not in found
+
+
+def test_rain_observed_later_than_called_is_not_a_contradiction():
+    """THE ASYMMETRY THIS MODULE IS BUILT ON. A forecast can be proved too
+    LOW by an observation and never too high: rain that arrived late has
+    still arrived, and a call whose hour has passed with no rain only means
+    the day is not over."""
+    found = observation_disagreements(
+        StandingCall(rain=True, onset_hour="14:00"),
+        ObservedSoFar(precipitation=True, precipitation_onset="18:00"),
+    )
+
+    assert DISAGREEMENT_ONSET_ALREADY_PASSED not in found
+
+
+def test_no_called_onset_or_no_observed_onset_says_nothing():
+    """Absence is absence. A station that saw rain without catching the clock
+    still reports rain, and that is not evidence about timing."""
+    for standing, observed in (
+        (StandingCall(rain=True), ObservedSoFar(precipitation=True, precipitation_onset="14:00")),
+        (StandingCall(rain=True, onset_hour="18:00"), ObservedSoFar(precipitation=True)),
+    ):
+        assert DISAGREEMENT_ONSET_ALREADY_PASSED not in observation_disagreements(standing, observed)

@@ -1767,6 +1767,12 @@ def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
     return StandingCall(
         rain=blend.rain if blend is not None else None,
         temp_high_c=entry.temp_high_c,
+        # FROM THE SCORED ROW, for the same reason `rain` is — ROADMAP item
+        # 138. The entry carries `onset_window` as prose ("late afternoon or
+        # early evening (16:00-18:00)"), which is what a reader sees; the
+        # blend row carries the "HH:MM" the record is graded on, and grading
+        # is what an observation should be allowed to contradict.
+        onset_hour=blend.onset if blend is not None else None,
     )
 
 

@@ -33,10 +33,31 @@ import 'models.dart';
 /// [rain] is the SCORED boolean, taken from the blend's own Day+0 row rather
 /// than from the prose — the prose may hedge and the record does not.
 class StandingCall {
-  const StandingCall({this.rain, this.tempHighC});
+  const StandingCall({this.rain, this.tempHighC, this.onsetHour});
 
   final bool? rain;
   final double? tempHighC;
+
+  /// "HH:MM", the hour the standing call put the rain's arrival at. Separate
+  /// from [rain] because a call can be right about the DAY and wrong about
+  /// the HOUR — upstream item 138.
+  final String? onsetHour;
+}
+
+/// "HH:MM" as minutes past midnight, or null if it is not that.
+///
+/// PARSED RATHER THAN COMPARED AS TEXT: '9:00' sorts after '18:00', and one
+/// unpadded hour would invert the test silently, in the direction that
+/// suppresses a real contradiction.
+int? _minutes(String? hhmm) {
+  if (hhmm == null || hhmm.isEmpty) return null;
+  final parts = hhmm.split(':');
+  if (parts.length != 2) return null;
+  final hours = int.tryParse(parts[0]);
+  final minutes = int.tryParse(parts[1]);
+  if (hours == null || minutes == null) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
 }
 
 /// Codes for every way the observation settles against the standing call.
@@ -50,6 +71,7 @@ List<String> observationDisagreements(
   StandingCall standing,
   ObservedSoFar observed, {
   double tempMarginC = tempContradictionMarginC,
+  int onsetMarginMin = onsetContradictionMarginMin,
 }) {
   final found = <String>[];
 
@@ -61,6 +83,17 @@ List<String> observationDisagreements(
   final seen = observed.highC;
   if (high != null && seen != null && seen >= high + tempMarginC) {
     found.add(disagreementHighExceeded);
+  }
+
+  // THE CALL IS RIGHT ABOUT THE DAY AND WRONG ABOUT THE HOUR — item 138.
+  // rainWhileDry cannot see this: it needs rain == false, and here the
+  // forecast agreed rain was coming and put it too late. One-directional
+  // like every other test here — rain that has not arrived by the called
+  // hour proves nothing, because the day is not over.
+  final called = _minutes(standing.onsetHour);
+  final seenAt = _minutes(observed.precipitationOnset);
+  if (called != null && seenAt != null && seenAt <= called - onsetMarginMin) {
+    found.add(disagreementOnsetAlreadyPassed);
   }
 
   return found;

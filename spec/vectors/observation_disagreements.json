@@ -8,11 +8,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": true,
-          "high_c": null
+          "high_c": null,
+          "precipitation_onset": null
         }
       },
       "expected": [
@@ -24,11 +26,13 @@
       "input": {
         "standing": {
           "rain": true,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": false,
-          "high_c": null
+          "high_c": null,
+          "precipitation_onset": null
         }
       },
       "expected": []
@@ -38,11 +42,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": false,
-          "high_c": 33.0
+          "high_c": 33.0,
+          "precipitation_onset": null
         }
       },
       "expected": [
@@ -54,11 +60,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": false,
-          "high_c": 24.0
+          "high_c": 24.0,
+          "precipitation_onset": null
         }
       },
       "expected": []
@@ -68,11 +76,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": false,
-          "high_c": 31.9
+          "high_c": 31.9,
+          "precipitation_onset": null
         }
       },
       "expected": []
@@ -82,11 +92,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": false,
-          "high_c": 32.0
+          "high_c": 32.0,
+          "precipitation_onset": null
         }
       },
       "expected": [
@@ -98,11 +110,13 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": null,
-          "high_c": null
+          "high_c": null,
+          "precipitation_onset": null
         }
       },
       "expected": []
@@ -112,11 +126,13 @@
       "input": {
         "standing": {
           "rain": null,
-          "temp_high_c": null
+          "temp_high_c": null,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": true,
-          "high_c": 99.0
+          "high_c": 99.0,
+          "precipitation_onset": null
         }
       },
       "expected": []
@@ -126,17 +142,121 @@
       "input": {
         "standing": {
           "rain": false,
-          "temp_high_c": 30.0
+          "temp_high_c": 30.0,
+          "onset_hour": null
         },
         "observed": {
           "precipitation": true,
-          "high_c": 35.0
+          "high_c": 35.0,
+          "precipitation_onset": null
         }
       },
       "expected": [
         "rain_observed_while_dry_called",
         "high_already_exceeded"
       ]
+    },
+    {
+      "name": "onset already passed",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00"
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "14:00"
+        }
+      },
+      "expected": [
+        "onset_already_passed"
+      ]
+    },
+    {
+      "name": "onset inside the forecast's own resolution",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00"
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "17:30"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "rain later than called is not a contradiction",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "14:00"
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "18:00"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "exactly at the onset margin fires",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00"
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "17:00"
+        }
+      },
+      "expected": [
+        "onset_already_passed"
+      ]
+    },
+    {
+      "name": "an unpadded hour still parses",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00"
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "9:00"
+        }
+      },
+      "expected": [
+        "onset_already_passed"
+      ]
+    },
+    {
+      "name": "no called onset says nothing",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": null
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "14:00"
+        }
+      },
+      "expected": []
     }
   ]
 }

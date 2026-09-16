@@ -48,10 +48,15 @@ from openlocalweather.models import ObservedSoFar
 class StandingCall:
     rain: bool | None = None
     temp_high_c: float | None = None
+    # "HH:MM", the hour the standing call put the rain's arrival at. Separate
+    # from `rain` because a call can be right about the DAY and wrong about
+    # the HOUR, which is the whole case item 138 was raised on.
+    onset_hour: str | None = None
 
 
 DISAGREEMENT_RAIN_WHILE_DRY = "rain_observed_while_dry_called"
 DISAGREEMENT_HIGH_EXCEEDED = "high_already_exceeded"
+DISAGREEMENT_ONSET_ALREADY_PASSED = "onset_already_passed"
 
 # How far above the standing high an observation must sit before it counts.
 #
@@ -68,12 +73,53 @@ DISAGREEMENT_HIGH_EXCEEDED = "high_already_exceeded"
 # convenient sample; item 100 records what that mistake cost last time.
 TEMP_CONTRADICTION_MARGIN_C = 2.0
 
+# How much earlier the observed onset must be before it counts — ROADMAP
+# item 138.
+#
+# SIZED TO THE FORECAST'S OWN RESOLUTION, which is the one defensible basis
+# available without a record to measure against. `onset_hour` is a POINT
+# taken from `onset_window`, a multi-hour band; a station catching rain
+# twenty minutes before the named hour is inside the window the forecast
+# actually claimed, and calling that a contradiction would fire on the
+# instrument rather than the weather — the same mistake
+# TEMP_CONTRADICTION_MARGIN_C is written to avoid.
+#
+# UNMEASURED, and deliberately said so. The honest threshold needs observed
+# onsets set against standing calls across the record, and item 122 records
+# that the station's onset is not yet scored at all, so the data does not
+# exist. One hour is conservative: it will miss a call that is 45 minutes
+# late, and missing one is cheaper than re-forecasting every drizzle.
+ONSET_CONTRADICTION_MARGIN_MIN = 60
+
+
+def _minutes(hhmm: str | None) -> int | None:
+    """"HH:MM" as minutes past midnight, or None if it is not that.
+
+    PARSED RATHER THAN COMPARED AS TEXT. Both values are "HH:MM" by
+    convention and string order would usually agree — but "9:00" sorts after
+    "18:00", and one unpadded hour from either side would invert the test
+    silently and in the direction that suppresses a real contradiction.
+    """
+    if not hhmm:
+        return None
+    parts = hhmm.split(":")
+    if len(parts) != 2:
+        return None
+    try:
+        hours, minutes = int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+    if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+        return None
+    return hours * 60 + minutes
+
 
 def observation_disagreements(
     standing: StandingCall,
     observed: ObservedSoFar,
     *,
     temp_margin_c: float = TEMP_CONTRADICTION_MARGIN_C,
+    onset_margin_min: int = ONSET_CONTRADICTION_MARGIN_MIN,
 ) -> list[str]:
     """Codes for every way the observation settles against the standing call.
 
@@ -95,5 +141,20 @@ def observation_disagreements(
         and observed.high_c >= standing.temp_high_c + temp_margin_c
     ):
         found.append(DISAGREEMENT_HIGH_EXCEEDED)
+
+    # THE CALL IS RIGHT ABOUT THE DAY AND WRONG ABOUT THE HOUR — item 138.
+    #
+    # `RAIN_WHILE_DRY` above cannot see this: it needs `rain is False`, and
+    # here the forecast agreed rain was coming and put it too late. Onset is
+    # scored at Day+0, so a run that ignores this is graded on the wrong
+    # number AND prints "dry until 18:00" beside "rain from 14:00".
+    #
+    # ONE-DIRECTIONAL, like every other test here. Rain that arrived EARLIER
+    # than called is settled and contradicts the hour; rain that has not
+    # arrived by the called hour proves nothing, because the day is not over.
+    called = _minutes(standing.onset_hour)
+    seen = _minutes(observed.precipitation_onset)
+    if called is not None and seen is not None and seen <= called - onset_margin_min:
+        found.append(DISAGREEMENT_ONSET_ALREADY_PASSED)
 
     return found

@@ -83,6 +83,7 @@ class ObservedSoFar {
 
 const String disagreementRainWhileDry = 'rain_observed_while_dry_called';
 const String disagreementHighExceeded = 'high_already_exceeded';
+const String disagreementOnsetAlreadyPassed = 'onset_already_passed';
 
 /// How far above the standing high an observation must sit before it counts.
 ///
@@ -93,6 +94,12 @@ const String disagreementHighExceeded = 'high_already_exceeded';
 /// spends an LLM call. Conservative and not yet measured — revisit against
 /// the record, not against a convenient sample.
 const double tempContradictionMarginC = 2.0;
+
+/// How much earlier the observed onset must be before it counts — upstream
+/// ROADMAP item 138. Sized to the forecast's own resolution: `onsetHour` is a
+/// point taken from a multi-hour window, so a difference smaller than that
+/// window is agreement. Unmeasured, and conservative on purpose.
+const int onsetContradictionMarginMin = 60;
 
 String formatTempHighLow(double highC, double lowC) =>
     '${formatTempC(highC)} high, ${formatTempC(lowC)} low';

@@ -19377,7 +19377,32 @@ day is this*).
 
 ---
 
-## 138. An onset that has already happened is still forecast as future · **Planned — raised 2026-09-16**
+## 138. An onset that has already happened is still forecast as future · **Shape 1 SHIPPED 2026-09-16; shapes 2 and 3 Planned**
+
+> **`ONSET_ALREADY_PASSED` ships.** `observation_disagreements` now fires when
+> the station's measured onset is at least `ONSET_CONTRADICTION_MARGIN_MIN`
+> (60) earlier than the blend's scored `onset`. Both languages, 15 vector
+> cases, three mutations confirmed to bite.
+>
+> **The margin is sized to the forecast's own resolution and is UNMEASURED,
+> said out loud in the constant.** `onset_hour` is a point taken from a
+> multi-hour `onset_window`, so a station catching rain twenty minutes early
+> is inside the window the forecast actually claimed. The honest threshold
+> needs observed onsets against standing calls across the record, and item
+> 122 records that the station's onset is not scored at all yet — so the data
+> does not exist. Sixty minutes will miss a call that is 45 minutes late,
+> which is the cheap direction to be wrong in.
+>
+> Two details worth keeping: the times are PARSED, not string-compared
+> (`"9:00"` sorts after `"18:00"`, and one unpadded hour would invert the
+> test in the direction that hides a contradiction); and `_standing_call`
+> takes `onset` from the blend's scored row rather than the entry's
+> `onset_window` prose, for the same reason `rain` is taken there — the
+> record is graded on the row.
+>
+> **DETECTION ONLY, SO FAR.** Nothing yet acts on the code: the prompt is not
+> told, and nothing stops the model naming a future window anyway. That is
+> shape 3 below, and it is still the real answer.
 
 Raised by the operator while deciding whether dropping EARLIER TODAY loses
 anything: *"say we forecast dry morning, thunderstorms starting at 1800. Then
