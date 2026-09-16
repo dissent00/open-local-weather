@@ -19374,3 +19374,68 @@ Related: items 104 (the contract, whose opening sentence is the operator's
 frame), 8 (why the branch stays), 80 (the 500), 40 (`is_reissue` is
 mis-typed and item 34 was already meant to replace it with *which run of the
 day is this*).
+
+---
+
+## 138. An onset that has already happened is still forecast as future · **Planned — raised 2026-09-16**
+
+Raised by the operator while deciding whether dropping EARLIER TODAY loses
+anything: *"say we forecast dry morning, thunderstorms starting at 1800. Then
+we run a forecast at 1600 with fresh model data that still says rain onset is
+1800, but we have sensor data showing rain already started at 1400. I don't
+want us to call that dry until 1800 again."*
+
+**EARLIER TODAY does not protect this** — it carries previous NARRATIVES, not
+sensor readings — so dropping it costs nothing here. The protection simply
+does not exist.
+
+### Checked on 2026-09-16, all four layers, none of them catch it
+
+| layer | why it misses |
+|---|---|
+| `disagreement.observation_disagreements` | detects `RAIN_WHILE_DRY` (`standing.rain is False and observed.precipitation is True`) and `HIGH_EXCEEDED`. In this case the standing call says **rain is True** — it is right about the day and wrong about the hour — so nothing fires |
+| the prompt | no sentence joins "onset" to observed/already/station/elapsed. Searched, zero hits. It says only *"For the hours already elapsed, read OBSERVED SO FAR TODAY"* and leaves the reconciliation to the model |
+| `claims.py` | checks weekday/date pairings; no onset check |
+| `llm_refresh_policy` | `new_cycle_or_contradiction` is off — and moot, since fresh model data means a call happens anyway. **This is not a trigger problem.** The call happens; nothing tells it the onset is past |
+
+`observed.describe_observed_so_far` already composes **"rain from 14:00"** —
+the fact is in the prompt. Nothing says what to do with it.
+
+### Why it is worse than a wording slip
+
+`onset_window` and `onset_hour` are **scored at Day+0** (Key invariants,
+ARCHITECTURE.md). So a run like this publishes "dry until 18:00" beside "rain
+from 14:00" in the same document, and is then GRADED on the wrong one — the
+record learns the models were late when the forecast was simply refusing to
+read its own observations.
+
+### The fix this project's own rules imply
+
+Item 121 settled it in principle: *"Observations are facts, and paying a model
+to restate them is the one call nobody should make."* An onset the station has
+already measured is not a prediction. So the strongest form is not a prompt
+rule but a code one — when `observed.precipitation_onset` exists for today,
+the onset is KNOWN, and the model should not be asked to forecast it.
+
+Three shapes, cheapest first:
+
+1. **A disagreement code.** Add `ONSET_ALREADY_PASSED` to
+   `observation_disagreements` — fires when the station reports precipitation
+   onset and the standing or proposed `onset_window` is later than it. Cheap,
+   consistent with what is there, and it makes the contradiction visible to
+   the operator's chosen "say it in code" path (the answer given to item 137's
+   sensor question).
+2. **A prompt rule**, as a stopgap: an observed onset supersedes a modelled
+   one, and `onset_window` must not name a window the station has already
+   passed. Costs tokens and trusts the model with a fact.
+3. **Code sets it.** When the station measured the onset, code writes it and
+   the model is not asked. Most consistent with item 121 and the firewall, and
+   the largest change — `onset_window` is a scored field the judgment call
+   currently owns.
+
+**Order: 1 then 3.** 1 makes the case visible and costs almost nothing; 3 is
+the real answer and wants the scored-field question settled with it.
+
+Related: items 121 (observations are facts), 137 (the sensor-contradiction
+answer this feeds), 122 (the station's onset is recorded and never scored),
+and contract item 8.
