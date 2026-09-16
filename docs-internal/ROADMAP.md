@@ -19626,3 +19626,108 @@ art and should be read before either.
 
 Related: items 41 (satellite — this is its strongest use case), 140, 138,
 139, 122.
+
+---
+
+## 142. What a cold read of the prompt found · **Raised 2026-09-16 — seven findings, none fixed yet**
+
+Item 77's manual harness, run after the day's three prompt changes. A worker
+model was given the narrative system prompt and a real archived user message
+and told NOTHING about what had changed.
+
+### FIRST, THE METHOD FAILED, AND IT IS THE SAME FAILURE ITEM 77 STEP 3 WARNS ABOUT
+
+Three of the loudest findings were the harness's fault. The reader reported
+`THE FORECASTER'S CALL`, `today_properties`, `temp_high_c` and
+`peak_wind_kmh` as entirely absent, and four system-prompt instructions as
+therefore unsatisfiable. They were absent because the NARRATIVE call does not
+receive the archived `user_prompt` — it receives
+`build_narrative_user_prompt(user_prompt, judgment)`, the judgment's ANSWER
+appended to it. The archived string alone is the JUDGMENT call's message.
+
+Step 3 says to verify the flags reproduce production, and they did — the
+hash matched. **Verifying the flags is not verifying the pairing.** Item 77's
+method should say so: render the prompt the way the PIPELINE renders it, not
+the way it is convenient to reconstruct.
+
+### The findings that stand, worst first
+
+**1. Two instructions fight over the verification fields.** System line 42
+(`VERIFICATION IS ALREADY WRITTEN`) requires a one-line placeholder and an
+empty `skill_profile_summary`; WORKFLOW STEP 1 requires a 2-3 sentence
+summary, one note per lead time, and a summary per model/lead pair — 3 notes
+and 15 summaries for that run. Both unconditional, neither among the six
+governing rules, and nothing says which outranks the other. The reader chose
+line 42 and said it might be wrong.
+
+**PARTLY SELF-INFLICTED.** The contradiction predates 2026-09-16 — the old
+LATER ISSUANCE block carried the same placeholder instruction — but the
+rewrite removed the surrounding "your job is an UPDATE" framing that made it
+read as an override of the workflow. It is now starker.
+
+**2. `HISTORICAL NOTES` flattens three-valued to two.** The reader found
+`"day0_verified": false, "day0_note": null` for all three scored target
+dates, while every `MODEL TRACK RECORD` row carries
+`"last_verified_target_date": "2026-09-15"` — scoring HAS run. Checked
+against storage: the 2026-09-15 entry holds `day0_verified: None`, not
+`False`. So "no note was written" reaches the model as "we checked and it was
+not verified", which is this project's own absence-is-absence rule broken in
+the one place the model reads it.
+
+**3. Stored skill summaries contradict the error-sign convention.** ICON at
+Day+0 carries `avg_temp_low_error_c_10: -2.8` — negative, so the model ran
+WARM — beside a summary reading *"a persistent nocturnal cold bias on minimum
+temperatures"*. `LONG-RUN REVIEW` agrees with the sign and contradicts the
+summary. ICON's own Day+3 row, same sign, words it correctly. Also wrong by
+the same test: UKMO at Day+3, best_match at Day+3. `tools/fix_note_signs.py`
+exists, so this is known and unfinished.
+
+**4. `a 11 hPa spread`.** `synoptic.py:142` builds
+`f"a {s.gradient_hpa:.0f} hPa spread"`, wrong for 8, 11 and 18. It reaches
+the published page verbatim because the prompt correctly forbids editing a
+locked value, and item 120 tells the model to report it upstream rather than
+fix it. This is upstream.
+
+**5. `"hours_old": 3.0, "stale": true` beside "stale = more than 3 hours
+old".** Not a logic bug: `aqi.is_stale` uses `age > STALE_THRESHOLD_HOURS`
+and the real age is fractionally over 3. But `hours_old` is rounded for
+display, so the model is handed an apparent contradiction and told to trust
+both halves.
+
+**6. Five fields arrive with real data and no instruction:** `rain_brier`,
+`convective_correct`, `cloud_error_pct`, `mslp_trend`, `cloud_cover_pct`.
+`convective_correct` is the one that matters — arguably the most
+decision-relevant field in the verification block on a day whose convective
+flag is true, and the prompt never mentions it exists.
+
+**7. Block-name drift, which is how item 130's false reports happened.** The
+system prompt names `HISTORICAL VERIFICATION NOTES`, `REGIONAL PRESSURE
+SNAPSHOT` and `A SECONDARY LOCATION DATASET`. The payload has `HISTORICAL
+NOTES`, and no header at all for the other two — they are bare JSON keys
+inside `TODAY'S MULTI-MODEL GUIDANCE`. A reader following the system prompt's
+own list reports three blocks missing that are present under other names.
+
+### Also noted, smaller
+
+- **Rule 2's stated justification is false for this run.** It says the model
+  comparison was *"withheld because the sample is too thin"*; `LONG-RUN
+  REVIEW` carries an established Day+0 ranking. The operative clause is fine;
+  the reason given for it is not.
+- **`WIND DIRECTION` says "say nothing about direction" while `WIND SHIFT`
+  requires a verbatim clause naming two bearings.** The prompt pre-empts this
+  in prose, so it is survivable, but as literally written one forbids what the
+  other requires.
+- **The secondary location's hourly series ends at 23:00** and does not cover
+  the `tonight` window it is asked to describe, while the system prompt
+  asserts the calendar day's hours are no longer sent — true of the primary,
+  false of the secondary.
+
+### Order
+
+Nothing is fixed. Re-run the harness CORRECTLY PAIRED first: the narrative
+reading above was produced without the forecaster's call, so every judgement
+it made about prose quality is suspect. Findings 1-7 are independent of that
+and stand.
+
+Related: items 77 (the method, which needs the pairing note), 130, 129, 100,
+102, 122.
