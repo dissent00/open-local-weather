@@ -19233,3 +19233,86 @@ document would be worse than none.
 
 Related: items 59 (the split the document is missing), 131, 132, 133, and
 `README.md`'s Documentation section.
+
+---
+
+## 137. Two axes decide one run, and only one of them is about information · **Planned — raised 2026-09-16**
+
+Raised by the operator reading the 15:01 failure: *"Reissue should only be
+happening if there's no updated model data... This is no longer a time-of-day
+concept, but a 'new model data is or is not available' decision — and if no
+new model data, we just look for observation data. So the 1501 run should just
+be a full normal run."*
+
+**Half of that is already true, and the half that is not is the interesting
+half.**
+
+### What is built, and matches the operator's model exactly
+
+`reasoning.llm_should_reason(moved, policy)` decides WHETHER an issuance buys
+a judgment and a narrative at all. Its docstring is the operator's sentence:
+*"Whether this issuance re-reasons, or refreshes its observations and stops...
+It means only that no judgment and no narrative are bought."* This deployment
+runs `llm_refresh_policy: new_cycle_only`, so a later run with no new model
+cycle fetches, composes what the station has seen, re-renders, and spends
+nothing. That is information-driven, it is shipped, and it is right.
+
+### What is not
+
+The PROMPT SHAPE is decided on a different axis entirely:
+
+```
+pipeline.py:2428    first_issuance = existing_entry is None
+pipeline.py:2732    is_reissue     = not first_issuance
+```
+
+So on 2026-09-15 at 15:01 a new cycle HAD arrived — which is why the run
+reasoned at all rather than taking the cheap path — and the narrative prompt
+was still built with `is_reissue=True`, invoking the ~3,395-character LATER
+ISSUANCE block that tells the model to write what CHANGED rather than a
+forecast. New information, update framing.
+
+`cycle.aligned_cycle_at` and `guidance_recency` both exist and are handed to
+the prompt as facts; neither decides anything about the run's shape.
+
+### The tension, which is real and not just a leftover
+
+The obvious reading is "item 104 renamed the axis and did not change it" —
+the item is literally called *The refresh is a leftover from a twice-a-day
+tool*, and its header still says the build is Planned. But the re-issue block
+is not vestigial:
+
+- It exists to stop an evening update **opening on the day the reader has
+  already lived**, and item 8 records two live issuances verifying it does
+  that — 06:01 opened *"Cloudier than yesterday"*, 18:01 opened *"Updated
+  model guidance confirms showers and thunderstorms remain on track"*.
+- Item 8 also decided it **stays until C8's recast**, on the grounds that
+  deleting it trades a working behaviour for a plan.
+
+So the question is not "delete the branch". It is: **a later run with genuinely
+new guidance is a fresh forecast to the models and still a second reading to
+the reader — which should the prompt serve?** Both answers are defensible and
+the operator should pick. What is not defensible is that the two decisions are
+made on two axes with no one having chosen that.
+
+### Why it matters right now
+
+The 15:01 run that failed four times on HTTP 500 was this path: one narrative
+call, `is_reissue=True`, the largest prompt the pipeline builds (41,696-char
+system prompt plus a user prompt carrying the morning's published narrative
+back as `earlier_today`). If the 500 is a payload problem rather than
+capacity, this is the payload — and it is the branch that has never run on
+the Interactions endpoint. See item 80.
+
+### Order
+
+Settle the framing question first; it is a decision, not a build. If the
+answer is "new guidance means a full forecast", then `is_reissue` stops being
+`not first_issuance` and starts being something like `not information_moved`,
+which is the same shape `llm_should_reason` already uses — and the two axes
+become one.
+
+Related: items 104 (the contract, whose opening sentence is the operator's
+frame), 8 (why the branch stays), 80 (the 500), 40 (`is_reissue` is
+mis-typed and item 34 was already meant to replace it with *which run of the
+day is this*).
