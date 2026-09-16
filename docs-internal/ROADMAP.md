@@ -19236,7 +19236,7 @@ Related: items 59 (the split the document is missing), 131, 132, 133, and
 
 ---
 
-## 137. Two axes decide one run, and only one of them is about information · **The DECISION shipped 2026-09-16; storage and naming remnants remain**
+## 137. Two axes decide one run, and only one of them is about information · **Decision and storage SHIPPED 2026-09-16; two naming decisions left**
 
 Raised by the operator reading the 15:01 failure: *"Reissue should only be
 happening if there's no updated model data... This is no longer a time-of-day
@@ -19385,19 +19385,19 @@ throughout; `reissue_block` → `verification_block` (3,196 → 519 chars); the
 `EARLIER TODAY` block and its parameter removed; the app's call site and
 `_timeOfDay` removed.
 
-### WHAT REMAINS, and it is cleanup rather than design
+### WHAT REMAINED, and how it went
 
 Checked 2026-09-16. `olw_core` and the app are clean — their "morning" and
 "evening" mentions are ordinary weather prose. Everything below is server-side.
 
-**1. `morning_issuance` is still WRITTEN on every re-issue.**
+**1. SHIPPED. `morning_issuance` was still written on every later run.**
 `pipeline.py`'s write-once block sets `existing_entry.morning_issuance or
 snapshot`, and the same snapshot is appended to `earlier_issuances`. So a
 re-issue stores the identical object twice, once under a name from the dead
 concept. `issuance_log()` already PREFERS `earlier_issuances`, so the value
 written today is read by nothing except item 2.
 
-**2. The morning-page publisher is keyed on it.** `publish/pages.py` builds a
+**2. SHIPPED with 1. The page publisher was keyed on it.** `publish/pages.py` builds a
 separate archived page for what the day's first issuance said, guarded on
 `morning_issuance is not None`. The CONCEPT is worth keeping — the evidence it
 is used is in `docs/archive/`, which has `-morning` pages for 09-10, 09-11 and
@@ -19421,8 +19421,31 @@ versus a later one — so only the WORD is vestigial.
 **4. `purpose="forecast-reissue"`** in `pipeline.py`, introduced the same day
 the rest was removed. Same word, same question as 3.
 
-**5. `replay.py` names a local `reissue`** while holding
-`verification_already_written`. One line, and misleading to the next reader.
+**5. SHIPPED. `replay.py` named a local `reissue`** while holding
+`verification_already_written` — wearing the old vocabulary inside the
+comment warning about mis-pairing. The harness's own scenario name
+(`2-reissue`) went with it.
+
+### The two that are left, and both are DECISIONS about the record
+
+Neither is internal tidying, which is why they were not just done.
+
+**3 — `RUN_KIND_REISSUE`** is grepped by `.github/workflows/forecast.yml`,
+which maps it to the commit subject `"forecast refresh"`. Both words are dead:
+`run_refresh_pipeline` no longer exists, and "refresh" implies re-rendering
+where the run actually produces a new forecast. Renaming means changing the
+workflow in the same commit, and it changes the vocabulary of the archive's
+own git history from that point on. There is also a live question underneath
+it: if every forecast is a fresh forecast, should a day's second run get a
+DIFFERENT subject at all, or just `"forecast"` like the first? Collapsing them
+is the most faithful to the model and loses a distinction the archive can
+currently be read for at a glance.
+
+**4 — `purpose="forecast-reissue"`** is written into `data/spend_ledger.json`
+on every call. Renaming is one line and costs nothing technically, but the
+ledger already holds rows saying `refresh` and `forecast`, so a third spelling
+for the same thing makes the ledger harder to read, not easier. Worth deciding
+together with 3 so the record ends up with one vocabulary rather than three.
 
 Related: items 104 (the contract, whose opening sentence is the operator's
 frame), 8 (why the branch stays), 80 (the 500), 40 (`is_reissue` is
