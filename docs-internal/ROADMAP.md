@@ -12020,6 +12020,20 @@ Related: item 61 and item 85 (the two whose ports were incomplete), item 77
 (the harness, which found the prompt half of the same problem), and
 `spec/README.md`, which is where the rule should be written down.
 
+### An eleventh, found 2026-09-16, and the vectors could not have caught it
+
+`modelsVisibleToTheForecaster` hid only the blend; the Python has hidden the
+blend and both baselines since 2026-08-31 (`5dcdc95`). A Dart test written
+2026-09-05 pinned the opposite, on the stated grounds that the baseline
+exclusion "is the pipeline's, applied where the MODEL TRACK RECORD block is
+built" — which was already untrue when written. No vector covers a config
+function, and nothing on the app side had called it, so the divergence sat
+for sixteen days without touching a prompt. `ensemble` item 12 became the
+first caller and the fix (`b2dc16b`) went in before it. The lesson is the
+one this item already carries, one layer down: a rule about WHICH models the
+forecaster sees is forecast logic, and a port that gets it wrong builds the
+prompt over a different world.
+
 ---
 
 ## 89. Dart rounds half away from zero in three places · **Fixed 2026-09-09**
