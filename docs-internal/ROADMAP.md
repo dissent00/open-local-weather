@@ -19798,7 +19798,45 @@ item 19, which answers the same question from the other side.
 
 ---
 
-## 144. The gust calibration is computed, prompted, and points at the wrong place · **Raised 2026-09-16**
+## 144. There is no ashore wind field, so the shore forecast published the lake's gust · **Raised 2026-09-16**
+
+> **REFRAMED the same day by the operator, and the reframing is the fix:**
+>
+> *"winam gulf's measurement is for the lake/marine part of the forecast —
+> wind for boaters. The other wind measurement is for Kisumu itself — wind
+> for people ashore. so these should be two numbers, recorded, reported in
+> different sections."*
+>
+> That is not what exists. **`today_properties` has exactly ONE wind field**,
+> `peak_wind_kmh`, and the prompt defines it as the Gulf's. There is no field
+> for the ashore wind at all — so the forecaster never commits to the number
+> most readers need, and `CALIBRATED PEAK GUST` (Kisumu, bias-corrected) has
+> nowhere to land.
+>
+> **IT REACHED THE PAGE ON 2026-09-16.** The narrative, holding one gust
+> number, used it in both sections. "Today's Forecast" — the ashore
+> forecast — published *"peak gusts reach 41"*:
+>
+> | | |
+> |---|---|
+> | Kisumu per-model Day+0 max | **32.8 km/h** |
+> | Kisumu calibrated consensus | **40.0 km/h** (computed, stored as `None`) |
+> | Winam Gulf `best_match` max | **41.0 km/h** |
+> | **published in the ASHORE section** | **41** |
+>
+> Four of five models return identical gusts at both points — the grid does
+> not resolve 10 km — so `best_match` is the only series that distinguishes
+> them, and it is the one that got borrowed across.
+>
+> **So the fix is a field, not a rewording.** Add the ashore wind to
+> `today_properties`, keep the Gulf's as its own, name both so they cannot be
+> confused, and let each section report its own. The ashore one is scorable
+> against `actuals_primary` and is where the calibration belongs; the Gulf's
+> stays unscored until `verify/` reads the secondary actuals it already
+> caches. Everything below was written before this reframing and still
+> describes the mechanism correctly.
+
+## 144a. The same finding, as first diagnosed
 
 Item 142's cold read reported `CALIBRATED PEAK GUST` (40.0) and the call's
 `peak_wind_kmh` (41.0) as two locked numbers for one quantity. **They are not
