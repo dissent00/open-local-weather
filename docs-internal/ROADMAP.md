@@ -13798,7 +13798,7 @@ change proposed here.
 
 ---
 
-## 104. The refresh is a leftover from a twice-a-day tool · **Contract settled 2026-09-12; the build is Planned — and the drift is published, measured 2026-09-13**
+## 104. The refresh is a leftover from a twice-a-day tool · **Build shipped 2026-09-13; window built and scored 2026-09-14; contract items 5 and 7 wait on 139's first scored window, 2026-09-17**
 
 `run_refresh_pipeline` exists because OLW ran on a cron twice a day and the
 second run had to explain itself to a reader who had already read the first.
@@ -14061,10 +14061,11 @@ analysis verb rather than anything the pipeline runs, in the same spirit as
 `divergence`.
 
 **It exists to settle contract item 3.** That decision is the operator's and
-is still open, and whichever way it goes it should be taken against a
-measurement of how far the two actually differ rather than against the
-argument for the reframe. Expect `WindowComparison` to be deleted once one
-series retires.
+whichever way it goes it should be taken against a measurement of how far
+the two actually differ rather than against the argument for the reframe.
+Taken 2026-09-16, item 139: no re-derivation, the window starts fresh, both
+series stand. Expect `WindowComparison` to be deleted once one series
+retires.
 
 **PAIRED, AND ONLY PAIRED.** A day counts only if it holds BOTH a scored
 window and a scorable Day+0, because a comparison across different day sets is
@@ -14110,6 +14111,12 @@ the window has enough days and then break; break cleanly now; re-derive the 10
 and freeze the 24; or keep both permanently. Building the window first is what
 every one of those needs, which is why it was built before the question was
 answered. Nothing here forecloses any of them.
+
+> **DECIDED 2026-09-16, recorded in item 139.** Score every call going
+> forward, no re-derivation: the Day+0 history stands as the historical basis
+> and the window starts fresh. That is "break cleanly" from the list above.
+> What still gates items 5 and 7 is reading the first scored window on
+> 2026-09-17, not a missing decision.
 
 ### Contract item 4's container, shipped 2026-09-13
 
@@ -14484,6 +14491,9 @@ gust that updates itself, rather than a constant fitted once. Whether a
 reader-facing band should be fed a bias-corrected number at all is the
 question to settle first — every other label in this file is raw.
 
+> **It got its item: 126, shipped 2026-09-14.** The correction is the record's
+> own `avg_wind_error_kmh_10`, validated out of sample there.
+
 **A SECOND FINDING, AND IT CUTS AGAINST THE OBVIOUS FIX.** `persistence` and
 `climatology` are appended to `day0_predictions` before the comparison sees
 them, so the "model consensus" the reader is compared against contains a
@@ -14729,6 +14739,12 @@ keeps the met service named) still do work. Deleting the block now would
 trade a working behaviour for a plan, and would republish the defect it was
 written to stop — an evening update opening on the day the reader has
 already lived. **Delete it with C8's recast, not before.**
+
+> **CORRECTED 2026-09-16: the branch is gone.** C8 closed 2026-09-14 and item
+> 137 deleted three of the four rules on 2026-09-16; the fourth is about
+> verification, not issuances, and `is_reissue` is renamed to say so. `llm/prompt.py`'s `verification_block` comment records which rule
+> died for which reason. This item was not updated when 137 shipped, which is
+> why the paragraph above still says "stays".
 
 *Note a contradiction inside this item that C8 settles:* "Also to be decided,
 and cheaper" says the day-over-day comparison should be first-issuance-only.
