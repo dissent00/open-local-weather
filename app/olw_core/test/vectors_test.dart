@@ -866,9 +866,6 @@ void main() {
           todayWeatherData: (i['today_weather_data'] as Map).cast<String, Object?>(),
           localBulletinSourceName: i['local_bulletin_source_name'] as String,
           localBulletinText: i['local_bulletin_text'] as String,
-          earlierToday: (i['earlier_today'] as List?)
-              ?.map((e) => (e as Map).cast<String, Object?>())
-              .toList(),
           issuance: i['issuance'],
           forecastWindows: (i['forecast_windows'] as List?)
               ?.map((e) => (e as Map).cast<String, Object?>())

@@ -1065,15 +1065,31 @@ def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_pat
 
     system_prompt, user_prompt = evening_llm.system_prompts, evening_llm.user_prompts
     assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
-    assert "EARLIER TODAY" in user_prompt
-    assert "Dry and warm" in user_prompt  # the morning FakeLLMProvider's default narrative
+    # AND THE DAY'S EARLIER NARRATIVE IS NOT SENT — items 137/138,
+    # 2026-09-16. The system prompt still says verification is written,
+    # because that is a fact about the day; the USER prompt no longer carries
+    # what was published, because every run is a fresh forecast.
+    assert "EARLIER TODAY" not in user_prompt
+    assert "Dry and warm" not in user_prompt  # the morning provider's narrative
 
 
-def test_a_third_run_is_shown_both_earlier_narratives(tmp_path):
-    """_earlier_issuances used to return only entry.narrative_markdown — one
-    element — so a third run was shown the second issuance and had no idea
-    the first one existed, even though morning_issuance still held it. The
-    prompt must carry every issuance published today, not just the last."""
+def test_a_third_run_is_shown_no_earlier_narrative_at_all(tmp_path):
+    """INVERTED 2026-09-16, and the history is the point.
+
+    This test was `..._is_shown_both_earlier_narratives`, guarding a real bug:
+    `_earlier_issuances` once returned only `entry.narrative_markdown`, so a
+    third run saw the second and had no idea the first existed. The fix was
+    to send every issuance.
+
+    The whole payload is now gone (items 137/138). Every run is a fresh
+    forecast and the reader "doesn't care when the last forecast was run", so
+    a third run is shown none of them — and the bug this once guarded cannot
+    recur because there is nothing to get wrong.
+
+    Kept, inverted, rather than deleted: three issuances is the case where a
+    reintroduced payload would show up first, and this is the only test that
+    drives three.
+    """
     issue(make_deps(tmp_path, llm=FakeLLMProvider()), today=date(2026, 8, 11), dry_run=False)
 
     second = FakeLLMProvider()
@@ -1086,8 +1102,9 @@ def test_a_third_run_is_shown_both_earlier_narratives(tmp_path):
     issue(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=True)
 
     _, user_prompt = third.calls[0]
-    assert "Dry and warm" in user_prompt, "the first issuance"
-    assert "SECOND issuance" in user_prompt, "the second issuance"
+    assert "Dry and warm" not in user_prompt, "the first issuance must not be sent"
+    assert "SECOND issuance" not in user_prompt, "nor the second"
+    assert "EARLIER TODAY" not in user_prompt
 
 
 def test_every_run_is_told_what_time_it_is(tmp_path):
@@ -1707,7 +1724,11 @@ def test_a_forced_re_run_is_told_its_verification_is_already_written(tmp_path):
 
     system_prompt, user_prompt = forced.system_prompts, forced.user_prompts
     assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
-    assert "Evening refresh." in user_prompt, "shown what has already been published"
+    assert "Evening refresh." not in user_prompt, (
+        "the day's published narrative is NOT sent — items 137/138. The "
+        "system prompt still says verification is written, because that is a "
+        "fact about the day; what was published is not."
+    )
 
 
 def test_a_refresh_keeps_the_sun_times(tmp_path):

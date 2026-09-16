@@ -309,39 +309,31 @@ def test_system_prompt_reissue_does_not_disturb_heading_order():
     ]
 
 
-def test_user_prompt_omits_earlier_today_block_by_default():
+def test_the_days_earlier_narratives_are_never_sent():
+    """DELETED 2026-09-16 with the reissue concept — items 137 and 138.
+
+    EARLIER TODAY carried every narrative already published today so a later
+    run could write "an update to these, not a repeat of them". There is no
+    update: every run is a fresh forecast, and a run with no new model data
+    never reaches a model at all.
+
+    It was NOT protecting the case it looked like it protected. Asked whether
+    dropping it would let a 16:00 run repeat "dry until 18:00" while the
+    station had seen rain since 14:00, the answer is no — it carried
+    NARRATIVES, not readings. The reading arrives as OBSERVED SO FAR TODAY,
+    and the contradiction is detected in code by
+    DISAGREEMENT_ONSET_ALREADY_PASSED.
+    """
     prompt = build_user_prompt(
         today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
         verification_context={}, track_record_context=[], historical_logs=[],
         ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
         local_bulletin_source_name="KMD", local_bulletin_text="text",
     )
+
     assert "EARLIER TODAY" not in prompt
-
-
-def test_user_prompt_lists_every_earlier_issuance_with_its_time():
-    prompt = build_user_prompt(
-        today=date(2026, 8, 11), yesterday=date(2026, 8, 10), public_webpage_url="https://example.org",
-        verification_context={}, track_record_context=[], historical_logs=[],
-        ground_aqi_readings=[], ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
-        local_bulletin_source_name="KMD", local_bulletin_text="text",
-        earlier_today=[
-            {"time": "06:07", "narrative": "## Overview\nSunny and warm today."},
-            {"time": "13:02", "narrative": "## Overview\nCloud building inland."},
-        ],
-    )
-    # A list, not a single "morning narrative": the number of runs a day is
-    # the operator's choice, and the third one needs to know about the second.
-    assert "EARLIER TODAY" in prompt
-    assert "Issued 06:07" in prompt and "Issued 13:02" in prompt
-    assert "Sunny and warm today." in prompt
-    assert "Cloud building inland." in prompt
-    assert "not a repeat" in prompt
-
-
-# ---------------------------------------------------------------------------
-# Day-over-day comparison (YESTERDAY'S ACTUAL CONDITIONS)
-# ---------------------------------------------------------------------------
+    assert "not a repeat" not in prompt
+    assert "Issued " not in prompt
 
 
 def test_system_prompt_asks_for_a_concrete_comparison_against_observed_conditions():

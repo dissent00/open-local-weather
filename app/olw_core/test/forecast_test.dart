@@ -816,7 +816,7 @@ void main() {
     expect(llm.seenUserPrompt, contains('"stations_reporting": 2'));
   });
 
-  test('a run whose verification is already written is told so, and shown every earlier narrative', () async {
+  test('a run whose verification is already written is told so, and shown no earlier narrative', () async {
     final llm = _StubProvider();
     await generateForecast(
       client: mockClient(),
@@ -828,18 +828,16 @@ void main() {
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
       gustBias: null,
-      earlierToday: const [
-        {'time': '06:07', 'narrative': 'Warm and dry through the morning.'},
-        {'time': '13:02', 'narrative': 'Cloud building over the lake.'},
-      ],
+      verificationAlreadyWritten: true,
     );
+    // The SYSTEM prompt still says verification is written — that is a fact
+    // about the day. The USER prompt no longer carries what was published:
+    // EARLIER TODAY was deleted with the reissue concept, upstream items
+    // 137/138. Inverted rather than removed, because this is where a
+    // reintroduced payload would show up first.
     expect(llm.seenSystemPrompt, contains('VERIFICATION IS ALREADY WRITTEN'));
-    expect(llm.seenUserPrompt, contains('EARLIER TODAY'));
-    // A list, not one narrative: the number of runs a day is the operator's
-    // choice, and the third needs to know about the second.
-    expect(llm.seenUserPrompt, contains('Issued 06:07'));
-    expect(llm.seenUserPrompt, contains('Issued 13:02'));
-    expect(llm.seenUserPrompt, contains('Warm and dry through the morning.'));
+    expect(llm.seenUserPrompt, isNot(contains('EARLIER TODAY')));
+    expect(llm.seenUserPrompt, isNot(contains('Issued 06:07')));
   });
 
   test('the run derives its own issuance, and says so in the prompt', () async {

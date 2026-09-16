@@ -1129,15 +1129,13 @@ def export_user_prompt() -> None:
             "newer_than_previous_issuance": None,
         },
     }
-    # Two earlier issuances, not one: the vector has to exercise a LIST, or
-    # the Dart port could pass with a single-narrative implementation and
-    # diverge the first time an operator schedules a third run.
+    # The later-issuance case, which since 2026-09-16 differs from the first
+    # ONLY by its issuance time — `earlier_today` is no longer sent, so there
+    # is no longer a payload that distinguishes them. Kept because the
+    # ISSUANCE block still varies by hour and that is now the whole
+    # difference the vector has to pin.
     refresh = dict(
         full,
-        earlier_today=[
-            {"time": "06:07", "narrative": "Warm and dry through the morning."},
-            {"time": "13:02", "narrative": "Cloud building over the lake."},
-        ],
         issuance={
             "local_time": "18:15",
             "phase": "dusk",
@@ -1249,10 +1247,21 @@ def export_user_prompt() -> None:
         "guidance_recency": None,
     }
 
-    def case(name, kwargs):
+    def case(name, kwargs, *, verification_already_written=False):
+        """`verification_already_written` rides on the INPUT but is not a
+        `build_user_prompt` argument.
+
+        It says which SYSTEM prompt this case pairs with, and until
+        2026-09-16 that was inferred from `earlier_today` being present.
+        That payload is gone (items 137/138), so the case states it —
+        `replay.py` pops it before splatting the rest.
+        """
         return {
             "name": name,
-            "input": {k: (v.isoformat() if isinstance(v, date) else v) for k, v in kwargs.items()},
+            "input": {
+                **{k: (v.isoformat() if isinstance(v, date) else v) for k, v in kwargs.items()},
+                "verification_already_written": verification_already_written,
+            },
             "expected": build_user_prompt(**kwargs),
         }
 
@@ -1260,7 +1269,7 @@ def export_user_prompt() -> None:
         "llm_user_prompt.json",
         "build_user_prompt",
         "The full per-run user message, verbatim. Covers a fully-populated "
-        "run, an evening refresh, a cold start where every optional input "
+        "run, a later issuance, a cold start where every optional input "
         "is absent, and a deployment with no ground stations configured. The "
         "cold start matters most, because each 'Unavailable' string is what "
         "stops a gap being read as a measurement — and the last case is its "
@@ -1268,8 +1277,8 @@ def export_user_prompt() -> None:
         "rather than reported unavailable.",
         [
             case("fully populated", full),
-            case("evening refresh carries the morning narrative", refresh),
-            case("evening refresh — no newer model cycle since the morning", refresh_no_new_cycle),
+            case("a later issuance — differs only by its issuance hour", refresh, verification_already_written=True),
+            case("a later issuance — no newer model cycle since the first", refresh_no_new_cycle, verification_already_written=True),
             case("cold start — every optional input absent", empty),
             case("no ground stations configured — the blocks are absent", no_stations),
             case(

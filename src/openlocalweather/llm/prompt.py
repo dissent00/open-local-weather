@@ -687,7 +687,6 @@ def build_user_prompt(
     today_weather_data: dict[str, Any],
     local_bulletin_source_name: str,
     local_bulletin_text: str,
-    earlier_today: list[dict] | None = None,
     issuance: Any = None,
     forward_hourly: Any = None,
     forward_window_narrowed: bool = False,
@@ -733,12 +732,12 @@ def build_user_prompt(
     numbers appear in the published text, so any reader can check the
     subtraction.
 
-    `earlier_today`, when given, lists this day's previous issuances as
-    {"time", "narrative"} in the order they went out. It replaces what used
-    to be a single `morning_narrative`, because the day is no longer assumed
-    to have exactly two runs: an operator may schedule two or five, and each
-    one after the first needs to know what its readers have already been
-    told. See the builders' `verification_already_written`.
+    THE DAY'S EARLIER NARRATIVES ARE NOT SENT, since 2026-09-16. The
+    parameter was `earlier_today`, and before that a single
+    `morning_narrative`; both existed so a later run could write "an update
+    to these". There is no update any more — see the builders'
+    `verification_already_written` and the comment where the block used to
+    be assembled.
 
     `issuance` is a DayPart — the local time, the part of the day, and what a
     reader at this hour actually wants. Before it existed the prompt carried a
@@ -789,16 +788,26 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
         else ""
     )
 
-    earlier_block = ""
-    if earlier_today:
-        issued = "\n\n".join(
-            f"Issued {e.get('time', 'earlier')}:\n{e.get('narrative', '')}"
-            for e in earlier_today
-        )
-        earlier_block = (
-            "\n\nEARLIER TODAY (already published — this issuance must read as "
-            "an update to these, not a repeat of them):\n" + issued
-        )
+    # EARLIER TODAY IS GONE — ROADMAP items 137 and 138, 2026-09-16.
+    #
+    # It sent every narrative already published today, so the model could
+    # write "an update to these, not a repeat of them". That instruction went
+    # with the reissue concept: every run is a fresh forecast, and the
+    # operator's frame is that the reader "doesn't care when the last
+    # forecast was run". A run with no new model data does not reach a model
+    # at all, so there is nothing for an update to be an update TO.
+    #
+    # IT WAS NOT PROTECTING THE CASE IT LOOKED LIKE IT PROTECTED. Asked
+    # whether dropping it would let a 16:00 run repeat "dry until 18:00"
+    # while the station had seen rain since 14:00, the answer is no — this
+    # block carried NARRATIVES, not readings. The reading arrives as OBSERVED
+    # SO FAR TODAY and the contradiction is now detected in code
+    # (`disagreement.DISAGREEMENT_ONSET_ALREADY_PASSED`, item 138), neither
+    # of which this block ever touched.
+    #
+    # It was also the largest variable block in the biggest prompt the
+    # pipeline builds — the one that failed four times with HTTP 500 on
+    # 2026-09-15.
     # ROADMAP item 73, first cut — 2026-09-14.
     #
     # `primary_today_hourly` IS GONE, and it was 13.2% of the whole prompt:
@@ -906,5 +915,5 @@ HISTORICAL NOTES (last {HISTORICAL_LOOKBACK_DAYS} days):
 {_json(historical_logs)}
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):
-{_json(review_context) if review_context is not None else "Unavailable — no review computed this run."}{earlier_block}
+{_json(review_context) if review_context is not None else "Unavailable — no review computed this run."}
 """

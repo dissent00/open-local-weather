@@ -163,12 +163,14 @@ def test_each_case_is_paired_with_its_own_system_prompt():
         != by_name["fully populated"].judgment_prompt
     )
 
-    # A re-issue is told it is one; a first run is not.
-    refresh = by_name["evening refresh carries the morning narrative"].narrative_prompt
+    # A day whose verification is already written is told so; a first run is
+    # not. The case name changed on 2026-09-16: the two no longer differ by a
+    # payload of earlier narratives, only by the issuance hour and this flag.
+    later = by_name["a later issuance — differs only by its issuance hour"].narrative_prompt
     first = by_name["fully populated"].narrative_prompt
-    assert refresh != first
-    assert "VERIFICATION IS ALREADY WRITTEN" in refresh
-    assert "LATER ISSUANCE" not in first
+    assert later != first
+    assert "VERIFICATION IS ALREADY WRITTEN" in later
+    assert "VERIFICATION IS ALREADY WRITTEN" not in first
 
 
 def test_a_failure_partway_through_does_not_discard_what_succeeded():

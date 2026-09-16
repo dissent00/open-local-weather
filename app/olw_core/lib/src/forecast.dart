@@ -254,7 +254,12 @@ Future<ForecastRun> generateForecast({
   /// forecast is attributed to a service that was never consulted.
   /// Previous issuances today, oldest first. Empty or null means this is
   /// the day's first run.
-  List<Map<String, Object?>>? earlierToday,
+  /// Whether this day's verification has already been written by an earlier
+  /// run — upstream items 137/138. Was derived from `earlierToday`, the
+  /// payload of already-published narratives, which is no longer sent; the
+  /// caller states it instead of it being inferred from a payload that
+  /// existed for a different reason.
+  bool verificationAlreadyWritten = false,
 
   /// What the station has ALREADY measured today — upstream ROADMAP item 121.
   ///
@@ -471,7 +476,6 @@ Future<ForecastRun> generateForecast({
     'newer_than_previous_issuance': null,
   };
 
-  final verificationAlreadyWritten = earlierToday != null && earlierToday.isNotEmpty;
   final judgmentPrompt = buildJudgmentPrompt(
     location,
     verificationAlreadyWritten: verificationAlreadyWritten,
@@ -522,7 +526,6 @@ Future<ForecastRun> generateForecast({
     },
     localBulletinSourceName: localBulletinSourceName,
     localBulletinText: localBulletinText,
-    earlierToday: earlierToday,
     issuance: resolvedIssuance,
     forwardHourly: resolvedForward,
     forwardWindowNarrowed: forwardWindowNarrowed,

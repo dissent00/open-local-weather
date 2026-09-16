@@ -503,6 +503,9 @@ def test_vectors_user_prompt():
     """
     for case in load("llm_user_prompt.json")["cases"]:
         i = dict(case["input"])
+        # Rides on the input, says which SYSTEM prompt the case pairs with,
+        # and is not a build_user_prompt argument — see export_vectors.case.
+        i.pop("verification_already_written", None)
         got = build_user_prompt(
             today=date.fromisoformat(i.pop("today")),
             yesterday=date.fromisoformat(i.pop("yesterday")),

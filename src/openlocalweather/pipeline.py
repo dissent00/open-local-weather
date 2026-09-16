@@ -629,34 +629,6 @@ def attach_spend_cap(
     return _verify_recorded, last_response
 
 
-def _issuances_for_prompt(entry: DailyLogEntry) -> list[dict]:
-    """Today's already-published narratives, oldest first.
-
-    One dict per issuance in entry.issuance_log() — now the model's concept,
-    not this module's. Used to return only entry.narrative_markdown, one
-    element, so a third run was shown the second issuance and had no idea
-    the first one ever existed even though morning_issuance still held it.
-    """
-    return [
-        {"time": _clock(issuance.generated_at_utc) or "earlier today", "narrative": issuance.narrative_markdown}
-        for issuance in entry.issuance_log()
-    ]
-
-
-def _clock(value) -> str | None:
-    """HH:MM from whatever the log stored, or None if it cannot be read.
-
-    Deliberately forgiving: a timestamp that will not parse is a reason to
-    say "earlier today" rather than to fail a run.
-    """
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value)).strftime("%H:%M")
-    except (TypeError, ValueError):
-        return None
-
-
 def _issued_hour(issuance: DayPart | None) -> int:
     """The local hour a run went out — ROADMAP item 118.
 
@@ -948,9 +920,6 @@ def _build_forecast_prompt(
         issuance=guidance.issuance,
         forward_hourly=guidance.forward_hourly,
         forward_window_narrowed=guidance.forward_window_narrowed,
-        earlier_today=(
-            _issuances_for_prompt(existing_entry) if existing_entry is not None else None
-        ),
     )
 
 

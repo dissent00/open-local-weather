@@ -1,4 +1,9 @@
-// SPDX-License-Identifier: Apache-2.0
+// EARLIER TODAY IS GONE — upstream ROADMAP items 137 and 138. It sent
+  // every narrative already published today so a later run could write "an
+  // update to these". There is no update: every run is a fresh forecast, and
+  // a run with no new model data never reaches a model. The Python side
+  // carries the full reasoning, including why this was NOT protecting the
+  // "still says dry until 18:00" case — it carried narratives, not readings.// SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'dart:convert';
 
@@ -528,11 +533,11 @@ String promptJson(Object? value) => JsonEncoder.withIndent('  ', (o) => o.toStri
 /// `yesterdayActual` is what was OBSERVED yesterday, distinct from
 /// `verificationContext`, which is how yesterday's *predictions* scored.
 ///
-/// `earlierToday`, when given, lists this day's previous issuances as
-/// {"time", "narrative"} in the order they went out. A LIST rather than the
-/// single morning narrative it replaces, because the day is no longer assumed
-/// to have exactly two runs — an operator may schedule two or five, and each
-/// one after the first needs to know what its readers were already told.
+/// THE DAY'S EARLIER NARRATIVES ARE NOT SENT, since 2026-09-16. The
+/// parameter was `earlierToday`, a list of this day's previous issuances, and
+/// before that a single morning narrative; both existed so a later run could
+/// write "an update to these". There is no update — see
+/// `verificationAlreadyWritten` and upstream items 137/138.
 ///
 /// `issuance` carries the local time, the part of the day, and what a reader
 /// at this hour actually wants. Before it existed the prompt carried a date
@@ -652,7 +657,6 @@ String buildUserPrompt({
   required Map<String, Object?> todayWeatherData,
   required String localBulletinSourceName,
   required String localBulletinText,
-  List<Map<String, Object?>>? earlierToday,
   Object? issuance,
   Object? forwardHourly,
 
@@ -682,14 +686,13 @@ String buildUserPrompt({
   /// which states the absence once.
   bool localBulletinConfigured = true,
 }) {
-  final earlierBlock = (earlierToday == null || earlierToday.isEmpty)
-      ? ''
-      : '\n\nEARLIER TODAY (already published — this issuance must read as '
-          'an update to these, not a repeat of them):\n' +
-          earlierToday
-              .map((e) =>
-                  'Issued ${e['time'] ?? 'earlier'}:\n${e['narrative'] ?? ''}')
-              .join('\n\n');
+  // EARLIER TODAY IS GONE — upstream ROADMAP items 137 and 138. It sent
+  // every narrative already published today so a later run could write "an
+  // update to these". There is no update: every run is a fresh forecast, and
+  // a run with no new model data never reaches a model at all. The Python
+  // side carries the full reasoning, including why this was NOT protecting
+  // the "still says dry until 18:00" case — it carried narratives, not
+  // readings.
 
   // Rebuilt key-by-key rather than passed through, so an extra key in the
   // caller's map can never silently enlarge the prompt.
@@ -801,6 +804,6 @@ HISTORICAL NOTES (last $historicalLookbackDaysArg days):
 ${promptJson(historicalLogs)}
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):
-${reviewContext == null ? 'Unavailable — no review computed this run.' : promptJson(reviewContext)}$earlierBlock
+${reviewContext == null ? 'Unavailable — no review computed this run.' : promptJson(reviewContext)}
 ''';
 }

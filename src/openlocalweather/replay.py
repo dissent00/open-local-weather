@@ -137,14 +137,18 @@ def frozen_cases() -> list[ReplayCase]:
         i = dict(case["input"])
         ground = i.get("ground_stations_configured", True)
         bulletin = i.get("local_bulletin_configured", True)
-        # `earlier_today`, NOT `historical_logs`. The second is the multi-day
-        # history and is present on ordinary runs too; only the first means
-        # "this day has already been forecast once", which is the condition
-        # the pipeline itself uses and the one the system prompt branches on.
-        # Getting this wrong replays the two refresh cases with a first-run
-        # system prompt — the same mismatched-pair bug as the lookup above,
-        # wearing a different hat.
-        reissue = bool(i.get("earlier_today"))
+# WHICH SYSTEM PROMPT PAIRS WITH THIS CASE.
+        #
+        # This used to read `bool(i.get("earlier_today"))` — the payload of
+        # already-published narratives doubled as the signal for "this day
+        # has been forecast once already". That payload was deleted on
+        # 2026-09-16 with the reissue concept (items 137/138), so the case
+        # now says so explicitly instead of it being inferred.
+        #
+        # Getting this wrong replays a later-issuance case against a
+        # first-run system prompt, which is the mismatched-pair bug the
+        # lookup above also guards.
+        reissue = bool(i.pop("verification_already_written", False))
 
         user = build_user_prompt(
             today=date.fromisoformat(i.pop("today")),
