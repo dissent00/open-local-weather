@@ -21285,3 +21285,81 @@ is worth explaining rather than waving at.
 Related: items 150 (the same class, raised in the abstract an hour earlier),
 143, 121, 122, 104's C2, and 102 — the coverage watcher, which catches exactly
 this defect class in the NARRATED fields and does not watch this one.
+
+---
+
+## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Raised 2026-09-16**
+
+The operator, on being shown that `gust` and `p01i` are excluded from the
+METAR request because a 45-day sample found them empty and constant:
+
+> *"this is a great example of needing better data checks. Or something. Let's
+> say we add another METAR, and gather all the data points that we use, and one
+> of them degrades. Like gust was working, then it stopped. Or the opposite -
+> HKKI fixes and starts reporting gust data."*
+
+Two different gaps, and item 102 already solved one of them for one class of
+field.
+
+### What `coverage.py` already does, and where it stops
+
+It watches MODEL PREDICTION fields and NARRATED fields, and classifies three
+ways: **regression** (present before, absent now), **peer_gap** (never present
+for this model while peers supply it — the ECMWF Day+0 wind case that ran for
+months undetected), and **never_published** (absent everywhere, counted not
+alerted). Its own header states the principle exactly: *"Tolerance keeps the
+system RUNNING through an upstream change. This module makes the change
+VISIBLE."*
+
+**It does not watch the OBSERVATION side.** Not the station's columns, not the
+reanalysis fields, not `observed_so_far`. Item 151 is what that costs: the
+station's day readings were absent on 14 of 16 days and nothing noticed,
+because the only watcher looks at what models predicted, never at what was
+observed. The first half of this item is "point the existing machinery at the
+other half of the record" — same three kinds, same derivation from the
+committed log, different input.
+
+### THE SECOND GAP IS NOT A MISSING WATCHER, AND IT IS THE INTERESTING ONE
+
+The operator's "HKKI fixes and starts reporting gust data" case cannot be
+detected by any watcher, however good, **because the exclusion removed the
+data**. `gust` and `p01i` are not in `ARCHIVE_DATA_COLUMNS` at all. They are
+not requested, so no value is stored, so no series exists in which a change
+could appear. The same is true of `alti`, `dwpf`, `relh`, `vsby` and `drct` —
+never asked for, therefore permanently invisible.
+
+**So a decision made responsibly, on a real 45-day measurement, silently
+became permanent.** That is a worse failure mode than a wrong decision: a
+wrong decision can be found. This one removed its own falsifier. And the
+measurement it rests on is now over a month old, taken on one station, at one
+airport, whose reporting practice is not a law of nature — HKKI could file a
+gust group tomorrow and this project would never learn it.
+
+### What to build, and the cheap version is most of the value
+
+1. **Request the excluded columns; do not READ them.** Asking for `gust` and
+   `p01i` costs nothing — same request, more columns — and turns "invisible
+   forever" into "recorded and ignored". The exclusion stays exactly as item
+   45 decided; what changes is that it becomes reviewable. This is the whole
+   fix for the second gap and it is nearly free.
+2. **A fourth kind: `became_available`.** Present now, absent throughout the
+   prior window. The mirror of `regression`, and the one nothing looks for.
+   Alert it quietly — it is good news and needs a human decision, not a page.
+3. **Point the coverage watcher at observation fields**, per source, per
+   column: the station's columns, the reanalysis's, the actuals. Item 151's
+   silence is the test case — a field absent 14 of 16 days should be loud.
+4. **Re-read the exclusions on a schedule**, once 1 makes it possible. An
+   exclusion should carry the date and sample it was decided on — item 45's
+   does, in a comment — and a periodic check should say whether that sample
+   still describes the source.
+
+### The principle worth keeping even if none of this is built
+
+**A field excluded for being empty must still be COLLECTED, or the exclusion
+can never be revisited.** Cheap to honour, expensive to discover late, and it
+generalises past METAR — every source this project adds will have columns
+someone measures once and then stops thinking about.
+
+Related: items 102 (the watcher and its three kinds), 151 (the observation
+side, unwatched), 45 (the `gust`/`p01i` exclusions and their sample), 150
+(derived horizons, which has the same staleness problem), 146, 122.
