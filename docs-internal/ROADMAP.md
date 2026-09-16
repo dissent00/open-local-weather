@@ -21508,3 +21508,96 @@ someone measures once and then stops thinking about.
 Related: items 102 (the watcher and its three kinds), 151 (the observation
 side, unwatched), 45 (the `gust`/`p01i` exclusions and their sample), 150
 (derived horizons, which has the same staleness problem), 146, 122.
+
+---
+
+## 153. The review's bias gate asks "is it big?" where the evidence question is "is it real?" · **Raised 2026-09-16**
+
+The operator, on watching a Haiku run decline to characterise a model because
+the review had published no finding for it:
+
+> *"This is interesting though - does this mean that the review is inadequate,
+> or that the LLM review is strongly restrained?"*
+
+**Neither, and the measurement says so.** The restraint works exactly as item
+149 intended. The review is not short of data. What is wrong is the gate
+between them.
+
+### MEASURED 2026-09-16, against the whole stored record
+
+Nine effects are computed and suppressed. **Not one of them is suppressed for
+want of evidence** — every cell has 29 to 36 checks against a minimum of 10:
+
+| model | lead | checks | field | mean | threshold |
+|---|---|---:|---|---:|---:|
+| gfs_seamless | +0 | 36 | daytime highs | **-0.98 °C** | 1.0 |
+| ecmwf_ifs025 | +3 | 33 | peak wind | **+7.23 km/h** | 8.0 |
+| ecmwf_ifs025 | +7 | 29 | peak wind | +5.88 km/h | 8.0 |
+| best_match | +0 | 36 | peak wind | +4.30 km/h | 8.0 |
+| ecmwf_ifs025 | +3 | 33 | daytime highs | -0.90 °C | 1.0 |
+| best_match | +3 | 33 | daytime highs | -0.87 °C | 1.0 |
+| ecmwf_ifs025 | +3 | 33 | overnight lows | -0.73 °C | 1.0 |
+| ecmwf_ifs025 | +7 | 29 | daytime highs | +0.74 °C | 1.0 |
+| ecmwf_ifs025 | +0 | 36 | overnight lows | -0.58 °C | 1.0 |
+
+`gfs_seamless` runs nearly a full degree warm at Day+0 across **36 days**, and
+is suppressed by two hundredths of a degree. A mean that stable over that many
+samples is not scatter.
+
+### THE TWO GATES IN THIS FILE HAVE DIFFERENT LOGICS, and only one is right
+
+```
+REVIEW_COMPARISON_MIN_GAP_PCT = 15.0
+# ...at n=10 a binary hit rate carries ~15 points of binomial noise on its
+# own, so anything narrower is indistinguishable from chance.
+
+REVIEW_TEMP_BIAS_THRESHOLD_C = 1.0
+# Mean signed error large enough to call a systematic bias rather than
+# scatter. Roughly the point where a forecast user would notice.
+```
+
+The first is a STATISTICAL gate: derived from sampling noise, and explicitly
+tied to n. The second is a PERCEPTUAL one — "where a user would notice" — and
+it is doing the job of a significance test. **The project already knows the
+difference; it just did not apply it here.**
+
+"Large enough to call a systematic bias rather than scatter" is the right
+QUESTION and a fixed constant cannot answer it, because the answer depends on
+the sample. At n=3 a -1.5 °C mean may be noise. At n=36 a -0.98 °C mean is
+almost certainly not.
+
+### WHAT IT COSTS, and item 149 just made it visible
+
+Under item 149's instruction a pair with no findings reports *"no findings
+established at this lead"*. For `gfs_seamless` Day+0 that now reads as
+"nothing known", when the record actually holds a consistent near-degree warm
+bias over 36 days. **The instruction is faithfully reporting a gate that is
+hiding something real** — which is a better failure than the one it replaced,
+because it is now visible in one place instead of being silently
+re-characterised, but it is still a loss.
+
+### The shape of a fix, and a caution
+
+Compare the mean against its own standard error rather than a constant: report
+when |mean| exceeds some multiple of `sd / sqrt(n)`. That makes the gate
+tighten as evidence accumulates, which is the behaviour wanted — and it needs
+the per-check spread, which the cells do not currently carry and `verify/`
+would have to supply.
+
+**DO NOT SIMPLY LOWER THE CONSTANTS.** Dropping the temperature threshold to
+0.5 would publish all four sub-degree cells above and would still be a
+constant answering the wrong question — it would fire on three checks exactly
+as readily as on thirty-six. Item 100 is in this file because a threshold was
+sized from convenient samples; this would be the same mistake with a
+statistical veneer.
+
+**AND KEEP A PERCEPTUAL FLOOR, SEPARATELY.** "Statistically real" and "worth a
+reader's attention" are different, and the current constant is a defensible
+answer to the second. A 0.2 °C bias can be real at n=500 and still not worth a
+sentence. The fix is two gates — is it real, and is it worth saying — not the
+replacement of one by the other.
+
+Related: items 149 (which surfaced this), 18 (accuracy improving is the
+differentiator), 100 (thresholds sized against the record), 145 (the same
+two-questions-one-number confusion, in the reporting bands), and `review.py`'s
+header on gating.

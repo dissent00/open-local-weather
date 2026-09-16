@@ -1116,7 +1116,35 @@ def export_user_prompt() -> None:
         "local_bulletin_source_name": "Kenya Meteorological Department (KMD)",
         "local_bulletin_text": "Sunny intervals, light rains expected over few places.",
         "review_context": {"data_sufficiency": "Day+0: 8 check(s) per model.", "findings": []},
-        "model_predictions_context": {"day0": [{"model": "kenya_met", "rain": True, "high_c": 30.0}], "day3": [], "day7": []},
+        # ONE NUMERICAL MODEL AND THE MET SERVICE, and the pair is the point.
+        #
+        # This case is named "fully populated" and carried only `kenya_met`,
+        # which by its nature supplies rain and temperature and nothing else.
+        # So the most complete case in the frozen corpus could not fill
+        # `temp_low_c` — a field the judgment schema REQUIRES — and a Haiku
+        # run through the replay harness on 2026-09-16 had to derive one from
+        # climatology, which rule 6 forbids. Found because the harness was
+        # asked what it could not do, rather than only whether it answered.
+        #
+        # `replay.py` diffs prompt edits against these cases, so a case that
+        # cannot exercise a required field makes every future replay of that
+        # field meaningless. The numerical model below carries the full
+        # production shape; kenya_met stays exactly as it was, because "a
+        # model missing from a lead does not forecast that far" is its own
+        # rule and this case is where it is exercised.
+        "model_predictions_context": {
+            "day0": [
+                {
+                    "model": "gfs_seamless", "rain": True, "onset": "16:00",
+                    "precip_mm": 2.4, "rain_probability_pct": 71, "wind_kmh": 28.6,
+                    "high_c": 30.9, "low_c": 19.4, "cloud_cover_pct": 62.0,
+                    "peak_cape_jkg": 640.0, "wind_direction_deg": 38.0,
+                    "mslp_trend": -1.0,
+                },
+                {"model": "kenya_met", "rain": True, "high_c": 30.0},
+            ],
+            "day3": [], "day7": [],
+        },
         "ground_stations_configured": True,
         "local_bulletin_configured": True,
         # A first issuance: no previous entry to compare against, so
