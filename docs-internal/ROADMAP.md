@@ -20650,6 +20650,43 @@ ever meant to make the forecaster better over time. Cutting it to save tokens
 without answering the question above would be trading the project's stated
 purpose for its running cost.
 
+### THE WRITING HALF HAS ITS OWN INSTRUCTION, and it says the quiet part
+
+Cutting this is two removals, not one. The judgment prompt carries the READING
+brief quoted above; the NARRATIVE prompt carries the WRITING one, and it
+states the claim this item disproves:
+
+> *"ALSO write 'verification_notes'... These get stored back onto the original
+> prediction and read as context in future runs, so be specific and honest,
+> not vague — **this is the actual mechanism that improves future
+> forecasts**."*
+
+It is not, and has not been since item 59 split the call. The same instruction
+then spends ~1,400 characters teaching the error-sign convention and recording
+that 43 notes were mechanically corrected on 2026-09-10 — a defence written
+because the mechanism kept producing false claims. Both halves go.
+
+Removing the field is a CROSS-LANGUAGE SCHEMA CHANGE (`verification_notes` on
+`GeminiNarrativeResponse`), so it follows the usual order and takes
+`fix_note_signs.py` with it, which exists only to repair these notes.
+
+### THE SAME PATTERN IS IN `MODEL TRACK RECORD`, at a tenth the size
+
+Measured 2026-09-16: all 18 track-record rows carry a `skill_profile_summary`
+written by the LLM — 1,998 characters, 13% of that 15,532-character block —
+sitting beside the computed statistics. Example: *"At Day+0, demonstrates
+moderate rainfall accuracy with a persistent daytime warm bias and a strong
+tendency to under-forecast peak surface wind speeds."*
+
+Same shape: the model's prose about itself, stored and fed back. Item 142's
+finding 3 already records that these can contradict the error-sign convention.
+
+**NOT cut here, and the difference is worth stating.** It is a tenth the size,
+it is mixed in with computed figures rather than standing alone, and it
+summarises a model rather than narrating a day — which is closer to what the
+review does and further from a diary entry. Decide it separately, with the
+measurement above, rather than sweeping it up in this item's momentum.
+
 ### The review's cadence — "weekly" is ONLY the name
 
 Raised by the operator as a throwback to the morning/evening model, with the
