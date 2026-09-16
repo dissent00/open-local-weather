@@ -20484,7 +20484,7 @@ Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.
 
 ---
 
-## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **Planned — raised 2026-09-16**
+## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **DECIDED 2026-09-16 — cut both, stop writing the notes; build Planned**
 
 The operator, walking through the prompt block by block:
 
@@ -20611,6 +20611,38 @@ If the latter, the honest answer may be a narrower block — recent notes only,
 or notes for days whose synoptic pattern resembles today's — rather than 30
 days of everything.
 
+### DECIDED 2026-09-16 — option 3, and the notes stop being written
+
+The operator, on being shown the table: *"From the table above, historical
+notes looks like a loser, unless those notes are provided by the weekly
+review."* They are — `LONG-RUN REVIEW` is already in the prompt, already
+briefed in the judgment call, and rule 2 already forbids ranking models
+without one of its findings. And on the gap this item warned about:
+
+> *"As for setup-matching - I don't think that signal is one we care about.
+> I'm not auditing gemini. I just want gemini (or other provider) to have lots
+> of good information to work with that can pick amongst the models and
+> observed data over time and say 'It looks to me like GFS got this right,
+> ECMWF this, Kenya Met this...' and spit that out as a nice forecast."*
+
+So the gap is not a gap: the mechanism the operator wants is the review, and
+it is built, briefed, and pointed at the right call.
+
+**Cut `HISTORICAL NOTES` from BOTH calls, and STOP WRITING THE NOTES.** They
+have no other consumer — checked 2026-09-16: written by the LLM, stored, fed
+back to the LLM, and never rendered for a reader. The accuracy page publishes
+the REVIEW, not the notes. So the block was the only thing reading them, and
+removing it leaves them with nothing.
+
+**WHAT TO DOCUMENT, and this item exists so it is not re-litigated later.**
+The removal must record, beside the code: that the learning loop was
+deliberate and is not being abandoned; that it moved to the review, which
+computes the same conclusions from the raw record with evidence and
+confidence attached; that self-authored prose fed back to its author is error
+propagation, which `review.py`'s header already forbids and which cost 27
+mechanically-corrected notes; and that setup-matching was considered and
+declined by the operator rather than overlooked.
+
 **DO NOT DECIDE THIS ON PROMPT SIZE ALONE.** Item 134 wants the prompt pared
 and this is the second-largest block, which makes it a tempting cut for the
 wrong reason. It is 19% of the bill; it is also the only thing here that was
@@ -20618,6 +20650,94 @@ ever meant to make the forecaster better over time. Cutting it to save tokens
 without answering the question above would be trading the project's stated
 purpose for its running cost.
 
+### The review's cadence — "weekly" is ONLY the name
+
+Raised by the operator as a throwback to the morning/evening model, with the
+suggestion of running it *"any time X number of forecasts have been run. Maybe
+7 to keep with the spirit."*
+
+**Checked 2026-09-16: there is no schedule to replace.** `build_weekly_review`
+is called inline on every forecast run — `pipeline.py` for the prompt,
+`cli.py`'s `review_provider` for the page, `app_state.dart` for the app — with
+no gating anywhere. It is recomputed from the whole stored record every time,
+which is `review.py`'s own stated principle: never built on a previous review,
+so an error cannot propagate.
+
+**So a 7-forecast gate would make it run LESS often than it does now**, and
+buy nothing: the review is pure computation over local files, with no API call
+and no cost beyond CPU. The throwback is the NAME, and the name is what should
+change — it is a standing review of the entire record, not a weekly one, and
+it has already misled a reading of this system once.
+
+**What WOULD justify a gate is a measurement nobody has**: whether recomputing
+over a long record is slow enough to matter on a phone. `app_state` rebuilds
+it inside the same try block as verification, on the UI path. Worth measuring
+against a long record before deciding — and if it is slow, the answer is
+caching with invalidation, not a fixed count, because a count reintroduces
+exactly the staleness the stateless design exists to avoid.
+
 Related: items 59 (the split that orphaned the instruction), 137 (the same
 leftover shape), 142 findings 3 and 6, 134 (prompt size), 18 (accuracy
 improving over time is the differentiator), 100.
+
+---
+
+## 148. Nothing measures the prompt, and nothing stops it growing · **Planned — raised 2026-09-16**
+
+The operator, after item 147's measurements: *"your notes on prompt size - I
+think we have an item, or at least some discussion, about monitoring and maybe
+limiting max prompt size. This is probably a good idea."*
+
+**Checked: there is discussion and there is no item.** Item 73 pares the
+prompt by category, item 112 measured that the user message is 85% of the
+bill, and item 111 caps CALLS per forecast. None of them measures the prompt
+on an ongoing basis and none of them can refuse one for being too big.
+
+### Why this is not just item 73 again
+
+73 is a cut, made once, by a person who went looking. This is a GUARD. The
+difference is what happens on the day nobody is looking, and that day has a
+record: the prompt was measured at 165,000 characters on 2026-09-14 and
+nobody had measured it before — it had been growing for weeks against a
+number nobody held.
+
+**And it grows on its own**, without any decision being taken. Stored per
+entry: 79,300 input tokens on 2026-09-11, 80,863 on 2026-09-14 — 87% of that
+growth is model data arriving because the record got longer, not because
+anyone added a block. `HISTORICAL NOTES` grows with the record too, by
+construction: 30 days of notes is 30 days of notes forever, but the per-day
+notes get longer as the model has more to say.
+
+### What it should do, in order
+
+1. **Measure every run and store it.** The character count per block, not just
+   the total — item 147's table is what a decision needs, and it had to be
+   reconstructed by hand from an archived prompt. One dict on the entry.
+2. **Warn on growth, not just on size.** A ceiling alone fires once and then
+   gets raised. A run whose prompt grew more than N% over the trailing median
+   is the signal that something was added without anyone noticing, which is
+   the actual failure mode here.
+3. **THEN decide whether to refuse.** A hard ceiling that aborts a run is a
+   forecast nobody gets, which is worse than an expensive one — see item 121's
+   reasoning about what an absent forecast costs a reader. The honest first
+   version warns loudly and publishes; refusing is a separate decision, and
+   probably belongs with item 111's per-forecast budget rather than here.
+
+### The number nobody has
+
+**What IS the right ceiling?** Unknown, and this item should not invent one.
+What is known: 141,798 characters as of 2026-09-16, of which the top four
+blocks are 81%, and the two calls send it twice. The provider's own context
+limit is not the binding constraint — the BILL is, and on the app it is the
+reader's own key. Size the ceiling against what a reader can afford, which
+means item 132's economics, not against what fits.
+
+### Both surfaces
+
+The app sends the same prompt against the reader's own key, so this guard
+matters more there than on the server — and `ensemble` item 12 is about to
+make the app's prompt BIGGER by wiring in the record it currently lacks. Doing
+12 without this is how the app acquires the server's growth problem in one
+step.
+
+Related: items 73, 112, 111, 132, 134, 147, and `ensemble` item 12.
