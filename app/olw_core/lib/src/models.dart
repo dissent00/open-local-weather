@@ -81,6 +81,32 @@ class ObservedSoFar {
   final double? cloudOktas;
 }
 
+/// How far an observation must sit from the forecast before a reader is TOLD
+/// about it — upstream item 145.
+///
+/// THE REPORTING HALF AND ONLY THE REPORTING HALF. Nothing here may change
+/// what a run SPENDS: [lowDivergence] decides `decisive` from its own fixed
+/// constant and never from these, and a swept test drives every field across
+/// its range asserting `observationDisagreements` does not move.
+///
+/// WHY. `llmShouldReason` treats any member of `observationDisagreements` as
+/// grounds to buy a judgment call AND a narrative. The two used to be one
+/// number, so tightening what you wanted to be told about also bought calls,
+/// silently, against a fixed cap. This project is for people who will not be
+/// buying an API key.
+///
+/// DEFAULTS ARE THE SHIPPED VALUES, so an app that configures nothing behaves
+/// as it did.
+class DeviationBands {
+  const DeviationBands({this.lowC = 3.0, this.lowFreezingC = 1.0});
+
+  /// At or below [nearFreezingC] the freezing band applies instead. Two
+  /// widths because one number cannot be right: two degrees is nothing at
+  /// 20 C and is ice or no ice at 2 C.
+  final double lowC;
+  final double lowFreezingC;
+}
+
 /// What the station's overnight low says about the called one — upstream
 /// item 143.
 ///

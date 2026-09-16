@@ -87,7 +87,7 @@ from openlocalweather.daypart import (
     reconcile_now,
     summarize_daypart,
 )
-from openlocalweather.config import LocationConfig
+from openlocalweather.config import LocationConfig, deviation_bands
 from zoneinfo import ZoneInfo
 
 from openlocalweather.baselines import (
@@ -171,6 +171,7 @@ from openlocalweather.disagreement import (
 )
 from openlocalweather.claims import false_weekday_claims
 from openlocalweather.models import (
+    DeviationBands,
     LowDivergence,
     DayOverDayComparison,
     IssuancePredictions,
@@ -1851,6 +1852,7 @@ def _information_moved(
     guidance: ForwardGuidance,
     existing_entry: DailyLogEntry | None,
     observed: ObservedSoFar | None,
+    bands: DeviationBands | None = None,
 ) -> InformationMoved:
     """C2's three triggers, computed and recorded — and acted on by nothing.
 
@@ -1869,7 +1871,10 @@ def _information_moved(
             None
             if observed is None
             else observation_disagreements(
-                _standing_call(existing_entry), observed, low_is_settled=settled
+                _standing_call(existing_entry),
+                observed,
+                low_is_settled=settled,
+                bands=bands,
             )
         ),
         # STORED ON EVERY RUN, not only when it fires — ROADMAP item 143, part
@@ -1882,7 +1887,10 @@ def _information_moved(
             None
             if observed is None
             else low_divergence(
-                _standing_call(existing_entry), observed, low_is_settled=settled
+                _standing_call(existing_entry),
+                observed,
+                low_is_settled=settled,
+                bands=bands,
             )
         ),
     )
@@ -2732,7 +2740,11 @@ def _issue_forecast(
     # inform rather than inside the entry that records them. They were stored
     # and acted on by nothing from item 104 stage 2b until item 121; this is
     # where that changes.
-    information_moved = _information_moved(guidance, existing_entry, observed_so_far)
+    # ROADMAP item 145. The deployment's REPORTING bands, which reach the
+    # footnote and cannot reach the spending decision.
+    information_moved = _information_moved(
+        guidance, existing_entry, observed_so_far, deviation_bands(deps.location)
+    )
 
     # --- Step 5b: does this run earn an LLM call? ---
     #

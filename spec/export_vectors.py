@@ -70,6 +70,7 @@ from openlocalweather.extract import (
 )
 from openlocalweather.fetch.open_meteo import bucket_hourly_by_date, get_onset_hour
 from openlocalweather.models import (
+    DeviationBands,
     DailyActual,
     InformationMoved,
     ObservedSoFar,
@@ -2370,14 +2371,29 @@ def export_low_divergence() -> None:
          25.0, 21.0, False),
         ("no standing low is no comparison", None, 20.0, True),
         ("no station low is no comparison", 18.2, None, True),
+        # ITEM 145: a deployment that tuned its REPORTING band. The gap is the
+        # founding case, which the shipped 3.0 suppresses and a reader who
+        # cares about 1.8 C does not. `decisive` stays false in both, and that
+        # is the property the whole split exists for — see the sweep in
+        # test_disagreement.py.
+        ("a tightened reporting band reports the founding case", 18.2, 20.0, True, (1.0, 1.0)),
+        ("a loosened reporting band reports almost nothing", 18.2, 20.0, True, (9.0, 9.0)),
+        # ...and near freezing, where the reader's band moves `notable` and
+        # `decisive` refuses to follow it.
+        ("a loosened band still cannot stop the spend near freezing",
+         -0.5, 2.0, True, (9.0, 9.0)),
     ]
 
     cases = []
-    for name, called, seen, settled in scenarios:
+    for scenario in scenarios:
+        name, called, seen, settled = scenario[:4]
+        band = scenario[4] if len(scenario) > 4 else None
+        bands = None if band is None else DeviationBands(low_c=band[0], low_freezing_c=band[1])
         got = low_divergence(
             StandingCall(temp_low_c=called),
             ObservedSoFar(low_c=seen),
             low_is_settled=settled,
+            bands=bands,
         )
         cases.append(
             {
@@ -2386,6 +2402,9 @@ def export_low_divergence() -> None:
                     "standing": {"temp_low_c": called},
                     "observed": {"low_c": seen},
                     "low_is_settled": settled,
+                    "bands": None
+                    if bands is None
+                    else {"low_c": bands.low_c, "low_freezing_c": bands.low_freezing_c},
                 },
                 "expected": None
                 if got is None
@@ -2410,7 +2429,10 @@ def export_low_divergence() -> None:
         "WARMER than the call. `notable` is worth a reader's footnote; "
         "`decisive` is worth an LLM call, and is `notable` AND near freezing "
         "-- two degrees is nothing at 20C and is the difference between ice "
-        "and no ice at 2C. A reading ABOVE the call requires the night to be "
+        "and no ice at 2C -- and `notable` reads the deployment's CONFIGURED "
+        "band while `decisive` reads a constant no configuration can reach, "
+        "which is what stops a reader's reporting preference from buying LLM "
+        "calls. A reading ABOVE the call requires the night to be "
         "over (`low_is_settled` true, never null); one BELOW it settles at "
         "any hour, because a minimum only falls.",
         cases,

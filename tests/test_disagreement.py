@@ -2,6 +2,7 @@
 
 import pytest
 
+from openlocalweather.models import DeviationBands
 from openlocalweather.disagreement import (
     DISAGREEMENT_HIGH_EXCEEDED,
     DISAGREEMENT_LOW_DIVERGES,
@@ -234,3 +235,55 @@ def test_no_divergence_without_both_numbers():
     no standing call, both yield None rather than a zero divergence."""
     assert low_divergence(StandingCall(temp_low_c=18.2), ObservedSoFar(), low_is_settled=True) is None
     assert low_divergence(StandingCall(), ObservedSoFar(low_c=20.0), low_is_settled=True) is None
+
+
+# --- the reporting/spending split — ROADMAP item 145 -------------------------
+
+
+def test_tuning_the_reporting_band_can_never_change_what_is_spent():
+    """THE SAFETY PROPERTY OF ITEM 145, and the reason the bands are two
+    things rather than one.
+
+    `reasoning.llm_should_reason` buys a judgment call and a narrative for any
+    member of `observation_disagreements`. A reader who tightens what they
+    want to be TOLD about must not thereby start paying for calls they never
+    asked for — this project's readers are the ones who will not be buying an
+    API key.
+
+    Swept rather than sampled: the reporting bands are driven across their
+    whole plausible range against a case that sits near freezing, where the
+    old coupling bit hardest.
+    """
+    standing = StandingCall(temp_low_c=-0.5)
+    observed = ObservedSoFar(low_c=2.0)
+
+    baseline = observation_disagreements(standing, observed, low_is_settled=True)
+    for tenth in range(1, 101):
+        band = tenth / 10
+        got = observation_disagreements(
+            standing,
+            observed,
+            low_is_settled=True,
+            bands=DeviationBands(low_c=band, low_freezing_c=band),
+        )
+        assert got == baseline, (
+            f"a reporting band of {band} C changed what this run SPENDS: "
+            f"{baseline} became {got}"
+        )
+
+
+def test_the_reporting_band_does_change_what_is_reported():
+    """The other half, and without it the test above passes on a band that is
+    wired to nothing at all."""
+    standing = StandingCall(temp_low_c=18.2)
+    observed = ObservedSoFar(low_c=20.0)
+
+    wide = low_divergence(standing, observed, low_is_settled=True,
+                          bands=DeviationBands(low_c=3.0))
+    tight = low_divergence(standing, observed, low_is_settled=True,
+                           bands=DeviationBands(low_c=1.0))
+
+    assert wide is not None and tight is not None
+    assert wide.notable is False, "1.8 C is inside the shipped default"
+    assert tight.notable is True, "and outside a band the reader tightened"
+    assert wide.decisive is tight.decisive is False, "neither may spend"

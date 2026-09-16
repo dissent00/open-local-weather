@@ -55,6 +55,42 @@ location:
   metar_station_icao: "HKKI"
   metar_station_name: "Kisumu International Airport"
 
+  # WHAT THIS DEPLOYMENT CALLS A DEVIATION WORTH MENTIONING — ROADMAP item 145.
+  #
+  # Commented out because the defaults are what almost every deployment wants,
+  # and because an absent key and a key set to its default are different
+  # statements: the first says "we did not decide", the second says "we did".
+  #
+  # REPORTING ONLY. Nothing here can change what a run SPENDS on LLM calls.
+  # That is enforced, not promised: the spending decision reads a constant no
+  # configuration reaches, and a test sweeps these values across their whole
+  # range asserting the spend never moves. It is separated because this
+  # project is for people who will not be buying an API key, and a setting
+  # that quietly multiplies paid calls fails exactly that reader.
+  #
+  # It also cannot change what is SCORED. A band decides what a reader is
+  # TOLD; two deployments with different bands still agree about the accuracy
+  # of the same forecast, and a test asserts the scoring code cannot see one.
+  #
+  #   low_c          how far the station's overnight low must sit from the
+  #                  forecast before it earns a footnote. Default 3.0.
+  #                  MEASURED HERE AND LEFT WIDE ON PURPOSE: the blend's Day+0
+  #                  low error averages -0.21 C and the station runs -0.05 C
+  #                  against reanalysis, so 3.0 is about twelve times the
+  #                  expected gap and will rarely fire. That is right for
+  #                  someone walking to work and wrong for someone whose crop
+  #                  is frost-tender, which is why it is a setting and not
+  #                  another guess of ours.
+  #   low_freezing_c the same, at or below 4 C, where two degrees stops being
+  #                  nothing and becomes ice or no ice. Default 1.0.
+  #
+  # Set one without the other; an unset field keeps its default rather than
+  # inheriting whatever you wrote beside it.
+  #
+  # deviation_bands:
+  #   low_c: 1.5
+  #   low_freezing_c: 0.5
+
   # Verified manually at waqi.info (aqicn.org). Kisumu Airport carried over
   # from the Apps Script config; Ochieng' Avenue and Dunga Beach added to
   # give the AQI range some real geographic spread across the city.

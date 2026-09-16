@@ -48,7 +48,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from openlocalweather.models import LowDivergence, ObservedSoFar
+from openlocalweather.models import DeviationBands, LowDivergence, ObservedSoFar
 
 # What the forecast already committed to, from the standing issuance.
 #
@@ -148,8 +148,28 @@ ONSET_CONTRADICTION_MARGIN_MIN = 60
 # what `low_divergence` stores on every run whether or not it fires. Revisit
 # the widths against that record, never against a convenient sample; item 100
 # has the cost of the alternative.
-LOW_DIVERGENCE_MARGIN_C = 3.0
-LOW_DIVERGENCE_FREEZING_MARGIN_C = 1.0
+# The shipped defaults now live on `models.DeviationBands`, which is what a
+# deployment configures and a reader tunes — ROADMAP item 145. These names are
+# kept because the vectors and several tests refer to them, and because a
+# reader of this module should meet the numbers here rather than two files
+# away.
+LOW_DIVERGENCE_MARGIN_C = DeviationBands().low_c
+LOW_DIVERGENCE_FREEZING_MARGIN_C = DeviationBands().low_freezing_c
+
+# THE SPENDING BAND, AND IT IS NOT IN DeviationBands ON PURPOSE — item 145.
+#
+# `decisive` used to be `notable and near_freezing`, which meant the reporting
+# band reached the spending decision: a reader tightening what they wanted to
+# be told about would have started buying LLM calls, with nothing on the
+# screen connecting the two. Decoupled here. This constant is the ONLY thing
+# that widens or narrows spending, it is not configurable, and
+# `test_tuning_the_reporting_band_can_never_change_what_is_spent` sweeps the
+# reporting bands across their range to prove nothing here moves.
+#
+# Set to the value `decisive` effectively had before the split, so the change
+# is a decoupling and not a retune. Moving it is a spending decision and
+# belongs in the same review as `max_llm_calls_per_24h`.
+LOW_DIVERGENCE_SPEND_MARGIN_C = 1.0
 
 # At or below this, the tight margin applies and the divergence is treated as
 # decision-grade. 4 C rather than 0 because ground frost forms while the air
@@ -163,8 +183,7 @@ def low_divergence(
     observed: ObservedSoFar,
     *,
     low_is_settled: bool | None,
-    margin_c: float = LOW_DIVERGENCE_MARGIN_C,
-    freezing_margin_c: float = LOW_DIVERGENCE_FREEZING_MARGIN_C,
+    bands: DeviationBands | None = None,
 ) -> LowDivergence | None:
     """The gap between the station's overnight low and the standing call, or
     None when there is no settled comparison to make.
@@ -196,9 +215,27 @@ def low_divergence(
     if delta > 0 and low_is_settled is not True:
         return None
 
+    bands = bands or DeviationBands()
     near_freezing = min(called, seen) <= NEAR_FREEZING_C
-    band = freezing_margin_c if near_freezing else margin_c
+    band = bands.low_freezing_c if near_freezing else bands.low_c
+
+    # TWO INDEPENDENT TESTS AGAINST TWO INDEPENDENT BANDS — item 145.
+    #
+    # `notable` answers "tell the reader?" and reads the configured band.
+    # `decisive` answers "buy a call?" and reads a constant no configuration
+    # touches. They were one expression until 2026-09-16, and that is the
+    # coupling the split exists to break: `decisive` must not be able to move
+    # because somebody changed what they wanted to be TOLD about.
+    #
+    # THE ASYMMETRIC CASE IS NOT A BUG. A reader who loosens the band far
+    # enough gets `notable=False` and `decisive=True` near freezing: no
+    # footnote, and the call is still bought. That is right. Re-forecasting
+    # near freezing is about the forecast being wrong in a range where being
+    # wrong matters, which is a fact about the WEATHER; the band is a
+    # preference about being TOLD. The spend is not wasted — it buys a
+    # corrected forecast rather than a sentence about an uncorrected one.
     notable = abs(delta) >= band
+    decisive = near_freezing and abs(delta) >= LOW_DIVERGENCE_SPEND_MARGIN_C
 
     return LowDivergence(
         forecast_c=called,
@@ -206,7 +243,7 @@ def low_divergence(
         delta_c=delta,
         margin_c=band,
         notable=notable,
-        decisive=notable and near_freezing,
+        decisive=decisive,
     )
 
 
@@ -239,6 +276,7 @@ def observation_disagreements(
     temp_margin_c: float = TEMP_CONTRADICTION_MARGIN_C,
     onset_margin_min: int = ONSET_CONTRADICTION_MARGIN_MIN,
     low_is_settled: bool | None = None,
+    bands: DeviationBands | None = None,
 ) -> list[str]:
     """Codes for every way the observation settles against the standing call.
 
@@ -289,7 +327,13 @@ def observation_disagreements(
     # In a deployment that never approaches freezing this can never fire, and
     # that is the correct behaviour rather than a gap: there, the divergence
     # is a footnote and footnotes do not re-forecast a day.
-    divergence = low_divergence(standing, observed, low_is_settled=low_is_settled)
+    # `bands` is threaded through and is DELIBERATELY UNABLE to change the
+    # result — see LOW_DIVERGENCE_SPEND_MARGIN_C. It is passed only so one
+    # call can serve both questions; the swept test proves it cannot move
+    # this list.
+    divergence = low_divergence(
+        standing, observed, low_is_settled=low_is_settled, bands=bands
+    )
     if divergence is not None and divergence.decisive:
         found.append(DISAGREEMENT_LOW_DIVERGES)
 

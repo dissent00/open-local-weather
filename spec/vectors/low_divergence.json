@@ -1,7 +1,7 @@
 {
   "vector_format_version": 1,
   "function": "low_divergence",
-  "description": "ROADMAP item 143. How far the station's overnight low sits from the standing call, measured on every run that can make the comparison and stored whether or not it is worth printing. `delta_c` is OBSERVED MINUS FORECAST, so positive means the station came in WARMER than the call. `notable` is worth a reader's footnote; `decisive` is worth an LLM call, and is `notable` AND near freezing -- two degrees is nothing at 20C and is the difference between ice and no ice at 2C. A reading ABOVE the call requires the night to be over (`low_is_settled` true, never null); one BELOW it settles at any hour, because a minimum only falls.",
+  "description": "ROADMAP item 143. How far the station's overnight low sits from the standing call, measured on every run that can make the comparison and stored whether or not it is worth printing. `delta_c` is OBSERVED MINUS FORECAST, so positive means the station came in WARMER than the call. `notable` is worth a reader's footnote; `decisive` is worth an LLM call, and is `notable` AND near freezing -- two degrees is nothing at 20C and is the difference between ice and no ice at 2C -- and `notable` reads the deployment's CONFIGURED band while `decisive` reads a constant no configuration can reach, which is what stops a reader's reporting preference from buying LLM calls. A reading ABOVE the call requires the night to be over (`low_is_settled` true, never null); one BELOW it settles at any hour, because a minimum only falls.",
   "cases": [
     {
       "name": "the founding case: 20.0 observed against a call of 18.2",
@@ -12,7 +12,8 @@
         "observed": {
           "low_c": 20.0
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": {
         "forecast_c": 18.2,
@@ -32,7 +33,8 @@
         "observed": {
           "low_c": 20.0
         },
-        "low_is_settled": false
+        "low_is_settled": false,
+        "bands": null
       },
       "expected": null
     },
@@ -45,7 +47,8 @@
         "observed": {
           "low_c": 20.0
         },
-        "low_is_settled": null
+        "low_is_settled": null,
+        "bands": null
       },
       "expected": null
     },
@@ -58,7 +61,8 @@
         "observed": {
           "low_c": 19.0
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": {
         "forecast_c": 18.2,
@@ -78,7 +82,8 @@
         "observed": {
           "low_c": 21.2
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": {
         "forecast_c": 18.2,
@@ -98,7 +103,8 @@
         "observed": {
           "low_c": 2.0
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": {
         "forecast_c": -0.5,
@@ -118,7 +124,8 @@
         "observed": {
           "low_c": 0.9
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": {
         "forecast_c": 0.2,
@@ -138,7 +145,8 @@
         "observed": {
           "low_c": -1.0
         },
-        "low_is_settled": false
+        "low_is_settled": false,
+        "bands": null
       },
       "expected": {
         "forecast_c": 2.0,
@@ -158,7 +166,8 @@
         "observed": {
           "low_c": 21.0
         },
-        "low_is_settled": false
+        "low_is_settled": false,
+        "bands": null
       },
       "expected": {
         "forecast_c": 25.0,
@@ -178,7 +187,8 @@
         "observed": {
           "low_c": 20.0
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": null
     },
@@ -191,9 +201,82 @@
         "observed": {
           "low_c": null
         },
-        "low_is_settled": true
+        "low_is_settled": true,
+        "bands": null
       },
       "expected": null
+    },
+    {
+      "name": "a tightened reporting band reports the founding case",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 1.0,
+          "low_freezing_c": 1.0
+        }
+      },
+      "expected": {
+        "forecast_c": 18.2,
+        "observed_c": 20.0,
+        "delta_c": 1.8,
+        "margin_c": 1.0,
+        "notable": true,
+        "decisive": false
+      }
+    },
+    {
+      "name": "a loosened reporting band reports almost nothing",
+      "input": {
+        "standing": {
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "low_c": 20.0
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 9.0,
+          "low_freezing_c": 9.0
+        }
+      },
+      "expected": {
+        "forecast_c": 18.2,
+        "observed_c": 20.0,
+        "delta_c": 1.8,
+        "margin_c": 9.0,
+        "notable": false,
+        "decisive": false
+      }
+    },
+    {
+      "name": "a loosened band still cannot stop the spend near freezing",
+      "input": {
+        "standing": {
+          "temp_low_c": -0.5
+        },
+        "observed": {
+          "low_c": 2.0
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 9.0,
+          "low_freezing_c": 9.0
+        }
+      },
+      "expected": {
+        "forecast_c": -0.5,
+        "observed_c": 2.0,
+        "delta_c": 2.5,
+        "margin_c": 9.0,
+        "notable": false,
+        "decisive": true
+      }
     }
   ]
 }

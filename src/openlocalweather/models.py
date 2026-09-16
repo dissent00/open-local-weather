@@ -28,6 +28,38 @@ LeadTime = int  # one of 0, 3, 7 — not a real enum, kept as int to match defau
 
 
 @dataclass(frozen=True)
+class DeviationBands:
+    """How far an observation must sit from the forecast before a reader is
+    TOLD about it — ROADMAP item 145.
+
+    THIS OBJECT IS THE REPORTING HALF AND ONLY THE REPORTING HALF. Nothing in
+    it may change what a run SPENDS. That is not a convention, it is enforced:
+    `disagreement.low_divergence` decides `decisive` from its own fixed
+    constant and never from these, and a swept test drives every field across
+    its whole range asserting `observation_disagreements` does not move.
+
+    WHY THE SPLIT EXISTS. `reasoning.llm_should_reason` treats any member of
+    `observation_disagreements` as grounds to buy a judgment call AND a
+    narrative. Before item 145 the two were one number: tightening what you
+    wanted to be told about also bought calls, silently, against a fixed cap.
+    This project is for people who will not be buying an API key, so a setting
+    that quietly multiplies paid calls fails exactly the reader it is for.
+
+    DEFAULTS ARE THE SHIPPED VALUES, so a deployment that configures nothing
+    behaves as it did. Item 143 records that 3.0 C is about twelve times the
+    measured gap and suppresses the case the item was raised on — it is kept
+    as the default deliberately, because moving it is now the reader's call
+    rather than another guess of ours.
+    """
+
+    # At or below NEAR_FREEZING_C the freezing band applies instead. Two
+    # widths because one number cannot be right: two degrees is nothing at
+    # 20 C and is ice or no ice at 2 C.
+    low_c: float = 3.0
+    low_freezing_c: float = 1.0
+
+
+@dataclass(frozen=True)
 class LowDivergence:
     """What the station's overnight low says about the called one.
 

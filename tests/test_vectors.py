@@ -598,6 +598,7 @@ def test_vectors_low_divergence():
         StandingCall,
         low_divergence,
     )
+    from openlocalweather.models import DeviationBands
 
     for case in load("low_divergence.json")["cases"]:
         i = case["input"]
@@ -605,6 +606,7 @@ def test_vectors_low_divergence():
             StandingCall(**i["standing"]),
             ObservedSoFar(**i["observed"]),
             low_is_settled=i["low_is_settled"],
+            bands=None if i["bands"] is None else DeviationBands(**i["bands"]),
         )
         if case["expected"] is None:
             assert got is None, f"vector case failed: {case['name']}"

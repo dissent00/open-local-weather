@@ -20088,7 +20088,7 @@ Related: items 126, 142, 104, and `_blend_prediction`'s comment.
 
 ---
 
-## 145. "A significant deviation" is the reader's call, not ours · **Planned — raised 2026-09-16**
+## 145. "A significant deviation" is the reader's call, not ours · **Server half SHIPPED 2026-09-16; the app's settings screen is `ensemble` item 20**
 
 The operator, 2026-09-16, on being shown that item 143's band would suppress
 the case item 143 was raised on:
@@ -20173,13 +20173,17 @@ are separate today and this must keep them so — the first test to write here.
 | daytime high | yes | `DISAGREEMENT_HIGH_EXCEEDED` |
 | rain, yes/no | yes | `DISAGREEMENT_RAIN_WHILE_DRY` |
 | rain onset hour | yes | item 138 |
-| peak gust | **no** | item 144: the station files `sknt`, a SUSTAINED wind; the forecast is a GUST. Pairing them reads the gust factor as weather |
+| wind, SUSTAINED | **yes, and nothing reads it** | see item 146 — `windspeed_10m_max` is already fetched and discarded, and the station's `sknt` is the same quantity |
+| wind, GUST | **not here** | the station has never filed a gust group, so there is nothing to compare a forecast gust against. Not a reason to skip wind — a reason to compare the other quantity |
 | precipitation amount | **no** | a METAR reports that rain fell, never how much |
 
 A gust threshold becomes available wherever a station files gust groups, which
 item 144 records as a generalizable upgrade and item 133 recommends VHHH to
 validate. Offering a control that cannot be computed would be worse than
-offering none.
+offering none — but "cannot be computed" was too strong when first written
+here, and the correction is item 146: the answer to a station that reports
+sustained wind is to compare it with the forecast's SUSTAINED wind, not to
+give up on wind.
 
 ### Where the setting lands
 
@@ -20188,4 +20192,140 @@ and mentioned in `QUICKSTART.md` beside the other spend-adjacent settings once
 it exists — not before, because QUICKSTART is read by someone setting up a
 real deployment and must not describe a key that does nothing.
 
+### What shipped, 2026-09-16 — the split, and it needed a decoupling
+
+**`decisive` no longer inherits `notable`, and that was the whole job.** It
+was `notable and near_freezing`, which meant the reporting band REACHED the
+spending decision: a reader tightening what they wanted to be told about would
+have started buying LLM calls, with nothing connecting the two. `decisive` now
+reads `LOW_DIVERGENCE_SPEND_MARGIN_C`, a constant no configuration touches,
+set to the value it effectively had — so this is a decoupling, not a retune.
+
+**`models.DeviationBands`** carries the reporting bands, defaults are the
+shipped values, and `config.deviation_bands()` resolves the optional
+`deviation_bands` block FIELD BY FIELD — an unset field keeps its default
+rather than inheriting whatever sits beside it.
+
+**Three guards, and the first two are swept rather than sampled.**
+
+1. `test_tuning_the_reporting_band_can_never_change_what_is_spent` drives both
+   bands across 1.0–10.0 C against a near-freezing case and asserts
+   `observation_disagreements` never moves. Mirrored in Dart.
+2. `test_the_reporting_band_does_change_what_is_reported` — without it the
+   first passes on a band wired to nothing.
+3. `test_no_scored_path_can_see_a_reporting_band` walks the AST of
+   `verify/scoring.py` and the two scored builders in `pipeline.py` and fails
+   if any of them so much as names a band. STRUCTURAL ON PURPOSE: a
+   behavioural version would pass today for the trivial reason that nothing is
+   wired, and keep passing until someone wired it wrongly in a case the test
+   did not cover. **Mutation-tested** — a planted reference makes it fail.
+
+**The asymmetric case is not a bug, and is pinned in the vectors.** Loosen the
+band far enough and near freezing you get `notable=False` with
+`decisive=True`: no footnote, and the call is still bought. Re-forecasting
+near freezing is about the forecast being wrong where being wrong matters,
+which is a fact about the WEATHER; the band is a preference about being TOLD.
+The spend buys a corrected forecast rather than a sentence about an
+uncorrected one.
+
+**Documented where an operator meets it**, as a commented-out block in
+`config/location.yaml` — commented out because an absent key and a key set to
+its default are different statements, and because the defaults are what almost
+every deployment wants.
+
+### What is NOT built
+
+Only the LOW has a reporting band. High, rain and onset still emit codes
+without a reportable notion of "how far is far enough", and giving them one
+means introducing a `notable` for each — the same shape, more surface. Wind is
+item 146. And the app's advanced-settings screen, which is the half the
+operator actually asked for, is `ensemble` item 20: this is its prerequisite.
+
 Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
+
+---
+
+## 146. Compare sustained to sustained, and gust to gust · **Planned — raised 2026-09-16**
+
+The operator, 2026-09-16, reading item 145's claim that a wind deviation
+cannot be offered here:
+
+> *"For wind - we should be comparing sustained to sustained and gust to gust,
+> whenever possible, right?"*
+
+Yes, and items 144 and 145 both stated the constraint one step too early.
+"The station files `sknt`, a SUSTAINED wind, and the forecast is a GUST" is
+true, and the conclusion drawn from it — that wind cannot be checked here —
+does not follow. **The models forecast both quantities. The answer to a
+sustained observation is a sustained forecast, not silence.**
+
+### THE DATA IS ALREADY BEING PAID FOR AND THROWN AWAY
+
+- `DAILY_VARS` requests `windspeed_10m_max` beside `windgusts_10m_max`
+  (`fetch/open_meteo.py`). **Nothing reads it.** `extract.py` pulls only
+  `wind_gusts_10m_{model}` and `windgusts_10m_max_{model}` into
+  `ModelPrediction.wind_kmh`.
+- The hourly request asks for `wind_speed_10m` as well, and it is read in
+  exactly one place — as the last fallback in a `pick_series`.
+- `REGIONAL_DAILY_VARS` uses `windspeed_10m_max`, so **regional points are
+  already described by sustained wind while the primary point is described by
+  gust**, and nothing says so.
+
+So the sustained series is fetched on every run, for every model, and
+discarded. No new request is needed to build this.
+
+### A LATENT ITEM-144 IN `bucket_hourly_by_date`
+
+```python
+wind_arr = pick_series(h, "wind_gusts_10m", "windgusts_10m",
+                       "wind_speed_10m", "windspeed_10m")
+```
+
+If the gust array is absent from a response, **a sustained value silently
+becomes "the gust"** — one field, two quantities, exactly the shape item 144
+was raised on, and here it lands in the OBSERVED side that the record scores
+against. The docstring describes the fallback accurately and does not say what
+it costs. A gust and a sustained wind differ by the gust factor, so a day that
+took this path contributes a systematic error to `avg_wind_error_kmh_10`,
+which is the number the calibration in `CALIBRATED PEAK GUST` is built from.
+
+**CHECKED 2026-09-16, AND IT HAS NOT FIRED.** One archive request for
+2026-09-10..14 at the primary point returns `windgusts_10m` populated on 120
+of 120 hours, so `pick_series` finds the gust array at its second candidate
+and never reaches the sustained fallback. **The record is not polluted and
+item 126's numbers do not need re-reading.** The risk is latent rather than
+realised, which lowers the urgency and does not change the fix: a fallback
+that silently substitutes a different quantity should refuse instead, while it
+is still costing nothing to change.
+
+Note what the same response also proves: **`windspeed_10m` comes back just as
+fully populated, 120 of 120.** So the OBSERVED side can supply sustained wind
+from ERA5, not only from a METAR station — which makes a sustained comparison
+portable to every deployment rather than one with a station, the same
+portability argument item 144 settled for the gust.
+
+### What this unlocks, in order
+
+1. **Make the fallback refuse.** Absence is absence: a missing gust array
+   should produce `None`, not a different quantity wearing the same name.
+   Cheapest, and it stops the record being quietly polluted.
+2. **Carry sustained wind beside gust** through `extract.py` and
+   `ModelPrediction`. Two fields, named so they cannot be swapped — the same
+   lesson as item 144, applied before the bug instead of after it.
+3. **A sustained wind deviation check**, which is the row item 145's table
+   could not offer: the models' sustained forecast against ERA5's sustained
+   observation, the same quantity on both sides and available in every
+   deployment. Where a station reports `sknt` it becomes a second, closer
+   witness to the same quantity rather than the only one.
+4. **Then reconsider what the forecast REPORTS.** A reader ashore arguably
+   wants the sustained wind and the gust, not the gust alone — that is a
+   product question and belongs after the plumbing, not before.
+
+### What NOT to do
+
+Do not repoint `peak_wind_primary_kmh` at sustained wind. It is scored
+gust-to-gust against ERA5, that pairing is correct, and item 144 has just
+finished making it unambiguous. This item ADDS a quantity; it does not
+redefine the one that exists.
+
+Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.

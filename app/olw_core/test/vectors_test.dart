@@ -423,10 +423,17 @@ void main() {
         final i = c['input'] as Map<String, Object?>;
         final s = i['standing'] as Map<String, Object?>;
         final o = i['observed'] as Map<String, Object?>;
+        final b = i['bands'] as Map<String, Object?>?;
         final got = lowDivergence(
           StandingCall(tempLowC: (s['temp_low_c'] as num?)?.toDouble()),
           ObservedSoFar(lowC: (o['low_c'] as num?)?.toDouble()),
           lowIsSettled: i['low_is_settled'] as bool?,
+          bands: b == null
+              ? const DeviationBands()
+              : DeviationBands(
+                  lowC: (b['low_c'] as num).toDouble(),
+                  lowFreezingC: (b['low_freezing_c'] as num).toDouble(),
+                ),
         );
 
         final expected = c['expected'] as Map<String, Object?>?;

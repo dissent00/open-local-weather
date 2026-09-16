@@ -17,6 +17,7 @@ import yaml
 from openlocalweather.reasoning import LLMRefreshPolicy
 from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
+from openlocalweather.models import DeviationBands
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -35,6 +36,27 @@ class SecondaryPoint(Point):
     section_label: str = ""
     lat: float = 0.0
     lon: float = 0.0
+
+
+class DeviationBandsConfig(BaseModel):
+    """What this deployment counts as a deviation worth REPORTING — ROADMAP
+    item 145.
+
+    REPORTING ONLY. Nothing here can change what a run spends on LLM calls:
+    `disagreement` decides that from a constant no configuration reaches, and
+    a swept test proves these cannot move it. That separation is the whole
+    point of the block — see `models.DeviationBands`.
+
+    OMITTING IT IS THE NORMAL CASE. Every field defaults to the shipped value,
+    so a deployment that says nothing behaves exactly as it did. Setting one
+    is a statement that this deployment's readers want a different answer, and
+    item 143 records why that is a reasonable thing to want: the shipped low
+    band is about twelve times the measured gap here, which is right for
+    someone walking to work and wrong for someone whose crop is frost-tender.
+    """
+
+    low_c: float | None = None
+    low_freezing_c: float | None = None
 
 
 class WaqiStation(BaseModel):
@@ -87,6 +109,9 @@ class LocationConfig(BaseModel):
     # do with it, while "HKKI reported 20C" does not. Empty falls back to the
     # ICAO, which is ugly but never wrong.
     metar_station_name: str = ""
+    # ROADMAP item 145. Absent means "the shipped defaults", which is what
+    # almost every deployment wants; see DeviationBandsConfig.
+    deviation_bands: DeviationBandsConfig = Field(default_factory=DeviationBandsConfig)
     waqi_stations: list[WaqiStation] = Field(default_factory=list)
     local_bulletin_url: str = ""
     local_bulletin_source_name: str = ""
@@ -227,3 +252,25 @@ def load_location_config(path: str | Path) -> LocationConfig:
     if not raw or "location" not in raw:
         raise ValueError(f"{path} must have a top-level 'location:' key.")
     return LocationConfig.model_validate(raw["location"])
+
+
+def deviation_bands(location: LocationConfig) -> DeviationBands:
+    """This deployment's reporting bands, with the shipped defaults filling
+    every gap — ROADMAP item 145.
+
+    FIELD BY FIELD, not all-or-nothing. A deployment that tightens the
+    near-freezing band should not silently inherit a stale value for the other
+    one, and `None` means "not configured" rather than zero — absence is
+    absence, as everywhere else in this record.
+    """
+    configured = location.deviation_bands
+    shipped = DeviationBands()
+
+    return DeviationBands(
+        low_c=shipped.low_c if configured.low_c is None else configured.low_c,
+        low_freezing_c=(
+            shipped.low_freezing_c
+            if configured.low_freezing_c is None
+            else configured.low_freezing_c
+        ),
+    )

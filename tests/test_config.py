@@ -50,3 +50,115 @@ def test_secondary_point_constructs_with_no_args():
     assert sp.enabled is False
     assert sp.lat == 0.0
     assert sp.lon == 0.0
+
+
+# --- reporting bands — ROADMAP item 145 --------------------------------------
+
+
+def test_an_unconfigured_deployment_gets_the_shipped_bands(tmp_path):
+    """Omitting the block is the normal case and must change nothing."""
+    from openlocalweather.config import deviation_bands
+    from openlocalweather.models import DeviationBands
+
+    cfg = load_location_config("config/location.yaml")
+    assert deviation_bands(cfg) == DeviationBands()
+
+
+def test_one_configured_band_does_not_drag_the_other_with_it(tmp_path):
+    """FIELD BY FIELD, not all-or-nothing. A deployment tightening the
+    near-freezing band must not silently inherit a stale value for the other,
+    and `None` means not-configured rather than zero."""
+    import yaml
+
+    from openlocalweather.config import deviation_bands
+    from openlocalweather.models import DeviationBands
+
+    raw = yaml.safe_load(open("config/location.yaml").read())
+    raw["location"]["deviation_bands"] = {"low_freezing_c": 0.5}
+    path = tmp_path / "location.yaml"
+    path.write_text(yaml.safe_dump(raw))
+
+    got = deviation_bands(load_location_config(path))
+    assert got.low_freezing_c == 0.5, "the configured field is honoured"
+    assert got.low_c == DeviationBands().low_c, "the unset one keeps its default"
+
+
+def test_a_configured_band_cannot_change_what_the_run_spends(tmp_path):
+    """The config-level restatement of item 145's safety property. The test in
+    test_disagreement.py sweeps the value; this one proves the wiring cannot
+    reach the spending decision either."""
+    import yaml
+
+    from openlocalweather.config import deviation_bands
+    from openlocalweather.disagreement import observation_disagreements
+    from openlocalweather.models import ObservedSoFar
+    from openlocalweather.disagreement import StandingCall
+
+    standing = StandingCall(temp_low_c=-0.5)
+    observed = ObservedSoFar(low_c=2.0)
+    baseline = observation_disagreements(standing, observed, low_is_settled=True)
+
+    raw = yaml.safe_load(open("config/location.yaml").read())
+    raw["location"]["deviation_bands"] = {"low_c": 0.1, "low_freezing_c": 0.1}
+    path = tmp_path / "location.yaml"
+    path.write_text(yaml.safe_dump(raw))
+
+    got = observation_disagreements(
+        standing, observed, low_is_settled=True,
+        bands=deviation_bands(load_location_config(path)),
+    )
+    assert got == baseline
+
+
+def test_no_scored_path_can_see_a_reporting_band():
+    """THE RECORD MUST NOT MOVE WITH THE READER'S SETTINGS — ROADMAP item 145.
+
+    A band changes what a deployment SAYS. If it could change what is SCORED,
+    two deployments would disagree about the accuracy of the same forecast and
+    the cross-deployment record — this project's strongest claim — would stop
+    meaning anything.
+
+    STRUCTURAL RATHER THAN BEHAVIOURAL, deliberately. A test that scored one
+    forecast under two band settings and compared the numbers would pass today
+    for the trivial reason that nothing is wired, and would keep passing until
+    someone wired it wrongly in a case the test did not happen to cover. This
+    asserts the thing that must stay true: the scoring code cannot SEE a band
+    at all.
+    """
+    import ast
+    from pathlib import Path
+
+    forbidden = {"DeviationBands", "deviation_bands", "bands"}
+    scored = {
+        Path("src/openlocalweather/verify/scoring.py"): None,
+        Path("src/openlocalweather/pipeline.py"): {
+            "_blend_prediction",
+            "_extended_blend_predictions",
+        },
+    }
+
+    offences = []
+    for path, only in scored.items():
+        tree = ast.parse(path.read_text())
+        nodes = []
+        if only is None:
+            nodes = [tree]
+        else:
+            nodes = [
+                n
+                for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name in only
+            ]
+            assert len(nodes) == len(only), f"{path}: a scored builder was renamed"
+
+        for node in nodes:
+            for sub in ast.walk(node):
+                name = getattr(sub, "id", None) or getattr(sub, "arg", None)
+                if name in forbidden:
+                    offences.append(f"{path.name}:{sub.lineno} references {name!r}")
+
+    assert not offences, (
+        "a reporting band reached the scored record: "
+        + "; ".join(offences)
+        + ". Bands decide what a reader is TOLD, never what the record SCORES."
+    )

@@ -85,6 +85,7 @@ List<String> observationDisagreements(
   double tempMarginC = tempContradictionMarginC,
   int onsetMarginMin = onsetContradictionMarginMin,
   bool? lowIsSettled,
+  DeviationBands bands = const DeviationBands(),
 }) {
   final found = <String>[];
 
@@ -117,8 +118,10 @@ List<String> observationDisagreements(
   // near-freezing case — where it is the difference between ice and no ice —
   // is a contradiction. The gap itself is measured and stored regardless; see
   // [lowDivergence].
-  final divergence =
-      lowDivergence(standing, observed, lowIsSettled: lowIsSettled);
+  // `bands` is threaded through and is DELIBERATELY UNABLE to change the
+  // result — see [lowDivergenceSpendMarginC].
+  final divergence = lowDivergence(standing, observed,
+      lowIsSettled: lowIsSettled, bands: bands);
   if (divergence != null && divergence.decisive) {
     found.add(disagreementLowDiverges);
   }
@@ -142,6 +145,18 @@ List<String> observationDisagreements(
 const double lowDivergenceMarginC = 3.0;
 const double lowDivergenceFreezingMarginC = 1.0;
 
+/// THE SPENDING BAND, AND IT IS NOT IN [DeviationBands] ON PURPOSE — upstream
+/// item 145.
+///
+/// `decisive` used to be `notable && nearFreezing`, which let the reporting
+/// band reach the spending decision: a reader tightening what they wanted to
+/// be told about would have started buying LLM calls, with nothing on screen
+/// connecting the two. Decoupled here. This is the ONLY thing that widens or
+/// narrows spending, it is not configurable, and the swept test proves no
+/// band can move it. Set to the value `decisive` effectively had before the
+/// split, so this is a decoupling and not a retune.
+const double lowDivergenceSpendMarginC = 1.0;
+
 /// At or below this, the tight margin applies and the divergence is treated
 /// as decision-grade. 4 C rather than 0 because ground frost forms while the
 /// air is still above freezing.
@@ -163,8 +178,7 @@ LowDivergence? lowDivergence(
   StandingCall standing,
   ObservedSoFar observed, {
   required bool? lowIsSettled,
-  double marginC = lowDivergenceMarginC,
-  double freezingMarginC = lowDivergenceFreezingMarginC,
+  DeviationBands bands = const DeviationBands(),
 }) {
   final called = standing.tempLowC;
   final seen = observed.lowC;
@@ -177,8 +191,22 @@ LowDivergence? lowDivergence(
   if (delta > 0 && lowIsSettled != true) return null;
 
   final nearFreezing = (called < seen ? called : seen) <= nearFreezingC;
-  final band = nearFreezing ? freezingMarginC : marginC;
+  final band = nearFreezing ? bands.lowFreezingC : bands.lowC;
+
+  // TWO INDEPENDENT TESTS AGAINST TWO INDEPENDENT BANDS — item 145.
+  //
+  // `notable` answers "tell the reader?" and reads the configured band.
+  // `decisive` answers "buy a call?" and reads a constant no configuration
+  // touches.
+  //
+  // THE ASYMMETRIC CASE IS NOT A BUG. Loosen the band far enough and near
+  // freezing you get notable=false with decisive=true: no footnote, and the
+  // call is still bought. Re-forecasting near freezing is about the forecast
+  // being wrong where being wrong matters, which is a fact about the WEATHER;
+  // the band is a preference about being TOLD. The spend buys a corrected
+  // forecast rather than a sentence about an uncorrected one.
   final notable = delta.abs() >= band;
+  final decisive = nearFreezing && delta.abs() >= lowDivergenceSpendMarginC;
 
   return LowDivergence(
     forecastC: called,
@@ -186,6 +214,6 @@ LowDivergence? lowDivergence(
     deltaC: delta,
     marginC: band,
     notable: notable,
-    decisive: notable && nearFreezing,
+    decisive: decisive,
   );
 }
