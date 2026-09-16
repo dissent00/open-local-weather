@@ -1320,6 +1320,13 @@ def export_user_prompt() -> None:
             case("a later issuance — no newer model cycle since the first", refresh_no_new_cycle, verification_already_written=True),
             case("cold start — every optional input absent", empty),
             case("no ground stations configured — the blocks are absent", no_stations),
+            # ENSEMBLE ITEM 12. The app used to let these default to `[]`,
+            # which the forecaster read as a result. None is "not supplied",
+            # and this case pins the sentence both languages render for it.
+            case(
+                "record blocks not supplied — the app before item 12",
+                dict(empty, verification_context=None, track_record_context=None),
+            ),
             case(
                 "no local met service configured — the bulletin block is absent",
                 dict(full, local_bulletin_configured=False),

@@ -693,3 +693,38 @@ def test_a_first_issuance_is_never_told_verification_is_already_written():
 
     assert "VERIFICATION IS ALREADY WRITTEN" not in prompt
     assert "placeholder" not in prompt.lower()
+
+
+def _minimal_user_prompt(**overrides):
+    kwargs = dict(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.org",
+        verification_context=[],
+        track_record_context=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+    )
+    kwargs.update(overrides)
+    return build_user_prompt(**kwargs)
+
+
+def test_user_prompt_says_when_the_record_blocks_were_not_supplied():
+    # ensemble item 12: the app passed nothing for these and the prompt
+    # rendered `[]`, which reads like a result rather than an absence. None
+    # now says what it is. The pipeline never passes None — a fresh
+    # deployment sends its (empty) lists — so the server's prompt is unmoved.
+    prompt = _minimal_user_prompt(verification_context=None, track_record_context=None)
+    assert "Unavailable — no verification results supplied this run." in prompt
+    assert "Unavailable — no track record supplied this run." in prompt
+
+
+def test_user_prompt_keeps_rendering_supplied_empty_record_blocks_as_lists():
+    prompt = _minimal_user_prompt()
+    assert "no verification results supplied" not in prompt
+    assert "no track record supplied" not in prompt
+    assert "MODEL TRACK RECORD (already computed rolling stats, per model per lead time):\n[]" in prompt

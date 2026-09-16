@@ -119,7 +119,7 @@ absent values are `null`, never omitted keys.
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
 | `observation_disagreements.json` | `observation_disagreements` | 21 |
 | `low_divergence.json` | `low_divergence` | 14 |
-| `llm_user_prompt.json` | `build_user_prompt` | 7 |
+| `llm_user_prompt.json` | `build_user_prompt` | 8 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 28 |

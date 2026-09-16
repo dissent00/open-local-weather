@@ -847,10 +847,10 @@ OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — M
 ${observedSoFar ?? 'Unavailable — the station reported nothing measurable today. Say nothing about what has already happened.'}$lowDivergenceBlock$groundAqiBlock$localBulletinBlock
 
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — the direction lives in these fields and nowhere else. THREE FIELDS HERE ARE NOT ERRORS AND ARE EASY TO MISREAD — ROADMAP item 142, finding 6, which found them arriving with real data and no instruction at all. "convective_correct" is whether that model's THUNDER call verified, true or false; on a day whose convective flag is true it is the most decision-relevant thing in this block, and a model that has been getting it wrong here is one to weigh less on thunder today. "rain_brier" scores the model's own rain PROBABILITY rather than its yes/no call - lower is better, 0 is a confident correct call, 0.25 is what an even hedge scores whatever happens, and above that is confidence in the wrong direction. "cloud_error_pct" is in PERCENTAGE POINTS and follows the same observed-minus-forecast convention as the rest. Most stored notes that had it backwards were corrected on 2026-09-10 and say so; the ones that could not be verified mechanically were left alone rather than guessed at):
-${promptJson(verificationContext)}
+${verificationContext == null ? 'Unavailable — no verification results supplied this run.' : promptJson(verificationContext)}
 
 MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
-${promptJson(trackRecordContext)}
+${trackRecordContext == null ? 'Unavailable — no track record supplied this run.' : promptJson(trackRecordContext)}
 
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):

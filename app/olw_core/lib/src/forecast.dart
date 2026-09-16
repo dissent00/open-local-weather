@@ -208,9 +208,27 @@ Future<ForecastRun> generateForecast({
   required DateTime today,
   required String publicWebpageUrl,
   List<String> models = defaultModels,
-  Object? verificationContext = const <Object>[],
-  Object? trackRecordContext = const <Object>[],
-  Object? reviewContext,
+
+  /// The three blocks the forecaster reasons about the RECORD from — the
+  /// verification scores, the rolling track record and the long-run review.
+  ///
+  /// REQUIRED, with no default — `ensemble` item 12. Until 2026-09-16 the
+  /// first two defaulted to an empty list and the third to null, and the
+  /// app passed none of them: every forecast it ever produced carried
+  /// `MODEL TRACK RECORD: []`, which reads as a result, not as an absence.
+  /// A defaulted named parameter is invisible at the call site — the same
+  /// way `earlierToday` went unpassed for weeks (item 8) — so a caller that
+  /// has not decided what to send must fail to compile, exactly as
+  /// [gustBias] below already does.
+  ///
+  /// `null` means "not supplied this run" and the prompt says so in words;
+  /// an empty list means a record that exists and is empty, and renders as
+  /// `[]` as it always has. The pipeline sends lists; the app sends the
+  /// review and, deliberately, null for the other two until their cost has
+  /// been measured.
+  required Object? verificationContext,
+  required Object? trackRecordContext,
+  required Object? reviewContext,
   Object? yesterdayActual,
   /// Each model's measured gust bias, keyed by model id — calibration.dart.
   /// Null or empty when too little has been verified to have measured one.
