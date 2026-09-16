@@ -20687,6 +20687,47 @@ summarises a model rather than narrating a day — which is closer to what the
 review does and further from a diary entry. Decide it separately, with the
 measurement above, rather than sweeping it up in this item's momentum.
 
+### THE PRE-CUT BASELINE, recorded before the cut so the comparison means something
+
+The operator, agreeing to cut after the 15:01 run: *"It'll give us more data
+tomorrow post-cut and onward if the size of the prompt has influenced the
+failed requests."* That is a testable hypothesis, and it has to be baselined
+BEFORE the change or a post-cut improvement will be attributed to the cut by
+default. Measured 2026-09-16 from `meta.input_tokens` and the spend ledger:
+
+| date | input tokens | failures | what they were |
+|---|---:|---:|---|
+| 2026-09-10 | not stored | 0 | |
+| 2026-09-11 | 79,300 | 10 | 8 × 503, 2 timeout |
+| 2026-09-12 | 79,883 | **0** | |
+| 2026-09-13 | 80,061 | **0** | |
+| 2026-09-14 | 80,863 | 8 | 8 × 503 |
+| 2026-09-15 | 64,067 | 9 | 5 × 503, 4 × 500 |
+| 2026-09-16 | 68,747 | **0** | |
+
+**NO RELATIONSHIP IS VISIBLE, and the sample argues against one.** The two
+SMALLEST days are 09-15 (nine failures) and 09-16 (none). The largest, 09-14,
+had eight; the second and third largest had none between them. Failures track
+PROVIDER EVENTS — the 09-11 503 storm, the 09-14 503s, and 09-15's transition
+to the Interactions endpoint, where the 500s landed on the re-issue narrative
+path that had never run there.
+
+**The failure MODES also point away from size.** A prompt too large fails as a
+400 or a refusal, not a 503; 503 is capacity at the provider's end. The only
+size-plausible signature in the whole record is the two timeouts on 09-11 —
+two events, on one day, alongside eight 503s.
+
+**So the honest prediction is that the cut will NOT reduce failures**, and if
+failures fall tomorrow the first explanation to rule out is that the provider
+had a quieter day. Recording that here, in advance, is the point: item 100 is
+in this file because a threshold was sized from two convenient samples, and
+"we cut the prompt and failures fell" is the same mistake with a nicer story.
+
+**Caveats on the data itself**, so nobody over-reads the table: `input_tokens`
+is stored once per ENTRY while failures are per CALL, a failed call records no
+token count, and the series is six days long. It is enough to say no
+relationship is visible; it is not enough to say there is none.
+
 ### The review's cadence — "weekly" is ONLY the name
 
 Raised by the operator as a throwback to the morning/evening model, with the
@@ -20778,3 +20819,73 @@ make the app's prompt BIGGER by wiring in the record it currently lacks. Doing
 step.
 
 Related: items 73, 112, 111, 132, 134, 147, and `ensemble` item 12.
+
+---
+
+## 149. The track record narrates itself too · **Raised 2026-09-16 — for discussion, deliberately not decided**
+
+Found while measuring item 147, and the operator asked for it to be taken
+separately rather than swept up: *"I'm interested in that additional block, so
+yes that deserves a discussion separately."*
+
+### What it is
+
+Every row of `MODEL TRACK RECORD` carries a `skill_profile_summary` written by
+the LLM on a previous run, stored on the track record, and sent back in the
+prompt beside the computed statistics. Measured 2026-09-16: **18 rows, all 18
+carrying prose, 1,998 characters — 13% of that 15,532-character block.**
+
+> *"At Day+0, demonstrates moderate rainfall accuracy with a persistent
+> daytime warm bias and a strong tendency to under-forecast peak surface wind
+> speeds."*
+
+It is the same shape as item 147's `HISTORICAL NOTES`: the model's prose about
+its own past, fed back to itself, which `review.py`'s header calls out as the
+thing that lets an error propagate forward. Item 142's finding 3 records that
+these summaries can contradict the error-sign convention, exactly as the notes
+did.
+
+### WHY IT IS NOT JUST A SMALLER 147, and this is the discussion
+
+Three differences, and each one cuts the other way from the notes:
+
+1. **It summarises a MODEL, not a DAY.** A note says what happened on the
+   14th. A skill profile says what GFS is like here. The second is a claim
+   about a standing property, which is what the operator actually asked the
+   forecaster to reason from — *"pick amongst the models... say 'It looks to
+   me like GFS got this right'"*. The notes were a diary; this is closer to a
+   verdict.
+2. **It sits BESIDE its own evidence.** The prose is in the same row as the
+   computed error figures it describes, so a reader can check it in place. The
+   notes sat in a block of their own with nothing to check them against.
+3. **It is a tenth the size.** 1,998 characters against 15,437. Cutting it
+   saves almost nothing, so the case for cutting has to be made on
+   truthfulness alone, not on cost.
+
+### The question to actually answer
+
+**Does the review already produce this, better?** `review.py` emits per-model
+findings with `claim`, `evidence` and `confidence`, gated so that a weak
+sample produces no claim at all — and a skill profile is a per-model claim
+with none of those guards. If the review's findings cover the same ground,
+this is redundant for the same reason the notes were. If they do not — if a
+skill profile carries something the gated findings cannot state — that is
+worth knowing before anything is cut, and it is the same question item 147
+asked about setup-matching, which turned out to have a clean answer.
+
+**Three shapes, unranked on purpose:**
+
+1. **Leave it.** It is small, it is checkable in place, and it may be the
+   sentence the operator wants.
+2. **Compute it.** Replace the prose with a generated summary from the same
+   figures, so the row still reads as a sentence but nothing self-authored
+   enters the record. Removes the propagation without removing the reading.
+3. **Cut it and lean on the review**, as item 147 did for the notes.
+
+Do NOT decide this on item 147's momentum. The notes lost on a measurement —
+27 of 67 mechanically corrected — and no equivalent measurement has been taken
+here. Take it first: how many of the 18 summaries disagree with the figures in
+their own row?
+
+Related: items 147, 142 finding 3, 18 (accuracy improving is the
+differentiator), and `review.py`'s header.
