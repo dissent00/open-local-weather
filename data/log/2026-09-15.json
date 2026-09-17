@@ -2,7 +2,8 @@
   "date": "2026-09-15",
   "rain_expected": "Showers and thunderstorms expected late afternoon and evening",
   "onset_window": "16:00-20:00",
-  "peak_wind_kmh": 42.1,
+  "peak_wind_primary_kmh": null,
+  "peak_wind_secondary_kmh": 42.1,
   "temp_high_c": 31.2,
   "temp_low_c": 18.8,
   "temp_high_low_display": "31°C / 88°F high, 19°C / 66°F low",
@@ -502,8 +503,64 @@
         }
       ],
       "window_opened_local": "2026-09-15T06:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": false,
+          "rain_brier": 0.5041,
+          "onset_error_hrs": null,
+          "wind_error_kmh": -7.199999999999996,
+          "high_error_c": 0.1999999999999993,
+          "low_error_c": -0.3000000000000007,
+          "mslp_error_hpa": 0.8000000000000682,
+          "cloud_error_pct": -36.0,
+          "convective_correct": null
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": false,
+          "rain_brier": 0.8464,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 10.400000000000002,
+          "high_error_c": 0.10000000000000142,
+          "low_error_c": -0.3999999999999986,
+          "mslp_error_hpa": 0.900000000000091,
+          "cloud_error_pct": -0.8000000000000007,
+          "convective_correct": null
+        },
+        "icon_seamless": {
+          "rain_correct": false,
+          "rain_brier": 0.25,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 10.400000000000002,
+          "high_error_c": 1.0,
+          "low_error_c": -2.5,
+          "mslp_error_hpa": 0.8000000000000682,
+          "cloud_error_pct": -33.599999999999994,
+          "convective_correct": null
+        },
+        "ukmo_seamless": {
+          "rain_correct": false,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 11.500000000000004,
+          "high_error_c": 0.3000000000000007,
+          "low_error_c": 0.8000000000000007,
+          "mslp_error_hpa": -0.2999999999999545,
+          "cloud_error_pct": 15.2,
+          "convective_correct": null
+        },
+        "best_match": {
+          "rain_correct": false,
+          "rain_brier": 0.8464,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 1.4000000000000057,
+          "high_error_c": -0.3000000000000007,
+          "low_error_c": -0.3000000000000007,
+          "mslp_error_hpa": 1.1000000000000227,
+          "cloud_error_pct": 7.199999999999999,
+          "convective_correct": null
+        }
+      },
+      "window_verified_at": "2026-09-17T03:01:40.529929Z",
       "day_over_day": {
         "yesterday_high_c": 29.1,
         "yesterday_low_c": 17.9,
@@ -583,6 +640,7 @@
   "guidance_initialised_at": "2026-09-14T18:00:00Z",
   "guidance_age_hours": 9.0244037575,
   "guidance_source": "observed",
+  "forecast_reach": null,
   "meta": {
     "generated_at_utc": "2026-09-15T03:12:23.159368Z",
     "llm_provider": "GeminiProvider",
@@ -593,6 +651,7 @@
     "input_tokens": 64067,
     "output_tokens": 302,
     "thought_tokens": null,
+    "prompt_size": null,
     "response_schema_sha256": "cdf8d7ac344b55d54ba1d063439d3a08aee1d04581598d647ea4f3a23b9ce494",
     "nullable_fields": [
       "/extended_properties[]/rain_probability_pct",
@@ -610,7 +669,8 @@
     "information_moved": {
       "first_issuance_of_day": true,
       "guidance_is_newer": null,
-      "observation_disagreements": []
+      "observation_disagreements": [],
+      "low_divergence": null
     },
     "refreshed_at": null,
     "trigger_source": "workflow_dispatch",

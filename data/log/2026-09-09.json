@@ -2,7 +2,8 @@
   "date": "2026-09-09",
   "rain_expected": "Isolated Evening Thunderstorms Possible",
   "onset_window": null,
-  "peak_wind_kmh": null,
+  "peak_wind_primary_kmh": null,
+  "peak_wind_secondary_kmh": null,
   "temp_high_c": 31.0,
   "temp_low_c": 18.0,
   "temp_high_low_display": "31°C / 88°F high, 18°C / 64°F low",
@@ -38,6 +39,8 @@
   ],
   "sunrise": "06:34",
   "sunset": "18:41",
+  "prediction_rows": [],
+  "observed_so_far": null,
   "model_predictions": {
     "day0": [
       {
@@ -448,7 +451,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -466,6 +469,7 @@
   "guidance_initialised_at": "2026-09-08T18:00:00Z",
   "guidance_age_hours": 9.022396985,
   "guidance_source": "observed",
+  "forecast_reach": null,
   "meta": {
     "generated_at_utc": "2026-09-09T03:02:49.432685Z",
     "llm_provider": "GeminiProvider",
@@ -475,11 +479,16 @@
     "finish_reason": null,
     "input_tokens": null,
     "output_tokens": null,
+    "thought_tokens": null,
+    "prompt_size": null,
     "response_schema_sha256": null,
     "nullable_fields": null,
+    "narrative_findings": null,
     "information_moved": null,
     "refreshed_at": null,
     "trigger_source": "workflow_dispatch",
+    "issued_local_time": null,
+    "observations_local_time": null,
     "degradations": []
   }
 }

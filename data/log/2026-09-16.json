@@ -999,7 +999,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -1075,6 +1075,7 @@
   "guidance_initialised_at": "2026-09-16T06:00:00Z",
   "guidance_age_hours": 9.021819252222222,
   "guidance_source": "observed",
+  "forecast_reach": null,
   "meta": {
     "generated_at_utc": "2026-09-16T03:03:18.229501Z",
     "llm_provider": "GeminiInteractionsProvider",
@@ -1085,6 +1086,7 @@
     "input_tokens": 67159,
     "output_tokens": 982,
     "thought_tokens": 5002,
+    "prompt_size": null,
     "response_schema_sha256": "45257903fd08ff83858f44655e0afe3fdb474dce73998c67e362f186b684f60b",
     "nullable_fields": [],
     "narrative_findings": [],
