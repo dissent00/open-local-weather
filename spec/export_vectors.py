@@ -2158,6 +2158,8 @@ def export_coverage() -> None:
                     "checked_runs": f.checked_runs,
                     "last_seen": _iso(f.last_seen) if f.last_seen else None,
                     "peers_with_value": f.peers_with_value,
+                    "first_seen": _iso(f.first_seen) if f.first_seen else None,
+                    "present_runs": f.present_runs,
                 }
                 for f in findings
             ],
@@ -2166,11 +2168,13 @@ def export_coverage() -> None:
     write(
         "coverage.json",
         "detect_coverage",
-        "Data-coverage findings. The three-way split is the contract: a "
+        "Data-coverage findings. The four-way split is the contract: a "
         "regression means something changed, a peer_gap means one model alone "
         "lacks what its peers supply (the shape that hid a real bug for "
-        "months), and never_published means nothing supplies it and there is "
-        "nothing to chase.",
+        "months), never_published means nothing supplies it and there is "
+        "nothing to chase, and became_available means a source now supplies "
+        "what it did not — the mirror of a regression, reported so an "
+        "exclusion measured once can be revisited (ROADMAP item 152).",
         [
             case("one model alone lacks what its peers supply — a peer_gap", 10, None, 25.0),
             case("nothing supplies it — a property, not a fault", 10, None, None),
@@ -2188,6 +2192,19 @@ def export_coverage() -> None:
             # reader as when the variable was last seen.
             case("last seen carries its stored date across a gap", 12,
                  lambda i: None if i < 4 else 22.0, 25.0, skip=(4,)),
+            # ROADMAP item 152 step 2. The prior stretch has the SAME floor as
+            # the present one, and the record chose it: with no floor, the live
+            # log reported ECMWF Day+0 wind as "present 28, absent 2" — the
+            # August fix leaving the 30-day window — and kenya_met Day+0 low as
+            # "present 26, absent 1". Neither is an exclusion being overturned.
+            case("absent then present — became_available", 12,
+                 lambda i: 22.0 if i < 3 else None, 25.0),
+            case("a short absence at the window's edge is not an arrival", 12,
+                 lambda i: 22.0 if i < 10 else None, 25.0),
+            case("two present runs are not yet an arrival", 12,
+                 lambda i: 22.0 if i < 2 else None, 25.0),
+            case("present, absent, present again is not an arrival", 12,
+                 lambda i: 22.0 if i < 3 or i > 7 else None, 25.0),
         ],
     )
 

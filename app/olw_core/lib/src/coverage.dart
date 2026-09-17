@@ -23,7 +23,7 @@ import 'models.dart';
 /// and the app can degrade honestly in the meantime by naming the gap rather
 /// than showing a quietly narrower model set.
 ///
-/// THREE KINDS, because the obvious two are not enough:
+/// FOUR KINDS, because the obvious two are not enough:
 ///  - `regression`  — present before, absent now. An upstream rename.
 ///  - `peer_gap`    — never present here, but peers at this lead time DO
 ///                    supply it. The ECMWF case had no before-and-after
@@ -31,6 +31,12 @@ import 'models.dart';
 ///                    that four other models reported wind and it did not.
 ///  - `never_published` — absent for every model. A property of the data,
 ///                    with nothing to investigate.
+///  - `became_available` — absent throughout the older part of the window,
+///                    present in every run since. The mirror of a regression
+///                    (upstream ROADMAP item 152): an exclusion measured once
+///                    becomes permanent by default, because the day it stops
+///                    being true every layer handles the new value as
+///                    silently as it handled the absence. News, not a fault.
 
 /// Fields worth watching.
 ///
@@ -56,9 +62,11 @@ class CoverageFinding {
     required this.absentRuns,
     required this.checkedRuns,
     this.peersWithValue = const [],
+    this.firstSeen,
+    this.presentRuns = 0,
   });
 
-  final String kind; // regression | peer_gap | never_published
+  final String kind; // regression | peer_gap | never_published | became_available
   final String model;
   final int leadTimeDays;
   final String variable;
@@ -66,10 +74,21 @@ class CoverageFinding {
   final int absentRuns;
   final int checkedRuns;
   final List<String> peersWithValue;
+  // became_available only: the oldest run of the unbroken present stretch,
+  // and its length. `absentRuns` is then the stretch before it. Separate
+  // fields rather than `lastSeen` reused with the opposite meaning.
+  final DateTime? firstSeen;
+  final int presentRuns;
 
   String get message {
     final where = '$model Day+$leadTimeDays $variable';
     switch (kind) {
+      case 'became_available':
+        return '$where: started arriving — present in the last $presentRuns '
+            'run(s) since ${firstSeen == null ? "never" : formatDate(firstSeen!)}, '
+            'after $absentRuns run(s) without it. Nothing is wrong; a source is '
+            'supplying something it did not. Worth deciding once whether it '
+            'should now be read, and recording the answer.';
       case 'peer_gap':
         return '$where: never supplied in $checkedRuns run(s), while '
             '${peersWithValue.length} other model(s) do supply it '
@@ -209,7 +228,33 @@ List<CoverageFinding> detectCoverage({
             absentRuns: absent,
             checkedRuns: modelRuns.length,
           ));
+          continue;
         }
+        // The mirror: consecutive presences from the newest run backwards,
+        // and NOTHING present before them. The same threshold on both sides;
+        // the vector's window-edge case carries the measurement that chose
+        // the floor on the prior stretch.
+        var arrived = 0;
+        for (final r in modelRuns) {
+          if (_valueOf(r.$2, variable) == null) break;
+          arrived++;
+        }
+        final prior = modelRuns.sublist(arrived);
+        if (arrived < absentRunsThreshold || prior.length < absentRunsThreshold) {
+          continue;
+        }
+        if (prior.any((r) => _valueOf(r.$2, variable) != null)) continue;
+        findings.add(CoverageFinding(
+          kind: 'became_available',
+          model: model,
+          leadTimeDays: k,
+          variable: variable,
+          lastSeen: null,
+          absentRuns: prior.length,
+          checkedRuns: modelRuns.length,
+          firstSeen: modelRuns[arrived - 1].$1,
+          presentRuns: arrived,
+        ));
       }
     }
   }
@@ -218,7 +263,15 @@ List<CoverageFinding> detectCoverage({
 
 /// Findings a human should look at: something changed, or one model is alone
 /// in not supplying something its peers do. `never_published` is excluded —
-/// nothing supplies it, so there is nothing to chase, and reporting all three
-/// at equal volume is how monitoring stops being read.
+/// nothing supplies it, so there is nothing to chase — and so is
+/// `became_available`, which is news rather than a fault and is read through
+/// [newlyAvailable]. Reporting all four at equal volume is how monitoring
+/// stops being read.
 List<CoverageFinding> actionable(List<CoverageFinding> findings) =>
-    [for (final f in findings) if (f.kind != 'never_published') f];
+    [for (final f in findings) if (f.kind == 'regression' || f.kind == 'peer_gap') f];
+
+/// The arrivals: a source now supplying what it did not. Python's
+/// `newly_available` also marks the config acknowledgement each one makes
+/// stale; the app has no such config, so this is the list alone.
+List<CoverageFinding> newlyAvailable(List<CoverageFinding> findings) =>
+    [for (final f in findings) if (f.kind == 'became_available') f];

@@ -414,6 +414,8 @@ def test_vectors_coverage():
             assert g.model == w["model"], name
             assert g.variable == w["variable"], name
             assert g.peers_with_value == w["peers_with_value"], name
+            assert g.present_runs == w["present_runs"], name
+            assert (g.first_seen.isoformat() if g.first_seen else None) == w["first_seen"], name
 
 
 def test_vectors_synoptic():

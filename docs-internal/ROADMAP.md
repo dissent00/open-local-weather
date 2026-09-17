@@ -21924,6 +21924,18 @@ dropping the prior floor fails the window-edge test and the healthy-record
 test; dropping the present floor fails the two-run test; dropping the
 unbroken-prior rule fails the intermittent test. 1287 tests.
 
+**Shipped in two commits, and the second should have been part of the
+first.** d471a48 changed Python alone. `detect_coverage` is shared logic —
+`app/olw_core/lib/src/coverage.dart` and `spec/vectors/coverage.json` —
+so under item 88 and `spec/README.md` the vector cases and the Dart port
+were owed in the same change, and followed in the next commit with the
+app re-pinned after it. The vector suite was GREEN on the first commit,
+which is the lesson worth keeping: no existing case reached the new
+branch, so a passing contract proved the cases that had been chosen and
+nothing about the function. Four cases now pin the rule — the arrival, and
+its three refusals — and dropping the Dart floor on the prior stretch
+fails the window-edge case.
+
 **Not done here:** the narrated-field watcher has no `became_available`.
 A forecaster field that starts being filled after never being filled is a
 prompt question, not a source one, and nothing in `NARRATED_FIELDS` is

@@ -91,7 +91,7 @@ absent values are `null`, never omitted keys.
 | `blend_prediction.json` | `_blend_prediction` | 5 |
 | `extended_blend_predictions.json` | `_extended_blend_predictions` | 6 |
 | `bucket_hourly_by_date.json` | `bucket_hourly_by_date` | 6 |
-| `coverage.json` | `detect_coverage` | 6 |
+| `coverage.json` | `detect_coverage` | 10 |
 | `dates.json` | `prediction_row_date_for_target` | 6 |
 | `weekday_name.json` | `weekday_name` | 11 |
 | `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |

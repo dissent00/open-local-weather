@@ -789,6 +789,10 @@ void main() {
           final wantSeen = want[n]['last_seen'];
           expect(got[n].lastSeen == null ? null : formatDate(got[n].lastSeen!),
               equals(wantSeen), reason: reason);
+          expect(got[n].presentRuns, equals(want[n]['present_runs']), reason: reason);
+          final wantFirst = want[n]['first_seen'];
+          expect(got[n].firstSeen == null ? null : formatDate(got[n].firstSeen!),
+              equals(wantFirst), reason: reason);
         }
       }
     });
