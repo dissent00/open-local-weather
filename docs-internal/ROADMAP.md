@@ -20698,6 +20698,32 @@ means introducing a `notable` for each — the same shape, more surface. Wind is
 item 146. And the app's advanced-settings screen, which is the half the
 operator actually asked for, is `ensemble` item 20: this is its prerequisite.
 
+### 2026-09-17 — the app half shipped; the missing bands are raised, not built
+
+`ensemble` item 20 shipped the two low bands as a reader's setting, the
+observation seam plumbed for the METAR and local sources that app will
+have, and a yesterday line from its own record. What it exposes is exactly
+what `DeviationBands` carries, so the remaining bands arrive there by
+re-pin once they exist here.
+
+**Raised as this item's next step, operator's decision to raise and build
+later:** a reporting band for each of the other three tests, the same
+shape as the low's — a `notable` per code, read from `DeviationBands`,
+with `decisive` untouched and the swept test extended to each:
+
+| test | today | the band |
+|---|---|---|
+| `DISAGREEMENT_HIGH_EXCEEDED` | fires at `TEMP_CONTRADICTION_MARGIN_C` (2.0), which is also the SPEND margin | a separate reporting margin, default 2.0 so nothing changes on shipping |
+| `DISAGREEMENT_RAIN_WHILE_DRY` | binary | no magnitude to band; the reader's switch is whether to be told at all |
+| `DISAGREEMENT_ONSET_ALREADY_PASSED` | fires at `ONSET_CONTRADICTION_MARGIN_MIN` (60), also the spend margin | a separate reporting margin in minutes, default 60 |
+
+The high and onset margins are today ONE value answering two questions
+(item 154's shape): they decide both the footnote and the call. The split
+is the same decoupling item 143 did for the low, and it must not retune
+anything — defaults equal to the current constants, and the AST guard
+extended to the new names. The sustained wind waits on 146 step 4.
+
+
 Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
 
 ---
