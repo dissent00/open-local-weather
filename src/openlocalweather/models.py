@@ -1107,6 +1107,14 @@ class PromptSize(BaseModel):
     # block's sources follow it as "TODAY'S MULTI-MODEL GUIDANCE/<source>".
     # See llm/prompt_size.py for the rule that finds a block.
     blocks: dict[str, int] = Field(default_factory=dict)
+    # Step 2. This run's user prompt against the median of the previous
+    # first issuances — see llm/prompt_size.py. Both None on a re-issue,
+    # which is a different series, and when too few prior first issuances
+    # exist to call anything a median. The judgement ("did it grow") is made
+    # against PROMPT_GROWTH_WARN_PCT when this is read, not stored, so a
+    # retuned threshold does not relabel history.
+    trailing_median_chars: int | None = None
+    growth_pct: float | None = None
 
 
 class LogEntryMeta(BaseModel):

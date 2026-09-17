@@ -114,6 +114,8 @@ from openlocalweather.defaults import (
     BASELINE_MODEL_IDS,
     BLEND_MODEL_ID,
     MODELS,
+    PROMPT_GROWTH_TRAILING_RUNS,
+    PROMPT_GROWTH_WARN_PCT,
     WEEKLY_BATCH_WEEKDAY,
     models_visible_to_the_forecaster,
     note_names_a_hidden_model,
@@ -131,7 +133,12 @@ from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm import forecast_call
 from openlocalweather.llm.forecast_call import generate_forecast
-from openlocalweather.llm.prompt_size import measure_prompt
+from openlocalweather.llm.prompt_size import (
+    blocks_that_grew,
+    measure_prompt,
+    prompt_block_sizes,
+    prompt_growth,
+)
 from openlocalweather.extract import forecast_horizon_days
 from openlocalweather.llm.prompt import (
     build_judgment_prompt,
@@ -178,6 +185,7 @@ from openlocalweather.models import (
     DayOverDayComparison,
     IssuancePredictions,
     ObservedSoFar,
+    PromptSize,
     InformationMoved,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
@@ -2022,6 +2030,54 @@ def observe_forecast_reach(
     return reach
 
 
+def _prompt_size_with_growth(
+    judgment_prompt: str,
+    narrative_prompt: str,
+    user_prompt: str,
+    *,
+    first_issuance: bool,
+    data_dir: str | Path,
+    today: date,
+) -> PromptSize:
+    """This run's prompt sized, and on a day's first issuance compared with
+    the median of the previous first issuances — ROADMAP item 148, step 2.
+
+    Read from the prompt archive rather than from stored entries because the
+    archive keeps every issuance and an entry's meta keeps only the latest:
+    a re-issue would otherwise overwrite the morning's figure. The archive
+    for `today` is excluded by date, so a run is never compared against its
+    own. Says so on stderr when the growth crosses the threshold and names
+    the blocks that grew; refuses nothing — that is step 3.
+    """
+    size = measure_prompt(judgment_prompt, narrative_prompt, user_prompt)
+    if not first_issuance:
+        return size
+
+    trailing = prompt_archive.first_issuance_prompts(
+        data_dir, before=today, limit=PROMPT_GROWTH_TRAILING_RUNS
+    )
+    growth = prompt_growth(size.user_prompt_chars, [len(p) for p in trailing])
+    if growth is None:
+        return size
+
+    if growth.growth_pct >= PROMPT_GROWTH_WARN_PCT:
+        grown = blocks_that_grew(size.blocks, prompt_block_sizes(trailing[-1]))
+        named = ", ".join(f"{name} +{chars:,}" for name, chars in grown) or "no single block"
+        print(
+            f"NOTICE: the prompt grew {growth.growth_pct:+.1f}% over the median of the "
+            f"last {len(trailing)} first issuances ({growth.trailing_median_chars:,} "
+            f"chars). Grew most: {named}. ROADMAP item 148.",
+            file=sys.stderr,
+        )
+
+    return size.model_copy(
+        update={
+            "trailing_median_chars": growth.trailing_median_chars,
+            "growth_pct": growth.growth_pct,
+        }
+    )
+
+
 def _compose_log_entry(
     deps: PipelineDeps,
     guidance: ForwardGuidance,
@@ -2162,7 +2218,10 @@ def _compose_log_entry(
             thought_tokens=response_meta.thought_tokens,
             # Sized here, from the same strings the archive hashes, so the
             # stored figure and the archived prompt describe one issuance.
-            prompt_size=measure_prompt(judgment_prompt, narrative_prompt, user_prompt),
+            prompt_size=_prompt_size_with_growth(
+                judgment_prompt, narrative_prompt, user_prompt,
+                first_issuance=existing_entry is None, data_dir=deps.data_dir, today=today,
+            ),
             response_schema_sha256=response_meta.response_schema_sha256,
             nullable_fields=_nullable_fields(last_response),
             narrative_findings=_narrative_findings(llm_response, today),

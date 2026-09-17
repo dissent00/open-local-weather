@@ -21196,7 +21196,7 @@ improving over time is the differentiator), 100.
 
 ---
 
-## 148. Nothing measures the prompt, and nothing stops it growing · **Step 1 SHIPPED 2026-09-16 — measured and stored per run; the warning (2) and the ceiling (3) are Planned**
+## 148. Nothing measures the prompt, and nothing stops it growing · **Steps 1-2 SHIPPED 2026-09-16/17 — measured, stored, and growth noticed; the ceiling (3) waits on 132**
 
 The operator, after item 147's measurements: *"your notes on prompt size - I
 think we have an item, or at least some discussion, about monitoring and maybe
@@ -21300,6 +21300,60 @@ series to exist first, and the ceiling (step 3) needs item 132's economics.
 The app has no prompt archive and no meta on its stored forecast, so its half
 is a storage decision under `ensemble` item 4 — recorded in that repo's owed
 table. No Dart port until the app measures; then with a vector.
+
+### Step 2 shipped 2026-09-17 — the warning, sized from the series step 1 made
+
+**The rule.** On a day's first issuance the pipeline compares the user
+prompt's size with the median of the previous seven first issuances, read
+from the prompt archive, and stores the median and the growth percentage
+on `meta.prompt_size`. Growth at or above `PROMPT_GROWTH_WARN_PCT` prints
+one line on the run naming the three top-level blocks that grew most
+against the previous first issuance. The weekly check re-derives the same
+figure for the last seven archived days and prints a NOTICE when any
+crossed the threshold — a notice and never a failure, operator's decision
+2026-09-17. Nothing refuses a run; that is step 3 and waits on item 132's
+economics.
+
+**Why the archive and not the entries.** An entry's meta is the latest
+issuance's; a re-issue would overwrite the morning's figure. The archive
+keeps every issuance, and the run's stored figure and the check's derived
+one come from one function, the discipline `olw prompt-size` already
+holds the block sizes to.
+
+**Why first issuances only, and a median.** A later issuance sends a
+verification note rather than scores and was measured 4,945 characters
+smaller on 2026-09-16 — a different series. And the median rather than
+the previous run so one odd day cannot re-base the comparison.
+
+**Two percent, from the record.** Thirteen day-over-day deltas of the
+first issuance, 2026-09-04 to 09-17: ordinary movement inside 1.1% either
+way, median 0.74; the two additions the archive holds read as +5.5%
+(09-11) and +2.4% (09-14); the cuts as −13.6% and −18.7%. Two percent is
+about twice the largest ordinary move and under the smallest real
+addition. Thirteen is thin, and the constant's comment says so.
+
+**MEASURED BEHAVIOUR OF THE MEDIAN, worth knowing before reading the
+notice.** Run over the live archive on shipping day, the check reports
+09-11 +6.3%, 09-12 +6.1%, 09-13 +5.3% and 09-14 +7.6% — four days for
+what was one addition on 09-11 (and a smaller one on 09-14). A level
+comparison against last week's median stays above it until the median
+absorbs the new size, about four days at seven runs. That is the
+intended shape: the failure this exists for is an addition nobody
+noticed, and a notice that repeats until the baseline moves is harder to
+miss than one that fires once. If it proves tiresome, the alternative is
+the previous run rather than the median, which the design rejected for
+re-basing on one odd day.
+
+Driven through the real CLI before and after (controls byte-identical):
+the change is the two new keys, null, on the fixture's entry, which has
+no prior archive to compare against. Each guard was mutated and seen to
+fail its test: comparing re-issues, including today in its own trailing
+series, and a mean where the median is claimed. 1328 tests.
+
+**Not done here:** the app half, owed under `ensemble` item 4's columns;
+the ceiling (step 3); and the growth figure in `olw prompt-size`'s table,
+which re-derives block sizes only — a column there would be a second
+copy of this rule.
 
 Related: items 73, 112, 111, 132, 134, 147, and `ensemble` item 12.
 

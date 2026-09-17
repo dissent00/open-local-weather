@@ -45,6 +45,7 @@ import requests
 from pydantic import BaseModel
 
 from openlocalweather.cycle import AlignedCycle, aligned_cycle_at
+from openlocalweather.defaults import PROMPT_GROWTH_WARN_PCT
 from openlocalweather.fetch.model_run import RUN_SETTLE_MINUTES, ModelRun
 from openlocalweather.llm.provider import LLMProvider
 from openlocalweather.models import RunDegradation
@@ -273,6 +274,66 @@ class DegradationStatus(Enum):
 class DegradationCheck:
     status: DegradationStatus
     message: str
+
+
+class PromptGrowthStatus(Enum):
+    """GREW is a notice, never a failure — the operator's decision, 2026-09-17.
+    NOT_CHECKED is kept apart from STEADY for the reason every check here
+    keeps them apart: a week with no figure is not a week that held still."""
+
+    GREW = "grew"
+    STEADY = "steady"
+    NOT_CHECKED = "not_checked"
+
+
+@dataclass
+class PromptGrowthCheck:
+    status: PromptGrowthStatus
+    message: str
+
+
+def check_prompt_growth(
+    recent: list[tuple[str, float | None]], warn_pct: float = PROMPT_GROWTH_WARN_PCT
+) -> PromptGrowthCheck:
+    """Did any recent first issuance's prompt grow past the threshold over its
+    trailing median? ROADMAP item 148, step 2.
+
+    `recent` is (date, growth_pct) per first issuance, None where no figure
+    could be made. Pure: the caller derives the figures from the prompt
+    archive with `prompt_growth`, the same function the run stored its own
+    with, so a re-issue overwriting the entry's meta cannot hide a morning
+    that grew. Shrinkage is never reported — a cut is a decision.
+    """
+    figures = [(d, g) for d, g in recent if g is not None]
+    if not figures:
+        return PromptGrowthCheck(
+            status=PromptGrowthStatus.NOT_CHECKED,
+            message=(
+                f"Nothing to compare: {len(recent)} first issuance(s) in the window and "
+                "no trailing median for any of them yet."
+            ),
+        )
+
+    grew = [(d, g) for d, g in figures if g >= warn_pct]
+    if grew:
+        listed = ", ".join(f"{d} {g:+.1f}%" for d, g in grew)
+        return PromptGrowthCheck(
+            status=PromptGrowthStatus.GREW,
+            message=(
+                f"the prompt grew {warn_pct:g}% or more over its trailing median on "
+                f"{listed}. Something was added; the run's own line names the blocks, "
+                "and `olw prompt-size` shows the series. Item 148."
+            ),
+        )
+
+    largest = max(g for _, g in figures)
+    return PromptGrowthCheck(
+        status=PromptGrowthStatus.STEADY,
+        message=(
+            f"no first issuance in the last {len(figures)} grew past {warn_pct:g}% "
+            f"(largest move {largest:+.1f}%)."
+        ),
+    )
 
 
 def check_recent_degradations(

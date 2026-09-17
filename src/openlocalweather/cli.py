@@ -37,10 +37,11 @@ from openlocalweather.coverage import (
 )
 from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
+    PROMPT_GROWTH_TRAILING_RUNS,
     REVIEW_MIN_CHECKS_FOR_COMPARISON,
     scored_models,
 )
-from openlocalweather.dates import add_days, today_in_tz
+from openlocalweather.dates import add_days, format_date, today_in_tz
 from openlocalweather.defaults import WATCHED_COLUMN_LOOKBACK_DAYS
 from openlocalweather.fetch import metar as metar_fetch
 from openlocalweather.fetch import open_meteo
@@ -60,6 +61,8 @@ from openlocalweather.health_check import (
     check_cap_feed,
     check_recent_degradations,
     check_watched_columns,
+    check_prompt_growth,
+    PromptGrowthStatus,
     check_model_deprecation,
     check_repo_staleness,
 )
@@ -671,6 +674,33 @@ def _watched_observation_points(location: LocationConfig, cache) -> list[tuple[s
     return points
 
 
+def _recent_prompt_growth(data_dir: str) -> list[tuple[str, float | None]]:
+    """Each recent day's first issuance against its own trailing median,
+    newest first, derived from the prompt archive — ROADMAP item 148, step 2.
+
+    From the archive rather than from the entries' stored figure, because an
+    entry's meta is the LATEST issuance's and a re-issue would hide the
+    morning that grew; the stored figure is the run's own record, and
+    `olw prompt-size` checks the two rules agree.
+    """
+    from openlocalweather.llm.prompt_size import prompt_growth
+    from openlocalweather.store.prompt_archive import (
+        first_issuance_prompts,
+        list_archived_dates,
+        read_prompt_archive,
+    )
+
+    out: list[tuple[str, float | None]] = []
+    for d in sorted(list_archived_dates(data_dir), reverse=True)[:PROMPT_GROWTH_TRAILING_RUNS]:
+        issuances = read_prompt_archive(data_dir, d)
+        if not issuances:
+            continue
+        trailing = first_issuance_prompts(data_dir, before=d, limit=PROMPT_GROWTH_TRAILING_RUNS)
+        growth = prompt_growth(len(issuances[0]["user_prompt"]), [len(p) for p in trailing])
+        out.append((format_date(d), None if growth is None else growth.growth_pct))
+    return out
+
+
 def _recent_issuance_degradations(data_dir: str) -> list[list[RunDegradation]]:
     """Every issuance of the most recent stored days, newest day first, as
     the degradation lists check_recent_degradations wants.
@@ -854,6 +884,17 @@ def _run_check_health(args: argparse.Namespace) -> int:
     unpublished = len(observed) - len(lost) - len(back)
     if unpublished:
         print(f"  ({unpublished} observed field(s) no check has ever seen supplied.)")
+
+    # ROADMAP item 148 step 2. A NOTICE and never a failure, operator's
+    # decision 2026-09-17: the prompt growing is a decision nobody took,
+    # not a broken run, and nothing refuses a run on it (step 3).
+    print("Checking whether the prompt grew...")
+    growth = check_prompt_growth(_recent_prompt_growth(args.data_dir))
+    prefix = {
+        PromptGrowthStatus.GREW: "NOTICE: ",
+        PromptGrowthStatus.STEADY: "OK — ",
+    }.get(growth.status, "")
+    print(f"  {prefix}{growth.message}")
 
     # Slow rot, like the staleness proxy below: the aligned-window table is
     # a hand measurement from 2026-08-11, every forecast that cannot observe

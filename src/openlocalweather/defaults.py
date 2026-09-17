@@ -476,6 +476,32 @@ COVERAGE_WINDOW_DAYS = 30
 # precisely because absence was handled correctly and silently everywhere.
 COVERAGE_ABSENT_RUNS = 3
 
+# --- Prompt growth (see llm/prompt_size.py) — ROADMAP item 148, step 2 ---
+#
+# A day's first issuance is compared against the median size of the previous
+# first issuances, this many of them. A week: long enough that one odd day
+# cannot re-base the comparison, short enough that a real addition is not
+# averaged into the baseline before anyone sees it. Re-issues are a different
+# series — a later issuance sends a verification note rather than scores and
+# was measured 4,945 characters smaller on 2026-09-16 — and are not compared.
+PROMPT_GROWTH_TRAILING_RUNS = 7
+
+# Fewer prior first issuances than this and no figure is produced: a median of
+# one is the previous run, and the comparison is then exactly the one the
+# median exists to avoid.
+PROMPT_GROWTH_MIN_RUNS = 3
+
+# Growth over the trailing median at which a run says so.
+#
+# SIZED AGAINST THE RECORD, 2026-09-17: thirteen day-over-day deltas of the
+# first issuance, 2026-09-04 to 09-17. Ordinary movement stayed inside 1.1%
+# either way (median 0.74%). The two additions the archive holds read as
+# +5.5% (09-11) and +2.4% (09-14), the two cuts as -13.6% and -18.7%. Two
+# percent is about twice the largest ordinary move and under the smallest
+# real addition. Thirteen deltas is thin; when the series is longer, re-read
+# it before trusting this number — item 100.
+PROMPT_GROWTH_WARN_PCT = 2.0
+
 
 # --- Synoptic-scale pressure (see synoptic.py) ---
 #

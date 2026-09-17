@@ -429,3 +429,40 @@ def test_a_trace_is_not_a_measurement_and_neither_is_a_constant_zero():
     got = check_watched_columns(rows, watched=("p01i",), read_column_count=3)
     assert got.present["p01i"] == 0
     assert got.changed is False
+
+
+# ---------------------------------------------------------------------------
+# ROADMAP item 148, step 2: the prompt grew and nobody noticed
+# ---------------------------------------------------------------------------
+
+
+def test_a_first_issuance_that_grew_past_the_threshold_is_a_notice():
+    from openlocalweather.health_check import PromptGrowthStatus, check_prompt_growth
+
+    got = check_prompt_growth([("2026-09-14", 2.42), ("2026-09-13", -0.53), ("2026-09-12", 0.07)])
+    assert got.status is PromptGrowthStatus.GREW
+    assert "2026-09-14" in got.message
+    assert "+2.4%" in got.message
+
+
+def test_ordinary_movement_is_steady():
+    from openlocalweather.health_check import PromptGrowthStatus, check_prompt_growth
+
+    got = check_prompt_growth([("2026-09-09", -0.56), ("2026-09-08", -0.23), ("2026-09-07", 0.52)])
+    assert got.status is PromptGrowthStatus.STEADY
+
+
+def test_a_cut_is_not_growth():
+    from openlocalweather.health_check import PromptGrowthStatus, check_prompt_growth
+
+    got = check_prompt_growth([("2026-09-15", -13.61)])
+    assert got.status is PromptGrowthStatus.STEADY
+
+
+def test_nothing_to_compare_is_not_steady():
+    """Three-valued, as everywhere: a week with no figure is not a week that
+    held still."""
+    from openlocalweather.health_check import PromptGrowthStatus, check_prompt_growth
+
+    assert check_prompt_growth([("2026-09-05", None)]).status is PromptGrowthStatus.NOT_CHECKED
+    assert check_prompt_growth([]).status is PromptGrowthStatus.NOT_CHECKED

@@ -110,6 +110,24 @@ def read_prompt_archive(data_dir: str | Path, d: date) -> list[dict]:
     return json.loads(path.read_text(encoding="utf-8"))["issuances"]
 
 
+def first_issuance_prompts(data_dir: str | Path, *, before: date, limit: int) -> list[str]:
+    """The user prompt of each day's FIRST issuance, for the `limit` archived
+    days before `before`, oldest first — ROADMAP item 148, step 2.
+
+    First issuances only: a later issuance the same day sends a verification
+    note rather than scores and is smaller by design, so it is a different
+    series. Days on or after `before` are excluded so a run is never compared
+    against its own archive.
+    """
+    days = [d for d in list_archived_dates(data_dir) if d < before][-limit:]
+    out: list[str] = []
+    for d in days:
+        issuances = read_prompt_archive(data_dir, d)
+        if issuances:
+            out.append(issuances[0]["user_prompt"])
+    return out
+
+
 def write_prompt_archive(
     data_dir: str | Path,
     d: date,
