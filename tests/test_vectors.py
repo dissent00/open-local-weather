@@ -928,6 +928,15 @@ def test_vectors_instability():
 # ---------------------------------------------------------------------------
 
 
+def test_vectors_cell_key():
+    """ROADMAP item 156 — one point, one key, on the phone and in the store."""
+    from openlocalweather.cell import cell_key
+
+    for case in load("cell_key.json")["cases"]:
+        i = case["input"]
+        assert cell_key(i["lat"], i["lon"]) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_every_vector_file_is_exercised():
     """A vector file with no test is a contract nobody checks. Adding one
     without wiring it up here should fail loudly rather than pass quietly."""
@@ -993,6 +1002,7 @@ def test_every_vector_file_is_exercised():
         "comparison_subject.json",
         "gust_calibration.json",
         "prompt_rounding.json",
+        "cell_key.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

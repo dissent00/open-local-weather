@@ -1,0 +1,103 @@
+{
+  "vector_format_version": 1,
+  "function": "cell_key",
+  "description": "ROADMAP item 156. The quarter-degree tile containing a point, keyed by its south-west corner as `s0.25_e34.75`. A corner belongs to the tile it names; latitude 90 files under the last row; longitude 180 and beyond wraps west. A privacy and indexing unit, not a model cell.",
+  "cases": [
+    {
+      "name": "the reference deployment's primary point",
+      "input": {
+        "lat": -0.0917,
+        "lon": 34.768
+      },
+      "expected": "s0.25_e34.75"
+    },
+    {
+      "name": "the origin",
+      "input": {
+        "lat": 0.0,
+        "lon": 0.0
+      },
+      "expected": "n0.00_e0.00"
+    },
+    {
+      "name": "a corner belongs to the tile it names",
+      "input": {
+        "lat": 0.25,
+        "lon": 34.75
+      },
+      "expected": "n0.25_e34.75"
+    },
+    {
+      "name": "just south of the equator is the southern tile",
+      "input": {
+        "lat": -0.0001,
+        "lon": 34.75
+      },
+      "expected": "s0.25_e34.75"
+    },
+    {
+      "name": "a negative corner",
+      "input": {
+        "lat": -0.25,
+        "lon": -34.75
+      },
+      "expected": "s0.25_w34.75"
+    },
+    {
+      "name": "just inside a negative corner",
+      "input": {
+        "lat": -0.2499,
+        "lon": -34.7499
+      },
+      "expected": "s0.25_w34.75"
+    },
+    {
+      "name": "a northern city west of Greenwich",
+      "input": {
+        "lat": 51.5074,
+        "lon": -0.1278
+      },
+      "expected": "n51.50_w0.25"
+    },
+    {
+      "name": "the north pole is the last row",
+      "input": {
+        "lat": 90.0,
+        "lon": 0.0
+      },
+      "expected": "n89.75_e0.00"
+    },
+    {
+      "name": "the south pole is the first row",
+      "input": {
+        "lat": -90.0,
+        "lon": 0.0
+      },
+      "expected": "s90.00_e0.00"
+    },
+    {
+      "name": "the antimeridian wraps west",
+      "input": {
+        "lat": 0.0,
+        "lon": 180.0
+      },
+      "expected": "n0.00_w180.00"
+    },
+    {
+      "name": "past the antimeridian wraps west",
+      "input": {
+        "lat": 0.0,
+        "lon": 180.25
+      },
+      "expected": "n0.00_w179.75"
+    },
+    {
+      "name": "minus 180 is the first column",
+      "input": {
+        "lat": 0.0,
+        "lon": -180.0
+      },
+      "expected": "n0.00_w180.00"
+    }
+  ]
+}

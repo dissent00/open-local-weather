@@ -1625,6 +1625,19 @@ void main() {
     });
   });
 
+  group('cell_key — ROADMAP item 156', () {
+    test('one point files under one key on the phone and in the store', () {
+      for (final c in casesOf('cell_key.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expect(
+          cellKey((i['lat'] as num).toDouble(), (i['lon'] as num).toDouble()),
+          c['expected'],
+          reason: 'case "${c['name']}"',
+        );
+      }
+    });
+  });
+
   test('every vector file on disk is exercised', () {
     // Mirrors test_every_vector_file_is_exercised on the Python side: a
     // vector file nobody reads is a contract nobody checks.
@@ -1690,6 +1703,7 @@ void main() {
       'next_aligned_window.json',
       'baselines.json',
       'comparison_for_prompt.json',
+      'cell_key.json',
     };
     final onDisk = vectorsDir
         .listSync()

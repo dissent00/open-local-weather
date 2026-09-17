@@ -2660,6 +2660,44 @@ def export_sustained_wind_gap() -> None:
     )
 
 
+def export_cell_key() -> None:
+    """ROADMAP item 156. The quarter-degree tile a forecast is filed under
+    in the shared store, named by its south-west corner. Computed on the
+    phone before anything leaves it and by the store's pull job for a
+    registered deployment, so the two must file one point under one key or
+    a viewer's listing for a town splits in two. The cases are the corners,
+    the poles and the wrap — where a floor in two languages could part."""
+    from openlocalweather.cell import cell_key
+
+    points = [
+        ("the reference deployment's primary point", -0.0917, 34.768),
+        ("the origin", 0.0, 0.0),
+        ("a corner belongs to the tile it names", 0.25, 34.75),
+        ("just south of the equator is the southern tile", -0.0001, 34.75),
+        ("a negative corner", -0.25, -34.75),
+        ("just inside a negative corner", -0.2499, -34.7499),
+        ("a northern city west of Greenwich", 51.5074, -0.1278),
+        ("the north pole is the last row", 90.0, 0.0),
+        ("the south pole is the first row", -90.0, 0.0),
+        ("the antimeridian wraps west", 0.0, 180.0),
+        ("past the antimeridian wraps west", 0.0, 180.25),
+        ("minus 180 is the first column", 0.0, -180.0),
+    ]
+    cases = [
+        {"name": name, "input": {"lat": lat, "lon": lon}, "expected": cell_key(lat, lon)}
+        for name, lat, lon in points
+    ]
+    write(
+        "cell_key.json",
+        "cell_key",
+        "ROADMAP item 156. The quarter-degree tile containing a point, keyed by "
+        "its south-west corner as `s0.25_e34.75`. A corner belongs to the tile "
+        "it names; latitude 90 files under the last row; longitude 180 and "
+        "beyond wraps west. A privacy and indexing unit, not a model cell.",
+        cases,
+    )
+
+
 def export_low_divergence() -> None:
     """ROADMAP item 143. The station's overnight low against the standing call.
 
@@ -4966,6 +5004,7 @@ def main() -> None:
     export_notable_disagreement_notes()
     export_low_divergence()
     export_sustained_wind_gap()
+    export_cell_key()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

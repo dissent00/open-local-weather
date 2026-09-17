@@ -124,6 +124,7 @@ absent values are `null`, never omitted keys.
 | `notable_disagreement_notes.json` | `describe_notable_disagreements` | 5 |
 | `low_divergence.json` | `low_divergence` | 14 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
+| `cell_key.json` | `cell_key` | 12 |
 | `llm_user_prompt.json` | `build_user_prompt` | 9 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
