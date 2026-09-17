@@ -57,6 +57,17 @@ class DeviationBands:
     # 20 C and is ice or no ice at 2 C.
     low_c: float = 3.0
     low_freezing_c: float = 1.0
+    # The daytime high and the rain's onset — ROADMAP item 145's next step,
+    # 2026-09-17. REPORTING margins, like the two above: how far the station's
+    # high must sit above the called high, and how many minutes earlier than
+    # called the rain must have started, before a reader is TOLD. The SPEND
+    # margins for the same two tests are constants in `disagreement.py` that
+    # no configuration reaches, and the defaults here EQUAL them — a test pins
+    # that — so shipping this changed nothing anyone was told or charged. It
+    # is the decoupling item 143 made for the low, applied to the other two:
+    # one value had been answering both questions (item 154's shape).
+    high_c: float = 2.0
+    onset_min: int = 60
 
 
 @dataclass(frozen=True)
@@ -1074,6 +1085,12 @@ class InformationMoved(BaseModel):
     # seen contradicts it; `None` means nothing was looked at, which happens
     # when the station did not report or the lookup failed.
     observation_disagreements: list[str] | None = None
+
+    # The same four tests judged by the deployment's REPORTING bands rather
+    # than the spend constants — item 145's next step. What a reader is TOLD;
+    # `observation_disagreements` above is what a run BUYS. Two lists for the
+    # two questions, in one order. None with the list above: nothing looked at.
+    notable_disagreements: list[str] | None = None
 
     # The station's sustained maximum so far against the models' sustained
     # consensus — ROADMAP item 146, step 3. Measured and stored; read by

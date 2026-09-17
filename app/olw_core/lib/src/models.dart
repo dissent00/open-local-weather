@@ -98,7 +98,18 @@ class ObservedSoFar {
 /// DEFAULTS ARE THE SHIPPED VALUES, so an app that configures nothing behaves
 /// as it did.
 class DeviationBands {
-  const DeviationBands({this.lowC = 3.0, this.lowFreezingC = 1.0});
+  const DeviationBands({
+    this.lowC = 3.0,
+    this.lowFreezingC = 1.0,
+    this.highC = 2.0,
+    this.onsetMin = 60,
+  });
+
+  /// The high's and the onset's REPORTING margins — upstream ROADMAP item
+  /// 145's next step. Defaults equal the spend constants in
+  /// `disagreement.dart`, so shipping them changed nothing; a test pins it.
+  final double highC;
+  final int onsetMin;
 
   /// At or below [nearFreezingC] the freezing band applies instead. Two
   /// widths because one number cannot be right: two degrees is nothing at

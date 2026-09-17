@@ -1,0 +1,237 @@
+{
+  "vector_format_version": 1,
+  "function": "notable_disagreements",
+  "description": "ROADMAP item 145. The four observation tests judged by the REPORTING bands \u2014 what a reader is told \u2014 beside `observation_disagreements`, which judges the same tests by spend constants. Same codes, same order; with the shipped defaults the two lists are equal on every input, and a tightened band is where they part.",
+  "cases": [
+    {
+      "name": "shipped defaults equal the spend list: high at the margin",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": null,
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 32.0,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": null
+      },
+      "expected": [
+        "high_already_exceeded"
+      ]
+    },
+    {
+      "name": "shipped defaults equal the spend list: high under the margin",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": null,
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 31.0,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": null
+      },
+      "expected": []
+    },
+    {
+      "name": "a tightened high band reports what the spend margin ignores",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": null,
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 31.0,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 3.0,
+          "low_freezing_c": 1.0,
+          "high_c": 1.0,
+          "onset_min": 60
+        }
+      },
+      "expected": [
+        "high_already_exceeded"
+      ]
+    },
+    {
+      "name": "a loosened high band reports nothing at the spend margin",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": null,
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": false,
+          "high_c": 32.0,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 3.0,
+          "low_freezing_c": 1.0,
+          "high_c": 4.0,
+          "onset_min": 60
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "a tightened onset band reports what the spend margin ignores",
+      "input": {
+        "standing": {
+          "rain": true,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00",
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": "17:30",
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 3.0,
+          "low_freezing_c": 1.0,
+          "high_c": 2.0,
+          "onset_min": 15
+        }
+      },
+      "expected": [
+        "onset_already_passed"
+      ]
+    },
+    {
+      "name": "rain has no magnitude and is always reported",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": null,
+          "temp_low_c": null
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": null
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 9.0,
+          "low_freezing_c": 9.0,
+          "high_c": 9.0,
+          "onset_min": 600
+        }
+      },
+      "expected": [
+        "rain_observed_while_dry_called"
+      ]
+    },
+    {
+      "name": "the low is reported by notable, not decisive",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 20.0
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 1.0,
+          "low_freezing_c": 1.0,
+          "high_c": 2.0,
+          "onset_min": 60
+        }
+      },
+      "expected": [
+        "observed_low_diverges"
+      ]
+    },
+    {
+      "name": "all four, in the spend list's order",
+      "input": {
+        "standing": {
+          "rain": false,
+          "temp_high_c": 30.0,
+          "onset_hour": "18:00",
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "precipitation": true,
+          "high_c": 35.0,
+          "precipitation_onset": "16:00",
+          "low_c": 20.0
+        },
+        "low_is_settled": true,
+        "bands": {
+          "low_c": 1.0,
+          "low_freezing_c": 1.0,
+          "high_c": 2.0,
+          "onset_min": 60
+        }
+      },
+      "expected": [
+        "rain_observed_while_dry_called",
+        "high_already_exceeded",
+        "onset_already_passed",
+        "observed_low_diverges"
+      ]
+    },
+    {
+      "name": "an unsettled night still withholds a warmer low",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": 18.2
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "precipitation_onset": null,
+          "low_c": 20.0
+        },
+        "low_is_settled": false,
+        "bands": {
+          "low_c": 1.0,
+          "low_freezing_c": 1.0,
+          "high_c": 2.0,
+          "onset_min": 60
+        }
+      },
+      "expected": []
+    }
+  ]
+}

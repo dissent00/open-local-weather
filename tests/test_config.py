@@ -191,3 +191,22 @@ def test_every_acknowledgement_in_the_real_config_is_dated():
     assert cfg.acknowledged_coverage_gaps, "the reference deployment has acknowledgements"
     undated = [g for g in cfg.acknowledged_coverage_gaps if g.since is None]
     assert undated == []
+
+
+def test_the_high_and_onset_bands_resolve_field_by_field(tmp_path):
+    """Item 145's next step: the same rule as the low bands. An unset field
+    keeps the shipped default rather than inheriting its neighbour."""
+    import yaml
+
+    from openlocalweather.config import deviation_bands
+    from openlocalweather.models import DeviationBands
+
+    raw = yaml.safe_load(open("config/location.yaml").read())
+    raw["location"]["deviation_bands"] = {"high_c": 1.0}
+    path = tmp_path / "location.yaml"
+    path.write_text(yaml.safe_dump(raw))
+
+    got = deviation_bands(load_location_config(path))
+    assert got.high_c == 1.0
+    assert got.onset_min == DeviationBands().onset_min
+    assert got.low_c == DeviationBands().low_c

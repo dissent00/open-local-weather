@@ -20545,7 +20545,7 @@ Related: items 126, 142, 104, and `_blend_prediction`'s comment.
 
 ---
 
-## 145. "A significant deviation" is the reader's call, not ours · **Server half SHIPPED 2026-09-16; the app's settings screen is `ensemble` item 20**
+## 145. "A significant deviation" is the reader's call, not ours · **SHIPPED — the low 2026-09-16, the high and onset bands 2026-09-17, the app's screen as `ensemble` 20; the words for the new bands are what is left**
 
 The operator, 2026-09-16, on being shown that item 143's band would suppress
 the case item 143 was raised on:
@@ -20722,6 +20722,42 @@ The high and onset margins are today ONE value answering two questions
 is the same decoupling item 143 did for the low, and it must not retune
 anything — defaults equal to the current constants, and the AST guard
 extended to the new names. The sustained wind waits on 146 step 4.
+
+### Shipped the same day — the high and onset bands, and a second list
+
+`DeviationBands` gains `high_c` (2.0) and `onset_min` (60), REPORTING
+margins whose defaults equal the spend constants — pinned by a test in
+each language, so shipping changed nothing anyone was told or charged.
+The spend constants stay where they were, in `disagreement.py`, reached by
+no configuration. `config.deviation_bands()` resolves the new fields field
+by field and the commented block in `location.yaml` documents them.
+
+**A second list rather than a second meaning.** `notable_disagreements`
+runs the same four tests as `observation_disagreements` under the
+reporting bands: rain whenever it fires (no magnitude to band), the high
+and onset against the reader's margins, the low by `notable` where the
+spend list reads `decisive`. Same codes, same order. It is stored beside
+the spend list on `meta.information_moved.notable_disagreements`, so the
+record will show how often the two differ before any words are written
+for the reader. Two lists for two questions — item 154's shape undone
+rather than reproduced.
+
+**Guards, mutation-tested both ways on both sides:** the swept spend test
+now drives the high band across 0.1–10.0 °C and the onset band across
+5–240 minutes against a case sitting on both spend margins, and the spend
+list never moves; making the notable list read a constant fails its
+tightened-band test and the vector; making the spend list read a band
+fails the sweep. A new vector, `notable_disagreements.json`, nine cases,
+pins where the two lists part and where they must not. Driven through the
+real CLI before and after: one new key on the fixture's entry, an empty
+list beside the spend list's empty list, since the fixture carries a
+station reading that contradicts nothing. 1347 Python, 193 Dart.
+
+**What is left, and it is words.** The low has `describe_low_divergence`;
+the high and the onset have no sentence yet, so a notable high or onset
+is stored and shown nowhere. Both languages, a vector, the same
+one-station caveat the low's carries. The app's card gains the two new
+sliders on re-pin (`ensemble` 20).
 
 
 Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.

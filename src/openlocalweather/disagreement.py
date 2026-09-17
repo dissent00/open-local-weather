@@ -254,6 +254,53 @@ def low_divergence(
     )
 
 
+def notable_disagreements(
+    standing: StandingCall,
+    observed: ObservedSoFar,
+    *,
+    low_is_settled: bool | None,
+    bands: DeviationBands | None = None,
+) -> list[str]:
+    """The same four tests as `observation_disagreements`, judged by the
+    REPORTING bands instead of the spend constants — ROADMAP item 145.
+
+    Two lists for two questions, item 154's shape undone: `observation_
+    disagreements` decides what a run BUYS from constants no configuration
+    reaches; this decides what a reader is TOLD from bands a deployment or a
+    reader sets. Same codes, same order, same asymmetry — a maximum only
+    rises, rain that fell has fallen — because both lists are stored and
+    compared across two languages. Rain has no magnitude to band and is
+    reported whenever it fires; the low is reported by `notable`, where the
+    spend list reads `decisive`.
+
+    With the shipped defaults this list equals the spend list on every input;
+    the defaults were chosen so, and a test pins them to the constants.
+    """
+    bands = bands or DeviationBands()
+    found: list[str] = []
+
+    if standing.rain is False and observed.precipitation is True:
+        found.append(DISAGREEMENT_RAIN_WHILE_DRY)
+
+    if (
+        standing.temp_high_c is not None
+        and observed.high_c is not None
+        and observed.high_c >= standing.temp_high_c + bands.high_c
+    ):
+        found.append(DISAGREEMENT_HIGH_EXCEEDED)
+
+    called = _minutes(standing.onset_hour)
+    seen = _minutes(observed.precipitation_onset)
+    if called is not None and seen is not None and seen <= called - bands.onset_min:
+        found.append(DISAGREEMENT_ONSET_ALREADY_PASSED)
+
+    divergence = low_divergence(standing, observed, low_is_settled=low_is_settled, bands=bands)
+    if divergence is not None and divergence.notable:
+        found.append(DISAGREEMENT_LOW_DIVERGES)
+
+    return found
+
+
 def sustained_wind_gap(
     observed: ObservedSoFar, day0_predictions: list[ModelPrediction]
 ) -> SustainedWindGap | None:

@@ -2741,6 +2741,82 @@ def export_low_divergence() -> None:
     )
 
 
+def export_notable_disagreements() -> None:
+    """ROADMAP item 145's next step: the four observation tests judged by
+    the REPORTING bands rather than the spend constants.
+
+    Vector-locked apart from `observation_disagreements` for the reason the
+    low's two halves are: the two lists answer different questions and a
+    port that merged them would either tell a reader nothing they asked to
+    hear or spend a call they did not. The cases that matter are the ones
+    where the lists DIFFER — a band tightened under the spend margin — and
+    the one where they must not: the shipped defaults.
+    """
+    from openlocalweather.disagreement import notable_disagreements
+
+    scenarios = [
+        ("shipped defaults equal the spend list: high at the margin",
+         (False, 30.0, None, None), (False, 32.0, None, None), True, None),
+        ("shipped defaults equal the spend list: high under the margin",
+         (False, 30.0, None, None), (False, 31.0, None, None), True, None),
+        ("a tightened high band reports what the spend margin ignores",
+         (False, 30.0, None, None), (False, 31.0, None, None), True, (3.0, 1.0, 1.0, 60)),
+        ("a loosened high band reports nothing at the spend margin",
+         (False, 30.0, None, None), (False, 32.0, None, None), True, (3.0, 1.0, 4.0, 60)),
+        ("a tightened onset band reports what the spend margin ignores",
+         (True, 30.0, "18:00", None), (True, None, "17:30", None), True, (3.0, 1.0, 2.0, 15)),
+        ("rain has no magnitude and is always reported",
+         (False, 30.0, None, None), (True, None, None, None), True, (9.0, 9.0, 9.0, 600)),
+        ("the low is reported by notable, not decisive",
+         (None, None, None, 18.2), (None, None, None, 20.0), True, (1.0, 1.0, 2.0, 60)),
+        ("all four, in the spend list's order",
+         (False, 30.0, "18:00", 18.2), (True, 35.0, "16:00", 20.0), True, (1.0, 1.0, 2.0, 60)),
+        ("an unsettled night still withholds a warmer low",
+         (None, None, None, 18.2), (None, None, None, 20.0), False, (1.0, 1.0, 2.0, 60)),
+    ]
+
+    cases = []
+    for name, (rain, high_call, onset_call, low_call), (precipitation, high_obs, onset_obs, low_obs), settled, band in scenarios:
+        bands = None if band is None else DeviationBands(
+            low_c=band[0], low_freezing_c=band[1], high_c=band[2], onset_min=band[3]
+        )
+        standing = StandingCall(rain=rain, temp_high_c=high_call, onset_hour=onset_call, temp_low_c=low_call)
+        observed = ObservedSoFar(precipitation=precipitation, high_c=high_obs, precipitation_onset=onset_obs, low_c=low_obs)
+        got = notable_disagreements(standing, observed, low_is_settled=settled, bands=bands)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "standing": {
+                        "rain": rain, "temp_high_c": high_call,
+                        "onset_hour": onset_call, "temp_low_c": low_call,
+                    },
+                    "observed": {
+                        "precipitation": precipitation, "high_c": high_obs,
+                        "precipitation_onset": onset_obs, "low_c": low_obs,
+                    },
+                    "low_is_settled": settled,
+                    "bands": None if bands is None else {
+                        "low_c": bands.low_c, "low_freezing_c": bands.low_freezing_c,
+                        "high_c": bands.high_c, "onset_min": bands.onset_min,
+                    },
+                },
+                "expected": got,
+            }
+        )
+
+    write(
+        "notable_disagreements.json",
+        "notable_disagreements",
+        "ROADMAP item 145. The four observation tests judged by the REPORTING "
+        "bands — what a reader is told — beside `observation_disagreements`, "
+        "which judges the same tests by spend constants. Same codes, same "
+        "order; with the shipped defaults the two lists are equal on every "
+        "input, and a tightened band is where they part.",
+        cases,
+    )
+
+
 def export_observation_disagreements() -> None:
     """ROADMAP item 104, C2's third trigger, and it decides whether an LLM
     call is made rather than what one says.
@@ -4808,6 +4884,7 @@ def main() -> None:
     export_spend()
     export_verification()
     export_observation_disagreements()
+    export_notable_disagreements()
     export_low_divergence()
     export_sustained_wind_gap()
     export_wind_direction()

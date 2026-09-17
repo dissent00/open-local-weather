@@ -180,6 +180,43 @@ const double nearFreezingC = 4.0;
 /// `sustained_wind_gap`. Not a test in this module's sense: it decides
 /// nothing. The consensus is [mean] over the models that have a value, so an
 /// absent one is not in the denominator.
+/// The same four tests as [observationDisagreements], judged by the
+/// REPORTING bands instead of the spend constants — port of Python's
+/// `notable_disagreements`, upstream ROADMAP item 145. What a reader is
+/// TOLD; the other list is what a run BUYS. Same codes, same order.
+List<String> notableDisagreements(
+  StandingCall standing,
+  ObservedSoFar observed, {
+  bool? lowIsSettled,
+  DeviationBands bands = const DeviationBands(),
+}) {
+  final found = <String>[];
+
+  if (standing.rain == false && observed.precipitation == true) {
+    found.add(disagreementRainWhileDry);
+  }
+
+  final high = standing.tempHighC;
+  final seen = observed.highC;
+  if (high != null && seen != null && seen >= high + bands.highC) {
+    found.add(disagreementHighExceeded);
+  }
+
+  final called = _minutes(standing.onsetHour);
+  final seenAt = _minutes(observed.precipitationOnset);
+  if (called != null && seenAt != null && seenAt <= called - bands.onsetMin) {
+    found.add(disagreementOnsetAlreadyPassed);
+  }
+
+  final divergence =
+      lowDivergence(standing, observed, lowIsSettled: lowIsSettled, bands: bands);
+  if (divergence != null && divergence.notable) {
+    found.add(disagreementLowDiverges);
+  }
+
+  return found;
+}
+
 SustainedWindGap? sustainedWindGap(
   ObservedSoFar observed,
   List<ModelPrediction> day0Predictions,

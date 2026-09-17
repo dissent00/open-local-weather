@@ -120,6 +120,7 @@ absent values are `null`, never omitted keys.
 | `llm_system_prompt.json` | `build_judgment_prompt` + `build_narrative_prompt` | 7 |
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
 | `observation_disagreements.json` | `observation_disagreements` | 21 |
+| `notable_disagreements.json` | `notable_disagreements` | 9 |
 | `low_divergence.json` | `low_divergence` | 14 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `llm_user_prompt.json` | `build_user_prompt` | 8 |

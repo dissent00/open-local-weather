@@ -175,6 +175,7 @@ from openlocalweather.verify.scoring import verify_closed_windows
 from openlocalweather.disagreement import (
     StandingCall,
     low_divergence,
+    notable_disagreements,
     sustained_wind_gap,
     observation_disagreements,
 )
@@ -1864,6 +1865,19 @@ def _information_moved(
             None
             if observed is None
             else observation_disagreements(
+                _standing_call(existing_entry),
+                observed,
+                low_is_settled=settled,
+                bands=bands,
+            )
+        ),
+        # Item 145: the same tests under the REPORTING bands. Stored beside
+        # the spend list so the record shows how often the two differ before
+        # any words are written for the reader.
+        notable_disagreements=(
+            None
+            if observed is None
+            else notable_disagreements(
                 _standing_call(existing_entry),
                 observed,
                 low_is_settled=settled,

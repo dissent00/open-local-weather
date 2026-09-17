@@ -456,6 +456,39 @@ void main() {
       // only the first would store nothing on the ordinary mornings, which
       // are the days that will eventually answer whether the station runs
       // warm or the forecast low does.
+      for (final c in casesOf('notable_disagreements.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final s = i['standing'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final b = i['bands'] as Map<String, Object?>?;
+        final got = notableDisagreements(
+          StandingCall(
+            rain: s['rain'] as bool?,
+            tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
+            onsetHour: s['onset_hour'] as String?,
+            tempLowC: (s['temp_low_c'] as num?)?.toDouble(),
+          ),
+          ObservedSoFar(
+            precipitation: o['precipitation'] as bool?,
+            highC: (o['high_c'] as num?)?.toDouble(),
+            precipitationOnset: o['precipitation_onset'] as String?,
+            lowC: (o['low_c'] as num?)?.toDouble(),
+          ),
+          lowIsSettled: i['low_is_settled'] as bool?,
+          bands: b == null
+              ? const DeviationBands()
+              : DeviationBands(
+                  lowC: (b['low_c'] as num).toDouble(),
+                  lowFreezingC: (b['low_freezing_c'] as num).toDouble(),
+                  highC: (b['high_c'] as num).toDouble(),
+                  onsetMin: (b['onset_min'] as num).toInt(),
+                ),
+        );
+        expect(got, equals((c['expected'] as List).cast<String>()),
+            reason: 'case "${c['name']}" — what a reader is TOLD must match '
+                'across both languages as exactly as what a run BUYS');
+      }
+
       for (final c in casesOf('sustained_wind_gap.json')) {
         final i = c['input'] as Map<String, Object?>;
         final o = i['observed'] as Map<String, Object?>;
@@ -1594,6 +1627,7 @@ void main() {
       'llm_schema_gemini.json',
       'llm_schema_split.json',
       'observation_disagreements.json',
+      'notable_disagreements.json',
       'low_divergence.json',
       'sustained_wind_gap.json',
       'llm_schema_strict.json',

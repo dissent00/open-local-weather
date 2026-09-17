@@ -345,3 +345,82 @@ def test_no_sustained_forecast_at_all_is_no_gap():
 
     assert sustained_wind_gap(ObservedSoFar(peak_wind_kmh=30.0), _day0(kenya_met=None)) is None
     assert sustained_wind_gap(ObservedSoFar(peak_wind_kmh=30.0), []) is None
+
+
+# ---------------------------------------------------------------------------
+# Reporting bands for the high and the onset — ROADMAP item 145, next step
+# ---------------------------------------------------------------------------
+
+
+def test_the_new_bands_default_to_the_spend_margins_so_nothing_changes_on_shipping():
+    """A decoupling, not a retune — item 143's rule for the low, applied to the
+    other two. The day this ships, the reporting list and the spending list
+    agree on every run they ever disagreed on: nowhere."""
+    from openlocalweather.disagreement import (
+        ONSET_CONTRADICTION_MARGIN_MIN,
+        TEMP_CONTRADICTION_MARGIN_C,
+    )
+
+    assert DeviationBands().high_c == TEMP_CONTRADICTION_MARGIN_C
+    assert DeviationBands().onset_min == ONSET_CONTRADICTION_MARGIN_MIN
+
+
+def test_a_tightened_high_band_reports_what_the_spend_margin_ignores():
+    from openlocalweather.disagreement import notable_disagreements
+
+    standing = StandingCall(rain=False, temp_high_c=30.0)
+    observed = ObservedSoFar(precipitation=False, high_c=31.0)
+
+    assert observation_disagreements(standing, observed) == [], "one degree is under the spend margin"
+    assert notable_disagreements(standing, observed, low_is_settled=True) == [], "and under the default band"
+    assert notable_disagreements(
+        standing, observed, low_is_settled=True, bands=DeviationBands(high_c=1.0)
+    ) == [DISAGREEMENT_HIGH_EXCEEDED]
+
+
+def test_a_tightened_onset_band_reports_what_the_spend_margin_ignores():
+    from openlocalweather.disagreement import notable_disagreements
+
+    standing = StandingCall(rain=True, temp_high_c=30.0, onset_hour="18:00")
+    observed = ObservedSoFar(precipitation=True, precipitation_onset="17:30")
+
+    assert observation_disagreements(standing, observed) == []
+    assert notable_disagreements(
+        standing, observed, low_is_settled=True, bands=DeviationBands(onset_min=15)
+    ) == [DISAGREEMENT_ONSET_ALREADY_PASSED]
+
+
+def test_the_notable_list_carries_rain_and_the_low_in_the_spend_list_s_order():
+    """Rain has no magnitude to band, so it is reported whenever it fires; the
+    low is reported by `notable`, spent by `decisive`. Order is the spend
+    list's, because both are stored and compared across two languages."""
+    from openlocalweather.disagreement import notable_disagreements
+
+    standing = StandingCall(rain=False, temp_high_c=30.0, onset_hour=None, temp_low_c=18.2)
+    observed = ObservedSoFar(precipitation=True, high_c=35.0, low_c=20.0)
+
+    got = notable_disagreements(
+        standing, observed, low_is_settled=True, bands=DeviationBands(low_c=1.0)
+    )
+    assert got == [DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_HIGH_EXCEEDED, DISAGREEMENT_LOW_DIVERGES]
+    assert observation_disagreements(standing, observed, low_is_settled=True) == [
+        DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_HIGH_EXCEEDED,
+    ], "the 1.8 C low is notable under the reader's band and far from freezing, so never decisive"
+
+
+def test_tuning_the_high_and_onset_bands_can_never_change_what_is_spent():
+    """Item 145's safety property, swept over the two new bands: a case that
+    sits exactly on both spend margins, driven across every reporting band a
+    reader could set, must spend identically throughout."""
+    standing = StandingCall(rain=False, temp_high_c=30.0, onset_hour="18:00", temp_low_c=-0.5)
+    observed = ObservedSoFar(precipitation=True, high_c=32.0, precipitation_onset="17:00", low_c=2.0)
+
+    baseline = observation_disagreements(standing, observed, low_is_settled=True)
+    assert DISAGREEMENT_HIGH_EXCEEDED in baseline and DISAGREEMENT_ONSET_ALREADY_PASSED in baseline
+    for tenth in range(1, 101):
+        for minutes in (5, 15, 30, 45, 60, 90, 120, 180, 240):
+            got = observation_disagreements(
+                standing, observed, low_is_settled=True,
+                bands=DeviationBands(high_c=tenth / 10, onset_min=minutes),
+            )
+            assert got == baseline, f"high band {tenth / 10} / onset band {minutes} changed what is SPENT"

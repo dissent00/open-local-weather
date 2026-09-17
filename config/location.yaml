@@ -90,6 +90,8 @@ location:
   # deviation_bands:
   #   low_c: 1.5
   #   low_freezing_c: 0.5
+  #   high_c: 2.0      # how far above the called high the station must sit
+  #   onset_min: 60    # how many minutes earlier than called the rain must start
 
   # Verified manually at waqi.info (aqicn.org). Kisumu Airport carried over
   # from the Apps Script config; Ochieng' Avenue and Dunga Beach added to

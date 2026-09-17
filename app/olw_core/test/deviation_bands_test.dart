@@ -39,6 +39,34 @@ void main() {
       }
     });
 
+    test('the new bands default to the spend margins, so nothing changed on shipping', () {
+      expect(const DeviationBands().highC, tempContradictionMarginC);
+      expect(const DeviationBands().onsetMin, onsetContradictionMarginMin);
+    });
+
+    test('tuning the high and onset bands can never change what is spent', () {
+      const standing = StandingCall(
+          rain: false, tempHighC: 30.0, onsetHour: '18:00', tempLowC: -0.5);
+      const observed = ObservedSoFar(
+          precipitation: true, highC: 32.0, precipitationOnset: '17:00', lowC: 2.0);
+      final baseline =
+          observationDisagreements(standing, observed, lowIsSettled: true);
+      expect(baseline, contains(disagreementHighExceeded));
+      for (var tenth = 1; tenth <= 100; tenth++) {
+        for (final minutes in [5, 15, 30, 45, 60, 90, 120, 180, 240]) {
+          final got = observationDisagreements(
+            standing,
+            observed,
+            lowIsSettled: true,
+            bands: DeviationBands(highC: tenth / 10, onsetMin: minutes),
+          );
+          expect(got, equals(baseline),
+              reason: 'high band ${tenth / 10} / onset band $minutes changed '
+                  'what this run SPENDS');
+        }
+      }
+    });
+
     test('the reporting band does change what is reported', () {
       // Without this the test above would pass on a band wired to nothing.
       const standing = StandingCall(tempLowC: 18.2);

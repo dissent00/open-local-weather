@@ -58,6 +58,9 @@ class DeviationBandsConfig(BaseModel):
 
     low_c: float | None = None
     low_freezing_c: float | None = None
+    # Item 145's next step: the high's and the onset's reporting margins.
+    high_c: float | None = None
+    onset_min: int | None = None
 
 
 class WaqiStation(BaseModel):
@@ -281,4 +284,6 @@ def deviation_bands(location: LocationConfig) -> DeviationBands:
             if configured.low_freezing_c is None
             else configured.low_freezing_c
         ),
+        high_c=shipped.high_c if configured.high_c is None else configured.high_c,
+        onset_min=shipped.onset_min if configured.onset_min is None else configured.onset_min,
     )
