@@ -2294,6 +2294,11 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
         print(f"Window verification skipped ({e}); a later run will score them.", file=sys.stderr)
         return []
 
+    # The airport over the same span, once, so each window is scored against
+    # the evidence the calendar day already gets — ROADMAP item 139. Best
+    # effort like the archive: no station, or a fetch that failed, scores the
+    # window against the reanalysis alone, which is what happened before.
+    station_reports = _station_reports(location, start, end)
     changed: list[date] = []
     for d in log_store.list_log_dates(deps.data_dir):
         if not (start <= d <= end):
@@ -2301,11 +2306,29 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
         entry = log_store.read_log_entry(deps.data_dir, d)
         if entry is None:
             continue
-        if verify_closed_windows(entry, archive, today=today):
+        if verify_closed_windows(
+            entry, archive, today=today,
+            station_reports=station_reports, timezone_name=location.timezone,
+        ):
             log_store.write_log_entry(deps.data_dir, entry)
             changed.append(d)
 
     return changed
+
+
+def _station_reports(location: LocationConfig, start: date, end: date) -> list | None:
+    """Raw airport reports over a span, padded a day either side so a window
+    that opens late in `end` still sees its reports. None without a station
+    or when the archive is unreachable."""
+    if not location.metar_station_icao:
+        return None
+    try:
+        return metar_fetch.fetch_metar_archive(
+            location.metar_station_icao, add_days(start, -1), add_days(end, 2)
+        )
+    except Exception as e:  # noqa: BLE001 - never fatal; the reanalysis scores alone
+        print(f"Station reports unavailable for window scoring ({e}).", file=sys.stderr)
+        return None
 
 
 def _run_actuals_refresh(

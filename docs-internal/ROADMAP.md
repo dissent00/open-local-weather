@@ -19690,7 +19690,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Planned — raised 2026-09-16; BLOCKED ON DATA until 2026-09-17**
+## 139. The window is scored and nobody reads it · **Step 1 read 2026-09-17 and it found a scorer defect, fixed; the reporting decision waits for ten paired days (2026-09-26)**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -19756,7 +19756,62 @@ reader being shown a number whose basis changed mid-series without a mark.
    check that the scorer agrees with reality before anything depends on it.
 2. Then decide what the published pages and `track_record.json` report.
 
-Related: items 104 (contract item 2, which specified this), 140, 141, 131.
+### Step 1, read 2026-09-17 — and the first scored window was not evidence
+
+The 03:01 run scored the 2026-09-15 06:00 window for all five models. Read
+against the same issuance's Day+0 scores (`olw window-vs-day`):
+
+| | calendar | window |
+|---|---|---|
+| high error, every model | identical | identical |
+| rain call, every model | **correct** | **wrong** |
+
+The highs matching is what the 06:00 measurement in item 104 predicted. The
+rain split is not the reframe. Both bases scored the SAME forecast — every
+model called rain — against DIFFERENT evidence: the reanalysis held 0.4 mm
+on the 15th, under the threshold, and the airport reported rain. Rain is
+scored against `observed_convection()`, which folds the station in. The
+calendar path stamps the station onto its day before scoring
+(`_apply_station_observations`); the window path built its observation from
+the archive alone and never saw the station. Traced by re-fetching the
+hourly archive and bucketing it both ways: 0.4 mm and `rain: False` on both,
+so the archive agrees with itself and only the overlay differed.
+
+**Fixed the same day.** `metar.station_weather_within` reduces the raw
+reports over a window's own hours with the same predicates the per-day
+reduction uses; `verify_closed_windows` takes the reports and stamps
+precipitation, thunder and the first wet report's hour onto the window's
+observation; `_verify_recent_windows` fetches the station once for its
+lookback, best effort like the archive. A test pins the property the whole
+comparison rests on, on the station side too: a window over a whole day
+sees exactly what the calendar day sees.
+
+**Rescored, deliberately.** A scored window is idempotent by stamp, so
+`rebuild-record` now rescores every window from the archive and the station
+with `force=True`, printing each rain verdict that moves. Run on the real
+record: the five verdicts on the 09-15 row moved wrong → right, and the
+paired table now reads 1/1 on rain for every model. The rebuild also wrote
+each source's `forecast_horizon_days` onto the track record a day early
+(item 150), and re-fetched three days of station readings that came back
+different (item 151).
+
+**What this pass does NOT settle**, and the operator's scenarios made both
+gaps precise: onset is still scored against the reanalysis's first wet hour,
+never the station's (item 122, kept in its sequence), and a rain AMOUNT is
+not scored at all (item 157, raised). So a model that calls 8 mm from 16:00
+on a day that gave 0.4 mm from 16:00 scores rain right and onset right and
+loses nothing for the amount.
+
+**The reporting decision waits.** With the observation corrected the 06:00
+slot will agree on rain and mostly on the high, so ten paired days on
+2026-09-26 and the first early-versus-late pair are the evidence. The rule is
+already the operator's and is now recorded here rather than argued again:
+the two series are never merged into one figure, and a reader is never shown
+a number whose basis changed without a mark. When the page changes it gains
+a basis beside the lead, not a new number under the old heading.
+
+Related: items 104 (contract item 2, which specified this), 140, 141, 131,
+122, 157.
 
 ---
 
@@ -21530,6 +21585,12 @@ is composed after verification runs. The Dart row carries the field and the
 app leaves it null — it keeps no per-run record to derive from, owed there
 under item 4.
 
+**Landed 2026-09-17 through `rebuild-record`**, a day earlier than the note
+above expected: the rebuild re-runs verification over the whole record and
+the 09-17 entry already carried its reach, so every track record row now
+holds its source's horizon — gfs, ecmwf and best_match 7, icon 6, ukmo 5,
+kenya_met 0.
+
 **Two guards, both seen to fail.** The derivation test as first written put
 the shorter reading BEFORE the longer one in date order, and a mutation that
 kept the latest reading instead of the maximum passed it; the test now has
@@ -21707,6 +21768,26 @@ is worth explaining rather than waving at.
 Related: items 150 (the same class, raised in the abstract an hour earlier),
 143, 121, 122, 104's C2, and 102 — the coverage watcher, which catches exactly
 this defect class in the NARRATED fields and does not watch this one.
+
+### Measured 2026-09-17: three recent days' station readings changed on re-fetch
+
+`rebuild-record` re-applies the station to every cached day, and on the
+first run after item 139's fix three days came back different from what the
+daily pass had stored:
+
+| day | `station_high_c` | `station_peak_wind_kmh` |
+|---|---|---|
+| 2026-09-13 | 26.0 → 31.0 | 14.82 → 25.93 |
+| 2026-09-14 | 28.0 → 29.0 | 24.08 → 25.93 |
+| 2026-09-15 | — | 22.22 → 25.93 |
+
+Neither field is scored (144, 146), so no verdict moved. But the shape is
+this item's: the daily pass reads a day whose reports are not all in yet,
+stores the partial maximum, and never looks again, while a later full-day
+fetch sees the whole day. Whether that is the same silent failure as the
+absent `observed_so_far`, or a second one, is for the instrumentation to
+say; it is recorded here so the next reading of that instrument has the
+comparison.
 
 ---
 
@@ -22071,5 +22152,33 @@ the device coarsened to the cell (107, 110); observations shared as facts are
 item 107's separate document, not this one.
 
 Related: 105, 106, 107, 113, 124, 24, and `ensemble` items 4 and 22.
+
+---
+
+## 157. A rain amount is never scored · **Raised 2026-09-17 — a scored-field addition, sequenced with 141**
+
+The operator's second scenario for item 139: *"Model predicts rain starting
+at 1600, 8mm. Rain starts at 1600, but accumulates .4 mm. Rain call correct,
+window correct, rain amount overstated for scoring."* Checked against
+`score_prediction`: the score carries `rain_correct`, `rain_brier`, onset,
+wind, high, low, pressure, cloud and thunder — and no precipitation error.
+`ModelPrediction.precip_mm` is extracted for every model at every lead and
+`DailyActual.precip_mm` is observed every day, and nothing compares them. An
+8 mm call on a 0.4 mm day costs the model nothing.
+
+**Why it is not a one-line addition.** A scored field is the heaviest change
+here: it lands in both languages with a vector, in the track record's rolling
+figures, in the review's gates and in the prompt's inventory (item 142). And
+the observed amount is the one dimension a METAR cannot supply (item 104's
+C9 withholds it), so the observation is the reanalysis alone, whose
+same-day precipitation is model output (139's calendar rule applies).
+
+**Shape:** `precip_error_mm = observed − forecast`, the sign convention every
+other error uses; a rolling mean per (model, lead); a review finding for a
+systematic over- or under-call once 153's two-gate question is settled; and
+the field named in the prompt's error inventory. Sequenced with item 141,
+which is the other scored-field question a reader in the rain asks.
+
+Related: 139, 141, 153, 142, 104 (C9).
 
 ---

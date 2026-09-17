@@ -561,6 +561,55 @@ def observed_weather_by_date(
     return _weather_from_reports(reports, start, end, timezone_name)
 
 
+def station_weather_within(
+    reports: list[tuple[datetime, str]] | None,
+    start_local: datetime,
+    hours: int,
+    timezone_name: str,
+) -> StationWeather | None:
+    """What the airport saw inside ONE window of `hours` from `start_local`
+    (a naive local instant) — ROADMAP item 139.
+
+    The calendar day gets the station stamped onto its observation before
+    scoring; the +24 h window did not, and the first scored window (2026-09-15
+    06:00) scored every model's rain call wrong for exactly that reason: the
+    reanalysis held 0.4 mm and the station had seen rain. This is the same
+    reduction `_weather_from_reports` makes per day, made per window, from
+    the same reports and the same predicates, so a window and a calendar day
+    covering identical hours see identical station weather.
+
+    None when there are no reports at all, or none inside the window: "not
+    observed", never "nothing happened". Sky cover is left out — the window
+    is scored on rain and thunder, and a mean over a window is a different
+    figure that nothing reads yet.
+    """
+    if reports is None:
+        return None
+
+    zone = ZoneInfo(timezone_name)
+    window_start = start_local.replace(tzinfo=zone)
+    window_end = window_start + timedelta(hours=hours)
+    seen = False
+    thunder = False
+    precipitation = False
+    onset: str | None = None
+    for observed_at, raw_metar in reports:
+        local = observed_at.astimezone(zone)
+        if not (window_start <= local < window_end):
+            continue
+
+        seen = True
+        thunder = thunder or report_has_thunder(raw_metar)
+        precipitating = report_has_precipitation(raw_metar)
+        precipitation = precipitation or precipitating
+        if precipitating and onset is None:
+            onset = local.strftime("%H:%M")
+
+    if not seen:
+        return None
+    return StationWeather(thunder=thunder, precipitation=precipitation, precipitation_onset=onset)
+
+
 def _weather_from_reports(
     reports: list[tuple[datetime, str]], start: date, end: date, timezone_name: str
 ) -> dict[date, StationWeather] | None:

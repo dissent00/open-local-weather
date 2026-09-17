@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-17T03:01:40.563831Z",
+  "generated_at_utc": "2026-09-17T06:19:54.071565Z",
   "entries": [
     {
       "model": "gfs_seamless",
@@ -24,7 +24,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, under-forecasts peak surface winds and ranks lower in rainfall accuracy compared to blended guidance.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "gfs_seamless",
@@ -49,7 +49,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+3, systematically over-forecasts daytime highs and under-forecasts peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "gfs_seamless",
@@ -74,7 +74,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+7, systematically over-forecasts daytime highs and under-forecasts peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "ecmwf_ifs025",
@@ -99,7 +99,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, systematically under-forecasts peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "ecmwf_ifs025",
@@ -124,7 +124,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+3, no findings established at this lead.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "ecmwf_ifs025",
@@ -149,7 +149,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+7, systematically over-forecasts overnight low temperatures.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "icon_seamless",
@@ -174,7 +174,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, systematically over-forecasts overnight low temperatures and under-forecasts peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 6
     },
     {
       "model": "icon_seamless",
@@ -199,7 +199,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+3, systematically over-forecasts overnight low temperatures and under-forecasts peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 6
     },
     {
       "model": "icon_seamless",
@@ -224,7 +224,7 @@
       "last_verified_target_date": null,
       "skill_profile_summary": "Does not forecast out to Day+7.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 6
     },
     {
       "model": "ukmo_seamless",
@@ -249,7 +249,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, systematically under-forecasts overnight low temperatures and peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 5
     },
     {
       "model": "ukmo_seamless",
@@ -274,7 +274,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+3, systematically under-forecasts overnight low temperatures and peak surface winds.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 5
     },
     {
       "model": "ukmo_seamless",
@@ -299,7 +299,7 @@
       "last_verified_target_date": null,
       "skill_profile_summary": "Does not forecast out to Day+7.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 5
     },
     {
       "model": "best_match",
@@ -324,7 +324,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, established as the strongest rainfall caller among available guidance.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "best_match",
@@ -349,7 +349,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+3, no findings established at this lead.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "best_match",
@@ -374,7 +374,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+7, systematically over-forecasts overnight low temperatures.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 7
     },
     {
       "model": "olw_blend",
@@ -624,7 +624,7 @@
       "last_verified_target_date": "2026-09-16",
       "skill_profile_summary": "At Day+0, no findings established at this lead.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 0
     },
     {
       "model": "kenya_met",
@@ -649,7 +649,7 @@
       "last_verified_target_date": "2026-09-15",
       "skill_profile_summary": "At Day+3, systematically over-forecasts daytime high temperatures.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 0
     },
     {
       "model": "kenya_met",
@@ -674,7 +674,7 @@
       "last_verified_target_date": null,
       "skill_profile_summary": "Does not forecast out to Day+7.",
       "notes": "",
-      "forecast_horizon_days": null
+      "forecast_horizon_days": 0
     }
   ]
 }

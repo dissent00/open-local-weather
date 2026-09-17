@@ -20,6 +20,7 @@ from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG
 from openlocalweather.verify.brier import brier_score, mean_brier
 from openlocalweather.defaults import ISSUANCE_WINDOW_HOURS
+from openlocalweather.fetch.metar import StationWeather, station_weather_within
 from openlocalweather.fetch.open_meteo import bucket_hourly_window
 from openlocalweather.models import (
     DailyActual,
@@ -70,7 +71,13 @@ def resolve_prediction_rows(entry: DailyLogEntry) -> list[IssuancePredictions]:
 
 
 def verify_closed_windows(
-    entry: DailyLogEntry, archive_hourly: dict, *, today: date
+    entry: DailyLogEntry,
+    archive_hourly: dict,
+    *,
+    today: date,
+    station_reports: list | None = None,
+    timezone_name: str | None = None,
+    force: bool = False,
 ) -> bool:
     """Score every window on this entry whose hours are all in finished days.
 
@@ -93,7 +100,7 @@ def verify_closed_windows(
     changed = False
 
     for row in entry.prediction_rows:
-        if row.window_verified_at is not None:
+        if row.window_verified_at is not None and not force:
             continue
         if not row.window_predictions or row.window_opened_local is None:
             continue
@@ -101,6 +108,16 @@ def verify_closed_windows(
             continue
 
         observed = bucket_hourly_window(archive_hourly, start=row.window_opened_local)
+        if observed is not None and station_reports is not None and timezone_name is not None:
+            # THE STATION, OVER THE WINDOW'S OWN HOURS — ROADMAP item 139.
+            # The calendar path stamps the airport onto its day before scoring
+            # (`_apply_station_observations`); without the same here the two
+            # bases scored the same forecast against different evidence, and
+            # the first scored window called every model's rain wrong on a day
+            # the station had seen rain and the reanalysis held 0.4 mm.
+            _stamp_station(observed, station_weather_within(
+                station_reports, row.window_opened_local, ISSUANCE_WINDOW_HOURS, timezone_name
+            ))
         scores = score_window_row(row, observed)
         if observed is None:
             # The archive could not cover a window whose days HAVE finished —
@@ -144,6 +161,16 @@ def window_is_scorable(issued_local: datetime, *, today: date, hours: int = ISSU
     # it closes — a window closing exactly at midnight touches only one day.
     last_hour = opened + timedelta(hours=hours - 1)
     return last_hour.date() < today
+
+
+def _stamp_station(observed: DailyActual, seen: StationWeather | None) -> None:
+    """Mirror of the calendar overlay, for a window. None leaves every flag
+    as the archive bucket set it — "not observed", never "nothing happened"."""
+    if seen is None:
+        return
+    observed.thunder = seen.thunder
+    observed.precipitation = seen.precipitation
+    observed.precipitation_onset = seen.precipitation_onset
 
 
 def score_window_row(

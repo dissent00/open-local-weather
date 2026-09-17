@@ -23,7 +23,7 @@ from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import LocationConfig, load_location_config
-from openlocalweather.verify.scoring import scored_predictions
+from openlocalweather.verify.scoring import scored_predictions, verify_closed_windows
 from openlocalweather.coverage import (
     actionable,
     actionable_narrated,
@@ -39,6 +39,7 @@ from openlocalweather.defaults import (
 from openlocalweather.dates import add_days, today_in_tz
 from openlocalweather.defaults import WATCHED_COLUMN_LOOKBACK_DAYS
 from openlocalweather.fetch import metar as metar_fetch
+from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import model_run as model_run_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.fetch.bulletin.kenya_kmd import KenyaKMDBulletinFetcher
@@ -68,6 +69,7 @@ from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVID
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
+    _station_reports,
     forecast_horizons_of,
     ObservationsRefreshed,
     attach_spend_cap,
@@ -1176,6 +1178,55 @@ def _run_backfill_baselines(args) -> int:
     return 0
 
 
+def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> list:
+    """Every scorable window on every entry, rescored; returns the entries
+    that changed. Prints the per-model rain verdicts that moved, so a rescore
+    is read rather than trusted."""
+    if not log_dates:
+        return []
+    try:
+        archive = open_meteo.fetch_archive_range(
+            location.primary_point.lat, location.primary_point.lon,
+            min(log_dates), add_days(today, -1), location.timezone,
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"\nWindows not rescored: archive unavailable ({e}).", file=sys.stderr)
+        return []
+    station_reports = _station_reports(location, min(log_dates), add_days(today, -1))
+
+    changed = []
+    lookup = make_log_lookup(data_dir)
+    for d in log_dates:
+        entry = lookup(d)
+        if entry is None or not entry.prediction_rows:
+            continue
+        before = {
+            (i, m): sc.rain_correct
+            for i, row in enumerate(entry.prediction_rows)
+            for m, sc in row.window_scores.items()
+        }
+        if not verify_closed_windows(
+            entry, archive, today=today,
+            station_reports=station_reports, timezone_name=location.timezone, force=True,
+        ):
+            continue
+        after = {
+            (i, m): sc.rain_correct
+            for i, row in enumerate(entry.prediction_rows)
+            for m, sc in row.window_scores.items()
+        }
+        changed.append(entry)
+        moved = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        if moved:
+            print(f"\nWindow rain verdicts moved on {d}:")
+            for i, m in moved:
+                print(f"  row {i} {m:16} {before.get((i, m))} -> {after.get((i, m))}")
+    print(f"\nWindows rescored on {len(changed)} entr{'y' if len(changed) == 1 else 'ies'}"
+          f"{' (dry run)' if dry_run else ''}.")
+    return changed
+
+
+
 def _run_rebuild_record(args) -> int:
     """Re-derive the accuracy record from raw stored predictions and freshly
     fetched observations.
@@ -1289,6 +1340,13 @@ def _run_rebuild_record(args) -> int:
         arrow = "" if was == now else f"   (was {_pct(was)})"
         print(f"  {entry.model:16} {_pct(now)}  over {entry.all_time_checks} checks{arrow}")
 
+    # THE WINDOWS TOO — ROADMAP item 139. A scored window is left alone by
+    # every run (idempotent by stamp), so this is the one place a window is
+    # deliberately rescored: from the archive over the whole log and the
+    # station over the same span, exactly as the daily pass scores a fresh
+    # one. The first scored window had been scored without the station.
+    rescored = _rescore_windows(location, data_dir, log_dates, today, dry_run=args.dry_run)
+
     if args.dry_run:
         print("\nDry run — nothing written.")
         return 0
@@ -1296,6 +1354,8 @@ def _run_rebuild_record(args) -> int:
     replace_all(cache, "primary", actuals)
     write_actuals_cache(data_dir, cache)
     write_track_record(data_dir, result.updated_track_record)
+    for entry in rescored:
+        write_log_entry(data_dir, entry)
     # TWO DATA FILES, AND DELIBERATELY NOT THE PAGES. `docs/accuracy.html` is
     # rendered by a forecast run, so a rebuild leaves the PUBLISHED figures
     # stale until the next scheduled run republishes them — measured
