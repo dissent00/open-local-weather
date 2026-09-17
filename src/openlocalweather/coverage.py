@@ -84,8 +84,9 @@ class CoverageFinding:
     present_runs: int = 0
     # Set by `newly_available` when config acknowledges this (model, lead,
     # variable) as a known gap: that acknowledgement is now stale, and the
-    # message must say so and quote it.
+    # message must say so, quote it, and date it when the entry is dated.
     acknowledged_reason: str | None = None
+    acknowledged_since: date | None = None
 
     @property
     def message(self) -> str:
@@ -99,8 +100,11 @@ class CoverageFinding:
                 "recording the answer."
             )
             if self.acknowledged_reason is not None:
+                when = (
+                    f" on {self.acknowledged_since}" if self.acknowledged_since else ""
+                )
                 text += (
-                    " This pair is acknowledged in config as a known gap "
+                    f" This pair is acknowledged in config{when} as a known gap "
                     f"(\"{self.acknowledged_reason}\"); that acknowledgement is now "
                     "stale."
                 )
@@ -297,7 +301,10 @@ def newly_available(
             (a for a in acknowledged if a.covers(f.model, f.lead_time_days, f.variable)),
             None,
         )
-        out.append(replace(f, acknowledged_reason=ack.reason) if ack else f)
+        if ack is None:
+            out.append(f)
+            continue
+        out.append(replace(f, acknowledged_reason=ack.reason, acknowledged_since=ack.since))
     return out
 
 

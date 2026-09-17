@@ -162,3 +162,32 @@ def test_no_scored_path_can_see_a_reporting_band():
         + "; ".join(offences)
         + ". Bands decide what a reader is TOLD, never what the record SCORES."
     )
+
+
+def test_an_acknowledgement_carries_the_date_it_was_decided(tmp_path):
+    """ROADMAP item 152 step 4: an exclusion made on a measurement should say
+    when. Optional, because a fork's entries may predate the field."""
+    import datetime as _dt
+
+    import yaml
+
+    raw = yaml.safe_load(open("config/location.yaml").read())
+    gaps = raw["location"]["acknowledged_coverage_gaps"]
+    gaps[0]["since"] = "2026-08-20"
+    gaps[1].pop("since", None)
+    path = tmp_path / "location.yaml"
+    path.write_text(yaml.safe_dump(raw))
+
+    cfg = load_location_config(path)
+    assert cfg.acknowledged_coverage_gaps[0].since == _dt.date(2026, 8, 20)
+    assert cfg.acknowledged_coverage_gaps[1].since is None
+
+
+def test_every_acknowledgement_in_the_real_config_is_dated():
+    """The dates come from `git log -S` on the file, not from memory: six
+    entries on 2026-08-20, thirteen on 2026-09-07. A new entry without one is
+    an exclusion that has already lost the measurement behind it."""
+    cfg = load_location_config(REPO_ROOT / "config" / "location.yaml")
+    assert cfg.acknowledged_coverage_gaps, "the reference deployment has acknowledgements"
+    undated = [g for g in cfg.acknowledged_coverage_gaps if g.since is None]
+    assert undated == []

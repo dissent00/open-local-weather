@@ -187,25 +187,31 @@ location:
     - model: "icon_seamless"
       lead_time_days: 7
       reason: "ICON's forecast horizon ends around 7.5 days, so Day+7 is beyond it. Documented in README's known limitations."
+      since: 2026-08-20
     - model: "ukmo_seamless"
       lead_time_days: 7
       reason: "UKMO's forecast horizon ends around 7.2 days, so Day+7 is beyond it. Documented in README's known limitations."
+      since: 2026-08-20
     - model: "kenya_met"
       lead_time_days: 0
       variable: "wind_kmh"
       reason: "KMD's county table publishes rain and temperature only; no wind figure exists to extract."
+      since: 2026-08-20
     - model: "kenya_met"
       lead_time_days: 0
       variable: "mslp_trend"
       reason: "KMD publishes no pressure figure per county."
+      since: 2026-08-20
     - model: "kenya_met"
       lead_time_days: 3
       variable: "wind_kmh"
       reason: "As Day+0 — the five-day grid carries weather and temperature only."
+      since: 2026-08-20
     - model: "kenya_met"
       lead_time_days: 3
       variable: "mslp_trend"
       reason: "As Day+0 — no pressure figure published."
+      since: 2026-08-20
 
     # The blend and the baselines. Every entry below is a null this project
     # WRITES on purpose, each with its reason beside the code that writes it.
@@ -216,10 +222,12 @@ location:
       lead_time_days: 0
       variable: "wind_kmh"
       reason: "today_properties.peak_wind_kmh is the SECONDARY point's wind; scoring it against the primary point's observation would compare two different places. Deliberately null in _blend_prediction."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 0
       variable: "mslp_trend"
       reason: "mslp_trend_24h is prose in the schema, not a number. Null reads as 'not forecast', which is the truthful answer until it is structured. See _blend_prediction."
+      since: 2026-09-07
 
     # ROADMAP item 72, shipped 2026-09-05. Beyond Day+0 the forecaster is
     # asked for rain and rain_probability_pct and nothing else, so every other
@@ -230,34 +238,42 @@ location:
       lead_time_days: 3
       variable: "wind_kmh"
       reason: "Item 72: not asked for beyond Day+0. A value here would enter the record as a commitment the forecaster never made."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 3
       variable: "high_c"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 3
       variable: "low_c"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 3
       variable: "mslp_trend"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 7
       variable: "wind_kmh"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 7
       variable: "high_c"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 7
       variable: "low_c"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
     - model: "olw_blend"
       lead_time_days: 7
       variable: "mslp_trend"
       reason: "Item 72: not asked for beyond Day+0."
+      since: 2026-09-07
 
     # Climatology averages past OBSERVATIONS, and there is no observed
     # pressure TREND to average — baselines.py sets it null rather than
@@ -266,14 +282,17 @@ location:
       lead_time_days: 0
       variable: "mslp_trend"
       reason: "No observed pressure trend exists to average; climatology_baseline sets it null rather than fabricating one."
+      since: 2026-09-07
     - model: "climatology"
       lead_time_days: 3
       variable: "mslp_trend"
       reason: "As Day+0 — nothing to average."
+      since: 2026-09-07
     - model: "climatology"
       lead_time_days: 7
       variable: "mslp_trend"
       reason: "As Day+0 — nothing to average."
+      since: 2026-09-07
 
   local_bulletin_area_name: "Kisumu"
   local_bulletin_model_id: "kenya_met"

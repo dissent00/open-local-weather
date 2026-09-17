@@ -11,6 +11,7 @@ happen.
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -78,12 +79,19 @@ class AcknowledgedGap(BaseModel):
     `reason` is required on purpose: an acknowledgement without a stated
     reason is indistinguishable from a silenced alarm, and in a year nobody
     will remember which it was.
+
+    `since` is when the gap was acknowledged — ROADMAP item 152 step 4. An
+    acknowledgement is an exclusion made on a measurement, and the day the
+    source changes (`became_available`) the reader needs to know how old
+    that measurement was. Optional because a fork's entries may predate the
+    field; the reference deployment's are all dated from the file's history.
     """
 
     model: str
     lead_time_days: int
     reason: str
     variable: str | None = None
+    since: date | None = None
 
     def covers(self, model: str, lead_time_days: int, variable: str) -> bool:
         return (

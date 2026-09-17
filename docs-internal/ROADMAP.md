@@ -21791,7 +21791,7 @@ comparison.
 
 ---
 
-## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Steps 1-3 SHIPPED 2026-09-16/17; step 4 is a date on the acknowledgement**
+## 152. An exclusion made on evidence destroys the evidence that would overturn it · **SHIPPED 2026-09-16/17, all four steps**
 
 The operator, on being shown that `gust` and `p01i` are excluded from the
 METAR request because a 45-day sample found them empty and constant:
@@ -21983,6 +21983,30 @@ points fully present, zero findings, twenty observation keys beside
 `cap_feed`. Each memory guard was mutated and seen to fail its test — the
 window bound, the carry-forward, and the remembered-state requirement on a
 recovery. 1301 tests.
+
+### STEP 4 SHIPPED 2026-09-17 — the re-read was already scheduled; what was missing was the date
+
+Step 4 asked for two things: that an exclusion carry the date and sample
+it was decided on, and that something re-read it on a schedule. The second
+was already true by the time this was reached. Step 1's weekly column check
+re-reads the METAR exclusions on a seven-day window, and step 2's
+`became_available` re-reads the other kind of exclusion — every
+`acknowledged_coverage_gaps` entry — on every health check. No third
+scheduler was built.
+
+What was missing was the date. `AcknowledgedGap` gains an optional
+`since`; `newly_available` carries it onto the finding and the message
+says "acknowledged in config on 2026-08-20" when it is there, so the day a
+gap closes the reader knows how old the measurement behind it was. The
+reference deployment's nineteen entries are dated from the file's own
+history (`git log -S`): six on 2026-08-20, thirteen on 2026-09-07, and a
+test refuses an undated entry in that file. Optional in the model because a
+fork's entries may predate the field.
+
+The sample is not carried as data. The METAR exclusions record theirs in
+the comment beside the code (45's 45-day count), and an acknowledgement's
+`reason` is where a sample belongs when there is one; a second free-text
+field would be a second place for the same sentence.
 
 ### The principle worth keeping even if none of this is built
 

@@ -272,6 +272,34 @@ def test_an_arrival_is_news_not_a_fault_and_ignores_acknowledgements():
     assert "stale" not in unacked[0].message
 
 
+def test_an_arrival_quotes_the_date_the_acknowledgement_was_made():
+    """ROADMAP item 152 step 4. An exclusion should carry the date it was
+    decided on, so that when it stops describing the source the reader knows
+    how old the measurement behind it was. Optional: entries without one
+    still work and simply say less."""
+    from openlocalweather.config import AcknowledgedGap
+    from openlocalweather.coverage import newly_available
+
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 3 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+
+    dated = [AcknowledgedGap(
+        model="ecmwf_ifs025", lead_time_days=0, reason="horizon", since=date(2026, 8, 20),
+    )]
+    got = newly_available(findings, dated)[0]
+    assert got.acknowledged_since == date(2026, 8, 20)
+    assert "acknowledged in config on 2026-08-20" in got.message
+
+    undated = [AcknowledgedGap(model="ecmwf_ifs025", lead_time_days=0, reason="horizon")]
+    got = newly_available(findings, undated)[0]
+    assert got.acknowledged_since is None
+    assert "acknowledged in config as a known gap" in got.message
+    assert " on 20" not in got.message
+
+
 def test_a_healthy_record_has_no_arrivals():
     from openlocalweather.coverage import newly_available
 
