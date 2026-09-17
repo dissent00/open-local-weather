@@ -2556,6 +2556,69 @@ def export_system_prompt() -> None:
 
 
 
+def export_sustained_wind_gap() -> None:
+    """ROADMAP item 146, step 3. The station's sustained maximum so far
+    against the models' sustained consensus — a MEASUREMENT stored on every
+    run that can make it, and deliberately not a check: the sweep under the
+    item found the station above the consensus on thirteen of thirteen days,
+    an instrument offset rather than weather. Pinned so both sides store the
+    same number, since a stored offset is only worth having if the record on
+    a phone and the record on the site mean the same thing by it.
+
+    The consensus excludes models with no sustained value from the
+    denominator, and the cases pin that a met service with none, and an
+    empty list, are handled that way rather than as zero.
+    """
+    from openlocalweather.disagreement import sustained_wind_gap
+    from openlocalweather.models import ModelPrediction, ObservedSoFar
+
+    scenarios = [
+        ("the measured shape: the station above a three-model consensus",
+         25.93, {"gfs_seamless": 19.3, "ecmwf_ifs025": 11.5, "icon_seamless": 15.6}),
+        ("a model with no sustained value is not in the denominator",
+         30.0, {"gfs_seamless": 20.0, "kenya_met": None, "ecmwf_ifs025": 10.0}),
+        ("the station below the consensus is a negative gap", 12.0, {"gfs_seamless": 20.0, "ecmwf_ifs025": 16.0}),
+        ("a single model is a consensus of one, and says so", 20.0, {"gfs_seamless": 18.0}),
+        ("no station reading is no gap", None, {"gfs_seamless": 20.0}),
+        ("no model with a sustained value is no gap", 30.0, {"kenya_met": None}),
+        ("no models at all is no gap", 30.0, {}),
+    ]
+
+    cases = []
+    for name, observed_kmh, sustained in scenarios:
+        day0 = [ModelPrediction(model=m, rain=False, sustained_wind_kmh=v) for m, v in sustained.items()]
+        got = sustained_wind_gap(ObservedSoFar(peak_wind_kmh=observed_kmh), day0)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "observed": {"peak_wind_kmh": observed_kmh},
+                    "day0_predictions": [p.model_dump(mode="json") for p in day0],
+                },
+                "expected": None
+                if got is None
+                else {
+                    "consensus_kmh": round(got.consensus_kmh, 10),
+                    "observed_kmh": got.observed_kmh,
+                    "delta_kmh": round(got.delta_kmh, 10),
+                    "model_count": got.model_count,
+                },
+            }
+        )
+
+    write(
+        "sustained_wind_gap.json",
+        "sustained_wind_gap",
+        "ROADMAP item 146, step 3. The station's sustained maximum so far minus "
+        "the models' Day+0 sustained consensus, stored on every run that can "
+        "make it and read by nothing yet. `delta_kmh` is OBSERVED MINUS "
+        "FORECAST. A measurement of an instrument offset, not a contradiction "
+        "test: the sweep under the item found the station above the consensus "
+        "on every one of thirteen days.",
+        cases,
+    )
+
+
 def export_low_divergence() -> None:
     """ROADMAP item 143. The station's overnight low against the standing call.
 
@@ -4722,6 +4785,7 @@ def main() -> None:
     export_verification()
     export_observation_disagreements()
     export_low_divergence()
+    export_sustained_wind_gap()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

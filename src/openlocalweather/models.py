@@ -87,6 +87,32 @@ class LowDivergence:
     decisive: bool
 
 
+@dataclass(frozen=True)
+class SustainedWindGap:
+    """The station's sustained maximum so far against the models' sustained
+    consensus for the day — ROADMAP item 146, step 3.
+
+    A MEASUREMENT AND NOTHING ELSE. Stored on every run that can make it,
+    reported nowhere and able to buy nothing, on the operator's decision of
+    2026-09-17 after the sweep under item 146: over thirteen days the station
+    sat above the consensus on every one, by +14.7 km/h on average, because
+    an airfield's two-minute peak and a grid cell's hourly mean are not the
+    same quantity under the word "sustained". A check on this pair would
+    have reported an instrument offset daily. What the record can do is
+    measure that offset until enough days hold it to say what it is; this
+    is that number, one per run.
+
+    `delta_kmh` is OBSERVED MINUS FORECAST, the convention every other error
+    here uses. `model_count` is how many models had a sustained value, so a
+    consensus of one model can be told from one of five when this is read.
+    """
+
+    consensus_kmh: float
+    observed_kmh: float
+    delta_kmh: float
+    model_count: int
+
+
 
 @dataclass(frozen=True)
 class ObservedSoFar:
@@ -1040,6 +1066,12 @@ class InformationMoved(BaseModel):
     # seen contradicts it; `None` means nothing was looked at, which happens
     # when the station did not report or the lookup failed.
     observation_disagreements: list[str] | None = None
+
+    # The station's sustained maximum so far against the models' sustained
+    # consensus — ROADMAP item 146, step 3. Measured and stored; read by
+    # nothing. None means no station reading or no model with a sustained
+    # value, never a gap of zero.
+    sustained_wind_gap: SustainedWindGap | None = None
 
     # The station's overnight low against the standing call — ROADMAP item
     # 143, part 4.

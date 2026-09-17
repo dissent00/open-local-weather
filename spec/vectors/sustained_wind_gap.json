@@ -1,0 +1,279 @@
+{
+  "vector_format_version": 1,
+  "function": "sustained_wind_gap",
+  "description": "ROADMAP item 146, step 3. The station's sustained maximum so far minus the models' Day+0 sustained consensus, stored on every run that can make it and read by nothing yet. `delta_kmh` is OBSERVED MINUS FORECAST. A measurement of an instrument offset, not a contradiction test: the sweep under the item found the station above the consensus on every one of thirteen days.",
+  "cases": [
+    {
+      "name": "the measured shape: the station above a three-model consensus",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 25.93
+        },
+        "day0_predictions": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 19.3,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 11.5,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 15.6,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "consensus_kmh": 15.4666666667,
+        "observed_kmh": 25.93,
+        "delta_kmh": 10.4633333333,
+        "model_count": 3
+      }
+    },
+    {
+      "name": "a model with no sustained value is not in the denominator",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 30.0
+        },
+        "day0_predictions": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 20.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "kenya_met",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 10.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "consensus_kmh": 15.0,
+        "observed_kmh": 30.0,
+        "delta_kmh": 15.0,
+        "model_count": 2
+      }
+    },
+    {
+      "name": "the station below the consensus is a negative gap",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 12.0
+        },
+        "day0_predictions": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 20.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 16.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "consensus_kmh": 18.0,
+        "observed_kmh": 12.0,
+        "delta_kmh": -6.0,
+        "model_count": 2
+      }
+    },
+    {
+      "name": "a single model is a consensus of one, and says so",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 20.0
+        },
+        "day0_predictions": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 18.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": {
+        "consensus_kmh": 18.0,
+        "observed_kmh": 20.0,
+        "delta_kmh": 2.0,
+        "model_count": 1
+      }
+    },
+    {
+      "name": "no station reading is no gap",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": null
+        },
+        "day0_predictions": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": 20.0,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "no model with a sustained value is no gap",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 30.0
+        },
+        "day0_predictions": [
+          {
+            "model": "kenya_met",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "no models at all is no gap",
+      "input": {
+        "observed": {
+          "peak_wind_kmh": 30.0
+        },
+        "day0_predictions": []
+      },
+      "expected": null
+    }
+  ]
+}

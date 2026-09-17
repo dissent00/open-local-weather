@@ -48,7 +48,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from openlocalweather.models import DeviationBands, LowDivergence, ObservedSoFar
+from openlocalweather.models import (
+    DeviationBands,
+    LowDivergence,
+    ModelPrediction,
+    ObservedSoFar,
+    SustainedWindGap,
+)
+from openlocalweather.verify.scoring import mean
 
 # What the forecast already committed to, from the standing issuance.
 #
@@ -244,6 +251,41 @@ def low_divergence(
         margin_c=band,
         notable=notable,
         decisive=decisive,
+    )
+
+
+def sustained_wind_gap(
+    observed: ObservedSoFar, day0_predictions: list[ModelPrediction]
+) -> SustainedWindGap | None:
+    """The station's sustained maximum so far minus the models' Day+0
+    sustained consensus, or None when either side is missing.
+
+    NOT A TEST IN THIS MODULE'S SENSE. Everything else here asks whether an
+    observation contradicts the standing call; this asks nothing and decides
+    nothing. It exists because the pair was measured before a check was
+    built on it (item 146's sweep) and the measurement said the check would
+    fire on the instrument, not the weather — so the honest thing to store
+    is the offset itself, until the record can say what it is.
+
+    The consensus is the mean over the models that have a sustained value,
+    the way `mean` treats every absent value in the record: not in the
+    denominator. `ObservedSoFar.peak_wind_kmh` is the station's `sknt`
+    maximum, which was always sustained — item 144.
+    """
+    observed_kmh = observed.peak_wind_kmh
+    if observed_kmh is None:
+        return None
+
+    present = [p.sustained_wind_kmh for p in day0_predictions if p.sustained_wind_kmh is not None]
+    consensus = mean(present)
+    if consensus is None:
+        return None
+
+    return SustainedWindGap(
+        consensus_kmh=consensus,
+        observed_kmh=observed_kmh,
+        delta_kmh=observed_kmh - consensus,
+        model_count=len(present),
     )
 
 

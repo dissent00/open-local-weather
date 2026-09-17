@@ -20618,7 +20618,7 @@ Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
 
 ---
 
-## 146. Compare sustained to sustained, and gust to gust · **Steps 1-2 SHIPPED 2026-09-16/17; step 3 decided and its margin sweep is next; step 4 Planned**
+## 146. Compare sustained to sustained, and gust to gust · **Steps 1-3 SHIPPED 2026-09-16/17 — step 3 stores a measurement, not a check; step 4 Planned**
 
 The operator, 2026-09-16, reading item 145's claim that a wind deviation
 cannot be offered here:
@@ -20847,6 +20847,38 @@ PEAK GUST` treats the gust, once more than thirteen days hold it. What it
 does not support is a contradiction test against the station on this
 quantity. Thirteen days, one station; item 100's rule applies to the next
 number as much as to this one.
+
+### Step 3 shipped 2026-09-17 — the gap is stored, and nothing reads it
+
+The operator's decision on the sweep: *store the station gap only, report
+nothing.* `disagreement.sustained_wind_gap` takes the station's sustained
+maximum so far (`ObservedSoFar.peak_wind_kmh`, which was always `sknt`)
+and the Day+0 predictions, and returns `SustainedWindGap(consensus_kmh,
+observed_kmh, delta_kmh, model_count)` or None. The consensus is `mean`
+over the models that have a sustained value; a model without one is not
+in the denominator, and that is what the vector and the mutation test pin
+on both sides. `delta_kmh` is observed minus forecast. It is stored on
+`meta.information_moved.sustained_wind_gap` beside the low divergence,
+computed against the GUIDANCE because the forecaster publishes no
+sustained wind, and read by nothing: no prompt line, no footnote, no code
+in `observation_disagreements`, no page. `model_count` is there so that
+when it is read, a consensus of one can be told from one of five.
+
+Ported to Dart with `sustained_wind_gap.json` (seven cases) so the two
+records mean the same number by it; the app's `InformationMoved` carries
+no JSON mapping, as it carried none for the low divergence, so the stored
+field is Python's alone. Driven through the real CLI before and after:
+the controls byte-identical, and the change one line — the new key, null,
+on the fixture's entry. 1314 Python, 191 Dart.
+
+**What would make it worth reading.** Thirty days of it, then the same
+table as the sweep from the record instead of from re-derived prompts: the
+mean and spread of the offset, and whether it holds in the dry season and
+the wet. If it is stable, it is a calibration for a sustained wind the
+forecast could one day publish (step 4), in the way `CALIBRATED PEAK GUST`
+corrects the gust. If it is not, the station's two-minute peak is simply
+a different quantity and step 4 should say so rather than correct for it.
+Do not size a margin from it before then — item 100.
 
 ### What NOT to do
 

@@ -31,6 +31,7 @@
 library;
 
 import 'models.dart';
+import 'scoring.dart';
 
 /// What the forecast already committed to, from the standing issuance.
 ///
@@ -174,6 +175,33 @@ const double nearFreezingC = 4.0;
 /// THREE-VALUED, and null is not false. Null [lowIsSettled] means the sun
 /// times were unavailable, so the caller does not KNOW whether the night is
 /// over, and unknown resolves to silence for the warmer case.
+/// The station's sustained maximum so far minus the models' Day+0 sustained
+/// consensus, or null when either side is missing. Port of Python's
+/// `sustained_wind_gap`. Not a test in this module's sense: it decides
+/// nothing. The consensus is [mean] over the models that have a value, so an
+/// absent one is not in the denominator.
+SustainedWindGap? sustainedWindGap(
+  ObservedSoFar observed,
+  List<ModelPrediction> day0Predictions,
+) {
+  final observedKmh = observed.peakWindKmh;
+  if (observedKmh == null) return null;
+
+  final present = [
+    for (final p in day0Predictions)
+      if (p.sustainedWindKmh != null) p.sustainedWindKmh!,
+  ];
+  final consensus = mean(present);
+  if (consensus == null) return null;
+
+  return SustainedWindGap(
+    consensusKmh: consensus,
+    observedKmh: observedKmh,
+    deltaKmh: observedKmh - consensus,
+    modelCount: present.length,
+  );
+}
+
 LowDivergence? lowDivergence(
   StandingCall standing,
   ObservedSoFar observed, {

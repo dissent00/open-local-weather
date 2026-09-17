@@ -603,6 +603,30 @@ def test_vectors_observation_disagreements():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_sustained_wind_gap():
+    """ROADMAP item 146, step 3 — a stored measurement, pinned so the two
+    records mean the same number by it."""
+    from openlocalweather.disagreement import ObservedSoFar, sustained_wind_gap
+
+    for case in load("sustained_wind_gap.json")["cases"]:
+        i = case["input"]
+        got = sustained_wind_gap(
+            ObservedSoFar(**i["observed"]),
+            [ModelPrediction(**p) for p in i["day0_predictions"]],
+        )
+        if case["expected"] is None:
+            assert got is None, f"vector case failed: {case['name']}"
+            continue
+
+        assert got is not None, f"vector case failed: {case['name']}"
+        assert {
+            "consensus_kmh": round(got.consensus_kmh, 10),
+            "observed_kmh": got.observed_kmh,
+            "delta_kmh": round(got.delta_kmh, 10),
+            "model_count": got.model_count,
+        } == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_low_divergence():
     """ROADMAP item 143 — the measurement, pinned separately from the trigger.
 
@@ -903,6 +927,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_split.json",
         "observation_disagreements.json",
         "low_divergence.json",
+        "sustained_wind_gap.json",
         "llm_user_prompt.json",
         "weekly_review.json",
         "synoptic.json",

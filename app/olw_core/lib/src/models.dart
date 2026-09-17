@@ -114,6 +114,28 @@ class DeviationBands {
 /// answerable later: whether the station runs warmer than the forecast or the
 /// forecast low is the problem is answered by the ordinary days, not the loud
 /// ones. [notable] is a judgement ABOUT this, not a condition for keeping it.
+/// The station's sustained maximum so far against the models' sustained
+/// consensus for the day — upstream ROADMAP item 146, step 3.
+///
+/// A MEASUREMENT AND NOTHING ELSE, stored on every run that can make it and
+/// read by nothing: the sweep under the item found the station above the
+/// consensus on thirteen of thirteen days, an instrument offset rather than
+/// weather. [deltaKmh] is OBSERVED MINUS FORECAST; [modelCount] says how many
+/// models the consensus stood on.
+class SustainedWindGap {
+  const SustainedWindGap({
+    required this.consensusKmh,
+    required this.observedKmh,
+    required this.deltaKmh,
+    required this.modelCount,
+  });
+
+  final double consensusKmh;
+  final double observedKmh;
+  final double deltaKmh;
+  final int modelCount;
+}
+
 class LowDivergence {
   const LowDivergence({
     required this.forecastC,

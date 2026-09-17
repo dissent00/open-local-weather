@@ -456,6 +456,31 @@ void main() {
       // only the first would store nothing on the ordinary mornings, which
       // are the days that will eventually answer whether the station runs
       // warm or the forecast low does.
+      for (final c in casesOf('sustained_wind_gap.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final got = sustainedWindGap(
+          ObservedSoFar(peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble()),
+          [
+            for (final p in i['day0_predictions'] as List)
+              ModelPrediction.fromJson((p as Map).cast<String, Object?>()),
+          ],
+        );
+        final expected = c['expected'] as Map<String, Object?>?;
+        if (expected == null) {
+          expect(got, isNull, reason: 'case "${c['name']}"');
+          continue;
+        }
+        expect(got, isNotNull, reason: 'case "${c['name']}"');
+        expect(got!.consensusKmh, closeTo(expected['consensus_kmh'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.observedKmh, closeTo(expected['observed_kmh'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.deltaKmh, closeTo(expected['delta_kmh'] as num, 1e-9),
+            reason: 'case "${c['name']}"');
+        expect(got.modelCount, expected['model_count'], reason: 'case "${c['name']}"');
+      }
+
       for (final c in casesOf('low_divergence.json')) {
         final i = c['input'] as Map<String, Object?>;
         final s = i['standing'] as Map<String, Object?>;
@@ -1564,6 +1589,7 @@ void main() {
       'llm_schema_split.json',
       'observation_disagreements.json',
       'low_divergence.json',
+      'sustained_wind_gap.json',
       'llm_schema_strict.json',
       'llm_system_prompt.json',
       'llm_user_prompt.json',

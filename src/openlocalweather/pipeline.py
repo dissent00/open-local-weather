@@ -168,6 +168,7 @@ from openlocalweather.verify.scoring import verify_closed_windows
 from openlocalweather.disagreement import (
     StandingCall,
     low_divergence,
+    sustained_wind_gap,
     observation_disagreements,
 )
 from openlocalweather.claims import false_weekday_claims
@@ -1836,6 +1837,7 @@ def _information_moved(
     existing_entry: DailyLogEntry | None,
     observed: ObservedSoFar | None,
     bands: DeviationBands | None = None,
+    day0_predictions: list[ModelPrediction] = (),
 ) -> InformationMoved:
     """C2's three triggers, computed and recorded — and acted on by nothing.
 
@@ -1875,6 +1877,12 @@ def _information_moved(
                 low_is_settled=settled,
                 bands=bands,
             )
+        ),
+        # ROADMAP item 146, step 3. Against the GUIDANCE, not the call — the
+        # forecaster publishes no sustained wind — and stored as a measurement
+        # only. See SustainedWindGap for why nothing reads it yet.
+        sustained_wind_gap=(
+            None if observed is None else sustained_wind_gap(observed, list(day0_predictions))
         ),
     )
 
@@ -2855,7 +2863,8 @@ def _issue_forecast(
     # ROADMAP item 145. The deployment's REPORTING bands, which reach the
     # footnote and cannot reach the spending decision.
     information_moved = _information_moved(
-        guidance, existing_entry, observed_so_far, deviation_bands(deps.location)
+        guidance, existing_entry, observed_so_far, deviation_bands(deps.location),
+        day0_predictions=day0_predictions,
     )
 
     # --- Step 5b: does this run earn an LLM call? ---

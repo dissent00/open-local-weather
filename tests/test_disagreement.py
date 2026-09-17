@@ -287,3 +287,61 @@ def test_the_reporting_band_does_change_what_is_reported():
     assert wide.notable is False, "1.8 C is inside the shipped default"
     assert tight.notable is True, "and outside a band the reader tightened"
     assert wide.decisive is tight.decisive is False, "neither may spend"
+
+
+# ---------------------------------------------------------------------------
+# The sustained-wind gap — ROADMAP item 146, step 3. A MEASUREMENT, not a test.
+# ---------------------------------------------------------------------------
+
+
+def _day0(**sustained):
+    from openlocalweather.models import ModelPrediction
+
+    return [ModelPrediction(model=m, rain=False, sustained_wind_kmh=v) for m, v in sustained.items()]
+
+
+def test_the_gap_is_the_station_above_the_models_sustained_consensus():
+    """Observed minus forecast, the sign every other error here uses: positive
+    means the station's sustained maximum so far sits ABOVE what the models
+    said the day's sustained maximum would be. Measured 2026-09-17 over
+    thirteen days: +14.7 on average, and above on every one of them — which
+    is why this is stored and reported nowhere."""
+    from openlocalweather.disagreement import sustained_wind_gap
+
+    got = sustained_wind_gap(
+        ObservedSoFar(peak_wind_kmh=25.93),
+        _day0(gfs_seamless=19.3, ecmwf_ifs025=11.5, icon_seamless=15.6),
+    )
+    assert got is not None
+    assert got.consensus_kmh == pytest.approx((19.3 + 11.5 + 15.6) / 3)
+    assert got.observed_kmh == pytest.approx(25.93)
+    assert got.delta_kmh == pytest.approx(25.93 - (19.3 + 11.5 + 15.6) / 3)
+    assert got.model_count == 3
+
+
+def test_a_model_without_a_sustained_wind_is_not_in_the_consensus():
+    """A model that does not forecast it (the met service) or has no series
+    is absent from the mean, not a zero in it — the same rule `mean` follows
+    everywhere in the record."""
+    from openlocalweather.disagreement import sustained_wind_gap
+
+    got = sustained_wind_gap(
+        ObservedSoFar(peak_wind_kmh=30.0),
+        _day0(gfs_seamless=20.0, kenya_met=None, ecmwf_ifs025=10.0),
+    )
+    assert got.consensus_kmh == pytest.approx(15.0)
+    assert got.model_count == 2
+
+
+def test_no_station_reading_is_no_gap():
+    from openlocalweather.disagreement import sustained_wind_gap
+
+    assert sustained_wind_gap(ObservedSoFar(peak_wind_kmh=None), _day0(gfs_seamless=20.0)) is None
+
+
+def test_no_sustained_forecast_at_all_is_no_gap():
+    """Three-valued: None is "no basis", never a gap of the whole observation."""
+    from openlocalweather.disagreement import sustained_wind_gap
+
+    assert sustained_wind_gap(ObservedSoFar(peak_wind_kmh=30.0), _day0(kenya_met=None)) is None
+    assert sustained_wind_gap(ObservedSoFar(peak_wind_kmh=30.0), []) is None
