@@ -15,6 +15,90 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-09-17
+
+Every number here was read out of the data on 2026-09-17, not carried
+forward. The 2026-09-14 block and its 2026-09-15 corrections stay beneath
+for their reasoning; their figures are two cuts and a dozen shipped items
+out of date, and their top pick (73) shipped the day after they were
+written.
+
+### The numbers today
+
+| | |
+|---|---|
+| user prompt, first issuance | **115,307 chars** on 09-17 (164,977 on 09-14; 142,527 after 73's cut on 09-15; 141,798 on 09-16 before 147's cut) |
+| input tokens per issuance | **60,179** on 09-17 against 80,863 on 09-14 — a quarter less |
+| stored record | 38 log days (2026-08-11..09-17); 43 observed days (08-05..09-16); 14 archived prompts (from 09-04) |
+| scored window | **1 paired day** — 09-17's run was the first; rain 1/1 on all five models |
+| cloud at Day+0 | 7 paired days of the 10 that 87 and 123 need |
+| the review | 17 bias findings and, since 153, 11 tendencies |
+| provider | `gemini-interactions`; cap 20, which item 132 says must go back to 16 |
+
+### Shipped since the last block, 2026-09-15 to 09-17
+
+73 (the `primary_today_hourly` cut), 80 (the Interactions endpoint), 104's
+build with 139 step 1 (the window scored, the scorer defect found and
+fixed), 137, 138 shape 1, 142, 143, 144, 145's server half, 146 steps 1-3,
+147 (HISTORICAL NOTES gone), 148 steps 1-2 (the prompt measured, growth
+noticed), 149, 150 steps 1-3, 151 step 1, 152 all four steps, 153, 157,
+and 136's ARCHITECTURE.md. Raised: 154, 155, 156. Every one has a dated
+section under its item with the measurement it was sized from.
+
+### Waiting on rows, not on work — with the dates the record gives
+
+| ~date | what unblocks |
+|---|---|
+| 2026-09-20 | 87's cloud weighting and 123's cloud gate — 7 of 10 paired cloud days on 09-17 |
+| 2026-09-23 | 99's regional areas — a fortnight from the sweep that began 09-09 |
+| 2026-09-26 | 139's reporting decision and 104's contract items 5 and 7 — ten paired window days; with them the 155 / `ensemble` 21 audit of scoring per run |
+| ~2026-10-17 | 146 step 4 — thirty days of the stored sustained-wind gap, stored from 09-18 |
+| the wet season | 157's finding — the method exists since 153; it needs a millimetre floor the operator sets once wet days carry weight |
+| October | 20, then 60 — 43 cached days now; forty was the threshold, not the target |
+| when 132 decides | 148's ceiling |
+
+**Do not start anything data-dependent before its date.** The instruments
+that will answer these are all recording; the mistake available now is to
+size a number from the first few rows — item 100.
+
+### Buildable today, in order
+
+The operator has taken each of these design-first, in prose, before any
+code; this is a recommendation, not a queue.
+
+1. **156 — the store.** Design settled, nothing built. Everything downstream
+   waits on its write shape: `ensemble` 22's exporter, the connector, 113's
+   per-town listing. Infrastructure, so the design is the long part.
+2. **`ensemble` 20 — the reader's deviation setting**, 145's app half. The
+   hazard is written into the item already; the build is a settings surface
+   over `DeviationBands`.
+3. **`ensemble` 19 — the observed sources screen.** App-only, and the app
+   has the stronger claim on it than the site.
+4. **154's two remaining instances, one at a time**: 150 (sub-daily reach,
+   a missing FACT — collect before splitting) and 151 (the instrument shipped
+   09-16 is recording which exit fires; read it before building anything).
+5. **133, 134, 135 — the prompt changes.** Each is measurable through 148's
+   instrument now, and 134's climatology-and-order question is the largest
+   single lever left on the prompt.
+
+**Deliberately not next:** 141 (nowcasting; waits on 41), 148 step 3 (waits
+on 132), 131 (the retrospective half is a free query over stored hashes and
+can be run whenever a prompt A/B is actually wanted), 54/55/56.
+
+### The next action
+
+**Read the 2026-09-18 03:01 run.** It is the first live run carrying the
+station window fetch (139), the sustained wind on predictions and observed
+days (146), the stored station gap, the prompt growth figure (148), the
+rain amount error (157) and the review's tendencies (153): `olw
+window-vs-day`, `olw prompt-size`, `meta.information_moved.sustained_wind_gap`
+and `meta.prompt_size.growth_pct` on the entry, and whether the narrative
+called a tendency "slightly" rather than a bias. **Then the Monday 09-21
+health check**, the first with the observation watcher, the growth notice
+and 152's arrival kind.
+
+---
+
 ## Working order, as of 2026-09-14
 
 > **CHECKED 2026-09-15 — three of its numbers moved and its top question is
@@ -22533,7 +22617,7 @@ Related: 105, 106, 107, 113, 124, 24, and `ensemble` items 4 and 22.
 
 ---
 
-## 157. A rain amount is never scored · **SHIPPED 2026-09-17 — scored, rolled and named; the review finding waits on 153**
+## 157. A rain amount is never scored · **SHIPPED 2026-09-17 — scored, rolled and named; the review finding waits on a millimetre floor**
 
 The operator's second scenario for item 139: *"Model predicts rain starting
 at 1600, 8mm. Rain starts at 1600, but accumulates .4 mm. Rain call correct,
