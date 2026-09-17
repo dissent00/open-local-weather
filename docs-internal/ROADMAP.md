@@ -21791,7 +21791,7 @@ comparison.
 
 ---
 
-## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Step 1 SHIPPED 2026-09-16**
+## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Steps 1-2 SHIPPED 2026-09-16/17; step 3 in progress**
 
 The operator, on being shown that `gust` and `p01i` are excluded from the
 METAR request because a 45-day sample found them empty and constant:
@@ -21891,6 +21891,43 @@ repeating measurement rather than a one-off.
    exclusion should carry the date and sample it was decided on — item 45's
    does, in a comment — and a periodic check should say whether that sample
    still describes the source.
+
+### STEP 2 SHIPPED 2026-09-17 — `became_available`, and the threshold was measured
+
+`detect_coverage` now emits a fourth kind: present in every run of an
+unbroken newest stretch, absent in every run before it. `newly_available`
+returns them; `check-health` prints them as a NOTICE and never fails on
+them, because nothing is wrong — a source is supplying something it did
+not, and someone has to decide whether to read it.
+
+**The prior stretch needs a floor, and the record said so.** The first
+definition was "newest ≥ 3 present, nothing present before". Run over the
+live log it reported two arrivals: `ecmwf_ifs025` Day+0 `wind_kmh` as
+present 28, absent 2 — the August fix to that very gap leaving the 30-day
+window — and `kenya_met` Day+0 `low_c` as present 26, absent 1. Neither is
+an exclusion being overturned. So the same threshold applies on both sides:
+`COVERAGE_ABSENT_RUNS` present, and at least `COVERAGE_ABSENT_RUNS` absent
+before that, with no presence anywhere in the prior stretch. Under that rule
+the live record reports nothing, which is the right answer today.
+
+**An acknowledgement does NOT silence it — the opposite.** `actionable`
+drops regressions and peer gaps that config acknowledges; `newly_available`
+reports an arrival regardless and, when an acknowledgement covers the pair,
+quotes it and says it is now stale. ICON or UKMO starting to forecast Day+7
+is the case: the config entry describing the horizon would be wrong, and the
+person who wrote it is the one who needs to hear. Operator's decision,
+2026-09-17. Item 150's `forecast_reach` would show the same event as a
+number; this says it in words, once, where the weekly check is read.
+
+Each guard was mutated and seen to fail its own test before it was trusted:
+dropping the prior floor fails the window-edge test and the healthy-record
+test; dropping the present floor fails the two-run test; dropping the
+unbroken-prior rule fails the intermittent test. 1287 tests.
+
+**Not done here:** the narrated-field watcher has no `became_available`.
+A forecaster field that starts being filled after never being filled is a
+prompt question, not a source one, and nothing in `NARRATED_FIELDS` is
+excluded on a measurement the way the model variables are.
 
 ### The principle worth keeping even if none of this is built
 

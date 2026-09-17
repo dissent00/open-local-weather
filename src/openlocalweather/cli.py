@@ -30,6 +30,7 @@ from openlocalweather.coverage import (
     detect_coverage,
     detect_narrated_coverage,
     detect_trigger_regression,
+    newly_available,
 )
 from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
@@ -759,7 +760,16 @@ def _run_check_health(args: argparse.Namespace) -> int:
             print(f"    - {f.message}")
     else:
         print("  OK — every model is supplying what its peers supply.")
-    inert = len(findings) - len(needs_attention)
+    # ROADMAP item 152 step 2. Not a failure and not filtered by the
+    # acknowledgements: a source supplying something it did not is news for
+    # a person, and an acknowledged gap closing is the case that most needs
+    # one — the config entry describing it is now wrong.
+    arrivals = newly_available(findings, location.acknowledged_coverage_gaps)
+    if arrivals:
+        print(f"  NOTICE: {len(arrivals)} variable(s) started arriving:")
+        for f in arrivals:
+            print(f"    - {f.message}")
+    inert = len(findings) - len(needs_attention) - len(arrivals)
     if inert:
         print(f"  ({inert} known or universal gap(s) not reported — see acknowledged_coverage_gaps.)")
 

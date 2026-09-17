@@ -185,6 +185,101 @@ def test_an_acknowledgement_without_a_variable_covers_the_whole_lead_time():
 
 
 # ---------------------------------------------------------------------------
+# became_available: the mirror of regression — ROADMAP item 152 step 2
+# ---------------------------------------------------------------------------
+
+
+def test_flags_a_variable_that_was_absent_and_started_arriving():
+    """The kind nothing looked for. An exclusion is measured once — ECMWF
+    publishes no Day+0 wind, ICON stops at Day+6 — and the day it stops being
+    true, every layer keeps handling the new value correctly and silently."""
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 3 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+
+    new = _find(findings, "ecmwf_ifs025", "wind_kmh", kind="became_available")
+    assert new is not None
+    assert new.present_runs == 3
+    assert new.absent_runs == 9
+    assert new.first_seen == date(2026, 8, 18)
+    assert "started arriving" in new.message
+
+
+def test_a_short_absence_at_the_window_edge_is_not_an_arrival():
+    """Measured 2026-09-17 on the live record: with no floor on the prior
+    stretch, ECMWF Day+0 wind read as 'present 28, absent 2' — the August fix
+    leaving the 30-day window — and kenya_met Day+0 low as 'present 26,
+    absent 1'. A prior stretch shorter than the noise threshold is not an
+    absence anything can be said to have ended."""
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 10 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+    assert _find(findings, "ecmwf_ifs025", "wind_kmh", kind="became_available") is None
+
+
+def test_two_present_runs_are_not_yet_an_arrival():
+    """Mirror of one missed run being noise: a value that appears once or
+    twice may be a fluke of the fetch, not a change of practice."""
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 2 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+    assert _find(findings, "ecmwf_ifs025", "wind_kmh", kind="became_available") is None
+
+
+def test_an_intermittent_variable_is_not_an_arrival():
+    """Present, then absent, then present again is a flaky field, not an
+    exclusion being overturned. Only an unbroken prior absence counts."""
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 3 or i > 7 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+    assert _find(findings, "ecmwf_ifs025", "wind_kmh", kind="became_available") is None
+
+
+def test_an_arrival_is_news_not_a_fault_and_ignores_acknowledgements():
+    """Two rules. It is never in `actionable`, because nothing is wrong. And
+    an acknowledgement does NOT silence it — the opposite: an acknowledged
+    gap closing is exactly the event that needs a human decision, and the
+    finding must say the acknowledgement is now stale."""
+    from openlocalweather.config import AcknowledgedGap
+    from openlocalweather.coverage import newly_available
+
+    lookup = _history(12, {
+        "gfs_seamless": 25.0, "best_match": 24.0,
+        "ecmwf_ifs025": lambda i: 22.0 if i < 3 else None,
+    })
+    findings = detect_coverage(lookup, TODAY, MODELS, [0])
+    assert all(f.kind != "became_available" for f in actionable(findings))
+
+    acked = [AcknowledgedGap(
+        model="ecmwf_ifs025", lead_time_days=0, reason="horizon ends at Day+6",
+    )]
+    arrivals = newly_available(findings, acked)
+    assert len(arrivals) == 1
+    assert arrivals[0].acknowledged_reason == "horizon ends at Day+6"
+    assert "stale" in arrivals[0].message
+    assert "horizon ends at Day+6" in arrivals[0].message
+
+    unacked = newly_available(findings)
+    assert unacked[0].acknowledged_reason is None
+    assert "stale" not in unacked[0].message
+
+
+def test_a_healthy_record_has_no_arrivals():
+    from openlocalweather.coverage import newly_available
+
+    lookup = _history(10, {m: 25.0 for m in MODELS})
+    assert newly_available(detect_coverage(lookup, TODAY, MODELS, [0])) == []
+
+
+# ---------------------------------------------------------------------------
 # Operational coverage: has the reliable trigger stopped?
 # ---------------------------------------------------------------------------
 

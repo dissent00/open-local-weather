@@ -18,7 +18,7 @@ Everything here is derived from the committed log — no new storage, no extra
 fetch. A run that stored a prediction also stored, implicitly, which fields
 that prediction could and couldn't fill.
 
-THREE KINDS, because the obvious two are not enough — and the ECMWF case is
+FOUR KINDS, because the obvious two are not enough — and the ECMWF case is
 exactly what proves it.
 
 - **regression**: present before, absent now. An upstream rename or a
@@ -32,15 +32,24 @@ exactly what proves it.
 - **never_published**: absent for this model AND for every peer. A property
   of the data, not a fault — no model supplies it, so there is nothing to
   investigate.
+- **became_available**: absent throughout the older part of the window,
+  present in every run since. The mirror of `regression`, and the one nothing
+  looked for — ROADMAP item 152. An exclusion made on a real measurement
+  (ECMWF publishes no Day+0 wind, ICON stops at Day+6) becomes permanent by
+  default, because the day it stops being true every layer handles the new
+  value correctly and silently, exactly as it handled the absence. Good news
+  that needs a human decision, not a page.
 
-Reporting all three at equal volume is how monitoring stops being read, so
+Reporting all four at equal volume is how monitoring stops being read, so
 only the first two are actionable; the third exists to be counted, not
-alerted on.
+alerted on; the fourth is reported separately, as a notice, and — unlike the
+first two — is NOT silenced by an acknowledgement, because an acknowledged gap
+closing is precisely the event the acknowledgement's author needs to hear.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 from openlocalweather.dates import add_days
@@ -58,7 +67,7 @@ WATCHED_VARIABLES = ("rain", "wind_kmh", "high_c", "low_c", "mslp_trend")
 class CoverageFinding:
     """One (model, lead time, variable) worth reporting."""
 
-    kind: str  # "regression" | "never_published"
+    kind: str  # "regression" | "peer_gap" | "never_published" | "became_available"
     model: str
     lead_time_days: int
     variable: str
@@ -66,10 +75,34 @@ class CoverageFinding:
     absent_runs: int
     checked_runs: int
     peers_with_value: list[str] = field(default_factory=list)
+    # became_available only. `first_seen` is the oldest run of the unbroken
+    # present stretch; `absent_runs` is the stretch before it. Separate fields
+    # rather than `last_seen` reused with the opposite meaning — item 154.
+    first_seen: date | None = None
+    present_runs: int = 0
+    # Set by `newly_available` when config acknowledges this (model, lead,
+    # variable) as a known gap: that acknowledgement is now stale, and the
+    # message must say so and quote it.
+    acknowledged_reason: str | None = None
 
     @property
     def message(self) -> str:
         where = f"{self.model} Day+{self.lead_time_days} {self.variable}"
+        if self.kind == "became_available":
+            text = (
+                f"{where}: started arriving — present in the last {self.present_runs} "
+                f"run(s) since {self.first_seen}, after {self.absent_runs} run(s) "
+                "without it. Nothing is wrong; a source is supplying something it "
+                "did not. Worth deciding once whether it should now be read, and "
+                "recording the answer."
+            )
+            if self.acknowledged_reason is not None:
+                text += (
+                    " This pair is acknowledged in config as a known gap "
+                    f"(\"{self.acknowledged_reason}\"); that acknowledgement is now "
+                    "stale."
+                )
+            return text
         if self.kind == "peer_gap":
             return (
                 f"{where}: never supplied in {self.checked_runs} run(s), while "
@@ -181,6 +214,41 @@ def detect_coverage(
                             checked_runs=len(model_runs),
                         )
                     )
+                    continue
+                # The mirror: consecutive presences from the newest run
+                # backwards, and NOTHING present before them.
+                #
+                # THE SAME THRESHOLD IS APPLIED ON BOTH SIDES, and the prior
+                # side is the one that matters. Measured 2026-09-17 against the
+                # live record with no floor on the prior stretch: ECMWF Day+0
+                # wind read as "present 28, absent 2" — the August fix leaving
+                # the 30-day window — and kenya_met Day+0 low as "present 26,
+                # absent 1". Both would have been reported as arrivals. A prior
+                # stretch shorter than what counts as a regression is not an
+                # absence anything can be said to have ended.
+                arrived = 0
+                for _, p in model_runs:
+                    if not _value_present(p, variable):
+                        break
+                    arrived += 1
+                prior = model_runs[arrived:]
+                if arrived < absent_runs_threshold or len(prior) < absent_runs_threshold:
+                    continue
+                if any(_value_present(p, variable) for _, p in prior):
+                    continue
+                findings.append(
+                    CoverageFinding(
+                        kind="became_available",
+                        model=model,
+                        lead_time_days=k,
+                        variable=variable,
+                        last_seen=None,
+                        absent_runs=len(prior),
+                        checked_runs=len(model_runs),
+                        first_seen=model_runs[arrived - 1][0],
+                        present_runs=arrived,
+                    )
+                )
     return findings
 
 
@@ -205,6 +273,30 @@ def actionable(
         if f.kind in ("regression", "peer_gap")
         and not any(a.covers(f.model, f.lead_time_days, f.variable) for a in acknowledged)
     ]
+
+
+def newly_available(
+    findings: list[CoverageFinding], acknowledged: list = ()
+) -> list[CoverageFinding]:
+    """The arrivals, each carrying the acknowledgement it makes stale, if any.
+
+    Deliberately the inverse of `actionable`'s filter. An acknowledgement
+    says "this gap is understood, stop reporting it"; an arrival says the gap
+    has closed, which is the one thing the person who wrote that
+    acknowledgement needs to hear. Silencing it would leave a config entry
+    describing a source that no longer exists — the same failure item 152 was
+    raised on, one layer along.
+    """
+    out: list[CoverageFinding] = []
+    for f in findings:
+        if f.kind != "became_available":
+            continue
+        ack = next(
+            (a for a in acknowledged if a.covers(f.model, f.lead_time_days, f.variable)),
+            None,
+        )
+        out.append(replace(f, acknowledged_reason=ack.reason) if ack else f)
+    return out
 
 
 # --- Operational coverage: is the reliable trigger still firing? ----------
