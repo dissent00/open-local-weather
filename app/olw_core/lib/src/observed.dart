@@ -19,6 +19,7 @@
 /// `spec/vectors/observed_so_far.json` and compared exactly against Python.
 library;
 
+import 'disagreement.dart';
 import 'models.dart';
 import 'rounding.dart';
 
@@ -123,4 +124,44 @@ String? describeLowDivergence(LowDivergence? divergence, String stationName) {
       '${formatTempC(divergence.forecastC, decimals: 1)}. That is this one '
       'station, not the wider area: it does not say nowhere reached the '
       'forecast low.';
+}
+
+/// The footnotes for a notable high and a notable onset — port of Python's
+/// `describe_notable_disagreements`, upstream ROADMAP item 145. One sentence
+/// per code in the reporting list's order; nothing for the low, which has
+/// [describeLowDivergence], or for rain, which OBSERVED SO FAR already
+/// carries. The same shape as the low's: the place, both numbers, and a
+/// claim about nothing wider. A code missing its numbers gets no sentence.
+List<String> describeNotableDisagreements(
+  List<String>? codes,
+  StandingCall standing,
+  ObservedSoFar observed,
+  String stationName,
+) {
+  if (codes == null || codes.isEmpty) return const [];
+
+  final notes = <String>[];
+  for (final code in codes) {
+    final calledHigh = standing.tempHighC;
+    final seenHigh = observed.highC;
+    if (code == disagreementHighExceeded && calledHigh != null && seenHigh != null) {
+      notes.add('$stationName has already recorded '
+          '${formatTempC(seenHigh, decimals: 1)} today against a forecast '
+          'high of ${formatTempC(calledHigh, decimals: 1)}. That is this '
+          'one station, not the wider area: it does not say everywhere has '
+          'passed the forecast high.');
+    }
+    final calledOnset = standing.onsetHour;
+    final seenOnset = observed.precipitationOnset;
+    if (code == disagreementOnsetAlreadyPassed &&
+        calledOnset != null &&
+        calledOnset.isNotEmpty &&
+        seenOnset != null &&
+        seenOnset.isNotEmpty) {
+      notes.add('$stationName saw rain from $seenOnset, against '
+          'a forecast onset of $calledOnset. That is this one station, '
+          'not the wider area: it does not say rain has started everywhere.');
+    }
+  }
+  return notes;
 }

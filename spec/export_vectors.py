@@ -1470,6 +1470,23 @@ def export_user_prompt() -> None:
                     ),
                 ),
             ),
+            # ITEM 145. The same silence-by-default as the low's block, so
+            # this case is the one that pins the OBSERVATION FOOTNOTES block.
+            case(
+                "the high was passed and the rain came early — the footnotes appear",
+                dict(
+                    full,
+                    observation_footnotes=[
+                        "Kisumu International Airport has already recorded 31.2°C / 88.2°F "
+                        "today against a forecast high of 28.0°C / 82.4°F. That is this one "
+                        "station, not the wider area: it does not say everywhere has passed "
+                        "the forecast high.",
+                        "Kisumu International Airport saw rain from 14:20, against a forecast "
+                        "onset of 16:00. That is this one station, not the wider area: it does "
+                        "not say rain has started everywhere.",
+                    ],
+                ),
+            ),
         ],
     )
 
@@ -2737,6 +2754,67 @@ def export_low_divergence() -> None:
         "calls. A reading ABOVE the call requires the night to be "
         "over (`low_is_settled` true, never null); one BELOW it settles at "
         "any hour, because a minimum only falls.",
+        cases,
+    )
+
+
+def export_notable_disagreement_notes() -> None:
+    """ROADMAP item 145: the sentences for a notable high and onset. Locked
+    verbatim because they reach the model as the ONLY sanctioned way to
+    mention both numbers and the reader as printed; a port that reworded
+    one would publish two forms of the same fact."""
+    from openlocalweather.disagreement import (
+        DISAGREEMENT_HIGH_EXCEEDED,
+        DISAGREEMENT_LOW_DIVERGES,
+        DISAGREEMENT_ONSET_ALREADY_PASSED,
+        DISAGREEMENT_RAIN_WHILE_DRY,
+        StandingCall,
+    )
+    from openlocalweather.observed import describe_notable_disagreements
+
+    station = "Kisumu International Airport"
+    scenarios = [
+        ("a notable high", [DISAGREEMENT_HIGH_EXCEEDED], dict(temp_high_c=28.0), dict(high_c=31.2)),
+        ("a notable onset", [DISAGREEMENT_ONSET_ALREADY_PASSED], dict(onset_hour="16:00"), dict(precipitation_onset="14:20")),
+        ("both, in the list's order",
+         [DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_HIGH_EXCEEDED, DISAGREEMENT_ONSET_ALREADY_PASSED, DISAGREEMENT_LOW_DIVERGES],
+         dict(rain=False, temp_high_c=28.0, onset_hour="16:00", temp_low_c=18.0),
+         dict(precipitation=True, high_c=31.2, precipitation_onset="14:20", low_c=15.0)),
+        ("the low and rain have their words elsewhere",
+         [DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_LOW_DIVERGES],
+         dict(rain=False, temp_low_c=18.0), dict(precipitation=True, low_c=15.0)),
+        ("a code without its numbers gets no half sentence",
+         [DISAGREEMENT_HIGH_EXCEEDED], dict(temp_high_c=None), dict(high_c=31.2)),
+    ]
+    cases = []
+    for name, codes, standing_kw, observed_kw in scenarios:
+        standing = StandingCall(**standing_kw)
+        observed = ObservedSoFar(**observed_kw)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "codes": codes,
+                    "standing": {
+                        "rain": standing.rain, "temp_high_c": standing.temp_high_c,
+                        "onset_hour": standing.onset_hour, "temp_low_c": standing.temp_low_c,
+                    },
+                    "observed": {
+                        "precipitation": observed.precipitation, "high_c": observed.high_c,
+                        "precipitation_onset": observed.precipitation_onset, "low_c": observed.low_c,
+                    },
+                    "station_name": station,
+                },
+                "expected": describe_notable_disagreements(codes, standing, observed, station),
+            }
+        )
+    write(
+        "notable_disagreement_notes.json",
+        "describe_notable_disagreements",
+        "ROADMAP item 145. The footnote sentences for a notable daytime high "
+        "and a notable rain onset, one per code in the reporting list's order, "
+        "the place and both numbers and a claim about nothing wider. The low "
+        "and rain get none here: they have their words elsewhere.",
         cases,
     )
 
@@ -4885,6 +4963,7 @@ def main() -> None:
     export_verification()
     export_observation_disagreements()
     export_notable_disagreements()
+    export_notable_disagreement_notes()
     export_low_divergence()
     export_sustained_wind_gap()
     export_wind_direction()

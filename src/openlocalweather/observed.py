@@ -25,6 +25,11 @@ against the Dart port, so reordering it is a behaviour change.
 
 from __future__ import annotations
 
+from openlocalweather.disagreement import (
+    DISAGREEMENT_HIGH_EXCEEDED,
+    DISAGREEMENT_ONSET_ALREADY_PASSED,
+    StandingCall,
+)
 from openlocalweather.models import LowDivergence, SOURCE_STATION, DailyActual, ObservedSoFar
 from openlocalweather.models import format_temp_c
 
@@ -220,3 +225,55 @@ def describe_low_divergence(divergence: LowDivergence | None, station_name: str)
         f"area: it does not say nowhere reached the forecast low."
     )
 
+
+def describe_notable_disagreements(
+    codes: list[str] | None,
+    standing: StandingCall,
+    observed: ObservedSoFar,
+    station_name: str,
+) -> list[str]:
+    """The footnotes for a notable high and a notable onset — ROADMAP item
+    145, the words its bands were waiting for. One sentence per code, in the
+    codes' own order, and nothing for the codes that already have words: the
+    low has `describe_low_divergence` with its own numbers, and rain that
+    fell is already in OBSERVED SO FAR TODAY.
+
+    THE SAME SHAPE AS THE LOW'S, on purpose: the place, both numbers, and a
+    claim about nothing else. A station can run hotter than the country
+    around it, or see a shower the basin did not, and the forecast can be
+    wrong; this cannot tell which, and says so. Written by code, not the
+    model, for the reason item 142 recorded: two locked blocks carrying the
+    same quantity means exactly one sanctioned sentence may mention both.
+
+    Silence is the default. `codes` is the REPORTING list
+    (`notable_disagreements`), never the spend list; a code whose numbers
+    are missing on either side gets no sentence rather than a half one.
+    """
+    if not codes:
+        return []
+
+    notes: list[str] = []
+    for code in codes:
+        if (
+            code == DISAGREEMENT_HIGH_EXCEEDED
+            and standing.temp_high_c is not None
+            and observed.high_c is not None
+        ):
+            notes.append(
+                f"{station_name} has already recorded "
+                f"{format_temp_c(observed.high_c, decimals=1)} today against a forecast "
+                f"high of {format_temp_c(standing.temp_high_c, decimals=1)}. That is this "
+                "one station, not the wider area: it does not say everywhere has "
+                "passed the forecast high."
+            )
+        if (
+            code == DISAGREEMENT_ONSET_ALREADY_PASSED
+            and standing.onset_hour
+            and observed.precipitation_onset
+        ):
+            notes.append(
+                f"{station_name} saw rain from {observed.precipitation_onset}, against "
+                f"a forecast onset of {standing.onset_hour}. That is this one station, "
+                "not the wider area: it does not say rain has started everywhere."
+            )
+    return notes

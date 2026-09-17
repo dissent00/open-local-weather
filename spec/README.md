@@ -121,9 +121,10 @@ absent values are `null`, never omitted keys.
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
 | `observation_disagreements.json` | `observation_disagreements` | 21 |
 | `notable_disagreements.json` | `notable_disagreements` | 9 |
+| `notable_disagreement_notes.json` | `describe_notable_disagreements` | 5 |
 | `low_divergence.json` | `low_divergence` | 14 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
-| `llm_user_prompt.json` | `build_user_prompt` | 8 |
+| `llm_user_prompt.json` | `build_user_prompt` | 9 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 31 |

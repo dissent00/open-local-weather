@@ -164,3 +164,71 @@ def test_a_divergence_nobody_needs_produces_no_footnote():
     )
     assert describe_low_divergence(quiet, "Kisumu International Airport") is None
     assert describe_low_divergence(None, "Kisumu International Airport") is None
+
+
+# ---------------------------------------------------------------------------
+# The words for a notable high and onset — ROADMAP item 145
+# ---------------------------------------------------------------------------
+
+
+def test_a_notable_high_names_the_station_and_both_numbers_and_claims_nothing_wider():
+    from openlocalweather.disagreement import DISAGREEMENT_HIGH_EXCEEDED, StandingCall
+    from openlocalweather.observed import describe_notable_disagreements
+
+    got = describe_notable_disagreements(
+        [DISAGREEMENT_HIGH_EXCEEDED],
+        StandingCall(temp_high_c=28.0),
+        ObservedSoFar(high_c=31.2),
+        "Kisumu International Airport",
+    )
+    assert len(got) == 1
+    assert "Kisumu International Airport" in got[0]
+    assert "31.2°C" in got[0] and "28.0°C" in got[0]
+    assert "°F" in got[0]
+    assert "this one station" in got[0]
+
+
+def test_a_notable_onset_names_both_hours_and_claims_nothing_wider():
+    from openlocalweather.disagreement import DISAGREEMENT_ONSET_ALREADY_PASSED, StandingCall
+    from openlocalweather.observed import describe_notable_disagreements
+
+    got = describe_notable_disagreements(
+        [DISAGREEMENT_ONSET_ALREADY_PASSED],
+        StandingCall(onset_hour="16:00"),
+        ObservedSoFar(precipitation_onset="14:20"),
+        "Kisumu International Airport",
+    )
+    assert len(got) == 1
+    assert "14:20" in got[0] and "16:00" in got[0]
+    assert "this one station" in got[0]
+
+
+def test_the_low_and_rain_codes_get_no_sentence_here():
+    """The low has its own footnote with its own numbers, and rain that fell
+    is already in OBSERVED SO FAR TODAY; a second sentence for either would
+    put the same fact in front of the model twice."""
+    from openlocalweather.disagreement import (
+        DISAGREEMENT_LOW_DIVERGES,
+        DISAGREEMENT_RAIN_WHILE_DRY,
+        StandingCall,
+    )
+    from openlocalweather.observed import describe_notable_disagreements
+
+    got = describe_notable_disagreements(
+        [DISAGREEMENT_RAIN_WHILE_DRY, DISAGREEMENT_LOW_DIVERGES],
+        StandingCall(rain=False, temp_low_c=18.0),
+        ObservedSoFar(precipitation=True, low_c=15.0),
+        "Kisumu International Airport",
+    )
+    assert got == []
+
+
+def test_no_codes_and_a_code_without_its_numbers_are_silence():
+    from openlocalweather.disagreement import DISAGREEMENT_HIGH_EXCEEDED, StandingCall
+    from openlocalweather.observed import describe_notable_disagreements
+
+    assert describe_notable_disagreements(None, StandingCall(), ObservedSoFar(), "X") == []
+    assert describe_notable_disagreements([], StandingCall(temp_high_c=28.0), ObservedSoFar(high_c=31.0), "X") == []
+    assert describe_notable_disagreements(
+        [DISAGREEMENT_HIGH_EXCEEDED], StandingCall(temp_high_c=None), ObservedSoFar(high_c=31.0), "X"
+    ) == []

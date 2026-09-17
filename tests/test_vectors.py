@@ -620,6 +620,20 @@ def test_vectors_notable_disagreements():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_notable_disagreement_notes():
+    """ROADMAP item 145 — the sentences for a notable high and onset, pinned
+    verbatim: they reach the model locked and the reader as printed."""
+    from openlocalweather.disagreement import ObservedSoFar, StandingCall
+    from openlocalweather.observed import describe_notable_disagreements
+
+    for case in load("notable_disagreement_notes.json")["cases"]:
+        i = case["input"]
+        got = describe_notable_disagreements(
+            i["codes"], StandingCall(**i["standing"]), ObservedSoFar(**i["observed"]), i["station_name"]
+        )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sustained_wind_gap():
     """ROADMAP item 146, step 3 — a stored measurement, pinned so the two
     records mean the same number by it."""
@@ -944,6 +958,7 @@ def test_every_vector_file_is_exercised():
         "llm_schema_split.json",
         "observation_disagreements.json",
         "notable_disagreements.json",
+        "notable_disagreement_notes.json",
         "low_divergence.json",
         "sustained_wind_gap.json",
         "llm_user_prompt.json",

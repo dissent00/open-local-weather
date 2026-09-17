@@ -489,6 +489,31 @@ void main() {
                 'across both languages as exactly as what a run BUYS');
       }
 
+      for (final c in casesOf('notable_disagreement_notes.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final s = i['standing'] as Map<String, Object?>;
+        final o = i['observed'] as Map<String, Object?>;
+        final got = describeNotableDisagreements(
+          (i['codes'] as List).cast<String>(),
+          StandingCall(
+            rain: s['rain'] as bool?,
+            tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
+            onsetHour: s['onset_hour'] as String?,
+            tempLowC: (s['temp_low_c'] as num?)?.toDouble(),
+          ),
+          ObservedSoFar(
+            precipitation: o['precipitation'] as bool?,
+            highC: (o['high_c'] as num?)?.toDouble(),
+            precipitationOnset: o['precipitation_onset'] as String?,
+            lowC: (o['low_c'] as num?)?.toDouble(),
+          ),
+          i['station_name'] as String,
+        );
+        expect(got, equals((c['expected'] as List).cast<String>()),
+            reason: 'case "${c['name']}" — a footnote reaches the model locked '
+                'and the reader as printed, so the words must match verbatim');
+      }
+
       for (final c in casesOf('sustained_wind_gap.json')) {
         final i = c['input'] as Map<String, Object?>;
         final o = i['observed'] as Map<String, Object?>;
@@ -1041,6 +1066,7 @@ void main() {
           // is silent on an ordinary morning, so without that case a port
           // could implement none of it and still pass here.
           lowDivergenceNote: i['low_divergence_note'] as String?,
+          observationFootnotes: (i['observation_footnotes'] as List?)?.cast<String>(),
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -1628,6 +1654,7 @@ void main() {
       'llm_schema_split.json',
       'observation_disagreements.json',
       'notable_disagreements.json',
+      'notable_disagreement_notes.json',
       'low_divergence.json',
       'sustained_wind_gap.json',
       'llm_schema_strict.json',

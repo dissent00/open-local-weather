@@ -20545,7 +20545,7 @@ Related: items 126, 142, 104, and `_blend_prediction`'s comment.
 
 ---
 
-## 145. "A significant deviation" is the reader's call, not ours · **SHIPPED — the low 2026-09-16, the high and onset bands 2026-09-17, the app's screen as `ensemble` 20; the words for the new bands are what is left**
+## 145. "A significant deviation" is the reader's call, not ours · **SHIPPED — the low 2026-09-16; the high and onset bands, their words, and the app's screen (`ensemble` 20) 2026-09-17**
 
 The operator, 2026-09-16, on being shown that item 143's band would suppress
 the case item 143 was raised on:
@@ -20758,6 +20758,33 @@ the high and the onset have no sentence yet, so a notable high or onset
 is stored and shown nowhere. Both languages, a vector, the same
 one-station caveat the low's carries. The app's card gains the two new
 sliders on re-pin (`ensemble` 20).
+
+### And the words, later the same day
+
+`describe_notable_disagreements(codes, standing, observed, station)` in
+both languages: one sentence per code in the reporting list's order, for
+the high and the onset only — the low has its own footnote with its own
+numbers, and rain that fell is already in OBSERVED SO FAR TODAY, so a
+second sentence for either would put one fact in front of the model
+twice. The same shape as the low's: the place, both numbers, and a claim
+about nothing wider. A code missing its numbers on either side gets no
+half sentence.
+
+The prompt carries them in a new `OBSERVATION FOOTNOTES` block under the
+low's, with the low's rules — verbatim or not at all, late and small, no
+reconciling — and the same silence on an ordinary day, which is why the
+user-prompt vector needed a case of its own to pin the block at all.
+`_locked_blocks` receives the list whole from the one top-level caller,
+composed from `notable_disagreements`, the standing call and the station
+name, so it cannot be built on one path and not the other. Pinned
+verbatim by `notable_disagreement_notes.json` (five cases): changing one
+word in either language fails the vector. Driven through the real CLI:
+no change, because the fixture's station contradicts nothing, which is
+the designed default. 1352 Python, 193 Dart.
+
+The app shows the same sentences from its own seam once a same-day
+source exists; until then its high and onset bands judge a list it
+stores and nothing shows — `ensemble` 20 records it.
 
 
 Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.

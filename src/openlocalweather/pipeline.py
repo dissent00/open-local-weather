@@ -167,6 +167,7 @@ from openlocalweather.llm.schema import (
 )
 from openlocalweather.observed import (
     describe_low_divergence,
+    describe_notable_disagreements,
     describe_observed_so_far,
     observed_baseline,
 )
@@ -805,6 +806,7 @@ def _build_forecast_prompt(
     calibrated_wind_kmh: float | None,
     extended_days: list[list],
     overnight_low_divergence: LowDivergence | None,
+    observation_footnotes: list[str] | None = None,
 ) -> str:
     """The user prompt, built in the one place it is built.
 
@@ -859,6 +861,7 @@ def _build_forecast_prompt(
         **_locked_blocks(
             guidance, day0_predictions, today, observed_so_far, calibrated_wind_kmh,
             extended_days, overnight_low_divergence, deps.location,
+            observation_footnotes=observation_footnotes,
         ),
         review_context=review_context,
         today_weather_data={
@@ -896,6 +899,7 @@ def _locked_blocks(
     extended_days: list[list],
     overnight_low_divergence: LowDivergence | None,
     location: LocationConfig,
+    observation_footnotes: list[str] | None = None,
 ) -> dict:
     """The pre-computed blocks the prompt locks, composed once for every run.
 
@@ -955,6 +959,10 @@ def _locked_blocks(
             overnight_low_divergence,
             location.metar_station_name or location.metar_station_icao,
         ),
+        # Item 145: the high's and the onset's footnotes, composed by the
+        # caller from the REPORTING list and passed in whole, so this block
+        # cannot be built on one path and not the other either.
+        "observation_footnotes": observation_footnotes or [],
         # The periods this issuance covers, each with the hours it means —
         # item 104. Derived from the issuance's own horizon, so the prompt
         # cannot name a period the phase did not call for.
@@ -3080,6 +3088,16 @@ def _issue_forecast(
         day0_predictions=day0_predictions,
         observed_so_far=observed_so_far,
         overnight_low_divergence=information_moved.low_divergence,
+        observation_footnotes=(
+            []
+            if observed_so_far is None
+            else describe_notable_disagreements(
+                information_moved.notable_disagreements,
+                _standing_call(existing_entry),
+                observed_so_far,
+                deps.location.metar_station_name or deps.location.metar_station_icao,
+            )
+        ),
         verification_context=verification_context,
         model_predictions_context=model_predictions_context,
         track_record_context=track_record_context,
