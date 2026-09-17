@@ -190,6 +190,22 @@ void main() {
       }
     });
 
+    test('a run row round-trips as the pipeline commits it', () {
+      for (final c in casesOf('run_row.json')) {
+        final input = (c['input'] as Map).cast<String, Object?>();
+        final row = RunRecord.fromJson(input);
+        expect(row.toJson(), c['expected'], reason: 'case "${c['name']}"');
+        // The typed view reads the same row.
+        expect(row.issuedAt.isUtc, isTrue);
+        expect(row.predictionsAt(0), isNotEmpty);
+        expect(
+          row.windowScores.length,
+          ((c['expected'] as Map)['window_scores'] as Map).length,
+          reason: 'case "${c['name']}"',
+        );
+      }
+    });
+
     test('forecast_horizon_days', () {
       for (final c in casesOf('forecast_horizon.json')) {
         final i = c['input'] as Map<String, Object?>;
@@ -1524,6 +1540,7 @@ void main() {
       'wind_describe_shift.json',
       'extract_day_n.json',
       'forecast_horizon.json',
+      'run_row.json',
       'extract_onset_hour.json',
       'aqi_staleness.json',
       'aqi_summary.json',

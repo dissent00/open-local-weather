@@ -21975,3 +21975,51 @@ behaves, and let the pattern be a lens rather than a recipe.**
 
 Related: 137, 144, 145, 150, 151, 153, and item 100 on thresholds sized
 against the record rather than against convenient samples.
+
+## 155. Verification still scores "the first of the day", and the day is a legacy unit · **Raised 2026-09-17 — an audit, not a build; read with 139**
+
+The operator, reviewing the app's storage design on 2026-09-17: *"the plan
+is to move to scoring each model run (we have the concept of model freshness)
+against observations. We moved away from the concept of a 'daily' forecast, a
+refreshed forecast that relies on the previous, and on to the rolling window.
+So we need to be able to score multiple rows per calendar day, some of which
+may just be updates of sensor data if the models are the same... I'm
+concerned some legacy ideas have remained from the earlier 6am/6pm daily run
+model."*
+
+They have, on both sides, and this item is the list to audit against. Not
+built now: 139 says decide nothing before the first scored window is read.
+
+**Upstream, found while raising this:**
+
+- `verify.scoring.scored_predictions` names the day's FIRST row as the set
+  tomorrow scores at Day+0, Day+3 and Day+7. Every issuance is a row (104
+  contract item 4) and every row's WINDOW is scored (`verify_closed_windows`),
+  but the by-lead series still reads one row per day.
+- `dates.prediction_row_date_for_target` and the rolling windows walk the
+  record BY DAY: `log_lookup(date)` returns the day entry, and a check is a
+  day. Under "every run with new model data" a check is a run, and C6 (count
+  distinct target dates, not rows) is what keeps the sample-size gate honest.
+- `DailyLogEntry` is itself the daily container: rows live inside a day, and
+  `prediction_rows[0]` carries the special status. The app's store (its item
+  4) is being built keyed by RUN with the local day derived, which is the
+  shape this side would move to if it dropped the container.
+- `_write_back_verification` and the actuals refresh run on the first
+  issuance only, by design; that design assumed one verification per day.
+
+**In the app:** `runVerification` looks up `predictionsFor(rowDate, lead)`
+with one set per day, and `HistoryStore.savePredictions` dropped every later
+run until its item 4 replaced it.
+
+**What "score every run with new model data" needs decided**, in order: which
+runs are scorable (C2's triggers already say — a new cycle; a sensor-only run
+re-renders and is not a new forecast); what a run is scored against (the
+window, per 139); how the by-lead series and the rolling windows count when
+a day holds several runs (C6); and what the published pages report. Then the
+by-day walkers become by-run queries. The app's schema is being built so that
+switch is a query change, not a migration.
+
+Related: 104 (contract items 2, 4 and C2/C6), 139, 137, 121, and `ensemble`
+items 4 and 21.
+
+---

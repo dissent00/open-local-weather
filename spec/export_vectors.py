@@ -1028,6 +1028,49 @@ def export_bucketing() -> None:
 
 
 
+def export_run_row() -> None:
+    """ensemble item 4 / upstream 104 contract item 4. One run's row of the
+    record, as this repo commits it, must be readable and re-emittable by the
+    app byte for byte: the app stores the same row on the device, and the
+    shared datastore the modes discussion describes (113) is a copy of these
+    rows. Case 1 is a real committed row. Case 2 gives it window scores, so
+    the score JSON inside a row and the verified-at stamp are pinned too."""
+    from openlocalweather.models import IssuancePredictions, VerificationScore
+
+    committed = json.loads(Path("data/log/2026-09-16.json").read_text())["prediction_rows"][0]
+    row = IssuancePredictions.model_validate(committed)
+    scored = row.model_copy(
+        update={
+            "window_scores": {
+                "gfs_seamless": VerificationScore(rain_correct=True, high_error_c=-0.4, wind_error_kmh=3.1),
+                "ukmo_seamless": VerificationScore(rain_correct=False, rain_brier=0.49),
+            },
+            "window_verified_at": datetime(2026, 9, 18, 3, 5, 12, tzinfo=timezone.utc),
+        }
+    )
+    cases = [
+        {
+            "name": "a committed row round-trips unchanged — 2026-09-16 03:03Z",
+            "input": committed,
+            "expected": row.model_dump(mode="json"),
+        },
+        {
+            "name": "a row with window scores and a verified-at stamp",
+            "input": scored.model_dump(mode="json"),
+            "expected": scored.model_dump(mode="json"),
+        },
+    ]
+    write(
+        "run_row.json",
+        "IssuancePredictions",
+        "One run's row of the record — its instant, predictions by lead, the "
+        "+24 h window claim, when the window opened, its scores and when they "
+        "were written. The app stores this row as the pipeline commits it, so "
+        "parsing and re-emitting it must change nothing.",
+        cases,
+    )
+
+
 def export_forecast_horizon() -> None:
     """ROADMAP item 150, step 1. The real 2026-09-16 shape, reduced: eight
     days requested, and each model populated to a different index."""
@@ -4619,6 +4662,7 @@ def main() -> None:
     export_extract()
     export_aqi()
     export_bucketing()
+    export_run_row()
     export_forecast_horizon()
     export_llm_schemas()
     export_system_prompt()

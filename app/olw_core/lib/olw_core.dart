@@ -44,6 +44,7 @@ export 'src/llm/schema.dart';
 export 'src/open_meteo.dart';
 export 'src/review.dart';
 export 'src/rounding.dart';
+export 'src/run_record.dart';
 export 'src/scoring.dart';
 export 'src/solar.dart';
 export 'src/spend.dart';

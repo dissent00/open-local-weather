@@ -657,6 +657,20 @@ class VerificationScore {
     this.convectiveCorrect,
   });
 
+  /// Mirrors [toJson]; the row a score sits in is stored and shared whole,
+  /// so a score must read back as it was written (run_record.dart).
+  factory VerificationScore.fromJson(Map<String, Object?> j) => VerificationScore(
+        rainCorrect: j['rain_correct'] as bool,
+        rainBrier: (j['rain_brier'] as num?)?.toDouble(),
+        onsetErrorHrs: (j['onset_error_hrs'] as num?)?.toDouble(),
+        windErrorKmh: (j['wind_error_kmh'] as num?)?.toDouble(),
+        highErrorC: (j['high_error_c'] as num?)?.toDouble(),
+        lowErrorC: (j['low_error_c'] as num?)?.toDouble(),
+        mslpErrorHpa: (j['mslp_error_hpa'] as num?)?.toDouble(),
+        cloudErrorPct: (j['cloud_error_pct'] as num?)?.toDouble(),
+        convectiveCorrect: j['convective_correct'] as bool?,
+      );
+
   Map<String, Object?> toJson() => {
         'rain_correct': rainCorrect,
         'rain_brier': rainBrier,
