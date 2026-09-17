@@ -21791,7 +21791,7 @@ comparison.
 
 ---
 
-## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Steps 1-2 SHIPPED 2026-09-16/17; step 3 in progress**
+## 152. An exclusion made on evidence destroys the evidence that would overturn it · **Steps 1-3 SHIPPED 2026-09-16/17; step 4 is a date on the acknowledgement**
 
 The operator, on being shown that `gust` and `p01i` are excluded from the
 METAR request because a 45-day sample found them empty and constant:
@@ -21928,6 +21928,61 @@ unbroken-prior rule fails the intermittent test. 1287 tests.
 A forecaster field that starts being filled after never being filled is a
 prompt question, not a source one, and nothing in `NARRATED_FIELDS` is
 excluded on a measurement the way the model variables are.
+
+### STEP 3 SHIPPED 2026-09-17 — the observation side, and it needed memory
+
+`detect_observation_coverage` reads one point's bucket of the actuals
+cache per source, per field: seven reanalysis fields on both points, six
+station fields on the primary point when a station is configured. The
+secondary point's station fields are absent by construction (measured: all
+six, every day) and are not asked for. `onset_hour`, `precipitation_onset`
+and `lightning` are not watched, for the reasons in the module note — the
+onset case was measured too: the secondary point's read as a five-day
+regression on the day this was designed, because it had not rained there
+since 09-11.
+
+**THE MONDAY HAZARD, and why this watcher is the only one with state.** The
+log is append-only, so a prediction field that stops arriving leaves an
+edge. The actuals cache is not: Monday's first issuance replaces the whole
+bucket from a 40-day refetch at 00:01 UTC, and the weekly check runs at
+04:17 UTC. A field a rename removed is therefore absent on EVERY cached day
+at the only moment anyone looks, and a presence-only watcher files it under
+never_published — counted, not reported, forever. Whichever day of the week
+the loss landed. `data/health/status.json`, built under item 2 for "an
+event, not a state", now records `present <newest date>` or `absent <last
+seen|never>` per point and field. Absent everywhere with a remembered
+last-seen inside the 30-day window is a regression; older, or none, is
+never_published — the same bound the prediction side has, so a permanent
+loss is red for about a month and then quiet. An absent field carries its
+date forward week to week rather than resetting to `never`. The mirror
+holds: the refetch heals a temporary outage wholesale, so a recovery is
+visible only from memory and is reported once. Operator's decision,
+2026-09-17, over the alternatives of no memory (blind to the main case) and
+moving the check to Sunday (blind to a loss from Friday on).
+
+**The status file is read once and written once**, on every path. The CAP
+section used to write its own key alone, which would have erased these
+every week.
+
+**A regression FAILS the check; the model-side ones do not.** One model
+losing one field degrades one row; an observation field going missing stops
+that field being scored for every model, and item 151 showed the loss
+arriving silently. Arrivals are a NOTICE; never_published is a count.
+This was not put to the operator as a question and is a one-line flip.
+
+**Not watched here, deliberately: the day entry's `observed_so_far`.** It is
+present on 2 of the 30 days in the window and a transition detector reads
+that as fine, since the newest absence is one day. That chronic case is
+item 151's, and since its step 1 it reaches the weekly check through
+`station_readings_unavailable` and `check_recent_degradations`, which is
+generic over codes. Two alarms for one event is how monitoring stops being
+read.
+
+Driven against the live cache and the live status file, read-only: both
+points fully present, zero findings, twenty observation keys beside
+`cap_feed`. Each memory guard was mutated and seen to fail its test — the
+window bound, the carry-forward, and the remembered-state requirement on a
+recovery. 1301 tests.
 
 ### The principle worth keeping even if none of this is built
 

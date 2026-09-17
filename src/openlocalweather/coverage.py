@@ -49,11 +49,13 @@ closing is precisely the event the acknowledgement's author needs to hear.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date
 
-from openlocalweather.dates import add_days
+from openlocalweather.dates import add_days, format_date, parse_date
 from openlocalweather.defaults import COVERAGE_ABSENT_RUNS, COVERAGE_WINDOW_DAYS
+from openlocalweather.models import SOURCE_REANALYSIS, SOURCE_STATION, DailyActual
 from openlocalweather.verify.scoring import LogLookup, scored_predictions
 
 # The fields worth watching. `onset` is deliberately absent: it is only ever
@@ -535,3 +537,259 @@ def actionable_narrated(
     stops being read.
     """
     return [f for f in findings if f.kind == "regression"]
+
+
+# --- Coverage of the OBSERVATION side ------------------------------------
+#
+# Everything above watches what was PREDICTED. This watches what the record
+# scores those predictions AGAINST — the actuals cache — and it exists
+# because that side had no watcher at all. ROADMAP item 152 step 3; item 151
+# is what the gap cost: the station's day readings were absent on 14 of 16
+# days and nothing noticed, because the only watcher looked at model output.
+#
+# PER SOURCE, PER FIELD. `DailyActual.provenance` stamps each present value
+# with the instrument that supplied it, so the field lists below are grouped
+# by SOURCE_* id and the caller names which sources a point has. The
+# secondary point has no station: measured 2026-09-17, its six station
+# fields are absent on every cached day, which is a property of the
+# configuration and would otherwise be six permanent count lines.
+#
+# NOT WATCHED, and why. `onset_hour` and `precipitation_onset` are absent on
+# every dry day — the same rule that keeps `onset` out of WATCHED_VARIABLES,
+# and measured here too: on 2026-09-17 the secondary point's `onset_hour`
+# read as a five-day regression because it had not rained there since 09-11.
+# `lightning` has no source (item 65): nothing fetches it, so its absence is
+# not a source's behaviour, and whoever adds a detector adds it here.
+#
+# THIS WATCHER NEEDS MEMORY, AND THE OTHERS DO NOT. The log is append-only,
+# so a prediction field that stops arriving leaves a visible edge: present
+# up to a date, absent after it. The actuals cache is not. Monday's first
+# issuance REPLACES the whole bucket from a 40-day refetch, and the weekly
+# health check runs four hours later — so a field a rename removed is absent
+# on EVERY cached day at the only moment anyone looks, and a presence-only
+# watcher files it under never_published: counted, not reported, forever.
+# `data/health/status.json` (item 2's store for exactly this — an event, not
+# a state) records what each field looked like at the last check. Absent
+# everywhere with a remembered last-seen inside the window is a regression;
+# with none, or one older than the window, it is never_published — the same
+# bound the prediction side has, so a permanent loss is reported for about a
+# month and then goes quiet. The mirror holds too: the refetch heals a
+# temporary outage wholesale, so a recovery is visible ONLY from memory.
+
+OBSERVED_FIELDS: dict[str, tuple[str, ...]] = {
+    SOURCE_REANALYSIS: (
+        "rain", "high_c", "low_c", "peak_wind_kmh", "mslp_trend", "precip_mm", "cloud_cover_pct",
+    ),
+    SOURCE_STATION: (
+        "thunder", "precipitation", "station_high_c", "station_low_c",
+        "station_peak_wind_kmh", "station_cloud_oktas",
+    ),
+}
+
+_OBSERVATION_STATUS_PREFIX = "observation"
+_STATUS_PRESENT = "present"
+_STATUS_ABSENT = "absent"
+_STATUS_NEVER = "never"
+
+
+def observation_status_key(point: str, field: str) -> str:
+    return f"{_OBSERVATION_STATUS_PREFIX}:{point}:{field}"
+
+
+def _remembered(
+    remembered: Mapping[str, str], point: str, field: str
+) -> tuple[str | None, date | None]:
+    """(state, last seen) from the previous check, or (None, None) if none.
+
+    The value is `present <date>` or `absent <date|never>`. Anything else is
+    read as no memory rather than guessed at: a transition nobody was present
+    for is not one anyone can report.
+    """
+    raw = remembered.get(observation_status_key(point, field))
+    if raw is None:
+        return None, None
+
+    state, _, when = raw.partition(" ")
+    if state not in (_STATUS_PRESENT, _STATUS_ABSENT):
+        return None, None
+    if when == _STATUS_NEVER:
+        return state, None
+
+    try:
+        return state, parse_date(when)
+    except ValueError:
+        return None, None
+
+
+@dataclass(frozen=True)
+class ObservationFinding:
+    """One (point, source, field) on the observation side worth reporting."""
+
+    kind: str  # "regression" | "never_published" | "became_available"
+    point: str  # "primary" | "secondary"
+    source: str  # a SOURCE_* id
+    field: str
+    last_seen: date | None
+    absent_runs: int
+    checked_runs: int
+    first_seen: date | None = None
+    present_runs: int = 0
+    # True when the transition is known only from the health status: the
+    # cache itself shows one state on every day. See the section note.
+    from_memory: bool = False
+
+    @property
+    def message(self) -> str:
+        where = f"{self.point} {self.source} {self.field}"
+        if self.kind == "never_published":
+            return (
+                f"{where}: absent on all {self.checked_runs} cached day(s), and not "
+                "seen present by any recent check — a property of the source, not a "
+                "fault."
+            )
+        if self.kind == "regression" and self.from_memory:
+            return (
+                f"{where}: absent on every one of the {self.checked_runs} cached "
+                f"day(s). It was present when last checked (last seen {self.last_seen}); "
+                "the weekly refetch has since replaced the cache, so the loss reads as "
+                "total rather than recent. This is the signature of a rename or a "
+                "retired variable on the OBSERVATION side: the record now scores "
+                "every model against a hole where this field was."
+            )
+        if self.kind == "regression":
+            return (
+                f"{where}: absent for the last {self.absent_runs} day(s), last seen "
+                f"{self.last_seen}. Nothing else will notice — an absent observation "
+                "is an unscored field, handled correctly and silently everywhere."
+            )
+        if self.from_memory:
+            return (
+                f"{where}: back on all {self.present_runs} cached day(s). When last "
+                f"checked it was absent (last seen {self.last_seen}); the weekly refetch "
+                "has restored it wholesale, so the cache itself shows no gap."
+            )
+        return (
+            f"{where}: started arriving — present on the last {self.present_runs} "
+            f"day(s) since {self.first_seen}, after {self.absent_runs} day(s) without "
+            "it. Nothing is wrong; worth deciding once whether the record should "
+            "now read it."
+        )
+
+
+def _window(actuals: Mapping[date, DailyActual], today: date, window_days: int) -> list[date]:
+    """The cached days inside the window, newest first."""
+    return [
+        d
+        for d in (add_days(today, -i) for i in range(1, window_days + 1))
+        if d in actuals
+    ]
+
+
+def _leading(flags: Sequence[bool], value: bool) -> int:
+    n = 0
+    for f in flags:
+        if f is not value:
+            break
+        n += 1
+    return n
+
+
+def detect_observation_coverage(
+    actuals: Mapping[date, DailyActual],
+    *,
+    point: str,
+    sources: Mapping[str, Sequence[str]],
+    today: date,
+    remembered: Mapping[str, str],
+    window_days: int = COVERAGE_WINDOW_DAYS,
+    absent_runs_threshold: int = COVERAGE_ABSENT_RUNS,
+) -> list[ObservationFinding]:
+    """Reads one point's bucket of the actuals cache as it is STORED.
+
+    `remembered` is the health status as the previous check left it; see the
+    section note for why this detector cannot do without it. Pure: the caller
+    reads the cache and the status, and writes `observation_status` back.
+    """
+    days = _window(actuals, today, window_days)
+    if not days:
+        return []
+
+    findings: list[ObservationFinding] = []
+    for source, fields in sources.items():
+        for name in fields:
+            dated = [(d, getattr(actuals[d], name) is not None) for d in days]
+            flags = [f for _, f in dated]
+            state, last = _remembered(remembered, point, name)
+            common = dict(point=point, source=source, field=name, checked_runs=len(flags))
+
+            if not any(flags):
+                if last is not None and (today - last).days <= window_days:
+                    findings.append(ObservationFinding(
+                        kind="regression", last_seen=last, absent_runs=len(flags),
+                        from_memory=True, **common,
+                    ))
+                else:
+                    findings.append(ObservationFinding(
+                        kind="never_published", last_seen=None, absent_runs=len(flags), **common,
+                    ))
+                continue
+
+            absent = _leading(flags, False)
+            if absent >= absent_runs_threshold:
+                findings.append(ObservationFinding(
+                    kind="regression", last_seen=dated[absent][0], absent_runs=absent, **common,
+                ))
+                continue
+
+            # Same rule, same floor on both sides, as the prediction side —
+            # the measurement is in detect_coverage.
+            arrived = _leading(flags, True)
+            if arrived < absent_runs_threshold:
+                continue
+            prior = flags[arrived:]
+            if len(prior) >= absent_runs_threshold and not any(prior):
+                findings.append(ObservationFinding(
+                    kind="became_available", last_seen=None, absent_runs=len(prior),
+                    first_seen=dated[arrived - 1][0], present_runs=arrived, **common,
+                ))
+                continue
+            if state == _STATUS_ABSENT:
+                findings.append(ObservationFinding(
+                    kind="became_available", last_seen=last, absent_runs=0,
+                    first_seen=dated[arrived - 1][0], present_runs=arrived,
+                    from_memory=True, **common,
+                ))
+
+    return findings
+
+
+def observation_status(
+    actuals: Mapping[date, DailyActual],
+    *,
+    point: str,
+    sources: Mapping[str, Sequence[str]],
+    today: date,
+    remembered: Mapping[str, str],
+    window_days: int = COVERAGE_WINDOW_DAYS,
+) -> dict[str, str]:
+    """What this check saw, for the next one to compare against.
+
+    `present <newest date seen>` or `absent <last seen|never>`. An absent
+    field CARRIES its remembered last-seen date forward rather than resetting
+    it, or a loss would read as never_published after one week instead of
+    after the window.
+    """
+    days = _window(actuals, today, window_days)
+    out: dict[str, str] = {}
+    for _, fields in sources.items():
+        for name in fields:
+            key = observation_status_key(point, name)
+            present = [d for d in days if getattr(actuals[d], name) is not None]
+            if present:
+                out[key] = f"{_STATUS_PRESENT} {format_date(present[0])}"
+                continue
+
+            _, last = _remembered(remembered, point, name)
+            out[key] = f"{_STATUS_ABSENT} {format_date(last) if last else _STATUS_NEVER}"
+
+    return out

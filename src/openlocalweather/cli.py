@@ -25,12 +25,15 @@ from openlocalweather import __version__
 from openlocalweather.config import LocationConfig, load_location_config
 from openlocalweather.verify.scoring import scored_predictions, verify_closed_windows
 from openlocalweather.coverage import (
+    OBSERVED_FIELDS,
     actionable,
     actionable_narrated,
     detect_coverage,
     detect_narrated_coverage,
+    detect_observation_coverage,
     detect_trigger_regression,
     newly_available,
+    observation_status,
 )
 from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
@@ -95,7 +98,7 @@ from openlocalweather.backfill import backfill_entry_baselines
 from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
-from openlocalweather.models import RunDegradation
+from openlocalweather.models import SOURCE_REANALYSIS, SOURCE_STATION, RunDegradation
 from openlocalweather.spend import complete_attempt, record_attempt
 from openlocalweather.store.log_store import (
     list_log_dates,
@@ -648,6 +651,26 @@ def _run_forecast(args: argparse.Namespace) -> int:
     return 0
 
 
+def _watched_observation_points(location: LocationConfig, cache) -> list[tuple[str, dict, dict]]:
+    """Which sources each point of the actuals cache should be held to.
+
+    The station's fields are watched only where a station is configured, and
+    only on the primary point — the secondary point has none, so its station
+    fields are absent by construction and asking would add six permanent
+    count lines (measured 2026-09-17).
+    """
+    reanalysis = {SOURCE_REANALYSIS: OBSERVED_FIELDS[SOURCE_REANALYSIS]}
+    primary = dict(reanalysis)
+    if location.metar_station_icao:
+        primary[SOURCE_STATION] = OBSERVED_FIELDS[SOURCE_STATION]
+
+    points = [("primary", as_date_dict(cache.primary), primary)]
+    if location.secondary_point.enabled:
+        points.append(("secondary", as_date_dict(cache.secondary), reanalysis))
+
+    return points
+
+
 def _recent_issuance_degradations(data_dir: str) -> list[list[RunDegradation]]:
     """Every issuance of the most recent stored days, newest day first, as
     the degradation lists check_recent_degradations wants.
@@ -796,6 +819,42 @@ def _run_check_health(args: argparse.Namespace) -> int:
     if never:
         print(f"  ({never} field(s) the forecaster has never once supplied.)")
 
+    # ROADMAP item 152 step 3: the OBSERVATION side, which had no watcher.
+    # Read once here and written once below, on every path, because two
+    # sections now keep memory in it and a section writing only its own key
+    # would erase the other's.
+    status = read_health_status(args.data_dir)
+    print("Checking coverage of the observed record...")
+    observed = []
+    today = today_in_tz(location.timezone)
+    for point, bucket, sources in _watched_observation_points(location, read_actuals_cache(data_path)):
+        observed += detect_observation_coverage(
+            bucket, point=point, sources=sources, today=today, remembered=status,
+        )
+        status.update(observation_status(
+            bucket, point=point, sources=sources, today=today, remembered=status,
+        ))
+    lost = [f for f in observed if f.kind == "regression"]
+    back = [f for f in observed if f.kind == "became_available"]
+    if lost:
+        # FAILS THE CHECK, unlike a model variable going missing. One model
+        # losing one field degrades one row of the record; an observation
+        # field going missing stops that field being scored for EVERY model,
+        # and item 151 showed this side failing silently for a fortnight.
+        print(f"  WARNING: {len(lost)} observed field(s) stopped arriving:")
+        for f in lost:
+            print(f"    - {f.message}")
+        ok = False
+    else:
+        print("  OK — every watched observation is still being recorded.")
+    if back:
+        print(f"  NOTICE: {len(back)} observed field(s) started arriving:")
+        for f in back:
+            print(f"    - {f.message}")
+    unpublished = len(observed) - len(lost) - len(back)
+    if unpublished:
+        print(f"  ({unpublished} observed field(s) no check has ever seen supplied.)")
+
     # Slow rot, like the staleness proxy below: the aligned-window table is
     # a hand measurement from 2026-08-11, every forecast that cannot observe
     # a real run falls back to it, and nothing else in this project would
@@ -875,7 +934,7 @@ def _run_check_health(args: argparse.Namespace) -> int:
 
         # What the last run saw, so a CHANGE can be reported and not just a
         # state. See store/health_status.py for why this check needed memory.
-        previous = read_health_status(args.data_dir).get(CAP_STATUS_KEY)
+        previous = status.get(CAP_STATUS_KEY)
         woke_up = cap_feed_woke_up(previous, cap.status)
 
         if cap.status is CapFeedStatus.UNREACHABLE:
@@ -904,11 +963,13 @@ def _run_check_health(args: argparse.Namespace) -> int:
         else:
             print(f"  {cap.message}")
 
-        # Recorded on EVERY path, including the two that just failed the run.
-        # An alarm that fires on a transition must record the new state, or the
-        # same transition is re-detected every week and a signal meant to be
-        # seen once becomes a weekly red job nobody reads.
-        write_health_status(args.data_dir, {CAP_STATUS_KEY: cap.status.value})
+        status[CAP_STATUS_KEY] = cap.status.value
+
+    # Recorded on EVERY path, including the ones that just failed the run.
+    # An alarm that fires on a transition must record the new state, or the
+    # same transition is re-detected every week and a signal meant to be
+    # seen once becomes a weekly red job nobody reads.
+    write_health_status(args.data_dir, status)
 
     days = _days_since_last_commit()
     print(f"Days since last commit: {days}")

@@ -493,3 +493,217 @@ def test_a_zero_reading_is_present_not_absent():
     lookup = _narrated_history(10, {"peak_wind_secondary_kmh": 0.0})
 
     assert _narrated(detect_narrated_coverage(lookup, NARRATED_TODAY), "peak_wind_secondary_kmh") is None
+
+
+# ---------------------------------------------------------------------------
+# The OBSERVATION side — ROADMAP item 152 step 3
+# ---------------------------------------------------------------------------
+
+
+def _actuals(days: int, cloud_for, today=TODAY):
+    """One DailyActual per day back from yesterday. `cloud_for(i)` gives
+    `cloud_cover_pct` for the i-th newest day, None for absent. Every other
+    watched field is filled."""
+    import datetime as _dt
+
+    from openlocalweather.models import DailyActual
+
+    out = {}
+    for i in range(days):
+        d = today - _dt.timedelta(days=i + 1)
+        out[d] = DailyActual(
+            rain=False, high_c=30.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=0.1,
+            precip_mm=0.0, cloud_cover_pct=cloud_for(i),
+        )
+    return out
+
+
+def _obs_sources():
+    from openlocalweather.coverage import OBSERVED_FIELDS
+    from openlocalweather.models import SOURCE_REANALYSIS
+
+    return {SOURCE_REANALYSIS: OBSERVED_FIELDS[SOURCE_REANALYSIS]}
+
+
+def _obs(findings, field, kind=None):
+    for f in findings:
+        if f.field == field and (kind is None or f.kind == kind):
+            return f
+    return None
+
+
+def _detect_obs(actuals, remembered=None):
+    from openlocalweather.coverage import detect_observation_coverage
+
+    return detect_observation_coverage(
+        actuals, point="primary", sources=_obs_sources(), today=TODAY,
+        remembered=remembered or {},
+    )
+
+
+def test_onset_and_lightning_are_not_watched_on_the_observation_side():
+    """Onset is absent on every dry day, so watching it fires on every dry
+    spell — measured 2026-09-17: the secondary point's `onset_hour` read as a
+    five-day regression because it had not rained there since 09-11. Lightning
+    has no source at all (item 65), so its absence is not a source's
+    behaviour; whoever adds a detector adds it here."""
+    from openlocalweather.coverage import OBSERVED_FIELDS
+
+    watched = {f for fields in OBSERVED_FIELDS.values() for f in fields}
+    assert "onset_hour" not in watched
+    assert "precipitation_onset" not in watched
+    assert "lightning" not in watched
+
+
+def test_a_fully_populated_record_produces_no_observation_findings():
+    """Measured 2026-09-17: every watched field present on all 30 days of
+    both buckets. Day one has to be quiet, or the check is not read by day
+    thirty."""
+    assert _detect_obs(_actuals(12, lambda i: 55.0)) == []
+
+
+def test_a_field_that_stops_arriving_between_refetches_is_a_regression():
+    """Tuesday to Sunday the cache is upserted one day at a time, so a loss
+    shows as the newest days absent with older ones intact."""
+    findings = _detect_obs(_actuals(12, lambda i: None if i < 4 else 55.0))
+    reg = _obs(findings, "cloud_cover_pct", kind="regression")
+    assert reg is not None
+    assert reg.absent_runs == 4
+    assert reg.last_seen == date(2026, 8, 16)
+    assert reg.point == "primary"
+    assert "last seen 2026-08-16" in reg.message
+
+
+def test_one_absent_day_is_noise():
+    findings = _detect_obs(_actuals(12, lambda i: None if i < 1 else 55.0))
+    assert _obs(findings, "cloud_cover_pct") is None
+
+
+def test_a_field_absent_everywhere_that_memory_says_was_present_is_a_regression():
+    """THE CASE THE MEMORY EXISTS FOR. Monday's first issuance replaces the
+    whole cache from a 40-day refetch, and the health check runs four hours
+    later — so a field a rename removed is absent on EVERY cached day at the
+    only moment anyone looks. Without memory that is `never_published`,
+    counted and not reported, forever."""
+    from openlocalweather.coverage import observation_status_key
+
+    remembered = {observation_status_key("primary", "cloud_cover_pct"): "present 2026-08-14"}
+    findings = _detect_obs(_actuals(12, lambda i: None), remembered)
+    reg = _obs(findings, "cloud_cover_pct", kind="regression")
+    assert reg is not None
+    assert reg.last_seen == date(2026, 8, 14)
+    assert reg.absent_runs == 12
+    assert "refetch" in reg.message
+
+
+def test_a_loss_older_than_the_window_becomes_never_published():
+    """The same bound the prediction side has: a gap that rolls out of the
+    window stops being a regression. A permanent loss is reported for about
+    a month and then goes quiet, rather than red every Monday for a year."""
+    from openlocalweather.coverage import observation_status_key
+
+    remembered = {observation_status_key("primary", "cloud_cover_pct"): "present 2026-07-01"}
+    findings = _detect_obs(_actuals(12, lambda i: None), remembered)
+    assert _obs(findings, "cloud_cover_pct", kind="regression") is None
+    assert _obs(findings, "cloud_cover_pct", kind="never_published") is not None
+
+
+def test_a_field_absent_everywhere_with_no_memory_is_never_published():
+    """Three-valued, like the CAP feed: no memory means no run was present
+    for a transition, and inferring one is the mistake this module exists to
+    avoid."""
+    findings = _detect_obs(_actuals(12, lambda i: None))
+    gap = _obs(findings, "cloud_cover_pct")
+    assert gap.kind == "never_published"
+
+
+def test_memory_carries_the_last_seen_date_through_weeks_of_absence():
+    """Week two of a loss: the status recorded `absent <date>` last week and
+    the cache is still empty. The date must be carried, not reset to `never`,
+    or the regression would silently become never_published after one week
+    instead of after the window."""
+    from openlocalweather.coverage import observation_status, observation_status_key
+
+    key = observation_status_key("primary", "cloud_cover_pct")
+    actuals = _actuals(12, lambda i: None)
+    remembered = {key: "absent 2026-08-14"}
+    reg = _obs(_detect_obs(actuals, remembered), "cloud_cover_pct", kind="regression")
+    assert reg is not None
+    assert reg.last_seen == date(2026, 8, 14)
+
+    status = observation_status(actuals, point="primary", sources=_obs_sources(), today=TODAY, remembered=remembered)
+    assert status[key] == "absent 2026-08-14"
+
+
+def test_status_records_present_with_the_newest_date_and_absent_never_without_memory():
+    from openlocalweather.coverage import observation_status, observation_status_key
+
+    key = observation_status_key("primary", "cloud_cover_pct")
+    present = observation_status(_actuals(12, lambda i: 55.0), point="primary", sources=_obs_sources(), today=TODAY, remembered={})
+    assert present[key] == "present 2026-08-20"
+    assert present[observation_status_key("primary", "rain")] == "present 2026-08-20"
+
+    absent = observation_status(_actuals(12, lambda i: None), point="primary", sources=_obs_sources(), today=TODAY, remembered={})
+    assert absent[key] == "absent never"
+
+
+def test_a_field_that_starts_arriving_between_refetches_is_an_arrival():
+    findings = _detect_obs(_actuals(12, lambda i: 55.0 if i < 3 else None))
+    new = _obs(findings, "cloud_cover_pct", kind="became_available")
+    assert new is not None
+    assert new.present_runs == 3
+    assert new.absent_runs == 9
+    assert new.first_seen == date(2026, 8, 18)
+
+
+def test_a_field_memory_says_was_lost_and_is_back_everywhere_is_an_arrival():
+    """The refetch heals a temporary outage wholesale: after the fix, Monday's
+    cache carries the field on every day again, and nothing in the cache says
+    it was ever gone. Memory does, and the recovery is reported once."""
+    from openlocalweather.coverage import observation_status, observation_status_key
+
+    key = observation_status_key("primary", "cloud_cover_pct")
+    actuals = _actuals(12, lambda i: 55.0)
+    remembered = {key: "absent 2026-08-01"}
+    new = _obs(_detect_obs(actuals, remembered), "cloud_cover_pct", kind="became_available")
+    assert new is not None
+    assert new.present_runs == 12
+    assert new.last_seen == date(2026, 8, 1)
+    assert "last checked it was absent" in new.message
+
+    # And the status moves on, so it is reported once.
+    status = observation_status(actuals, point="primary", sources=_obs_sources(), today=TODAY, remembered=remembered)
+    assert status[key] == "present 2026-08-20"
+
+
+def test_a_field_memory_says_was_present_and_is_present_is_nothing():
+    """Steady state, week after week: no finding, status refreshed."""
+    from openlocalweather.coverage import observation_status_key
+
+    remembered = {observation_status_key("primary", "cloud_cover_pct"): "present 2026-08-13"}
+    assert _detect_obs(_actuals(12, lambda i: 55.0), remembered) == []
+
+
+def test_only_the_sources_asked_for_are_watched():
+    """The secondary point has no station, so its six station fields are
+    never published by construction — measured 2026-09-17 — and asking would
+    add six permanent count lines. The caller names the sources per point."""
+    from openlocalweather.coverage import OBSERVED_FIELDS, detect_observation_coverage
+    from openlocalweather.models import SOURCE_REANALYSIS, SOURCE_STATION
+
+    actuals = _actuals(12, lambda i: 55.0)  # no station fields filled
+    findings = detect_observation_coverage(
+        actuals, point="secondary", sources={SOURCE_REANALYSIS: OBSERVED_FIELDS[SOURCE_REANALYSIS]},
+        today=TODAY, remembered={},
+    )
+    assert findings == []
+
+    both = detect_observation_coverage(
+        actuals, point="primary", sources=OBSERVED_FIELDS, today=TODAY, remembered={},
+    )
+    assert {f.field for f in both} == set(OBSERVED_FIELDS[SOURCE_STATION])
+    assert all(f.kind == "never_published" and f.source == SOURCE_STATION for f in both)
+
+
+def test_an_empty_bucket_yields_nothing():
+    assert _detect_obs({}) == []
