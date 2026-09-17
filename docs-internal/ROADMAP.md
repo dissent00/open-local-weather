@@ -20796,6 +20796,58 @@ the actuals cache holds `station_peak_wind_kmh` for the same days, so a
 first sweep exists today and grows daily now that step 2 stores the field.
 Neither "make it a spend trigger now" nor "wait for step 4" was taken.
 
+### THE SWEEP, 2026-09-17 — and it reopens the shape of step 3
+
+Per model Day+0 `windspeed_10m_max` from the archived prompts (the day's
+first issuance), the station's `station_peak_wind_kmh` (`sknt`, sustained)
+from the actuals cache, and the reanalysis's `windspeed_10m` for the same
+thirteen days, bucketed by the code step 2 shipped. All km/h.
+
+| day | models' sustained consensus | ERA5 sustained max | station sustained max |
+|---|---:|---:|---:|
+| 09-04 | 17.7 | 19.7 | 22.2 |
+| 09-05 | 16.5 | 17.2 | 37.0 |
+| 09-06 | 15.0 | 18.2 | 25.2 |
+| 09-07 | 16.4 | 23.0 | 25.9 |
+| 09-08 | 15.3 | 17.0 | 35.2 |
+| 09-09 | 16.4 | 20.3 | 25.9 |
+| 09-10 | 12.9 | 15.9 | 24.1 |
+| 09-11 | 14.0 | 15.6 | 38.9 |
+| 09-12 | 14.7 | 15.8 | 40.7 |
+| 09-13 | 16.3 | 28.4 | 25.9 |
+| 09-14 | 11.9 | 19.4 | 25.9 |
+| 09-15 | 14.3 | 13.0 | 25.9 |
+| 09-16 | 15.6 | 17.3 | 35.2 |
+
+| pair, n=13 | mean | sd | min | max |
+|---|---:|---:|---:|---:|
+| ERA5 sustained − models' consensus | **+3.4** | 3.4 | −1.3 | +12.1 |
+| station sustained − ERA5 sustained | **+11.3** | 8.4 | −2.5 | +24.9 |
+| station sustained − models' consensus | **+14.7** | 6.5 | +4.5 | +26.0 |
+
+**The models and the reanalysis are the same quantity; the station is
+not.** Both are a grid cell's hourly-mean wind, and they sit 3.4 apart with
+a spread of 3.4 — like for like, as the item's title asks. The station's
+figure is the maximum two-minute mean over the day's reports at an exposed
+airfield, and it sits eleven above the cell's hourly mean with a spread of
+eight. On thirteen of thirteen days it exceeded the consensus; a margin
+that stopped it firing daily would sit near 26 km/h and then report
+nothing else either. **Item 144's objection returns one level down**: the
+gust and the sustained wind were two quantities under one name, and so
+are a two-minute peak and an hourly mean under the word "sustained".
+
+So the check step 3 was decided as — the station's sustained maximum so
+far against the consensus, stored and reported — would report a deviation
+every day and describe an instrument offset, not weather. What the sweep
+does support: the models' sustained wind against the reanalysis's, in
+every deployment, as a like-for-like error the record can carry (the same
+shape as `avg_wind_error_kmh_10`, item 157's class of change); and the
+station-minus-cell offset as a measured calibration the way `CALIBRATED
+PEAK GUST` treats the gust, once more than thirteen days hold it. What it
+does not support is a contradiction test against the station on this
+quantity. Thirteen days, one station; item 100's rule applies to the next
+number as much as to this one.
+
 ### What NOT to do
 
 Do not repoint `peak_wind_primary_kmh` at sustained wind. It is scored
