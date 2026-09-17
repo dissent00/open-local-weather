@@ -684,3 +684,44 @@ def test_the_walker_does_not_rescore_a_row_it_already_stamped():
 
     assert verify_closed_windows(entry, _archive_two_days(), today=date(2026, 8, 14)) is False
     assert row.window_verified_at == stamped, "row 0 of a scored window is not rewritten"
+
+
+# ---------------------------------------------------------------------------
+# The rain AMOUNT — ROADMAP item 157
+# ---------------------------------------------------------------------------
+
+
+def test_precip_error_is_actual_minus_predicted():
+    """The operator's scenario: an 8 mm call on a 0.4 mm day. The rain call
+    may be right; the amount was overstated by 7.6 mm, and until this field
+    existed that cost the model nothing."""
+    score = score_prediction(prediction(precip_mm=8.0), actual(precip_mm=0.4), 0)
+    assert score.precip_error_mm == pytest.approx(-7.6)
+
+
+def test_precip_error_is_scored_at_every_lead():
+    """Unlike onset and cloud, the daily endpoint carries a total, so Day+3
+    and Day+7 have an amount to be held to."""
+    for lead in (3, 7):
+        score = score_prediction(prediction(precip_mm=2.0, onset=None), actual(precip_mm=5.5), lead)
+        assert score.precip_error_mm == pytest.approx(3.5), lead
+
+
+def test_precip_error_is_none_when_either_side_is_missing():
+    assert score_prediction(prediction(precip_mm=None), actual(precip_mm=5.5), 0).precip_error_mm is None
+    assert score_prediction(prediction(precip_mm=8.0), actual(precip_mm=None), 0).precip_error_mm is None
+
+
+def test_rolling_window_carries_the_mean_precip_error():
+    yesterday = date(2026, 8, 15)
+    logs: dict[date, DailyLogEntry] = {}
+    actuals: dict[date, DailyActual] = {}
+    for i, (called, fell) in enumerate([(8.0, 0.4), (0.0, 3.0), (2.0, 2.0)]):
+        d = yesterday - __import__("datetime").timedelta(days=i)
+        logs[d] = log_entry(d, day0_predictions=[prediction(model="gfs_seamless", precip_mm=called)])
+        actuals[d] = actual(precip_mm=fell)
+    result = rescore_rolling_window(
+        "gfs_seamless", 0, window_size=10, yesterday=yesterday,
+        log_lookup=lambda d: logs.get(d), actuals=actuals,
+    )
+    assert result.precip_err == pytest.approx(((0.4 - 8.0) + (3.0 - 0.0) + 0.0) / 3)

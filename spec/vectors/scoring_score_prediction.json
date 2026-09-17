@@ -148,7 +148,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -201,7 +202,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -254,7 +256,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -307,7 +310,8 @@
         "low_error_c": 1.0,
         "mslp_error_hpa": 1.5,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -360,7 +364,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": -8.0,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -413,7 +418,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": 42.0,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -466,7 +472,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -519,7 +526,170 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
+      }
+    },
+    {
+      "name": "an 8 mm call on a 0.4 mm day overstates the amount by 7.6",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": 8.0,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": 0.4,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null,
+        "precip_error_mm": -7.6
+      }
+    },
+    {
+      "name": "the amount is scored beyond lead 0",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": null,
+          "precip_mm": 2.0,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": 5.5,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 3
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": null,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null,
+        "precip_error_mm": 3.5
+      }
+    },
+    {
+      "name": "no forecast amount is not zero error",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": 5.5,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": null,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": 0.0,
+        "high_error_c": 0.0,
+        "low_error_c": 0.0,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -572,7 +742,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": true
+        "convective_correct": true,
+        "precip_error_mm": null
       }
     },
     {
@@ -625,7 +796,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": false
+        "convective_correct": false,
+        "precip_error_mm": null
       }
     },
     {
@@ -678,7 +850,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": true
+        "convective_correct": true,
+        "precip_error_mm": null
       }
     },
     {
@@ -731,7 +904,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": false
+        "convective_correct": false,
+        "precip_error_mm": null
       }
     },
     {
@@ -784,7 +958,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": false
+        "convective_correct": false,
+        "precip_error_mm": null
       }
     },
     {
@@ -837,7 +1012,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -890,7 +1066,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -943,7 +1120,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -996,7 +1174,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1049,7 +1228,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1102,7 +1282,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1155,7 +1336,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1208,7 +1390,8 @@
         "low_error_c": null,
         "mslp_error_hpa": null,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1261,7 +1444,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1314,7 +1498,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1367,7 +1552,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     },
     {
@@ -1420,7 +1606,8 @@
         "low_error_c": 0.0,
         "mslp_error_hpa": 0.0,
         "cloud_error_pct": null,
-        "convective_correct": null
+        "convective_correct": null,
+        "precip_error_mm": null
       }
     }
   ]

@@ -52,6 +52,7 @@ class SkillCell {
     required this.meanOnsetErrorHrs,
     required this.meanMslpErrorHpa,
     required this.meanCloudErrorPct,
+    this.meanPrecipErrorMm,
     required this.cloudChecks,
     required this.stormDays,
     required this.stormsCalled,
@@ -78,6 +79,9 @@ class SkillCell {
   /// The sky, from 2026-09-10, aggregated the same day it was first scored:
   /// a per-day error nothing rolls up is a number no forecaster can weigh.
   final double? meanCloudErrorPct;
+  /// Item 157. Averaged into the cell and not gated into a finding — item
+  /// 153's two-gate question first.
+  final double? meanPrecipErrorMm;
 
   /// How many of [checks] said anything about the sky. Separate for the same
   /// reason [brierChecks] is, and more sharply: cloudCoverPct started on
@@ -304,6 +308,7 @@ WeeklyReview buildWeeklyReview({
         meanOnsetErrorHrs: mean([for (final e in scored) e.value.onsetErrorHrs]),
         meanMslpErrorHpa: mean([for (final e in scored) e.value.mslpErrorHpa]),
         meanCloudErrorPct: mean([for (final e in scored) e.value.cloudErrorPct]),
+        meanPrecipErrorMm: mean([for (final e in scored) e.value.precipErrorMm]),
         cloudChecks: scored.where((e) => e.value.cloudErrorPct != null).length,
         stormDays: scored
             .where((e) =>

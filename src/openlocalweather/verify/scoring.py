@@ -323,6 +323,9 @@ def score_prediction(
         # cloud at all from one that did.
         cloud_error_pct=_diff(predicted.cloud_cover_pct, actual.cloud_cover_pct),
         convective_correct=convective_correct,
+        # Item 157. Every lead: the daily endpoint carries a total. Against
+        # the reanalysis alone — see VerificationScore.precip_error_mm.
+        precip_error_mm=_diff(predicted.precip_mm, actual.precip_mm),
     )
 
 
@@ -376,6 +379,8 @@ class RollingWindowResult:
     # present the figure as resting on evidence it does not have.
     cloud_err: float | None = None
     cloud_checks: int = 0
+    # Item 157. Signed mean of the amount error over the window's checks.
+    precip_err: float | None = None
 
 
 def rescore_rolling_window(
@@ -424,6 +429,7 @@ def rescore_rolling_window(
         mslp_err=mean([s.mslp_error_hpa for s in scores]),
         cloud_err=mean([s.cloud_error_pct for s in scores]),
         cloud_checks=sum(1 for s in scores if s.cloud_error_pct is not None),
+        precip_err=mean([s.precip_error_mm for s in scores]),
     )
 
 

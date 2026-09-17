@@ -126,6 +126,11 @@ class SkillCell:
     # one row looks like over-reporting until they diverge, and on the real
     # record at 2026-09-06 they were 26, 5 and 2.
     brier_skill_checks: int = 0
+    # Item 157. Averaged into the cell and NOT gated into a finding: item
+    # 153's two-gate question is open, and this is the field where a
+    # constant threshold is most wrong. Defaulted like the Brier fields, and
+    # for the same reason: it arrived after the cell had callers.
+    mean_precip_error_mm: float | None = None
 
 
 @dataclass
@@ -263,6 +268,7 @@ def build_weekly_review(
                     mean_onset_error_hrs=mean([s.onset_error_hrs for _, s in scored]),
                     mean_mslp_error_hpa=mean([s.mslp_error_hpa for _, s in scored]),
                     mean_cloud_error_pct=mean([s.cloud_error_pct for _, s in scored]),
+                    mean_precip_error_mm=mean([s.precip_error_mm for _, s in scored]),
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
                     mean_rain_brier=briers[model],

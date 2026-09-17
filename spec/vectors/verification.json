@@ -107,6 +107,7 @@
             "all_time_rain_pct": 100.0,
             "checks_in_window_10": 1,
             "avg_temp_high_error_c_10": 0.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           },
           {
@@ -120,6 +121,7 @@
             "all_time_rain_pct": 0.0,
             "checks_in_window_10": 1,
             "avg_temp_high_error_c_10": 2.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           }
         ]
@@ -845,6 +847,7 @@
             "all_time_rain_pct": 75.0,
             "checks_in_window_10": 10,
             "avg_temp_high_error_c_10": 0.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           },
           {
@@ -858,6 +861,7 @@
             "all_time_rain_pct": 33.333333333333336,
             "checks_in_window_10": 10,
             "avg_temp_high_error_c_10": 2.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           }
         ]
@@ -1582,6 +1586,7 @@
             "all_time_rain_pct": null,
             "checks_in_window_10": 0,
             "avg_temp_high_error_c_10": null,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           },
           {
@@ -1595,6 +1600,7 @@
             "all_time_rain_pct": 50.0,
             "checks_in_window_10": 10,
             "avg_temp_high_error_c_10": 2.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           }
         ]
@@ -1943,6 +1949,7 @@
             "all_time_rain_pct": 90.9,
             "checks_in_window_10": 5,
             "avg_temp_high_error_c_10": 0.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           },
           {
@@ -1956,6 +1963,7 @@
             "all_time_rain_pct": 40.0,
             "checks_in_window_10": 5,
             "avg_temp_high_error_c_10": 2.0,
+            "avg_precip_error_mm_10": null,
             "avg_onset_error_hrs_10": null
           }
         ]

@@ -42,6 +42,7 @@ class RollingWindowResult {
     this.brierChecks = 0,
     this.cloudErr,
     this.cloudChecks = 0,
+    this.precipErr,
   });
 
   /// How many of the window actually had data. Load-bearing for cold-start
@@ -70,6 +71,7 @@ class RollingWindowResult {
   /// The sky, from 2026-09-10. Mean cloud error over the checks in this
   /// window that carried one.
   final double? cloudErr;
+  final double? precipErr;
 
   /// Separate from [checksFound] for the same reason [brierChecks] is, and
   /// more sharply: cloudCoverPct started being stored on 2026-09-09, so for
@@ -129,6 +131,7 @@ RollingWindowResult rescoreRollingWindow({
     brierChecks: scores.where((s) => s.rainBrier != null).length,
     cloudErr: mean([for (final s in scores) s.cloudErrorPct]),
     cloudChecks: scores.where((s) => s.cloudErrorPct != null).length,
+    precipErr: mean([for (final s in scores) s.precipErrorMm]),
   );
 }
 
@@ -203,6 +206,7 @@ class TrackRecordEntry {
     this.avgTempHighErrorC10,
     this.avgTempLowErrorC10,
     this.avgMslpTrendErrorHpa10,
+    this.avgPrecipErrorMm10,
     this.checksInWindow10 = 0,
     this.lastUpdated,
     this.forecastHorizonDays,
@@ -223,6 +227,8 @@ class TrackRecordEntry {
   double? avgTempHighErrorC10;
   double? avgTempLowErrorC10;
   double? avgMslpTrendErrorHpa10;
+  /// Item 157. Signed, a bias and not a skill figure; read by no finding yet.
+  double? avgPrecipErrorMm10;
   int checksInWindow10;
   DateTime? lastUpdated;
 
@@ -399,6 +405,7 @@ VerificationRunResult runVerification({
       track.avgTempHighErrorC10 = short.highErr;
       track.avgTempLowErrorC10 = short.lowErr;
       track.avgMslpTrendErrorHpa10 = short.mslpErr;
+      track.avgPrecipErrorMm10 = short.precipErr;
       track.checksInWindow10 = short.checksFound;
       track.lastUpdated = today;
 

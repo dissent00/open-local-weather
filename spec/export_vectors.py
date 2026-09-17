@@ -364,6 +364,12 @@ def export_scoring() -> None:
         ("no cloud forecast is not zero error", pred(cloud_cover_pct=None), act(cloud_cover_pct=42.0), 0),
         ("no cloud observed is not zero error either",
          pred(cloud_cover_pct=50.0), act(cloud_cover_pct=None), 0),
+        # THE AMOUNT — item 157. The operator's scenario, at every lead, and
+        # null-not-zero on either side like every field above it.
+        ("an 8 mm call on a 0.4 mm day overstates the amount by 7.6",
+         pred(precip_mm=8.0), act(precip_mm=0.4), 0),
+        ("the amount is scored beyond lead 0", pred(precip_mm=2.0, onset=None), act(precip_mm=5.5), 3),
+        ("no forecast amount is not zero error", pred(precip_mm=None), act(precip_mm=5.5), 0),
         # THE INSTABILITY CALL — item 35. Scored against THUNDER, never
         # against rain: a day of steady frontal rain with no lightning is not
         # a hit for a model that called high instability, and a port that
@@ -1564,6 +1570,7 @@ def export_weekly_review() -> None:
                         "mean_onset_error_hrs": c.mean_onset_error_hrs,
                         "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
                         "mean_cloud_error_pct": c.mean_cloud_error_pct,
+                        "mean_precip_error_mm": c.mean_precip_error_mm,
                         "cloud_checks": c.cloud_checks,
                         "storm_days": c.storm_days,
                         "storms_called": c.storms_called,
@@ -2422,6 +2429,7 @@ def export_verification() -> None:
                      "all_time_rain_pct": e.all_time_rain_pct,
                      "checks_in_window_10": e.checks_in_window_10,
                      "avg_temp_high_error_c_10": e.avg_temp_high_error_c_10,
+                    "avg_precip_error_mm_10": e.avg_precip_error_mm_10,
                      "avg_onset_error_hrs_10": e.avg_onset_error_hrs_10}
                     for e in result.updated_track_record.entries
                 ],

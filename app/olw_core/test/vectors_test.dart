@@ -665,6 +665,7 @@ void main() {
           expect(got.checksInWindow10, w['checks_in_window_10'], reason: reason);
           expect(got.avgTempHighErrorC10, w['avg_temp_high_error_c_10'], reason: reason);
           expect(got.avgOnsetErrorHrs10, w['avg_onset_error_hrs_10'], reason: reason);
+          expect(got.avgPrecipErrorMm10, w['avg_precip_error_mm_10'], reason: reason);
         }
       }
     });
@@ -935,6 +936,7 @@ void main() {
           expect(got.meanHighErrorC, equals(want['mean_high_error_c']), reason: reason);
           expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
           expect(got.meanCloudErrorPct, equals(want['mean_cloud_error_pct']), reason: reason);
+          expect(got.meanPrecipErrorMm, equals(want['mean_precip_error_mm']), reason: reason);
           expect(got.stormDays, equals(want['storm_days']),
               reason: '$reason — the storm count conditions on days the '
                   'station observed thunder, and a port that counted all '

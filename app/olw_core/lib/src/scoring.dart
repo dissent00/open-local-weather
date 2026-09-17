@@ -69,6 +69,8 @@ VerificationScore? scorePrediction(
     rainBrier: rainBrier,
     onsetErrorHrs: onsetErrorHrs,
     windErrorKmh: diff(predicted.windKmh, actual.peakWindKmh),
+    // Item 157. Every lead, against the reanalysis alone.
+    precipErrorMm: diff(predicted.precipMm, actual.precipMm),
     highErrorC: diff(predicted.highC, actual.highC),
     lowErrorC: diff(predicted.lowC, actual.lowC),
     mslpErrorHpa: diff(predicted.mslpTrend, actual.mslpTrend),

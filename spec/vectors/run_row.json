@@ -1545,7 +1545,8 @@
             "low_error_c": null,
             "mslp_error_hpa": null,
             "cloud_error_pct": null,
-            "convective_correct": null
+            "convective_correct": null,
+            "precip_error_mm": null
           },
           "ukmo_seamless": {
             "rain_correct": false,
@@ -1556,7 +1557,8 @@
             "low_error_c": null,
             "mslp_error_hpa": null,
             "cloud_error_pct": null,
-            "convective_correct": null
+            "convective_correct": null,
+            "precip_error_mm": null
           }
         },
         "window_verified_at": "2026-09-18T03:05:12Z",
@@ -2100,7 +2102,8 @@
             "low_error_c": null,
             "mslp_error_hpa": null,
             "cloud_error_pct": null,
-            "convective_correct": null
+            "convective_correct": null,
+            "precip_error_mm": null
           },
           "ukmo_seamless": {
             "rain_correct": false,
@@ -2111,7 +2114,8 @@
             "low_error_c": null,
             "mslp_error_hpa": null,
             "cloud_error_pct": null,
-            "convective_correct": null
+            "convective_correct": null,
+            "precip_error_mm": null
           }
         },
         "window_verified_at": "2026-09-18T03:05:12Z",

@@ -717,6 +717,14 @@ class VerificationScore(BaseModel):
     #
     # Day+0 only — CAPE is hourly and the extended leads have none.
     convective_correct: bool | None = None
+    # The rain AMOUNT, millimetres, actual minus predicted — ROADMAP item
+    # 157. `rain_correct` is the call; this is how far the total was off,
+    # and until it existed an 8 mm call on a 0.4 mm day cost a model
+    # nothing. Scored at every lead, since the daily endpoint carries a
+    # total, and against the reanalysis alone: the station reports that
+    # rain fell and never how much (item 104, C9). None on entries scored
+    # before it existed.
+    precip_error_mm: float | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1675,6 +1683,12 @@ class TrackRecordEntry(BaseModel):
     avg_temp_high_error_c_10: float | None = None
     avg_temp_low_error_c_10: float | None = None
     avg_mslp_trend_error_hpa_10: float | None = None
+    # Item 157. Signed, like every other error here, so it is a bias and
+    # not a skill figure: on a record where most days are dry on both sides
+    # it sits near zero until wet days give it weight, and one storm day
+    # moves a ten-check mean by a millimetre on its own. No review finding
+    # reads it yet — item 153's two-gate question first.
+    avg_precip_error_mm_10: float | None = None
     checks_in_window_10: int = 0  # how many of the last 10 actually had data (cold-start visibility)
 
     # THE SKY — ROADMAP items 87 and 123, added 2026-09-14.

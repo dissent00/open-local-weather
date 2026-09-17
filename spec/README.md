@@ -125,7 +125,7 @@ absent values are `null`, never omitted keys.
 | `llm_user_prompt.json` | `build_user_prompt` | 8 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
-| `scoring_score_prediction.json` | `score_prediction` | 28 |
+| `scoring_score_prediction.json` | `score_prediction` | 31 |
 | `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 7 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |

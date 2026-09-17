@@ -687,6 +687,11 @@ class VerificationScore {
   /// second input to `rainCorrect`.
   final bool? convectiveCorrect;
 
+  /// The rain AMOUNT, millimetres, actual minus predicted — upstream ROADMAP
+  /// item 157. [rainCorrect] is the call; this is how far the total was off.
+  /// Every lead, against the reanalysis alone. Null before it existed.
+  final double? precipErrorMm;
+
   const VerificationScore({
     required this.rainCorrect,
     this.rainBrier,
@@ -697,6 +702,7 @@ class VerificationScore {
     this.mslpErrorHpa,
     this.cloudErrorPct,
     this.convectiveCorrect,
+    this.precipErrorMm,
   });
 
   /// Mirrors [toJson]; the row a score sits in is stored and shared whole,
@@ -711,6 +717,7 @@ class VerificationScore {
         mslpErrorHpa: (j['mslp_error_hpa'] as num?)?.toDouble(),
         cloudErrorPct: (j['cloud_error_pct'] as num?)?.toDouble(),
         convectiveCorrect: j['convective_correct'] as bool?,
+        precipErrorMm: (j['precip_error_mm'] as num?)?.toDouble(),
       );
 
   Map<String, Object?> toJson() => {
@@ -723,6 +730,7 @@ class VerificationScore {
         'mslp_error_hpa': mslpErrorHpa,
         'cloud_error_pct': cloudErrorPct,
         'convective_correct': convectiveCorrect,
+        'precip_error_mm': precipErrorMm,
       };
 }
 

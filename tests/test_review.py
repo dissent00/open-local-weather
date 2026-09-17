@@ -920,3 +920,23 @@ def test_the_latest_scored_issuance_is_the_one_compared():
     assert row.paired_days == 1
     assert row.early_high_error_c == pytest.approx(-2.0)
     assert row.late_high_error_c == pytest.approx(-0.1), "the 21:00 row, not the 12:00 one"
+
+
+def test_the_cell_carries_the_mean_precip_error_and_no_finding_is_made_of_it():
+    """ROADMAP item 157. The amount is scored and averaged into the cell; a
+    finding on it waits for item 153's two-gate question, because this is the
+    field where a constant threshold is most wrong — one storm day moves a
+    ten-check mean by a millimetre on its own."""
+    logs, actuals = {}, {}
+    for i in range(12):
+        d = TODAY - timedelta(days=i + 1)
+        actuals[d] = DailyActual(rain=True, high_c=26.0, low_c=18.0, precip_mm=1.0)
+        logs[d] = entry(d, [
+            ModelPrediction(model="good_model", rain=True, precip_mm=9.0),
+            ModelPrediction(model="poor_model", rain=True, precip_mm=None),
+        ])
+    review = review_of(logs, actuals)
+    by_model = {c.model: c for c in review.cells}
+    assert by_model["good_model"].mean_precip_error_mm == pytest.approx(-8.0)
+    assert by_model["poor_model"].mean_precip_error_mm is None
+    assert not any("rain amount" in f.claim or "precip" in f.claim for f in review.findings)

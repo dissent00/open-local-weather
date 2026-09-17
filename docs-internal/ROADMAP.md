@@ -22484,7 +22484,7 @@ Related: 105, 106, 107, 113, 124, 24, and `ensemble` items 4 and 22.
 
 ---
 
-## 157. A rain amount is never scored · **Raised 2026-09-17 — a scored-field addition, sequenced with 141**
+## 157. A rain amount is never scored · **SHIPPED 2026-09-17 — scored, rolled and named; the review finding waits on 153**
 
 The operator's second scenario for item 139: *"Model predicts rain starting
 at 1600, 8mm. Rain starts at 1600, but accumulates .4 mm. Rain call correct,
@@ -22509,5 +22509,55 @@ the field named in the prompt's error inventory. Sequenced with item 141,
 which is the other scored-field question a reader in the rain asks.
 
 Related: 139, 141, 153, 142, 104 (C9).
+
+### Shipped 2026-09-17 — the amount is scored at every lead, and no finding reads it yet
+
+`VerificationScore.precip_error_mm`, observed minus forecast like every
+other error, at every lead and on the window; the rolling window carries
+`precip_err` and the track record `avg_precip_error_mm_10` at every lead,
+since the daily endpoint carries a total; the review cell carries
+`mean_precip_error_mm`. Against the reanalysis alone — the station says
+that rain fell, never how much (104's C9) — and item 139's calendar gate
+already keeps a day from being scored before it has ended, which is when
+the archive stops mixing model output in. The verification header names
+the field with its sign in both languages; the track record and score
+blocks dump whole, so it reached the forecaster with no other change. The
+blend is scored on its amount like every model, which is the scenario the
+item was raised on.
+
+**Measured before building, over the 43 stored days.** Nineteen had a
+millimetre or more; the largest was 11.3 mm. Per model and lead the signed
+mean sits between −1.7 and +1.0 mm, the median at zero because most days
+are dry on both sides, and the extremes at −24.9 (ukmo Day+0: a 25 mm
+call on a dry day) and +11.3 (rain nobody called). Mean absolute error
+runs 1 to 3 mm. So the figure is a BIAS, dominated by the few wet days,
+and it will read near zero until a wet season puts weight on it.
+
+| model | lead | n | mean signed | mean abs |
+|---|---:|---:|---:|---:|
+| gfs_seamless | +0 | 24 | −0.42 | 1.62 |
+| ecmwf_ifs025 | +0 | 24 | −0.95 | 1.74 |
+| icon_seamless | +0 | 24 | −1.00 | 1.52 |
+| ukmo_seamless | +0 | 24 | −0.71 | 1.81 |
+| best_match | +0 | 24 | +0.51 | 0.97 |
+| olw_blend | +0 | 18 | −0.83 | 1.02 |
+| gfs_seamless | +7 | 17 | +1.02 | 1.37 |
+| ecmwf_ifs025 | +7 | 17 | −1.71 | 2.99 |
+
+**No review finding, deliberately.** Item 153's two-gate question is
+open, and this is the field where a constant threshold is most wrong: one
+storm day moves a ten-check mean by a millimetre on its own. The finding
+comes with 153's answer, not before it.
+
+**Not done here:** the app's accuracy table gains no column — an owed-table
+row in `ensemble`; its stored scores carry the field through the core. No
+page work: nothing published renders the rolling columns, only the review.
+Item 141 is the same class of change and waits on nowcasting; it did not
+block this.
+
+Three vector cases pin the sign, the lead and the null; inverting the sign
+on either side fails the first. Driven through the real CLI before and
+after (controls byte-identical): the prompt header and the null column on
+27 track-record rows moved, and nothing else. 1333 Python, 191 Dart.
 
 ---
