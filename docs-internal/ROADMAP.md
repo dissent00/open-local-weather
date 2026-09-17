@@ -66,9 +66,10 @@ size a number from the first few rows — item 100.
 The operator has taken each of these design-first, in prose, before any
 code; this is a recommendation, not a queue.
 
-1. **156 — the store.** Design settled, nothing built. Everything downstream
-   waits on its write shape: `ensemble` 22's exporter, the connector, 113's
-   per-town listing. Infrastructure, so the design is the long part.
+1. **156 — the store.** Decided the same afternoon (pulled, 0.25°,
+   S3-generic, 400 days); the cell key and the entry schema shipped, so
+   `ensemble` 22's exporter has its write shape. What is left is a bucket
+   and a repo, which are the operator's, then the pull job.
 2. **`ensemble` 20 — the reader's deviation setting**, 145's app half. The
    hazard is written into the item already; the build is a settings surface
    over `DeviationBands`.
@@ -22656,7 +22657,7 @@ items 4 and 21.
 
 ---
 
-## 156. A central store of published forecasts, and the connector that feeds it · **Raised 2026-09-17 — design settled; the store does not exist yet**
+## 156. A central store of published forecasts, and the pull that feeds it · **Decided 2026-09-17 — pulled, 0.25°, S3-generic, 400 days; the cell key and the entry schema shipped; the store itself waits on a bucket**
 
 The operator's design, 2026-09-17, replacing an interchange format this
 session had started to invent:
@@ -22701,6 +22702,77 @@ URL; what the store holds is many of them, keyed by location.
 as the viewer's own and never reaches a prompt (105, 107); location leaves
 the device coarsened to the cell (107, 110); observations shared as facts are
 item 107's separate document, not this one.
+
+### Decided 2026-09-17 — the store is a bucket, and deployments are pulled
+
+The operator's decisions on the design put to them that afternoon:
+
+| question | decision |
+|---|---|
+| how a deployment's entries reach the store | **pulled**, not pushed. A deployment is registered in a git index with its Pages URL, point and timezone; the store fetches `data/log/<today>.json` from the raw CDN daily, exactly as the mailer and the viewer do. No secret in any fork and no workflow step; a deployment that goes dark reads as stale by its missing dates. This replaces the connector this item first described |
+| the cell | **0.25°**, keyed by its south-west corner |
+| the platform | **a generic S3 writer** — boto3 against a configurable endpoint, so the bucket can be OCI Object Storage or Cloudflare R2 and moving is a credential change. Free tiers of either to start |
+| retention of a sharer's feed | **400 days**, a lifecycle rule on the bucket |
+| attestation | waits — no listing exists in either store yet, so there is no package id to bind to |
+
+**What the S3 decision changes about the order.** Reads are public object
+URLs, and the viewer that shipped in `ensemble` 22 already reads
+`BASE/DATE.json`. Pulling a deployment is a scheduled job with bucket
+credentials, which needs no running service at all. The only part that
+needs a live endpoint is the attested write from a phone, and that waits on
+the free listing anyway. So the build is two phases:
+
+1. **Now:** the bucket; a store repo holding the deployments index, the
+   pull job as a scheduled workflow, and its tests; this deployment
+   registered and its entry seen to arrive at
+   `feeds/<cell>/<feed>/<date>.json` with `latest.json` and `feed.json`
+   beside it. The app's exporter (`ensemble` 22) can be built against the
+   schema below without the endpoint, and tested by validating what it
+   emits.
+2. **When the free listing exists:** the write endpoint — Play Integrity
+   and App Attest verified, the key id used for a one-day rate limit and
+   never written, a salted hash of a device-made withdrawal secret beside
+   the feed so DELETE is real — and the viewer's picker over a cell's
+   feeds.
+
+**Keys are feed-first**, `feeds/<cell>/<feed>/<date>.json`, rather than
+113's date-first, because a viewer follows a feed and needs one prefix for
+`latest.json`; "which feeds are in this cell" is one delimiter listing.
+The manifest `feed.json` carries name, timezone (the entry has none, 104),
+kind and first date, and is what a `ForecastSource` is made from.
+
+**Validation is of content, never of sender**: the day-entry schema, the
+date within a day of the feed's today, and a size cap. The largest
+committed entry is 48.6 KB; the cap will be 512 KB, an order of magnitude
+above the record rather than sized from the day in front of us (item 100).
+113's third layer, checking the entry against Open-Meteo's guidance for
+the cell, is not built in either phase.
+
+### Shipped 2026-09-17 — the two things every variant needs
+
+**`cell_key(lat, lon)`**, both languages, `cell_key.json` (12 cases). The
+quarter-degree tile named by its south-west corner: `s0.25_e34.75` for
+this deployment's primary point. A corner belongs to the tile it names;
+latitude 90 files under the last row; longitude 180 and beyond wraps west.
+A privacy and indexing unit, not a model cell — item 110 measured the four
+models serving four different cells for one request, so no model grid could
+be "the" cell. The arithmetic is exact by construction, a quarter being a
+power of two, and was swept anyway: 5,100 points — 4,000 random, corners
+every 37 rows from pole to pole with ±1e-12 and ±1e-9 neighbours, and
+1,000 out-of-range longitudes — zero mismatches. Dropping the pole clamp or the wrap in the Dart fails exactly
+the vector case that names it.
+
+**`spec/day_entry.schema.json`**, generated from `DailyLogEntry` by
+`spec/export_entry_schema.py` and pinned byte for byte by
+`tests/test_entry_schema.py`, which also validates this deployment's own
+entry against it — so a writer held to the file is held to what the
+pipeline produces. This is the write shape `ensemble` 22's exporter and
+the pull job are built against; neither can import the Python model.
+`jsonschema` joins the dev dependencies for that one test.
+
+**Not here:** the store repo, the bucket, the pull job, the endpoint, the
+app's exporter and opt-in, the viewer's picker. The repo and the bucket
+are the operator's to create.
 
 Related: 105, 106, 107, 113, 124, 24, and `ensemble` items 4 and 22.
 

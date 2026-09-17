@@ -28,6 +28,10 @@ dev = [
     "pytest>=8.0",
     "requests-mock>=1.11",
     "freezegun>=1.4",
+    # tests/test_entry_schema.py validates a committed entry against the
+    # day-entry schema (ROADMAP item 156). Dev only: nothing at runtime
+    # validates JSON Schema.
+    "jsonschema>=4.0",
 ]
 
 [project.scripts]
