@@ -20618,7 +20618,7 @@ Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
 
 ---
 
-## 146. Compare sustained to sustained, and gust to gust · **Step 1 SHIPPED 2026-09-16; steps 2-4 Planned**
+## 146. Compare sustained to sustained, and gust to gust · **Steps 1-2 SHIPPED 2026-09-16/17; step 3 decided and its margin sweep is next; step 4 Planned**
 
 The operator, 2026-09-16, reading item 145's claim that a wind deviation
 cannot be offered here:
@@ -20732,6 +20732,69 @@ through to the sustained wind; Dart keyed on the array's presence and kept
 the nulls. The existing vector's "present with nulls" case has one real hour,
 which is why it never saw this. Both now yield an absent wind — verified by
 running the Python on that exact shape.
+
+### Step 2 shipped 2026-09-17 — the sustained wind rides beside the gust
+
+`ModelPrediction.sustained_wind_kmh` and `DailyActual.sustained_wind_kmh`
+on both sides. The prediction side reads `wind_speed_10m` at Day+0 and the
+window and `windspeed_10m_max` at Day+3/+7, both spellings, through
+`pick_series` like the gust; the observed side reads the archive's
+`windspeed_10m` in both bucketers, stamped `era5_archive`. Nothing scores
+it. **Neither wind fills the other**, and that is pinned: a vector case
+with one model carrying both series, one carrying only the sustained, one
+only the gust; putting the fallback back on either side fails exactly that
+case, and the bucketing vector's two `windspeed_10m` cases now pin 99.0
+and 16.0 beside an absent gust rather than merely refusing the swap.
+
+**The prompt says which wind is which.** The extracted-predictions block
+dumps the prediction whole, so the field reached the forecaster with no
+further change, and the instruction naming the unscored fields now names
+this one against `wind_kmh` and forbids averaging or filling one from the
+other. The sentence lives in both languages byte for byte; the Dart port
+went red on the system-prompt vector until it was mirrored, which is the
+vector doing its job. Cost: +510 characters per user prompt on the drive's
+fixture, about a third of a percent.
+
+**The run-row contract changed how it is checked, operator's decision.**
+`run_row.json`'s expected output is Python's own re-emission of a committed
+row, which gains a null key for every field added after the row was
+written. The Dart check compared against that and would have failed on
+every committed row older than the newest field — for keeping the promise
+`RunRecord` exists to keep, re-emit as committed. It now compares against
+the input. Python's check is unchanged. The alternative, re-pointing the
+committed row at one written after each new field, would have repeated
+this dance on every additive change.
+
+Fourteen vector files moved and all but three by the additive null key;
+`extract_day0` gained its case, `extract_day_n` its fixture line, the
+system prompt its sentence. Driven through the real CLI before and after
+(`tools/drive_forecast_cli.py`, control byte-identical): three files moved
+in the data dump — the actuals cache and the log entry by the new keys, the
+prompt archive by the sentence and the field — and nothing else. 1309
+Python, 191 Dart. No arithmetic crosses the boundary here beyond a
+maximum, so nothing was swept.
+
+**Not done, deliberately:** the baselines carry no sustained wind.
+Persistence could repeat yesterday's observed one, but a baseline with a
+value nothing scores is a row nobody reads, and `baselines.json` would move
+for it; add it when step 3 or 4 gives the number a reader.
+
+### Step 3 decided 2026-09-17 — store and report, no spend, margin swept first
+
+The standing call has no sustained figure: the forecaster publishes a gust,
+and a published sustained wind is step 4's product question. So the only
+forecast side available to a sustained check is the models' Day+0
+sustained consensus, computed in code — guidance against observation,
+not call against observation. Operator's decision: build it the way item
+143 built the low divergence. Compute the gap between the station's
+sustained maximum so far (`sknt`, which was always sustained) and that
+consensus on every run, store it, report it beside the observed-so-far
+material, and let it buy nothing until the record has sized a margin. The
+margin is measured before building, not guessed: `data/prompts/` holds
+fourteen days of per-model `wind_speed_10m` and `windspeed_10m_max`, and
+the actuals cache holds `station_peak_wind_kmh` for the same days, so a
+first sweep exists today and grows daily now that step 2 stores the field.
+Neither "make it a spend trigger now" nor "wait for step 4" was taken.
 
 ### What NOT to do
 

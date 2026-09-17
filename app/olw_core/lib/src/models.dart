@@ -261,6 +261,13 @@ class ModelPrediction {
   /// "HH:MM", Day+0 only — Day+3/+7 carry no onset timing by design.
   final String? onset;
   final double? windKmh;
+
+  /// The day's maximum SUSTAINED 10 m wind, km/h — upstream ROADMAP item
+  /// 146, step 2. [windKmh] is the GUST and stays so; this is the other
+  /// quantity in its own field, named so the two cannot be swapped. Not
+  /// scored, and neither fills the other: a model with no sustained series
+  /// has null here even when it has a gust, and the reverse.
+  final double? sustainedWindKmh;
   final double? highC;
   final double? lowC;
   final double? mslpTrend;
@@ -329,6 +336,7 @@ class ModelPrediction {
     this.rain,
     this.onset,
     this.windKmh,
+    this.sustainedWindKmh,
     this.highC,
     this.lowC,
     this.mslpTrend,
@@ -347,6 +355,7 @@ class ModelPrediction {
         rain: j['rain'] as bool?,
         onset: j['onset'] as String?,
         windKmh: _toDouble(j['wind_kmh']),
+        sustainedWindKmh: _toDouble(j['sustained_wind_kmh']),
         highC: _toDouble(j['high_c']),
         lowC: _toDouble(j['low_c']),
         mslpTrend: _toDouble(j['mslp_trend']),
@@ -367,6 +376,7 @@ class ModelPrediction {
         'rain': rain,
         'onset': onset,
         'wind_kmh': windKmh,
+        'sustained_wind_kmh': sustainedWindKmh,
         'high_c': highC,
         'low_c': lowC,
         'mslp_trend': mslpTrend,
@@ -391,6 +401,13 @@ class DailyActual {
   final double? highC;
   final double? lowC;
   final double? peakWindKmh;
+
+  /// The day's maximum SUSTAINED 10 m wind from the reanalysis, km/h —
+  /// upstream ROADMAP item 146, step 2. [peakWindKmh] is the gust; this is
+  /// the series step 1 stopped substituting for it, recorded as itself so a
+  /// sustained forecast has a like observation in every deployment. Not
+  /// scored. Null when the archive carried no series.
+  final double? sustainedWindKmh;
   final double? mslpTrend;
   final String? onsetHour;
 
@@ -518,6 +535,7 @@ class DailyActual {
     this.highC,
     this.lowC,
     this.peakWindKmh,
+    this.sustainedWindKmh,
     this.mslpTrend,
     this.onsetHour,
     this.precipMm,
@@ -566,6 +584,7 @@ class DailyActual {
         highC: _toDouble(j['high_c']),
         lowC: _toDouble(j['low_c']),
         peakWindKmh: _toDouble(j['peak_wind_kmh']),
+        sustainedWindKmh: _toDouble(j['sustained_wind_kmh']),
         mslpTrend: _toDouble(j['mslp_trend']),
         onsetHour: j['onset_hour'] as String?,
         precipMm: _toDouble(j['precip_mm']),
@@ -587,6 +606,7 @@ class DailyActual {
         'high_c': highC,
         'low_c': lowC,
         'peak_wind_kmh': peakWindKmh,
+        'sustained_wind_kmh': sustainedWindKmh,
         'mslp_trend': mslpTrend,
         'onset_hour': onsetHour,
         'precip_mm': precipMm,

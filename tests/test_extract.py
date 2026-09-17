@@ -591,3 +591,70 @@ def test_horizon_is_none_when_the_model_has_no_value_at_all():
 def test_horizon_falls_back_to_the_unsuffixed_key_like_the_extractor():
     daily = _daily(precipitation_sum=[0.0, 0.0, 0.5, None])
     assert forecast_horizon_days(daily, "best_match") == 2
+
+
+# ---------------------------------------------------------------------------
+# Sustained wind beside the gust — ROADMAP item 146, step 2
+# ---------------------------------------------------------------------------
+
+
+def test_day0_carries_the_sustained_wind_beside_the_gust():
+    """Two quantities, two fields, named so they cannot be swapped — the
+    lesson of item 144 applied before the bug rather than after. Both
+    spellings of the sustained series are read, as they are for the gust."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_gfs_seamless": [20.0, 30.0, 25.0],
+            "wind_speed_10m_gfs_seamless": [10.0, 18.0, 14.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "windgusts_10m_ecmwf_ifs025": [15.0, 22.0, 19.0],
+            "windspeed_10m_ecmwf_ifs025": [9.0, 12.0, 11.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+    assert by_model["gfs_seamless"].wind_kmh == pytest.approx(30.0)
+    assert by_model["gfs_seamless"].sustained_wind_kmh == pytest.approx(18.0)
+    assert by_model["ecmwf_ifs025"].wind_kmh == pytest.approx(22.0)
+    assert by_model["ecmwf_ifs025"].sustained_wind_kmh == pytest.approx(12.0)
+
+
+def test_neither_wind_fills_the_other_at_day0():
+    """A model with only a sustained series has no gust, and one with only a
+    gust series has no sustained wind. Absence is absence on both sides —
+    the fallback item 146 step 1 removed must not come back under a new
+    name."""
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0],
+            "wind_speed_10m_gfs_seamless": [10.0, 18.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0],
+            "windgusts_10m_ecmwf_ifs025": [15.0, 22.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day0_predictions_from_hourly(hourly, MODELS)}
+    assert by_model["gfs_seamless"].wind_kmh is None
+    assert by_model["gfs_seamless"].sustained_wind_kmh == pytest.approx(18.0)
+    assert by_model["ecmwf_ifs025"].wind_kmh == pytest.approx(22.0)
+    assert by_model["ecmwf_ifs025"].sustained_wind_kmh is None
+
+
+def test_day_n_carries_the_sustained_wind():
+    """`windspeed_10m_max` has been in DAILY_VARS beside the gust maximum
+    since before this project scored anything, and read by nothing."""
+    daily = {
+        "daily": {
+            "time": ["2026-08-11", "2026-08-12", "2026-08-13"],
+            "precipitation_sum_gfs_seamless": [0.0, 3.0, 0.0],
+            "windgusts_10m_max_gfs_seamless": [25.0, 31.0, 20.0],
+            "windspeed_10m_max_gfs_seamless": [15.0, 20.0, 12.0],
+            "precipitation_sum_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "windgusts_10m_max_ecmwf_ifs025": [20.0, 22.0, 18.0],
+        }
+    }
+    by_model = {p.model: p for p in extract_day_n_predictions_from_daily(daily, 1, MODELS)}
+    assert by_model["gfs_seamless"].wind_kmh == pytest.approx(31.0)
+    assert by_model["gfs_seamless"].sustained_wind_kmh == pytest.approx(20.0)
+    assert by_model["ecmwf_ifs025"].sustained_wind_kmh is None

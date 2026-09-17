@@ -23,6 +23,11 @@
               31.0,
               20.0
             ],
+            "windspeed_10m_max_gfs_seamless": [
+              15.0,
+              20.0,
+              12.0
+            ],
             "temperature_2m_max_gfs_seamless": [
               28.0,
               26.0,
@@ -76,6 +81,7 @@
           "precip_mm": 0.0,
           "rain_probability_pct": null,
           "wind_kmh": 25.0,
+          "sustained_wind_kmh": 15.0,
           "high_c": 28.0,
           "low_c": 17.0,
           "cloud_cover_pct": null,
@@ -91,6 +97,7 @@
           "precip_mm": 0.0,
           "rain_probability_pct": null,
           "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
           "high_c": 27.0,
           "low_c": 16.0,
           "cloud_cover_pct": null,
@@ -119,6 +126,11 @@
               25.0,
               31.0,
               20.0
+            ],
+            "windspeed_10m_max_gfs_seamless": [
+              15.0,
+              20.0,
+              12.0
             ],
             "temperature_2m_max_gfs_seamless": [
               28.0,
@@ -173,6 +185,7 @@
           "precip_mm": 3.2,
           "rain_probability_pct": null,
           "wind_kmh": 31.0,
+          "sustained_wind_kmh": 20.0,
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,
@@ -188,6 +201,7 @@
           "precip_mm": 1.0,
           "rain_probability_pct": null,
           "wind_kmh": 22.0,
+          "sustained_wind_kmh": null,
           "high_c": 26.0,
           "low_c": 17.0,
           "cloud_cover_pct": null,
@@ -216,6 +230,11 @@
               25.0,
               31.0,
               20.0
+            ],
+            "windspeed_10m_max_gfs_seamless": [
+              15.0,
+              20.0,
+              12.0
             ],
             "temperature_2m_max_gfs_seamless": [
               28.0,
@@ -270,6 +289,7 @@
           "precip_mm": 0.1,
           "rain_probability_pct": null,
           "wind_kmh": 20.0,
+          "sustained_wind_kmh": 12.0,
           "high_c": 29.0,
           "low_c": 17.5,
           "cloud_cover_pct": null,
@@ -285,6 +305,7 @@
           "precip_mm": null,
           "rain_probability_pct": null,
           "wind_kmh": null,
+          "sustained_wind_kmh": null,
           "high_c": null,
           "low_c": null,
           "cloud_cover_pct": null,
@@ -344,6 +365,7 @@
           "precip_mm": 3.2,
           "rain_probability_pct": null,
           "wind_kmh": 31.0,
+          "sustained_wind_kmh": null,
           "high_c": 26.0,
           "low_c": 18.0,
           "cloud_cover_pct": null,

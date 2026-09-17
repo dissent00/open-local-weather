@@ -53,6 +53,7 @@
           "high_c": 27.5,
           "low_c": 18.0,
           "peak_wind_kmh": 30.0,
+          "sustained_wind_kmh": null,
           "mslp_trend": -1.0,
           "onset_hour": "12:00",
           "precip_mm": 1.2,
@@ -80,6 +81,7 @@
           "high_c": 29.0,
           "low_c": 17.0,
           "peak_wind_kmh": 21.0,
+          "sustained_wind_kmh": null,
           "mslp_trend": -1.0,
           "onset_hour": null,
           "precip_mm": 0.1,
@@ -142,6 +144,7 @@
           "high_c": 19.0,
           "low_c": 18.0,
           "peak_wind_kmh": 25.0,
+          "sustained_wind_kmh": 99.0,
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
@@ -159,6 +162,7 @@
             "high_c": "era5_archive",
             "low_c": "era5_archive",
             "peak_wind_kmh": "era5_archive",
+            "sustained_wind_kmh": "era5_archive",
             "mslp_trend": "era5_archive",
             "precip_mm": "era5_archive"
           }
@@ -200,6 +204,7 @@
           "high_c": 19.0,
           "low_c": 18.0,
           "peak_wind_kmh": null,
+          "sustained_wind_kmh": 16.0,
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.0,
@@ -216,6 +221,7 @@
             "rain": "era5_archive",
             "high_c": "era5_archive",
             "low_c": "era5_archive",
+            "sustained_wind_kmh": "era5_archive",
             "mslp_trend": "era5_archive",
             "precip_mm": "era5_archive"
           }
@@ -257,6 +263,7 @@
           "high_c": 19.0,
           "low_c": 18.0,
           "peak_wind_kmh": 16.0,
+          "sustained_wind_kmh": null,
           "mslp_trend": 0.5,
           "onset_hour": null,
           "precip_mm": 0.12,
@@ -325,6 +332,7 @@
           "high_c": 20.0,
           "low_c": 18.0,
           "peak_wind_kmh": 16.0,
+          "sustained_wind_kmh": null,
           "mslp_trend": 0.20000000000004547,
           "onset_hour": null,
           "precip_mm": 0.0,

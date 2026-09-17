@@ -591,3 +591,46 @@ def test_a_window_that_the_archive_cannot_cover_is_not_an_observation():
     assert open_meteo.bucket_hourly_window(
         one_day, start=datetime(2026, 8, 11, 12, 0), hours=24
     ) is None
+
+
+def test_bucket_hourly_by_date_carries_the_sustained_wind_and_stamps_it():
+    """ROADMAP item 146, step 2. `windspeed_10m` has been in
+    ARCHIVE_HOURLY_VARS all along and was read only as the fallback step 1
+    removed. It is now its own field, so the observed side can answer a
+    sustained forecast with a sustained observation in every deployment,
+    station or not — and it is stamped, because a value with no source
+    cannot be told from one that was never measured."""
+    from openlocalweather.fetch.open_meteo import bucket_hourly_by_date
+    from openlocalweather.models import SOURCE_REANALYSIS
+
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "temperature_2m": [20.0, 24.0, 28.0],
+            "precipitation": [0.0, 0.0, 0.0],
+            "windgusts_10m": [11.0, 30.0, 14.0],
+            "windspeed_10m": [8.0, 17.0, 9.0],
+            "pressure_msl": [1012.0, 1011.0, 1010.0],
+        }
+    }
+    (day,) = bucket_hourly_by_date(hourly).values()
+    assert day.peak_wind_kmh == pytest.approx(30.0)
+    assert day.sustained_wind_kmh == pytest.approx(17.0)
+    assert day.provenance["sustained_wind_kmh"] == SOURCE_REANALYSIS
+
+
+def test_a_day_with_no_sustained_series_leaves_it_absent_and_unstamped():
+    from openlocalweather.fetch.open_meteo import bucket_hourly_by_date
+
+    hourly = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00"],
+            "temperature_2m": [20.0, 24.0],
+            "precipitation": [0.0, 0.0],
+            "windgusts_10m": [11.0, 30.0],
+            "pressure_msl": [1012.0, 1011.0],
+        }
+    }
+    (day,) = bucket_hourly_by_date(hourly).values()
+    assert day.sustained_wind_kmh is None
+    assert "sustained_wind_kmh" not in day.provenance

@@ -110,7 +110,7 @@ absent values are `null`, never omitted keys.
 | `glossary.json` | `GLOSSARY` | 19 |
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
-| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 8 |
+| `extract_day0.json` | `extract_day0_predictions_from_hourly` | 9 |
 | `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 4 |
 | `forecast_horizon.json` | `forecast_horizon_days` | 9 |
 | `run_row.json` | `IssuancePredictions` | 2 |

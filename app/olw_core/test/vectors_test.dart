@@ -190,11 +190,18 @@ void main() {
       }
     });
 
+    // AGAINST THE INPUT, NOT PYTHON'S DUMP — decided 2026-09-17 under
+    // upstream item 146. The property this row claims is "re-emitted as
+    // committed", and the input IS the committed row. Python's `expected` is
+    // its own re-emission, which adds a null key for every field added since
+    // the row was written; comparing against that would fail this port on
+    // every committed row older than the newest field, for keeping a promise
+    // the class exists to keep.
     test('a run row round-trips as the pipeline commits it', () {
       for (final c in casesOf('run_row.json')) {
         final input = (c['input'] as Map).cast<String, Object?>();
         final row = RunRecord.fromJson(input);
-        expect(row.toJson(), c['expected'], reason: 'case "${c['name']}"');
+        expect(row.toJson(), input, reason: 'case "${c['name']}"');
         // The typed view reads the same row.
         expect(row.issuedAt.isUtc, isTrue);
         expect(row.predictionsAt(0), isNotEmpty);

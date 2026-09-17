@@ -36,6 +36,11 @@ def extract_day0_predictions_from_hourly(
         wind = pick_series(
             h, f"wind_gusts_10m_{model}", f"windgusts_10m_{model}", "wind_gusts_10m", "windgusts_10m"
         )
+        # The SUSTAINED wind, its own series and its own field — item 146.
+        # Never a fallback for the gust and never filled from it.
+        sustained = pick_series(
+            h, f"wind_speed_10m_{model}", f"windspeed_10m_{model}", "wind_speed_10m", "windspeed_10m"
+        )
         temp = pick_series(h, f"temperature_2m_{model}", "temperature_2m")
         press = pick_series(h, f"pressure_msl_{model}", "pressure_msl")
         # No daily maximum exists at hourly resolution, so Day+0's is the
@@ -83,6 +88,7 @@ def extract_day0_predictions_from_hourly(
         onset = get_onset_hour(times, precip, threshold) if rain else None
 
         wind_vals = [v for v in wind if v is not None]
+        sustained_vals = [v for v in sustained if v is not None]
         # THE HOUR OF THIS MODEL'S OWN PEAK, so the bearing belongs to the
         # gust being reported. max() over (value, index) would break ties by
         # index; enumerate-and-max on the value alone keeps the first peak,
@@ -117,6 +123,7 @@ def extract_day0_predictions_from_hourly(
                 # CAPE is a confident claim of stable air and no data is not.
                 peak_cape_jkg=max(cape_vals) if cape_vals else None,
                 wind_kmh=max(wind_vals) if wind_vals else None,
+                sustained_wind_kmh=max(sustained_vals) if sustained_vals else None,
                 wind_direction_deg=bearing_at_peak,
                 high_c=max(temp_vals) if temp_vals else None,
                 low_c=min(temp_vals) if temp_vals else None,
@@ -184,6 +191,10 @@ def extract_day_n_predictions_from_daily(
         # while the Dart port has been correct all along.
         precip_arr = pick_series(d, f"precipitation_sum_{model}", "precipitation_sum")
         wind_arr = pick_series(d, f"windgusts_10m_max_{model}", "windgusts_10m_max")
+        sustained_arr = pick_series(
+            d, f"windspeed_10m_max_{model}", f"wind_speed_10m_max_{model}",
+            "windspeed_10m_max", "wind_speed_10m_max",
+        )
         high_arr = pick_series(d, f"temperature_2m_max_{model}", "temperature_2m_max")
         low_arr = pick_series(d, f"temperature_2m_min_{model}", "temperature_2m_min")
         press_arr = pick_series(d, f"pressure_msl_mean_{model}", "pressure_msl_mean")
@@ -199,6 +210,7 @@ def extract_day_n_predictions_from_daily(
         precip = precip_arr[day_index] if day_index < len(precip_arr) else None
         prob = prob_arr[day_index] if day_index < len(prob_arr) else None
         wind = wind_arr[day_index] if day_index < len(wind_arr) else None
+        sustained = sustained_arr[day_index] if day_index < len(sustained_arr) else None
         high = high_arr[day_index] if day_index < len(high_arr) else None
         low = low_arr[day_index] if day_index < len(low_arr) else None
 
@@ -222,6 +234,7 @@ def extract_day_n_predictions_from_daily(
                 # None, never 0 — see ModelPrediction.rain_probability_pct.
                 rain_probability_pct=None if prob is None else int(prob),
                 wind_kmh=wind,
+                sustained_wind_kmh=sustained,
                 high_c=high,
                 low_c=low,
                 mslp_trend=mslp_trend,

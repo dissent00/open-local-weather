@@ -590,7 +590,35 @@ def export_extract() -> None:
         }
     }
 
+    # ROADMAP item 146, step 2. Three models, three shapes: both winds, the
+    # sustained series alone, the gust alone. A port that filled one from the
+    # other — the fallback step 1 removed, returning under a new name — fails
+    # on the second or third.
+    hourly_two_winds = {
+        "hourly": {
+            "time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"],
+            "precipitation_gfs_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_gfs_seamless": [20.0, 30.0, 25.0],
+            "wind_speed_10m_gfs_seamless": [10.0, 18.0, 14.0],
+            "precipitation_ecmwf_ifs025": [0.0, 0.0, 0.0],
+            "windspeed_10m_ecmwf_ifs025": [9.0, 12.0, 11.0],
+            "precipitation_icon_seamless": [0.0, 0.0, 0.0],
+            "windgusts_10m_icon_seamless": [9.0, 14.0, 22.0],
+        }
+    }
+
     cases = [
+        {
+            "name": "sustained wind rides beside the gust, and neither fills the other",
+            "input": {
+                "hourly_multi_model": hourly_two_winds,
+                "models": ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"],
+                "threshold": RAIN_THRESHOLD_MM,
+            },
+            "expected": dump(extract_day0_predictions_from_hourly(
+                hourly_two_winds, ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"], RAIN_THRESHOLD_MM
+            )),
+        },
         {
             "name": "the bearing comes from each model's own peak-gust hour",
             "input": {
@@ -673,6 +701,9 @@ def export_extract() -> None:
             "time": ["2026-08-11", "2026-08-12", "2026-08-13"],
             "precipitation_sum_gfs_seamless": [0.0, 3.2, 0.1],
             "windgusts_10m_max_gfs_seamless": [25.0, 31.0, 20.0],
+            # Item 146, step 2: present for one model and absent for the
+            # other, so the vector pins both a value and a null.
+            "windspeed_10m_max_gfs_seamless": [15.0, 20.0, 12.0],
             "temperature_2m_max_gfs_seamless": [28.0, 26.0, 29.0],
             "temperature_2m_min_gfs_seamless": [17.0, 18.0, 17.5],
             "pressure_msl_mean_gfs_seamless": [1014.0, 1012.5, 1013.0],

@@ -115,6 +115,10 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
         : null;
 
     final windVals = wind.whereType<double>().toList();
+    // The SUSTAINED wind, its own series and its own field — item 146. Never
+    // a fallback for the gust and never filled from it.
+    final sustainedVals =
+        _windSeries(hourly, model, 'windspeed_10m', 'wind_speed_10m').whereType<double>().toList();
     // THE HOUR OF THIS MODEL'S OWN PEAK, so the bearing belongs to the gust
     // being reported. First peak wins on a tie, matching Python.
     int? peakI;
@@ -135,6 +139,8 @@ List<ModelPrediction> extractDay0PredictionsFromHourly(
       rain: rain,
       onset: onset,
       windKmh: windVals.isEmpty ? null : windVals.reduce((a, b) => a > b ? a : b),
+      sustainedWindKmh:
+          sustainedVals.isEmpty ? null : sustainedVals.reduce((a, b) => a > b ? a : b),
       windDirectionDeg: bearingAtPeak,
       highC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a > b ? a : b),
       lowC: tempVals.isEmpty ? null : tempVals.reduce((a, b) => a < b ? a : b),
@@ -209,6 +215,8 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
     final precipArr = _series(daily, 'precipitation_sum', model);
     final windArr =
         _windSeries(daily, model, 'windgusts_10m_max', 'wind_gusts_10m_max');
+    final sustainedArr =
+        _windSeries(daily, model, 'windspeed_10m_max', 'wind_speed_10m_max');
     final highArr = _series(daily, 'temperature_2m_max', model);
     final lowArr = _series(daily, 'temperature_2m_min', model);
     final pressArr = _series(daily, 'pressure_msl_mean', model);
@@ -231,6 +239,7 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
       rain: precip == null ? null : precip >= threshold,
       onset: null,
       windKmh: at(windArr, dayIndex),
+      sustainedWindKmh: at(sustainedArr, dayIndex),
       highC: at(highArr, dayIndex),
       lowC: at(lowArr, dayIndex),
       mslpTrend: mslpTrend,

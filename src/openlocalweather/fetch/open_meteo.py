@@ -68,6 +68,9 @@ AIR_QUALITY_HOURLY_VARS = "pm10,pm2_5,european_aqi,us_aqi"
 # that substitutes it would put a sustained wind in the gust's column of the
 # accuracy record without anything reporting it — ROADMAP item 146, step 1.
 ARCHIVE_GUST_KEYS = ("wind_gusts_10m", "windgusts_10m")
+# The sustained wind's spellings, for its OWN field — ROADMAP item 146, step
+# 2. Never a candidate for the gust: the two differ by the gust factor.
+ARCHIVE_SUSTAINED_KEYS = ("wind_speed_10m", "windspeed_10m")
 
 
 class OpenMeteoFetchError(RuntimeError):
@@ -525,19 +528,18 @@ def bucket_hourly_by_date(hourly_json: dict, threshold: float = RAIN_THRESHOLD_M
     precip_arr = h.get("precipitation") or []
     cloud_arr = h.get("cloud_cover") or []
     wind_arr = pick_series(h, *ARCHIVE_GUST_KEYS)
+    sustained_arr = pick_series(h, *ARCHIVE_SUSTAINED_KEYS)
     pressure_arr = h.get("pressure_msl") or []
 
     by_date: dict[str, dict[str, list]] = {}
     for i, t in enumerate(times):
         d_str = t.split("T")[0]
-        bucket = by_date.setdefault(
-            d_str,
-            {"temps": [], "precip": [], "wind": [], "pressure": [], "times": [], "cloud": []},
-        )
+        bucket = by_date.setdefault(d_str, _empty_bucket())
         bucket["temps"].append(temp_arr[i] if i < len(temp_arr) else None)
         bucket["precip"].append(precip_arr[i] if i < len(precip_arr) else None)
         bucket["cloud"].append(cloud_arr[i] if i < len(cloud_arr) else None)
         bucket["wind"].append(wind_arr[i] if i < len(wind_arr) else None)
+        bucket["sustained"].append(sustained_arr[i] if i < len(sustained_arr) else None)
         bucket["pressure"].append(pressure_arr[i] if i < len(pressure_arr) else None)
         bucket["times"].append(t)
 
@@ -593,12 +595,13 @@ def bucket_hourly_window(
     precip_arr = h.get("precipitation") or []
     cloud_arr = h.get("cloud_cover") or []
     wind_arr = pick_series(h, *ARCHIVE_GUST_KEYS)
+    sustained_arr = pick_series(h, *ARCHIVE_SUSTAINED_KEYS)
     pressure_arr = h.get("pressure_msl") or []
 
     def _at(series: list, i: int):
         return series[i] if i < len(series) else None
 
-    bucket: dict[str, list] = {"temps": [], "precip": [], "wind": [], "pressure": [], "times": [], "cloud": []}
+    bucket = _empty_bucket()
     for i, t in enumerate(times):
         moment = datetime.fromisoformat(t)
         if not (opened <= moment < closes):
@@ -607,6 +610,7 @@ def bucket_hourly_window(
         bucket["precip"].append(_at(precip_arr, i))
         bucket["cloud"].append(_at(cloud_arr, i))
         bucket["wind"].append(_at(wind_arr, i))
+        bucket["sustained"].append(_at(sustained_arr, i))
         bucket["pressure"].append(_at(pressure_arr, i))
         bucket["times"].append(t)
 
@@ -614,6 +618,14 @@ def bucket_hourly_window(
         return None
 
     return _aggregate_hours(bucket, threshold)
+
+
+def _empty_bucket() -> dict[str, list]:
+    """The parallel hourly series both bucketers fill, one list per field."""
+    return {
+        "temps": [], "precip": [], "wind": [], "sustained": [],
+        "pressure": [], "times": [], "cloud": [],
+    }
 
 
 def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
@@ -630,6 +642,7 @@ def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
     """
     temps = [v for v in day["temps"] if v is not None]
     wind = [v for v in day["wind"] if v is not None]
+    sustained = [v for v in day["sustained"] if v is not None]
     pressure = [v for v in day["pressure"] if v is not None]
     precip_mm = (
         round(sum(v for v in day["precip"] if v is not None), 2)
@@ -646,6 +659,7 @@ def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
     high_c = max(temps) if temps else None
     low_c = min(temps) if temps else None
     peak_wind = max(wind) if wind else None
+    sustained_wind = max(sustained) if sustained else None
     mslp_trend = (pressure[-1] - pressure[0]) if len(pressure) >= 2 else None
 
     # ROADMAP item 45, trap 2. A key per field this source actually
@@ -657,6 +671,7 @@ def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
         ("high_c", high_c),
         ("low_c", low_c),
         ("peak_wind_kmh", peak_wind),
+        ("sustained_wind_kmh", sustained_wind),
         ("mslp_trend", mslp_trend),
         ("onset_hour", onset_hour),
         ("precip_mm", precip_mm),
@@ -670,6 +685,7 @@ def _aggregate_hours(day: dict[str, list], threshold: float) -> DailyActual:
         high_c=high_c,
         low_c=low_c,
         peak_wind_kmh=peak_wind,
+        sustained_wind_kmh=sustained_wind,
         mslp_trend=mslp_trend,
         onset_hour=onset_hour,
         provenance=provenance,

@@ -348,6 +348,19 @@ class ModelPrediction(BaseModel):
     # above keeps for the same reason.
     rain_probability_pct: int | None = None
     wind_kmh: float | None = None
+    # The day's maximum SUSTAINED 10 m wind, km/h — ROADMAP item 146, step 2.
+    # `wind_kmh` above is the GUST and stays so; this is the other quantity,
+    # in its own field, named so the two cannot be swapped — item 144's
+    # lesson applied before the bug instead of after it. Fetched on every run
+    # since before this project scored anything (`wind_speed_10m` hourly,
+    # `windspeed_10m_max` daily) and discarded until now.
+    #
+    # NOT SCORED, and neither fills the other: a model with no sustained
+    # series has None here even when it has a gust, and the reverse. The
+    # observed side has the same field from the reanalysis, so a sustained
+    # forecast can be answered by a sustained observation in every deployment,
+    # which the station's `sknt` alone could not give.
+    sustained_wind_kmh: float | None = None
     high_c: float | None = None
     low_c: float | None = None
     # Day MEAN cloud cover, 0-100. Fetched in HOURLY_FORECAST_VARS since
@@ -443,6 +456,13 @@ class DailyActual(BaseModel):
     high_c: float | None = None
     low_c: float | None = None
     peak_wind_kmh: float | None = None
+    # The day's maximum SUSTAINED 10 m wind from the reanalysis, km/h —
+    # ROADMAP item 146, step 2. `peak_wind_kmh` is the gust. This is the
+    # series step 1 stopped substituting for it, now recorded as itself, so
+    # the models' sustained forecasts have a like observation in every
+    # deployment. Portable where `station_peak_wind_kmh` (also sustained, from
+    # `sknt`) is not. Not scored. None when the archive carried no series.
+    sustained_wind_kmh: float | None = None
     mslp_trend: float | None = None
     onset_hour: str | None = None  # "HH:MM"
     # Total precipitation for the day, millimetres. ADDITIVE and NOT SCORED —

@@ -399,6 +399,9 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
   final cloudArr = nums(hourly['cloud_cover']);
   // Either spelling the archive has used for the gust, and nothing else.
   final windArr = nums(hourly['wind_gusts_10m'] ?? hourly['windgusts_10m']);
+  // The sustained wind, for its OWN field — item 146, step 2. Never a
+  // candidate for the gust.
+  final sustainedArr = nums(hourly['wind_speed_10m'] ?? hourly['windspeed_10m']);
   final pressureArr = nums(hourly['pressure_msl']);
 
   double? at(List<double?> a, int i) => i < a.length ? a[i] : null;
@@ -411,6 +414,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
     b.precip.add(at(precipArr, i));
     b.cloud.add(at(cloudArr, i));
     b.wind.add(at(windArr, i));
+    b.sustained.add(at(sustainedArr, i));
     b.pressure.add(at(pressureArr, i));
     b.times.add(times[i]);
   }
@@ -419,11 +423,14 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
   byDate.forEach((dStr, day) {
     final temps = day.temps.whereType<double>().toList();
     final wind = day.wind.whereType<double>().toList();
+    final sustained = day.sustained.whereType<double>().toList();
     final pressure = day.pressure.whereType<double>().toList();
 
     final highC = temps.isEmpty ? null : temps.reduce((a, b) => a > b ? a : b);
     final lowC = temps.isEmpty ? null : temps.reduce((a, b) => a < b ? a : b);
     final peakWind = wind.isEmpty ? null : wind.reduce((a, b) => a > b ? a : b);
+    final sustainedWind =
+        sustained.isEmpty ? null : sustained.reduce((a, b) => a > b ? a : b);
     final mslpTrend =
         pressure.length >= 2 ? pressure.last - pressure.first : null;
     final onsetHour = getOnsetHour(day.times, day.precip, threshold: threshold);
@@ -454,6 +461,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
       'high_c': highC,
       'low_c': lowC,
       'peak_wind_kmh': peakWind,
+      'sustained_wind_kmh': sustainedWind,
       'mslp_trend': mslpTrend,
       'onset_hour': onsetHour,
       'precip_mm': precipMm,
@@ -467,6 +475,7 @@ Map<DateTime, DailyActual> bucketHourlyByDate(
       highC: highC,
       lowC: lowC,
       peakWindKmh: peakWind,
+      sustainedWindKmh: sustainedWind,
       mslpTrend: mslpTrend,
       onsetHour: onsetHour,
       precipMm: precipMm,
@@ -482,6 +491,7 @@ class _DayBucket {
   final List<double?> precip = [];
   final List<double?> cloud = [];
   final List<double?> wind = [];
+  final List<double?> sustained = [];
   final List<double?> pressure = [];
   final List<String> times = [];
 
