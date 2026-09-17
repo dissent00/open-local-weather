@@ -22023,3 +22023,53 @@ Related: 104 (contract items 2, 4 and C2/C6), 139, 137, 121, and `ensemble`
 items 4 and 21.
 
 ---
+
+## 156. A central store of published forecasts, and the connector that feeds it · **Raised 2026-09-17 — design settled; the store does not exist yet**
+
+The operator's design, 2026-09-17, replacing an interchange format this
+session had started to invent:
+
+> *"Each OLW server publishes a github page daily. This can be read like the
+> mailer does as json. An ensemble app could be pointed at that url, read the
+> forecast json, and display the forecast that OLW published... The central
+> store will keep many of these json sources centrally. OLW can be configured
+> to send its daily forecast as json to a central server... Ensemble users can
+> also be sources for forecasts in that shared bucket, if they choose to,
+> anonymously... any verified app-store/play-store app can write a forecast to
+> the bucket, no need for auth credentials, and just provide a location and a
+> forecast."*
+
+**The format is the day entry this repo already commits** —
+`data/log/<date>.json`, which the mailer reads from the raw CDN and which is
+served with `Access-Control-Allow-Origin: *` (checked 2026-09-17, 24.7 KB for
+that day). There is no new interchange format. What Ensemble exports is the
+same document, built from its runs; what it displays is this document from a
+URL; what the store holds is many of them, keyed by location.
+
+**Elements, and where each lives:**
+
+1. **Ensemble viewer mode** — `ensemble` item 22. A source is a URL, a name
+   and a timezone (the entry carries no zone, item 104's finding). Built
+   first, because it works today against this deployment.
+2. **Ensemble exporter** — `ensemble` item 22. The day entry from the app's
+   runs; the app cannot fill a field, it sends null. Proved by
+   `DailyLogEntry.model_validate` accepting what the app builds.
+3. **The OLW connector** — this item. One workflow step after the daily
+   commit that sends the entry to the store at `<location>/<date>.json` and
+   `<location>/latest.json`. Config-driven, off by default. Not built until
+   the store exists.
+4. **The store** — item 113's object storage plus a minimal write endpoint,
+   keyed by location, listing the feeds available for a town so a viewer
+   picks which to follow. Each anonymous sharer is a feed id generated on
+   the device. **Writes are gated by store attestation (Play Integrity, App
+   Attest), not credentials** — operator's decision, replacing the token
+   discussion in 106/113 for this path. Deletion is real (113).
+
+**Rules carried over, not re-argued:** a displayed forecast is never scored
+as the viewer's own and never reaches a prompt (105, 107); location leaves
+the device coarsened to the cell (107, 110); observations shared as facts are
+item 107's separate document, not this one.
+
+Related: 105, 106, 107, 113, 124, 24, and `ensemble` items 4 and 22.
+
+---
