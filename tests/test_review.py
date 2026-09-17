@@ -940,3 +940,76 @@ def test_the_cell_carries_the_mean_precip_error_and_no_finding_is_made_of_it():
     assert by_model["good_model"].mean_precip_error_mm == pytest.approx(-8.0)
     assert by_model["poor_model"].mean_precip_error_mm is None
     assert not any("rain amount" in f.claim or "precip" in f.claim for f in review.findings)
+
+
+# ---------------------------------------------------------------------------
+# Two gates — ROADMAP item 153
+# ---------------------------------------------------------------------------
+
+
+def _history_with_spread(days: int, bias: float, spread: float):
+    """`good_model` predicts highs `bias` too LOW on average (error is actual
+    minus predicted, so positive), with the error alternating ±spread around
+    it, so the mean is `bias` and the sample spread is about `spread`."""
+    logs, actuals = {}, {}
+    for i in range(days):
+        d = TODAY - timedelta(days=i + 1)
+        actuals[d] = DailyActual(rain=True, high_c=26.0, low_c=18.0)
+        wobble = spread if i % 2 == 0 else -spread
+        logs[d] = entry(d, [
+            ModelPrediction(model="good_model", rain=True, high_c=26.0 - bias - wobble, low_c=18.0),
+            ModelPrediction(model="poor_model", rain=True, high_c=26.0, low_c=18.0),
+        ])
+    return logs, actuals
+
+
+def test_a_large_bias_on_a_noisy_sample_is_not_yet_real():
+    """1.5 °C over the 1.0 floor, on twelve checks that scatter ±6 °C: the
+    mean sits under one standard error from zero. Before item 153 this was
+    published as a systematic bias; a constant cannot tell it from scatter."""
+    logs, actuals = _history_with_spread(12, bias=1.5, spread=6.0)
+    review = review_of(logs, actuals)
+    assert not [f for f in review.findings if f.kind in ("bias", "tendency") and "good_model" in f.claim]
+
+
+def test_a_small_bias_on_a_tight_sample_is_a_tendency():
+    """0.5 °C is under the floor a reader would notice and eight standard
+    errors from zero: real, small, and said so — the eleven cells the
+    2026-09-17 measurement found hidden behind the floor."""
+    logs, actuals = _history_with_spread(12, bias=0.5, spread=0.2)
+    review = review_of(logs, actuals)
+    found = [f for f in review.findings if f.kind == "tendency" and "good_model" in f.claim]
+    assert len(found) == 1
+    assert "slightly under-forecasts daytime highs" in found[0].claim
+    assert "standard errors from zero" in found[0].evidence
+    assert "across 12 checks" in found[0].evidence
+    assert not [f for f in review.findings if f.kind == "bias" and "good_model" in f.claim]
+
+
+def test_a_real_bias_over_the_floor_says_how_real():
+    logs, actuals = _history_with_spread(12, bias=2.0, spread=1.0)
+    review = review_of(logs, actuals)
+    found = [f for f in review.findings if f.kind == "bias" and "good_model" in f.claim]
+    assert len(found) == 1
+    assert "systematically under-forecasts daytime highs" in found[0].claim
+    assert "standard errors from zero" in found[0].evidence
+
+
+def test_a_constant_bias_keeps_its_old_evidence_string():
+    """Every existing vector case has a constant bias, so its spread is zero
+    and there is no standard error to quote. The evidence must read exactly
+    as before, or the contract re-bases on wording."""
+    logs, actuals = build_history(12, 12, 12, high_bias=2.0)
+    review = review_of(logs, actuals)
+    found = [f for f in review.findings if f.kind == "bias" and "good_model" in f.claim]
+    assert len(found) == 1
+    assert found[0].evidence == "Mean error +2.0°C across 12 checks."
+
+
+def test_the_cell_carries_the_spread_of_each_gated_field():
+    logs, actuals = _history_with_spread(12, bias=0.5, spread=0.2)
+    review = review_of(logs, actuals)
+    cell = next(c for c in review.cells if c.model == "good_model")
+    assert cell.sd_high_error_c == pytest.approx(0.2 * (12 / 11) ** 0.5)
+    assert cell.sd_low_error_c == pytest.approx(0.0)
+    assert cell.sd_wind_error_kmh is None

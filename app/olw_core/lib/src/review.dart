@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'dart:math' as math;
+
 import 'baselines.dart';
 import 'brier.dart';
+
 import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
@@ -53,6 +56,10 @@ class SkillCell {
     required this.meanMslpErrorHpa,
     required this.meanCloudErrorPct,
     this.meanPrecipErrorMm,
+    this.sdHighErrorC,
+    this.sdLowErrorC,
+    this.sdWindErrorKmh,
+    this.sdCloudErrorPct,
     required this.cloudChecks,
     required this.stormDays,
     required this.stormsCalled,
@@ -82,6 +89,12 @@ class SkillCell {
   /// Item 157. Averaged into the cell and not gated into a finding — item
   /// 153's two-gate question first.
   final double? meanPrecipErrorMm;
+  /// Item 153. The n-1 spread of each gated field's per-check errors, so the
+  /// "is it real" gate can compare the mean with its own standard error.
+  final double? sdHighErrorC;
+  final double? sdLowErrorC;
+  final double? sdWindErrorKmh;
+  final double? sdCloudErrorPct;
 
   /// How many of [checks] said anything about the sky. Separate for the same
   /// reason [brierChecks] is, and more sharply: cloudCoverPct started on
@@ -309,6 +322,10 @@ WeeklyReview buildWeeklyReview({
         meanMslpErrorHpa: mean([for (final e in scored) e.value.mslpErrorHpa]),
         meanCloudErrorPct: mean([for (final e in scored) e.value.cloudErrorPct]),
         meanPrecipErrorMm: mean([for (final e in scored) e.value.precipErrorMm]),
+        sdHighErrorC: sampleSd([for (final e in scored) e.value.highErrorC]),
+        sdLowErrorC: sampleSd([for (final e in scored) e.value.lowErrorC]),
+        sdWindErrorKmh: sampleSd([for (final e in scored) e.value.windErrorKmh]),
+        sdCloudErrorPct: sampleSd([for (final e in scored) e.value.cloudErrorPct]),
         cloudChecks: scored.where((e) => e.value.cloudErrorPct != null).length,
         stormDays: scored
             .where((e) =>
@@ -353,6 +370,15 @@ WeeklyReview buildWeeklyReview({
 }
 
 String _fmtPct(double v) => roundLikePython(v, 0).toStringAsFixed(0);
+
+String _fmt1(double v) => (roundLikePython(v, 1) + 0.0).toStringAsFixed(1);
+
+/// |mean| in units of its own standard error, or null with no spread to
+/// build one from — a constant error, or too few checks. Item 153.
+double? _standardErrorsFromZero(double value, double? spread, int n) {
+  if (spread == null || spread == 0) return null;
+  return value.abs() / (spread / math.sqrt(n));
+}
 
 String _fmtSigned(double v) {
   final rounded = roundLikePython(v, 1) + 0.0;
@@ -470,24 +496,39 @@ List<Finding> _deriveFindings(
       // old as the cell, so `c.checks` described them all. Cloud broke that
       // on 2026-09-10 by arriving months late, and a mean over three days
       // was about to be published "across 30 checks".
-      final candidates = <(double?, double, String, String, int)>[
-        (c.meanHighErrorC, reviewTempBiasThresholdC, 'daytime highs', '°C', c.checks),
-        (c.meanLowErrorC, reviewTempBiasThresholdC, 'overnight lows', '°C', c.checks),
-        (c.meanWindErrorKmh, reviewWindBiasThresholdKmh, 'peak wind', ' km/h', c.checks),
-        (c.meanCloudErrorPct, reviewCloudBiasThresholdPct, 'cloud cover', ' points',
-            c.cloudChecks),
+      // TWO GATES — upstream ROADMAP item 153. "Is it real" compares the
+      // mean with its own standard error; "is it worth saying" is the
+      // constant. Real and under the floor is a `tendency`, worded as slight.
+      final candidates = <(double?, double?, double, String, String, int)>[
+        (c.meanHighErrorC, c.sdHighErrorC, reviewTempBiasThresholdC, 'daytime highs', '°C',
+            c.checks),
+        (c.meanLowErrorC, c.sdLowErrorC, reviewTempBiasThresholdC, 'overnight lows', '°C',
+            c.checks),
+        (c.meanWindErrorKmh, c.sdWindErrorKmh, reviewWindBiasThresholdKmh, 'peak wind', ' km/h',
+            c.checks),
+        (c.meanCloudErrorPct, c.sdCloudErrorPct, reviewCloudBiasThresholdPct, 'cloud cover',
+            ' points', c.cloudChecks),
       ];
-      for (final (value, threshold, label, unit, n) in candidates) {
-        if (value == null || value.abs() < threshold) continue;
+      for (final (value, spread, threshold, label, unit, n) in candidates) {
         // The floor applies to the FIELD's evidence, not the row's.
-        if (n < reviewMinChecksForComparison) continue;
+        if (value == null || value == 0 || n < reviewMinChecksForComparison) continue;
+        final standardErrors = _standardErrorsFromZero(value, spread, n);
+        if (standardErrors != null && standardErrors < reviewBiasMinStandardErrors) continue;
         // Errors are actual - predicted, so a positive mean means the model
         // came in UNDER what actually happened.
         final direction = value > 0 ? 'under-forecasts' : 'over-forecasts';
+        var evidence = 'Mean error ${_fmtSigned(value)}$unit across $n checks';
+        // A constant error has no spread and no standard error to quote.
+        if (standardErrors != null) {
+          evidence += ', ${_fmt1(standardErrors)} standard errors from zero';
+        }
+        final notable = value.abs() >= threshold;
         findings.add(Finding(
-          kind: 'bias',
-          claim: 'At Day+$k, ${c.model} systematically $direction $label here.',
-          evidence: 'Mean error ${_fmtSigned(value)}$unit across $n checks.',
+          kind: notable ? 'bias' : 'tendency',
+          claim: notable
+              ? 'At Day+$k, ${c.model} systematically $direction $label here.'
+              : 'At Day+$k, ${c.model} slightly $direction $label here.',
+          evidence: '$evidence.',
           // Derived from THIS field's count, so a three-day sky cannot
           // inherit a thirty-day row's "established".
           confidence: confidenceFor(n),

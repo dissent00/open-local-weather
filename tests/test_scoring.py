@@ -725,3 +725,24 @@ def test_rolling_window_carries_the_mean_precip_error():
         log_lookup=lambda d: logs.get(d), actuals=actuals,
     )
     assert result.precip_err == pytest.approx(((0.4 - 8.0) + (3.0 - 0.0) + 0.0) / 3)
+
+
+# ---------------------------------------------------------------------------
+# sample_sd — the spread the review's real gate needs, ROADMAP item 153
+# ---------------------------------------------------------------------------
+
+
+def test_sample_sd_is_the_n_minus_one_spread_and_skips_none():
+    from openlocalweather.verify.scoring import sample_sd
+
+    assert sample_sd([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]) == pytest.approx(2.138089935)
+    assert sample_sd([1.0, None, 3.0]) == pytest.approx(1.4142135624)
+
+
+def test_sample_sd_needs_two_values_and_is_zero_for_a_constant():
+    from openlocalweather.verify.scoring import sample_sd
+
+    assert sample_sd([]) is None
+    assert sample_sd([5.0]) is None
+    assert sample_sd([None, None]) is None
+    assert sample_sd([1.5, 1.5, 1.5]) == 0.0

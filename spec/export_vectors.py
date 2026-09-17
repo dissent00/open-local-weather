@@ -1497,10 +1497,14 @@ def export_weekly_review() -> None:
     today = date(2026, 8, 21)
 
     def build(days: int, alpha_hits: int, beta_hits: int, alpha_high_bias: float = 0.0,
-              alpha_cloud_bias: float | None = None):
+              alpha_cloud_bias: float | None = None, alpha_high_spread: float = 0.0):
         logs, actuals = {}, {}
         for i in range(days):
             d = today - timedelta(days=i + 1)
+            # Item 153: ±spread on alternating days, so the mean stays the
+            # bias and the sample spread is about `alpha_high_spread`. Zero,
+            # the default, keeps every older case byte-identical.
+            wobble = alpha_high_spread if i % 2 == 0 else -alpha_high_spread
             actuals[d] = DailyActual(
                 rain=True, high_c=26.0, low_c=18.0, peak_wind_kmh=20.0, mslp_trend=-1.0,
                 # None unless a case asks for cloud, so every case written
@@ -1514,7 +1518,7 @@ def export_weekly_review() -> None:
                 narrative_markdown="n",
                 model_predictions=ModelPredictionsByLead(day0=[
                     ModelPrediction(model="alpha", rain=(i < alpha_hits),
-                                    high_c=26.0 - alpha_high_bias, low_c=18.0,
+                                    high_c=26.0 - alpha_high_bias - wobble, low_c=18.0,
                                     cloud_cover_pct=(None if alpha_cloud_bias is None
                                                      else 60.0 - alpha_cloud_bias)),
                     ModelPrediction(model="beta", rain=(i < beta_hits), high_c=26.0, low_c=18.0,
@@ -1571,6 +1575,10 @@ def export_weekly_review() -> None:
                         "mean_mslp_error_hpa": c.mean_mslp_error_hpa,
                         "mean_cloud_error_pct": c.mean_cloud_error_pct,
                         "mean_precip_error_mm": c.mean_precip_error_mm,
+                        "sd_high_error_c": c.sd_high_error_c,
+                        "sd_low_error_c": c.sd_low_error_c,
+                        "sd_wind_error_kmh": c.sd_wind_error_kmh,
+                        "sd_cloud_error_pct": c.sd_cloud_error_pct,
                         "cloud_checks": c.cloud_checks,
                         "storm_days": c.storm_days,
                         "storms_called": c.storms_called,
@@ -1641,8 +1649,8 @@ def export_weekly_review() -> None:
         return _review_vector_case(name, logs, actuals, models_here, review)
 
     def case(name: str, days: int, a: int, b: int, bias: float = 0.0,
-             cloud_bias: float | None = None):
-        logs, actuals = build(days, a, b, bias, cloud_bias)
+             cloud_bias: float | None = None, spread: float = 0.0):
+        logs, actuals = build(days, a, b, bias, cloud_bias, spread)
         review = build_weekly_review(
             log_lookup=lambda d: logs.get(d),
             actuals=actuals,
@@ -1992,6 +2000,14 @@ def export_weekly_review() -> None:
         "sufficient one must produce the same ranking, or the app and the "
         "pipeline would publish different claims from identical data.",
         [
+            # ROADMAP item 153 — two gates. The same 12 checks three ways:
+            # a bias over the floor on a noisy sample is not yet real and is
+            # withheld; a bias under the floor on a tight sample is real and
+            # becomes a `tendency`; a real bias over the floor now says how
+            # many standard errors it stands from zero.
+            case("a large bias on a noisy sample is not yet real", 12, 12, 12, bias=1.5, spread=6.0),
+            case("a small bias on a tight sample is a tendency", 12, 12, 12, bias=0.5, spread=0.2),
+            case("a real bias over the floor says how real", 12, 12, 12, bias=2.0, spread=1.0),
             case("8 checks — a large apparent gap must still yield no ranking", 8, 8, 2),
             case("30 checks — a real gap is ranked", 30, 27, 9),
             case("24 checks — percentage ties round half-even", 24, 3, 0),

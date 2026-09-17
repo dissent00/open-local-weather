@@ -153,6 +153,12 @@ const double reviewComparisonMinGapPct = 15.0;
 const double reviewTempBiasThresholdC = 1.0;
 const double reviewWindBiasThresholdKmh = 8.0;
 
+/// Upstream ROADMAP item 153's first gate, "is it real": how many of its own
+/// standard errors a mean error must sit from zero before it is a finding.
+/// The thresholds above are the second gate, "is it worth saying". Sized
+/// against the record on 2026-09-17; see the Python constant.
+const double reviewBiasMinStandardErrors = 2.0;
+
 /// Mean signed cloud error large enough to call a systematic bias.
 ///
 /// Cloud is the noisiest field in this record by a wide margin. Measured

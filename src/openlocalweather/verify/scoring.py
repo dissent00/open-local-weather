@@ -12,6 +12,8 @@ KisumuForecastPipeline_v2.gs field-for-field.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable
@@ -348,6 +350,35 @@ def predictions_by_model(entry: DailyLogEntry, lead_time_days: int) -> dict[str,
 def mean(values: list[float | None]) -> float | None:
     present = [v for v in values if v is not None]
     return sum(present) / len(present) if present else None
+
+
+def sample_sd(values: list[float | None]) -> float | None:
+    """The n-1 spread of the present values, or None below two of them.
+
+    ROADMAP item 153: the review's "is it real" gate compares a mean with its
+    own standard error, and this is the spread that error is built from.
+    WRITTEN AS PLAIN LOOPS ON PURPOSE, not `statistics.stdev`: the Dart port
+    does the same additions in the same order, so the two agree to the bit
+    rather than to a tolerance, and a gate that compares against the result
+    cannot flip on one side only. Swept against the port before shipping.
+    """
+    present = [v for v in values if v is not None]
+    if len(present) < 2:
+        return None
+
+    total = 0.0
+    for v in present:
+        total += v
+    centre = total / len(present)
+
+    squares = 0.0
+    for v in present:
+        squares += (v - centre) * (v - centre)
+
+    # math.sqrt, not `** 0.5`: the power goes through pow() and is not
+    # correctly rounded — swept 2026-09-17, 5 of 3077 values differed from
+    # the port in the last bit until this was sqrt on both sides.
+    return math.sqrt(squares / (len(present) - 1))
 
 
 @dataclass

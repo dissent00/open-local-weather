@@ -423,6 +423,20 @@ REVIEW_WIND_BIAS_THRESHOLD_KMH = 8.0
 # here is one whose sky is a different sky, not a shade of the same one.
 REVIEW_CLOUD_BIAS_THRESHOLD_PCT = 15.0
 
+# How many of its own standard errors a mean error must sit from zero before
+# it is a finding at all — ROADMAP item 153's first gate, "is it real". The
+# three constants above are the second, "is it worth saying", and answer a
+# different question; neither replaces the other.
+#
+# SIZED AGAINST THE RECORD, 2026-09-17. Every bias finding published that day
+# also cleared two standard errors, the weakest at 2.2 (kenya_met Day+3
+# highs, 16 checks), so this gate withholds nothing that was being published
+# and tightens only as the spread demands. In the other direction it lets
+# eleven cells on real models that sit under the perceptual floor be stated
+# as what they are — real and small — rather than as nothing: gfs Day+0
+# highs at -0.9 C over 37 checks and 4.1 standard errors among them.
+REVIEW_BIAS_MIN_STANDARD_ERRORS = 2.0
+
 # How many observed thunderstorm days a model must have been offered before
 # "it misses storms here" is a claim rather than an anecdote, and the share
 # of them it must miss.

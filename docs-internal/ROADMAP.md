@@ -22234,7 +22234,7 @@ side, unwatched), 45 (the `gust`/`p01i` exclusions and their sample), 150
 
 ---
 
-## 153. The review's bias gate asks "is it big?" where the evidence question is "is it real?" · **Raised 2026-09-16**
+## 153. The review's bias gate asks "is it big?" where the evidence question is "is it real?" · **SHIPPED 2026-09-17 — two gates, and a `tendency` for real-but-small**
 
 The operator, on watching a Haiku run decline to characterise a model because
 the review had published no finding for it:
@@ -22325,6 +22325,51 @@ differentiator), 100 (thresholds sized against the record), 145 (the same
 two-questions-one-number confusion, in the reporting bands), and `review.py`'s
 header on gating.
 
+### Shipped 2026-09-17 — two gates, measured first
+
+**Measured before designing, over the whole record with the per-check
+spread.** Every bias finding published that day also cleared two standard
+errors, the weakest at 2.2 (kenya_met Day+3 highs, 16 checks) — so a
+statistical gate withholds nothing that was being published, and its value
+is prospective, for the day a large mean arrives on a small and noisy
+sample. In the other direction eleven cells on real models were real and
+under the perceptual floor, the two item 149 measured the summaries
+drifting on among them: gfs Day+0 highs −0.9 °C over 37 checks and 4.1
+standard errors; best_match Day+0 wind +4.3 km/h and 4.1.
+
+**Gate one, is it real.** `SkillCell` carries the n−1 spread of each gated
+field (`sample_sd`, new shared arithmetic, both languages), and a finding
+needs the existing ten checks and a mean at least
+`REVIEW_BIAS_MIN_STANDARD_ERRORS` (2.0) of its own standard errors from
+zero. **Gate two, is it worth saying,** is the three constants, unchanged.
+An effect that clears the first and not the second is a finding of kind
+`tendency`, worded "slightly", with the same evidence and confidence —
+the operator's decision over silence. Evidence now ends ", N standard
+errors from zero" wherever a spread exists; a constant error has none and
+its evidence reads exactly as before, which is what keeps every older
+vector case byte-identical. The narrative prompt's skill-summary
+instruction says what a tendency is and that it is narrated as slight and
+never as a bias.
+
+**Live, on shipping day:** the same 17 bias findings, now with their
+standard errors, and 11 tendencies. Nothing published was lost.
+
+**The arithmetic crosses the boundary and was swept**: 4,000 random lists
+through both `sample_sd` implementations. Five of 3,077 differed in the
+last bit until Python's `** 0.5`, which goes through `pow`, became
+`math.sqrt` like the port; then zero. The standard-error division uses
+`sqrt` on both sides for the same reason. Three vector cases pin the
+gates — noisy-and-large withheld, tight-and-small a tendency, real-and-
+large with its standard errors — and removing the real gate on either side
+fails the first. Driven through the real CLI before and after: the
+narrative prompt's hash and size moved and nothing else. 1340 Python,
+191 Dart.
+
+**Not done, and now only a number away:** item 157's precipitation
+finding. The method question is settled; what it lacks is a perceptual
+floor in millimetres, which is the operator's to set once a wet season has
+given the field weight.
+
 ---
 
 ## 154. One value, two questions — a shape this codebase keeps producing · **Raised 2026-09-16 — a standing check, NOT a batch fix**
@@ -22371,6 +22416,10 @@ drives.
 
 Three instances remain open — 150, 151 and 153 — and they are NOT
 interchangeable despite the shared shape:
+
+> **2026-09-17:** 153 is closed — its shape was a missing METHOD and the
+> fix was two gates, not a second constant, which is what taking it alone
+> was for. 150 and 151 remain.
 
 - **151** is a missing DISTINCTION, and the fix is to report which case
   occurred. Step 1 shipped; the cause is still unknown by design.
@@ -22547,7 +22596,9 @@ and it will read near zero until a wet season puts weight on it.
 **No review finding, deliberately.** Item 153's two-gate question is
 open, and this is the field where a constant threshold is most wrong: one
 storm day moves a ten-check mean by a millimetre on its own. The finding
-comes with 153's answer, not before it.
+comes with 153's answer, not before it. **Later the same day 153 shipped**, so the
+method exists; what the finding still lacks is a perceptual floor in
+millimetres, the operator's number once a wet season has weighted the field.
 
 **Not done here:** the app's accuracy table gains no column — an owed-table
 row in `ensemble`; its stored scores carry the field through the core. No

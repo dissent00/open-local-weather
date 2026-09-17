@@ -3,6 +3,8 @@
 import 'dates.dart';
 import 'brier.dart';
 import 'instability.dart';
+import 'dart:math' as math;
+
 import 'models.dart';
 import 'sums.dart';
 
@@ -98,6 +100,29 @@ double _hourDiff(String predictedHhmm, String actualHhmm) {
 ///
 /// Summed with [compensatedSum] rather than `reduce`, to match Python's
 /// `sum()` exactly — see sums.dart for the measurement that forced it.
+/// The n-1 spread of the present values, or null below two of them — port
+/// of Python's `sample_sd`, upstream ROADMAP item 153. THE SAME ADDITIONS IN
+/// THE SAME ORDER as the Python, so the two agree to the bit rather than to
+/// a tolerance; the review's real gate compares against this and must not
+/// flip on one side only.
+double? sampleSd(List<double?> values) {
+  final present = [for (final v in values) if (v != null) v];
+  if (present.length < 2) return null;
+
+  var total = 0.0;
+  for (final v in present) {
+    total += v;
+  }
+  final centre = total / present.length;
+
+  var squares = 0.0;
+  for (final v in present) {
+    squares += (v - centre) * (v - centre);
+  }
+
+  return math.sqrt(squares / (present.length - 1));
+}
+
 double? mean(List<double?> values) {
   final present = values.whereType<double>().toList();
   if (present.isEmpty) return null;

@@ -27,6 +27,8 @@ error that can propagate forward is an error that never gets corrected.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -42,12 +44,21 @@ from openlocalweather.defaults import (
     REVIEW_TEMP_BIAS_THRESHOLD_C,
     REVIEW_WIND_BIAS_THRESHOLD_KMH,
     REVIEW_CLOUD_BIAS_THRESHOLD_PCT,
+    REVIEW_BIAS_MIN_STANDARD_ERRORS,
     REVIEW_MIN_STORM_DAYS,
     REVIEW_STORM_MISS_THRESHOLD,
 )
 from openlocalweather.models import DailyActual, VerificationScore
 from openlocalweather.verify.brier import brier_skill_score, mean_brier
-from openlocalweather.verify.scoring import LogLookup, collect_scores, mean
+from openlocalweather.verify.scoring import LogLookup, collect_scores, mean, sample_sd
+
+
+def _standard_errors_from_zero(value: float, spread: float | None, n: int) -> float | None:
+    """|mean| in units of its own standard error, or None when there is no
+    spread to build one from — a constant error, or too few checks."""
+    if spread is None or spread == 0:
+        return None
+    return abs(value) / (spread / math.sqrt(n))
 
 
 def confidence_for(checks: int) -> str:
@@ -131,6 +142,13 @@ class SkillCell:
     # constant threshold is most wrong. Defaulted like the Brier fields, and
     # for the same reason: it arrived after the cell had callers.
     mean_precip_error_mm: float | None = None
+    # Item 153. The n-1 spread of each gated field's per-check errors, so
+    # the "is it real" gate can compare the mean with its own standard error.
+    # Defaulted like the fields above them and for the same reason.
+    sd_high_error_c: float | None = None
+    sd_low_error_c: float | None = None
+    sd_wind_error_kmh: float | None = None
+    sd_cloud_error_pct: float | None = None
 
 
 @dataclass
@@ -269,6 +287,10 @@ def build_weekly_review(
                     mean_mslp_error_hpa=mean([s.mslp_error_hpa for _, s in scored]),
                     mean_cloud_error_pct=mean([s.cloud_error_pct for _, s in scored]),
                     mean_precip_error_mm=mean([s.precip_error_mm for _, s in scored]),
+                    sd_high_error_c=sample_sd([s.high_error_c for _, s in scored]),
+                    sd_low_error_c=sample_sd([s.low_error_c for _, s in scored]),
+                    sd_wind_error_kmh=sample_sd([s.wind_error_kmh for _, s in scored]),
+                    sd_cloud_error_pct=sample_sd([s.cloud_error_pct for _, s in scored]),
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
                     mean_rain_brier=briers[model],
@@ -375,25 +397,46 @@ def _derive_findings(
             # be as old as the cell, so `c.checks` described them all. Cloud
             # broke that on 2026-09-10 by arriving months late, and a mean
             # over three days was about to be published "across 30 checks".
-            for value, threshold, label, unit, n in (
-                (c.mean_high_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "daytime highs", "°C", c.checks),
-                (c.mean_low_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C, "overnight lows", "°C", c.checks),
-                (c.mean_wind_error_kmh, REVIEW_WIND_BIAS_THRESHOLD_KMH, "peak wind", " km/h", c.checks),
-                (c.mean_cloud_error_pct, REVIEW_CLOUD_BIAS_THRESHOLD_PCT, "cloud cover", " points",
-                 c.cloud_checks),
+            # TWO GATES — ROADMAP item 153. "Is it real" compares the mean
+            # with its own standard error and tightens as the spread demands;
+            # "is it worth saying" is the constant, which answers a different
+            # question and stays. An effect that is real and under the floor
+            # is stated as what it is, a `tendency`, worded as slight — the
+            # operator's decision 2026-09-17 over silence — so a -0.9 C over
+            # 37 checks is no longer "no findings established".
+            for value, spread, threshold, label, unit, n in (
+                (c.mean_high_error_c, c.sd_high_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C,
+                 "daytime highs", "°C", c.checks),
+                (c.mean_low_error_c, c.sd_low_error_c, REVIEW_TEMP_BIAS_THRESHOLD_C,
+                 "overnight lows", "°C", c.checks),
+                (c.mean_wind_error_kmh, c.sd_wind_error_kmh, REVIEW_WIND_BIAS_THRESHOLD_KMH,
+                 "peak wind", " km/h", c.checks),
+                (c.mean_cloud_error_pct, c.sd_cloud_error_pct, REVIEW_CLOUD_BIAS_THRESHOLD_PCT,
+                 "cloud cover", " points", c.cloud_checks),
             ):
-                if value is None or abs(value) < threshold:
-                    continue
                 # The floor applies to the FIELD's evidence, not the row's.
-                if n < REVIEW_MIN_CHECKS_FOR_COMPARISON:
+                if value is None or value == 0 or n < REVIEW_MIN_CHECKS_FOR_COMPARISON:
+                    continue
+                standard_errors = _standard_errors_from_zero(value, spread, n)
+                if standard_errors is not None and standard_errors < REVIEW_BIAS_MIN_STANDARD_ERRORS:
                     continue
                 # Errors are actual - predicted, so a positive mean means the
                 # model came in UNDER what actually happened.
                 direction = "under-forecasts" if value > 0 else "over-forecasts"
+                evidence = f"Mean error {value:+.1f}{unit} across {n} checks"
+                # A constant error has no spread and no standard error to
+                # quote; its evidence reads exactly as it did before item 153.
+                if standard_errors is not None:
+                    evidence += f", {standard_errors:.1f} standard errors from zero"
+                notable = abs(value) >= threshold
                 findings.append(Finding(
-                    kind="bias",
-                    claim=f"At Day+{k}, {c.model} systematically {direction} {label} here.",
-                    evidence=f"Mean error {value:+.1f}{unit} across {n} checks.",
+                    kind="bias" if notable else "tendency",
+                    claim=(
+                        f"At Day+{k}, {c.model} systematically {direction} {label} here."
+                        if notable
+                        else f"At Day+{k}, {c.model} slightly {direction} {label} here."
+                    ),
+                    evidence=evidence + ".",
                     # Derived from THIS field's count, so a three-day sky
                     # cannot inherit a thirty-day row's "established".
                     confidence=confidence_for(n),

@@ -937,6 +937,10 @@ void main() {
           expect(got.meanMslpErrorHpa, equals(want['mean_mslp_error_hpa']), reason: reason);
           expect(got.meanCloudErrorPct, equals(want['mean_cloud_error_pct']), reason: reason);
           expect(got.meanPrecipErrorMm, equals(want['mean_precip_error_mm']), reason: reason);
+          // Item 153: the spread is new shared arithmetic, compared exactly —
+          // the real gate divides by it and must not flip on one side only.
+          expect(got.sdHighErrorC, equals(want['sd_high_error_c']), reason: reason);
+          expect(got.sdWindErrorKmh, equals(want['sd_wind_error_kmh']), reason: reason);
           expect(got.stormDays, equals(want['storm_days']),
               reason: '$reason — the storm count conditions on days the '
                   'station observed thunder, and a port that counted all '
