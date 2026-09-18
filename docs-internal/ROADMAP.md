@@ -22290,8 +22290,36 @@ nothing else.
 
 **Cloud is the one field that is neither cumulative nor current** — a
 mean over the day's reports so far — and with the reach stated it reads
-correctly. **Not done:** the fallback to stored rows on a failed fetch,
-step 3, which the reach now makes safe to build.
+correctly.
+
+### The fallback SHIPPED 2026-09-18 — stored rows when the archive fails, declared
+
+Step 3, the last of the three. When the fetch fails and the store holds
+any of the range, `_station_rows` returns the stored rows and tells the
+caller the archive's reason through `on_fallback`; with no store, or
+nothing stored, the failure propagates exactly as before, and a
+successful fetch never reports one. Each reader says what it did: the
+same-day snapshot goes out WITH a new degradation,
+`station_readings_stored`, whose summary carries the reach ("...used the
+reports stored by earlier runs today, through 05:45") and whose detail
+carries the archive's sentence — an observation beside a degradation,
+never instead of one; the day overlay, the window scorer and
+`rebuild-record` print the reason and carry on with the stored rows.
+`check_recent_degradations` is generic over codes, so the weekly check
+will list it.
+
+So tonight's 18:01 run, if the archive fails again, forecasts against the
+morning's rows through about 05:45 and says so, where 09-17's said
+nothing at all. And the reason it stores is the diagnosis this item has
+waited on since 09-16.
+
+Proved against the real store built that morning with the archive pointed
+at a closed port: the 09-18 rows came back from disk with their reach
+and the reason read "request failed: ConnectionError"; a day the store
+does not hold still raised. Driven through the real CLI before and after,
+controls and comparison byte-identical — the drive's station stub cannot
+fail, so the fallback is proved by the live run and five tests, not by
+the drive. 1399 tests. Python only; no re-pin.
 
 
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch

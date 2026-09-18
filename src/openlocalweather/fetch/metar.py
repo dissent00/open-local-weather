@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import csv
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -528,13 +528,35 @@ def fetch_metar_archive_rows(
 
 
 def _station_rows(
-    icao: str, start: date, end: date, data_dir: str | Path | None
+    icao: str,
+    start: date,
+    end: date,
+    data_dir: str | Path | None,
+    on_fallback: Callable[[str], None] | None = None,
 ) -> list[Sequence[str]] | None:
     """The archive's rows for `start..end`, merged into and read back from
-    the store when there is one. The fetch's failure propagates as
-    ArchiveUnavailable; falling back to the stored rows is a later step
-    (item 151), because a fallback needs the reach stated beside it."""
-    rows = fetch_metar_archive_rows(icao, start, end)
+    the store when there is one.
+
+    THE FALLBACK — ROADMAP item 151, step 3. When the fetch fails and the
+    store holds any of the range, the stored rows are returned and
+    `on_fallback` is told the archive's reason, so the caller can say beside
+    the observation that it came from earlier runs and how far it reaches.
+    Built only once the reach existed, because stored rows presented as
+    current would have shown the morning as the day. With no store, or
+    nothing stored, the failure propagates exactly as before.
+    """
+    try:
+        rows = fetch_metar_archive_rows(icao, start, end)
+    except ArchiveUnavailable as failure:
+        if data_dir is None:
+            raise
+        stored = station_store.read_rows(data_dir, icao, start, end)
+        if stored is None:
+            raise
+        if on_fallback is not None:
+            on_fallback(str(failure))
+        return stored
+
     if rows is None or data_dir is None:
         return rows
 
@@ -543,7 +565,11 @@ def _station_rows(
 
 
 def station_reports(
-    icao: str, start: date, end: date, data_dir: str | Path | None = None
+    icao: str,
+    start: date,
+    end: date,
+    data_dir: str | Path | None = None,
+    on_fallback: Callable[[str], None] | None = None,
 ) -> list[tuple[datetime, str]] | None:
     """Raw (UTC observation time, report text) pairs over `start..end`
     inclusive, through the store like observed_station_data — the window
@@ -552,7 +578,7 @@ def station_reports(
     if not icao:
         return None
 
-    rows = _station_rows(icao, start, end, data_dir)
+    rows = _station_rows(icao, start, end, data_dir, on_fallback)
     if rows is None:
         return None
 
@@ -568,7 +594,12 @@ def station_reports(
 
 
 def observed_station_data(
-    icao: str, start: date, end: date, timezone_name: str, data_dir: str | Path | None = None
+    icao: str,
+    start: date,
+    end: date,
+    timezone_name: str,
+    data_dir: str | Path | None = None,
+    on_fallback: Callable[[str], None] | None = None,
 ) -> tuple[dict[date, StationWeather] | None, dict[date, StationReadings] | None]:
     """Everything one station has to say about a range, from ONE fetch.
 
@@ -582,12 +613,15 @@ def observed_station_data(
     union of every fetch so far, so a row the archive has since dropped is
     still counted and the record can recompute what was derived from it.
     Every reader in the pipeline passes it; a test walks the callers.
+    `on_fallback` hears the archive's reason when the rows came from the
+    store because the fetch failed — see `_station_rows`.
     """
     rows = _station_rows(
         icao,
         start - timedelta(days=ARCHIVE_PADDING_DAYS),
         end + timedelta(days=ARCHIVE_PADDING_DAYS),
         data_dir,
+        on_fallback,
     )
     if rows is None:
         return None, None

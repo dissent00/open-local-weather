@@ -1382,6 +1382,10 @@ def _run_rebuild_record(args) -> int:
         weather_by_date, readings_by_date = metar_fetch.observed_station_data(
             location.metar_station_icao, min(actuals), max(actuals), location.timezone,
             data_dir=data_dir,
+            on_fallback=lambda reason: print(
+                f"Station archive gave no usable answer ({reason}); rebuilding from the stored reports.",
+                file=sys.stderr,
+            ),
         )
     except metar_fetch.ArchiveUnavailable as e:
         print(f"Station archive gave no usable answer ({e}).", file=sys.stderr)

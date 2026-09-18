@@ -1909,7 +1909,7 @@ def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
             {d: StationWeather(thunder=True, precipitation=False) for d in (start, end)},
             None,
         ),
@@ -2476,7 +2476,7 @@ def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypa
     failure path and airport_metar is never persisted, so the record could not
     say whether the station was consulted."""
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None: ({}, None)
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -2496,7 +2496,7 @@ def test_no_station_configured_is_a_state_not_a_degradation(tmp_path):
 
 def test_a_station_that_answered_is_not_a_degradation(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None: ({}, None)
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -3343,7 +3343,7 @@ def test_a_station_that_answers_and_agrees_records_an_EMPTY_list(tmp_path, monke
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
             {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
             None,
         ),
@@ -3370,7 +3370,7 @@ def test_rain_seen_while_the_standing_call_said_dry_is_recorded(tmp_path, monkey
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
             {
                 d: StationWeather(thunder=False, precipitation=raining["now"])
                 for d in (start, end)
@@ -3462,7 +3462,7 @@ def _station_seeing(raining: dict):
     has no dry call to update — see the disagreement test above, which had to
     learn the same thing.
     """
-    return lambda icao, start, end, tz, data_dir=None: (
+    return lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
         {d: StationWeather(thunder=False, precipitation=raining["now"], reported_through="05:45") for d in (start, end)},
         None,
     )
@@ -3684,7 +3684,7 @@ def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypat
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
             {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
             {d: StationReadings(high_c=31.8, low_c=19.4, peak_wind_kmh=24.0) for d in (start, end)},
         ),
@@ -3885,6 +3885,61 @@ def test_a_failed_archive_request_records_what_the_server_said(monkeypatch, tmp_
     assert "HTTP 503" in gap.detail
     assert "<html>" in gap.detail
     assert "succeeded" not in gap.detail
+
+
+def test_a_fallback_to_stored_reports_is_used_and_declared(monkeypatch, tmp_path):
+    """ROADMAP item 151, step 3. The archive failed but the store held the
+    morning's rows: the forecast gets the observation, with its reach, AND a
+    degradation that names the archive's reason — never the observation
+    alone, which would present five o'clock as the day."""
+    from openlocalweather.config import load_location_config
+    from openlocalweather.fetch.metar import StationReadings, StationWeather
+    from openlocalweather.models import DEGRADATION_STATION_STORED
+    from openlocalweather.pipeline import _observed_so_far
+    from openlocalweather.fetch import metar as metar_fetch
+
+    location = load_location_config("config/location.yaml")
+    today = date(2026, 9, 17)
+
+    def from_the_store(icao, start, end, tz, data_dir=None, on_fallback=None):
+        on_fallback("HTTP 503; first line: '<html>'")
+        return (
+            {today: StationWeather(thunder=False, precipitation=False, reported_through="05:45")},
+            {today: StationReadings(high_c=21.0, low_c=20.0, peak_wind_kmh=5.56)},
+        )
+
+    monkeypatch.setattr(metar_fetch, "observed_station_data", from_the_store)
+    observed, gap = _observed_so_far(location, today, tmp_path)
+
+    assert observed is not None and observed.high_c == 21.0
+    assert observed.reported_through == "05:45"
+    assert gap is not None and gap.code == DEGRADATION_STATION_STORED
+    assert "05:45" in gap.summary
+    assert "HTTP 503" in gap.detail
+
+
+def test_a_forecast_carries_both_the_stored_observation_and_its_degradation(tmp_path, monkeypatch):
+    from openlocalweather.fetch.metar import StationReadings, StationWeather
+    from openlocalweather.models import DEGRADATION_STATION_STORED
+
+    today = date(2026, 8, 11)
+
+    def from_the_store(icao, start, end, tz, data_dir=None, on_fallback=None):
+        if on_fallback is not None:
+            on_fallback("HTTP 503")
+        return (
+            {d: StationWeather(thunder=False, precipitation=True, reported_through="05:45") for d in (start, end)},
+            {d: StationReadings(high_c=21.0, low_c=20.0, peak_wind_kmh=5.56) for d in (start, end)},
+        )
+
+    monkeypatch.setattr(pipeline.metar_fetch, "observed_station_data", from_the_store)
+    issue(_with_station(tmp_path), today=today, dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, today)
+    assert entry.observed_so_far.precipitation is True
+    assert entry.observed_so_far.reported_through == "05:45"
+    # Beside the fixture's own metar_unavailable, not instead of it.
+    assert DEGRADATION_STATION_STORED in [d.code for d in entry.meta.degradations]
 
 
 def test_no_station_configured_is_not_a_degradation(tmp_path):

@@ -948,6 +948,12 @@ DEGRADATION_METAR = "metar_unavailable"
 # 2026-09-16 the first succeeded and the second returned nothing, which is why
 # the run recorded no degradation at all while three features sat inert.
 DEGRADATION_STATION_READINGS = "station_readings_unavailable"
+# The archive failed but the store held the day — ROADMAP item 151, step 3.
+# The forecast USED the stored reports, so this is a degradation with an
+# observation beside it rather than instead of one: the reader is told how
+# far those reports reach, because the alternative, the observation alone,
+# would present five o'clock as the day.
+DEGRADATION_STATION_STORED = "station_readings_stored"
 DEGRADATION_SYNOPTIC = "synoptic_unavailable"
 # ROADMAP items 51 and 79. The seven-day outlook failing used to abort the
 # whole run: on 2026-09-09 `forecast_days=8` read-timed out three times and

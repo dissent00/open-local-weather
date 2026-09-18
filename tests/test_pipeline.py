@@ -518,7 +518,7 @@ def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch, tm
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (seen.update(icao=icao, start=start, end=end, tz=tz) or None, None)
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (seen.update(icao=icao, start=start, end=end, tz=tz) or None, None)
     )
     pipeline._apply_station_observations(two_days(), thunder_location(), tmp_path)
     assert seen == {"icao": "HKKI", "start": AUG_24, "end": AUG_25, "tz": "Africa/Nairobi"}

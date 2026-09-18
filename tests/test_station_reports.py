@@ -195,3 +195,82 @@ def test_every_production_reader_goes_through_the_store():
             if not any(k.arg == "data_dir" for k in node.keywords):
                 missing.append(f"{path.name}:{node.lineno} {name}")
     assert not missing, f"readers that bypass the store: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# The fallback — item 151, step 3. A fetch that fails no longer leaves the
+# reader with nothing when the store holds the range: the stored rows are
+# read, and the caller is told the archive's reason so it can say so beside
+# the reach. Without a store, or with nothing stored, the failure propagates
+# exactly as before.
+# ---------------------------------------------------------------------------
+
+
+def test_a_failed_fetch_falls_back_to_the_stored_rows_and_says_why(tmp_path):
+    import requests_mock
+
+    from openlocalweather.fetch.metar import METAR_ARCHIVE_URL, observed_station_data
+
+    reasons: list[str] = []
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=_archive_csv(ROW_A, ROW_B))
+        observed_station_data("HKKI", date(2026, 9, 17), date(2026, 9, 17), "Africa/Nairobi", data_dir=tmp_path)
+
+        m.get(METAR_ARCHIVE_URL, status_code=503, text="Service Unavailable")
+        weather, readings = observed_station_data(
+            "HKKI", date(2026, 9, 17), date(2026, 9, 17), "Africa/Nairobi",
+            data_dir=tmp_path, on_fallback=reasons.append,
+        )
+
+    assert readings[date(2026, 9, 17)].peak_wind_kmh == pytest.approx(4 * 1.852, abs=0.01)
+    assert weather[date(2026, 9, 17)].reported_through == "04:00"
+    assert len(reasons) == 1 and "HTTP 503" in reasons[0]
+
+
+def test_a_failed_fetch_with_nothing_stored_still_raises(tmp_path):
+    import requests_mock
+
+    from openlocalweather.fetch.metar import ArchiveUnavailable, METAR_ARCHIVE_URL, observed_station_data
+
+    reasons: list[str] = []
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, status_code=503, text="Service Unavailable")
+        with pytest.raises(ArchiveUnavailable):
+            observed_station_data(
+                "HKKI", date(2026, 9, 17), date(2026, 9, 17), "Africa/Nairobi",
+                data_dir=tmp_path, on_fallback=reasons.append,
+            )
+    assert reasons == []
+
+
+def test_a_successful_fetch_never_reports_a_fallback(tmp_path):
+    import requests_mock
+
+    from openlocalweather.fetch.metar import METAR_ARCHIVE_URL, observed_station_data
+
+    reasons: list[str] = []
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=_archive_csv(ROW_A))
+        observed_station_data(
+            "HKKI", date(2026, 9, 17), date(2026, 9, 17), "Africa/Nairobi",
+            data_dir=tmp_path, on_fallback=reasons.append,
+        )
+    assert reasons == []
+
+
+def test_the_window_reports_fall_back_the_same_way(tmp_path):
+    import requests_mock
+
+    from openlocalweather.fetch.metar import METAR_ARCHIVE_URL, station_reports
+
+    reasons: list[str] = []
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=_archive_csv(ROW_A))
+        station_reports("HKKI", date(2026, 9, 17), date(2026, 9, 17), data_dir=tmp_path)
+        m.get(METAR_ARCHIVE_URL, exc=__import__("requests").exceptions.ConnectTimeout("slow"))
+        reports = station_reports(
+            "HKKI", date(2026, 9, 17), date(2026, 9, 17), data_dir=tmp_path, on_fallback=reasons.append
+        )
+
+    assert [r[1] for r in reports] == [ROW_A[2]]
+    assert len(reasons) == 1 and "ConnectTimeout" in reasons[0]

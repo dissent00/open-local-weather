@@ -195,6 +195,7 @@ from openlocalweather.models import (
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
     DEGRADATION_STATION_READINGS,
+    DEGRADATION_STATION_STORED,
     DEGRADATION_SYNOPTIC,
     SOURCE_STATION,
     DEGRADATION_SUN_TIMES,
@@ -1098,6 +1099,10 @@ def _apply_station_observations(
         weather_by_date, readings_by_date = metar_fetch.observed_station_data(
             location.metar_station_icao, min(actuals), max(actuals), location.timezone,
             data_dir=data_dir,
+            on_fallback=lambda reason: print(
+                f"Station archive gave no usable answer ({reason}); stamping from the stored reports.",
+                file=sys.stderr,
+            ),
         )
     except metar_fetch.ArchiveUnavailable as e:
         print(f"Station archive gave no usable answer; days keep their reanalysis only ({e}).", file=sys.stderr)
@@ -1816,9 +1821,14 @@ def _observed_so_far(
             detail=detail,
         )
 
+    # Step 3 of item 151: when the archive fails and the store holds the day,
+    # the reports stored by earlier runs are used and the reason kept, so the
+    # observation goes out WITH a degradation saying how far it reaches.
+    fallback: list[str] = []
     try:
         weather, readings = metar_fetch.observed_station_data(
-            icao, today, today, location.timezone, data_dir=data_dir
+            icao, today, today, location.timezone, data_dir=data_dir,
+            on_fallback=fallback.append,
         )
     except metar_fetch.ArchiveUnavailable as e:
         # Step 2 of item 151: the reason, in the archive's own words, so the
@@ -1845,20 +1855,31 @@ def _observed_so_far(
         return None, gap(
             f"{icao} returned rows but none covering {today} itself — the "
             "archive had not reached today's date at the moment of this run."
+            + (f" The rows were the stored ones: {fallback[0]}" if fallback else "")
         )
 
-    return (
-        ObservedSoFar(
-            precipitation=seen.precipitation if seen is not None else None,
-            precipitation_onset=seen.precipitation_onset if seen is not None else None,
-            thunder=seen.thunder if seen is not None else None,
-            cloud_oktas=seen.cloud_oktas if seen is not None else None,
-            reported_through=seen.reported_through if seen is not None else None,
-            high_c=measured.high_c if measured is not None else None,
-            low_c=measured.low_c if measured is not None else None,
-            peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
+    observed = ObservedSoFar(
+        precipitation=seen.precipitation if seen is not None else None,
+        precipitation_onset=seen.precipitation_onset if seen is not None else None,
+        thunder=seen.thunder if seen is not None else None,
+        cloud_oktas=seen.cloud_oktas if seen is not None else None,
+        reported_through=seen.reported_through if seen is not None else None,
+        high_c=measured.high_c if measured is not None else None,
+        low_c=measured.low_c if measured is not None else None,
+        peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
+    )
+    if not fallback:
+        return observed, None
+
+    reach = observed.reported_through or "an unknown time"
+    print(f"Station archive gave no usable answer ({fallback[0]}); using stored reports through {reach}.", file=sys.stderr)
+    return observed, RunDegradation(
+        code=DEGRADATION_STATION_STORED,
+        summary=(
+            "The nearest airport's archive did not answer, so this forecast used "
+            f"the reports stored by earlier runs today, through {reach}."
         ),
-        None,
+        detail=f"The archive gave no usable answer for {icao} on {today}: {fallback[0]}",
     )
 
 
@@ -2427,7 +2448,11 @@ def _station_reports(location: LocationConfig, start: date, end: date, data_dir:
         return None
     try:
         return metar_fetch.station_reports(
-            location.metar_station_icao, add_days(start, -1), add_days(end, 2), data_dir=data_dir
+            location.metar_station_icao, add_days(start, -1), add_days(end, 2), data_dir=data_dir,
+            on_fallback=lambda reason: print(
+                f"Station archive gave no usable answer ({reason}); windows score against the stored reports.",
+                file=sys.stderr,
+            ),
         )
     except Exception as e:  # noqa: BLE001 - never fatal; the reanalysis scores alone
         print(f"Station reports unavailable for window scoring ({e}).", file=sys.stderr)

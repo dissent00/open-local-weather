@@ -137,7 +137,7 @@ def test_the_station_stamps_only_the_days_it_covered(monkeypatch, tmp_path):
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None: (
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
             {covered: StationWeather(thunder=True, precipitation=False)},
             None,
         ),
@@ -299,7 +299,7 @@ def test_the_pipeline_stores_readings_and_stamps_them(monkeypatch, tmp_path):
     }
     monkeypatch.setattr(
         pipeline.metar_fetch, "observed_station_data",
-        lambda icao, s, e, tz, data_dir=None: (
+        lambda icao, s, e, tz, data_dir=None, on_fallback=None: (
             {covered: StationWeather(thunder=False, precipitation=False)},
             {covered: StationReadings(high_c=29.4, low_c=18.1, peak_wind_kmh=33.0)},
         ),
