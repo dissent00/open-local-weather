@@ -1264,6 +1264,18 @@
           "default": null,
           "title": "Precipitation Onset"
         },
+        "reported_through": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Through"
+        },
         "thunder": {
           "anyOf": [
             {

@@ -169,6 +169,12 @@ class ObservedSoFar:
     thunder: bool | None = None
     # Local "HH:MM" of the first report that saw precipitation.
     precipitation_onset: str | None = None
+    # Local "HH:MM" of the LAST report in the day so far — ROADMAP item 151.
+    # Every other field is cumulative and stays true however old that report
+    # is; this says which hours "so far" covers, because the run's clock does
+    # not: measured over the prompt archive, the latest report at a 06:01 run
+    # is two to three hours old on about half the mornings.
+    reported_through: str | None = None
 
 
 # MOVED HERE 2026-09-14 from `comparison.py` — ROADMAP item 127, and the same

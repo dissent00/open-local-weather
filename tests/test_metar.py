@@ -100,7 +100,7 @@ def test_observed_thunder_reports_without_thunder_are_false_not_absent():
             "HKKI,2026-08-24 09:00,HKKI 240900Z 22008KT 9999 FEW029 31/12 Q1016",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=2.0)
+            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=2.0, reported_through="12:00")
         }
 
 
@@ -111,7 +111,7 @@ def test_observed_thunder_plain_ts():
             "HKKI,2026-08-24 13:30,HKKI 241330Z 18005KT 9999 TS FEW029CB BKN030 31/14 Q1015",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=4.5)
+            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=4.5, reported_through="16:30")
         }
 
 
@@ -137,7 +137,7 @@ def test_observed_thunder_ignores_lookalikes():
             "HKKI,2026-08-24 13:00,HKKI 241300Z 18005KT 9999 FEW029CB BKN030 31/14 Q1015 RMK TS DISTANT",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=7.0)
+            DAY: StationWeather(thunder=False, precipitation=False, cloud_oktas=7.0, reported_through="16:00")
         }
 
 
@@ -151,7 +151,7 @@ def test_observed_thunder_buckets_by_local_date_not_utc():
         result = observed_weather_by_date("HKKI", DAY, date(2026, 8, 25), "Africa/Nairobi")
         assert result == {
             date(2026, 8, 25): StationWeather(
-                thunder=True, precipitation=False, cloud_oktas=2.0
+                thunder=True, precipitation=False, cloud_oktas=2.0, reported_through="00:30"
             )
         }
 
@@ -187,6 +187,7 @@ def test_observed_weather_reads_the_2026_08_29_miss_as_rain_without_thunder():
             # under five eighths — a genuinely half-clouded day, which is the
             # kind the reanalysis called dry.
             cloud_oktas=4.8,
+            reported_through="22:00",
         )
     }
 
@@ -241,7 +242,7 @@ def test_observed_weather_keeps_thunder_and_precipitation_separate():
             "HKKI,2026-08-24 13:00,HKKI 241300Z 18005KT 9999 TS FEW029CB 31/14 Q1015",
         ))
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
-            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=2.0)
+            DAY: StationWeather(thunder=True, precipitation=False, cloud_oktas=2.0, reported_through="16:00")
         }
 
     with requests_mock.Mocker() as m:
@@ -251,7 +252,7 @@ def test_observed_weather_keeps_thunder_and_precipitation_separate():
         assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi") == {
             DAY: StationWeather(
                 thunder=True, precipitation=True, precipitation_onset="16:00",
-                cloud_oktas=2.0,
+                cloud_oktas=2.0, reported_through="16:00",
             )
         }
 
@@ -268,7 +269,7 @@ def test_observed_weather_buckets_precipitation_by_local_date_not_utc():
     assert result == {
         date(2026, 8, 25): StationWeather(
             thunder=False, precipitation=True, precipitation_onset="00:30",
-            cloud_oktas=2.0,
+            cloud_oktas=2.0, reported_through="00:30",
         )
     }
 
@@ -432,3 +433,35 @@ def test_raw_reports_fetch_raises_the_same_way():
         with pytest.raises(ArchiveUnavailable) as e:
             fetch_metar_archive("HKKI", DAY, DAY)
     assert "HTTP 502" in str(e.value)
+
+
+def test_the_reach_is_the_last_reports_local_time():
+    # ROADMAP item 151: 00:17Z and 02:45Z on the 24th are 03:17 and 05:45 in
+    # Nairobi; the day's reach is the later one. A 06:01 run that carried
+    # only "As of 06:01" would let a two-report night read as the day.
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=csv_rows(
+            "HKKI,2026-08-24 00:17,HKKI 240017Z 22004KT 9999 FEW029 20/16 Q1016",
+            "HKKI,2026-08-24 02:45,HKKI 240245Z 22006KT 9999 FEW029 19/16 Q1016",
+        ))
+        assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")[DAY].reported_through == "05:45"
+
+
+def test_the_reach_belongs_to_the_local_day_the_report_falls_in():
+    # 21:30Z on the 23rd is 00:30 on the 24th in Nairobi: it is the 24th's
+    # reach, and the 23rd is not given a report it did not have.
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=csv_rows(
+            "HKKI,2026-08-23 21:30,HKKI 232130Z 22004KT 9999 FEW029 20/16 Q1016",
+        ))
+        got = observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")
+    assert got[DAY].reported_through == "00:30"
+
+
+def test_the_reach_is_the_latest_report_whatever_order_the_archive_sent():
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=csv_rows(
+            "HKKI,2026-08-24 02:45,HKKI 240245Z 22006KT 9999 FEW029 19/16 Q1016",
+            "HKKI,2026-08-24 00:17,HKKI 240017Z 22004KT 9999 FEW029 20/16 Q1016",
+        ))
+        assert observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")[DAY].reported_through == "05:45"

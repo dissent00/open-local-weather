@@ -232,3 +232,18 @@ def test_no_codes_and_a_code_without_its_numbers_are_silence():
     assert describe_notable_disagreements(
         [DISAGREEMENT_HIGH_EXCEEDED], StandingCall(temp_high_c=None), ObservedSoFar(high_c=31.0), "X"
     ) == []
+
+
+def test_the_reach_is_stated_beside_the_clock():
+    """ROADMAP item 151. Everything in this sentence is cumulative, so a
+    stale reading is still true — but a reader has to be told how far
+    "so far" reaches, or a two-report night at 06:01 reads as the day."""
+    observed = ObservedSoFar(precipitation=False, high_c=22.0, reported_through="05:45")
+    assert describe_observed_so_far(observed, as_of="06:01") == (
+        "As of 06:01, reports through 05:45: no rain; high so far 22°C / 72°F."
+    )
+
+
+def test_the_reach_is_stated_without_a_clock_too():
+    observed = ObservedSoFar(thunder=True, reported_through="14:45")
+    assert describe_observed_so_far(observed) == "So far today, reports through 14:45: thunder."

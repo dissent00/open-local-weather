@@ -4409,6 +4409,12 @@ def export_observed_so_far() -> None:
         ("sky tie, rounds down to even", ObservedSoFar(cloud_oktas=6.5), "15:00"),
         ("overcast", ObservedSoFar(cloud_oktas=8.0), "15:00"),
         ("clear", ObservedSoFar(cloud_oktas=0.0), "15:00"),
+        # The reach — item 151. Stated beside the clock whenever present, so a
+        # two-report night at 06:01 cannot read as the day.
+        ("the reach beside the clock", ObservedSoFar(
+            precipitation=False, high_c=22.0, reported_through="05:45"), "06:01"),
+        ("the reach without a clock", ObservedSoFar(thunder=True, reported_through="14:45"), None),
+        ("a reach with nothing measured is still nothing", ObservedSoFar(reported_through="05:45"), "06:01"),
     ]
     write(
         "observed_so_far.json",
@@ -4428,6 +4434,7 @@ def export_observed_so_far() -> None:
                         "low_c": o.low_c,
                         "peak_wind_kmh": o.peak_wind_kmh,
                         "cloud_oktas": o.cloud_oktas,
+                        "reported_through": o.reported_through,
                     },
                     "as_of": as_of,
                 },

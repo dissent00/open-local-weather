@@ -255,6 +255,10 @@ class StationWeather:
     # the day rather than a clock reading anyway.
     precipitation_onset: str | None = None
 
+    # LOCAL "HH:MM" of the LAST report on the day, or None. The reach the
+    # same-day snapshot states beside the run's clock — ROADMAP item 151.
+    reported_through: str | None = None
+
     # MEAN sky cover across the day's reports, 0-8, or None when no report
     # said anything about the sky. ROADMAP items 87 and 65.
     #
@@ -722,10 +726,18 @@ def _weather_from_reports(
         if oktas is not None:
             oktas_by_date.setdefault(local_date, []).append(oktas)
 
+        # The reach is the LATEST report, not the last one seen: the order
+        # is the archive's and is not relied on.
+        local_clock = observed_at.astimezone(local_zone).strftime("%H:%M")
+        reach = seen.reported_through if seen is not None else None
+        if reach is None or local_clock > reach:
+            reach = local_clock
+
         weather_by_date[local_date] = StationWeather(
             thunder=(seen is not None and seen.thunder) or report_has_thunder(raw_metar),
             precipitation=(seen is not None and seen.precipitation) or precipitating,
             precipitation_onset=onset,
+            reported_through=reach,
         )
 
     for local_date, values in oktas_by_date.items():

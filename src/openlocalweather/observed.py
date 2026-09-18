@@ -48,7 +48,10 @@ def describe_observed_so_far(
     a block that is inherently about elapsed hours: it is safe for this one to
     speak about the past — that is all it does — but a reader still has to be
     told how current it is, because "no rain so far" means something very
-    different at 09:00 and at 21:00.
+    different at 09:00 and at 21:00. `observed.reported_through` is the other
+    half of that: the last report's time, stated beside the clock whenever
+    the station gave one, since the two differ by two to three hours on
+    about half the mornings (item 151).
     """
     if observed is None:
         return None
@@ -65,7 +68,12 @@ def describe_observed_so_far(
     if not said:
         return None
 
-    opening = f"As of {as_of}" if as_of else "So far today"
+    clock = f"As of {as_of}" if as_of else "So far today"
+    # The reach, always, when the station gave one — ROADMAP item 151. The
+    # clauses are cumulative and stay true however old the last report is;
+    # what a reader cannot infer from the clock is which hours they cover.
+    reach = observed.reported_through
+    opening = f"{clock}, reports through {reach}" if reach else clock
     return f"{opening}: " + "; ".join(said) + "."
 
 

@@ -1217,6 +1217,7 @@ void main() {
             lowC: (o['low_c'] as num?)?.toDouble(),
             peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble(),
             cloudOktas: (o['cloud_oktas'] as num?)?.toDouble(),
+            reportedThrough: o['reported_through'] as String?,
           ),
           asOf: i['as_of'] as String?,
         );

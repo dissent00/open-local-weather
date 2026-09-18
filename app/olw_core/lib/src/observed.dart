@@ -48,7 +48,11 @@ String? describeObservedSoFar(ObservedSoFar? observed, {String? asOf}) {
   ];
   if (said.isEmpty) return null;
 
-  final opening = (asOf != null && asOf.isNotEmpty) ? 'As of $asOf' : 'So far today';
+  final clock = (asOf != null && asOf.isNotEmpty) ? 'As of $asOf' : 'So far today';
+  // The reach, always, when the station gave one — upstream item 151: the
+  // clauses are cumulative and stay true, but "so far" has to say how far.
+  final reach = observed.reportedThrough;
+  final opening = (reach != null && reach.isNotEmpty) ? '$clock, reports through $reach' : clock;
   return '$opening: ${said.join('; ')}.';
 }
 

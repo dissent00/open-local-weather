@@ -104,7 +104,7 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 21 |
 | `describe_day_rain.json` | `describe_day_rain` | 20 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
-| `observed_so_far.json` | `describe_observed_so_far` | 15 |
+| `observed_so_far.json` | `describe_observed_so_far` | 18 |
 | `llm_should_reason.json` | `llm_should_reason` | 11 |
 | `comparison_subject.json` | `comparison_subject` | 14 |
 | `glossary.json` | `GLOSSARY` | 19 |

@@ -3463,7 +3463,7 @@ def _station_seeing(raining: dict):
     learn the same thing.
     """
     return lambda icao, start, end, tz, data_dir=None: (
-        {d: StationWeather(thunder=False, precipitation=raining["now"]) for d in (start, end)},
+        {d: StationWeather(thunder=False, precipitation=raining["now"], reported_through="05:45") for d in (start, end)},
         None,
     )
 
@@ -3528,6 +3528,9 @@ def test_an_observation_only_update_still_refreshes_what_the_station_saw(tmp_pat
 
     assert quiet.calls == []
     assert log_store.read_log_entry(tmp_path, today).observed_so_far.precipitation is True
+    # And how far the station's reports reach — item 151's reach, stored so
+    # a reader of the entry knows which hours "so far" covers.
+    assert log_store.read_log_entry(tmp_path, today).observed_so_far.reported_through == "05:45"
 
 
 def test_a_new_cycle_still_spends_the_call(tmp_path):

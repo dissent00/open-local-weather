@@ -66,6 +66,7 @@ class ObservedSoFar {
     this.lowC,
     this.peakWindKmh,
     this.cloudOktas,
+    this.reportedThrough,
   });
 
   final bool? precipitation;
@@ -79,6 +80,11 @@ class ObservedSoFar {
 
   /// Mean cover in eighths across the day's reports so far.
   final double? cloudOktas;
+
+  /// Local "HH:MM" of the LAST report in the day so far — upstream item 151.
+  /// Every other field here is cumulative and stays true however old the
+  /// last report is; this is what tells a reader which hours they cover.
+  final String? reportedThrough;
 }
 
 /// How far an observation must sit from the forecast before a reader is TOLD

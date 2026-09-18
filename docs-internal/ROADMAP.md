@@ -22259,6 +22259,40 @@ and needs the reach (`reported_through`) beside it, or an 18:01 run would
 present the morning's rows as the day. The workflow commits `data/` whole,
 so the files ride the daily commit with no change there.
 
+### The reach SHIPPED 2026-09-18 — "reports through HH:MM", always
+
+Operator's decision on the second recommendation: no cutoff, the reach,
+shown whenever the station gave one. Everything the snapshot carries is
+cumulative — high so far, low so far, peak wind so far, rain happened,
+its onset, thunder happened — so a stale reading stays true, and the
+operator's own case is the argument: a high called at 90 °F and exceeded
+by 14:00 is still exceeded at 18:01. What a reader could not tell was
+which hours "so far" covered, because the block's "As of" is the run's
+clock, and that clock drives item 104's observation-only refresh, so its
+meaning was left alone.
+
+`StationWeather.reported_through` is the LATEST report's local time on
+the day (latest, not last seen — the archive's order is not relied on,
+and a case sends the rows reversed); `ObservedSoFar.reported_through`
+stores it on the entry; `describe_observed_so_far` opens "As of 06:01,
+reports through 05:45:" in both languages, three new vector cases, the
+page and the CLI's `show` pick it up through the same function. The
+prompt archive's receipt times say why it matters: the latest report at
+a 06:01 run is two to three hours old on about half the mornings, and a
+two-hour cutoff would have dropped them — receipt times from the
+current-conditions feed, so upper bounds, but the shape is clear.
+
+Driven through the real CLI before and after, controls byte-identical:
+the change is one key, null, on the fixture's entry, since the drive's
+station stub carries no reach. 1393 Python, 194 Dart. The app's runner
+passes no observation yet (`ensemble` 20), so it needs the re-pin and
+nothing else.
+
+**Cloud is the one field that is neither cumulative nor current** — a
+mean over the day's reports so far — and with the reach stated it reads
+correctly. **Not done:** the fallback to stored rows on a failed fetch,
+step 3, which the reach now makes safe to build.
+
 
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 

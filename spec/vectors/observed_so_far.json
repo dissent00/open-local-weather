@@ -13,7 +13,8 @@
           "high_c": 27.4,
           "low_c": 18.1,
           "peak_wind_kmh": 31.4,
-          "cloud_oktas": 5.5
+          "cloud_oktas": 5.5,
+          "reported_through": null
         },
         "as_of": "14:00"
       },
@@ -29,7 +30,8 @@
           "high_c": 22.0,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "09:00"
       },
@@ -45,7 +47,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "12:00"
       },
@@ -61,7 +64,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "14:00"
       },
@@ -77,7 +81,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": null
       },
@@ -93,7 +98,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "16:00"
       },
@@ -109,7 +115,8 @@
           "high_c": 32.5,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -125,7 +132,8 @@
           "high_c": 33.5,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -141,7 +149,8 @@
           "high_c": -0.5,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -157,7 +166,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": 30.5,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -173,7 +183,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": 31.5,
-          "cloud_oktas": null
+          "cloud_oktas": null,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -189,7 +200,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": 5.5
+          "cloud_oktas": 5.5,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -205,7 +217,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": 6.5
+          "cloud_oktas": 6.5,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -221,7 +234,8 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": 8.0
+          "cloud_oktas": 8.0,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
@@ -237,11 +251,63 @@
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
-          "cloud_oktas": 0.0
+          "cloud_oktas": 0.0,
+          "reported_through": null
         },
         "as_of": "15:00"
       },
       "expected": "As of 15:00: sky 0/8."
+    },
+    {
+      "name": "the reach beside the clock",
+      "input": {
+        "observed": {
+          "precipitation": false,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": 22.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "reported_through": "05:45"
+        },
+        "as_of": "06:01"
+      },
+      "expected": "As of 06:01, reports through 05:45: no rain; high so far 22\u00b0C / 72\u00b0F."
+    },
+    {
+      "name": "the reach without a clock",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "reported_through": "14:45"
+        },
+        "as_of": null
+      },
+      "expected": "So far today, reports through 14:45: thunder."
+    },
+    {
+      "name": "a reach with nothing measured is still nothing",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "precipitation_onset": null,
+          "thunder": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "reported_through": "05:45"
+        },
+        "as_of": "06:01"
+      },
+      "expected": null
     }
   ]
 }
