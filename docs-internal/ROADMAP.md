@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4 and 5 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 7-10 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5 and 7 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 8-10 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23589,6 +23589,63 @@ days; `calibration.py`'s out-of-sample check will see it.
 from 44 days at one place is item 100's mistake. Revisit at ninety days
 or when the calibrated gust first lands outside the band, whichever is
 first, and then the calm clause only.
+
+### Step 7 SHIPPED 2026-09-18 — four narrative rules, measured through the instrument and read cold twice
+
+Each clause's cost measured first. Day+3 highs: the models sit a median
+3.3 °C apart at that lead; the spread exceeds 1 °C on 22 of 22 archived
+issuances, 2 °C on 19 and 3 °C on 16 — so a range is the normal shape,
+and "toward 33 °C" for a 31.5 mean under a 4.4 spread was a figure no
+model forecast. Thunder beyond today: 12 of 39 stored narratives name it
+in the Extended Outlook; since step 2 the daily block carries `cape_max`
+at every lead and the phrase names the days, so the rule turns from a ban
+into a source. Pipeline words in reader-facing sections: 3 of 39
+narratives, all "calibrated". The sky: the coverage list named
+temperature, rain, wind, UV and air quality and not the sky, which is
+how 09-18 opened the Overview on cloud and never mentioned it again.
+
+**The four clauses, both languages, `llm_system_prompt.json`
+regenerated.** (1) Today's Forecast covers THE SKY from the models'
+cloud for the hours ahead, in a reader's words, and states a two-way
+split in words rather than an average. (2) No pipeline vocabulary in the
+sections a reader acts on — "calibrated", "consensus", "pre-computed",
+"blend", block names — which belong in the Detailed Discussion and the
+confidence notes; model names stay where a rule asks for them. (3) The
+Extended Outlook takes thunder beyond today from the daily CAPE and the
+NEXT THREE DAYS phrase, on the days it names and in its own chance word,
+and gives a Day+3 high as a range when the models sit more than 2 °C
+apart — the extended trend's own threshold, operator's choice over 3 °C
+(19 of 22 days against 16). (4) The confidence notes name a model on
+the wrong side of its own record and say which was believed; 09-18's
+KMD case is the example. Narrative prompt +2,573 characters (6 %),
+judgment unchanged; driven through the real CLI, transcripts identical.
+
+**Read cold through Haiku on the 03:01 message, twice.** The message was
+first brought up to the current template (step 4's header clause and
+sufficiency sentence, step 5's tail). First run: the sky named but the
+split not stated; "calibrated" gone from reader sections; the Day+3
+range attempted with the wrong numbers (32–33 for a 30–34 span); and
+Monday's rain upgraded to "likely" AGAIN, this time justified from the
+per-model 90-plus probabilities in the block — which the clause forbade
+only for readability. **So one sentence was added:** those probabilities
+are uncalibrated at these leads (step 2's measurement, no floor from 30
+to 80 sorts wet from dry), a 90 in that block is not evidence for
+"likely", and the phrase's word is the ceiling. Second run: the Overview
+exact, "calibrated" absent, Saturday's thunder in the phrase's word,
+Monday's rain no longer upgraded, and KMD's warm record against its cool
+call named in the notes. Still missed: the sky split read as a
+morning-to-midday progression rather than a disagreement between models,
+the sun-worded timing sentence restated in Today's Forecast once more
+(it held on the earlier re-run), and the Day+3 range again 32–33. Two
+runs of a small model disagree with each other on three rules, so the
+live provider is the measurement that counts; the next morning's run is
+the reading. One lead from the second run for step 4's rule: the
+Outlook cited "ECMWF and best_match ... 90–96 %" as two models agreeing,
+which is the pair counted twice.
+
+**Not done:** the sky in the Extended Outlook, which needs the daily
+cloud mean fetched — step 10's other half, one variable on the daily
+request like `cape_max` was.
 
 ### Recommended order
 
