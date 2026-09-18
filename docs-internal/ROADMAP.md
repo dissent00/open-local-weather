@@ -23426,6 +23426,24 @@ compliance.**
 
 Not run: the paid provider. Nothing in the spend ledger.
 
+**Tuned the same afternoon, and re-run.** The rule never said the timing
+sentence was the Overview's alone — step 1's design had the sections
+below keep clock times, and that intent had not reached the prompt. One
+clause now says so: Today's Forecast and Severe Weather place the thunder
+by the clock from `onset_at`, `peak_at` and HOURS AHEAD, never by
+repeating the sun-worded phrase. Both languages, `llm_system_prompt.json`
+regenerated, the narrative prompt +431 characters through the drive,
+transcripts identical. Re-run cold through Haiku on the same judgment:
+the Overview unchanged and the restatement gone — Today's Forecast wrote
+"Thunderstorms are possible from midday, with the strongest activity
+expected overnight through dawn", which is its own sentence with the peak
+placed, though not yet a clock hour. Two fresh slips on existing rules in
+that run, both Haiku's and neither this change's: "Warm and humid" opened
+Today's Forecast, the exact invention the prompt names, and OBSERVED SO
+FAR was quoted in part rather than verbatim, which the worker flagged
+itself. Run-to-run variance on a small model; the live provider is the
+measurement that counts.
+
 ### Recommended order
 
 1, 2, 3 and 4 first — the timing defect is live on every convective day,
