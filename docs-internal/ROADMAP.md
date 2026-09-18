@@ -81,6 +81,9 @@ code; this is a recommendation, not a queue.
 5. **133, 134, 135 — the prompt changes.** Each is measurable through 148's
    instrument now, and 134's climatology-and-order question is the largest
    single lever left on the prompt.
+6. **158 — the Overview's composers**, raised 2026-09-18 from the
+   operator's read of that morning's run: ten steps, the first four
+   first. Steps 8 and 9 are prompt cuts and belong with 133–135.
 
 **Deliberately not next:** 141 (nowcasting; waits on 41), 148 step 3 (waits
 on 132), 131 (the retrospective half is a free query over stored hashes and
@@ -23033,5 +23036,186 @@ Three vector cases pin the sign, the lead and the null; inverting the sign
 on either side fails the first. Driven through the real CLI before and
 after (controls byte-identical): the prompt header and the null column on
 27 track-record rows moved, and nothing else. 1333 Python, 191 Dart.
+
+---
+
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Raised 2026-09-18 — ten steps for review, in order; nothing built**
+
+The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
+yesterday. Dry but thundery. Warming through Monday, with rain becoming
+more likely."*:
+
+> *"'Dry but thundery' — that's not a good sentence in any sense — it's a
+> contradiction, and it doesn't give context. Correct would be 'dry morning
+> likely followed by afternoon and evening thunderstorms.' There's no mention
+> of the winds ... 'Warming through Monday, with rain becoming more likely'
+> misses some key points ... time windows for the warming/drying, followed
+> by time windows for the increasing rainy period. I think that in attempts
+> to make it terse we keep losing the key data."*
+
+### The finding: every word of that Overview was code
+
+The model added nothing. "Clearer than yesterday. Dry but thundery." is
+`overview_comparison`, composed by `describe_day_over_day` and
+`describe_day_rain`; "Warming through Monday, with rain becoming more
+likely" is `describe_extended_trend`. Both are handed over verbatim and the
+model's own budget is one sentence, which it spent, as the rule says is
+normal, on nothing. So each complaint is a composer or a band, and the fix
+belongs there — tested, vectored, in both languages — rather than in a
+loosened rule that would hand back the welded sentences items 83 and 104
+were raised on. The mapping:
+
+| complaint | what happened |
+|---|---|
+| no temperature | today's model-mean high against yesterday's observed high fell inside the one-degree band; unmoved dimensions are dropped from the lead. From the page, "about the same" and "not measured" read identically |
+| "dry but thundery" | the dry-plus-thunder branch of `describe_day_rain` returns that literal; thunder has no onset so the timing branches never run. And the prompt's timed instability clause ("thunder possible, peaking around 01:00") is suppressed by its own rule whenever the composed phrase already names thunder — the composer's bare word blocked the model's timed one |
+| no wind | 35.1 km/h calibrated against 35.3 observed yesterday is inside the eight km/h change band, and the absolute clause fires at 46 km/h. The climatology row puts a typical gust here at 39, so a daily "breezy" would be the enumeration the composers exist to avoid |
+| the week has no shape | Monday's mean high minus today's is exactly the 2.0 °C threshold; "rain becoming more likely" is any wet day among three. Means across the week: 0.3, 1.6, 0.1, 2.7, 2.2, 6.1 mm — no drying trend, but a DRY SUNDAY on all five models between a showery Saturday and a likely-wet Monday, and it appears nowhere in the forecast |
+| "clearer than yesterday" | yesterday 91% cloud; today GFS and ICON near 100% all day, ECMWF, UKMO and Best Match near 55%. The mean is "clearer"; half the guidance is "as cloudy". Wind direction is agreement-gated; cloud is not |
+
+The full review of that run against its data, and the reading of the prompt
+from the model's side, are in the 2026-09-18 session; what follows is the
+steps. Each shared composer changes Python first, then its vector, then
+`olw_core`, per `spec/README.md`; each threshold is measured against the
+record before it is set (item 100); each prompt change is read through
+item 148's instrument before and after.
+
+### Step 1 — the instability's timing in the composed phrase
+
+`summarize_instability` already finds the peak hour; add the FIRST hour any
+model crosses the threshold, and hand both to `describe_day_rain` as
+dayparts (`daypart.py` names them) rather than clock times, since the
+Overview carries no numbers. Wording for the dry case: *"dry by day, with
+thunder possible from the evening, peaking overnight"*; the showery cases
+gain the same tail. The Overview rule then stays "add nothing when the
+phrase names thunder", because the phrase now carries the time. Vectors:
+`instability.json`, `describe_day_rain.json`, `day_over_day.json`. The
+09-18 run is the test case: CAPE crosses 1000 J/kg on ECMWF at 15:00 and
+peaks on Best Match at 01:00.
+
+### Step 2 — the three-day phrase names the days
+
+`describe_extended_trend` gains the per-day rain band and the per-day
+probability, and says three things it cannot today: the day rain arrives
+(*"rain likely from Monday"*), a dry day inside the span (*"dry Sunday"*),
+and a showery day before the arrival (*"showers possible Saturday"*).
+"Likely" needs a probability floor and it is measured first: the record
+holds every model's daily probability beside the outcome (the Brier
+inputs), so the floor is read from where the models' stated chance and the
+observed frequency meet, not chosen. The Overview budget question is the
+operator's: the example wording carried two day-clauses in one sentence.
+Vector: `extended_trend.json`. Test case: 09-18's week.
+
+### Step 3 — an agreement gate on the cloud comparison
+
+`compute_day_over_day` labels cloud from the models' mean. Gate it the way
+`consensus_direction` gates a bearing: a label only when the models agree
+within the one-okta band (12.5 points), otherwise the dimension is treated
+as unmeasured. Measure first over the archived prompts how often the
+spread exceeds an okta, so the gate's cost in lost sentences is known
+before it is paid. Vector: `day_over_day.json`.
+
+### Step 4 — Best Match's probability is ECMWF's; record it and stop scoring it twice
+
+MEASURED 2026-09-18 over every archived issuance (22, from 09-04):
+`precipitation_probability` hourly and `precipitation_probability_max`
+daily are identical to ECMWF's on 22 of 22; precipitation, temperature,
+CAPE, cloud and gusts never are. So `rain_brier` for Best Match is ECMWF's
+Brier under a second name, the calibration tables carry one row twice, and
+any probability-based finding counts one model as two. The `rain` call
+itself comes from the precipitation sum, which differs, so the hit-rate
+ranking stands on its own variable. Actions: a note in the review's
+`data_sufficiency` and on the accuracy page beside the calibration table;
+Best Match excluded from probability findings and from any probability
+consensus; the pair added to `acknowledged_coverage_gaps`' neighbour, a
+list of KNOWN DUPLICATES the coverage watcher can re-check — so that when
+Open-Meteo changes its blend the record notices (item 152's principle).
+Decision for the operator: whether to keep storing Best Match's
+probability at all.
+
+### Step 5 — say which dimensions were measured and unmoved
+
+When one dimension moved and the others were measured within their bands,
+the composed lead can say so once: *"Clearer than yesterday; temperatures
+and winds much the same."* This is the enumeration item 48 was raised
+against, and it is also the operator's own reading of the 09-18 line ("no
+mention of temp so we assume it's similar — please confirm"), so it is a
+decision, not a build: one clause, only for measured dimensions, never for
+absent ones. Vector: `describe_day_over_day.json`.
+
+### Step 6 — wind in the Overview by departure from the record
+
+Measure the distribution of observed peak gusts over the 43 stored days
+(mean, spread, by month). Propose an absolute clause below the warning
+bands, keyed to that record rather than to Beaufort: calibrated gust a
+spread above the typical gust reads *"breezier than usual"*, a spread below
+*"calmer than usual"*, nothing in between. The comparison's change bands
+stay as they are. Decision for the operator once the numbers are in front
+of them, because at this place a 35 km/h gust is an ordinary day and the
+clause must not fire on ordinary days.
+
+### Step 7 — four narrative rules, read through the prompt instrument
+
+In `prompt.py` and its Dart mirror, pinned by `llm_system_prompt.json`:
+
+- Today's Forecast's coverage list gains the SKY, with the model split
+  stated in words when it is two-way (09-18: cloud never mentioned while
+  the Overview opened on it).
+- Reader-facing sections do not carry pipeline vocabulary: "calibrated
+  peak gusts" belongs in the confidence notes.
+- The Extended Outlook may not name thunder beyond today unless a block
+  supplies instability at that lead (09-18 published "showers and
+  thunderstorms" on Monday from a daily block that carries no CAPE), and
+  states a Day+3 high as the consensus with a range where the spread
+  exceeds the change band (09-18 said "toward 33 °C" for a 31.5 mean).
+- The confidence notes name it when a peer model's number today sits on
+  the opposite side from its recorded bias (KMD runs warm on highs by the
+  review and was the coolest model on 09-18).
+
+Each is one clause; the block's size before and after is read from
+`olw prompt-size`.
+
+### Step 8 — extract the secondary point in code
+
+`secondary_today_hourly` is 21,758 characters, 18% of the prompt, and the
+judgment rule calls the gust it yields "the ONE number in this list you
+must derive yourself". Extract the secondary point's Day+0 predictions per
+model in code, as the primary's already are, so `peak_wind_secondary_kmh`
+starts from a computed consensus and the raw block can go the way of
+`primary_today_hourly` (item 73). Items 144 and 73's shape; vector for the
+extraction reuses `extract_day0.json`'s cases against the secondary
+fixture. Measure: the prompt before and after.
+
+### Step 9 — move the history out of the rules
+
+The Overview rule is about 1,100 words for a three-sentence output, and
+both calls read it; most of its length is the account of past failures
+that this repo keeps in code comments. Move the accounts beside the rule
+in `prompt.py` as comments and leave the rule sentences. Not a rewrite of
+the rules, and the vector regenerates for both languages, which is the
+cost: the Dart mirror carries the same strings and moves with them.
+Measured through item 148 before and after; expected to be the largest
+single cut since item 147.
+
+### Step 10 — cloud and instability at Day+1 to +7
+
+The extended daily block carries no cloud mean and no CAPE, so nothing
+beyond today can honestly say "clearing" or "thundery". Check Open-Meteo's
+daily variable list for the models fetched (`cloud_cover_mean`, and a
+daily CAPE maximum where offered), fetch what exists, extend
+`describe_extended_trend`'s scope noun, and until then tell the model in
+one line that thunder beyond today is not forecast. Item 65's cloud
+thread; sequenced after step 2 because the phrase has to exist first.
+
+### Recommended order
+
+1, 2, 3 and 4 first — the timing defect is live on every convective day,
+the week's shape is the planning answer, the cloud gate is a correctness
+fix, and the duplicate is a record fact to write down. Then 7, then the
+two decisions (5, 6) once their measurements are on the page, then 8, 9
+and 10.
+
+Related: 83, 104 (contract item 8), 61, 48, 65, 73, 144, 148, 152, 110,
+121, 118, 100.
 
 ---
