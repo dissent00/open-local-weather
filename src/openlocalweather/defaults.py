@@ -45,6 +45,20 @@ BLEND_MODEL_ID = "olw_blend"
 # independent models and is kept to them.
 BEST_MATCH_MODEL_ID = "best_match"
 
+# Fields one model carries under another's name — ROADMAP item 158 step 4.
+# (model, the model it duplicates, field). Measured 2026-09-18: best_match's
+# rain probability equalled ecmwf_ifs025's on 22 of 22 archived issuances
+# (09-04..09-18) and 21 of 21 stored rows since 09-14, at every lead, while
+# its precipitation, temperature, CAPE, cloud and gusts never did. So the
+# Brier figures of the pair are one model's evidence twice. The review marks
+# the duplicate's cell (`SkillCell.duplicate_of`), the weekly health check
+# re-measures the pair on the stored rows so a change to Open-Meteo's blend
+# is noticed (item 152's principle), and the column stays stored because
+# that re-check needs it.
+KNOWN_DUPLICATES: list[tuple[str, str, str]] = [
+    (BEST_MATCH_MODEL_ID, "ecmwf_ifs025", "rain_probability_pct"),
+]
+
 
 # The trivial rules every real model has to beat — see baselines.py for what
 # they are and for the measurement that prompted them. Kept here rather than

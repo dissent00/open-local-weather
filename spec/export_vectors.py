@@ -2048,6 +2048,30 @@ def export_weekly_review() -> None:
         )
         return _review_vector_case(name, logs, actuals, models_here, review)
 
+    def duplicate_case(name: str):
+        """ROADMAP item 158 step 4. best_match's rain probability is ECMWF's
+        under a second name, measured on every stored row; the review marks
+        the duplicate's cell and says so once in the sufficiency statement.
+        Locked on both surfaces so neither can count the pair as two models
+        agreeing on a probability."""
+        models_here = ["alpha", "beta", "ecmwf_ifs025", "best_match"]
+        logs, actuals = build(12, 10, 3)
+        for e in logs.values():
+            for model in ("ecmwf_ifs025", "best_match"):
+                e.model_predictions.day0.append(ModelPrediction(
+                    model=model, rain=True, rain_probability_pct=85, high_c=26.0, low_c=18.0,
+                ))
+        review = build_weekly_review(
+            log_lookup=lambda d: logs.get(d),
+            actuals=actuals,
+            all_log_dates=sorted(logs),
+            today=today,
+            models=models_here,
+            lead_times_days=[0],
+        )
+        assert next(c for c in review.cells if c.model == "best_match").duplicate_of == "ecmwf_ifs025"
+        return _review_vector_case(name, logs, actuals, models_here, review)
+
     write(
         "weekly_review.json",
         "build_weekly_review",
@@ -2107,6 +2131,7 @@ def export_weekly_review() -> None:
             beyond_reach_case(
                 "a model beyond its horizon does not forecast there — no 'yet'",
             ),
+            duplicate_case("best_match carries ECMWF's probability, marked and said once"),
         ],
     )
 

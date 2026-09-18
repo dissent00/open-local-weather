@@ -60,6 +60,7 @@ class SkillCell {
     this.sdLowErrorC,
     this.sdWindErrorKmh,
     this.sdCloudErrorPct,
+    this.duplicateOf,
     required this.cloudChecks,
     required this.stormDays,
     required this.stormsCalled,
@@ -95,6 +96,11 @@ class SkillCell {
   final double? sdLowErrorC;
   final double? sdWindErrorKmh;
   final double? sdCloudErrorPct;
+
+  /// Upstream item 158 step 4. The model whose rain probability this one
+  /// carries under a second name ([knownDuplicates]), so a reader of the
+  /// cell weighs the Brier figures once. Null for every model that is its own.
+  final String? duplicateOf;
 
   /// How many of [checks] said anything about the sky. Separate for the same
   /// reason [brierChecks] is, and more sharply: cloudCoverPct started on
@@ -249,6 +255,16 @@ class WeeklyReview {
 }
 
 /// Computes the full review deterministically. No LLM, no I/O.
+/// The model whose rain probability [model] carries under its own name, or
+/// null — see [knownDuplicates].
+String? duplicateOf(String model) {
+  for (final (dup, source, field) in knownDuplicates) {
+    if (dup == model && field == 'rain_probability_pct') return source;
+  }
+
+  return null;
+}
+
 WeeklyReview buildWeeklyReview({
   required List<ModelPrediction>? Function(DateTime rowDate, int leadTimeDays) predictionsFor,
   required DailyActual? Function(DateTime targetDate) actualFor,
@@ -340,6 +356,7 @@ WeeklyReview buildWeeklyReview({
         earliest: scored.isEmpty ? null : scored.last.key,
         latest: scored.isEmpty ? null : scored.first.key,
         meanRainBrier: briers[model],
+        duplicateOf: duplicateOf(model),
         brierChecks:
             scored.where((e) => e.value.rainBrier != null).length,
         rainBrierSkill: skill,
@@ -785,5 +802,18 @@ String _describeSufficiency(
           'figure above.)');
     }
   }
+  // Upstream item 158 step 4: said once, where the forecaster reads first.
+  final duplicates = {
+    for (final c in cells)
+      if (c.duplicateOf != null) '${c.model}\u0000${c.duplicateOf}'
+  }.toList()
+    ..sort();
+  for (final pair in duplicates) {
+    final [dup, source] = pair.split('\u0000');
+    parts.add("$dup's rain probability is $source's under a second name "
+        '(measured identical on every stored row; re-checked weekly), so '
+        "its Brier figures repeat $source's — weigh them once.");
+  }
+
   return parts.join(' ');
 }

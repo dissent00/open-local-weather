@@ -35,6 +35,7 @@ from datetime import date
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID
 from openlocalweather.dates import add_days
 from openlocalweather.defaults import (
+    KNOWN_DUPLICATES,
     BASELINE_MODEL_IDS,
     LEAD_TIMES_DAYS,
     MODELS,
@@ -149,6 +150,11 @@ class SkillCell:
     sd_low_error_c: float | None = None
     sd_wind_error_kmh: float | None = None
     sd_cloud_error_pct: float | None = None
+    # Item 158 step 4. The model whose rain probability this one carries
+    # under a second name (`KNOWN_DUPLICATES`), so a reader of the cell —
+    # the forecaster included — weighs the Brier figures once. None for
+    # every model that is its own.
+    duplicate_of: str | None = None
 
 
 @dataclass
@@ -294,6 +300,7 @@ def build_weekly_review(
                     earliest=scored[-1][0] if scored else None,
                     latest=scored[0][0] if scored else None,
                     mean_rain_brier=briers[model],
+                    duplicate_of=duplicate_of(model),
                     brier_checks=sum(1 for _, s in scored if s.rain_brier is not None),
                     cloud_checks=sum(1 for _, s in scored if s.cloud_error_pct is not None),
                     storm_days=sum(
@@ -572,6 +579,16 @@ def _confidence_rank(label: str) -> int:
     return _CONFIDENCE_ORDER.get(label, 0)
 
 
+def duplicate_of(model: str) -> str | None:
+    """The model whose rain probability `model` carries under its own name,
+    or None — see KNOWN_DUPLICATES."""
+    for dup, source, field in KNOWN_DUPLICATES:
+        if dup == model and field == "rain_probability_pct":
+            return source
+
+    return None
+
+
 def _describe_sufficiency(
     review: WeeklyReview,
     cells: list[SkillCell],
@@ -710,6 +727,16 @@ def _describe_sufficiency(
                 f"at Day+{k} and {'is' if len(beyond) == 1 else 'are'} not included in the "
                 "figure above.)"
             )
+    # Item 158 step 4: said once, where the forecaster reads first, so the
+    # pair is never taken for two models agreeing.
+    duplicates = sorted({(c.model, c.duplicate_of) for c in cells if c.duplicate_of})
+    for dup, source in duplicates:
+        parts.append(
+            f"{dup}'s rain probability is {source}'s under a second name "
+            f"(measured identical on every stored row; re-checked weekly), so "
+            f"its Brier figures repeat {source}'s — weigh them once."
+        )
+
     return " ".join(parts)
 
 

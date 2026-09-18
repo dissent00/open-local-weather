@@ -36,6 +36,7 @@ from openlocalweather.coverage import (
     observation_status,
 )
 from openlocalweather.defaults import (
+    KNOWN_DUPLICATES,
     LEAD_TIMES_DAYS,
     PROMPT_GROWTH_TRAILING_RUNS,
     REVIEW_MIN_CHECKS_FOR_COMPARISON,
@@ -59,6 +60,7 @@ from openlocalweather.health_check import (
     CAP_STATUS_KEY,
     cap_feed_woke_up,
     check_cap_feed,
+    check_known_duplicates,
     check_recent_degradations,
     check_watched_columns,
     check_prompt_growth,
@@ -724,6 +726,30 @@ def _recent_issuance_degradations(data_dir: str) -> list[list[RunDegradation]]:
     return out
 
 
+# How far back the duplicate re-check reads — the same month the coverage
+# watcher uses, so one stretch of the record answers both.
+DUPLICATE_LOOKBACK_DAYS = 30
+
+
+def _recent_probabilities(
+    data_dir: str, days: int
+) -> list[tuple[str, int, str, str, float | None]]:
+    """Every stored row's rain probability per model and lead over the last
+    `days` log days, as check_known_duplicates wants them. Every issuance of
+    a day counts, keyed by the issuance's own date and lead."""
+    path = Path(data_dir)
+    out: list[tuple[str, int, str, str, float | None]] = []
+    for d in sorted(list_log_dates(path), reverse=True)[:days]:
+        entry = read_log_entry(path, d)
+        if entry is None:
+            continue
+        for i, row in enumerate(entry.prediction_rows):
+            for lead in (0, 3, 7):
+                for p in row.predictions.for_lead(lead):
+                    out.append((f"{d}#{i}", lead, p.model, "rain_probability_pct", p.rain_probability_pct))
+    return out
+
+
 def _days_since_last_commit() -> int:
     result = subprocess.run(
         ["git", "log", "-1", "--format=%ct"],
@@ -964,6 +990,14 @@ def _run_check_health(args: argparse.Namespace) -> int:
 
     # ROADMAP item 2. Two questions, and only one of them is a failure: is the
     # warning feed still answering, and has it said anything lately?
+    # ROADMAP item 158 step 4. Read from the stored rows, so no fetch and
+    # no dependence on today's guidance; quiet while the pair still matches.
+    print("Checking known duplicate fields on the stored rows...")
+    duplicates = check_known_duplicates(
+        _recent_probabilities(args.data_dir, DUPLICATE_LOOKBACK_DAYS), KNOWN_DUPLICATES
+    )
+    print(f"  {'NOTICE: ' if duplicates.changed else 'OK — '}{duplicates.message}")
+
     if location.cap_feed_url:
         print("Checking the CAP warning feed...")
         try:

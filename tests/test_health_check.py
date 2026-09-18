@@ -466,3 +466,45 @@ def test_nothing_to_compare_is_not_steady():
 
     assert check_prompt_growth([("2026-09-05", None)]).status is PromptGrowthStatus.NOT_CHECKED
     assert check_prompt_growth([]).status is PromptGrowthStatus.NOT_CHECKED
+
+
+# ---------------------------------------------------------------------------
+# Known duplicates — ROADMAP item 158 step 4
+# ---------------------------------------------------------------------------
+from openlocalweather.health_check import check_known_duplicates
+
+_PAIR = [("best_match", "ecmwf_ifs025", "rain_probability_pct")]
+
+
+def _rows(*values):
+    """(date, lead, model, value) -> the check's row shape."""
+    return [(d, lead, model, "rain_probability_pct", v) for d, lead, model, v in values]
+
+
+def test_an_identical_pair_is_quiet_and_says_how_many_rows_agreed():
+    r = check_known_duplicates(_rows(
+        ("d1", 0, "best_match", 90), ("d1", 0, "ecmwf_ifs025", 90),
+        ("d2", 3, "best_match", 12), ("d2", 3, "ecmwf_ifs025", 12),
+    ), _PAIR)
+    assert not r.changed
+    assert r.compared == 2 and r.differing == 0
+    assert "identical on all 2" in r.message
+
+
+def test_a_pair_that_diverges_raises_a_notice_naming_the_count():
+    r = check_known_duplicates(_rows(
+        ("d1", 0, "best_match", 90), ("d1", 0, "ecmwf_ifs025", 90),
+        ("d2", 0, "best_match", 40), ("d2", 0, "ecmwf_ifs025", 55),
+    ), _PAIR)
+    assert r.changed
+    assert r.compared == 2 and r.differing == 1
+    assert "differed on 1 of 2" in r.message
+
+
+def test_an_absent_value_on_either_side_is_not_a_difference():
+    r = check_known_duplicates(_rows(
+        ("d1", 0, "best_match", None), ("d1", 0, "ecmwf_ifs025", 90),
+        ("d2", 7, "best_match", 51), ("d2", 7, "ecmwf_ifs025", None),
+    ), _PAIR)
+    assert not r.changed and r.compared == 0
+    assert "no stored rows carry both sides" in r.message

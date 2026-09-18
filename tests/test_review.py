@@ -1013,3 +1013,44 @@ def test_the_cell_carries_the_spread_of_each_gated_field():
     assert cell.sd_high_error_c == pytest.approx(0.2 * (12 / 11) ** 0.5)
     assert cell.sd_low_error_c == pytest.approx(0.0)
     assert cell.sd_wind_error_kmh is None
+
+
+# ---------------------------------------------------------------------------
+# Known duplicates — ROADMAP item 158 step 4
+# ---------------------------------------------------------------------------
+from openlocalweather.review import duplicate_of, _describe_sufficiency, SkillCell, WeeklyReview
+from datetime import date as _date
+
+
+def test_best_match_is_marked_as_ecmwfs_probability_and_nothing_else_is():
+    assert duplicate_of("best_match") == "ecmwf_ifs025"
+    assert duplicate_of("ecmwf_ifs025") is None
+    assert duplicate_of("gfs_seamless") is None
+
+
+def _cell(model, duplicate=None):
+    return SkillCell(
+        model=model, lead_time_days=0, checks=12, correct=9, rain_pct=75.0,
+        confidence="usable", duplicate_of=duplicate,
+        mean_high_error_c=None, mean_low_error_c=None, mean_wind_error_kmh=None,
+        mean_onset_error_hrs=None, mean_cloud_error_pct=None, mean_mslp_error_hpa=None,
+        cloud_checks=0, storm_days=0, storms_called=0, earliest=None, latest=None,
+    )
+
+
+def _review(cells):
+    return WeeklyReview(period_start=_date(2026, 9, 1), period_end=_date(2026, 9, 17),
+                        days_with_predictions=17, days_verified=16, cells=cells, findings=[],
+                        data_sufficiency="")
+
+
+def test_the_sufficiency_statement_names_the_duplicate_once():
+    cells = [_cell("ecmwf_ifs025"), _cell("best_match", "ecmwf_ifs025")]
+    text = _describe_sufficiency(_review(cells), cells, [0])
+    assert text.count("best_match's rain probability is ecmwf_ifs025's under a second name") == 1
+    assert "weigh them once" in text
+
+
+def test_no_duplicate_means_no_sentence():
+    cells = [_cell("ecmwf_ifs025"), _cell("gfs_seamless")]
+    assert "second name" not in _describe_sufficiency(_review(cells), cells, [0])

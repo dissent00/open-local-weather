@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1–2 SHIPPED 2026-09-18; steps 3-10 for review, in order**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2 and 4 SHIPPED, 3 folded into 123, 2026-09-18; steps 5-10 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23476,6 +23476,59 @@ check, and gate the label on the CALIBRATED spread. On 09-18 (GFS and
 ICON at 98, the other three at 51–57; "clearer than yesterday" from a
 91% yesterday) that spread collapses if the biases hold. Not sized from
 four checks (item 100).
+
+### Step 4 SHIPPED 2026-09-18 — the duplicate written down, marked, said once, and re-measured weekly
+
+Re-measured before building: best_match's `rain_probability_pct` equals
+ecmwf_ifs025's on 22 of 22 archived issuances (09-04..09-18) and 21 of 21
+stored rows since the record began carrying probabilities on 09-14, at
+every lead; its precipitation, temperature, CAPE, cloud and gusts never
+match. **The step's premise needed one correction:** the accuracy page
+carries no calibration or Brier table — its skill table has rain calls,
+hit rate, high, low, wind, pressure and onset — so there was nothing to
+put a note beside. The ranking findings rank on hit rate, which stands on
+the precipitation sum and is Best Match's own, and no probability finding
+or probability consensus exists in code today. So the work was to make
+the fact durable and self-declaring for the next probability-based thing
+(step 2's rain floor, item 58's calibration check), not to exclude it
+from anything that exists.
+
+**Built, Python and Dart, vector-pinned:**
+
+- `KNOWN_DUPLICATES` beside `BEST_MATCH_MODEL_ID` in `defaults.py` and
+  `config.dart`: the pair, the field, the date and the sample. A property
+  of Open-Meteo's blend, not of a deployment, so not config.
+- `SkillCell.duplicate_of`, set from that list at cell construction
+  (`review.duplicate_of`); the review's sufficiency statement says the
+  pair once — *"best_match's rain probability is ecmwf_ifs025's under a
+  second name (measured identical on every stored row; re-checked
+  weekly), so its Brier figures repeat ecmwf_ifs025's — weigh them
+  once."* — which is what the forecaster reads, since `_review_prompt_payload`
+  sends findings and the sufficiency line and not the cells. A new
+  `weekly_review.json` case with Best Match beside ECMWF pins the marking
+  and the sentence on both surfaces; dropping the marking on either side
+  fails it.
+- One clause in the prompt's verification-results header, where the
+  forecaster sees `rain_brier` per model: the pair's figures are the same
+  evidence twice, weigh them once, never count them as two models agreeing
+  on a probability. The user prompt grows by 490 characters through the
+  drive (294 in that header, 196 in the review line); transcripts
+  identical.
+- `check_known_duplicates` in the weekly health check, item 152's
+  principle: the pair is re-compared on every stored row of the last 30
+  days where both sides carry the field; identical is one OK line, a
+  divergence is a NOTICE naming the count — the blend has changed and
+  someone decides whether the cell still says duplicate — and never a
+  failure. Three tests; dropping the divergence count fails its test. Read
+  from `data/log`, no fetch.
+
+**Operator's decision:** keep storing Best Match's probability. It costs
+nothing, and the re-check needs the stored values to see the divergence;
+dropping the column would blind the watcher this step exists to add.
+
+**Not done:** nothing on the accuracy page, since it renders no Brier; a
+`duplicate_of` column there waits for the day the page shows one.
+1433 Python, 196 Dart.
 
 ### Recommended order
 

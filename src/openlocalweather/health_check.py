@@ -573,6 +573,63 @@ _NOT_A_VALUE = {"", "M", "T", "0.00", "0.0", "0"}
 
 
 @dataclass(frozen=True)
+class KnownDuplicateCheck:
+    """Whether a field one model carries under another's name still matches."""
+
+    compared: int
+    differing: int
+    changed: bool
+    message: str
+
+
+def check_known_duplicates(
+    values: Sequence[tuple[str, int, str, str, float | None]],
+    pairs: Sequence[tuple[str, str, str]],
+) -> KnownDuplicateCheck:
+    """Re-measure each KNOWN_DUPLICATES pair on stored rows — ROADMAP item 158
+    step 4, and item 152's principle: a fact measured once and then acted on
+    must keep being measured, or the day it stops being true is invisible.
+
+    `values` are (date, lead, model, field, value) from the stored prediction
+    rows; a pair is compared on every (date, lead) where BOTH models carry the
+    field. Absent values are not a difference. Quiet while identical, which is
+    the expected answer for as long as Open-Meteo blends the way it does; a
+    NOTICE the week the pair diverges, because that is the blend changing and
+    someone has to decide whether the duplicate's cell still says so. Never a
+    failure: nothing here feeds a forecast.
+    """
+    by_key: dict[tuple[str, int, str, str], float | None] = {
+        (d, lead, model, field): v for d, lead, model, field, v in values
+    }
+    compared = 0
+    differing = 0
+    for dup, source, field in pairs:
+        for (d, lead, model, f), v in by_key.items():
+            if model != dup or f != field or v is None:
+                continue
+            other = by_key.get((d, lead, source, field))
+            if other is None:
+                continue
+            compared += 1
+            if v != other:
+                differing += 1
+
+    names = ", ".join(f"{dup} = {source} on {field}" for dup, source, field in pairs)
+    if compared == 0:
+        return KnownDuplicateCheck(0, 0, False, f"no stored rows carry both sides of {names}.")
+    if differing == 0:
+        return KnownDuplicateCheck(
+            compared, 0, False, f"{names}: identical on all {compared} stored row(s) — still a duplicate."
+        )
+
+    return KnownDuplicateCheck(
+        compared, differing, True,
+        f"{names}: differed on {differing} of {compared} stored row(s) — the blend has "
+        f"changed; revisit KNOWN_DUPLICATES and the duplicate's review cell.",
+    )
+
+
+@dataclass(frozen=True)
 class WatchedColumnCheck:
     """Whether a column this project decided to ignore has started arriving."""
 

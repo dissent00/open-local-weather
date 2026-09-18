@@ -76,6 +76,14 @@ const String blendModelId = 'olw_blend';
 /// thunder tier was measured on the four independent models without it.
 const String bestMatchModelId = 'best_match';
 
+/// Fields one model carries under another's name — upstream item 158 step
+/// 4: (model, the model it duplicates, field). Mirrors `KNOWN_DUPLICATES`,
+/// where the measurement is recorded: best_match's rain probability equalled
+/// ecmwf_ifs025's on every archived issuance and stored row, at every lead.
+const List<(String, String, String)> knownDuplicates = [
+  (bestMatchModelId, 'ecmwf_ifs025', 'rain_probability_pct'),
+];
+
 /// The trivial rules every real model has to beat.
 ///
 /// Kept here rather than imported from baselines.dart so this file keeps no
