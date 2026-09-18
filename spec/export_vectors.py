@@ -764,11 +764,14 @@ def export_extract() -> None:
             "temperature_2m_max_ecmwf_ifs025": [28.5, 26.5],
             "cape_max_gfs_seamless": [200.0, 520.0],
             "cape_max_ecmwf_ifs025": [1370.0, 2050.0],
+            # Item 158 step 10: the daily cloud mean lands as cloud_cover_pct.
+            "cloud_cover_mean_gfs_seamless": [95, 71],
+            "cloud_cover_mean_ecmwf_ifs025": [70, 52],
         }
     }
     day_n_cases.append(
         {
-            "name": "the daily CAPE maximum is carried as peak_cape_jkg",
+            "name": "the daily CAPE maximum and cloud mean are carried as peak_cape_jkg and cloud_cover_pct",
             "input": {
                 "daily_multi_model": daily_with_cape,
                 "day_index": 1,

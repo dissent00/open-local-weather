@@ -316,7 +316,7 @@
       ]
     },
     {
-      "name": "the daily CAPE maximum is carried as peak_cape_jkg",
+      "name": "the daily CAPE maximum and cloud mean are carried as peak_cape_jkg and cloud_cover_pct",
       "input": {
         "daily_multi_model": {
           "daily": {
@@ -347,6 +347,14 @@
             "cape_max_ecmwf_ifs025": [
               1370.0,
               2050.0
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              95,
+              71
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              70,
+              52
             ]
           }
         },
@@ -369,7 +377,7 @@
           "sustained_wind_kmh": null,
           "high_c": 26.0,
           "low_c": null,
-          "cloud_cover_pct": null,
+          "cloud_cover_pct": 71.0,
           "peak_cape_jkg": 520.0,
           "wind_direction_deg": null,
           "mslp_trend": null
@@ -385,7 +393,7 @@
           "sustained_wind_kmh": null,
           "high_c": 26.5,
           "low_c": null,
-          "cloud_cover_pct": null,
+          "cloud_cover_pct": 52.0,
           "peak_cape_jkg": 2050.0,
           "wind_direction_deg": null,
           "mslp_trend": null

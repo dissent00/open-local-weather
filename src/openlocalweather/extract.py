@@ -209,9 +209,14 @@ def extract_day_n_predictions_from_daily(
         # The day's CAPE maximum — ROADMAP item 158 step 2. Absent from every
         # daily response before 2026-09-18, so None on every archived row.
         cape_arr = pick_series(d, f"cape_max_{model}", "cape_max")
+        # The day's mean cloud — item 158 step 10. The same quantity the
+        # Day+0 path averages from the hours, so the sky is like for like at
+        # every lead; None on every response before 2026-09-18.
+        cloud_arr = pick_series(d, f"cloud_cover_mean_{model}", "cloud_cover_mean")
 
         precip = precip_arr[day_index] if day_index < len(precip_arr) else None
         cape = cape_arr[day_index] if day_index < len(cape_arr) else None
+        cloud = cloud_arr[day_index] if day_index < len(cloud_arr) else None
         prob = prob_arr[day_index] if day_index < len(prob_arr) else None
         wind = wind_arr[day_index] if day_index < len(wind_arr) else None
         sustained = sustained_arr[day_index] if day_index < len(sustained_arr) else None
@@ -246,6 +251,7 @@ def extract_day_n_predictions_from_daily(
                 # same quantity the Day+0 path sums by hand.
                 precip_mm=precip,
                 peak_cape_jkg=cape,
+                cloud_cover_pct=cloud,
             )
         )
     return predictions

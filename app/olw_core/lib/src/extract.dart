@@ -226,6 +226,9 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
     // The day's CAPE maximum — upstream item 158 step 2. Absent from every
     // daily response before 2026-09-18, so null on every archived row.
     final capeArr = _series(daily, 'cape_max', model);
+    // The day's mean cloud — upstream item 158 step 10; the same quantity
+    // the Day+0 path averages from the hours. Null before 2026-09-18.
+    final cloudArr = _series(daily, 'cloud_cover_mean', model);
 
     final precip = at(precipArr, dayIndex);
     final prob = at(probArr, dayIndex);
@@ -252,6 +255,7 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
       // None, never 0 — see ModelPrediction.rainProbabilityPct.
       rainProbabilityPct: prob?.toInt(),
       peakCapeJkg: at(capeArr, dayIndex),
+      cloudCoverPct: at(cloudArr, dayIndex),
     );
   }).toList();
 }

@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5 and 7 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 8-10 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5, 7 and 10 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 8 and 9 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23646,6 +23646,34 @@ which is the pair counted twice.
 **Not done:** the sky in the Extended Outlook, which needs the daily
 cloud mean fetched — step 10's other half, one variable on the daily
 request like `cape_max` was.
+
+### Step 10 SHIPPED 2026-09-18 — cloud beyond today fetched; instability was step 2's
+
+The CAPE half shipped with step 2 (`cape_max` on the daily request,
+`peak_cape_jkg` on every Day+N row, the tier and the phrase). The cloud
+half is the same shape: Open-Meteo's daily `cloud_cover_mean` is served
+for all five models (probed live 2026-09-18: 09-19 read 71/52/83/6/62
+across GFS, ECMWF, ICON, UKMO, Best Match — the same 50-point spread
+step 3 measured at Day+0), so the daily request asks for it in both
+languages and `extract_day_n_predictions_from_daily` carries it as
+`cloud_cover_pct`, the quantity the Day+0 path averages from the hours,
+so the sky is like for like at every lead. The Day+3 and Day+7 rows store
+it from today, which means `cloud_error_pct` starts scoring at those
+leads and the review's cloud bias will accrue there too — no code
+change, the scorer already compares where both sides exist. One sentence
+on the Extended Outlook rule sources the sky beyond today from that
+column, said the way today's is, split stated in words. Narrative prompt
++643 characters; the vector case for the daily extraction carries cloud
+beside CAPE; dropping the extraction on either side fails it; driven
+through the real CLI, transcripts identical, the fixture carries neither
+column. 1433 Python, 196 Dart.
+
+**Deliberately not done:** `describe_extended_trend`'s scope noun still
+means temperature, wind, rain and thunder. Whether the composed phrase
+may call the sky steady or changing across the span is item 123's
+question — the mean's label verifies but the spread is per-model bias,
+and the calibration decides how cloud is used — so the phrase does not
+claim it until that lands.
 
 ### Recommended order
 

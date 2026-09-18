@@ -38,7 +38,9 @@ const String dailyForecastVars =
     'precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,'
     // cape_max: upstream item 158 step 2, verified served for all five
     // models on 2026-09-18 — what lets a day beyond today say thunderstorms.
-    'pressure_msl_mean,uv_index_max,cape_max';
+    // cloud_cover_mean: upstream item 158 step 10, verified served for all
+    // five models on 2026-09-18 — the Extended Outlook's sky beyond today.
+    'pressure_msl_mean,uv_index_max,cape_max,cloud_cover_mean';
 const String regionalDailyVars =
     'precipitation_sum,windspeed_10m_max,pressure_msl_mean';
 const String archiveHourlyVars =
