@@ -753,6 +753,35 @@ def export_extract() -> None:
                 "expected": dump(extract_day_n_predictions_from_daily(daily, idx, models, RAIN_THRESHOLD_MM)),
             }
         )
+    # ROADMAP item 158 step 2: the daily CAPE maximum lands on the row, and
+    # its absence (every response before 2026-09-18) is None, never zero.
+    daily_with_cape = {
+        "daily": {
+            "time": ["2026-09-18", "2026-09-19"],
+            "precipitation_sum_gfs_seamless": [0.0, 1.2],
+            "precipitation_sum_ecmwf_ifs025": [0.8, 4.6],
+            "temperature_2m_max_gfs_seamless": [28.0, 26.0],
+            "temperature_2m_max_ecmwf_ifs025": [28.5, 26.5],
+            "cape_max_gfs_seamless": [200.0, 520.0],
+            "cape_max_ecmwf_ifs025": [1370.0, 2050.0],
+        }
+    }
+    day_n_cases.append(
+        {
+            "name": "the daily CAPE maximum is carried as peak_cape_jkg",
+            "input": {
+                "daily_multi_model": daily_with_cape,
+                "day_index": 1,
+                "models": ["gfs_seamless", "ecmwf_ifs025"],
+                "threshold": RAIN_THRESHOLD_MM,
+            },
+            "expected": dump(
+                extract_day_n_predictions_from_daily(
+                    daily_with_cape, 1, ["gfs_seamless", "ecmwf_ifs025"], RAIN_THRESHOLD_MM
+                )
+            ),
+        }
+    )
     day_n_cases.append(
         {
             "name": "an all-null alias falls through to the bare key",
@@ -3671,77 +3700,137 @@ def export_day_over_day() -> None:
 
 
 def export_extended_trend() -> None:
-    """ROADMAP item 61 — the Overview's closing clause."""
+    """ROADMAP item 61 — the Overview's closing clause; item 158 step 2 — the
+    days named, with their thunder."""
+    to_friday = ["Wednesday", "Thursday", "Friday"]
+    to_saturday = ["Thursday", "Friday", "Saturday"]
+    to_sunday = ["Friday", "Saturday", "Sunday"]
+    weekend = ["Saturday", "Sunday", "Monday"]
     scenarios = [
-        # name, today_high, day_highs, day_precip, last_day_name
+        # name, today_high, day_highs, day_precip, day_names
         ("steady - the commonest case, and it still gets a phrase",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday"),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday),
         ("warming past the threshold",
-         30.0, [31.0, 32.0, 33.5], [0.0, 0.0, 0.0], "Friday"),
+         30.0, [31.0, 32.0, 33.5], [0.0, 0.0, 0.0], to_friday),
         ("cooling past the threshold",
-         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 0.0], "Friday"),
+         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 0.0], to_friday),
         ("just under the threshold is steady, not warming",
-         30.0, [30.5, 31.0, 31.9], [0.0, 0.0, 0.0], "Saturday"),
+         30.0, [30.5, 31.0, 31.9], [0.0, 0.0, 0.0], to_saturday),
         ("exactly at the threshold names the trend",
-         30.0, [30.5, 31.0, 32.0], [0.0, 0.0, 0.0], "Saturday"),
-        ("rain arriving earns its own clause",
-         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 8.0], "Friday"),
+         30.0, [30.5, 31.0, 32.0], [0.0, 0.0, 0.0], to_saturday),
+        ("rain arriving earns its own clause, named by its day",
+         30.0, [29.0, 28.0, 27.5], [0.0, 0.0, 8.0], to_friday),
         ("a dry spell continuing does not - much the same already says it",
-         30.0, [30.1, 30.0, 29.9], [0.2, 0.0, 0.9], "Friday"),
+         30.0, [30.1, 30.0, 29.9], [0.2, 0.0, 0.9], to_friday),
         ("the END of the span decides, not the mean",
-         30.0, [34.0, 34.0, 30.1], [0.0, 0.0, 0.0], "Friday"),
+         30.0, [34.0, 34.0, 30.1], [0.0, 0.0, 0.0], to_friday),
         ("no today high - nothing to compare against",
-         None, [31.0, 32.0, 33.0], [0.0, 0.0, 0.0], "Friday"),
+         None, [31.0, 32.0, 33.0], [0.0, 0.0, 0.0], to_friday),
         ("no extended highs at all",
-         30.0, [None, None, None], [None, None, None], "Friday"),
+         30.0, [None, None, None], [None, None, None], to_friday),
         ("a gap mid-span still answers from what is there",
-         30.0, [None, 33.0, None], [0.0, None, 0.0], "Sunday"),
+         30.0, [None, 33.0, None], [0.0, None, 0.0], to_sunday),
         # 2026-09-09: wind was available at these leads and discarded, so the
         # clause could only ever be about temperature. The scope noun now
         # follows what was actually measured and found steady.
         ("everything measured is steady, so the noun widens to conditions",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 20.0, [20.5, 21.0, 19.5]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 20.0, [20.5, 21.0, 19.5]),
         ("rain arriving forbids 'conditions', which would deny its own tail",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], "Friday", 20.0, [20.5, 21.0, 19.5]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], to_friday, 20.0, [20.5, 21.0, 19.5]),
         ("a wind build under a flat temperature is worth saying",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 18.0, [24.0, 30.0, 34.0]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 18.0, [24.0, 30.0, 34.0]),
         ("both moving names both",
-         30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], "Friday", 18.0, [24.0, 30.0, 34.0]),
+         30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], to_friday, 18.0, [24.0, 30.0, 34.0]),
         ("a wind drop past the threshold reads as calming",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 34.0, [30.0, 26.0, 20.0]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 34.0, [30.0, 26.0, 20.0]),
         ("no wind measured keeps the narrow noun",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", None, None),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, None, None),
         # A LEVEL, not a trend. Four dangerous days running are "conditions
         # much the same", which is true and useless.
         # NOAA thresholds against gusts, per the standard's own wording.
         ("a steady span above the warning floor still warns",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 90.0, [92.0, 88.0, 91.0]),
         ("warning and rain share one 'with'",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], "Friday", 90.0, [92.0, 88.0, 91.0]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 8.0], to_friday, 90.0, [92.0, 88.0, 91.0]),
         ("just under the 25 kt floor says nothing about level",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 44.0, [45.0, 46.0, 45.5]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 44.0, [45.0, 46.0, 45.5]),
         ("the record's windiest day is an advisory, not a gale",
-         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], "Friday", 50.0, [52.6, 51.1, 49.7]),
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], to_friday, 50.0, [52.6, 51.1, 49.7]),
+        # ROADMAP item 158 step 2, the operator's cases of 2026-09-18. Amounts
+        # are the models' means; the tiers are convective_tier's words.
+        ("09-18: showery Saturday, dry Sunday, rain from Monday, thunder every day",
+         30.0, [30.2, 31.0, 32.0], [1.6, 0.1, 2.7], weekend, None, None,
+         ["likely", "likely", "likely"], 2.2),
+        ("the same week with no day after: Monday is named, not 'from'",
+         30.0, [30.2, 31.0, 32.0], [1.6, 0.1, 2.7], weekend, None, None,
+         ["likely", "likely", "likely"], None),
+        ("a dry day after the span ends the run the same way",
+         30.0, [30.2, 31.0, 32.0], [1.6, 0.1, 2.7], weekend, None, None,
+         ["likely", "likely", "likely"], 0.0),
+        ("three alike days are one clause, not three",
+         30.0, [30.2, 30.1, 29.8], [2.0, 3.0, 2.5], weekend, None, None,
+         ["likely", "likely", "likely"], 4.0),
+        ("three wet days without thunder",
+         30.0, [30.2, 30.1, 29.8], [2.0, 3.0, 2.5], weekend, None, None,
+         [None, None, None], 4.0),
+        ("rain reaching the end of the span from its second day",
+         30.0, [30.2, 30.1, 29.8], [0.0, 2.0, 3.0], weekend, None, None,
+         None, 4.0),
+        ("a leading dry day is not named; the arrival implies it",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 3.0], weekend, None, None,
+         None, 4.0),
+        ("showers ending inside the span, then dry to the end",
+         30.0, [30.2, 30.1, 29.8], [2.0, 3.0, 0.0], weekend, None, None,
+         None, None),
+        ("a wet-band day says rain, not showers",
+         30.0, [30.2, 30.1, 29.8], [2.0, 16.0, 0.0], weekend, None, None,
+         None, None),
+        ("tiers that differ attach to their runs",
+         30.0, [30.2, 30.1, 29.8], [1.6, 0.1, 2.7], weekend, None, None,
+         [None, "possible", "likely"], 2.2),
+        ("a leading dry day with thunder is named by the thunder alone",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], weekend, None, None,
+         ["possible", None, None], None),
+        ("all dry, thunder possible every day, said once",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], weekend, None, None,
+         ["possible", "possible", "possible"], None),
+        ("thunder alone forbids 'conditions' as rain does",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], weekend, 20.0, [20.5, 21.0, 19.5],
+         ["possible", "possible", "possible"], None),
+        ("a combined clause takes the thunder tier for its chance word",
+         30.0, [30.2, 30.1, 29.8], [2.0, 0.0, 0.0], weekend, None, None,
+         ["likely", None, None], None),
+        ("an unknown amount breaks the run and is never named",
+         30.0, [30.2, 30.1, 29.8], [2.0, None, 2.0], weekend, None, None,
+         None, None),
+        ("a warning, two day-clauses and the thunder tail take the commas",
+         30.0, [30.2, 30.1, 29.8], [1.6, 0.1, 2.7], weekend, 90.0, [92.0, 88.0, 91.0],
+         ["likely", "likely", "likely"], 2.2),
     ]
 
     cases = []
     for scenario in scenarios:
-        name, today, highs, precip, day_name = scenario[:5]
+        name, today, highs, precip, day_names = scenario[:5]
         wind_today = scenario[5] if len(scenario) > 5 else None
         winds = scenario[6] if len(scenario) > 6 else None
+        thunder = scenario[7] if len(scenario) > 7 else None
+        after = scenario[8] if len(scenario) > 8 else None
         cases.append({
             "name": name,
             "input": {
                 "today_high_c": today,
                 "day_highs_c": highs,
                 "day_precip_mm": precip,
-                "last_day_name": day_name,
+                "day_names": day_names,
                 "today_wind_kmh": wind_today,
                 "day_winds_kmh": winds,
+                "day_thunder": thunder,
+                "day_after_precip_mm": after,
             },
             "expected": describe_extended_trend(
-                today, highs, precip, day_name,
-                today_wind_kmh=wind_today, day_winds_kmh=winds),
+                today, highs, precip, day_names,
+                today_wind_kmh=wind_today, day_winds_kmh=winds,
+                day_thunder=thunder, day_after_precip_mm=after),
         })
     write(
         "extended_trend.json",
@@ -3751,7 +3840,53 @@ def export_extended_trend() -> None:
         "the model, which is the thing that goes wrong. The threshold is 2.0 C "
         "across the span because item 23 measured a run calling 29.6 C against "
         "29.5 C 'about 1 C cooler'. A steady spell gets real words rather than "
-        "a null: the absence of change is the planning answer.",
+        "a null: the absence of change is the planning answer. Item 158 step 2: "
+        "the days are named -- a wet run, a dry day after a wet one, the "
+        "arrival that says 'from' only when the day past the span is wet too -- "
+        "and each carries its thunder tier, said once when every day shares it. "
+        "Rain is always 'possible': measured 2026-09-18, the models' stated "
+        "daily probability at Days+1..+3 sorted nothing at any floor.",
+        cases,
+    )
+
+
+def export_convective_tier() -> None:
+    """ROADMAP item 158 step 2 — the thunder word for a coming day."""
+    from openlocalweather.instability import convective_tier
+
+    T = CONVECTIVE_CAPE_THRESHOLD_JKG
+    scenarios = [
+        ("no model crosses", [200.0, 500.0, 900.0, 999.9]),
+        ("one model crossing is possible", [200.0, 1500.0, 900.0, 400.0]),
+        ("two models crossing is still possible", [1200.0, 1500.0, 900.0, 400.0]),
+        ("three of four is likely - the measured step", [1200.0, 1500.0, 2100.0, 400.0]),
+        ("all four is likely", [1200.0, 1500.0, 2100.0, 1000.0]),
+        ("exactly the threshold counts", [1000.0, 1000.0, 1000.0, 0.0]),
+        ("a model with no CAPE at this lead is not counted either way", [None, 1500.0, 2100.0, None]),
+        ("three models, all crossing", [1200.0, 1500.0, 2100.0]),
+        ("nothing to count", []),
+        ("every model absent", [None, None, None, None]),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": {"peak_capes_jkg": capes, "threshold": T},
+            "expected": convective_tier(capes, T),
+        }
+        for name, capes in scenarios
+    ]
+    write(
+        "convective_tier.json",
+        "convective_tier",
+        "ROADMAP item 158 step 2. The thunder word for a day beyond today from "
+        "how many models' daily CAPE maxima reach the threshold: none, "
+        "'possible' for one or two, 'likely' for three or more. AGREEMENT, not "
+        "magnitude -- measured 2026-09-18, the maximum over models sat above "
+        "2000 J/kg on 19 of 21 days and separated nothing, while three of four "
+        "crossing 1000 verified rain-or-thunder on 0.82 and 0.88 of days at "
+        "Day+0 and Day+1 against 0.40-0.80 for one or two on samples of two "
+        "to eight. The measurement is "
+        "in instability.py.",
         cases,
     )
 
@@ -5189,6 +5324,7 @@ def main() -> None:
     export_sustained_wind_gap()
     export_cell_key()
     export_convective_timing()
+    export_convective_tier()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

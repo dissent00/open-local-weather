@@ -31,6 +31,36 @@ import 'extract.dart';
 /// thunderstorms, and the Overview has to say so.
 const double convectiveCapeThresholdJkg = 1000.0;
 
+/// Upstream item 158 step 2: how many models must cross the threshold on a
+/// coming day before its thunderstorms are "likely" rather than "possible".
+///
+/// AGREEMENT, NOT MAGNITUDE, and the record chose it — the measurement is
+/// beside `CONVECTIVE_LIKELY_MODELS` in instability.py: the maximum CAPE over
+/// the models separated nothing (0.42 thunder against a 0.43 base rate),
+/// while three of four crossing 1000 J/kg verified rain-or-thunder on 0.82
+/// and 0.88 of days at Day+0 and Day+1 against 0.40-0.80 for one or two, on
+/// samples of two to eight.
+const int convectiveLikelyModels = 3;
+const String thunderPossible = 'possible';
+const String thunderLikely = 'likely';
+
+/// The thunder word for one coming day from the models' CAPE maxima: null
+/// when no model crosses, [thunderPossible] for one or two,
+/// [thunderLikely] at [convectiveLikelyModels] or more. A null value is a
+/// model with no CAPE at this lead and is not counted either way. The caller
+/// decides which models are in the list; the forecast keeps `best_match`
+/// out because the tier was measured without it.
+String? convectiveTier(
+  List<double?> peakCapesJkg, {
+  double threshold = convectiveCapeThresholdJkg,
+}) {
+  final crossing =
+      peakCapesJkg.where((c) => c != null && c >= threshold).length;
+  if (crossing == 0) return null;
+
+  return crossing >= convectiveLikelyModels ? thunderLikely : thunderPossible;
+}
+
 /// Pre-computed convective outlook for the hours still ahead.
 class InstabilityOutlook {
   final double peakCapeJkg;

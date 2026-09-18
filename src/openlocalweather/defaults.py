@@ -37,6 +37,14 @@ MODELS: list[str] = [
 # model was best and never whether combining them helped.
 BLEND_MODEL_ID = "olw_blend"
 
+# Open-Meteo's own blend, by name, for the places that must leave it out of
+# a count. ROADMAP item 158 step 4 measured its rain probability as ECMWF's
+# on 22 of 22 archived issuances, so a consensus that counts it counts one
+# model twice. Its CAPE is NOT ECMWF's (measured the same day), but the
+# thunder tier in `instability.convective_tier` was measured on the four
+# independent models and is kept to them.
+BEST_MATCH_MODEL_ID = "best_match"
+
 
 # The trivial rules every real model has to beat — see baselines.py for what
 # they are and for the measurement that prompted them. Kept here rather than

@@ -69,7 +69,11 @@ from openlocalweather.aqi import (
     merge_ground_aqi,
     summarize_ground_aqi,
 )
-from openlocalweather.instability import InstabilityOutlook, summarize_instability
+from openlocalweather.instability import (
+    InstabilityOutlook,
+    convective_tier,
+    summarize_instability,
+)
 from openlocalweather.wind import consensus_direction, describe_wind_shift
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.comparison import (
@@ -112,6 +116,7 @@ from openlocalweather.dates import (
     weekday_name,
 )
 from openlocalweather.defaults import (
+    BEST_MATCH_MODEL_ID,
     WINDOW_VERIFY_LOOKBACK_DAYS,
     ACTUALS_BATCH_LOOKBACK_DAYS,
     BASELINE_MODEL_IDS,
@@ -935,6 +940,14 @@ def _build_forecast_prompt(
     )
 
 
+# The three-day span the Overview's closing phrase covers, and the day past
+# it that decides whether rain reaching the span's end says "from" — ROADMAP
+# item 158 step 2. The daily fetch reaches eight days, so the fourth is
+# always asked for; a model whose horizon stops short simply has no value.
+EXTENDED_SPAN_LEADS = (1, 2, 3)
+DAY_AFTER_SPAN_LEAD = 4
+
+
 def _locked_blocks(
     guidance: ForwardGuidance,
     day0_predictions: list,
@@ -1020,7 +1033,23 @@ def _locked_blocks(
             today_high_c=_mean_of([p.high_c for p in day0_predictions]),
             day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
             day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
-            last_day_name=weekday_name(add_days(today, 3)),
+            day_names=[weekday_name(add_days(today, n)) for n in EXTENDED_SPAN_LEADS],
+            # ROADMAP item 158 step 2. The thunder tier per day from the four
+            # independent models' daily CAPE maxima — best_match is left out
+            # because the tier was measured without it — and the mean for the
+            # day past the span, which decides whether an arrival says "from".
+            day_thunder=[
+                convective_tier(
+                    [p.peak_cape_jkg for p in day if p.model != BEST_MATCH_MODEL_ID]
+                )
+                for day in extended_days
+            ],
+            day_after_precip_mm=_mean_of([
+                p.precip_mm
+                for p in extract_day_n_predictions_from_daily(
+                    guidance.primary_daily, DAY_AFTER_SPAN_LEAD, MODELS
+                )
+            ]),
             # Wind is present at these leads and was being discarded, so a
             # three-day build in gusts under a flat temperature read as "much
             # the same". It is also what lets the clause say "conditions".
@@ -2973,7 +3002,7 @@ def _issue_forecast(
     # prevent — two computations of one quantity that agree only by luck.
     extended_days = [
         extract_day_n_predictions_from_daily(guidance.primary_daily, n, MODELS)
-        for n in (1, 2, 3)
+        for n in EXTENDED_SPAN_LEADS
     ]
 
     # ONE READING OF THE STATION PER RUN, taken before the prompt because item

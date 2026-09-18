@@ -206,8 +206,12 @@ def extract_day_n_predictions_from_daily(
             f"precipitation_probability_max_{model}",
             "precipitation_probability_max",
         )
+        # The day's CAPE maximum — ROADMAP item 158 step 2. Absent from every
+        # daily response before 2026-09-18, so None on every archived row.
+        cape_arr = pick_series(d, f"cape_max_{model}", "cape_max")
 
         precip = precip_arr[day_index] if day_index < len(precip_arr) else None
+        cape = cape_arr[day_index] if day_index < len(cape_arr) else None
         prob = prob_arr[day_index] if day_index < len(prob_arr) else None
         wind = wind_arr[day_index] if day_index < len(wind_arr) else None
         sustained = sustained_arr[day_index] if day_index < len(sustained_arr) else None
@@ -241,6 +245,7 @@ def extract_day_n_predictions_from_daily(
                 # The daily endpoint already gives a total, so this IS the
                 # same quantity the Day+0 path sums by hand.
                 precip_mm=precip,
+                peak_cape_jkg=cape,
             )
         )
     return predictions

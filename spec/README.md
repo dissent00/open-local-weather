@@ -101,7 +101,7 @@ absent values are `null`, never omitted keys.
 | `gust_calibration.json` | `calibrated_gust_consensus` | The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model short of the check threshold is absent from it rather than corrected by zero. |
 | `prompt_rounding.json` | `_round_for_prompt` | The precision pass applied to the prompt payload: one decimal place by default, because the instruments are recorded to 0.1, with a per-field table for the quantities one place would destroy. |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
-| `extended_trend.json` | `describe_extended_trend` | 21 |
+| `extended_trend.json` | `describe_extended_trend` | 37 |
 | `describe_day_rain.json` | `describe_day_rain` | 32 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
 | `observed_so_far.json` | `describe_observed_so_far` | 18 |
@@ -111,7 +111,7 @@ absent values are `null`, never omitted keys.
 | `temp_high_low.json` | `format_temp_high_low` | 8 |
 | `instability.json` | `summarize_instability` | 10 |
 | `extract_day0.json` | `extract_day0_predictions_from_hourly` | 9 |
-| `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 4 |
+| `extract_day_n.json` | `extract_day_n_predictions_from_daily` | 5 |
 | `forecast_horizon.json` | `forecast_horizon_days` | 9 |
 | `run_row.json` | `IssuancePredictions` | 2 |
 | `extract_onset_hour.json` | `get_onset_hour` | 3 |
@@ -126,6 +126,7 @@ absent values are `null`, never omitted keys.
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |
+| `convective_tier.json` | `convective_tier` | 10 |
 | `llm_user_prompt.json` | `build_user_prompt` | 9 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |

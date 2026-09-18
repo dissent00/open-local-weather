@@ -33,6 +33,7 @@ from openlocalweather.defaults import (
     WIND_CHANGE_BANDS_KMH,
     WIND_WARNING_BANDS_KT,
 )
+from openlocalweather.instability import THUNDER_POSSIBLE
 from openlocalweather.models import DailyActual, DayOverDayComparison, ModelPrediction, ObservedSoFar
 from openlocalweather.verify.scoring import mean
 from openlocalweather.daypart import ConvectiveTiming, describe_convective_timing
@@ -868,13 +869,140 @@ def describe_day_over_day(
 EXTENDED_TREND_THRESHOLD_C = 2.0
 
 
+# ROADMAP item 158 step 2. The two words a wet day-clause can open with:
+# "showers" below the wet band, "rain" at it, and "rain" for an arrival that
+# carries on past the span.
+DAY_CLAUSE_SHOWERS = "showers"
+DAY_CLAUSE_RAIN = "rain"
+
+
+def _join_names(names: list[str]) -> str:
+    if len(names) == 1:
+        return names[0]
+
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _join_tails(tails: list[str]) -> str:
+    # Two tails read as a pair; three or more need the commas, and the last
+    # one keeps its comma so "rain possible from Monday, and thunderstorms
+    # likely each day" does not read as one clause. A pair takes the commas
+    # too when a tail carries its own "and": "showers possible Saturday and
+    # Sunday and dry Monday" does not parse.
+    if len(tails) <= 2 and not any(" and " in t for t in tails):
+        return " and ".join(tails)
+
+    return f"{', '.join(tails[:-1])}, and {tails[-1]}"
+
+
+def extended_day_clauses(
+    day_precip_mm: list[float | None],
+    day_names: list[str],
+    day_thunder: list[str | None] | None = None,
+    day_after_precip_mm: float | None = None,
+) -> list[str]:
+    """The rain and thunder clauses for the span, in day order, as the
+    operator specified them on 2026-09-18 (ROADMAP item 158 step 2).
+
+    Each day is wet or dry by its amount band, and carries a thunder tier
+    from `instability.convective_tier` or none. Neighbouring days of one
+    class merge into a run, so three alike days are one clause and not
+    three: "showers and thunderstorms likely each day".
+
+    - A wet run ending inside the span: "showers possible Saturday" —
+      "rain" when any day of it is in the wet band.
+    - A wet run reaching the end of the span AND a wet day after it: the
+      arrival, "rain possible from Monday". Without the day after, or with a
+      dry one, the run is named like any other and the next forecast
+      carries it forward — the operator's choice over guessing.
+    - A dry day after a wet one is named: "dry Sunday". A dry day before any
+      wet one is not, because the arrival clause already implies it.
+    - Thunder attaches to its run — "showers and thunderstorms possible",
+      "dry Sunday with thunderstorms likely", or "thunderstorms possible
+      Saturday" on a leading dry day — EXCEPT when every day carries the
+      same tier, when it is said once at the end: "thunderstorms likely each
+      day". A combined clause takes the THUNDER tier for its chance word,
+      because the tier was measured on rain-or-thunder and that is what the
+      clause claims.
+    - Rain alone is always "possible". Measured 2026-09-18 over 36 day-leads
+      from the prompt archive, the models' stated daily probability at
+      Days+1..+3 did not sort the outcomes at any floor from 30 to 80, so
+      no "likely" for rain is funded yet; the tier parameter is where it
+      goes when the record can pay for it.
+
+    A day with no amount is unknown: it breaks a run and is never named.
+    """
+    names_n = len(day_names)
+    bands = [day_rain_band(p) for p in day_precip_mm[:names_n]]
+    bands += [None] * (names_n - len(bands))
+    wet = [None if b is None else b != DRY_DAY_LABEL for b in bands]
+    tiers = list(day_thunder or [])[:names_n]
+    tiers += [None] * (names_n - len(tiers))
+
+    uniform = tiers[0] is not None and all(t == tiers[0] for t in tiers)
+    per_day = [None] * names_n if uniform else tiers
+    after_wet = (
+        day_after_precip_mm is not None
+        and day_rain_band(day_after_precip_mm) != DRY_DAY_LABEL
+    )
+
+    clauses: list[str] = []
+    folded = False
+    i = 0
+    while i < names_n:
+        if wet[i] is None:
+            i += 1
+            continue
+
+        j = i
+        while j + 1 < names_n and wet[j + 1] == wet[i] and per_day[j + 1] == per_day[i]:
+            j += 1
+        days = range(i, j + 1)
+        names = _join_names([day_names[k] for k in days])
+        whole = j - i + 1 == names_n
+        tier = tiers[0] if (uniform and whole) else per_day[i]
+        thunder = " and thunderstorms" if tier else ""
+
+        if wet[i]:
+            word = (
+                DAY_CLAUSE_RAIN
+                if any(bands[k] == WET_DAY_LABEL for k in days)
+                else DAY_CLAUSE_SHOWERS
+            )
+            chance = tier or THUNDER_POSSIBLE
+            if whole:
+                clauses.append(f"{word}{thunder} {chance} each day")
+                folded = tier is not None
+            elif j == names_n - 1 and after_wet:
+                clauses.append(f"{DAY_CLAUSE_RAIN}{thunder} {chance} from {day_names[i]}")
+            else:
+                clauses.append(f"{word}{thunder} {chance} {names}")
+        elif any(wet[k] for k in range(i)):
+            clauses.append(f"dry {names}" + (f" with thunderstorms {tier}" if tier else ""))
+        elif tier and not whole:
+            # A whole dry span with one tier is the tail alone, "thunderstorms
+            # possible each day"; naming three days and then "each day" said
+            # it twice on the vector's first run.
+            clauses.append(f"thunderstorms {tier} {names}")
+
+        i = j + 1
+
+    if uniform and not folded:
+        clauses.append(f"thunderstorms {tiers[0]} each day")
+
+    return clauses
+
+
 def describe_extended_trend(
     today_high_c: float | None,
     day_highs_c: list[float | None],
     day_precip_mm: list[float | None],
-    last_day_name: str,
+    day_names: list[str],
     today_wind_kmh: float | None = None,
     day_winds_kmh: list[float | None] | None = None,
+    *,
+    day_thunder: list[str | None] | None = None,
+    day_after_precip_mm: float | None = None,
 ) -> str | None:
     """One finished phrase for the next three days, or None when the data is
     too thin to say anything.
@@ -897,10 +1025,19 @@ def describe_extended_trend(
     things a forecast can tell someone choosing when to do a job. The absence
     of change IS the planning answer, and a reader told nothing has to go and
     check. So the steady band carries real words rather than a null.
+
+    THE DAYS ARE NAMED — ROADMAP item 158 step 2. "Rain becoming more
+    likely" was any wet day among three, and on 2026-09-18 it hid a dry
+    Sunday between a showery Saturday and rain from Monday. `day_names` are
+    the span's three day names in order; `day_thunder` the tier per day;
+    `day_after_precip_mm` the mean for the day past the span, which decides
+    whether an arrival says "from". See `extended_day_clauses`.
     """
     highs = [h for h in day_highs_c if h is not None]
     if today_high_c is None or not highs:
         return None
+
+    last_day_name = day_names[-1]
 
     # The END of the span against today, not the mean. A reader planning
     # three days out wants to know where it ends up, and a warm-cool-warm
@@ -921,17 +1058,13 @@ def describe_extended_trend(
     # the same". With it in, "conditions" is honest when every measured
     # dimension is steady, and the narrow noun is used when it is not.
     #
-    # Cloud and convective risk are NOT available at these leads, so
-    # "conditions" still means temperature, wind and rain. That is a wider
-    # claim than before and a smaller one than the word suggests; it widens
-    # again when item 65's cloud data lands.
-    # Rain is reported only when it ARRIVES. A dry spell continuing is already
-    # carried by "much the same", and a second clause saying so is the
-    # enumeration item 48 was raised to stop. Computed here rather than below
-    # because the scope noun depends on it.
-    wet_days = [
-        p for p in day_precip_mm if p is not None and day_rain_band(p) != DRY_DAY_LABEL
-    ]
+    # Cloud is NOT available at these leads, so "conditions" means
+    # temperature, wind, rain and, since item 158 step 2, thunder. That is a
+    # wider claim than before and a smaller one than the word suggests; it
+    # widens again when item 65's cloud data lands.
+    day_clauses = extended_day_clauses(
+        day_precip_mm, day_names, day_thunder, day_after_precip_mm
+    )
 
     wind_delta = None
     if today_wind_kmh is not None and day_winds_kmh:
@@ -961,29 +1094,28 @@ def describe_extended_trend(
         trend = f"{' and '.join(moving)} through {last_day_name}"
     else:
         # A SCOPE NOUN CANNOT COVER WHAT THE TAIL IS ABOUT TO CONTRADICT.
-        # "conditions much the same, with rain becoming more likely" denies
+        # "conditions much the same, with showers possible Friday" denies
         # itself, and so does "winds much the same, with gusts reaching gale"
         # — steady and dangerous are both true of that wind, and welding them
         # into one clause reads as a mistake rather than as two facts.
         if wind_delta is None or span_warning:
             scope = "temperatures"
-        elif wet_days:
+        elif day_clauses:
             scope = "temperatures and winds"
         else:
             scope = "conditions"
         trend = f"{scope} much the same through {last_day_name}"
 
     # ONE "with", however many things follow it. Two tails stacked as
-    # "with gusts reaching gale, with rain becoming more likely" reads as a
+    # "with gusts reaching gale, with showers possible Friday" reads as a
     # dropped word.
     tails = []
     if span_warning:
         tails.append(f"gusts reaching {span_warning}")
-    if wet_days:
-        tails.append("rain becoming more likely")
+    tails.extend(day_clauses)
 
     if tails:
-        return f"{trend}, with {' and '.join(tails)}"
+        return f"{trend}, with {_join_tails(tails)}"
 
     return trend
 

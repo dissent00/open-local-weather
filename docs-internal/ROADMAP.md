@@ -23039,7 +23039,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Step 1 SHIPPED 2026-09-18; steps 2-10 for review, in order**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1–2 SHIPPED 2026-09-18; steps 3-10 for review, in order**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23264,6 +23264,109 @@ station stub no reach. 1426 Python, 195 Dart.
 and steps 5 and 6's decisions. The app's runner passes no observation and
 computes no comparison of its own, so it needs the re-pin and nothing
 else.
+
+### Step 2 SHIPPED 2026-09-18 — the days named; the record refused both floors
+
+Measured first (item 100), and neither number the step asked for exists
+yet. Both measurements are one script over the prompt archive and the
+actuals cache; re-run them when the season turns.
+
+**The rain floor.** Probabilities at Days+1..+3 live only in the prompt
+archive (from 09-04); the stored rows carry `rain_probability_pct` only
+since 09-14, at leads 0, 3 and 7. Pairing the archive with ended days gives
+13 target days (09-05..09-17) and 36 day-leads of the GFS/ECMWF/ICON mean.
+Rain fell on 8 of the 13 by the reanalysis flag, one day above 5 mm. The
+stated chance does not sort the outcomes:
+
+| mean stated % | day-leads | verified wet |
+|---|---:|---:|
+| 40–59 | 6 | 1.00 |
+| 60–79 | 20 | 0.80 |
+| 80–89 | 7 | 0.29 |
+
+At every floor from 30 to 80 the wet fraction above it is 0.29–0.73 and
+below it 0.62–0.78; the window's base rate is 0.67. Per model, ECMWF says
+80 or more on 42 of 52 day-leads and verifies at 0.69, the base rate; GFS
+runs backwards; ICON is the only monotone one, on single-digit bins; Best
+Match equals ECMWF on every row (step 4 again). So no "likely" for rain is
+funded, and the archive keeps accruing the inputs without a schema change.
+Re-measure at about 30 target days, mid-October, and again when the wet
+season gives the bins weight.
+
+**The CAPE floor, and where it actually was.** Open-Meteo's daily block
+serves `cape_max` for all five models (probed live that morning), so step
+10's fetch is one variable. Magnitude separates nothing: over the 14
+archived days the maximum CAPE over the four independent models sat at or
+above 2000 J/kg on 19 of 21 issuance-days at Day+0 and 10 of 19 at Day+1,
+below 1000 on none and one; thunder verified on 0.42 of the ≥2000 days
+against a base rate of 0.43. Here high CAPE is the climate in September.
+AGREEMENT does separate the days: with three of the four models crossing
+1000 J/kg, rain-or-thunder verified on 0.82 (n=11) at Day+0 and 0.88 (n=8)
+at Day+1; with one or two, 0.50 at Day+0 (n=2 and 8) and 0.80 and 0.40 at
+Day+1 (n=5 each). No day had all four, because GFS never crosses. That is
+the tier: "possible" for one or two, "likely" for three or more, measured
+on rain-or-thunder because at this station a storm is the rain.
+
+**The record says evening, not afternoon.** Of the model-days whose CAPE
+peaks above 1000, the Day+0 peak falls between 18:00 and 22:00 on 46 of
+53; the station's rain onsets over the cache: 7 of 14 in 15:00–18:00, 6
+after 18:00, one overnight. A daily maximum has no hour, so days 2 and 3
+carry no phase word — the operator's decision.
+
+**"Drying" on 09-18 was not in the models' amounts** (today 0.3 mm,
+Saturday 1.6, Sunday 0.1, Monday 2.7). It was yesterday's observed rain
+against today, which is the comparison sentence's baseline; the extended
+phrase is measured against today by rule and does not claim it.
+
+**The operator's decisions, in order:** "possible" for rain everywhere
+until a floor is funded. The day after the span decides "from"; without
+one, or with a dry one, the day is named and the next forecast carries it
+forward. A dry day on the mean, qualified by CAPE — "dry Sunday with
+thunderstorms possible" — because dry-until-storms is a different call
+from dry and the local convention, and a composer reading amounts alone
+would call those days dry. Rain and CAPE together are "showers and
+thunderstorms"; CAPE alone is thunderstorms alone; "widespread" dropped,
+since a point station cannot verify an area. Thunder said once when every
+day shares the tier, alike days merged, so three similar days are one
+clause. Cloud (the daily block also serves a cloud mean) and wind at these
+leads are steps 10 and 6.
+
+**Built, both languages, vector-pinned.** `cape_max` in the daily fetch;
+`peak_cape_jkg` on the Day+N rows, so the Day+3 and Day+7 rows store it
+from today and the coverage watcher will report it as `became_available`
+after three runs — expected, not a defect. `instability.convective_tier`
+and its constants, `convective_tier.json` (10 cases, and the measurement
+beside `CONVECTIVE_LIKELY_MODELS`). `comparison.extended_day_clauses` and
+`describe_extended_trend` taking the three day names, the tier per day and
+the day after the span; `extended_trend.json` grows from 21 cases to 37,
+the old ones re-expressed with day names and the operator's edge list
+added. `BEST_MATCH_MODEL_ID`, so the tier's count leaves the blend out by
+name. The prompt's example phrase, and one sentence saying NEXT THREE DAYS
+is the only place the Overview names thunder beyond today. The 09-18 run
+renders, with that morning's daily CAPE: *"Warming through Monday, with
+showers possible Saturday, dry Sunday, rain possible from Monday, and
+thunderstorms likely each day."*
+
+**Verified.** 1427 Python, 196 Dart. Nine mutations bit their own case on
+both sides: "from" without the day after, thunder not factored, a leading
+dry day named, the tier at two models, CAPE not extracted. Driven through
+the real CLI before and after with the control: transcripts identical, the
+data dump moved only by the prompt hashes and the narrative prompt's +286
+characters, because the drive's daily fixture carries no `cape_max` and is
+dry throughout. One hazard for the next mutation pass: a restore that is
+the same size as the mutation and lands in the same second leaves Python's
+bytecode cache stale, and the suite reported a failure that the source did
+not contain until `__pycache__` was cleared.
+
+**Not checked.** No live run has produced the new phrase. The live prompt
+grows by the daily `cape_max` arrays — about 300 characters by count, not
+measured; read it from `olw prompt-size` on the next run. A model whose
+horizon ends before the fourth day drops out of that day's mean rather than
+voiding it.
+
+**Not done:** "likely" for rain (the floor); cloud at these leads (step
+10); a phase word beyond tomorrow. The app's runner hands the daily block
+through the core, so it needs the re-pin and nothing else.
 
 ### Recommended order
 

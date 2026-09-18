@@ -36,7 +36,9 @@ const String hourlyForecastVars =
 const String dailyForecastVars =
     'temperature_2m_max,temperature_2m_min,precipitation_sum,'
     'precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,'
-    'pressure_msl_mean,uv_index_max';
+    // cape_max: upstream item 158 step 2, verified served for all five
+    // models on 2026-09-18 — what lets a day beyond today say thunderstorms.
+    'pressure_msl_mean,uv_index_max,cape_max';
 const String regionalDailyVars =
     'precipitation_sum,windspeed_10m_max,pressure_msl_mean';
 const String archiveHourlyVars =

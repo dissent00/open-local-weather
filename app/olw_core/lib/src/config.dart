@@ -70,6 +70,12 @@ const List<String> defaultModels = [
 /// Python implementation.
 const String blendModelId = 'olw_blend';
 
+/// Open-Meteo's own blend, by name, for the places that must leave it out
+/// of a count. Mirrors `BEST_MATCH_MODEL_ID`: upstream item 158 step 4
+/// measured its rain probability as ECMWF's on 22 of 22 issuances, and the
+/// thunder tier was measured on the four independent models without it.
+const String bestMatchModelId = 'best_match';
+
 /// The trivial rules every real model has to beat.
 ///
 /// Kept here rather than imported from baselines.dart so this file keeps no

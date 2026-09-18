@@ -52,7 +52,7 @@ from openlocalweather.comparison import (
     describe_extended_trend,
     describe_day_rain,
 )
-from openlocalweather.instability import summarize_instability
+from openlocalweather.instability import convective_tier, summarize_instability
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.models import InformationMoved, ObservedSoFar
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
@@ -773,9 +773,20 @@ def test_vectors_extended_trend():
     for case in load("extended_trend.json")["cases"]:
         i = case["input"]
         got = describe_extended_trend(
-            i["today_high_c"], i["day_highs_c"], i["day_precip_mm"], i["last_day_name"],
+            i["today_high_c"], i["day_highs_c"], i["day_precip_mm"], i["day_names"],
             today_wind_kmh=i.get("today_wind_kmh"), day_winds_kmh=i.get("day_winds_kmh"),
+            day_thunder=i.get("day_thunder"), day_after_precip_mm=i.get("day_after_precip_mm"),
         )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_convective_tier():
+    """ROADMAP item 158 step 2 — the thunder word for a coming day, from how
+    many models cross the CAPE threshold. Agreement, not magnitude: the
+    measurement is in instability.py beside CONVECTIVE_LIKELY_MODELS."""
+    for case in load("convective_tier.json")["cases"]:
+        i = case["input"]
+        got = convective_tier(i["peak_capes_jkg"], i["threshold"])
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
@@ -1035,6 +1046,7 @@ def test_every_vector_file_is_exercised():
         "prompt_rounding.json",
         "cell_key.json",
         "convective_timing.json",
+        "convective_tier.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

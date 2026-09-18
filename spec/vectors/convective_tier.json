@@ -1,0 +1,131 @@
+{
+  "vector_format_version": 1,
+  "function": "convective_tier",
+  "description": "ROADMAP item 158 step 2. The thunder word for a day beyond today from how many models' daily CAPE maxima reach the threshold: none, 'possible' for one or two, 'likely' for three or more. AGREEMENT, not magnitude -- measured 2026-09-18, the maximum over models sat above 2000 J/kg on 19 of 21 days and separated nothing, while three of four crossing 1000 verified rain-or-thunder on 0.82 and 0.88 of days at Day+0 and Day+1 against 0.40-0.80 for one or two on samples of two to eight. The measurement is in instability.py.",
+  "cases": [
+    {
+      "name": "no model crosses",
+      "input": {
+        "peak_capes_jkg": [
+          200.0,
+          500.0,
+          900.0,
+          999.9
+        ],
+        "threshold": 1000.0
+      },
+      "expected": null
+    },
+    {
+      "name": "one model crossing is possible",
+      "input": {
+        "peak_capes_jkg": [
+          200.0,
+          1500.0,
+          900.0,
+          400.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "possible"
+    },
+    {
+      "name": "two models crossing is still possible",
+      "input": {
+        "peak_capes_jkg": [
+          1200.0,
+          1500.0,
+          900.0,
+          400.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "possible"
+    },
+    {
+      "name": "three of four is likely - the measured step",
+      "input": {
+        "peak_capes_jkg": [
+          1200.0,
+          1500.0,
+          2100.0,
+          400.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "likely"
+    },
+    {
+      "name": "all four is likely",
+      "input": {
+        "peak_capes_jkg": [
+          1200.0,
+          1500.0,
+          2100.0,
+          1000.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "likely"
+    },
+    {
+      "name": "exactly the threshold counts",
+      "input": {
+        "peak_capes_jkg": [
+          1000.0,
+          1000.0,
+          1000.0,
+          0.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "likely"
+    },
+    {
+      "name": "a model with no CAPE at this lead is not counted either way",
+      "input": {
+        "peak_capes_jkg": [
+          null,
+          1500.0,
+          2100.0,
+          null
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "possible"
+    },
+    {
+      "name": "three models, all crossing",
+      "input": {
+        "peak_capes_jkg": [
+          1200.0,
+          1500.0,
+          2100.0
+        ],
+        "threshold": 1000.0
+      },
+      "expected": "likely"
+    },
+    {
+      "name": "nothing to count",
+      "input": {
+        "peak_capes_jkg": [],
+        "threshold": 1000.0
+      },
+      "expected": null
+    },
+    {
+      "name": "every model absent",
+      "input": {
+        "peak_capes_jkg": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "threshold": 1000.0
+      },
+      "expected": null
+    }
+  ]
+}

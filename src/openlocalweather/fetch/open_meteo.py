@@ -55,7 +55,9 @@ HOURLY_FORECAST_VARS = (
 DAILY_FORECAST_VARS = (
     "temperature_2m_max,temperature_2m_min,precipitation_sum,"
     "precipitation_probability_max,windspeed_10m_max,windgusts_10m_max,"
-    "pressure_msl_mean,uv_index_max"
+    # cape_max: ROADMAP item 158 step 2. Verified served for all five models
+    # on 2026-09-18; it is what lets a day beyond today say "thunderstorms".
+    "pressure_msl_mean,uv_index_max,cape_max"
 )
 REGIONAL_DAILY_VARS = "precipitation_sum,windspeed_10m_max,pressure_msl_mean"
 ARCHIVE_HOURLY_VARS = (

@@ -431,6 +431,10 @@ class ModelPrediction(BaseModel):
     # Fetched in HOURLY_FORECAST_VARS from the beginning and recomputed every
     # run into a value nothing stored, so no model could ever be checked
     # against whether a storm actually arrived.
+    #
+    # At Day+1 and beyond it is the daily `cape_max` (ROADMAP item 158 step
+    # 2, fetched from 2026-09-18), so Day+3 and Day+7 rows carry it from that
+    # date and are None before. Scored only at Day+0 (convective_correct).
     peak_cape_jkg: float | None = None
     # The compass bearing, degrees, AT THIS MODEL'S OWN PEAK-GUST HOUR —
     # ROADMAP item 59. Paired with wind_kmh, which is that same model's own

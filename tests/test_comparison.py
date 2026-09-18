@@ -518,19 +518,20 @@ def test_the_extended_clause_says_conditions_when_it_measured_conditions():
     steady_highs = [30.5, 30.2, 30.4]
     steady_winds = [20.0, 21.0, 19.5]
     dry = [0.0, 0.0, 0.0]
+    to_saturday = ["Thursday", "Friday", "Saturday"]
 
     # All three steady: the broad noun is earned.
-    assert describe_extended_trend(30.0, steady_highs, dry, "Saturday",
+    assert describe_extended_trend(30.0, steady_highs, dry, to_saturday,
                                    today_wind_kmh=20.0, day_winds_kmh=steady_winds) == (
         "conditions much the same through Saturday")
 
     # Rain arriving: "conditions much the same" would contradict its own tail.
-    assert describe_extended_trend(30.0, steady_highs, [0.0, 0.0, 6.0], "Saturday",
+    assert describe_extended_trend(30.0, steady_highs, [0.0, 0.0, 6.0], to_saturday,
                                    today_wind_kmh=20.0, day_winds_kmh=steady_winds) == (
-        "temperatures and winds much the same through Saturday, with rain becoming more likely")
+        "temperatures and winds much the same through Saturday, with showers possible Saturday")
 
     # No wind measured at all: say only what was compared.
-    assert describe_extended_trend(30.0, steady_highs, dry, "Saturday") == (
+    assert describe_extended_trend(30.0, steady_highs, dry, to_saturday) == (
         "temperatures much the same through Saturday")
 
 
@@ -538,11 +539,12 @@ def test_a_wind_trend_is_worth_saying_even_when_the_heat_holds():
     """Wind was discarded entirely, so a three-day build in gusts under a flat
     temperature reads as "much the same" — the operator's point that this
     must not be a temperature-only clause."""
-    assert describe_extended_trend(30.0, [30.5, 30.2, 30.4], [0.0, 0.0, 0.0], "Saturday",
+    to_saturday = ["Thursday", "Friday", "Saturday"]
+    assert describe_extended_trend(30.0, [30.5, 30.2, 30.4], [0.0, 0.0, 0.0], to_saturday,
                                    today_wind_kmh=18.0, day_winds_kmh=[24.0, 30.0, 34.0]) == (
         "becoming windier through Saturday")
 
-    assert describe_extended_trend(30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], "Saturday",
+    assert describe_extended_trend(30.0, [33.0, 33.5, 34.0], [0.0, 0.0, 0.0], to_saturday,
                                    today_wind_kmh=18.0, day_winds_kmh=[24.0, 30.0, 34.0]) == (
         "warming and becoming windier through Saturday")
 
@@ -601,13 +603,13 @@ def test_a_warning_survives_conditions_much_the_same():
     # gusts reaching near gale" would deny its own tail, even though steady
     # and dangerous are both true of that wind.
     assert describe_extended_trend(
-        30.0, steady, [0.0, 0.0, 0.0], "Saturday",
+        30.0, steady, [0.0, 0.0, 0.0], ["Thursday", "Friday", "Saturday"],
         today_wind_kmh=90.0, day_winds_kmh=[92.0, 88.0, 91.0],
     ) == "temperatures much the same through Saturday, with gusts reaching storm force"
 
     # Below the floor the clause is unchanged.
     assert describe_extended_trend(
-        30.0, steady, [0.0, 0.0, 0.0], "Saturday",
+        30.0, steady, [0.0, 0.0, 0.0], ["Thursday", "Friday", "Saturday"],
         today_wind_kmh=20.0, day_winds_kmh=[21.0, 20.0, 19.0],
     ) == "conditions much the same through Saturday"
 

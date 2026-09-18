@@ -20,6 +20,13 @@ import 'models.dart';
 import 'open_meteo.dart';
 import 'synoptic.dart';
 
+/// The three-day span the Overview's closing phrase covers, and the day past
+/// it that decides whether rain reaching the span's end says "from" —
+/// upstream item 158 step 2. Mirrors `EXTENDED_SPAN_LEADS` and
+/// `DAY_AFTER_SPAN_LEAD` in pipeline.py.
+const List<int> extendedSpanLeads = [1, 2, 3];
+const int dayAfterSpanLead = 4;
+
 /// End-to-end forecast generation: fetch, extract, prompt, synthesise.
 ///
 /// The app-side equivalent of the Python `pipeline.py` run, minus everything
@@ -467,13 +474,26 @@ Future<ForecastRun> generateForecast({
   // those AFTER this call, and a mean that included climatology would band a
   // different trend from the one the site publishes.
   final extendedDays = [
-    for (final n in const [1, 2, 3]) extractDayNPredictionsFromDaily(daily, n, models),
+    for (final n in extendedSpanLeads) extractDayNPredictionsFromDaily(daily, n, models),
   ];
+  final dayAfterSpan = extractDayNPredictionsFromDaily(daily, dayAfterSpanLead, models);
   final extendedTrend = describeExtendedTrend(
     mean([for (final p in day0) p.highC]),
     [for (final d in extendedDays) mean([for (final p in d) p.highC])],
     [for (final d in extendedDays) mean([for (final p in d) p.precipMm])],
-    weekdayName(addDays(today, 3)),
+    [for (final n in extendedSpanLeads) weekdayName(addDays(today, n))],
+    // Upstream item 158 step 2: the thunder tier per day from the four
+    // independent models' daily CAPE maxima — best_match left out because
+    // the tier was measured without it — and the mean for the day past
+    // the span, which decides whether an arrival says "from".
+    dayThunder: [
+      for (final d in extendedDays)
+        convectiveTier([
+          for (final p in d)
+            if (p.model != bestMatchModelId) p.peakCapeJkg
+        ]),
+    ],
+    dayAfterPrecipMm: mean([for (final p in dayAfterSpan) p.precipMm]),
     // Wind at these leads was available and discarded, so a three-day build
     // in gusts under a flat temperature read as "much the same". It is also
     // what lets the clause say "conditions" rather than "temperatures".

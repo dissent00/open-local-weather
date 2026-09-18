@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'daypart.dart';
+import 'instability.dart' show thunderPossible;
 import 'models.dart';
 import 'rounding.dart';
 import 'scoring.dart' show mean;
@@ -903,6 +904,104 @@ String? describeDayOverDay(
 /// that is not there.
 const double extendedTrendThresholdC = 2.0;
 
+/// Upstream item 158 step 2. The two words a wet day-clause can open with:
+/// "showers" below the wet band, "rain" at it, and "rain" for an arrival
+/// that carries on past the span.
+const String dayClauseShowers = 'showers';
+const String dayClauseRain = 'rain';
+
+String _joinNames(List<String> names) => names.length == 1
+    ? names.first
+    : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+
+/// Two tails read as a pair; three or more need the commas, and the last one
+/// keeps its comma so "rain possible from Monday, and thunderstorms likely
+/// each day" does not read as one clause. A pair takes the commas too when a
+/// tail carries its own "and".
+String _joinTails(List<String> tails) {
+  if (tails.length <= 2 && !tails.any((t) => t.contains(' and '))) {
+    return tails.join(' and ');
+  }
+
+  return '${tails.sublist(0, tails.length - 1).join(', ')}, and ${tails.last}';
+}
+
+/// The rain and thunder clauses for the span, in day order — the rules are
+/// documented on `extended_day_clauses` in comparison.py and pinned by
+/// `extended_trend.json`. Days of one class merge into runs; a wet run
+/// reaching the span's end says "from" only when the day after is wet too;
+/// a dry day is named only after a wet one; thunder attaches to its run
+/// unless every day shares the tier, when it is said once at the end. Rain
+/// alone is always "possible": no floor for "likely" is funded yet.
+List<String> extendedDayClauses(
+  List<double?> dayPrecipMm,
+  List<String> dayNames, {
+  List<String?>? dayThunder,
+  double? dayAfterPrecipMm,
+}) {
+  final n = dayNames.length;
+  final bands = [
+    for (var i = 0; i < n; i++)
+      i < dayPrecipMm.length ? dayRainBand(dayPrecipMm[i]) : null
+  ];
+  final wet = [for (final b in bands) b == null ? null : b != dryDayLabel];
+  final tiers = [
+    for (var i = 0; i < n; i++)
+      dayThunder != null && i < dayThunder.length ? dayThunder[i] : null
+  ];
+  final uniform =
+      n > 0 && tiers.first != null && tiers.every((t) => t == tiers.first);
+  final perDay = uniform ? List<String?>.filled(n, null) : tiers;
+  final afterWet =
+      dayAfterPrecipMm != null && dayRainBand(dayAfterPrecipMm) != dryDayLabel;
+
+  final clauses = <String>[];
+  var folded = false;
+  var i = 0;
+  while (i < n) {
+    if (wet[i] == null) {
+      i++;
+      continue;
+    }
+
+    var j = i;
+    while (j + 1 < n && wet[j + 1] == wet[i] && perDay[j + 1] == perDay[i]) {
+      j++;
+    }
+    final days = [for (var k = i; k <= j; k++) k];
+    final names = _joinNames([for (final k in days) dayNames[k]]);
+    final whole = j - i + 1 == n;
+    final tier = (uniform && whole) ? tiers.first : perDay[i];
+    final thunder = tier != null ? ' and thunderstorms' : '';
+
+    if (wet[i]!) {
+      final word = days.any((k) => bands[k] == wetDayLabel)
+          ? dayClauseRain
+          : dayClauseShowers;
+      final chance = tier ?? thunderPossible;
+      if (whole) {
+        clauses.add('$word$thunder $chance each day');
+        folded = tier != null;
+      } else if (j == n - 1 && afterWet) {
+        clauses.add('$dayClauseRain$thunder $chance from ${dayNames[i]}');
+      } else {
+        clauses.add('$word$thunder $chance $names');
+      }
+    } else if (wet.sublist(0, i).any((w) => w == true)) {
+      clauses.add('dry $names${tier != null ? ' with thunderstorms $tier' : ''}');
+    } else if (tier != null && !whole) {
+      // A whole dry span with one tier is the tail alone.
+      clauses.add('thunderstorms $tier $names');
+    }
+
+    i = j + 1;
+  }
+
+  if (uniform && !folded) clauses.add('thunderstorms ${tiers.first} each day');
+
+  return clauses;
+}
+
 /// One finished phrase for the next three days, or null when the data is too
 /// thin to say anything. ROADMAP item 61.
 ///
@@ -916,13 +1015,20 @@ const double extendedTrendThresholdC = 2.0;
 /// A STEADY SPELL IS SAID, NOT SKIPPED. The absence of change is the planning
 /// answer for someone choosing when to do a job, and a reader told nothing
 /// has to go and check.
+///
+/// THE DAYS ARE NAMED since upstream item 158 step 2 — [dayNames] are the
+/// span's three names in order, [dayThunder] the tier per day,
+/// [dayAfterPrecipMm] the mean for the day past the span, which decides
+/// whether an arrival says "from". See [extendedDayClauses].
 String? describeExtendedTrend(
   double? todayHighC,
   List<double?> dayHighsC,
   List<double?> dayPrecipMm,
-  String lastDayName, {
+  List<String> dayNames, {
   double? todayWindKmh,
   List<double?>? dayWindsKmh,
+  List<String?>? dayThunder,
+  double? dayAfterPrecipMm,
 }) {
   final highs = [
     for (final h in dayHighsC)
@@ -930,25 +1036,28 @@ String? describeExtendedTrend(
   ];
   if (todayHighC == null || highs.isEmpty) return null;
 
+  final lastDayName = dayNames.last;
+
   // The END of the span against today, not the mean. A reader planning three
   // days out wants to know where it ends up, and a warm-cool-warm sequence
   // averages into a steadiness none of the three days has.
   final delta = highs.last - todayHighC;
-
-  // Rain is reported only when it ARRIVES. A dry spell continuing is already
-  // carried by "much the same", and a second clause saying so is the
-  // enumeration item 48 was raised to stop. Computed here rather than below
-  // because the scope noun depends on it.
-  final anyWet = dayPrecipMm.any((p) => p != null && dayRainBand(p) != dryDayLabel);
 
   // NAME THE SCOPE YOU ACTUALLY MEASURED, and widen it when you can. Wind was
   // available at these leads and discarded, so a three-day build in gusts
   // under a flat temperature read as "much the same". With it in,
   // "conditions" is honest when every measured dimension is steady.
   //
-  // Cloud and convective risk are NOT available at these leads, so
-  // "conditions" means temperature, wind and rain — wider than before and
+  // Cloud is NOT available at these leads, so "conditions" means temperature,
+  // wind, rain and, since item 158 step 2, thunder — wider than before and
   // narrower than the word suggests. It widens again when cloud lands.
+  final dayClauses = extendedDayClauses(
+    dayPrecipMm,
+    dayNames,
+    dayThunder: dayThunder,
+    dayAfterPrecipMm: dayAfterPrecipMm,
+  );
+
   double? windDelta;
   if (todayWindKmh != null && dayWindsKmh != null) {
     final winds = [
@@ -984,14 +1093,14 @@ String? describeExtendedTrend(
     trend = '${moving.join(' and ')} through $lastDayName';
   } else {
     // A SCOPE NOUN CANNOT COVER WHAT THE TAIL IS ABOUT TO CONTRADICT.
-    // "conditions much the same, with rain becoming more likely" denies
+    // "conditions much the same, with showers possible Friday" denies
     // itself, and so does "winds much the same, with gusts reaching gale" —
     // steady and dangerous are both true of that wind, and welding them into
     // one clause reads as a mistake rather than as two facts.
     final String scope;
     if (windDelta == null || spanWarning != null) {
       scope = 'temperatures';
-    } else if (anyWet) {
+    } else if (dayClauses.isNotEmpty) {
       scope = 'temperatures and winds';
     } else {
       scope = 'conditions';
@@ -1002,10 +1111,10 @@ String? describeExtendedTrend(
   // ONE "with", however many things follow it.
   final tails = <String>[
     if (spanWarning != null) 'gusts reaching $spanWarning',
-    if (anyWet) 'rain becoming more likely',
+    ...dayClauses,
   ];
 
-  return tails.isEmpty ? trend : '$trend, with ${tails.join(' and ')}';
+  return tails.isEmpty ? trend : '$trend, with ${_joinTails(tails)}';
 }
 
 

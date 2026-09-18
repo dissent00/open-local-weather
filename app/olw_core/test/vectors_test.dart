@@ -1115,7 +1115,11 @@ void main() {
             (i['today_high_c'] as num?)?.toDouble(),
             nums('day_highs_c'),
             nums('day_precip_mm'),
-            i['last_day_name'] as String,
+            (i['day_names'] as List).cast<String>(),
+            dayThunder: i['day_thunder'] == null
+                ? null
+                : (i['day_thunder'] as List).cast<String?>(),
+            dayAfterPrecipMm: (i['day_after_precip_mm'] as num?)?.toDouble(),
             todayWindKmh: (i['today_wind_kmh'] as num?)?.toDouble(),
             dayWindsKmh: i['day_winds_kmh'] == null
                 ? null
@@ -1659,6 +1663,19 @@ void main() {
     });
   });
 
+  group('convective_tier — upstream item 158 step 2', () {
+    test('the thunder word for a coming day, from how many models cross', () {
+      for (final c in casesOf('convective_tier.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = convectiveTier(
+          [for (final v in i['peak_capes_jkg'] as List) (v as num?)?.toDouble()],
+          threshold: (i['threshold'] as num).toDouble(),
+        );
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+  });
+
   group('convective_timing — upstream item 158', () {
     test('the thunder\'s when, in the sun\'s words', () {
       DateTime? clock(Object? v) => v == null ? null : DateTime.parse(v as String);
@@ -1759,6 +1776,7 @@ void main() {
       'comparison_for_prompt.json',
       'cell_key.json',
       'convective_timing.json',
+      'convective_tier.json',
     };
     final onDisk = vectorsDir
         .listSync()

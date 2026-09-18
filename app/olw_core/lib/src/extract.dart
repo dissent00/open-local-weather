@@ -223,6 +223,9 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
     // Fetched on every daily request since before this project scored
     // anything, and read by nothing until item 58.
     final probArr = _series(daily, 'precipitation_probability_max', model);
+    // The day's CAPE maximum — upstream item 158 step 2. Absent from every
+    // daily response before 2026-09-18, so null on every archived row.
+    final capeArr = _series(daily, 'cape_max', model);
 
     final precip = at(precipArr, dayIndex);
     final prob = at(probArr, dayIndex);
@@ -248,6 +251,7 @@ List<ModelPrediction> extractDayNPredictionsFromDaily(
       precipMm: precip,
       // None, never 0 — see ModelPrediction.rainProbabilityPct.
       rainProbabilityPct: prob?.toInt(),
+      peakCapeJkg: at(capeArr, dayIndex),
     );
   }).toList();
 }

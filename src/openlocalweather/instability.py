@@ -37,6 +37,47 @@ from openlocalweather.fetch.open_meteo import pick_series
 # thunderstorms, and the Overview has to say so.
 CONVECTIVE_CAPE_THRESHOLD_JKG = 1000.0
 
+# ROADMAP item 158 step 2: how many models must cross the threshold on a
+# coming day before its thunderstorms are "likely" rather than "possible".
+#
+# AGREEMENT, NOT MAGNITUDE, and the record chose it. Measured 2026-09-18 over
+# the 14 archived days (09-04..09-17) against the station's thunder flag and
+# the reanalysis rain flag: the maximum CAPE over the models sat at or above
+# 2000 J/kg on 19 of 21 issuance-days at Day+0 and separated nothing —
+# thunder verified on 0.42 of them against a base rate of 0.43. Here high
+# CAPE is the climate in September. The COUNT of independent models above
+# 1000 J/kg did separate the days: with three of the four crossing, rain or
+# thunder verified on 0.82 (n=11) at Day+0 and 0.88 (n=8) at Day+1; with one
+# or two, 0.50 at Day+0 (n=2 and 8) and 0.80 and 0.40 at Day+1 (n=5 each).
+# No day had all four, because GFS never crossed. The
+# sample is one September; re-measure when the season turns (item 100).
+#
+# The tier is measured on rain-or-thunder, which is exactly what the
+# composed clause claims — "showers and thunderstorms likely" — because at
+# this station a storm is the rain (operator, 2026-09-18).
+CONVECTIVE_LIKELY_MODELS = 3
+THUNDER_POSSIBLE = "possible"
+THUNDER_LIKELY = "likely"
+
+
+def convective_tier(
+    peak_capes_jkg: list[float | None],
+    threshold: float = CONVECTIVE_CAPE_THRESHOLD_JKG,
+) -> str | None:
+    """The thunder word for one coming day from the models' CAPE maxima.
+
+    None when no model crosses, THUNDER_POSSIBLE when one or two do,
+    THUNDER_LIKELY at CONVECTIVE_LIKELY_MODELS or more. A None value is a
+    model that had no CAPE at this lead, and it is not counted either way.
+    The caller decides which models are in the list; the pipeline keeps
+    `best_match` out because the tier was measured without it.
+    """
+    crossing = sum(1 for c in peak_capes_jkg if c is not None and c >= threshold)
+    if crossing == 0:
+        return None
+
+    return THUNDER_LIKELY if crossing >= CONVECTIVE_LIKELY_MODELS else THUNDER_POSSIBLE
+
 
 @dataclass
 class InstabilityOutlook:
