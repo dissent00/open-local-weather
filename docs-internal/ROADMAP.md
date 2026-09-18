@@ -17922,6 +17922,16 @@ for**: the mean is useless because GFS and ICON are ~30 points wrong in one
 direction while ECMWF is nearly right, so averaging them buries the one model
 worth believing. Four checks is not a finding — it is a reason to expect one.
 
+### 2026-09-18 — item 158 step 3 measured the gate and folded in here
+
+The one-okta agreement gate 158 proposed would have silenced all 14
+archived issuances, and the label it silences verified on 3 of 4 record
+days; the spread is per-model bias (GFS +28, ICON +25, UKMO −11, ECMWF
+and Best Match within 4), not day-to-day disagreement. So the design for
+this item when the finding fires is calibration, not a gate: correct each
+model's cloud by its measured bias as the gust is corrected, then gate
+the label on the calibrated spread. The numbers are under 158 step 3.
+
 ### The sky reaches the track record — shipped 2026-09-14
 
 `TrackRecordEntry` had twenty fields and not one of them was cloud, so the
@@ -23443,6 +23453,29 @@ Today's Forecast, the exact invention the prompt names, and OBSERVED SO
 FAR was quoted in part rather than verbatim, which the worker flagged
 itself. Run-to-run variance on a small model; the live provider is the
 measurement that counts.
+
+### Step 3 CLOSED 2026-09-18 — measured, refused, folded into item 123
+
+The gate as written would silence every cloud sentence: over the 14
+archived issuances since 09-10 the per-model day-mean spread exceeds one
+okta (12.5 points) on all 14 and three oktas on 12, median 51. And the
+label it would silence verifies: on the four record days with both sides
+observed, the mean's label matched the observed change on three and missed
+the fourth by one band in the right direction; the mean's error against
+the reanalysis is about 7 points. The spread is BIAS, not disagreement —
+GFS +28 and ICON +25 every day, UKMO −11, ECMWF and Best Match within 4 —
+so the mean lands near the truth by cancellation, and a gate on raw
+agreement throws away a working label. Item 123 measured the same table
+on 09-14 and reached the same place.
+
+Operator's decision: no gate; fold into 123. The design to bring there
+when its first bias finding fires (about 09-20, ten checks) is the gust's
+precedent, not the wind's — correct each model's cloud by its measured
+bias as `calibration.py` corrects gusts, with the same out-of-sample
+check, and gate the label on the CALIBRATED spread. On 09-18 (GFS and
+ICON at 98, the other three at 51–57; "clearer than yesterday" from a
+91% yesterday) that spread collapses if the biases hold. Not sized from
+four checks (item 100).
 
 ### Recommended order
 
