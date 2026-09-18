@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4 and 5 SHIPPED, 3 folded into 123, 2026-09-18; steps 6-10 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4 and 5 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 7-10 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23562,6 +23562,33 @@ the unmeasured case pins the behaviour instead. Driven through the real
 CLI: byte-identical, the fixture's comparison has nothing moving. 1433
 Python, 196 Dart. The prompt's one example lead sentence stays as it is:
 it remains a real output whenever the sky is unmeasured.
+
+### Step 6 CLOSED 2026-09-18 — measured, refused for now; revisit at ninety days
+
+The record over the 44 stored days (08-05..09-17): observed peak gust
+mean 39.5 km/h, spread 6.4, median 38, range 28–55; August 38.7 and
+September 40.7, so no monthly split yet. The climatology baseline
+already carries the mean as its gust, so a reference exists in code.
+
+**A one-spread clause says nothing the warning bands do not.** Its upper
+edge, 46 km/h, is the strong-breeze threshold (25 kt = 46.3 km/h) to
+within half a kilometre, so "breezier than usual" would fire on exactly
+the days the level clause already names. Only "calmer than usual", at or
+below 33 km/h, would add a sentence: 5 days of 44, all in August.
+
+**The calibrated gust has never left the band.** It has existed for six
+issuances since 09-15, ranging 35–42; a clause at any spread from half
+to one and a half would have spoken on none. On 09-18 the calibrated 35
+against a typical 39.5 is an ordinary day — the operator's own reading.
+The 09-18 complaint was Today's Forecast saying nothing about wind, not
+the Overview; that is step 7's coverage list. Side note, not a finding:
+the calibrated gust ran 4–7 km/h above the observed on the five verified
+days; `calibration.py`'s out-of-sample check will see it.
+
+**Operator's decision:** closed as measured and refused. A spread set
+from 44 days at one place is item 100's mistake. Revisit at ninety days
+or when the calibrated gust first lands outside the band, whichever is
+first, and then the calm clause only.
 
 ### Recommended order
 
