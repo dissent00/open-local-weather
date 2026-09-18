@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2 and 4 SHIPPED, 3 folded into 123, 2026-09-18; steps 5-10 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4 and 5 SHIPPED, 3 folded into 123, 2026-09-18; steps 6-10 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23529,6 +23529,39 @@ dropping the column would blind the watcher this step exists to add.
 **Not done:** nothing on the accuracy page, since it renders no Brier; a
 `duplicate_of` column there waits for the day the page shows one.
 1433 Python, 196 Dart.
+
+### Step 5 SHIPPED 2026-09-18 — what was measured and sat still is said, in its own words
+
+Measured first over the 13 archived comparisons since 09-09: all three
+dimensions were measured on 12; the lead named one moved dimension on 7
+and two on 4, so the clause fires on 11 of 13. "Much like yesterday"
+never fired in the archive. And a collision: on 6 of those 11 the
+extended phrase two sentences later opened "temperatures and winds much
+the same through …", so the operator's first wording would have put the
+same four words twice in one Overview with two baselines.
+
+**Operator's decision:** the tail, in different words. After a semicolon
+on the lead: *"Clearer than yesterday; temperatures and winds little
+changed."* "Little changed" rather than "much the same", which the
+extended phrase owns, and not "unchanged", which overclaims a drift
+inside the band. Nouns in a fixed order — temperatures, winds, cloud,
+"cloud" because the band is "similar cloud" — joined by "and", only for
+dimensions measured on both sides and inside their band, never an absent
+one, since from the page "about the same" and "not measured" read
+identically and this is the clause that tells them apart. The evening
+form reads *"Clearer than today (Monday) was; winds little changed."*
+"Much like yesterday" and the rain sentence are untouched.
+
+Both languages; `describe_day_over_day.json` grows from 18 cases to 22
+(the 09-18 case, two-moved-one-still, moved-with-the-rest-unmeasured,
+the evening baseline), and five existing cases re-express with the tail.
+Dropping the tail on either side fails the 09-18 case. The
+absent-dimension guard is redundant by construction — a missing label
+cannot equal the band's word — so its mutation is equivalent code and
+the unmeasured case pins the behaviour instead. Driven through the real
+CLI: byte-identical, the fixture's comparison has nothing moving. 1433
+Python, 196 Dart. The prompt's one example lead sentence stays as it is:
+it remains a real output whenever the sky is unmeasured.
 
 ### Recommended order
 

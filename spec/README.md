@@ -103,7 +103,7 @@ absent values are `null`, never omitted keys.
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 37 |
 | `describe_day_rain.json` | `describe_day_rain` | 32 |
-| `describe_day_over_day.json` | `describe_day_over_day` | 18 |
+| `describe_day_over_day.json` | `describe_day_over_day` | 22 |
 | `observed_so_far.json` | `describe_observed_so_far` | 18 |
 | `llm_should_reason.json` | `llm_should_reason` | 11 |
 | `comparison_subject.json` | `comparison_subject` | 14 |

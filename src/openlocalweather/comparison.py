@@ -761,6 +761,11 @@ def compute_day_over_day(
 # operator's point, and the reason "much like yesterday" is offered rather
 # than imposed — because nothing here measures the sky, the air quality or
 # how it felt, and a cloudy day at yesterday's temperature is not yesterday.
+# The nouns the comparison's dimensions answer to, in the order they are
+# said — ROADMAP item 158 step 5. "cloud" because the band is "similar cloud".
+DIMENSION_NOUNS = ("temperatures", "winds", "cloud")
+
+
 def describe_day_over_day(
     high_label: str | None,
     wind_label: str | None,
@@ -805,15 +810,33 @@ def describe_day_over_day(
     )
 
     moved = [label for label, quiet in dimensions if label is not None and label != quiet]
+    # ROADMAP item 158 step 5. The dimensions that were measured on both
+    # sides and sat inside their band, by noun, in a fixed order. Never an
+    # absent one: from the page "about the same" and "not measured" read
+    # identically, and this is the clause that tells them apart.
+    still = [
+        noun
+        for (label, quiet), noun in zip(dimensions, DIMENSION_NOUNS)
+        if label is not None and label == quiet
+    ]
 
     measured = all(label is not None for label, _quiet in dimensions)
 
     lead = None
     if moved:
         # "than yesterday" ONCE, on the clause that owns the comparison. The
-        # unmoved label is dropped rather than listed: "slightly warmer and
-        # similar winds" is an enumeration of one fact and one non-fact.
+        # unmoved label is not listed beside the moved one — "slightly warmer
+        # and similar winds" is an enumeration of one fact and one non-fact —
+        # but since item 158 step 5 it is said after a semicolon, in its own
+        # words, because the operator read "Clearer than yesterday." on 09-18
+        # and could not tell whether the temperature was measured. "Little
+        # changed" rather than "much the same", which the extended phrase
+        # uses two sentences later on about half the archived days (6 of 11)
+        # and would have echoed; and not "unchanged", which overclaims a
+        # one-degree drift inside the band.
         lead = f"{' and '.join(moved)} than {baseline_comparative}"
+        if still:
+            lead = f"{lead}; {' and '.join(still)} little changed"
     elif measured and (rain_unchanged or not rain_contrast):
         # NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting
         # one of them. Raised by the operator 2026-09-09: an Overview opening

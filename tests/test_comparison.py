@@ -378,10 +378,10 @@ def test_rain_alone_changing_does_not_get_called_much_like_yesterday():
 
 def test_one_label_moving_drops_the_other_rather_than_listing_it():
     assert describe_day_over_day("noticeably cooler", "similar winds", None) == (
-        "Noticeably cooler than yesterday."
+        "Noticeably cooler than yesterday; winds little changed."
     )
     assert describe_day_over_day("about the same", "much windier", None) == (
-        "Much windier than yesterday."
+        "Much windier than yesterday; temperatures little changed."
     )
 
 
@@ -492,7 +492,7 @@ def test_when_nothing_moved_at_all_say_so_once():
     assert describe_day_over_day(
         "noticeably cooler", "similar winds", "largely dry with thunderstorms again",
         today_character="largely dry with thunderstorms", rain_unchanged=True,
-    ) == "Noticeably cooler than yesterday. Largely dry with thunderstorms again."
+    ) == "Noticeably cooler than yesterday; winds little changed. Largely dry with thunderstorms again."
 
     # Rain genuinely changed: no sameness claim is available.
     assert describe_day_over_day(
@@ -588,7 +588,7 @@ def test_a_warning_survives_much_like_yesterday():
     # And it is not suppressed by a change leading either.
     assert describe_day_over_day(
         "noticeably cooler", "similar winds", None, wind_warning_name="storm force",
-    ) == "Noticeably cooler than yesterday. Gusting to storm force."
+    ) == "Noticeably cooler than yesterday; winds little changed. Gusting to storm force."
 
     assert describe_day_over_day(
         "about the same", "similar winds", None, cloud_label="similar cloud"
@@ -633,7 +633,7 @@ def test_a_changed_sky_is_a_changed_day():
 
     result = compute_day_over_day(overcast, clear, issued_hour=0)
     assert result.cloud_label == "much clearer"
-    assert result.overview_comparison == "Much clearer than yesterday."
+    assert result.overview_comparison == "Much clearer than yesterday; temperatures and winds little changed."
 
 
 def test_a_sky_that_held_still_is_not_news():
@@ -649,7 +649,7 @@ def test_the_sky_joins_the_other_measurements_rather_than_replacing_them():
     result = compute_day_over_day(
         actual(high_c=25.0, cloud_cover_pct=20.0), preds(high_c=29.0, cloud_cover_pct=70.0)
     , issued_hour=0)
-    assert result.overview_comparison == "Noticeably warmer and much cloudier than yesterday."
+    assert result.overview_comparison == "Noticeably warmer and much cloudier than yesterday; winds little changed."
 
 
 def test_no_sky_measurement_withholds_the_sameness_claim():
@@ -962,7 +962,7 @@ def test_the_evening_lead_names_today_in_the_past_tense():
     """
     result = _evening()
 
-    assert result.overview_comparison.startswith("Noticeably cooler than today (Monday) was.")
+    assert result.overview_comparison.startswith("Noticeably cooler than today (Monday) was; winds little changed.")
 
 
 def test_the_similarity_form_takes_no_verb():
@@ -1004,7 +1004,7 @@ def test_without_a_calendar_the_sentence_is_plainer_and_still_true():
         tomorrow_predictions=preds(high_c=27.0, precip_mm=0.0),
     )
 
-    assert "than today was." in result.overview_comparison
+    assert "than today was; winds little changed." in result.overview_comparison
     assert "Tomorrow will be" in result.overview_comparison
     assert "(" not in result.overview_comparison
 

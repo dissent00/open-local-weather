@@ -876,6 +876,9 @@ def test_vectors_describe_day_over_day():
             today_character=i.get("today_character"),
             rain_unchanged=i.get("rain_unchanged", False),
             wind_warning_name=i.get("wind_warning_name"),
+            cloud_label=i.get("cloud_label"),
+            baseline_comparative=i.get("baseline_comparative", "yesterday"),
+            baseline_similarity=i.get("baseline_similarity", "yesterday"),
         )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 

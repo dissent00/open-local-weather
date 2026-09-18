@@ -815,6 +815,10 @@ DayOverDayComparison? computeDayOverDay(
 /// existing "omit it" signal and needs no new rule. THE RAIN PHRASE ALWAYS
 /// GETS ITS OWN SENTENCE: it is written as a sentence opener and there is no
 /// preposition it survives.
+/// The nouns the comparison's dimensions answer to, in the order they are
+/// said — upstream item 158 step 5. Mirrors `DIMENSION_NOUNS`.
+const List<String> dimensionNouns = ['temperatures', 'winds', 'cloud'];
+
 String? describeDayOverDay(
   String? highLabel,
   String? windLabel,
@@ -847,15 +851,27 @@ String? describeDayOverDay(
       if (label != null && label != quiet) label,
   ];
 
+  // Upstream item 158 step 5. The dimensions measured on both sides that sat
+  // inside their band, by noun, in a fixed order — never an absent one, since
+  // this is the clause that tells "about the same" from "not measured".
+  final still = <String>[
+    for (var i = 0; i < dimensions.length; i++)
+      if (dimensions[i].$1 != null && dimensions[i].$1 == dimensions[i].$2)
+        dimensionNouns[i],
+  ];
+
   final measured = dimensions.every((d) => d.$1 != null);
   final hasRain = rainContrast != null && rainContrast.isNotEmpty;
 
   String? lead;
   if (moved.isNotEmpty) {
     // "than yesterday" ONCE, on the clause that owns the comparison. The
-    // unmoved label is dropped rather than listed: "slightly warmer and
-    // similar winds" is an enumeration of one fact and one non-fact.
+    // unmoved label is not listed beside the moved one, but since item 158
+    // step 5 it is said after a semicolon in its own words: "little changed"
+    // rather than "much the same", which the extended phrase would echo, and
+    // not "unchanged", which overclaims a drift inside the band.
     lead = '${moved.join(' and ')} than $baselineComparative';
+    if (still.isNotEmpty) lead = '$lead; ${still.join(' and ')} little changed';
   } else if (measured && (rainUnchanged || !hasRain)) {
     // NOTHING MOVED ON ANY DIMENSION, so say that rather than reporting one
     // of them: an Overview opening "Largely dry with thunderstorms again"

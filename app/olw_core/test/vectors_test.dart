@@ -1275,6 +1275,10 @@ void main() {
           todayCharacter: i['today_character'] as String?,
           rainUnchanged: (i['rain_unchanged'] as bool?) ?? false,
           windWarningName: i['wind_warning_name'] as String?,
+          baselineComparative:
+              (i['baseline_comparative'] as String?) ?? 'yesterday',
+          baselineSimilarity:
+              (i['baseline_similarity'] as String?) ?? 'yesterday',
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }

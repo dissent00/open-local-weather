@@ -4261,6 +4261,17 @@ def export_describe_day_over_day() -> None:
          "about the same", "similar winds", None, None, False, "gale force"),
         ("nor by a change leading",
          "noticeably cooler", "similar winds", None, None, False, "storm force"),
+        # ROADMAP item 158 step 5: what was measured and sat still is said,
+        # after a semicolon, in words the extended phrase does not use.
+        ("09-18: the sky moved and the rest was measured still",
+         "about the same", "similar winds", None, None, False, None, "clearer"),
+        ("two moved, one measured still",
+         "slightly warmer", "calmer", None, None, False, None, "similar cloud"),
+        ("moved with the rest unmeasured says nothing about them",
+         "slightly warmer", None, None, None, False, None, None),
+        ("the evening baseline keeps the tail",
+         "about the same", "similar winds", None, None, False, None, "clearer",
+         "today (Monday) was", "today (Monday)"),
     ]
     cases = [
         {
@@ -4270,12 +4281,18 @@ def export_describe_day_over_day() -> None:
                 "today_character": s[4] if len(s) > 4 else None,
                 "rain_unchanged": s[5] if len(s) > 5 else False,
                 "wind_warning_name": s[6] if len(s) > 6 else None,
+                "cloud_label": s[7] if len(s) > 7 else None,
+                "baseline_comparative": s[8] if len(s) > 8 else "yesterday",
+                "baseline_similarity": s[9] if len(s) > 9 else "yesterday",
             },
             "expected": describe_day_over_day(
                 s[1], s[2], s[3],
                 today_character=s[4] if len(s) > 4 else None,
                 rain_unchanged=s[5] if len(s) > 5 else False,
                 wind_warning_name=s[6] if len(s) > 6 else None,
+                cloud_label=s[7] if len(s) > 7 else None,
+                baseline_comparative=s[8] if len(s) > 8 else "yesterday",
+                baseline_similarity=s[9] if len(s) > 9 else "yesterday",
             ),
         }
         for s in scenarios
