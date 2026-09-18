@@ -23368,6 +23368,64 @@ voiding it.
 10); a phase word beyond tomorrow. The app's runner hands the daily block
 through the core, so it needs the re-pin and nothing else.
 
+### HARNESS RUN 2026-09-18 — step 2 through Haiku, cold; the phrase survived verbatim
+
+Item 77's manual form, on the 03:01 run's own message rather than the
+frozen vectors, because the point was the day the change was raised on.
+The archived user prompt was taken verbatim and the three code-composed
+values rebuilt by the NEW code from that message's own blocks: the
+instability block from HOURS AHEAD with `onset_at`, `peak_at` and the
+timing clause ("thunder possible from midday, peaking overnight", the same
+words step 1 recorded); `overview_comparison` carrying that clause in place
+of "Dry but thundery"; NEXT THREE DAYS from the daily block. Two
+substitutions, declared: the daily block carried no `cape_max` at 03:01, so
+the live arrays from a later cycle were spliced in (three of four models
+cross on every day, so "likely" throughout), and the trend head was set to
+the run's own "warming" because the prompt's extracted Day+0 highs are
+rounded to a tenth and the run's delta sat on the 2.0 °C threshold — the
+head is unchanged code and not what was under test. The flags reproducing
+production were confirmed by hash at the run's commit (all defaults). Both
+system prompts from HEAD. Judgment and narrative each driven through a
+Haiku worker told nothing about the change, both validated against their
+schemas, `merge_forecast_response` built the combined shape.
+
+**The Overview, verbatim from the narrative:** *"Clearer than yesterday.
+Dry, with thunder possible from midday, peaking overnight. Warming through
+Monday, with showers possible Saturday, dry Sunday, rain possible from
+Monday, and thunderstorms likely each day."* Every locked value survived
+whole, the comparison's thunder suppressed the second clause as the rule
+says, and the model's own budget was spent on nothing. The Extended Outlook
+followed the days as named: showers Saturday, a dry Sunday, rain from
+Monday.
+
+**Triage of the reading, 24 notes: one real lead, one false, the rest
+compliance.**
+
+- **Real, and not this change's:** the timing clause was restated as a bare
+  sentence in Today's Forecast ("Thunder possible from midday, peaking
+  overnight."), against "say it ONCE, in the Overview". A Haiku slip on an
+  existing rule; watch for it on the live run.
+- **Real, this change's neighbour:** the Extended Outlook wrote "From Monday
+  onward, rain becomes likely" where the phrase says possible — a confidence
+  upgrade in the section that expands the Overview — and "thunderstorms
+  expected daily through at least Wednesday, with the heaviest rain
+  Thursday". The thunder claim is now data-backed, since the daily block
+  carries `cape_max` at every lead (step 7's third bullet is half answered
+  by step 2); the heaviest-rain day is wrong (Wednesday's mean is 6.1 mm,
+  Thursday's 3.2; ICON alone has 10.4 on Thursday). Step 7 should say the
+  Extended Outlook keeps the phrase's chance words.
+- **False:** the worker reported the synoptic pressure block missing and
+  rebuilt a ring from raw hourly pressures, getting the gradient wrong
+  (lowest "to the east ~1010" against the block's NE 1008.1 and SE 1018.5,
+  gradient 10.4, strong). The block is present as the `synoptic_scale_pressure`
+  key INSIDE the current-conditions object, which the system prompt names by
+  key; a reader scanning for headed blocks misses it. Item 77's caution
+  exactly — mis-pairing across object boundaries — and an argument for
+  giving that block a heading of its own when step 9 reorganises the rules.
+- The rest are the worker confirming rules it followed; none is a defect.
+
+Not run: the paid provider. Nothing in the spend ledger.
+
 ### Recommended order
 
 1, 2, 3 and 4 first — the timing defect is live on every convective day,
