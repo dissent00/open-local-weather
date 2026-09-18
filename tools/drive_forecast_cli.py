@@ -131,7 +131,7 @@ def patch_everything_outside_the_process() -> None:
     # What the station has already seen today. Read once per run by the
     # pipeline; this returns whatever STATION currently says, so a case can
     # move the weather between runs the way a real afternoon does.
-    metar_fetch.observed_station_data = lambda icao, start, end, tz: (
+    metar_fetch.observed_station_data = lambda icao, start, end, tz, data_dir=None: (
         {d: StationWeather(thunder=False, precipitation=STATION["raining"]) for d in (start, end)},
         None,
     )

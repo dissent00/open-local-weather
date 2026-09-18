@@ -87,6 +87,7 @@ See *The two-call split* and *Every run is an issuance* below.
    │ 6. PERSIST + PUBLISH                                               │
    │    • data/log/YYYY-MM-DD.json  (new)                               │
    │    • data/log/<past>.json      (patched: verification notes)       │
+   │    • data/station/<ICAO>/<UTC day>.json (merged: every report seen)│
    │    • data/track_record.json    (rewritten)                         │
    │    • docs/                     (regenerated static site)           │
    │    • workflow commits + pushes all of the above                    │
@@ -253,6 +254,13 @@ separate archive endpoint. It degrades the same way — no configured ICAO,
 or an unreachable archive, leaves every `thunder` at `None` and scoring
 behaves exactly as it did before the field existed — so a fork without an
 airport nearby loses nothing it previously had.
+
+Since 2026-09-18 every archive read goes through `store/station_reports.py`
+(ROADMAP item 151): the rows are merged into `data/station/<ICAO>/` as the
+archive served them and the readers — the same-day snapshot, the day
+aggregates, the +24 h window — read the union of every fetch. What was
+derived from the station is recomputable from the record, and a row the
+archive later drops is still counted.
 
 The LLM call is required, but now retries transient 429/5xx errors with
 backoff before giving up (added after a real 503 aborted a run).

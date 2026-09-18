@@ -1909,7 +1909,7 @@ def test_observed_thunder_reaches_the_stored_actuals(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (
+        lambda icao, start, end, tz, data_dir=None: (
             {d: StationWeather(thunder=True, precipitation=False) for d in (start, end)},
             None,
         ),
@@ -2476,7 +2476,7 @@ def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypa
     failure path and airport_metar is never persisted, so the record could not
     say whether the station was consulted."""
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz: ({}, None)
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -2496,7 +2496,7 @@ def test_no_station_configured_is_a_state_not_a_degradation(tmp_path):
 
 def test_a_station_that_answered_is_not_a_degradation(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz: ({}, None)
+        pipeline.metar_fetch, "observed_station_data", lambda icao, start, end, tz, data_dir=None: ({}, None)
     )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
@@ -3343,7 +3343,7 @@ def test_a_station_that_answers_and_agrees_records_an_EMPTY_list(tmp_path, monke
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (
+        lambda icao, start, end, tz, data_dir=None: (
             {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
             None,
         ),
@@ -3370,7 +3370,7 @@ def test_rain_seen_while_the_standing_call_said_dry_is_recorded(tmp_path, monkey
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (
+        lambda icao, start, end, tz, data_dir=None: (
             {
                 d: StationWeather(thunder=False, precipitation=raining["now"])
                 for d in (start, end)
@@ -3462,7 +3462,7 @@ def _station_seeing(raining: dict):
     has no dry call to update — see the disagreement test above, which had to
     learn the same thing.
     """
-    return lambda icao, start, end, tz: (
+    return lambda icao, start, end, tz, data_dir=None: (
         {d: StationWeather(thunder=False, precipitation=raining["now"]) for d in (start, end)},
         None,
     )
@@ -3681,7 +3681,7 @@ def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypat
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (
+        lambda icao, start, end, tz, data_dir=None: (
             {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
             {d: StationReadings(high_c=31.8, low_c=19.4, peak_wind_kmh=24.0) for d in (start, end)},
         ),
@@ -3810,7 +3810,7 @@ def test_every_forecast_run_files_under_one_purpose(tmp_path):
 # --- the station's day readings, when they do not arrive — ROADMAP item 151 --
 
 
-def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch):
+def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch, tmp_path):
     """ROADMAP item 151, found in production.
 
     `observed_so_far` was absent on 14 of 16 stored days with NOTHING on the
@@ -3841,7 +3841,7 @@ def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch):
         monkeypatch.setattr(
             metar_fetch, "observed_station_data", lambda *a, **k: payload
         )
-        observed, gap = _observed_so_far(location, date(2026, 8, 11))
+        observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path)
 
         assert observed is None, name
         assert gap is not None, f"{name}: returned None and said nothing"
@@ -3855,11 +3855,11 @@ def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch):
         monkeypatch.setattr(
             metar_fetch, "observed_station_data", lambda *a, **k: payload
         )
-        details.add(_observed_so_far(location, date(2026, 8, 11))[1].detail)
+        details.add(_observed_so_far(location, date(2026, 8, 11), tmp_path)[1].detail)
     assert len(details) == 2, f"both exits report the same thing: {details}"
 
 
-def test_a_failed_archive_request_records_what_the_server_said(monkeypatch):
+def test_a_failed_archive_request_records_what_the_server_said(monkeypatch, tmp_path):
     """ROADMAP item 151, step 2. The evening exit used to claim "the request
     succeeded and the response was empty" for a 503 and a timeout alike. The
     fetch now raises with the status and the first line of the body, and the
@@ -3875,7 +3875,7 @@ def test_a_failed_archive_request_records_what_the_server_said(monkeypatch):
         raise metar_fetch.ArchiveUnavailable("HTTP 503; first line: '<html>'")
 
     monkeypatch.setattr(metar_fetch, "observed_station_data", unavailable)
-    observed, gap = _observed_so_far(location, date(2026, 9, 17))
+    observed, gap = _observed_so_far(location, date(2026, 9, 17), tmp_path)
 
     assert observed is None
     assert gap.code == DEGRADATION_STATION_READINGS
@@ -3884,7 +3884,7 @@ def test_a_failed_archive_request_records_what_the_server_said(monkeypatch):
     assert "succeeded" not in gap.detail
 
 
-def test_no_station_configured_is_not_a_degradation():
+def test_no_station_configured_is_not_a_degradation(tmp_path):
     """A location with no station is running AS CONFIGURED. RunDegradation's
     own docstring draws this line, and blurring it makes the field mean
     nothing within a week."""
@@ -3894,5 +3894,5 @@ def test_no_station_configured_is_not_a_degradation():
     location = load_location_config("config/location.yaml").model_copy(
         update={"metar_station_icao": ""}
     )
-    observed, gap = _observed_so_far(location, date(2026, 8, 11))
+    observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path)
     assert observed is None and gap is None

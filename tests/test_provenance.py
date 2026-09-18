@@ -123,7 +123,7 @@ def test_a_field_the_archive_had_no_data_for_is_not_stamped():
     assert "high_c" not in actual.provenance
 
 
-def test_the_station_stamps_only_the_days_it_covered(monkeypatch):
+def test_the_station_stamps_only_the_days_it_covered(monkeypatch, tmp_path):
     """The case trap 2 exists for. Two days, one covered by the station and
     one not, and the record must be able to tell them apart afterwards."""
     from openlocalweather import pipeline
@@ -137,7 +137,7 @@ def test_the_station_stamps_only_the_days_it_covered(monkeypatch):
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (
+        lambda icao, start, end, tz, data_dir=None: (
             {covered: StationWeather(thunder=True, precipitation=False)},
             None,
         ),
@@ -147,7 +147,7 @@ def test_the_station_stamps_only_the_days_it_covered(monkeypatch):
         metar_station_icao = "HKKI"
         timezone = "Africa/Nairobi"
 
-    pipeline._apply_station_observations(actuals, _Loc())
+    pipeline._apply_station_observations(actuals, _Loc(), tmp_path)
 
     assert actuals[covered].provenance["thunder"] == SOURCE_STATION
     assert "thunder" not in actuals[uncovered].provenance
@@ -288,7 +288,7 @@ def test_a_station_that_does_not_answer_yields_neither(monkeypatch):
     assert readings is None
 
 
-def test_the_pipeline_stores_readings_and_stamps_them(monkeypatch):
+def test_the_pipeline_stores_readings_and_stamps_them(monkeypatch, tmp_path):
     from openlocalweather import pipeline
     from openlocalweather.fetch.metar import StationReadings, StationWeather
 
@@ -299,7 +299,7 @@ def test_the_pipeline_stores_readings_and_stamps_them(monkeypatch):
     }
     monkeypatch.setattr(
         pipeline.metar_fetch, "observed_station_data",
-        lambda icao, s, e, tz: (
+        lambda icao, s, e, tz, data_dir=None: (
             {covered: StationWeather(thunder=False, precipitation=False)},
             {covered: StationReadings(high_c=29.4, low_c=18.1, peak_wind_kmh=33.0)},
         ),
@@ -309,7 +309,7 @@ def test_the_pipeline_stores_readings_and_stamps_them(monkeypatch):
         metar_station_icao = "HKKI"
         timezone = "Africa/Nairobi"
 
-    pipeline._apply_station_observations(actuals, _Loc())
+    pipeline._apply_station_observations(actuals, _Loc(), tmp_path)
 
     a = actuals[covered]
     assert a.station_high_c == 29.4

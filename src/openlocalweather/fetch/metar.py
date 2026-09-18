@@ -60,9 +60,12 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
+
+from openlocalweather.store import station_reports as station_store
 
 METAR_URL = "https://aviationweather.gov/api/data/metar"
 METAR_ARCHIVE_URL = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
@@ -520,8 +523,48 @@ def fetch_metar_archive_rows(
     return _archive_rows(params)
 
 
+def _station_rows(
+    icao: str, start: date, end: date, data_dir: str | Path | None
+) -> list[Sequence[str]] | None:
+    """The archive's rows for `start..end`, merged into and read back from
+    the store when there is one. The fetch's failure propagates as
+    ArchiveUnavailable; falling back to the stored rows is a later step
+    (item 151), because a fallback needs the reach stated beside it."""
+    rows = fetch_metar_archive_rows(icao, start, end)
+    if rows is None or data_dir is None:
+        return rows
+
+    station_store.merge_rows(data_dir, icao, rows)
+    return station_store.read_rows(data_dir, icao, start, end)
+
+
+def station_reports(
+    icao: str, start: date, end: date, data_dir: str | Path | None = None
+) -> list[tuple[datetime, str]] | None:
+    """Raw (UTC observation time, report text) pairs over `start..end`
+    inclusive, through the store like observed_station_data — the window
+    scorer's evidence, and since item 151 recomputable from the record.
+    None without a station or when no row carried a parseable time."""
+    if not icao:
+        return None
+
+    rows = _station_rows(icao, start, end, data_dir)
+    if rows is None:
+        return None
+
+    reports: list[tuple[datetime, str]] = []
+    for row in rows:
+        try:
+            observed_at = datetime.strptime(row[1], "%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
+        reports.append((observed_at.replace(tzinfo=timezone.utc), row[2]))
+
+    return reports or None
+
+
 def observed_station_data(
-    icao: str, start: date, end: date, timezone_name: str
+    icao: str, start: date, end: date, timezone_name: str, data_dir: str | Path | None = None
 ) -> tuple[dict[date, StationWeather] | None, dict[date, StationReadings] | None]:
     """Everything one station has to say about a range, from ONE fetch.
 
@@ -529,11 +572,18 @@ def observed_station_data(
     StationReadings for why those are separate. Both None when the station
     said nothing at all, so a caller can tell that apart from a station that
     reported and observed a quiet day.
+
+    With `data_dir` the rows go THROUGH THE STORE — ROADMAP item 151: what
+    was fetched is merged into data/station/ and what is read back is the
+    union of every fetch so far, so a row the archive has since dropped is
+    still counted and the record can recompute what was derived from it.
+    Every reader in the pipeline passes it; a test walks the callers.
     """
-    rows = fetch_metar_archive_rows(
+    rows = _station_rows(
         icao,
         start - timedelta(days=ARCHIVE_PADDING_DAYS),
         end + timedelta(days=ARCHIVE_PADDING_DAYS),
+        data_dir,
     )
     if rows is None:
         return None, None

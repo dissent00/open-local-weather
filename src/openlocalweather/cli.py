@@ -1308,7 +1308,7 @@ def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> 
     except Exception as e:  # noqa: BLE001
         print(f"\nWindows not rescored: archive unavailable ({e}).", file=sys.stderr)
         return []
-    station_reports = _station_reports(location, min(log_dates), add_days(today, -1))
+    station_reports = _station_reports(location, min(log_dates), add_days(today, -1), data_dir)
 
     changed = []
     lookup = make_log_lookup(data_dir)
@@ -1378,9 +1378,14 @@ def _run_rebuild_record(args) -> int:
     # ONE fetch for both, and the readings matter here as much as in the
     # daily pipeline: a rebuild that dropped them would silently erase weeks
     # of the accumulation item 45's sequencing depends on.
-    weather_by_date, readings_by_date = metar_fetch.observed_station_data(
-        location.metar_station_icao, min(actuals), max(actuals), location.timezone
-    )
+    try:
+        weather_by_date, readings_by_date = metar_fetch.observed_station_data(
+            location.metar_station_icao, min(actuals), max(actuals), location.timezone,
+            data_dir=data_dir,
+        )
+    except metar_fetch.ArchiveUnavailable as e:
+        print(f"Station archive gave no usable answer ({e}).", file=sys.stderr)
+        weather_by_date, readings_by_date = None, None
     if weather_by_date is None:
         print(
             f"No METAR observations available for {location.metar_station_icao or '(no station configured)'} — "

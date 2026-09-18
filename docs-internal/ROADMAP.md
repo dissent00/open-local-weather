@@ -22223,6 +22223,42 @@ serves it. The same-day ARCHIVE read did not exist on an evening run until
 09-16; it has been tried on two evenings and failed on both. Before that
 no evening run asked, so the record cannot say more than 0 of 2.
 
+### The store SHIPPED 2026-09-18 — the reports are committed data
+
+Decided with the operator that morning, in this order: the store, then the
+reach, then the fallback. `store/station_reports.py` keeps the archive's
+rows as served — `M` markers and all — one file per station per UTC day
+under `data/station/<ICAO>/`, merged by report time AND text (a SPECI can
+share a minute with the routine report and is the one carrying the storm),
+never replaced: the 06:01 run stores the night, the 18:01 run brings the
+day, the Monday refetch corrects, and a row the archive later drops stays
+counted. The file names its columns and a merge refuses a row of the
+wrong width, because the daily parse is positional (item 152).
+
+**Every reader goes through it**, checked by walking the callers in
+`pipeline.py` and `cli.py` (mutation-tested: dropping `data_dir` from the
+same-day reader fails it): the same-day snapshot, the day aggregates on
+both the daily and the Monday path, the +24 h window's reports (which now
+come from the same five-column rows rather than a separate three-column
+request), `rebuild-record` and `rescore-windows`. So a window's score is
+recomputable from the record for the first time, item 24's claim, and the
+readers see the union of every fetch — pinned by a test where the second
+fetch returns only the day and the reader still holds the night's 4 kt.
+
+**Driven live** against the archive for 09-16..09-18 into a scratch store:
+three day files, 68 rows, 12 KB; the 09-17 readings (28.0 / 19.0 / 22.22
+km/h, rain from 19:00) equal what the actuals cache already held. The real
+CLI driven before and after through `tools/drive_forecast_cli.py`: control
+identical, comparison identical, because the drive stubs the station seam
+above the store — it proves the pipeline unchanged, not the store, which
+the live run and the suite prove. 1388 tests.
+
+**Not done here, deliberately:** a fetch that fails still leaves the
+reader with nothing rather than the stored rows — the fallback is step 3
+and needs the reach (`reported_through`) beside it, or an 18:01 run would
+present the morning's rows as the day. The workflow commits `data/` whole,
+so the files ride the daily commit with no change there.
+
 
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 

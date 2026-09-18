@@ -1074,7 +1074,7 @@ def apply_station_readings(actual: DailyActual, measured) -> None:
 
 
 def _apply_station_observations(
-    actuals: dict[date, DailyActual], location: LocationConfig
+    actuals: dict[date, DailyActual], location: LocationConfig, data_dir: Path
 ) -> None:
     """Stamps what the airport observed — thunder and precipitation — onto the
     days just bucketed from the reanalysis archive.
@@ -1096,7 +1096,8 @@ def _apply_station_observations(
     # archive request is the slowest call in the verification pass.
     try:
         weather_by_date, readings_by_date = metar_fetch.observed_station_data(
-            location.metar_station_icao, min(actuals), max(actuals), location.timezone
+            location.metar_station_icao, min(actuals), max(actuals), location.timezone,
+            data_dir=data_dir,
         )
     except metar_fetch.ArchiveUnavailable as e:
         print(f"Station archive gave no usable answer; days keep their reanalysis only ({e}).", file=sys.stderr)
@@ -1767,7 +1768,7 @@ def _overnight_low_is_settled(guidance: ForwardGuidance) -> bool | None:
 
 
 def _observed_so_far(
-    location: LocationConfig, today: date
+    location: LocationConfig, today: date, data_dir: Path
 ) -> tuple[ObservedSoFar | None, RunDegradation | None]:
     """What the station has already reported today, and why not when it has not.
 
@@ -1817,7 +1818,7 @@ def _observed_so_far(
 
     try:
         weather, readings = metar_fetch.observed_station_data(
-            icao, today, today, location.timezone
+            icao, today, today, location.timezone, data_dir=data_dir
         )
     except metar_fetch.ArchiveUnavailable as e:
         # Step 2 of item 151: the reason, in the archive's own words, so the
@@ -2398,7 +2399,7 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     # the evidence the calendar day already gets — ROADMAP item 139. Best
     # effort like the archive: no station, or a fetch that failed, scores the
     # window against the reanalysis alone, which is what happened before.
-    station_reports = _station_reports(location, start, end)
+    station_reports = _station_reports(location, start, end, deps.data_dir)
     changed: list[date] = []
     for d in log_store.list_log_dates(deps.data_dir):
         if not (start <= d <= end):
@@ -2416,15 +2417,16 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     return changed
 
 
-def _station_reports(location: LocationConfig, start: date, end: date) -> list | None:
+def _station_reports(location: LocationConfig, start: date, end: date, data_dir: Path) -> list | None:
     """Raw airport reports over a span, padded a day either side so a window
-    that opens late in `end` still sees its reports. None without a station
-    or when the archive is unreachable."""
+    that opens late in `end` still sees its reports, through the store so a
+    window's score can be recomputed from the record (item 151). None
+    without a station or when the archive is unreachable."""
     if not location.metar_station_icao:
         return None
     try:
-        return metar_fetch.fetch_metar_archive(
-            location.metar_station_icao, add_days(start, -1), add_days(end, 2)
+        return metar_fetch.station_reports(
+            location.metar_station_icao, add_days(start, -1), add_days(end, 2), data_dir=data_dir
         )
     except Exception as e:  # noqa: BLE001 - never fatal; the reanalysis scores alone
         print(f"Station reports unavailable for window scoring ({e}).", file=sys.stderr)
@@ -2461,7 +2463,7 @@ def _run_actuals_refresh(
             location.primary_point.lat, location.primary_point.lon, batch_start, yesterday, location.timezone
         )
         primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
-        _apply_station_observations(primary_actuals, location)
+        _apply_station_observations(primary_actuals, location, deps.data_dir)
         actuals_cache_store.replace_all(cache, "primary", primary_actuals)
         if location.secondary_point.enabled:
             secondary_archive = open_meteo.fetch_archive_range(
@@ -2479,7 +2481,7 @@ def _run_actuals_refresh(
             location.primary_point.lat, location.primary_point.lon, yesterday, location.timezone
         )
         primary_actuals = open_meteo.bucket_hourly_by_date(primary_archive)
-        _apply_station_observations(primary_actuals, location)
+        _apply_station_observations(primary_actuals, location, deps.data_dir)
         for d, actual in primary_actuals.items():
             actuals_cache_store.upsert_day(cache.primary, d, actual)
         if location.secondary_point.enabled:
@@ -2908,7 +2910,7 @@ def _issue_forecast(
     # 121 puts it IN the prompt, shared with the record below so the two
     # cannot describe different observations, and now also the BASELINE an
     # evening comparison measures tomorrow against — see observed_baseline.
-    observed_so_far, observed_gap = _observed_so_far(location, today)
+    observed_so_far, observed_gap = _observed_so_far(location, today, deps.data_dir)
     if observed_gap is not None:
         # Appended to the guidance's own list because that is what reaches
         # `meta.degradations` — see ROADMAP item 151. The station is read

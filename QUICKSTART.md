@@ -48,8 +48,8 @@ Easiest way — in your fork, open a terminal (or use github.dev by pressing
 `.` on the repo page) and run:
 
 ```bash
-git rm -r --cached data/log/*.json data/track_record.json data/actuals_cache/actuals.json docs/archive docs/index.html
-rm -rf data/log/*.json data/track_record.json data/actuals_cache/actuals.json docs/archive docs/index.html
+git rm -r --cached data/log/*.json data/track_record.json data/actuals_cache/actuals.json data/station docs/archive docs/index.html
+rm -rf data/log/*.json data/track_record.json data/actuals_cache/actuals.json data/station docs/archive docs/index.html
 git commit -m "Clear upstream location's history"
 git push
 ```

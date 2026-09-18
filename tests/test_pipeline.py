@@ -487,53 +487,53 @@ def stub_thunder(monkeypatch, result):
     )
 
 
-def test_apply_observed_thunder_stamps_each_day(monkeypatch):
+def test_apply_observed_thunder_stamps_each_day(monkeypatch, tmp_path):
     stub_thunder(monkeypatch, {
         AUG_24: StationWeather(thunder=True, precipitation=False),
         AUG_25: StationWeather(thunder=False, precipitation=False),
     })
     actuals = two_days()
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
     assert actuals[AUG_24].thunder is True
     assert actuals[AUG_25].thunder is False
 
 
-def test_apply_observed_thunder_leaves_none_when_archive_unavailable(monkeypatch):
+def test_apply_observed_thunder_leaves_none_when_archive_unavailable(monkeypatch, tmp_path):
     stub_thunder(monkeypatch, None)
     actuals = two_days()
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
     assert all(a.thunder is None for a in actuals.values())
 
 
-def test_apply_observed_thunder_leaves_unreported_days_alone(monkeypatch):
+def test_apply_observed_thunder_leaves_unreported_days_alone(monkeypatch, tmp_path):
     # A day the station filed nothing for stays None, not False.
     stub_thunder(monkeypatch, {AUG_24: StationWeather(thunder=True, precipitation=False)})
     actuals = two_days()
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
     assert actuals[AUG_25].thunder is None
 
 
-def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch):
+def test_apply_observed_thunder_asks_only_for_the_bucketed_range(monkeypatch, tmp_path):
     seen = {}
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
-        lambda icao, start, end, tz: (seen.update(icao=icao, start=start, end=end, tz=tz) or None, None)
+        lambda icao, start, end, tz, data_dir=None: (seen.update(icao=icao, start=start, end=end, tz=tz) or None, None)
     )
-    pipeline._apply_station_observations(two_days(), thunder_location())
+    pipeline._apply_station_observations(two_days(), thunder_location(), tmp_path)
     assert seen == {"icao": "HKKI", "start": AUG_24, "end": AUG_25, "tz": "Africa/Nairobi"}
 
 
-def test_apply_observed_thunder_empty_actuals_is_a_no_op(monkeypatch):
+def test_apply_observed_thunder_empty_actuals_is_a_no_op(monkeypatch, tmp_path):
     monkeypatch.setattr(
         pipeline.metar_fetch,
         "observed_station_data",
         lambda *a, **k: (pytest.fail("must not fetch for an empty range"), None)
     )
-    pipeline._apply_station_observations({}, thunder_location())
+    pipeline._apply_station_observations({}, thunder_location(), tmp_path)
 
 
-def test_apply_station_observations_stamps_the_precipitation_onset(monkeypatch):
+def test_apply_station_observations_stamps_the_precipitation_onset(monkeypatch, tmp_path):
     """The onset has to be STORED, not just parsed.
 
     Item 53.1a added precipitation_onset to StationWeather and to
@@ -550,13 +550,13 @@ def test_apply_station_observations_stamps_the_precipitation_onset(monkeypatch):
         ),
     })
     actuals = two_days()
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
 
     assert actuals[AUG_24].precipitation_onset == "19:00"
     assert actuals[AUG_24].observed_onset() == "19:00"
 
 
-def test_the_station_sky_is_stored_and_stamped(monkeypatch):
+def test_the_station_sky_is_stored_and_stamped(monkeypatch, tmp_path):
     """ROADMAP items 87 and 65. metar.py parses the sky groups it used to
     discard; this is where the day's mean reaches the record.
 
@@ -576,7 +576,7 @@ def test_the_station_sky_is_stored_and_stamped(monkeypatch):
         lambda *a, **k: ({day: StationWeather(thunder=False, precipitation=False,
                                               cloud_oktas=6.0)}, None),
     )
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
 
     assert actuals[day].station_cloud_oktas == 6.0
     assert actuals[day].provenance["station_cloud_oktas"] == SOURCE_STATION
@@ -585,7 +585,7 @@ def test_the_station_sky_is_stored_and_stamped(monkeypatch):
     assert actuals[day].provenance["cloud_cover_pct"] == "era5_archive"
 
 
-def test_a_station_with_no_sky_reading_stamps_nothing(monkeypatch):
+def test_a_station_with_no_sky_reading_stamps_nothing(monkeypatch, tmp_path):
     """A stamp asserts an observation was made — item 45, trap 2."""
     day = date(2026, 8, 24)
     actuals = {day: DailyActual(
@@ -596,7 +596,7 @@ def test_a_station_with_no_sky_reading_stamps_nothing(monkeypatch):
         pipeline.metar_fetch, "observed_station_data",
         lambda *a, **k: ({day: StationWeather(thunder=False, precipitation=False)}, None),
     )
-    pipeline._apply_station_observations(actuals, thunder_location())
+    pipeline._apply_station_observations(actuals, thunder_location(), tmp_path)
 
     assert actuals[day].station_cloud_oktas is None
     assert "station_cloud_oktas" not in (actuals[day].provenance or {})
