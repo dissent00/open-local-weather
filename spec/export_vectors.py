@@ -105,7 +105,8 @@ from openlocalweather.llm.schema import (
 from openlocalweather.verify.scoring import compute_rain_pct_trend, mean, score_prediction
 
 VECTOR_FORMAT_VERSION = 1
-OUT_DIR = Path(__file__).resolve().parent / "vectors"
+SPEC_DIR = Path(__file__).resolve().parent
+OUT_DIR = SPEC_DIR / "vectors"
 
 
 def dump(value: Any) -> Any:
@@ -1071,10 +1072,19 @@ def export_run_row() -> None:
     app byte for byte: the app stores the same row on the device, and the
     shared datastore the modes discussion describes (113) is a copy of these
     rows. Case 1 is a real committed row. Case 2 gives it window scores, so
-    the score JSON inside a row and the verified-at stamp are pinned too."""
+    the score JSON inside a row and the verified-at stamp are pinned too.
+
+    THE ROW IS A FROZEN COPY, not read from data/log. Until 2026-09-18 this
+    read the live entry, and the pipeline's own commit that morning re-saved
+    the row with a null key for a field added after it was written
+    (`sustained_wind_kmh`, item 146), which changed the exporter's input and
+    turned CI red on a roadmap-only push. A vector reads fixtures, never the
+    record: the record is re-saved by every verification pass that touches
+    it, and each additive field would have repeated this. The copy was taken
+    from data/log/2026-09-16.json as committed at 62e2b18, window scored."""
     from openlocalweather.models import IssuancePredictions, VerificationScore
 
-    committed = json.loads(Path("data/log/2026-09-16.json").read_text())["prediction_rows"][0]
+    committed = json.loads((SPEC_DIR / "fixtures" / "run_row_2026-09-16.json").read_text())
     row = IssuancePredictions.model_validate(committed)
     scored = row.model_copy(
         update={
