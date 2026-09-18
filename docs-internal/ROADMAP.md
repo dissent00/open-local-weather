@@ -21054,6 +21054,21 @@ corrects the gust. If it is not, the station's two-minute peak is simply
 a different quantity and step 4 should say so rather than correct for it.
 Do not size a margin from it before then — item 100.
 
+### Read on the first live day, 2026-09-18 — the stored gap does not survive the evening
+
+09-18's 06:01 run stored its first gap: consensus 11.68, observed 5.56,
+delta −6.12 over five models — the station's maximum over two night
+reports against the models' daytime maximum, which is what "so far" means
+at 06:01. 09-17 stored NULL, because the entry keeps the last issuance's
+figure and the 18:01 read failed (item 151's table). So on a day with an
+evening run the series holds the evening's value or nothing, and on a day
+without one it holds a two-report night. Neither is the day's offset. When
+step 4 reads thirty days of this, it should read the actuals cache's
+`station_peak_wind_kmh` against the archived prompts' consensus instead —
+the sweep above already did exactly that — or the entry should keep the
+last NON-NULL gap of the day. The second is a write-once rule and belongs
+with item 104's list; put to the operator with 151's fix.
+
 ### What NOT to do
 
 Do not repoint `peak_wind_primary_kmh` at sustained wind. It is scored
@@ -22143,6 +22158,49 @@ is worth explaining rather than waving at.
 Related: items 150 (the same class, raised in the abstract an hour earlier),
 143, 121, 122, 104's C2, and 102 — the coverage watcher, which catches exactly
 this defect class in the NARRATED fields and does not watch this one.
+
+### Measured 2026-09-18 — the morning read works and the evening read does not
+
+Read from the entries and their issuance snapshots, every issuance since
+`observed_so_far` existed:
+
+| day | 06:01 | 18:01 |
+|---|---|---|
+| 09-14 (06:50) | readings | no evening run |
+| 09-15 | readings | run failed (Gemini 500 ×4), no station read |
+| 09-16 | readings | absent, before step 1's code |
+| 09-17 | readings | **"no rows at all"** — step 1's exit 2 |
+| 09-18 | readings | — |
+
+Four of four mornings read the station; zero of two evenings did. The
+hypothesis written above on 09-16 was the reverse, and is wrong.
+
+**The archive itself answered every range asked of it at 03:45Z on 09-18**:
+29 rows for 09-17 alone, 35 for 09-16, four for 09-18 so far. Two facts
+about the endpoint came out of that probe and are worth keeping: `day2` is
+EXCLUSIVE — 09-16..09-17 returns 09-16 only — except when `day1 == day2`,
+which returns that day; and `ARCHIVE_PADDING_DAYS = 1` covers the
+exclusive end, so the daily request for local day D asks D-1..D+1 and gets
+D-1 and D in full. The request the evening run makes is therefore
+identical to the morning's, for a day that by 15:01Z has fifteen hours of
+rows the morning already saw part of. An empty answer to that request is
+not a lag.
+
+**And exit 2's detail claims something the code cannot know.** It says
+"the request succeeded and the response was empty", but
+`fetch_metar_archive_rows` returns None alike for a request exception, a
+non-200 status and a 200 with no data rows. A 503 at 15:01Z, a timeout at
+the 90-second ceiling, and an HTML error page served with 200 all print
+the same sentence. So the exit that finally fired says less than its
+wording promises, and the next step is the same as step 1's principle:
+make the fetch say WHICH of the three it was, and let the next 18:01 run
+answer. Not built yet; put to the operator.
+
+**Consequence for item 146**: the entry's `sustained_wind_gap` is the LAST
+issuance's, so the evening's failed read replaced 09-17's morning gap with
+null. The series step 4 waits on is being written at 06:01 and erased at
+18:01 on every day with an evening run.
+
 
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 
