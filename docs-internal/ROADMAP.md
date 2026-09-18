@@ -22201,6 +22201,28 @@ issuance's, so the evening's failed read replaced 09-17's morning gap with
 null. The series step 4 waits on is being written at 06:01 and erased at
 18:01 on every day with an evening run.
 
+### Step 2 SHIPPED 2026-09-18 — the fetch says which kind of nothing
+
+`fetch_metar_archive_rows` and `fetch_metar_archive` share one request
+layer that RAISES `ArchiveUnavailable` instead of returning None: the
+exception's name for a request failure, the status and the body's first
+line for a non-200, and the body's length and first line for a 200 with no
+data rows — IEM is known to answer some failures as plain text under a
+200, which is the case that used to read as "succeeded and empty". The
+observed-so-far exit stores that sentence in the degradation's `detail`;
+the verification overlay and the weekly column check print it and carry
+on, since a station outage must never fail a run. Five fetch tests pin the
+three reasons and one pipeline test pins the sentence reaching the record.
+The next 18:01 run answers the question this item has carried since 09-16.
+
+**Has the station always been off in the evening? No — the archive read
+has.** Every evening issuance since the prompt archive began on 09-04
+carries the `airport_metar` block from aviationweather.gov with a receipt
+time of about 14:45Z, so HKKI files in the evening and that endpoint
+serves it. The same-day ARCHIVE read did not exist on an evening run until
+09-16; it has been tried on two evenings and failed on both. Before that
+no evening run asked, so the record cannot say more than 0 of 2.
+
 
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 

@@ -1094,9 +1094,13 @@ def _apply_station_observations(
 
     # ONE FETCH for both what the station SAW and what it MEASURED — the
     # archive request is the slowest call in the verification pass.
-    weather_by_date, readings_by_date = metar_fetch.observed_station_data(
-        location.metar_station_icao, min(actuals), max(actuals), location.timezone
-    )
+    try:
+        weather_by_date, readings_by_date = metar_fetch.observed_station_data(
+            location.metar_station_icao, min(actuals), max(actuals), location.timezone
+        )
+    except metar_fetch.ArchiveUnavailable as e:
+        print(f"Station archive gave no usable answer; days keep their reanalysis only ({e}).", file=sys.stderr)
+        return
     if weather_by_date is None:
         return
 
@@ -1783,10 +1787,13 @@ def _observed_so_far(
     that morning and could not fire.
 
     THE TWO EMPTY EXITS MEAN DIFFERENT THINGS and are reported separately. No
-    rows at all is a source or a network problem; rows that do not cover today
-    is a lag, and a 06:00 run legitimately hits it where an 18:00 run should
-    not. Collapsing them into one message would leave the record unable to
-    say which, which is the defect this fixes rather than a refinement of it.
+    rows at all is a source or a network problem — and since step 2 the fetch
+    says which, as ArchiveUnavailable, because the evening runs of 09-16 and
+    09-17 both recorded a "succeeded and empty" the code could not know; rows
+    that do not cover today is a lag, and a 06:00 run legitimately hits it
+    where an 18:00 run should not. Collapsing them into one message would
+    leave the record unable to say which, which is the defect this fixes
+    rather than a refinement of it.
 
     NO STATION CONFIGURED IS NOT A DEGRADATION. RunDegradation's own docstring
     draws that line — a location running as configured is not running degraded
@@ -1812,6 +1819,11 @@ def _observed_so_far(
         weather, readings = metar_fetch.observed_station_data(
             icao, today, today, location.timezone
         )
+    except metar_fetch.ArchiveUnavailable as e:
+        # Step 2 of item 151: the reason, in the archive's own words, so the
+        # 18:01 failures can be told apart from the record instead of guessed.
+        print(f"Station archive gave no usable answer for {today}: {e}", file=sys.stderr)
+        return None, gap(f"The archive gave no usable answer for {icao} on {today}: {e}")
     except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
         print(f"Station observations unavailable ({e}); no disagreement check.", file=sys.stderr)
         return None, gap(f"Fetching {icao}'s readings for {today} raised: {e}")
@@ -1822,8 +1834,7 @@ def _observed_so_far(
     if weather is None and readings is None:
         print(f"Station {icao} returned no rows for {today}.", file=sys.stderr)
         return None, gap(
-            f"{icao} returned no rows at all for {today}. The request "
-            "succeeded and the response was empty."
+            f"{icao} answered with rows this run could not read for {today}."
         )
 
     seen = weather.get(today) if weather else None

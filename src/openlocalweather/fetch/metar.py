@@ -267,14 +267,54 @@ class StationWeather:
     cloud_oktas: float | None = None
 
 
+class ArchiveUnavailable(Exception):
+    """The ASOS archive gave no usable answer, and this says which kind.
+
+    ROADMAP item 151, step 2. The evening runs of 2026-09-16 and 09-17 both
+    recorded "the request succeeded and the response was empty", and the
+    fetch could not have known that: it returned one None for a request
+    exception, a non-200 status and a 200 with no data rows alike. IEM is
+    known to answer some failures as plain text under a 200, so the body's
+    first line travels with the reason. The message is what the degradation
+    stores, so the next failed run is diagnosed from the record.
+    """
+
+
+# How much of a failed answer to keep. Enough to read an error sentence or
+# recognise an HTML page; not enough to store a page.
+_FIRST_LINE_CHARS = 120
+
+
+def _archive_rows(params: dict) -> list[list[str]]:
+    """Data rows from one archive request, or ArchiveUnavailable saying why
+    there are none. Never an empty list: a padded three-day range with no
+    rows is not a quiet station, it is an answer this project cannot use."""
+    try:
+        resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
+    except requests.RequestException as e:
+        raise ArchiveUnavailable(f"request failed: {type(e).__name__}: {e}") from e
+
+    lines = resp.text.splitlines()
+    first = lines[0][:_FIRST_LINE_CHARS] if lines else ""
+    if resp.status_code != 200:
+        raise ArchiveUnavailable(f"HTTP {resp.status_code}; first line: {first!r}")
+
+    rows = [r for r in csv.reader(lines) if len(r) >= 3 and r[0] != "station"]
+    if not rows:
+        raise ArchiveUnavailable(
+            f"HTTP 200 with no data rows; body {len(resp.text)} bytes; first line: {first!r}"
+        )
+    return rows
+
+
 def fetch_metar_archive(
     icao: str, start: date, end: date
 ) -> list[tuple[datetime, str]] | None:
     """Raw (UTC observation time, report text) pairs over a date range.
 
-    Returns None — never an empty list — when there is nothing to read, so
-    the caller can tell "the station said nothing" apart from "the station
-    said it was quiet".
+    None without a station, or when rows arrived but none carried a
+    parseable time. When the archive gives no usable answer at all this
+    RAISES ArchiveUnavailable with the reason — see that class.
     """
     if not icao:
         return None
@@ -292,18 +332,8 @@ def fetch_metar_archive(
         "direct": "no",
         "report_type": list(ARCHIVE_REPORT_TYPES),
     }
-    try:
-        resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
-    except requests.RequestException:
-        return None
-    if resp.status_code != 200:
-        return None
-
-    rows = list(csv.reader(resp.text.splitlines()))
     reports: list[tuple[datetime, str]] = []
-    for row in rows:
-        if len(row) < 3 or row[0] == "station":
-            continue
+    for row in _archive_rows(params):
         try:
             observed_at = datetime.strptime(row[1], "%Y-%m-%d %H:%M")
         except ValueError:
@@ -455,7 +485,9 @@ def fetch_metar_archive_rows(
     icao: str, start: date, end: date, extra_columns: Sequence[str] = ()
 ) -> list[Sequence[str]] | None:
     """Raw CSV rows from the ASOS archive: station, valid, then
-    ARCHIVE_DATA_COLUMNS, then `extra_columns`.
+    ARCHIVE_DATA_COLUMNS, then `extra_columns`. None only without a station;
+    an archive that gives no usable answer RAISES ArchiveUnavailable, which
+    says whether it was the request, the status or an empty body.
 
     `extra_columns` APPENDS, and appending is the whole of its safety —
     ROADMAP item 152. The daily parse indexes this response POSITIONALLY, so a
@@ -485,15 +517,7 @@ def fetch_metar_archive_rows(
         "direct": "no",
         "report_type": list(ARCHIVE_REPORT_TYPES),
     }
-    try:
-        resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
-    except requests.RequestException:
-        return None
-    if resp.status_code != 200:
-        return None
-
-    rows = [r for r in csv.reader(resp.text.splitlines()) if len(r) >= 3 and r[0] != "station"]
-    return rows or None
+    return _archive_rows(params)
 
 
 def observed_station_data(
@@ -550,11 +574,17 @@ def observed_weather_by_date(
     all keyed on the reader's calendar day, and a 21:30Z storm belongs to
     tomorrow in Nairobi.
     """
-    reports = fetch_metar_archive(
-        icao,
-        start - timedelta(days=ARCHIVE_PADDING_DAYS),
-        end + timedelta(days=ARCHIVE_PADDING_DAYS),
-    )
+    # Keeps its None contract: nothing in the pipeline reads this function,
+    # and its tests pin the shape. The reason lives on ArchiveUnavailable
+    # for the callers that record it.
+    try:
+        reports = fetch_metar_archive(
+            icao,
+            start - timedelta(days=ARCHIVE_PADDING_DAYS),
+            end + timedelta(days=ARCHIVE_PADDING_DAYS),
+        )
+    except ArchiveUnavailable:
+        return None
     if reports is None:
         return None
 

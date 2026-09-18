@@ -942,14 +942,18 @@ def _run_check_health(args: argparse.Namespace) -> int:
     # person to act on, not a broken pipeline, so it never sets `ok = False`.
     if location.metar_station_icao:
         print("Checking columns this project excluded...")
-        watched_rows = metar_fetch.fetch_metar_archive_rows(
-            location.metar_station_icao,
-            add_days(today_in_tz(location.timezone), -WATCHED_COLUMN_LOOKBACK_DAYS),
-            today_in_tz(location.timezone),
-            extra_columns=metar_fetch.ARCHIVE_WATCHED_COLUMNS,
-        )
+        try:
+            watched_rows = metar_fetch.fetch_metar_archive_rows(
+                location.metar_station_icao,
+                add_days(today_in_tz(location.timezone), -WATCHED_COLUMN_LOOKBACK_DAYS),
+                today_in_tz(location.timezone),
+                extra_columns=metar_fetch.ARCHIVE_WATCHED_COLUMNS,
+            )
+        except metar_fetch.ArchiveUnavailable as e:
+            watched_rows = None
+            print(f"  Station archive gave no usable answer ({e}); no column check this run.")
         if watched_rows is None:
-            print("  Station archive unreachable; no column check this run.")
+            print("  No station rows; no column check this run.")
         else:
             watched = check_watched_columns(
                 watched_rows,

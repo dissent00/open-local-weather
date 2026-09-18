@@ -3859,6 +3859,31 @@ def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch):
     assert len(details) == 2, f"both exits report the same thing: {details}"
 
 
+def test_a_failed_archive_request_records_what_the_server_said(monkeypatch):
+    """ROADMAP item 151, step 2. The evening exit used to claim "the request
+    succeeded and the response was empty" for a 503 and a timeout alike. The
+    fetch now raises with the status and the first line of the body, and the
+    degradation carries that sentence into the record."""
+    from openlocalweather.config import load_location_config
+    from openlocalweather.models import DEGRADATION_STATION_READINGS
+    from openlocalweather.pipeline import _observed_so_far
+    from openlocalweather.fetch import metar as metar_fetch
+
+    location = load_location_config("config/location.yaml")
+
+    def unavailable(*a, **k):
+        raise metar_fetch.ArchiveUnavailable("HTTP 503; first line: '<html>'")
+
+    monkeypatch.setattr(metar_fetch, "observed_station_data", unavailable)
+    observed, gap = _observed_so_far(location, date(2026, 9, 17))
+
+    assert observed is None
+    assert gap.code == DEGRADATION_STATION_READINGS
+    assert "HTTP 503" in gap.detail
+    assert "<html>" in gap.detail
+    assert "succeeded" not in gap.detail
+
+
 def test_no_station_configured_is_not_a_degradation():
     """A location with no station is running AS CONFIGURED. RunDegradation's
     own docstring draws this line, and blurring it makes the field mean

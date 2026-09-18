@@ -1,3 +1,4 @@
+import pytest
 import requests
 import requests_mock
 
@@ -6,8 +7,11 @@ from datetime import date
 from openlocalweather.fetch.metar import (
     METAR_ARCHIVE_URL,
     METAR_URL,
+    ArchiveUnavailable,
     StationWeather,
     fetch_metar,
+    fetch_metar_archive,
+    fetch_metar_archive_rows,
     observed_weather_by_date,
     report_cloud_oktas,
 )
@@ -371,3 +375,60 @@ def test_a_report_without_a_sky_group_does_not_drag_the_mean_down():
         result = observed_weather_by_date("HKKI", DAY, DAY, "Africa/Nairobi")
 
     assert result[DAY].cloud_oktas == 8.0
+
+
+# ---------------------------------------------------------------------------
+# The archive says WHICH kind of nothing — ROADMAP item 151, step 2.
+#
+# The evening runs of 2026-09-16 and 09-17 both stored "the request succeeded
+# and the response was empty", and the fetch could not have known that: it
+# returned the same None for a request exception, a non-200 status and a 200
+# with no data rows. These pin that each is told apart, with what the server
+# actually said, so the next failed run can be diagnosed from the record.
+# ---------------------------------------------------------------------------
+
+
+def test_archive_rows_non_200_says_the_status_and_the_first_line():
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, status_code=503, text="<html>Service Unavailable</html>")
+        with pytest.raises(ArchiveUnavailable) as e:
+            fetch_metar_archive_rows("HKKI", DAY, DAY)
+    assert "HTTP 503" in str(e.value)
+    assert "Service Unavailable" in str(e.value)
+
+
+def test_archive_rows_network_failure_names_the_exception():
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, exc=requests.exceptions.ConnectTimeout("slow"))
+        with pytest.raises(ArchiveUnavailable) as e:
+            fetch_metar_archive_rows("HKKI", DAY, DAY)
+    assert "ConnectTimeout" in str(e.value)
+
+
+def test_archive_rows_200_with_no_data_rows_quotes_the_body():
+    # IEM answers some failures as plain text under a 200 — this is the case
+    # that used to read as "succeeded and empty".
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text="ERROR: server over capacity\n")
+        with pytest.raises(ArchiveUnavailable) as e:
+            fetch_metar_archive_rows("HKKI", DAY, DAY)
+    assert "no data rows" in str(e.value)
+    assert "ERROR: server over capacity" in str(e.value)
+
+
+def test_archive_rows_header_only_is_no_data_rows():
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text="station,valid,metar,tmpf,sknt\n")
+        with pytest.raises(ArchiveUnavailable) as e:
+            fetch_metar_archive_rows("HKKI", DAY, DAY)
+    assert "no data rows" in str(e.value)
+
+
+def test_raw_reports_fetch_raises_the_same_way():
+    # Window scoring reads through fetch_metar_archive; one request layer,
+    # one set of reasons.
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, status_code=502, text="Bad Gateway")
+        with pytest.raises(ArchiveUnavailable) as e:
+            fetch_metar_archive("HKKI", DAY, DAY)
+    assert "HTTP 502" in str(e.value)
