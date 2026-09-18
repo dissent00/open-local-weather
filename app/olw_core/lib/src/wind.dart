@@ -16,6 +16,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'comparison.dart' show knotsToKmh;
 import 'config.dart';
 
 /// The 16-point rose, from north. Chosen over the 8-point compass because the
@@ -153,6 +154,69 @@ List<double> _directionsAt(Map<String, Object?> hourly, List<String> models, int
 /// Lowercase and unpunctuated, for the same reason describeExtendedTrend ships
 /// a clause: the prompt uses it verbatim, so anything left to phrase is
 /// something that can be phrased wrong.
+List<double> _valuesAt(
+    Map<String, Object?> hourly, List<String> models, int hour, String variable) {
+  final hours = hourly['hourly'];
+  if (hours is! Map<String, Object?>) return const [];
+  final times = hours['time'];
+  if (times is! List) return const [];
+  int? idx;
+  for (var i = 0; i < times.length; i++) {
+    if (_hourOf('${times[i]}') == hour) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx == null) return const [];
+  final out = <double>[];
+  for (final model in models) {
+    final perModel = hours['${variable}_$model'];
+    final series = (perModel is List && perModel.isNotEmpty) ? perModel : hours[variable];
+    if (series is! List || idx >= series.length) continue;
+    final v = series[idx];
+    if (v is num) out.add(v.toDouble());
+  }
+  return out;
+}
+
+/// Half-up on both sides of the boundary — Python's round() is half-even and
+/// Dart's is half-away, and an 18.5 km/h mean must print the same figure in
+/// both. Mirrors `_half_up`.
+int _halfUp(double x) => (x + 0.5).floor();
+
+String _kmhAndKt(double kmh) =>
+    '${_halfUp(kmh)} km/h (${_halfUp(kmh / knotsToKmh)} kt)';
+
+/// The wind on the water through the day, as one finished clause — upstream
+/// item 158 step 8; mirrors `describe_wind_timeline`, where the reasoning
+/// is recorded. At each shift anchor the models' mean sustained wind and
+/// gust, the direction only where they agree; null with no speeds anywhere,
+/// and null when every anchor is behind the reader.
+String? describeWindTimeline(Map<String, Object?> hourly, List<String> models,
+    {required int issuedHour}) {
+  final parts = <String>[];
+  final hours = <int>[];
+  for (final (hour, label) in shiftAnchors) {
+    final speeds = _valuesAt(hourly, models, hour, 'wind_speed_10m');
+    if (speeds.isEmpty) continue;
+
+    final gusts = _valuesAt(hourly, models, hour, 'wind_gusts_10m');
+    final point = consensusDirection(_directionsAt(hourly, models, hour));
+    final lead = point != null ? '${_adjective[point]} $label' : label;
+    var clause = '$lead at ${_kmhAndKt(speeds.reduce((a, b) => a + b) / speeds.length)}';
+    if (gusts.isNotEmpty) {
+      clause += ' gusting ${_kmhAndKt(gusts.reduce((a, b) => a + b) / gusts.length)}';
+    }
+    parts.add(clause);
+    hours.add(hour);
+  }
+
+  if (parts.isEmpty) return null;
+  if (hours.every((h) => h <= issuedHour)) return null;
+
+  return parts.join(', then ');
+}
+
 String? describeWindShift(Map<String, Object?> hourly, List<String> models,
     {required int issuedHour}) {
   final named = <(String, String)>[];

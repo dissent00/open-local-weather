@@ -126,8 +126,11 @@ VERIFICATION IS ALREADY WRITTEN FOR THIS DAY, AND THIS BLOCK OVERRIDES WORKFLOW 
   final secondaryHeadingBlock =
       s.enabled ? '\n   ## ${s.name} — ${s.sectionLabel}\n' : '';
   final secondaryDataNote = s.enabled
-      ? 'A SECONDARY LOCATION DATASET for ${s.name} is also provided - '
-          'synthesize its own section.'
+      ? '${s.name} HAS ITS OWN BLOCKS - "secondary_day0" in EXTRACTED '
+          'PER-MODEL PREDICTIONS, SECONDARY POINT WIND, and "secondary_extended_daily" for the '
+          'days ahead - and its section is written from them: the wind "timeline" VERBATIM, '
+          'the gust from the call, the thunderstorm gust hazard from CONVECTIVE INSTABILITY. Its '
+          'hour-by-hour arrays are no longer sent, so do not look for them.'
       : '';
   final secondaryGuidanceNote = s.enabled ? ' and ${s.name}' : '';
 
@@ -140,10 +143,11 @@ VERIFICATION IS ALREADY WRITTEN FOR THIS DAY, AND THIS BLOCK OVERRIDES WORKFLOW 
   // guess corrupts a stored field rather than a sentence.
   final secondaryWindNote = s.enabled
       ? 'the wind at ${s.name}, NOT at ${location.primaryPlaceName} \u2014 '
-          'a different place from the one the other fields here describe, and the ONE '
-          'number in this list you must derive yourself: EXTRACTED PER-MODEL PREDICTIONS '
-          'is ${location.primaryPlaceName} throughout, so take this from '
-          '"secondary_today_hourly" in TODAY\'S MULTI-MODEL GUIDANCE and nowhere else'
+          'a different place from the one the other fields here describe, and it is '
+          'computed for you: START FROM "consensus_gust_kmh" in SECONDARY POINT WIND, the '
+          "mean of that point's own per-model Day+0 gusts, which are listed as "
+          '"secondary_day0" in EXTRACTED PER-MODEL PREDICTIONS; that point\'s raw hourly '
+          'arrays are not in this message'
       : 'no secondary location is configured here, so leave this null';
 
   // Upstream item 144, and the reason the field exists at all.
@@ -278,7 +282,7 @@ $localMetNamingRule''',
    - NO PIPELINE VOCABULARY IN THE SECTIONS A READER ACTS ON. "Calibrated", "consensus", "pre-computed", "blend" and the names of the blocks in the user message belong in the Detailed Discussion and the Forecaster Confidence Notes; Today's Forecast says "gusts to 35 km/h (19 kt)", never "calibrated peak gusts of 35 km/h", which a real forecast wrote. Model names stay where a rule asks for them.
    - Wind always as "X km/h (Y kt)", e.g. "23 km/h (12 kt)". Knots = km/h ÷ 1.852. THE BEARING IS PRE-COMPUTED AND OFTEN ABSENT: "WIND DIRECTION" in the user message carries one rose point when the models share one and null when they do not, because a compass bearing cannot be averaged and a set of models pointing different ways has no mean direction. When it carries a point, append "from the [POINT]"; when it is null, SAY NOTHING ABOUT DIRECTION - not "variable", not "shifting", not a guess from the raw arrays. Never derive a bearing yourself: measured here, agreement runs 0.95 at midday and 0.48 in the evening, so the hours you would most want to name are the hours nobody agrees on.
 $windSectionRule
-   - "WIND SHIFT" carries a finished clause for how the wind turns through the day - "northeasterly overnight, turning southwest by midday" - or nothing. Use it VERBATIM where it belongs, in Today's Forecast and in any secondary-location section. It is the best-supported wind fact this location has: the models disagree about a single daily bearing and agree about which way it turns. An anchor they split on has already been dropped, so do not fill the gap.
+   - "WIND SHIFT" carries a finished clause for how the wind turns through the day - "northeasterly overnight, turning southwest by midday" - or nothing. Use it VERBATIM where it belongs, in Today's Forecast; a secondary-location section has its own timeline in SECONDARY POINT WIND and uses that instead. It is the best-supported wind fact this location has: the models disagree about a single daily bearing and agree about which way it turns. An anchor they split on has already been dropped, so do not fill the gap.
    - Temperatures always as "0°C / 32°F" format.
    - Rain in both mm and inches.
    - Plain text throughout. No emojis.
@@ -663,6 +667,23 @@ String forecastWindowsBlock(List<Map<String, Object?>>? windows) {
   return windows.map((w) => '- ${w['label']}').join('\n');
 }
 
+/// Mirrors `SECONDARY_WIND_HEADING` and `_secondary_wind_block`: nothing
+/// at all when no secondary point is configured, nulls when one is and its
+/// guidance did not arrive.
+const String secondaryWindHeading =
+    "SECONDARY POINT WIND (pre-computed by code from that point's OWN hourly "
+    "guidance, which is no longer in this message: the models' mean sustained "
+    'wind and gust at three anchors through the day, with the direction only '
+    "where they agree, and the day's consensus peak gust. This is the wind on "
+    'the water. Use "timeline" VERBATIM in that point\'s section, and start '
+    '"peak_wind_secondary_kmh" from "consensus_gust_kmh"):';
+
+String secondaryWindBlock(Object? secondaryWind) {
+  if (secondaryWind == null) return '';
+
+  return '\n$secondaryWindHeading\n${promptJson(secondaryWind)}\n';
+}
+
 String buildUserPrompt({
   required DateTime today,
   required DateTime yesterday,
@@ -681,6 +702,10 @@ String buildUserPrompt({
   /// Pre-computed because the bias it removes was measured by this project
   /// and telling the model about it did not remove it; see calibration.dart.
   double? calibratedGustKmh,
+
+  /// Upstream item 158 step 8: the secondary point's wind composed in code,
+  /// or null when no point is configured, which omits the block entirely.
+  Object? secondaryWind,
 
   /// What the station has ALREADY measured today — upstream item 121.
   /// Composed in code because an observation is a fact, and facts are not
@@ -848,7 +873,7 @@ ${windDirection != null ? 'from the $windDirection' : 'Unavailable — the model
 
 WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
 ${windShift ?? 'Unavailable — omit any claim about the wind turning.'}
-
+${secondaryWindBlock(secondaryWind)}
 CALIBRATED PEAK GUST (pre-computed by code: the models' Day+0 consensus gust with each model's OWN measured bias added back, from the record's own measured "actual minus predicted" at Day+0. MODEL TRACK RECORD shows you that figure for the models it lists; the consensus behind this number also includes internal yardsticks whose rows are deliberately withheld from you, so do not try to reconstruct it from what is in front of you. START YOUR "peak_wind_primary_kmh" FROM THIS NUMBER, not from the raw per-model gusts in EXTRACTED PER-MODEL PREDICTIONS. Those are the uncorrected forecasts and they are in your context because they are what gets SCORED, not because they are the best estimate. This is not a judgement call being taken from you: the track record sitting in this same prompt says in words that every model under-forecasts peak wind, and the per-model corrections behind this number are measured from that same record at this same place. A published-gust shortfall of about 12 km/h was also measured over 32 days, but that measurement compared a gust published for the SECONDARY point against observations at this one, so treat its direction as informative and its size as not yet established for this field. You may still depart from it, and a departure is exactly what a forecaster is for; say so in the Forecaster Confidence Notes and say which way and why. What you may not do is quietly average the raw model gusts back in, which is the behaviour this block exists to end):
 ${calibratedGustKmh != null ? '$calibratedGustKmh km/h' : 'Unavailable - too few verified checks to have measured a bias yet. Reason from the raw per-model gusts, and expect them to run low.'}
 

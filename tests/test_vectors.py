@@ -27,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from openlocalweather.wind import consensus_direction, describe_wind_shift, vector_mean
+from openlocalweather.wind import consensus_direction, describe_wind_shift, vector_mean, describe_wind_timeline
 from openlocalweather.aqi import hours_old, is_stale, merge_ground_aqi, summarize_ground_aqi
 from openlocalweather.baselines import climatology_prediction, persistence_prediction
 from openlocalweather.cycle import aligned_cycle_at, next_aligned_window
@@ -1042,6 +1042,7 @@ def test_every_vector_file_is_exercised():
         "wind_vector_mean.json",
         "wind_consensus_direction.json",
         "wind_describe_shift.json",
+        "wind_timeline.json",
         "observed_so_far.json",
         "llm_should_reason.json",
         "comparison_subject.json",
@@ -1207,6 +1208,15 @@ def test_vectors_wind_vector_mean():
 def test_vectors_wind_consensus_direction():
     for case in load("wind_consensus_direction.json")["cases"]:
         got = consensus_direction(case["input"]["degrees"], case["input"]["gate"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_wind_timeline():
+    """ROADMAP item 158 step 8 — the wind on the water, in one clause; the
+    tie cases pin the half-up rounding both surfaces share."""
+    for case in load("wind_timeline.json")["cases"]:
+        i = case["input"]
+        got = describe_wind_timeline(i["hourly_multi_model"], i["models"], issued_hour=i["issued_hour"])
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 

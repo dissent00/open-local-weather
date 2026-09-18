@@ -1,0 +1,603 @@
+{
+  "vector_format_version": 1,
+  "function": "describe_wind_timeline",
+  "description": "ROADMAP item 158 step 8. The secondary point's wind through the day as one finished clause: the models' mean sustained wind and gust at the shift's three anchors, direction only where they agree, skipped where no speed series exists, withheld when every anchor is behind the reader. Composed in code because the raw arrays it replaces were 16 percent of the prompt and a tenth of them was wind; half-up rounding on both surfaces because the means land on the half.",
+  "cases": [
+    {
+      "name": "the lake breeze with speeds and gusts at every anchor",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              11.0
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              14.0,
+              28.0,
+              19.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              12.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              16.0,
+              30.0,
+              21.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              10.0
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              15.0,
+              27.0,
+              20.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              13.0
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              17.0,
+              31.0,
+              22.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+    },
+    {
+      "name": "an anchor the models split on keeps its speed and loses its bearing",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              10.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              200.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              100.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              280.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              11.0
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              14.0,
+              28.0,
+              19.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              12.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              16.0,
+              30.0,
+              21.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              10.0
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              15.0,
+              27.0,
+              20.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              13.0
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              17.0,
+              31.0,
+              22.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+    },
+    {
+      "name": "no gust series says the sustained wind alone",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              11.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              12.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              10.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              13.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt), then southwesterly by midday at 19 km/h (10 kt), then westerly into the evening at 12 km/h (6 kt)"
+    },
+    {
+      "name": "an anchor with no speed series is skipped",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              null
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              14.0,
+              28.0,
+              19.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              null
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              16.0,
+              30.0,
+              21.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              null
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              15.0,
+              27.0,
+              20.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              null
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              17.0,
+              31.0,
+              22.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt)"
+    },
+    {
+      "name": "no speeds anywhere is nothing, not calm",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "every anchor behind an evening issuance is withheld",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              11.0
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              14.0,
+              28.0,
+              19.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              12.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              16.0,
+              30.0,
+              21.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              10.0
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              15.0,
+              27.0,
+              20.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              13.0
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              17.0,
+              31.0,
+              22.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 18
+      },
+      "expected": null
+    },
+    {
+      "name": "a midday issuance keeps the evening anchor ahead",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              8.0,
+              18.0,
+              11.0
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              14.0,
+              28.0,
+              19.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              10.0,
+              20.0,
+              12.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              16.0,
+              30.0,
+              21.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              9.0,
+              17.0,
+              10.0
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              15.0,
+              27.0,
+              20.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              11.0,
+              19.0,
+              13.0
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              17.0,
+              31.0,
+              22.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 12
+      },
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+    },
+    {
+      "name": "a mean on the half rounds up on both surfaces",
+      "input": {
+        "hourly_multi_model": {
+          "hourly": {
+            "time": [
+              "2026-09-10T03:00",
+              "2026-09-10T12:00",
+              "2026-09-10T18:00"
+            ],
+            "wind_direction_10m_gfs_seamless": [
+              30.0,
+              225.0,
+              270.0
+            ],
+            "wind_direction_10m_ecmwf_ifs025": [
+              35.0,
+              220.0,
+              265.0
+            ],
+            "wind_direction_10m_icon_seamless": [
+              25.0,
+              230.0,
+              275.0
+            ],
+            "wind_direction_10m_ukmo_seamless": [
+              40.0,
+              218.0,
+              268.0
+            ],
+            "wind_speed_10m_gfs_seamless": [
+              18.0,
+              9.26,
+              10.0
+            ],
+            "wind_gusts_10m_gfs_seamless": [
+              24.0,
+              37.04,
+              30.0
+            ],
+            "wind_speed_10m_ecmwf_ifs025": [
+              19.0,
+              9.26,
+              11.0
+            ],
+            "wind_gusts_10m_ecmwf_ifs025": [
+              25.0,
+              37.04,
+              31.0
+            ],
+            "wind_speed_10m_icon_seamless": [
+              18.0,
+              9.26,
+              10.0
+            ],
+            "wind_gusts_10m_icon_seamless": [
+              24.0,
+              37.04,
+              30.0
+            ],
+            "wind_speed_10m_ukmo_seamless": [
+              19.0,
+              9.26,
+              11.0
+            ],
+            "wind_gusts_10m_ukmo_seamless": [
+              25.0,
+              37.04,
+              31.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ],
+        "issued_hour": 0
+      },
+      "expected": "north-northeasterly overnight at 19 km/h (10 kt) gusting 25 km/h (13 kt), then southwesterly by midday at 9 km/h (5 kt) gusting 37 km/h (20 kt), then westerly into the evening at 11 km/h (6 kt) gusting 31 km/h (16 kt)"
+    }
+  ]
+}

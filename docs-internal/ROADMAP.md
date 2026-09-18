@@ -23049,7 +23049,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5, 7 and 10 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; steps 8 and 9 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5, 7, 8 and 10 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; step 9 for review**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23674,6 +23674,71 @@ may call the sky steady or changing across the span is item 123's
 question — the mean's label verifies but the spread is per-model bias,
 and the calibration decides how cloud is used — so the phrase does not
 claim it until that lands.
+
+### Step 8 SHIPPED 2026-09-18 — the secondary point in code, as a marine block
+
+The operator's question first: is the raw block needed for wind, or does
+the section need rethinking as a marine section? Measured on the 03:01
+message: `secondary_today_hourly` was 18,948 characters, HALF of it
+indentation (9,466 compact), and wind — sustained, gust, direction — a
+TENTH of the content (2,459 compact). Open-Meteo's marine endpoint
+answers null for every wave field at the gulf point over 48 hours: Lake
+Victoria is outside its wave model, so waves are not available from any
+source this project has. A marine section here is therefore wind speed,
+gust, direction and timing plus the thunderstorm gust hazard — and every
+one of those is derivable in code, which is this repo's rule and the
+reason the arrays were ever in the prompt.
+
+**Built, both languages, vector-pinned.** (1) `_secondary_day0`: the
+existing Day+0 extractor run over the secondary point's hourly, sent as
+`secondary_day0` inside EXTRACTED PER-MODEL PREDICTIONS with the hidden
+models filtered as the primary's are. (2) `wind.describe_wind_timeline`:
+at the wind shift's three anchors, the models' mean sustained wind and
+mean gust with the direction only where `consensus_direction`'s gate
+passes, as one finished clause ("east-northeasterly overnight at 8 km/h
+(4 kt) gusting 9 km/h (5 kt), then by midday at 7 km/h (4 kt) gusting 16
+km/h (9 kt), then west-southwesterly into the evening at 12 km/h (6 kt)
+gusting 18 km/h (10 kt)" — the real 09-18 gulf hourly, whose midday the
+models split on); an anchor with no speed series is skipped, none is
+None, and the shift's still-ahead rule withholds it when every anchor is
+behind the reader. Half-up rounding on both surfaces, because the means
+land on the half and Python rounds half-even where Dart rounds half-away;
+the tie case is in the vector, and the Python mutation to `round()` bites
+while the Dart one to `.round()` is equivalent code for positive values.
+`wind_timeline.json`, 8 cases. (3) A SECONDARY POINT WIND block after WIND
+SHIFT carrying `timeline` and `consensus_gust_kmh` (25.6 on 09-18, the
+mean of the point's own per-model gusts), omitted entirely when no
+secondary point is configured — the ground-station pattern — and nulls
+when one is and its guidance did not arrive. The judgment starts
+`peak_wind_secondary_kmh` from that number where it used to derive it
+from arrays; the section rule names the three blocks it writes from; the
+WIND SHIFT rule no longer sends the primary's shift into the secondary
+section. (4) `secondary_today_hourly` is gone from the guidance dump;
+`secondary_extended_daily` stays for the days ahead. The user-prompt
+vector's populated case carries the block.
+
+**Measured.** On the 03:01 message, net 19,091 characters out (16 %).
+Driven through the real CLI: the drive's fixture has no secondary point,
+so the block is omitted there and only the rule text moved (+59). 1437
+Python, 196 Dart; mutations of the still-ahead rule, the direction gate
+and the rounding bite in Python, the still-ahead rule in Dart.
+
+**Read cold through Haiku, both calls, on the rebuilt 03:01 message
+(4,554 lines from 5,857).** The judgment took the gulf gust from the
+consensus and said so unprompted. The section came back written from the
+blocks: the timeline verbatim, "Peak gust 25.6 km/h (14 kt)", the
+convective gust hazard beside it. Slips, all the model's: the sun-worded
+timing sentence restated in Today's Forecast once more, one invented
+clause about Saturday's wind, and model names withheld from Severe
+Weather where the rule allows them. The live provider is the reading.
+
+**Not done, and one hazard for the next reader.** Compact serialisation of
+the hourly arrays would save about 20,000 more characters with no loss —
+item 148's lever, its own commit. And the patch that built this was
+applied twice by a wrongly-guarded script and duplicated every insertion
+whose anchor survives it; the files were restored from HEAD and patched
+once, which was safe only because they carried no other uncommitted work.
+A script that inserts must check for the INSERTED text, not the anchor.
 
 ### Recommended order
 

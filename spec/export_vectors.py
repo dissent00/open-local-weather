@@ -1395,6 +1395,12 @@ def export_user_prompt() -> None:
         # interpolation agree on 41.5 and on 41.0, and disagree with anything
         # that formats it as an int; pinning a value is what catches that.
         calibrated_gust_kmh=41.5,
+        # Item 158 step 8: the secondary point's wind composed in code, in
+        # place of the raw hourly block this case used to carry.
+        secondary_wind={
+            "timeline": "northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)",
+            "consensus_gust_kmh": 29.4,
+        },
         # A re-issue whose observed cycle has moved on since the morning:
         # newer_than_previous_issuance true, real news to narrate.
         guidance_recency={
@@ -3271,6 +3277,60 @@ def export_wind_direction() -> None:
             12: [225.0, 220.0, 230.0, 218.0],
             18: [270.0, 265.0, 275.0, 268.0]}, 18),
     ]
+    # ROADMAP item 158 step 8: the secondary point's wind, composed in code.
+    from openlocalweather.wind import describe_wind_timeline
+
+    def marine(per_hour, *, speeds=None, gusts=None):
+        """Directions per anchor as `hourly` builds them, plus per-anchor
+        sustained speeds and gusts per model; an anchor absent from `speeds`
+        has no speed series at all."""
+        payload = hourly(per_hour)
+        hours = sorted(per_hour)
+        for i, m in enumerate(MODELS_HERE):
+            if speeds is not None:
+                payload["hourly"][f"wind_speed_10m_{m}"] = [
+                    (speeds[h][i] if h in speeds else None) for h in hours
+                ]
+            if gusts is not None:
+                payload["hourly"][f"wind_gusts_10m_{m}"] = [
+                    (gusts[h][i] if h in gusts else None) for h in hours
+                ]
+        return payload
+
+    lake = {3: [30.0, 35.0, 25.0, 40.0], 12: [225.0, 220.0, 230.0, 218.0], 18: [270.0, 265.0, 275.0, 268.0]}
+    split_evening = {3: [30.0, 35.0, 25.0, 40.0], 12: [225.0, 220.0, 230.0, 218.0], 18: [10.0, 200.0, 100.0, 280.0]}
+    speeds = {3: [8.0, 10.0, 9.0, 11.0], 12: [18.0, 20.0, 17.0, 19.0], 18: [11.0, 12.0, 10.0, 13.0]}
+    gusts = {3: [14.0, 16.0, 15.0, 17.0], 12: [28.0, 30.0, 27.0, 31.0], 18: [19.0, 21.0, 20.0, 22.0]}
+    timeline_cases = [
+        ("the lake breeze with speeds and gusts at every anchor", marine(lake, speeds=speeds, gusts=gusts), 0),
+        ("an anchor the models split on keeps its speed and loses its bearing", marine(split_evening, speeds=speeds, gusts=gusts), 0),
+        ("no gust series says the sustained wind alone", marine(lake, speeds=speeds), 0),
+        ("an anchor with no speed series is skipped", marine(lake, speeds={3: speeds[3], 12: speeds[12]}, gusts=gusts), 0),
+        ("no speeds anywhere is nothing, not calm", marine(lake), 0),
+        ("every anchor behind an evening issuance is withheld", marine(lake, speeds=speeds, gusts=gusts), 18),
+        ("a midday issuance keeps the evening anchor ahead", marine(lake, speeds=speeds, gusts=gusts), 12),
+        # Ties are where a port parts company: 18.5 km/h and a knots value
+        # landing on .5 must print the same on both sides (half-up).
+        ("a mean on the half rounds up on both surfaces",
+         marine(lake, speeds={3: [18.0, 19.0, 18.0, 19.0], 12: [9.26, 9.26, 9.26, 9.26], 18: [10.0, 11.0, 10.0, 11.0]},
+                gusts={3: [24.0, 25.0, 24.0, 25.0], 12: [37.04, 37.04, 37.04, 37.04], 18: [30.0, 31.0, 30.0, 31.0]}), 0),
+    ]
+    write(
+        "wind_timeline.json",
+        "describe_wind_timeline",
+        "ROADMAP item 158 step 8. The secondary point's wind through the day "
+        "as one finished clause: the models' mean sustained wind and gust at "
+        "the shift's three anchors, direction only where they agree, skipped "
+        "where no speed series exists, withheld when every anchor is behind "
+        "the reader. Composed in code because the raw arrays it replaces were "
+        "16 percent of the prompt and a tenth of them was wind; half-up "
+        "rounding on both surfaces because the means land on the half.",
+        [{"name": n,
+          "input": {"hourly_multi_model": h, "models": MODELS_HERE, "issued_hour": ih},
+          "expected": describe_wind_timeline(h, MODELS_HERE, issued_hour=ih)}
+         for n, h, ih in timeline_cases],
+    )
+
     write(
         "wind_describe_shift.json",
         "describe_wind_shift",

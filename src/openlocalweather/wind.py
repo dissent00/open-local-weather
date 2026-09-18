@@ -21,6 +21,7 @@ from __future__ import annotations
 import math
 
 from openlocalweather.defaults import (
+    KNOTS_TO_KMH,
     WIND_DIRECTION_AGREEMENT_GATE,
     WIND_DIRECTION_MIN_MODELS,
 )
@@ -138,6 +139,85 @@ def _directions_at(hourly: dict, models: list[str], hour: int) -> list[float]:
         if idx < len(series) and series[idx] is not None:
             out.append(float(series[idx]))
     return out
+
+
+def _values_at(hourly: dict, models: list[str], hour: int, variable: str) -> list[float]:
+    """Each model's value of `variable` at local `hour`, suffixed key first
+    and the bare key as the fallback, exactly as the directions are read."""
+    hours = hourly.get("hourly") or {}
+    times = hours.get("time") or []
+    idx = next((i for i, t in enumerate(times) if _hour_of(t) == hour), None)
+    if idx is None:
+        return []
+    out = []
+    for model in models:
+        series = hours.get(f"{variable}_{model}") or hours.get(variable) or []
+        if idx < len(series) and series[idx] is not None:
+            out.append(float(series[idx]))
+    return out
+
+
+def _half_up(x: float) -> int:
+    # Half-up on both sides of the boundary: Python's round() is half-even
+    # and Dart's is half-away, and an 18.5 km/h mean must print the same
+    # figure in both — AGENTS.md's rounding hazard, met before it bit.
+    return int(math.floor(x + 0.5))
+
+
+def _kmh_and_kt(kmh: float) -> str:
+    # The prompt's own formatting rule, applied in code so the clause is
+    # finished: "18 km/h (10 kt)".
+    return f"{_half_up(kmh)} km/h ({_half_up(kmh / KNOTS_TO_KMH)} kt)"
+
+
+def describe_wind_timeline(
+    hourly: dict, models: list[str], *, issued_hour: int
+) -> str | None:
+    """The wind on the water through the day, as one finished clause —
+    ROADMAP item 158 step 8.
+
+    The secondary point's hourly arrays were 16 % of the prompt and the
+    judgment rule called the gust they yield "the ONE number in this list
+    you must derive yourself". Measured 2026-09-18: wind was a tenth of
+    those characters, half of the block was indentation, and Open-Meteo's
+    marine endpoint answers null for every wave field on Lake Victoria, so
+    what mariners here can be given is wind speed, gust, direction and
+    timing — this clause, composed the way the wind shift is.
+
+    At each of the shift's three anchors: the models' mean sustained wind
+    and mean gust, with the direction ONLY where they agree
+    (`consensus_direction`'s gate), so an anchor the models split on is
+    given by its speed alone rather than a bearing nobody holds. An anchor
+    with no speed series is skipped; none at all is None. And None when
+    every anchor is already behind the reader, for the reason
+    `describe_wind_shift` gives: an evening run must not narrate a day the
+    reader has finished.
+
+    Lowercase and unpunctuated, for the same reason the shift is: the
+    prompt uses it verbatim in the secondary point's section.
+    """
+    parts: list[str] = []
+    hours: list[int] = []
+    for hour, when in SHIFT_ANCHORS:
+        speeds = _values_at(hourly, models, hour, "wind_speed_10m")
+        if not speeds:
+            continue
+
+        gusts = _values_at(hourly, models, hour, "wind_gusts_10m")
+        point = consensus_direction(_directions_at(hourly, models, hour))
+        lead = f"{_ADJECTIVE[point]} {when}" if point else when
+        clause = f"{lead} at {_kmh_and_kt(sum(speeds) / len(speeds))}"
+        if gusts:
+            clause += f" gusting {_kmh_and_kt(sum(gusts) / len(gusts))}"
+        parts.append(clause)
+        hours.append(hour)
+
+    if not parts:
+        return None
+    if all(hour <= issued_hour for hour in hours):
+        return None
+
+    return ", then ".join(parts)
 
 
 def _hour_of(stamp: str) -> int | None:

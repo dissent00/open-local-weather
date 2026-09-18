@@ -174,3 +174,46 @@ def test_an_empty_input_is_not_a_calm_day():
     assert describe_wind_shift({}, MODELS, issued_hour=0) is None
     assert describe_wind_shift({"hourly": None}, MODELS, issued_hour=0) is None
     assert describe_wind_shift(_hourly({3: [None] * 4, 12: [None] * 4}, MODELS), MODELS, issued_hour=0) is None
+
+
+# ---------------------------------------------------------------------------
+# The wind on the water — ROADMAP item 158 step 8
+# ---------------------------------------------------------------------------
+from openlocalweather.wind import describe_wind_timeline
+
+_M = ["a", "b", "c"]
+
+
+def _marine(directions, speeds, gusts=None):
+    hours = sorted(speeds)
+    h = {"time": [f"2026-09-18T{x:02d}:00" for x in hours]}
+    for i, m in enumerate(_M):
+        h[f"wind_direction_10m_{m}"] = [directions[x][i] for x in hours]
+        h[f"wind_speed_10m_{m}"] = [speeds[x][i] for x in hours]
+        if gusts:
+            h[f"wind_gusts_10m_{m}"] = [gusts[x][i] for x in hours]
+    return {"hourly": h}
+
+
+def test_the_timeline_names_speed_gust_and_agreed_direction_per_anchor():
+    hourly = _marine({3: [40.0, 42.0, 41.0], 12: [225.0, 227.0, 226.0], 18: [10.0, 200.0, 100.0]},
+                     {3: [8.0, 10.0, 9.0], 12: [18.0, 20.0, 19.0], 18: [11.0, 13.0, 12.0]},
+                     {3: [14.0, 16.0, 15.0], 12: [28.0, 30.0, 29.0], 18: [19.0, 21.0, 20.0]})
+    assert describe_wind_timeline(hourly, _M, issued_hour=6) == (
+        "northeasterly overnight at 9 km/h (5 kt) gusting 15 km/h (8 kt), "
+        "then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), "
+        "then into the evening at 12 km/h (6 kt) gusting 20 km/h (11 kt)"
+    )
+
+
+def test_an_evening_issuance_with_every_anchor_behind_it_says_nothing():
+    hourly = _marine({3: [40.0, 42.0, 41.0], 12: [225.0, 227.0, 226.0], 18: [270.0, 272.0, 271.0]},
+                     {3: [8.0, 10.0, 9.0], 12: [18.0, 20.0, 19.0], 18: [11.0, 13.0, 12.0]})
+    assert describe_wind_timeline(hourly, _M, issued_hour=18) is None
+    assert describe_wind_timeline(hourly, _M, issued_hour=12) is not None
+
+
+def test_no_speed_series_is_nothing_rather_than_calm():
+    hourly = {"hourly": {"time": ["2026-09-18T03:00", "2026-09-18T12:00"],
+                         "wind_direction_10m_a": [40.0, 225.0], "wind_direction_10m_b": [42.0, 227.0], "wind_direction_10m_c": [41.0, 226.0]}}
+    assert describe_wind_timeline(hourly, _M, issued_hour=6) is None

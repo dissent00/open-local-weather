@@ -1083,6 +1083,7 @@ void main() {
               .toList(),
           forwardHourly: i['forward_hourly'],
           calibratedGustKmh: (i['calibrated_gust_kmh'] as num?)?.toDouble(),
+          secondaryWind: i['secondary_wind'],
           reviewContext: i['review_context'],
           modelPredictionsContext: i['model_predictions_context'],
           guidanceRecency: i['guidance_recency'],
@@ -1613,6 +1614,15 @@ void main() {
     });
 
     test('the day shape matches Python character for character', () {
+      for (final c in casesOf('wind_timeline.json')) {
+        final i = c['input'] as Map;
+        final hourly = (i['hourly_multi_model'] as Map).cast<String, Object?>();
+        final models = (i['models'] as List).cast<String>();
+        expect(
+            describeWindTimeline(hourly, models, issuedHour: i['issued_hour'] as int),
+            equals(c['expected']),
+            reason: 'case "${c['name']}"');
+      }
       for (final c in casesOf('wind_describe_shift.json')) {
         final i = c['input'] as Map;
         final hourly = (i['hourly_multi_model'] as Map).cast<String, Object?>();
@@ -1727,6 +1737,7 @@ void main() {
       'wind_vector_mean.json',
       'wind_consensus_direction.json',
       'wind_describe_shift.json',
+      'wind_timeline.json',
       'extract_day_n.json',
       'forecast_horizon.json',
       'run_row.json',

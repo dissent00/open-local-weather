@@ -74,7 +74,7 @@ from openlocalweather.instability import (
     convective_tier,
     summarize_instability,
 )
-from openlocalweather.wind import consensus_direction, describe_wind_shift
+from openlocalweather.wind import consensus_direction, describe_wind_shift, describe_wind_timeline
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.comparison import (
     comparison_for_prompt,
@@ -923,7 +923,11 @@ def _build_forecast_prompt(
             # it — so what changed is what the FORECASTER is handed, not what
             # the pipeline knows. See llm/prompt.py for the measurement.
             "primary_extended_daily": guidance.primary_daily,
-            "secondary_today_hourly": guidance.secondary_hourly,
+            # `secondary_today_hourly` IS GONE too — item 158 step 8, item 73's
+            # shape: 18,948 characters on 2026-09-18, half of it indentation,
+            # a tenth of it wind. Code now extracts that point's Day+0 per
+            # model and composes its wind timeline; the daily block stays for
+            # the days ahead.
             "secondary_extended_daily": guidance.secondary_daily,
             "regional_pressure": guidance.regional_pressure,
             "air_quality": guidance.air_quality,
@@ -1078,7 +1082,40 @@ def _locked_blocks(
         "calibrated_gust_kmh": (
             round(calibrated_wind_kmh, 1) if calibrated_wind_kmh is not None else None
         ),
+        # ROADMAP item 158 step 8. The secondary point's wind, composed here
+        # from its own hourly guidance, in place of the raw arrays the prompt
+        # used to carry (16 % of it). None when no secondary point is
+        # configured, so the block is omitted rather than "Unavailable"; a
+        # dict of nulls when one is configured and its guidance did not
+        # arrive, so the section can say so.
+        "secondary_wind": (
+            {
+                "timeline": describe_wind_timeline(
+                    guidance.secondary_hourly or {}, MODELS, issued_hour=issued_hour
+                ),
+                "consensus_gust_kmh": (
+                    round(g, 1)
+                    if (g := _mean_of([p.wind_kmh for p in _secondary_day0(guidance, location)]))
+                    is not None
+                    else None
+                ),
+            }
+            if location.secondary_point.enabled
+            else None
+        ),
     }
+
+
+def _secondary_day0(guidance: ForwardGuidance, location: LocationConfig) -> list[ModelPrediction]:
+    """The secondary point's Day+0 per model, from its own hourly guidance —
+    item 158 step 8. Empty when no point is configured or nothing arrived.
+    One definition, called from the locked blocks and the predictions
+    payload, so the gust the judgment starts from and the list it reads are
+    one extraction of one input."""
+    if not location.secondary_point.enabled or not guidance.secondary_hourly:
+        return []
+
+    return extract_day0_predictions_from_hourly(guidance.secondary_hourly, MODELS)
 
 
 def _sun_context(location, now_local: datetime, clock_reference: dict) -> tuple[DayPart, datetime]:
@@ -2073,7 +2110,10 @@ def _guidance_recency_payload(guidance: ForwardGuidance, previous: DailyLogEntry
 
 
 def _model_predictions_prompt_payload(
-    day0: list[ModelPrediction], day3: list[ModelPrediction], day7: list[ModelPrediction]
+    day0: list[ModelPrediction],
+    day3: list[ModelPrediction],
+    day7: list[ModelPrediction],
+    secondary_day0: list[ModelPrediction] | None = None,
 ) -> dict:
     """The extracted predictions as the forecaster is allowed to see them —
     its own blend and the two baselines removed, at every lead.
@@ -2095,6 +2135,13 @@ def _model_predictions_prompt_payload(
         "day0": [p.model_dump() for p in day0 if p.model not in hidden],
         "day3": [p.model_dump() for p in day3 if p.model not in hidden],
         "day7": [p.model_dump() for p in day7 if p.model not in hidden],
+        # Item 158 step 8: the secondary point's own Day+0 per model, in
+        # place of its raw hourly arrays. Absent when no point is configured.
+        **(
+            {"secondary_day0": [p.model_dump() for p in secondary_day0 if p.model not in hidden]}
+            if secondary_day0 is not None
+            else {}
+        ),
     }
 
 
@@ -3198,7 +3245,12 @@ def _issue_forecast(
     # than two. This is also where the met service becomes visible as a peer
     # of the numerical models rather than only as prose.
     model_predictions_context = _model_predictions_prompt_payload(
-        day0_predictions, day3_predictions, day7_predictions
+        day0_predictions, day3_predictions, day7_predictions,
+        secondary_day0=(
+            _secondary_day0(guidance, deps.location)
+            if deps.location.secondary_point.enabled
+            else None
+        ),
     )
     user_prompt = _build_forecast_prompt(
         deps,
