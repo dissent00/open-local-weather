@@ -18807,6 +18807,24 @@ have happened — a forecast was one call and either worked or did not.
 for one call a day starts refusing at half the forecasts. The cap's default
 and its wording need revisiting before that lands, not after."* It landed.
 
+### 2026-09-18 15:01Z: a 429 after eight logged requests in the provider's day
+
+The evening run's judgment took four attempts (three 503s, "high
+demand"), succeeded at 15:11Z, and the narrative then drew three more
+503s and a 429: *"limit: 20 requests per day on Free Tier"*. The ledger
+holds eleven requests on 2026-09-18 UTC and EIGHT since the provider's
+day rolled at 08:00Z. Either the provider counts something the ledger
+does not — the Interactions poll GETs, or a 503 as more than one — or its
+day boundary is not what the 09-15 measurement placed it at. Not
+resolvable from one evening; the next 429 should be read against the
+dashboard's count at that minute. What it decided tonight: the figures
+were published without a narrative (the item 127/132 path), and the
+repair is one `tools/rerender_narrative.py` request once the provider's
+day resets at 08:00Z. **And the 03:01Z run on 09-19 falls INSIDE the
+exhausted provider day** (19:01 PT on the 18th), so it is at risk of a
+429 on both calls; the operator's call whether to dispatch a run by hand
+after 08:00Z.
+
 ### OUR GUARD IS A DIFFERENT SHAPE FROM THE LIMIT IT PROTECTS
 
 Raised by the operator 2026-09-15: *"I think the cap resets on US days, not 24h
@@ -22335,6 +22353,24 @@ fail, so the fallback is proved by the live run and five tests, not by
 the drive. 1399 tests. Python only; no re-pin.
 
 
+### The 15:01Z run of 2026-09-18 answered the question — the archive is over capacity in the evening
+
+The first evening run with step 2's reason on the record:
+`station_readings_unavailable`, detail *"HTTP 503; first line: 'ERROR:
+server over capacity, please try later'"*. So the evening failures were
+never a lag or a format change: IEM's archive is overloaded at 15:01Z
+and answers the morning's request with a 503. The fallback did NOT fire,
+by design: the store holds rows only from runs after it shipped, and the
+day's morning run (03:01Z, on 16dacbd) predates the store, so
+`data/station/HKKI/2026-09-18.json` did not exist and the failure
+propagated as before. From the next morning run the store holds the
+night's rows, and the evening run will fall back to them and say so.
+`observed_so_far` was null, so the evening comparison (whose baseline is
+today's observation) was unavailable too. Two remaining moves, neither
+taken tonight: retry the archive read after a delay when it answers 503
+(the sentence names it as capacity, not absence), and read the reach
+line on the first fallback.
+
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 
 `rebuild-record` re-applies the station to every cached day, and on the
@@ -23049,7 +23085,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Steps 1, 2, 4, 5, 7, 8 and 10 SHIPPED, 3 folded into 123, 6 closed, 2026-09-18; step 9 for review**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **ALL STEPS CLOSED 2026-09-18: 1, 2, 4, 5, 7, 8, 9 and 10 shipped, 3 folded into 123, 6 closed with a ninety-day revisit**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23739,6 +23775,39 @@ applied twice by a wrongly-guarded script and duplicated every insertion
 whose anchor survives it; the files were restored from HEAD and patched
 once, which was safe only because they carried no other uncommitted work.
 A script that inserts must check for the INSERTED text, not the anchor.
+
+### Step 9 SHIPPED 2026-09-18 — the history out of the rules, into comments
+
+Measured first: the Overview rule was 6,428 characters and 1,127 words,
+the instability rule 3,251 and 553, in a narrative rule block of about
+19,000. Both rewritten as rule sentences alone — 3,376 and 1,882 after
+the drafts were shown to the operator and approved — and every account
+of a past failure moved verbatim into the comment block above
+`build_narrative_prompt` in prompt.py, with a pointer from the Dart
+mirror. Narrative prompt 44,462 → 40,084 characters (−10 %), judgment
+unchanged. Two test-pinned phrases were kept in the rewrite rather than
+the tests loosened: "do not subtract the temperatures yourself" and
+"never against yesterday's forecast or its verification scores", which
+is what those tests are for.
+
+**One stale sentence corrected on the way.** The rule said the sky was
+added on 2026-09-09 and, later in the same paragraph, that "you have no
+measurement of yesterday's sky, so 'clearer than yesterday' is an
+invention" — false since that date, since the sky is compared in code.
+The ban on widening now rests on what is unmeasured: moisture and feel.
+
+**Read cold through Haiku on the step 8 message:** the Overview composed
+from its three values exactly, the sun-worded timing sentence appeared
+only there, and Today's Forecast placed the thunder "this evening and
+overnight, peaking after midnight". The one compliance note worth
+keeping: "thunderstorms likely each day" was read as possibly reaching
+past the span; the phrase's span is its own sentence's, and the Outlook
+rule already sources days beyond it. 1437 Python, 196 Dart.
+
+Also in this commit: the prompt builder's own guidance dump still emitted
+`"secondary_today_hourly": null` after step 8 stopped passing it — seen
+in the 15:01Z archived prompt — so the key is gone from the builder on
+both sides and from the app's stub.
 
 ### Recommended order
 

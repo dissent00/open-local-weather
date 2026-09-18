@@ -563,7 +563,6 @@ Future<ForecastRun> generateForecast({
       // Not sent — upstream item 73's first cut; see llm/prompt.dart. The
       // hourly response is still fetched and still read by code here.
       'primary_extended_daily': daily,
-      'secondary_today_hourly': null,
       'secondary_extended_daily': null,
       'regional_pressure': null,
       'air_quality': airQuality,
