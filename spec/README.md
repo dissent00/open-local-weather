@@ -97,12 +97,12 @@ absent values are `null`, never omitted keys.
 | `forward_calendar.json` | `forward_calendar` | Every day from today to Day+7 with its date and day name, handed to the prompt finished so the forecaster never maps one to the other itself. |
 | `false_weekday_claims.json` | `false_weekday_claims` | Weekday/date pairings a narrative asserts that the calendar contradicts. Recorded against the entry and published anyway; a false alarm is worse than the defect. |
 | `dates_add_days.json` | `add_days` | 4 |
-| `day_over_day.json` | `compute_day_over_day` | 53 |
+| `day_over_day.json` | `compute_day_over_day` | 57 |
 | `gust_calibration.json` | `calibrated_gust_consensus` | The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model short of the check threshold is absent from it rather than corrected by zero. |
 | `prompt_rounding.json` | `_round_for_prompt` | The precision pass applied to the prompt payload: one decimal place by default, because the instruments are recorded to 0.1, with a per-field table for the quantities one place would destroy. |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
 | `extended_trend.json` | `describe_extended_trend` | 21 |
-| `describe_day_rain.json` | `describe_day_rain` | 20 |
+| `describe_day_rain.json` | `describe_day_rain` | 32 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 18 |
 | `observed_so_far.json` | `describe_observed_so_far` | 18 |
 | `llm_should_reason.json` | `llm_should_reason` | 11 |
@@ -125,6 +125,7 @@ absent values are `null`, never omitted keys.
 | `low_divergence.json` | `low_divergence` | 14 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
+| `convective_timing.json` | `convective_timing` | 14 |
 | `llm_user_prompt.json` | `build_user_prompt` | 9 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |

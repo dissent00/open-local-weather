@@ -24,6 +24,32 @@ import 'package:test/test.dart';
 /// spec/ lives at the repo root, two levels up from this package.
 final vectorsDir = Directory('../../spec/vectors');
 
+
+ConvectiveTiming? _timingFrom(Object? raw) {
+  if (raw == null) return null;
+  final m = (raw as Map).cast<String, Object?>();
+  return ConvectiveTiming(
+    onset: m['onset'] as String?,
+    peak: m['peak'] as String,
+    onsetPassed: m['onset_passed'] as bool,
+  );
+}
+
+ObservedSoFar? _observedFrom(Object? raw) {
+  if (raw == null) return null;
+  final o = (raw as Map).cast<String, Object?>();
+  return ObservedSoFar(
+    precipitation: o['precipitation'] as bool?,
+    precipitationOnset: o['precipitation_onset'] as String?,
+    thunder: o['thunder'] as bool?,
+    highC: (o['high_c'] as num?)?.toDouble(),
+    lowC: (o['low_c'] as num?)?.toDouble(),
+    peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble(),
+    cloudOktas: (o['cloud_oktas'] as num?)?.toDouble(),
+    reportedThrough: o['reported_through'] as String?,
+  );
+}
+
 Map<String, Object?> loadVectors(String name) {
   final file = File('${vectorsDir.path}/$name');
   if (!file.existsSync()) {
@@ -1129,7 +1155,10 @@ void main() {
             tomorrowName: i['tomorrow_name'] as String?,
             todayActual: i['today_actual'] == null
                 ? null
-                : DailyActual.fromJson(i['today_actual'] as Map<String, Object?>));
+                : DailyActual.fromJson(i['today_actual'] as Map<String, Object?>),
+            observedSoFar: _observedFrom(i['observed_so_far']),
+            stationLabel: i['station_label'] as String?,
+            convectiveTiming: _timingFrom(i['convective_timing']));
         expectMatches(got?.toJson(), c['expected'], c['name'] as String);
       }
     });
@@ -1195,6 +1224,10 @@ void main() {
           i['onset'] as String?,
           i['thunder'] as bool?,
           issuedHour: i['issued_hour'] as int?,
+          thunderTiming: _timingFrom(i['thunder_timing']),
+          onsetWord: i['onset_word'] as String?,
+          observed: _observedFrom(i['observed']),
+          stationLabel: i['station_label'] as String?,
         );
         expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
       }
@@ -1626,6 +1659,26 @@ void main() {
     });
   });
 
+  group('convective_timing — upstream item 158', () {
+    test('the thunder\'s when, in the sun\'s words', () {
+      DateTime? clock(Object? v) => v == null ? null : DateTime.parse(v as String);
+      for (final c in casesOf('convective_timing.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = convectiveTiming(
+          i['onset_at'] as String?,
+          i['peak_at'] as String?,
+          now: clock(i['now'])!,
+          sunrise: clock(i['sunrise']),
+          sunset: clock(i['sunset']),
+          nextSunrise: clock(i['next_sunrise']),
+        );
+        final expected = c['expected'] as Map<String, Object?>;
+        expect(got?.toJson(), equals(expected['timing']), reason: 'case "${c['name']}"');
+        expect(describeConvectiveTiming(got), equals(expected['clause']), reason: 'case "${c['name']}"');
+      }
+    });
+  });
+
   group('cell_key — ROADMAP item 156', () {
     test('one point files under one key on the phone and in the store', () {
       for (final c in casesOf('cell_key.json')) {
@@ -1705,6 +1758,7 @@ void main() {
       'baselines.json',
       'comparison_for_prompt.json',
       'cell_key.json',
+      'convective_timing.json',
     };
     final onDisk = vectorsDir
         .listSync()

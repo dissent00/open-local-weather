@@ -702,3 +702,149 @@ def reconcile_now(
         f"Using the server's time. Check NTP on this host — a wrong clock "
         f"silently produces a forecast written for the wrong part of the day."
     )
+
+
+# --- The thunder's timing in the sun's words — ROADMAP item 158, step 1 -----
+#
+# The Overview said "dry but thundery" on 2026-09-18 because the rain
+# composer had no time for the thunder: an onset is a rain concept and the
+# instability block carried only a peak hour. Every other time in the
+# Overview is placed by the sun, so these are too — the same phases
+# `classify_phase` names, never a clock number.
+
+_ONSET_WORDS = {
+    "dawn": "from dawn",
+    "morning": "from the morning",
+    "midday": "from midday",
+    "afternoon": "from the afternoon",
+    "dusk": "from the evening",
+    "evening": "from the evening",
+    "night": "overnight",
+}
+_PEAK_WORDS = {
+    "dawn": "at dawn",
+    "morning": "this morning",
+    "midday": "around midday",
+    "afternoon": "this afternoon",
+    "dusk": "this evening",
+    "evening": "this evening",
+    "night": "overnight",
+}
+# Tomorrow folds the seven phases to four: a reader planning a day ahead
+# does not need "tomorrow's dusk".
+_TOMORROW_WORDS = {
+    "dawn": "morning",
+    "morning": "morning",
+    "midday": "afternoon",
+    "afternoon": "afternoon",
+    "dusk": "evening",
+    "evening": "evening",
+    "night": "night",
+}
+
+
+@dataclass(frozen=True)
+class ConvectiveTiming:
+    """When thunder becomes possible and when it peaks, as words.
+
+    `onset` is None when it has already passed at issuance or falls in the
+    peak's own phase; `onset_passed` tells those two apart for a composer
+    that wants to say "peaking overnight" without naming a start.
+    """
+
+    onset: str | None
+    peak: str
+    onset_passed: bool
+
+
+def _phase_words(
+    moment: datetime, sunrise: datetime, sunset: datetime, next_sunrise: datetime | None
+) -> tuple[str, str] | None:
+    """(onset form, peak form) for a moment, or None where the sun gives no
+    phase (polar days). A moment at or past the next dawn's lead is
+    tomorrow's, classified against tomorrow's sun."""
+    if next_sunrise is not None and moment >= next_sunrise - DAWN_LEAD:
+        phase = classify_phase(moment, next_sunrise, sunset + (next_sunrise - sunrise))
+        if phase.startswith("polar"):
+            return None
+        word = _TOMORROW_WORDS[phase]
+        if word == "night":
+            return ("tomorrow night", "tomorrow night")
+        return (f"from tomorrow {word}", f"tomorrow {word}")
+
+    phase = classify_phase(moment, sunrise, sunset)
+    if phase.startswith("polar"):
+        return None
+    return (_ONSET_WORDS[phase], _PEAK_WORDS[phase])
+
+
+def convective_timing(
+    onset_at: str | None,
+    peak_at: str | None,
+    *,
+    now: datetime,
+    sunrise: datetime | None,
+    sunset: datetime | None,
+    next_sunrise: datetime | None,
+) -> ConvectiveTiming | None:
+    """The instability's onset and peak (local ISO times from the hours ahead)
+    as the Overview's words. None without a peak or without a sun: a clause
+    that cannot be placed is withheld, as the windows are."""
+    if peak_at is None or sunrise is None or sunset is None:
+        return None
+
+    peak_words = _phase_words(datetime.fromisoformat(peak_at), sunrise, sunset, next_sunrise)
+    if peak_words is None:
+        return None
+
+    if onset_at is None:
+        return ConvectiveTiming(onset=None, peak=peak_words[1], onset_passed=False)
+
+    onset_moment = datetime.fromisoformat(onset_at)
+    if onset_moment <= now:
+        return ConvectiveTiming(onset=None, peak=peak_words[1], onset_passed=True)
+
+    onset_words = _phase_words(onset_moment, sunrise, sunset, next_sunrise)
+    if onset_words is None or onset_words[1] == peak_words[1]:
+        return ConvectiveTiming(onset=None, peak=peak_words[1], onset_passed=False)
+
+    return ConvectiveTiming(onset=onset_words[0], peak=peak_words[1], onset_passed=False)
+
+
+def describe_convective_timing(timing: ConvectiveTiming | None) -> str | None:
+    """One clause: "thunder possible from the afternoon, peaking overnight"."""
+    if timing is None:
+        return None
+    if timing.onset:
+        return f"thunder possible {timing.onset}, peaking {timing.peak}"
+    if timing.onset_passed:
+        return f"thunder possible, peaking {timing.peak}"
+    return f"thunder possible {timing.peak}"
+
+
+def onset_word(
+    hhmm: str | None, *, now: datetime, sunrise: datetime | None, sunset: datetime | None
+) -> str | None:
+    """A rain onset on the day of `now`, as the three words the rain composer
+    already speaks — "from the morning", "afternoon", "evening" — placed by
+    the sun rather than by 12:00 and 16:00. None without a sun, so the
+    composer keeps its clock words there."""
+    if not hhmm or sunrise is None or sunset is None:
+        return None
+    try:
+        hour, minute = (int(part) for part in hhmm.split(":")[:2])
+    except ValueError:
+        return None
+
+    moment = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    phase = classify_phase(moment, sunrise, sunset)
+    if phase in ("dawn", "morning"):
+        return "from the morning"
+    if phase == "midday":
+        solar_noon = sunrise + (sunset - sunrise) / 2
+        return "afternoon" if moment >= solar_noon else "from the morning"
+    if phase == "afternoon":
+        return "afternoon"
+    if phase in ("dusk", "evening", "night"):
+        return "evening"
+    return None

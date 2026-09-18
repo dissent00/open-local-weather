@@ -264,3 +264,112 @@ def test_without_the_sun_the_horizon_is_still_precise():
     assert d.horizon == (REST_OF_TODAY_TO_MIDNIGHT, TOMORROW)
     assert "midnight" in d.horizon[0]
     assert "It is 18:15" in d.statement
+
+
+# --- ROADMAP item 158, step 1: the thunder's timing in the sun's words ---------
+#
+# Every case is Kisumu on 2026-09-18: sunrise 06:31, sunset 18:38, so dusk
+# begins 17:08, evening runs to 22:38, and the next dawn opens at 05:31.
+
+from openlocalweather.daypart import ConvectiveTiming, convective_timing, describe_convective_timing, onset_word
+
+_RISE = datetime(2026, 9, 18, 6, 31)
+_SET = datetime(2026, 9, 18, 18, 38)
+_NEXT_RISE = datetime(2026, 9, 19, 6, 31)
+
+
+def _timing(now, onset, peak):
+    return convective_timing(onset, peak, now=now, sunrise=_RISE, sunset=_SET, next_sunrise=_NEXT_RISE)
+
+
+def _clause(now, onset, peak):
+    return describe_convective_timing(_timing(now, onset, peak))
+
+
+def test_the_2026_09_18_run_at_dawn():
+    assert _clause(datetime(2026, 9, 18, 6, 1), "2026-09-18T15:00", "2026-09-19T01:00") == (
+        "thunder possible from the afternoon, peaking overnight"
+    )
+
+
+def test_a_morning_run_reads_the_same():
+    assert _clause(datetime(2026, 9, 18, 9, 0), "2026-09-18T15:00", "2026-09-19T01:00") == (
+        "thunder possible from the afternoon, peaking overnight"
+    )
+
+
+def test_an_onset_already_passed_is_not_named():
+    assert _clause(datetime(2026, 9, 18, 12, 0), "2026-09-18T11:00", "2026-09-19T01:00") == (
+        "thunder possible, peaking overnight"
+    )
+
+
+def test_an_afternoon_run_sees_the_evening_and_tomorrow_morning():
+    assert _clause(datetime(2026, 9, 18, 15, 30), "2026-09-18T18:00", "2026-09-19T09:00") == (
+        "thunder possible from the evening, peaking tomorrow morning"
+    )
+
+
+def test_dusk_is_the_evening():
+    assert _clause(datetime(2026, 9, 18, 18, 0), "2026-09-18T18:30", "2026-09-19T01:00") == (
+        "thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_onset_and_peak_in_one_phase_is_one_word():
+    assert _clause(datetime(2026, 9, 18, 20, 0), "2026-09-18T23:00", "2026-09-19T01:00") == (
+        "thunder possible overnight"
+    )
+
+
+def test_a_2200_run_rolls_the_late_evening_into_overnight():
+    # 23:30 is past the evening's end at 22:38, so it is overnight — never
+    # "this evening" at an hour when the reader is going to bed.
+    assert _clause(datetime(2026, 9, 18, 22, 0), "2026-09-18T23:30", "2026-09-19T02:00") == (
+        "thunder possible overnight"
+    )
+
+
+def test_before_midnight_the_small_hours_are_still_overnight():
+    assert _clause(datetime(2026, 9, 18, 23, 30), "2026-09-19T00:30", "2026-09-19T04:00") == (
+        "thunder possible overnight"
+    )
+
+
+def test_after_midnight_the_coming_day_is_today():
+    # A 02:00 run on the 19th: its sun is the 19th's, and 09:00 is this morning.
+    rise, set_, next_rise = datetime(2026, 9, 19, 6, 31), datetime(2026, 9, 19, 18, 38), datetime(2026, 9, 20, 6, 31)
+    t = convective_timing("2026-09-19T09:00", "2026-09-19T15:00", now=datetime(2026, 9, 19, 2, 0),
+                          sunrise=rise, sunset=set_, next_sunrise=next_rise)
+    assert describe_convective_timing(t) == "thunder possible from the morning, peaking this afternoon"
+
+
+def test_an_evening_run_names_tomorrow():
+    assert _clause(datetime(2026, 9, 18, 20, 0), "2026-09-19T09:00", "2026-09-19T15:00") == (
+        "thunder possible from tomorrow morning, peaking tomorrow afternoon"
+    )
+
+
+def test_no_sun_withholds_the_clause():
+    assert convective_timing("2026-09-18T15:00", "2026-09-19T01:00", now=datetime(2026, 9, 18, 6, 1),
+                             sunrise=None, sunset=None, next_sunrise=None) is None
+
+
+def test_no_peak_is_no_timing():
+    assert _timing(datetime(2026, 9, 18, 6, 1), None, None) is None
+
+
+def test_the_timing_carries_its_parts_for_the_composers():
+    t = _timing(datetime(2026, 9, 18, 6, 1), "2026-09-18T15:00", "2026-09-19T01:00")
+    assert t == ConvectiveTiming(onset="from the afternoon", peak="overnight", onset_passed=False)
+
+
+def test_the_rain_onset_words_follow_the_sun_too():
+    now = datetime(2026, 9, 18, 6, 1)
+    word = lambda hhmm: onset_word(hhmm, now=now, sunrise=_RISE, sunset=_SET)
+    assert word("07:00") == "from the morning"
+    assert word("11:00") == "from the morning"
+    assert word("13:00") == "afternoon"
+    assert word("17:30") == "evening"
+    assert word("20:00") == "evening"
+    assert onset_word("13:00", now=now, sunrise=None, sunset=None) is None

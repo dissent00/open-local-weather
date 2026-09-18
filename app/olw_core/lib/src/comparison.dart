@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'daypart.dart';
 import 'models.dart';
 import 'rounding.dart';
 import 'scoring.dart' show mean;
@@ -320,12 +321,39 @@ bool _onsetIsAhead(String? onset, int? issuedHour) {
   return onsetHour > issuedHour;
 }
 
-String? describeDayRain(double? precipMm, String? onset, bool? thunder,
-    {required int? issuedHour}) {
+String? describeDayRain(
+  double? precipMm,
+  String? onset,
+  bool? thunder, {
+  required int? issuedHour,
+  ConvectiveTiming? thunderTiming,
+  String? onsetWord,
+  ObservedSoFar? observed,
+  String? stationLabel,
+}) {
   if (precipMm == null) return null;
 
   final band = dayRainBand(precipMm)!;
-  final when = _onsetIsAhead(onset, issuedHour) ? _onsetPhrase(onset) : null;
+  final when = _onsetIsAhead(onset, issuedHour) ? (onsetWord ?? _onsetPhrase(onset)) : null;
+
+  // Upstream item 158, step 1: what the station has ALREADY reported today
+  // outranks the forecast's shape of the day, named with the station and its
+  // reach. An observed onset is a fact, and "dry until evening showers"
+  // beside a station that saw rain at 14:00 is the 2026-09-12 case.
+  final report = _stationReport(observed, stationLabel);
+  if (report != null) {
+    if (report.rainReported) {
+      if (thunder == true && thunderTiming != null) {
+        final more = report.thunderReported ? 'more ' : '';
+        return '${report.head}, with $more${describeConvectiveTiming(thunderTiming)}';
+      }
+      return report.head;
+    }
+    if (thunder == true && thunderTiming != null) {
+      return '${report.head}, more possible ${thunderTiming.peak}';
+    }
+    return report.head;
+  }
 
   // Thunder outranks the amount. A storm that passes over the city and drops
   // half a millimetre is what the reader remembers about the day, and calling
@@ -333,12 +361,57 @@ String? describeDayRain(double? precipMm, String? onset, bool? thunder,
   // were standing outside in it. Measured case: 2026-08-24, told to readers
   // the next morning as "dry again".
   if (thunder == true) {
+    if (thunderTiming != null) {
+      // With a time, the thunder is a clause of its own and the day keeps its
+      // shape. "Dry by day" only when the thunder waits for the light to go.
+      final lead = band == dryDayLabel
+          ? (_thunderAfterDaylight(thunderTiming) ? 'dry by day' : 'dry')
+          : _rainShape(band, when);
+      return '$lead, with ${describeConvectiveTiming(thunderTiming)}';
+    }
     if (band == 'dry') return 'dry but thundery';
     if (when == 'evening') return 'dry until evening thunderstorms';
     if (when == 'afternoon') return '$band with afternoon thunderstorms';
     return '$band with thunderstorms';
   }
 
+  return _rainShape(band, when);
+}
+
+class _StationReport {
+  const _StationReport(this.head, this.rainReported, this.thunderReported);
+  final String head;
+  final bool rainReported;
+  final bool thunderReported;
+}
+
+/// The report, or null when the station has reported neither today or gave
+/// no reach to date it by.
+_StationReport? _stationReport(ObservedSoFar? observed, String? stationLabel) {
+  final reach = observed?.reportedThrough;
+  if (observed == null || reach == null || reach.isEmpty) return null;
+  final label = stationLabel ?? 'the station';
+  if (observed.precipitation == true) {
+    return _StationReport('showers reported at $label as of $reach', true, observed.thunder == true);
+  }
+  if (observed.thunder == true) {
+    return _StationReport('thunder reported at $label as of $reach', false, true);
+  }
+  return null;
+}
+
+bool _thunderAfterDaylight(ConvectiveTiming timing) {
+  final word = timing.onset ?? timing.peak;
+  return word == 'from the evening' ||
+      word == 'this evening' ||
+      word == 'overnight' ||
+      word.startsWith('from tomorrow') ||
+      word.startsWith('tomorrow');
+}
+
+/// The band with its timing — the phrase for a day without thunder, and the
+/// lead of one with timed thunder.
+String _rainShape(String band, String? when) {
   if (band == 'dry') {
     // The band edge was a cliff. 0.9 mm falling entirely at 17:00 read "dry";
     // 1.1 mm at 17:00 read "dry until evening showers". A fifth of a
@@ -437,6 +510,10 @@ DayOverDayComparison? computeDayOverDay(
   String? todayName,
   String? tomorrowName,
   DailyActual? todayActual,
+  ObservedSoFar? observedSoFar,
+  String? stationLabel,
+  ConvectiveTiming? convectiveTiming,
+  String? Function(String)? onsetWordFor,
 }) {
   // The daypart gate — contract item 8. See comparisonSubject for why.
   final subject = comparisonSubject(issuedHour, sunsetHour: sunsetHour);
@@ -562,9 +639,20 @@ DayOverDayComparison? computeDayOverDay(
   // Upstream ROADMAP item 118. Today is a day IN PROGRESS and its phrase is
   // composed from a forecast, so a timing qualifier whose hour has passed is
   // a claim about hours nobody here can see — see _onsetIsAhead.
-  final todayCharacter =
-      describeDayRain(todayPrecip, todayOnset, todayConvective,
-          issuedHour: characterIssuedHour);
+  // Upstream item 158, step 1. The station's report and the thunder's
+  // timing belong to a day IN PROGRESS — today's subject. Tomorrow has no
+  // report yet and its thunder is not in the hours ahead's window.
+  final inProgress = subject == comparisonSubjectToday;
+  final todayCharacter = describeDayRain(
+    todayPrecip,
+    todayOnset,
+    todayConvective,
+    issuedHour: characterIssuedHour,
+    thunderTiming: inProgress ? convectiveTiming : null,
+    onsetWord: (inProgress && onsetWordFor != null && todayOnset != null) ? onsetWordFor(todayOnset) : null,
+    observed: inProgress ? observedSoFar : null,
+    stationLabel: stationLabel,
+  );
   final yesterdayCharacter = describeDayRain(
       baseline.precipMm,
       // observedOnset(), not onsetHour: a shower the reanalysis missed

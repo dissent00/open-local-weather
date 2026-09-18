@@ -614,3 +614,143 @@ DateTime? parseHttpDate(String value) {
     int.parse(m.group(6)!),
   );
 }
+
+
+// --- The thunder's timing in the sun's words — upstream item 158, step 1 ---
+//
+// The Overview said "dry but thundery" on 2026-09-18 because the rain
+// composer had no time for the thunder. Every other time in the Overview is
+// placed by the sun, so these are too — the same phases [classifyPhase]
+// names, never a clock number. Byte-for-byte with Python's daypart.py.
+
+const Map<String, String> _onsetWords = {
+  'dawn': 'from dawn',
+  'morning': 'from the morning',
+  'midday': 'from midday',
+  'afternoon': 'from the afternoon',
+  'dusk': 'from the evening',
+  'evening': 'from the evening',
+  'night': 'overnight',
+};
+const Map<String, String> _peakWords = {
+  'dawn': 'at dawn',
+  'morning': 'this morning',
+  'midday': 'around midday',
+  'afternoon': 'this afternoon',
+  'dusk': 'this evening',
+  'evening': 'this evening',
+  'night': 'overnight',
+};
+// Tomorrow folds the seven phases to four: a reader planning a day ahead
+// does not need "tomorrow's dusk".
+const Map<String, String> _tomorrowWords = {
+  'dawn': 'morning',
+  'morning': 'morning',
+  'midday': 'afternoon',
+  'afternoon': 'afternoon',
+  'dusk': 'evening',
+  'evening': 'evening',
+  'night': 'night',
+};
+
+/// When thunder becomes possible and when it peaks, as words.
+///
+/// [onset] is null when it has already passed at issuance or falls in the
+/// peak's own phase; [onsetPassed] tells those two apart.
+class ConvectiveTiming {
+  const ConvectiveTiming({required this.onset, required this.peak, required this.onsetPassed});
+
+  final String? onset;
+  final String peak;
+  final bool onsetPassed;
+
+  Map<String, Object?> toJson() => {'onset': onset, 'peak': peak, 'onset_passed': onsetPassed};
+
+  @override
+  bool operator ==(Object other) =>
+      other is ConvectiveTiming && other.onset == onset && other.peak == peak && other.onsetPassed == onsetPassed;
+
+  @override
+  int get hashCode => Object.hash(onset, peak, onsetPassed);
+}
+
+/// (onset form, peak form) for a moment, or null where the sun gives no
+/// phase. A moment at or past the next dawn's lead is tomorrow's, classified
+/// against tomorrow's sun.
+List<String>? _phaseWords(DateTime moment, DateTime sunrise, DateTime sunset, DateTime? nextSunrise) {
+  if (nextSunrise != null && !moment.isBefore(nextSunrise.subtract(dawnLead))) {
+    final phase = classifyPhase(moment, nextSunrise, sunset.add(nextSunrise.difference(sunrise)));
+    if (phase.startsWith('polar')) return null;
+    final word = _tomorrowWords[phase]!;
+    if (word == 'night') return const ['tomorrow night', 'tomorrow night'];
+    return ['from tomorrow $word', 'tomorrow $word'];
+  }
+
+  final phase = classifyPhase(moment, sunrise, sunset);
+  if (phase.startsWith('polar')) return null;
+  return [_onsetWords[phase]!, _peakWords[phase]!];
+}
+
+/// The instability's onset and peak (local ISO times from the hours ahead)
+/// as the Overview's words. Null without a peak or without a sun: a clause
+/// that cannot be placed is withheld, as the windows are.
+ConvectiveTiming? convectiveTiming(
+  String? onsetAt,
+  String? peakAt, {
+  required DateTime now,
+  required DateTime? sunrise,
+  required DateTime? sunset,
+  required DateTime? nextSunrise,
+}) {
+  if (peakAt == null || sunrise == null || sunset == null) return null;
+
+  final peakWords = _phaseWords(DateTime.parse(peakAt), sunrise, sunset, nextSunrise);
+  if (peakWords == null) return null;
+
+  if (onsetAt == null) {
+    return ConvectiveTiming(onset: null, peak: peakWords[1], onsetPassed: false);
+  }
+
+  final onsetMoment = DateTime.parse(onsetAt);
+  if (!onsetMoment.isAfter(now)) {
+    return ConvectiveTiming(onset: null, peak: peakWords[1], onsetPassed: true);
+  }
+
+  final onsetWords = _phaseWords(onsetMoment, sunrise, sunset, nextSunrise);
+  if (onsetWords == null || onsetWords[1] == peakWords[1]) {
+    return ConvectiveTiming(onset: null, peak: peakWords[1], onsetPassed: false);
+  }
+
+  return ConvectiveTiming(onset: onsetWords[0], peak: peakWords[1], onsetPassed: false);
+}
+
+/// One clause: "thunder possible from the afternoon, peaking overnight".
+String? describeConvectiveTiming(ConvectiveTiming? timing) {
+  if (timing == null) return null;
+  if (timing.onset != null) return 'thunder possible ${timing.onset}, peaking ${timing.peak}';
+  if (timing.onsetPassed) return 'thunder possible, peaking ${timing.peak}';
+  return 'thunder possible ${timing.peak}';
+}
+
+/// A rain onset on the day of [now], as the three words the rain composer
+/// already speaks — "from the morning", "afternoon", "evening" — placed by
+/// the sun rather than by 12:00 and 16:00. Null without a sun, so the
+/// composer keeps its clock words there.
+String? onsetWord(String? hhmm, {required DateTime now, required DateTime? sunrise, required DateTime? sunset}) {
+  if (hhmm == null || hhmm.isEmpty || sunrise == null || sunset == null) return null;
+  final parts = hhmm.split(':');
+  final hour = int.tryParse(parts[0]);
+  final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+  if (hour == null || minute == null) return null;
+
+  final moment = DateTime(now.year, now.month, now.day, hour, minute);
+  final phase = classifyPhase(moment, sunrise, sunset);
+  if (phase == 'dawn' || phase == 'morning') return 'from the morning';
+  if (phase == 'midday') {
+    final solarNoon = sunrise.add(Duration(seconds: sunset.difference(sunrise).inSeconds ~/ 2));
+    return moment.isBefore(solarNoon) ? 'from the morning' : 'afternoon';
+  }
+  if (phase == 'afternoon') return 'afternoon';
+  if (phase == 'dusk' || phase == 'evening' || phase == 'night') return 'evening';
+  return null;
+}

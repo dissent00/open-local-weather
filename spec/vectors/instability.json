@@ -101,7 +101,9 @@
         "peak_cape_by_model": {
           "gfs_seamless": 120.0,
           "icon_seamless": 200.0
-        }
+        },
+        "onset_at": null,
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -151,7 +153,9 @@
           "gfs_seamless": 300.0,
           "icon_seamless": 2400.0,
           "ukmo_seamless": 2600.0
-        }
+        },
+        "onset_at": "2026-08-26T15:00",
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -194,7 +198,9 @@
         "peak_cape_by_model": {
           "gfs_seamless": 30.0,
           "icon_seamless": 1500.0
-        }
+        },
+        "onset_at": "2026-08-26T15:00",
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -231,7 +237,9 @@
         ],
         "peak_cape_by_model": {
           "gfs_seamless": 1000.0
-        }
+        },
+        "onset_at": "2026-08-26T15:00",
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -266,7 +274,9 @@
         "models_above_threshold": [],
         "peak_cape_by_model": {
           "gfs_seamless": 999.0
-        }
+        },
+        "onset_at": null,
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -303,7 +313,9 @@
         ],
         "peak_cape_by_model": {
           "gfs_seamless": 1400.0
-        }
+        },
+        "onset_at": "2026-08-26T15:00",
+        "peak_at": "2026-08-26T15:00"
       }
     },
     {
@@ -344,7 +356,9 @@
           "gfs_seamless": 1200.0,
           "icon_seamless": 1200.0,
           "ukmo_seamless": 1200.0
-        }
+        },
+        "onset_at": "2026-08-26T15:00",
+        "peak_at": "2026-08-26T15:00"
       }
     }
   ]

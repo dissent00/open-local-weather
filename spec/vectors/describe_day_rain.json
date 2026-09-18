@@ -9,7 +9,11 @@
         "precip_mm": null,
         "onset": null,
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": null
     },
@@ -19,7 +23,11 @@
         "precip_mm": 0.0,
         "onset": null,
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry"
     },
@@ -29,7 +37,11 @@
         "precip_mm": 0.5,
         "onset": null,
         "thunder": true,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry but thundery"
     },
@@ -39,7 +51,11 @@
         "precip_mm": 0.5,
         "onset": null,
         "thunder": false,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry"
     },
@@ -49,7 +65,11 @@
         "precip_mm": 0.5,
         "onset": null,
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry"
     },
@@ -59,7 +79,11 @@
         "precip_mm": 0.9,
         "onset": "17:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry apart from a brief evening shower"
     },
@@ -69,7 +93,11 @@
         "precip_mm": 0.9,
         "onset": "13:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry apart from a brief afternoon shower"
     },
@@ -79,7 +107,11 @@
         "precip_mm": 0.9,
         "onset": "07:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry apart from an early shower"
     },
@@ -89,7 +121,11 @@
         "precip_mm": 1.1,
         "onset": "17:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry until evening showers"
     },
@@ -99,7 +135,11 @@
         "precip_mm": 3.0,
         "onset": null,
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "largely dry"
     },
@@ -109,7 +149,11 @@
         "precip_mm": 3.0,
         "onset": "17:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry until evening showers"
     },
@@ -119,7 +163,11 @@
         "precip_mm": 8.0,
         "onset": "13:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "showery from the afternoon"
     },
@@ -129,7 +177,11 @@
         "precip_mm": 8.0,
         "onset": "17:00",
         "thunder": true,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry until evening thunderstorms"
     },
@@ -139,7 +191,11 @@
         "precip_mm": 8.0,
         "onset": "13:00",
         "thunder": true,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "showery with afternoon thunderstorms"
     },
@@ -149,7 +205,11 @@
         "precip_mm": 20.0,
         "onset": "07:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "wet"
     },
@@ -159,7 +219,11 @@
         "precip_mm": 20.0,
         "onset": "07:00",
         "thunder": true,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "wet with thunderstorms"
     },
@@ -169,7 +233,11 @@
         "precip_mm": 20.0,
         "onset": "17:00",
         "thunder": null,
-        "issued_hour": null
+        "issued_hour": null,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry until heavy evening rain"
     },
@@ -179,7 +247,11 @@
         "precip_mm": 8.0,
         "onset": "17:00",
         "thunder": true,
-        "issued_hour": 6
+        "issued_hour": 6,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "dry until evening thunderstorms"
     },
@@ -189,7 +261,11 @@
         "precip_mm": 8.0,
         "onset": "17:00",
         "thunder": true,
-        "issued_hour": 17
+        "issued_hour": 17,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "showery with thunderstorms"
     },
@@ -199,9 +275,275 @@
         "precip_mm": 8.0,
         "onset": "17:00",
         "thunder": true,
-        "issued_hour": 18
+        "issued_hour": 18,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
       },
       "expected": "showery with thunderstorms"
+    },
+    {
+      "name": "the 2026-09-18 case: dry, thunder from the afternoon",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 6,
+        "thunder_timing": {
+          "onset": "from the afternoon",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "dry, with thunder possible from the afternoon, peaking overnight"
+    },
+    {
+      "name": "thunder after dark leaves the day dry by day",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 6,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "dry by day, with thunder possible from the evening, peaking overnight"
+    },
+    {
+      "name": "an onset already passed names only the peak",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 12,
+        "thunder_timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": true
+        },
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "dry by day, with thunder possible, peaking overnight"
+    },
+    {
+      "name": "onset and peak in one phase is one word",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 20,
+        "thunder_timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "dry by day, with thunder possible overnight"
+    },
+    {
+      "name": "a showery day keeps its shape and gains the timing",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "13:00",
+        "thunder": true,
+        "issued_hour": 6,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "showery from the afternoon, with thunder possible from the evening, peaking overnight"
+    },
+    {
+      "name": "the rain onset placed by the sun",
+      "input": {
+        "precip_mm": 8.0,
+        "onset": "13:00",
+        "thunder": null,
+        "issued_hour": 6,
+        "thunder_timing": null,
+        "onset_word": "afternoon",
+        "observed": null,
+        "station_label": null
+      },
+      "expected": "showery from the afternoon"
+    },
+    {
+      "name": "showers the station reported, thunder ahead",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": "18:00",
+        "thunder": true,
+        "issued_hour": 16,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": false,
+          "precipitation_onset": null,
+          "reported_through": "15:00"
+        },
+        "station_label": "Kisumu Airport"
+      },
+      "expected": "showers reported at Kisumu Airport as of 15:00, with thunder possible from the evening, peaking overnight"
+    },
+    {
+      "name": "showers and thunder both reported: more thunder",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": "18:00",
+        "thunder": true,
+        "issued_hour": 16,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
+          "reported_through": "15:00"
+        },
+        "station_label": "Kisumu Airport"
+      },
+      "expected": "showers reported at Kisumu Airport as of 15:00, with more thunder possible from the evening, peaking overnight"
+    },
+    {
+      "name": "thunder reported, more possible",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 16,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": {
+          "precipitation": false,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
+          "reported_through": "15:00"
+        },
+        "station_label": "Kisumu Airport"
+      },
+      "expected": "thunder reported at Kisumu Airport as of 15:00, more possible overnight"
+    },
+    {
+      "name": "thunder reported, none forecast",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": false,
+        "issued_hour": 16,
+        "thunder_timing": null,
+        "onset_word": null,
+        "observed": {
+          "precipitation": false,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
+          "reported_through": "15:00"
+        },
+        "station_label": "Kisumu Airport"
+      },
+      "expected": "thunder reported at Kisumu Airport as of 15:00"
+    },
+    {
+      "name": "a report without a reach is not used",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 16,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": false,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "station_label": "Kisumu Airport"
+      },
+      "expected": "dry by day, with thunder possible from the evening, peaking overnight"
+    },
+    {
+      "name": "a report with no station name names the station",
+      "input": {
+        "precip_mm": 0.3,
+        "onset": null,
+        "thunder": true,
+        "issued_hour": 16,
+        "thunder_timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "onset_word": null,
+        "observed": {
+          "precipitation": true,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "cloud_oktas": null,
+          "thunder": false,
+          "precipitation_onset": null,
+          "reported_through": "15:00"
+        },
+        "station_label": null
+      },
+      "expected": "showers reported at the station as of 15:00, with thunder possible from the evening, peaking overnight"
     }
   ]
 }

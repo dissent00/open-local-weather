@@ -521,7 +521,15 @@ Future<ForecastRun> generateForecast({
     groundAqiLastKnown: groundAqiLastKnown,
     groundStationsConfigured: groundStationsConfigured,
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
-    instability: instability?.toJson(),
+    // Upstream item 158, step 1: the clause the Overview uses verbatim when
+    // the comparison does not already carry the thunder, placed by the sun.
+    instability: instability == null
+        ? null
+        : {
+            ...instability.toJson(),
+            'timing': describeConvectiveTiming(
+                convectiveTimingFor(resolvedIssuance, today, instability)),
+          },
     yesterdayActual: yesterdayActual,
     // Applied to THIS run's extraction, above. The Python pipeline calibrates
     // over its Day+0 list WITH the persistence and climatology yardsticks in
@@ -703,6 +711,34 @@ int issuedHourOf(Object? issuance) {
     return 24;
   }
 }
+
+/// The instability's onset and peak as the Overview's words — upstream item
+/// 158, step 1. Null without an outlook, a readable clock or a sun, exactly
+/// as [issuanceWindows] withholds the windows there.
+ConvectiveTiming? convectiveTimingFor(
+    Object? issuance, DateTime today, InstabilityOutlook? outlook) {
+  if (issuance == null || outlook == null) return null;
+
+  final Map<String, Object?> d;
+  try {
+    d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+  } catch (_) {
+    return null;
+  }
+
+  final now = _clockOn(today, d['local_time'] as String?);
+  if (now == null) return null;
+
+  final sunrise = _clockOn(today, d['sunrise'] as String?);
+  final sunset = _clockOn(today, d['sunset'] as String?);
+  final nextSunrise =
+      sunrise == null ? null : sunrise.add(const Duration(days: 1));
+  return convectiveTiming(outlook.onsetAt, outlook.peakAt,
+      now: now, sunrise: sunrise, sunset: sunset, nextSunrise: nextSunrise);
+}
+
 
 /// The issuance's named periods with explicit clock bounds.
 ///

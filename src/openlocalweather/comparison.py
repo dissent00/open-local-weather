@@ -24,6 +24,8 @@ raw number is not.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from openlocalweather.defaults import (
     CLOUD_CHANGE_BANDS_PCT,
     KNOTS_TO_KMH,
@@ -31,8 +33,9 @@ from openlocalweather.defaults import (
     WIND_CHANGE_BANDS_KMH,
     WIND_WARNING_BANDS_KT,
 )
-from openlocalweather.models import DailyActual, DayOverDayComparison, ModelPrediction
+from openlocalweather.models import DailyActual, DayOverDayComparison, ModelPrediction, ObservedSoFar
 from openlocalweather.verify.scoring import mean
+from openlocalweather.daypart import ConvectiveTiming, describe_convective_timing
 
 
 def wind_warning(gust_kmh: float | None) -> str | None:
@@ -215,6 +218,10 @@ def describe_day_rain(
     thunder: bool | None = None,
     *,
     issued_hour: int | None,
+    thunder_timing: ConvectiveTiming | None = None,
+    onset_word: str | None = None,
+    observed: ObservedSoFar | None = None,
+    station_label: str | None = None,
 ) -> str | None:
     """One phrase for the rain character of a day: how much, when, and
     whether it thundered.
@@ -225,12 +232,35 @@ def describe_day_rain(
     `thunder` is an OBSERVATION and therefore only ever meaningful for a day
     that has already happened; today's side of the comparison always passes
     None. See DailyActual.thunder for why None and False differ.
+
+    ROADMAP item 158, step 1, three additions for TODAY'S side only:
+    `thunder_timing` gives the thunder its when ("dry by day, with thunder
+    possible from the evening, peaking overnight" instead of "dry but
+    thundery"); `onset_word` is the rain onset placed by the sun instead of
+    by the clock; and `observed` with `station_label` lets what the station
+    has ALREADY reported today outrank the forecast's shape — an observed
+    onset is a fact, and "dry until evening showers" beside a station that
+    saw rain at 14:00 is the 2026-09-12 case item 138 was raised on. The
+    report carries the station and the reach so a reader knows whose word
+    it is and how far it runs.
     """
     if precip_mm is None:
         return None
 
     band = day_rain_band(precip_mm)
-    when = _onset_phrase(onset) if _onset_is_ahead(onset, issued_hour) else None
+    when = (onset_word or _onset_phrase(onset)) if _onset_is_ahead(onset, issued_hour) else None
+
+    report = _station_report(observed, station_label)
+    if report is not None:
+        head, rain_reported, thunder_reported = report
+        if rain_reported:
+            if thunder and thunder_timing is not None:
+                more = "more " if thunder_reported else ""
+                return f"{head}, with {more}{describe_convective_timing(thunder_timing)}"
+            return head
+        if thunder and thunder_timing is not None:
+            return f"{head}, more possible {thunder_timing.peak}"
+        return head
 
     # Thunder outranks the amount. A storm that passes over the city and
     # drops half a millimetre is the thing the reader remembers about the
@@ -238,6 +268,16 @@ def describe_day_rain(
     # loses their trust — they were standing outside in it. Measured case:
     # 2026-08-24, told to readers the next morning as "dry again".
     if thunder:
+        if thunder_timing is not None:
+            # With a time, the thunder is a clause of its own and the day
+            # keeps its shape. "Dry by day" only when the thunder waits for
+            # the light to go; "dry, with thunder possible from the
+            # afternoon" would otherwise call an afternoon of storms a day.
+            if band == DRY_DAY_LABEL:
+                lead = "dry by day" if _thunder_after_daylight(thunder_timing) else "dry"
+            else:
+                lead = _rain_shape(band, when)
+            return f"{lead}, with {describe_convective_timing(thunder_timing)}"
         if band == "dry":
             return "dry but thundery"
         if when == "evening":
@@ -246,6 +286,35 @@ def describe_day_rain(
             return f"{band} with afternoon thunderstorms"
         return f"{band} with thunderstorms"
 
+    return _rain_shape(band, when)
+
+
+def _station_report(
+    observed: ObservedSoFar | None, station_label: str | None
+) -> tuple[str, bool, bool] | None:
+    """(the report, rain reported, thunder reported), or None when the
+    station has reported neither today or gave no reach to date it by."""
+    if observed is None or not observed.reported_through:
+        return None
+    label = station_label or "the station"
+    reach = observed.reported_through
+    if observed.precipitation:
+        return (f"showers reported at {label} as of {reach}", True, bool(observed.thunder))
+    if observed.thunder:
+        return (f"thunder reported at {label} as of {reach}", False, True)
+    return None
+
+
+def _thunder_after_daylight(timing: ConvectiveTiming) -> bool:
+    word = timing.onset or timing.peak
+    return word in ("from the evening", "this evening", "overnight") or word.startswith(
+        ("from tomorrow", "tomorrow")
+    )
+
+
+def _rain_shape(band: str, when: str | None) -> str:
+    """The band with its timing — the phrase for a day without thunder, and
+    the lead of one with timed thunder."""
     if band == "dry":
         # The band edge was a cliff. 0.9 mm falling entirely at 17:00 read
         # "dry"; 1.1 mm at 17:00 read "dry until evening showers". A fifth of
@@ -316,6 +385,10 @@ def compute_day_over_day(
     today_name: str | None = None,
     tomorrow_name: str | None = None,
     today_actual: DailyActual | None = None,
+    observed_so_far: ObservedSoFar | None = None,
+    station_label: str | None = None,
+    convective_timing: ConvectiveTiming | None = None,
+    onset_word_for: Callable[[str], str | None] | None = None,
 ) -> DayOverDayComparison | None:
     """None when there is no observed record for the day being compared
     AGAINST — a gap must read as a gap, not as a day with unremarkable
@@ -498,8 +571,21 @@ def compute_day_over_day(
     # ROADMAP item 118. Today is a day IN PROGRESS and its phrase is composed
     # from a forecast, so a timing qualifier whose hour has passed is a claim
     # about hours nobody here can see — see _onset_is_ahead.
+    # ROADMAP item 158, step 1. The station's report and the thunder's
+    # timing belong to a day IN PROGRESS — today's subject. Tomorrow has no
+    # report yet and its thunder is not in the hours ahead's window.
+    in_progress = subject == COMPARISON_SUBJECT_TODAY
     today_character = describe_day_rain(
-        today_precip, today_onset, thunder=today_convective, issued_hour=character_issued_hour
+        today_precip,
+        today_onset,
+        thunder=today_convective,
+        issued_hour=character_issued_hour,
+        thunder_timing=convective_timing if in_progress else None,
+        onset_word=(
+            onset_word_for(today_onset) if in_progress and onset_word_for and today_onset else None
+        ),
+        observed=observed_so_far if in_progress else None,
+        station_label=station_label,
     )
     # observed_onset(), not onset_hour: a shower the reanalysis missed
     # entirely leaves onset_hour None, and the dry band's shower phrases are

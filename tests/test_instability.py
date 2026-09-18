@@ -110,3 +110,30 @@ def test_nulls_within_a_series_are_skipped_not_treated_as_zero():
 def test_falls_back_to_the_unsuffixed_series_for_a_single_model_fetch():
     result = summarize_instability(hourly(cape=[0.0, 1200.0, 0.0]), ["gfs_seamless"])
     assert result.peak_cape_jkg == 1200.0
+
+
+# --- ROADMAP item 158, step 1: WHEN the instability arrives, not only its peak
+
+
+def test_the_onset_is_the_first_hour_any_model_crosses_the_threshold():
+    hourly = {"hourly": {
+        "time": ["2026-09-18T12:00", "2026-09-18T15:00", "2026-09-18T18:00", "2026-09-19T01:00"],
+        "cape_gfs_seamless": [50.0, 300.0, 180.0, 200.0],
+        "cape_ecmwf_ifs025": [80.0, 1370.0, 1200.0, 1850.0],
+        "cape_best_match": [10.0, 660.0, 2380.0, 2710.0],
+    }}
+    got = summarize_instability(hourly, ["gfs_seamless", "ecmwf_ifs025", "best_match"])
+    assert got.onset_at == "2026-09-18T15:00"
+    assert got.peak_at == "2026-09-19T01:00"
+    assert got.peak_hour == "01:00"
+
+
+def test_no_model_crossing_means_no_onset_but_still_a_peak():
+    hourly = {"hourly": {
+        "time": ["2026-09-18T12:00", "2026-09-18T15:00"],
+        "cape_gfs_seamless": [50.0, 300.0],
+    }}
+    got = summarize_instability(hourly, ["gfs_seamless"])
+    assert got.onset_at is None
+    assert got.peak_at == "2026-09-18T15:00"
+    assert got.convective is False

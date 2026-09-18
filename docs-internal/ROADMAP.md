@@ -23039,7 +23039,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Raised 2026-09-18 — ten steps for review, in order; nothing built**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **Step 1 SHIPPED 2026-09-18; steps 2-10 for review, in order**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23206,6 +23206,64 @@ daily CAPE maximum where offered), fetch what exists, extend
 `describe_extended_trend`'s scope noun, and until then tell the model in
 one line that thunder beyond today is not forecast. Item 65's cloud
 thread; sequenced after step 2 because the phrase has to exist first.
+
+### Step 1 SHIPPED 2026-09-18 — the thunder's when, and the station's word
+
+Designed with the operator in prose first, and three of their points
+shaped it: the timing is placed by the SUN, in the phases `classify_phase`
+already names, never by a clock number, and only in the Overview — the
+sections below keep clock times from the data; the rain onset words move
+to the same vocabulary; and what the station has ALREADY reported today
+outranks the forecast's shape of the day, with the station named and the
+reach dated, because a forecast that said "dry with rain ahead" while it
+was already raining is the case item 138 was raised on.
+
+**What was built, both languages, vector-pinned.** `InstabilityOutlook`
+carries `onset_at` (the first hour any model crosses the threshold) and
+`peak_at` as local ISO times. `daypart.convective_timing` turns them into
+`ConvectiveTiming(onset, peak, onset_passed)` and
+`describe_convective_timing` into the clause: *"thunder possible from the
+afternoon, peaking overnight"*; an onset already passed names only the
+peak; onset and peak in one phase is one word; a moment past the next
+dawn's lead is tomorrow's, folded to morning, afternoon, evening, night;
+no sun withholds it. `describe_day_rain` takes the timing, the sun-placed
+onset word, and the station's report: *"dry by day, with thunder possible
+from the evening, peaking overnight"* when the thunder waits for the
+light to go, *"dry, with ..."* when it does not; *"showers reported at
+Kisumu Airport as of 15:00, with thunder possible ..."*, with *more*
+only when the station reported thunder too; *"thunder reported at Kisumu
+Airport as of 15:00, more possible overnight"*. The report needs its
+reach or it is not used. All of it reaches today's side only: after
+sunset the subject is tomorrow, which has no report and whose thunder is
+not in the window. The CONVECTIVE INSTABILITY block carries the same
+clause as `timing`, and the Overview rule now says to use it verbatim
+instead of naming the peak hour — so both paths are code.
+
+**The operator's edge list is the vector** (`convective_timing.json`, 14
+cases, Kisumu's sun of 09-18): dawn, morning, a midday run whose onset has
+passed, an afternoon run reaching the evening and tomorrow morning, dusk,
+20:00, a 22:00 run whose 23:30 onset must read overnight and not "this
+evening", 23:30 before midnight, 02:00 after midnight where the coming
+day is today, an evening run naming tomorrow, a midday peak, a peak with
+no crossing, no sun, no peak. Twelve more cases on `describe_day_rain`
+and four on `day_over_day`, including the evening subject ignoring
+today's report. Mutations seen to bite on both sides: dropping "more",
+dropping the onset-passed rule, and dropping the tomorrow words each
+failed the case that names it.
+
+**On the 09-18 run itself**, composed from its archived hours ahead: the
+first crossing is ECMWF at 13:00, the peak Best Match at 01:00, so the
+Overview would have read *"Clearer than yesterday. Dry, with thunder
+possible from midday, peaking overnight."* Driven through the real CLI
+before and after, controls byte-identical: transcripts identical, the
+data dump moved only by the prompt hashes and the narrative prompt's
++302 characters, because the drive's fixture carries no CAPE and its
+station stub no reach. 1426 Python, 195 Dart.
+
+**Not done here:** the extended phrase (step 2), the cloud gate (step 3),
+and steps 5 and 6's decisions. The app's runner passes no observation and
+computes no comparison of its own, so it needs the re-pin and nothing
+else.
 
 ### Recommended order
 

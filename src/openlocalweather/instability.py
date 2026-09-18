@@ -48,6 +48,13 @@ class InstabilityOutlook:
     convective: bool
     models_above_threshold: list[str] = field(default_factory=list)
     peak_cape_by_model: dict[str, float] = field(default_factory=dict)
+    # WHEN, not only how much — ROADMAP item 158, step 1. The first hour any
+    # model crosses the threshold and the hour of the overall peak, as the
+    # local ISO times the hours carry, because the window runs past midnight
+    # and a bare "HH:MM" cannot say which day it is on. `daypart.
+    # convective_timing` turns them into the Overview's words.
+    onset_at: str | None = None
+    peak_at: str | None = None
 
 
 def summarize_instability(
@@ -98,6 +105,18 @@ def summarize_instability(
     peak_cape = peak_cape_by_model[peak_model]
     peak_time = peak_hour_by_model[peak_model]
 
+    # The first hour ANY model crosses, in time order: the earliest warning
+    # the guidance supports, which is the one a reader plans around.
+    onset_at = None
+    for i, at_time in enumerate(times):
+        for model in peak_cape_by_model:
+            series = pick_series(hours, f"cape_{model}", "cape")
+            if i < len(series) and series[i] is not None and series[i] >= threshold:
+                onset_at = at_time
+                break
+        if onset_at is not None:
+            break
+
     return InstabilityOutlook(
         peak_cape_jkg=peak_cape,
         peak_model=peak_model,
@@ -109,4 +128,6 @@ def summarize_instability(
             m for m, v in peak_cape_by_model.items() if v >= threshold
         ),
         peak_cape_by_model=peak_cape_by_model,
+        onset_at=onset_at,
+        peak_at=peak_time,
     )

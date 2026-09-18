@@ -1,0 +1,265 @@
+{
+  "vector_format_version": 1,
+  "function": "convective_timing",
+  "description": "ROADMAP item 158. The instability's onset and peak from the hours ahead, as the Overview's sun-relative words: 'thunder possible from the afternoon, peaking overnight'. An onset already passed names only the peak; onset and peak in one phase is one word; a moment at or past the next dawn's lead is tomorrow's; no sun or no peak is null.",
+  "cases": [
+    {
+      "name": "dawn run, the 2026-09-18 case",
+      "input": {
+        "onset_at": "2026-09-18T15:00",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T06:01",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from the afternoon",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from the afternoon, peaking overnight"
+      }
+    },
+    {
+      "name": "morning run",
+      "input": {
+        "onset_at": "2026-09-18T15:00",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T09:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from the afternoon",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from the afternoon, peaking overnight"
+      }
+    },
+    {
+      "name": "midday run, onset already passed",
+      "input": {
+        "onset_at": "2026-09-18T11:00",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T12:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": true
+        },
+        "clause": "thunder possible, peaking overnight"
+      }
+    },
+    {
+      "name": "afternoon run, evening onset, tomorrow's peak",
+      "input": {
+        "onset_at": "2026-09-18T18:00",
+        "peak_at": "2026-09-19T09:00",
+        "now": "2026-09-18T15:30",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from the evening",
+          "peak": "tomorrow morning",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from the evening, peaking tomorrow morning"
+      }
+    },
+    {
+      "name": "dusk is the evening",
+      "input": {
+        "onset_at": "2026-09-18T18:30",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T18:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from the evening",
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from the evening, peaking overnight"
+      }
+    },
+    {
+      "name": "one phase, one word",
+      "input": {
+        "onset_at": "2026-09-18T23:00",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T20:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible overnight"
+      }
+    },
+    {
+      "name": "a 22:00 run rolls the late evening into overnight",
+      "input": {
+        "onset_at": "2026-09-18T23:30",
+        "peak_at": "2026-09-19T02:00",
+        "now": "2026-09-18T22:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible overnight"
+      }
+    },
+    {
+      "name": "before midnight, the small hours are overnight",
+      "input": {
+        "onset_at": "2026-09-19T00:30",
+        "peak_at": "2026-09-19T04:00",
+        "now": "2026-09-18T23:30",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "overnight",
+          "onset_passed": false
+        },
+        "clause": "thunder possible overnight"
+      }
+    },
+    {
+      "name": "after midnight, the coming day is today",
+      "input": {
+        "onset_at": "2026-09-19T09:00",
+        "peak_at": "2026-09-19T15:00",
+        "now": "2026-09-19T02:00",
+        "sunrise": "2026-09-19T06:31",
+        "sunset": "2026-09-19T18:38",
+        "next_sunrise": "2026-09-20T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from the morning",
+          "peak": "this afternoon",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from the morning, peaking this afternoon"
+      }
+    },
+    {
+      "name": "an evening run names tomorrow",
+      "input": {
+        "onset_at": "2026-09-19T09:00",
+        "peak_at": "2026-09-19T15:00",
+        "now": "2026-09-18T20:00",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": "from tomorrow morning",
+          "peak": "tomorrow afternoon",
+          "onset_passed": false
+        },
+        "clause": "thunder possible from tomorrow morning, peaking tomorrow afternoon"
+      }
+    },
+    {
+      "name": "midday peak",
+      "input": {
+        "onset_at": "2026-09-18T11:00",
+        "peak_at": "2026-09-18T13:00",
+        "now": "2026-09-18T06:01",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "around midday",
+          "onset_passed": false
+        },
+        "clause": "thunder possible around midday"
+      }
+    },
+    {
+      "name": "no onset crossing, a peak alone",
+      "input": {
+        "onset_at": null,
+        "peak_at": "2026-09-18T15:00",
+        "now": "2026-09-18T06:01",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": {
+          "onset": null,
+          "peak": "this afternoon",
+          "onset_passed": false
+        },
+        "clause": "thunder possible this afternoon"
+      }
+    },
+    {
+      "name": "no sun withholds the clause",
+      "input": {
+        "onset_at": "2026-09-18T15:00",
+        "peak_at": "2026-09-19T01:00",
+        "now": "2026-09-18T06:01",
+        "sunrise": null,
+        "sunset": null,
+        "next_sunrise": null
+      },
+      "expected": {
+        "timing": null,
+        "clause": null
+      }
+    },
+    {
+      "name": "no peak is no timing",
+      "input": {
+        "onset_at": null,
+        "peak_at": null,
+        "now": "2026-09-18T06:01",
+        "sunrise": "2026-09-18T06:31",
+        "sunset": "2026-09-18T18:38",
+        "next_sunrise": "2026-09-19T06:31"
+      },
+      "expected": {
+        "timing": null,
+        "clause": null
+      }
+    }
+  ]
+}

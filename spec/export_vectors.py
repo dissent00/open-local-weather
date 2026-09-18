@@ -2708,6 +2708,68 @@ def export_cell_key() -> None:
     )
 
 
+def export_convective_timing() -> None:
+    """ROADMAP item 158, step 1. The thunder's onset and peak as the
+    Overview's words, placed by the sun. Every case is Kisumu on 2026-09-18
+    — sunrise 06:31, sunset 18:38 — so the phase edges are the ones the
+    windows already use: dusk from 17:08, evening to 22:38, the next dawn's
+    lead from 05:31. The cases are the operator's edge list: each issuance
+    hour, an onset already passed, a 22:00 run that must not say "this
+    evening", and the day after midnight being today."""
+    from datetime import datetime
+
+    from openlocalweather.daypart import convective_timing, describe_convective_timing
+
+    rise, set_, next_rise = datetime(2026, 9, 18, 6, 31), datetime(2026, 9, 18, 18, 38), datetime(2026, 9, 19, 6, 31)
+    rise2, set2, next_rise2 = datetime(2026, 9, 19, 6, 31), datetime(2026, 9, 19, 18, 38), datetime(2026, 9, 20, 6, 31)
+    scenarios = [
+        ("dawn run, the 2026-09-18 case", datetime(2026, 9, 18, 6, 1), "2026-09-18T15:00", "2026-09-19T01:00", (rise, set_, next_rise)),
+        ("morning run", datetime(2026, 9, 18, 9, 0), "2026-09-18T15:00", "2026-09-19T01:00", (rise, set_, next_rise)),
+        ("midday run, onset already passed", datetime(2026, 9, 18, 12, 0), "2026-09-18T11:00", "2026-09-19T01:00", (rise, set_, next_rise)),
+        ("afternoon run, evening onset, tomorrow's peak", datetime(2026, 9, 18, 15, 30), "2026-09-18T18:00", "2026-09-19T09:00", (rise, set_, next_rise)),
+        ("dusk is the evening", datetime(2026, 9, 18, 18, 0), "2026-09-18T18:30", "2026-09-19T01:00", (rise, set_, next_rise)),
+        ("one phase, one word", datetime(2026, 9, 18, 20, 0), "2026-09-18T23:00", "2026-09-19T01:00", (rise, set_, next_rise)),
+        ("a 22:00 run rolls the late evening into overnight", datetime(2026, 9, 18, 22, 0), "2026-09-18T23:30", "2026-09-19T02:00", (rise, set_, next_rise)),
+        ("before midnight, the small hours are overnight", datetime(2026, 9, 18, 23, 30), "2026-09-19T00:30", "2026-09-19T04:00", (rise, set_, next_rise)),
+        ("after midnight, the coming day is today", datetime(2026, 9, 19, 2, 0), "2026-09-19T09:00", "2026-09-19T15:00", (rise2, set2, next_rise2)),
+        ("an evening run names tomorrow", datetime(2026, 9, 18, 20, 0), "2026-09-19T09:00", "2026-09-19T15:00", (rise, set_, next_rise)),
+        ("midday peak", datetime(2026, 9, 18, 6, 1), "2026-09-18T11:00", "2026-09-18T13:00", (rise, set_, next_rise)),
+        ("no onset crossing, a peak alone", datetime(2026, 9, 18, 6, 1), None, "2026-09-18T15:00", (rise, set_, next_rise)),
+        ("no sun withholds the clause", datetime(2026, 9, 18, 6, 1), "2026-09-18T15:00", "2026-09-19T01:00", (None, None, None)),
+        ("no peak is no timing", datetime(2026, 9, 18, 6, 1), None, None, (rise, set_, next_rise)),
+    ]
+    cases = []
+    for name, now, onset_at, peak_at, (sr, ss, nsr) in scenarios:
+        got = convective_timing(onset_at, peak_at, now=now, sunrise=sr, sunset=ss, next_sunrise=nsr)
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "onset_at": onset_at,
+                    "peak_at": peak_at,
+                    "now": now.isoformat(timespec="minutes"),
+                    "sunrise": None if sr is None else sr.isoformat(timespec="minutes"),
+                    "sunset": None if ss is None else ss.isoformat(timespec="minutes"),
+                    "next_sunrise": None if nsr is None else nsr.isoformat(timespec="minutes"),
+                },
+                "expected": {
+                    "timing": None if got is None else asdict(got),
+                    "clause": describe_convective_timing(got),
+                },
+            }
+        )
+    write(
+        "convective_timing.json",
+        "convective_timing",
+        "ROADMAP item 158. The instability's onset and peak from the hours "
+        "ahead, as the Overview's sun-relative words: 'thunder possible from "
+        "the afternoon, peaking overnight'. An onset already passed names only "
+        "the peak; onset and peak in one phase is one word; a moment at or "
+        "past the next dawn's lead is tomorrow's; no sun or no peak is null.",
+        cases,
+    )
+
+
 def export_low_divergence() -> None:
     """ROADMAP item 143. The station's overnight low against the standing call.
 
@@ -3265,6 +3327,15 @@ def export_day_over_day() -> None:
         base.update(kw)
         return DailyActual(**base)
 
+    from openlocalweather.daypart import ConvectiveTiming
+    from openlocalweather.models import ObservedSoFar
+
+    def _timing(onset, peak, passed):
+        return ConvectiveTiming(onset=onset, peak=peak, onset_passed=passed)
+
+    def _observed(**kw):
+        return ObservedSoFar(**kw)
+
     scenarios = [
         # The exact case that broke live: a 0.1 degree difference must NOT
         # read as a change.
@@ -3503,6 +3574,40 @@ def export_day_over_day() -> None:
          {"today_actual": actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
           "sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None],
                                                            rains=[False])}),
+        # ROADMAP ITEM 158, STEP 1. The 2026-09-18 morning: yesterday 0.3 mm
+        # and no thunder, today dry on the models with the flag up, and the
+        # timing composed from the hours ahead. "Dry but thundery" becomes a
+        # clause with a when.
+        ("the 2026-09-18 Overview, with the thunder's when",
+         actual(rain=False, precip_mm=0.3, onset_hour=None, thunder=False, high_c=29.1,
+                peak_wind_kmh=35.3, cloud_cover_pct=91.0),
+         preds([29.5], winds=[35.0], rains=[False], mm=[0.3], onsets=[None], clouds=[91.0]), True, 6, None,
+         {"convective_timing": _timing("from the afternoon", "overnight", False)}),
+        # What the station has ALREADY reported outranks the forecast's shape
+        # — item 138's 2026-09-12 case, at 16:00 with rain since 14:00.
+        ("showers the station reported outrank a dry forecast",
+         actual(rain=False, precip_mm=0.3, onset_hour=None, thunder=False, high_c=29.1,
+                peak_wind_kmh=35.3, cloud_cover_pct=91.0),
+         preds([29.5], winds=[35.0], rains=[True], mm=[0.4], onsets=["18:00"], clouds=[91.0]), True, 6, None,
+         {"observed_so_far": _observed(precipitation=True, thunder=False, reported_through="15:00"),
+          "station_label": "Kisumu Airport",
+          "convective_timing": _timing("from the evening", "overnight", False)}),
+        ("thunder the station reported, more possible",
+         actual(rain=False, precip_mm=0.3, onset_hour=None, thunder=False, high_c=29.1,
+                peak_wind_kmh=35.3, cloud_cover_pct=91.0),
+         preds([29.5], winds=[35.0], rains=[False], mm=[0.3], onsets=[None], clouds=[91.0]), True, 6, None,
+         {"observed_so_far": _observed(precipitation=False, thunder=True, reported_through="15:00"),
+          "station_label": "Kisumu Airport",
+          "convective_timing": _timing("from the evening", "overnight", False)}),
+        # The report belongs to a day in progress: after sunset the subject
+        # is tomorrow, and the station's afternoon says nothing about it.
+        ("the evening subject ignores today's station report",
+         None, preds([29.6]), True, 20, None,
+         {"today_actual": actual(high_c=30.5, precip_mm=12.0, onset_hour="14:00"),
+          "sunset_hour": 18, "tomorrow_predictions": preds([27.0], mm=[0.0], onsets=[None], rains=[False]),
+          "observed_so_far": _observed(precipitation=True, thunder=True, reported_through="19:00"),
+          "station_label": "Kisumu Airport",
+          "convective_timing": _timing(None, "overnight", False)}),
     ]
 
     cases = []
@@ -3540,6 +3645,14 @@ def export_day_over_day() -> None:
                 "tomorrow_name": extra.get("tomorrow_name"),
                 "today_actual": (
                     dump(extra["today_actual"]) if extra.get("today_actual") else None
+                ),
+                # ROADMAP item 158, step 1.
+                "observed_so_far": (
+                    asdict(extra["observed_so_far"]) if extra.get("observed_so_far") else None
+                ),
+                "station_label": extra.get("station_label"),
+                "convective_timing": (
+                    asdict(extra["convective_timing"]) if extra.get("convective_timing") else None
                 ),
             },
             "expected": dump(result),
@@ -4061,6 +4174,10 @@ def export_describe_day_rain() -> None:
                 "onset": onset,
                 "thunder": thunder,
                 "issued_hour": issued,
+                "thunder_timing": None,
+                "onset_word": None,
+                "observed": None,
+                "station_label": None,
             },
             "expected": describe_day_rain(precip, onset, thunder, issued_hour=issued),
         }
@@ -4068,6 +4185,55 @@ def export_describe_day_rain() -> None:
             [(n, p_, o, t, None) for n, p_, o, t in scenarios] + timed
         )
     ]
+
+    # ROADMAP item 158, step 1: the thunder's timing, the sun-placed onset,
+    # and the station's own report outranking the forecast's shape.
+    from openlocalweather.daypart import ConvectiveTiming
+    from openlocalweather.models import ObservedSoFar
+
+    afternoon = ConvectiveTiming(onset="from the afternoon", peak="overnight", onset_passed=False)
+    evening = ConvectiveTiming(onset="from the evening", peak="overnight", onset_passed=False)
+    passed = ConvectiveTiming(onset=None, peak="overnight", onset_passed=True)
+    one_phase = ConvectiveTiming(onset=None, peak="overnight", onset_passed=False)
+    rain_seen = ObservedSoFar(precipitation=True, thunder=False, reported_through="15:00")
+    both_seen = ObservedSoFar(precipitation=True, thunder=True, reported_through="15:00")
+    thunder_seen = ObservedSoFar(precipitation=False, thunder=True, reported_through="15:00")
+    no_reach = ObservedSoFar(precipitation=True, thunder=False, reported_through=None)
+    station = "Kisumu Airport"
+    timed_thunder = [
+        ("the 2026-09-18 case: dry, thunder from the afternoon", 0.3, None, True, 6, afternoon, None, None, None),
+        ("thunder after dark leaves the day dry by day", 0.3, None, True, 6, evening, None, None, None),
+        ("an onset already passed names only the peak", 0.3, None, True, 12, passed, None, None, None),
+        ("onset and peak in one phase is one word", 0.3, None, True, 20, one_phase, None, None, None),
+        ("a showery day keeps its shape and gains the timing", 8.0, "13:00", True, 6, evening, None, None, None),
+        ("the rain onset placed by the sun", 8.0, "13:00", None, 6, None, "afternoon", None, None),
+        ("showers the station reported, thunder ahead", 0.3, "18:00", True, 16, evening, None, rain_seen, station),
+        ("showers and thunder both reported: more thunder", 0.3, "18:00", True, 16, evening, None, both_seen, station),
+        ("thunder reported, more possible", 0.3, None, True, 16, evening, None, thunder_seen, station),
+        ("thunder reported, none forecast", 0.3, None, False, 16, None, None, thunder_seen, station),
+        ("a report without a reach is not used", 0.3, None, True, 16, evening, None, no_reach, station),
+        ("a report with no station name names the station", 0.3, None, True, 16, evening, None, rain_seen, None),
+    ]
+    for name, precip, onset, thunder, issued, timing, word, observed, label in timed_thunder:
+        cases.append(
+            {
+                "name": name,
+                "input": {
+                    "precip_mm": precip,
+                    "onset": onset,
+                    "thunder": thunder,
+                    "issued_hour": issued,
+                    "thunder_timing": None if timing is None else asdict(timing),
+                    "onset_word": word,
+                    "observed": None if observed is None else asdict(observed),
+                    "station_label": label,
+                },
+                "expected": describe_day_rain(
+                    precip, onset, thunder, issued_hour=issued, thunder_timing=timing,
+                    onset_word=word, observed=observed, station_label=label,
+                ),
+            }
+        )
     write(
         "describe_day_rain.json",
         "describe_day_rain",
@@ -5022,6 +5188,7 @@ def main() -> None:
     export_low_divergence()
     export_sustained_wind_gap()
     export_cell_key()
+    export_convective_timing()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

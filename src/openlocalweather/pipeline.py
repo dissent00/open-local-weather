@@ -80,6 +80,9 @@ from openlocalweather.comparison import (
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
 from openlocalweather.daypart import (
+    convective_timing,
+    describe_convective_timing,
+    onset_word,
     DayPart,
     daypart_without_sun,
     forecast_windows,
@@ -731,6 +734,40 @@ def _issuance_moment(issuance: DayPart, today: date) -> datetime | None:
     return datetime(today.year, today.month, today.day, hour, minute)
 
 
+def _convective_timing(guidance, today: date):
+    """The instability's onset and peak as the Overview's words — ROADMAP
+    item 158, step 1. None without an outlook, a readable clock or a sun,
+    exactly as the windows are withheld there."""
+    outlook = guidance.instability
+    if outlook is None or guidance.issuance is None:
+        return None
+    now = _issuance_moment(guidance.issuance, today)
+    if now is None:
+        return None
+    sunrise = _clock_on(now, getattr(guidance.issuance, "sunrise", None))
+    sunset = _clock_on(now, getattr(guidance.issuance, "sunset", None))
+    next_sunrise = None if sunrise is None else sunrise + timedelta(days=1)
+    return convective_timing(
+        outlook.onset_at, outlook.peak_at,
+        now=now, sunrise=sunrise, sunset=sunset, next_sunrise=next_sunrise,
+    )
+
+
+def _onset_word_for(guidance, today: date):
+    """The rain onset's sun-relative word for today, or None without a sun
+    so the composer keeps its clock words — item 158, step 1."""
+    if guidance.issuance is None:
+        return None
+    now = _issuance_moment(guidance.issuance, today)
+    if now is None:
+        return None
+    sunrise = _clock_on(now, getattr(guidance.issuance, "sunrise", None))
+    sunset = _clock_on(now, getattr(guidance.issuance, "sunset", None))
+    if sunrise is None or sunset is None:
+        return None
+    return lambda hhmm: onset_word(hhmm, now=now, sunrise=sunrise, sunset=sunset)
+
+
 def _clock_on(day: datetime, hhmm: str | None) -> datetime | None:
     if not hhmm:
         return None
@@ -855,7 +892,14 @@ def _build_forecast_prompt(
         ground_stations_configured=bool(deps.location.waqi_stations),
         local_bulletin_configured=bool(deps.location.local_bulletin_source_name),
         instability=(
-            asdict(guidance.instability) if guidance.instability is not None else None
+            {
+                **asdict(guidance.instability),
+                # Item 158, step 1: the clause the Overview uses verbatim
+                # when the comparison does not already carry the thunder.
+                "timing": describe_convective_timing(_convective_timing(guidance, today)),
+            }
+            if guidance.instability is not None
+            else None
         ),
         guidance_recency=_guidance_recency_payload(guidance, existing_entry),
         yesterday_actual=yesterday_actual,
@@ -2974,6 +3018,14 @@ def _issue_forecast(
         today_actual=observed_baseline(observed_so_far),
         today_name=weekday_name(today),
         tomorrow_name=weekday_name(add_days(today, 1)),
+        # ROADMAP item 158, step 1. What the station has ALREADY reported
+        # today outranks the forecast's shape of the day, named with the
+        # station and its reach; the thunder gets its when; the rain onset
+        # is placed by the sun. All three reach today's side only.
+        observed_so_far=observed_so_far,
+        station_label=location.metar_station_name or location.metar_station_icao or None,
+        convective_timing=_convective_timing(guidance, today),
+        onset_word_for=_onset_word_for(guidance, today),
     )
 
     # C2's three triggers, computed ONCE and here — before the decision they

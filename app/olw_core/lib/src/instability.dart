@@ -40,6 +40,14 @@ class InstabilityOutlook {
   final List<String> modelsAboveThreshold;
   final Map<String, double> peakCapeByModel;
 
+  /// WHEN, not only how much — upstream item 158, step 1. The first hour
+  /// any model crosses the threshold and the hour of the overall peak, as
+  /// the local ISO times the hours carry: the window runs past midnight and
+  /// a bare "HH:MM" cannot say which day it is on. [convectiveTiming] turns
+  /// them into the Overview's words.
+  final String? onsetAt;
+  final String? peakAt;
+
   const InstabilityOutlook({
     required this.peakCapeJkg,
     required this.peakModel,
@@ -47,6 +55,8 @@ class InstabilityOutlook {
     required this.convective,
     required this.modelsAboveThreshold,
     required this.peakCapeByModel,
+    this.onsetAt,
+    this.peakAt,
   });
 
   Map<String, Object?> toJson() => {
@@ -56,6 +66,8 @@ class InstabilityOutlook {
         'convective': convective,
         'models_above_threshold': modelsAboveThreshold,
         'peak_cape_by_model': peakCapeByModel,
+        'onset_at': onsetAt,
+        'peak_at': peakAt,
       };
 }
 
@@ -108,6 +120,19 @@ InstabilityOutlook? summarizeInstability(
   }
   final peakTime = peakHourByModel[peakModel]!;
 
+  // The first hour ANY model crosses, in time order: the earliest warning
+  // the guidance supports, which is the one a reader plans around.
+  String? onsetAt;
+  for (var i = 0; i < times.length && onsetAt == null; i++) {
+    for (final model in peakCapeByModel.keys) {
+      final series = pickSeries(hourly, ['cape_$model', 'cape']);
+      if (i < series.length && series[i] != null && series[i]! >= threshold) {
+        onsetAt = times[i];
+        break;
+      }
+    }
+  }
+
   final above = peakCapeByModel.entries
       .where((e) => e.value >= threshold)
       .map((e) => e.key)
@@ -125,5 +150,7 @@ InstabilityOutlook? summarizeInstability(
     convective: peakCapeByModel[peakModel]! >= threshold,
     modelsAboveThreshold: above,
     peakCapeByModel: peakCapeByModel,
+    onsetAt: onsetAt,
+    peakAt: peakTime,
   );
 }

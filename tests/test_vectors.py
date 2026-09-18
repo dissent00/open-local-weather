@@ -57,6 +57,7 @@ from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.models import InformationMoved, ObservedSoFar
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.solar import sun_times
+from openlocalweather.daypart import ConvectiveTiming
 from openlocalweather.daypart import (
     daypart_without_sun,
     forecast_windows,
@@ -732,6 +733,11 @@ def test_vectors_day_over_day():
             today_actual=(
                 DailyActual.model_validate(i["today_actual"]) if i.get("today_actual") else None
             ),
+            observed_so_far=ObservedSoFar(**i["observed_so_far"]) if i.get("observed_so_far") else None,
+            station_label=i.get("station_label"),
+            convective_timing=(
+                ConvectiveTiming(**i["convective_timing"]) if i.get("convective_timing") else None
+            ),
         )
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
@@ -776,11 +782,36 @@ def test_vectors_extended_trend():
 def test_vectors_describe_day_rain():
     """The phrase that reaches the reader almost verbatim, including the
     thunder override that stops an observed storm reading as "dry"."""
+    from openlocalweather.daypart import ConvectiveTiming
+
     for case in load("describe_day_rain.json")["cases"]:
         i = case["input"]
-        assert describe_day_rain(i["precip_mm"], i["onset"], i["thunder"], issued_hour=i["issued_hour"]) == case["expected"], (
-            f"vector case failed: {case['name']}"
+        timing = ConvectiveTiming(**i["thunder_timing"]) if i.get("thunder_timing") else None
+        observed = ObservedSoFar(**i["observed"]) if i.get("observed") else None
+        got = describe_day_rain(
+            i["precip_mm"], i["onset"], i["thunder"], issued_hour=i["issued_hour"],
+            thunder_timing=timing, onset_word=i.get("onset_word"),
+            observed=observed, station_label=i.get("station_label"),
         )
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_convective_timing():
+    """ROADMAP item 158 — the thunder's when, in the sun's words, on both
+    sides. The cases are the operator's edge list for the issuance hour."""
+    from datetime import datetime
+
+    from openlocalweather.daypart import convective_timing, describe_convective_timing
+
+    for case in load("convective_timing.json")["cases"]:
+        i = case["input"]
+        clock = lambda v: None if v is None else datetime.fromisoformat(v)
+        got = convective_timing(
+            i["onset_at"], i["peak_at"], now=clock(i["now"]),
+            sunrise=clock(i["sunrise"]), sunset=clock(i["sunset"]), next_sunrise=clock(i["next_sunrise"]),
+        )
+        assert as_json(got) == case["expected"]["timing"], f"vector case failed: {case['name']}"
+        assert describe_convective_timing(got) == case["expected"]["clause"], f"vector case failed: {case['name']}"
 
 
 def test_vectors_observed_so_far():
@@ -1003,6 +1034,7 @@ def test_every_vector_file_is_exercised():
         "gust_calibration.json",
         "prompt_rounding.json",
         "cell_key.json",
+        "convective_timing.json",
     }
     on_disk = {p.name for p in VECTORS_DIR.glob("*.json")}
     assert on_disk == covered, (

@@ -1055,3 +1055,88 @@ def test_an_evening_needs_no_record_for_yesterday():
 
     assert result is not None
     assert "than today (Monday) was" in result.overview_comparison
+
+
+# --- ROADMAP item 158, step 1: the thunder's timing, and the station's word ---
+
+from openlocalweather.daypart import ConvectiveTiming
+from openlocalweather.models import ObservedSoFar
+
+_AFTERNOON = ConvectiveTiming(onset="from the afternoon", peak="overnight", onset_passed=False)
+_EVENING = ConvectiveTiming(onset="from the evening", peak="overnight", onset_passed=False)
+_STATION = "Kisumu Airport"
+
+
+def test_a_dry_day_with_timed_thunder_is_no_longer_a_contradiction():
+    assert describe_day_rain(0.3, None, True, issued_hour=6, thunder_timing=_AFTERNOON) == (
+        "dry, with thunder possible from the afternoon, peaking overnight"
+    )
+
+
+def test_thunder_from_the_evening_leaves_the_day_dry_by_day():
+    assert describe_day_rain(0.3, None, True, issued_hour=6, thunder_timing=_EVENING) == (
+        "dry by day, with thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_a_showery_day_keeps_its_shape_and_gains_the_timing():
+    assert describe_day_rain(8.0, "13:00", True, issued_hour=6, thunder_timing=_EVENING) == (
+        "showery from the afternoon, with thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_without_a_timing_the_old_words_stand():
+    assert describe_day_rain(0.3, None, True, issued_hour=6) == "dry but thundery"
+
+
+def test_showers_the_station_has_reported_are_stated_as_a_report():
+    observed = ObservedSoFar(precipitation=True, thunder=False, reported_through="15:00")
+    assert describe_day_rain(0.3, "18:00", True, issued_hour=16, thunder_timing=_EVENING,
+                             observed=observed, station_label=_STATION) == (
+        "showers reported at Kisumu Airport as of 15:00, with thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_more_thunder_only_when_the_station_has_reported_thunder():
+    observed = ObservedSoFar(precipitation=True, thunder=True, reported_through="15:00")
+    assert describe_day_rain(0.3, "18:00", True, issued_hour=16, thunder_timing=_EVENING,
+                             observed=observed, station_label=_STATION) == (
+        "showers reported at Kisumu Airport as of 15:00, with more thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_thunder_the_station_has_reported_names_the_station_and_the_time():
+    observed = ObservedSoFar(precipitation=False, thunder=True, reported_through="15:00")
+    assert describe_day_rain(0.3, None, True, issued_hour=16, thunder_timing=_EVENING,
+                             observed=observed, station_label=_STATION) == (
+        "thunder reported at Kisumu Airport as of 15:00, more possible overnight"
+    )
+
+
+def test_reported_thunder_with_no_more_forecast_is_just_the_report():
+    observed = ObservedSoFar(precipitation=False, thunder=True, reported_through="15:00")
+    assert describe_day_rain(0.3, None, False, issued_hour=16, observed=observed, station_label=_STATION) == (
+        "thunder reported at Kisumu Airport as of 15:00"
+    )
+
+
+def test_a_station_report_without_a_reach_is_not_used():
+    # A report needs its time; without one the phrase falls back to the forecast.
+    observed = ObservedSoFar(precipitation=True, thunder=False, reported_through=None)
+    assert describe_day_rain(0.3, None, True, issued_hour=16, thunder_timing=_EVENING,
+                             observed=observed, station_label=_STATION) == (
+        "dry by day, with thunder possible from the evening, peaking overnight"
+    )
+
+
+def test_the_comparison_hands_the_station_and_the_timing_to_todays_side():
+    yesterday = DailyActual(rain=False, high_c=29.1, low_c=18.6, peak_wind_kmh=35.3, precip_mm=0.3,
+                            cloud_cover_pct=91.0, thunder=False)
+    today = [ModelPrediction(model="m", rain=False, high_c=29.5, low_c=18.0, wind_kmh=35.0,
+                             precip_mm=0.3, cloud_cover_pct=91.0)]
+    observed = ObservedSoFar(precipitation=True, thunder=False, reported_through="15:00")
+    got = compute_day_over_day(yesterday, today, True, issued_hour=6, observed_so_far=observed,
+                               station_label=_STATION, convective_timing=_EVENING)
+    assert got.overview_comparison == (
+        "Showers reported at Kisumu Airport as of 15:00, with thunder possible from the evening, peaking overnight."
+    )
