@@ -22371,6 +22371,45 @@ taken tonight: retry the archive read after a delay when it answers 503
 (the sentence names it as capacity, not absence), and read the reach
 line on the first fallback.
 
+### Verified 2026-09-20: the source is intact; the archive is degraded, and our own burst invites its 429
+
+Asked whether anything shipped this week broke the station source. No.
+At 07:14Z the pipeline's own `fetch_metar_archive_rows` returned 23 rows
+for 09-19..09-21 and the current-conditions feed returned HKKI's 06:30Z
+report, so the endpoints answer and the station reports. What the three
+runs since 09-18 recorded, read from the log and the store:
+
+| run | same-day read | store | note |
+|---|---|---|---|
+| 09-19 03:01Z | exit 3: rows, none for 09-19 | — | archive behind |
+| 09-19 15:01Z | worked, reach 17:00 | 18 rows through 14:00Z stored | |
+| 09-20 03:01Z | exit 3: rows, none for 09-20 | fallback fired for the overlay (503) and the windows (429) | |
+
+**The archive lags the current UTC day by hours today.** At 07:14Z it
+held ZERO rows dated 2026-09-20 while the station had reported at 06:30Z
+on the other feed, and 09-19 filled in later (18 rows at 15:01Z, 23 by
+the next morning). So a 03:01Z read of "today" finds nothing on the days
+the archive is behind, which is exactly the 09-16 hypothesis this item
+set aside after four good mornings; it is intermittent, not structural.
+The evening 503 of 09-18 ("server over capacity") is the same
+degradation from the other side.
+
+**And the 429 is partly ours.** The 09-20 run's three archive requests —
+the day overlay, the windows scorer, the same-day read — fired at
+03:01:53.57, 53.92 and 54.14Z, three requests for the same padded range
+in under a second, and IEM answered the second with "Too many requests
+from your IP address, slow down". The store made the fallback work for
+two of them, which is what it was built for, but it also makes the
+burst unnecessary: one fetch per run, stored, with the other readers
+reading the store, is the shape.
+
+**Not built, put to the operator:** (1) one archive fetch per run shared
+through the store; (2) bounded retry with backoff on 503 and 429 — the
+sentence already names them; (3) the current-conditions report as a
+supplementary row on the day the archive lags, so "reports through" can
+say 06:30 instead of nothing; the store merges by time and text, so a
+row from the other feed slots in.
+
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 
 `rebuild-record` re-applies the station to every cached day, and on the
