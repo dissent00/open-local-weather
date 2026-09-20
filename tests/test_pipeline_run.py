@@ -3954,3 +3954,31 @@ def test_no_station_configured_is_not_a_degradation(tmp_path):
     )
     observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path)
     assert observed is None and gap is None
+
+
+# ---------------------------------------------------------------------------
+# One archive request per run — ROADMAP item 151, 2026-09-20
+# ---------------------------------------------------------------------------
+def test_a_run_prefetches_the_station_once_for_every_reader(tmp_path, monkeypatch):
+    """The run's one archive request, up front, covering yesterday's overlay
+    padded behind and the same-day read padded ahead, with the current report
+    beside it — so the three readers that follow make no request of their own."""
+    calls = []
+    monkeypatch.setattr(metar_fetch, "prefetch_station_rows",
+                        lambda icao, start, end, data_dir, current_report=None: calls.append(
+                            (icao, start, end, data_dir, current_report)))
+    report = {"rawOb": "METAR HKKI 110300Z 07005KT CAVOK 22/16 Q1017", "reportTime": "2026-08-11T03:00:00.000Z", "temp": 22}
+    monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: [report])
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+
+    issue(deps, today=date(2026, 8, 11))
+
+    assert calls == [("HKKI", date(2026, 8, 9), date(2026, 8, 12), tmp_path, report)]
+
+
+def test_a_deployment_without_a_station_does_not_prefetch(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(metar_fetch, "prefetch_station_rows", lambda *a, **k: calls.append(a))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11))
+    assert calls == []

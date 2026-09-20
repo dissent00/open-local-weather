@@ -274,3 +274,145 @@ def test_the_window_reports_fall_back_the_same_way(tmp_path):
 
     assert [r[1] for r in reports] == [ROW_A[2]]
     assert len(reasons) == 1 and "ConnectTimeout" in reasons[0]
+
+
+# ---------------------------------------------------------------------------
+# One request per run, a bounded retry, the current report as a row —
+# ROADMAP item 151, 2026-09-20
+# ---------------------------------------------------------------------------
+from openlocalweather.fetch.metar import (
+    ArchiveUnavailable as _Unavailable,
+    METAR_ARCHIVE_URL as _ARCHIVE,
+    current_report_row,
+    observed_station_data as _observed,
+    prefetch_station_rows,
+    reset_station_session,
+    station_reports as _reports,
+)
+
+_TODAY = date(2026, 9, 20)
+_ROW_YESTERDAY = ["HKKI", "2026-09-19 12:00", "HKKI 191200Z 07005KT CAVOK 28/15 Q1017", "82.40", "5.00"]
+_REPORT = {"rawOb": "METAR HKKI 200630Z 34004KT CAVOK 25/14 Q1021", "reportTime": "2026-09-20T06:30:00.000Z", "temp": 25}
+
+
+@pytest.fixture(autouse=True)
+def _fresh_session():
+    reset_station_session()
+    yield
+    reset_station_session()
+
+
+def test_a_busy_archive_is_retried_and_the_second_answer_is_used(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, [
+            {"status_code": 503, "text": "ERROR: server over capacity, please try later"},
+            {"status_code": 200, "text": _archive_csv(_ROW_YESTERDAY)},
+        ])
+        assert prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path) is None
+        assert m.call_count == 2
+    assert store.read_rows(tmp_path, "HKKI", date(2026, 9, 19), date(2026, 9, 19)) == [_ROW_YESTERDAY]
+
+
+def test_a_rate_limit_is_retried_and_a_persistent_one_says_how_many_times(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, status_code=429, text="Too many requests from your IP address, slow down.")
+        reason = prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        assert m.call_count == 3
+    assert reason is not None and "HTTP 429 after 3 attempts" in reason
+
+
+def test_a_server_error_is_not_retried(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, status_code=500, text="boom")
+        reason = prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        assert m.call_count == 1
+    assert reason is not None and "HTTP 500;" in reason
+
+
+def test_readers_inside_the_prefetched_range_make_no_request(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, text=_archive_csv(_ROW_YESTERDAY))
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        _observed("HKKI", date(2026, 9, 19), date(2026, 9, 19), "Africa/Nairobi", data_dir=tmp_path)
+        _reports("HKKI", date(2026, 9, 19), date(2026, 9, 19), data_dir=tmp_path)
+        _observed("HKKI", _TODAY, _TODAY, "Africa/Nairobi", data_dir=tmp_path)
+        assert m.call_count == 1, "three readers, one request"
+
+
+def test_a_reader_outside_the_prefetched_range_still_fetches(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, text=_archive_csv(_ROW_YESTERDAY))
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        _reports("HKKI", date(2026, 8, 1), date(2026, 8, 3), data_dir=tmp_path)
+        assert m.call_count == 2
+
+
+def test_a_failed_prefetch_is_one_failure_handed_to_every_reader_with_the_stored_rows(tmp_path):
+    import requests_mock
+
+    store.merge_rows(tmp_path, "HKKI", [_ROW_YESTERDAY])
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, status_code=503, text="ERROR: server over capacity, please try later")
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        reasons: list[str] = []
+        _, readings = _observed("HKKI", date(2026, 9, 19), date(2026, 9, 19), "Africa/Nairobi",
+                                data_dir=tmp_path, on_fallback=reasons.append)
+        _reports("HKKI", date(2026, 9, 19), date(2026, 9, 19), data_dir=tmp_path, on_fallback=reasons.append)
+        assert m.call_count == 3, "the retries, once; the readers add nothing"
+    assert readings and readings[date(2026, 9, 19)].high_c == pytest.approx(28.0)
+    assert len(reasons) == 2 and all("HTTP 503" in r for r in reasons)
+
+
+def test_a_failed_prefetch_with_nothing_stored_still_raises_for_the_reader(tmp_path):
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, status_code=503, text="ERROR: server over capacity, please try later")
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path)
+        with pytest.raises(_Unavailable):
+            _observed("HKKI", date(2026, 9, 19), date(2026, 9, 19), "Africa/Nairobi", data_dir=tmp_path)
+
+
+def test_the_current_report_becomes_an_archive_shaped_row():
+    row = current_report_row("HKKI", _REPORT)
+    assert row == ["HKKI", "2026-09-20 06:30", "HKKI 200630Z 34004KT CAVOK 25/14 Q1021", "77.00", "4.00"]
+
+
+def test_a_report_without_a_wind_group_or_temperature_marks_them_missing():
+    row = current_report_row("HKKI", {"rawOb": "SPECI HKKI 200630Z CAVOK 25/14 Q1021", "reportTime": "2026-09-20T06:30:00.000Z"})
+    assert row == ["HKKI", "2026-09-20 06:30", "HKKI 200630Z CAVOK 25/14 Q1021", "M", "M"]
+    assert current_report_row("HKKI", {"rawOb": "", "reportTime": "2026-09-20T06:30:00.000Z"}) is None
+    assert current_report_row("HKKI", {"rawOb": "HKKI 200630Z CAVOK", "reportTime": None}) is None
+
+
+def test_when_the_archive_lags_the_current_report_gives_today_a_reach(tmp_path):
+    """09-20: the archive held no rows for the UTC day at 07:14Z while the
+    station had reported at 06:30Z on the other feed."""
+    import requests_mock
+
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, text=_archive_csv(_ROW_YESTERDAY))
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path, current_report=_REPORT)
+        weather, readings = _observed("HKKI", _TODAY, _TODAY, "Africa/Nairobi", data_dir=tmp_path)
+    assert weather and weather[_TODAY].reported_through == "09:30"
+    assert readings and readings[_TODAY].high_c == pytest.approx(25.0)
+
+
+def test_the_archives_own_row_for_that_minute_is_not_a_second_row(tmp_path):
+    import requests_mock
+
+    archive_row = ["HKKI", "2026-09-20 06:30", "HKKI 200630Z 34004KT CAVOK 25/14 Q1021", "77.00", "4.00"]
+    with requests_mock.Mocker() as m:
+        m.get(_ARCHIVE, text=_archive_csv(archive_row))
+        prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path, current_report=_REPORT)
+    assert store.read_rows(tmp_path, "HKKI", _TODAY, _TODAY) == [archive_row]

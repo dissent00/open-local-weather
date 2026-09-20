@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import csv
 import re
+import time
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
@@ -291,20 +292,37 @@ class ArchiveUnavailable(Exception):
 # recognise an HTML page; not enough to store a page.
 _FIRST_LINE_CHARS = 120
 
+# The two answers the archive gives when it is busy rather than broken —
+# measured 2026-09-18 and 09-20: "HTTP 503 ERROR: server over capacity,
+# please try later" and "HTTP 429 Too many requests from your IP address,
+# slow down". Both ask for a wait, so both get one, bounded: two more tries
+# after 2 s and 6 s. Anything else — a 500, a 404, a timeout at the 90 s
+# ceiling — is not retried; a timeout tripled would hold the run for four
+# minutes and the sentence it stores already says what happened.
+ARCHIVE_RETRY_STATUSES = (503, 429)
+ARCHIVE_RETRY_DELAYS_S = (2.0, 6.0)
+
 
 def _archive_rows(params: dict) -> list[list[str]]:
     """Data rows from one archive request, or ArchiveUnavailable saying why
     there are none. Never an empty list: a padded three-day range with no
     rows is not a quiet station, it is an answer this project cannot use."""
-    try:
-        resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
-    except requests.RequestException as e:
-        raise ArchiveUnavailable(f"request failed: {type(e).__name__}: {e}") from e
+    attempts = 1 + len(ARCHIVE_RETRY_DELAYS_S)
+    for attempt in range(attempts):
+        try:
+            resp = requests.get(METAR_ARCHIVE_URL, params=params, timeout=ARCHIVE_TIMEOUT_S)
+        except requests.RequestException as e:
+            raise ArchiveUnavailable(f"request failed: {type(e).__name__}: {e}") from e
+        if resp.status_code in ARCHIVE_RETRY_STATUSES and attempt < attempts - 1:
+            time.sleep(ARCHIVE_RETRY_DELAYS_S[attempt])
+            continue
+        break
 
     lines = resp.text.splitlines()
     first = lines[0][:_FIRST_LINE_CHARS] if lines else ""
     if resp.status_code != 200:
-        raise ArchiveUnavailable(f"HTTP {resp.status_code}; first line: {first!r}")
+        tried = f" after {attempts} attempts" if resp.status_code in ARCHIVE_RETRY_STATUSES else ""
+        raise ArchiveUnavailable(f"HTTP {resp.status_code}{tried}; first line: {first!r}")
 
     rows = [r for r in csv.reader(lines) if len(r) >= 3 and r[0] != "station"]
     if not rows:
@@ -527,6 +545,94 @@ def fetch_metar_archive_rows(
     return _archive_rows(params)
 
 
+# ONE ARCHIVE REQUEST PER RUN — ROADMAP item 151, 2026-09-20. The 09-20 run's
+# three readers (the day overlay, the window scorer, the same-day snapshot)
+# asked the archive for the same padded range at 03:01:53.57, 53.92 and
+# 54.14Z, and it answered the second with "Too many requests from your IP
+# address, slow down". The store made two of the three recoverable, and it
+# also makes the burst unnecessary: the run fetches once, up front, into
+# the store, and every reader whose range the prefetch covered is served
+# from the store without a request. A reader asking outside that range —
+# the Monday batch, rebuild-record — still fetches as before.
+#
+# Per icao: the range fetched this run and the archive's reason when it
+# failed, so a failed prefetch is one failure for the run rather than one
+# per reader, and each reader still gets the fallback with the reason.
+_RUN_FETCH: dict[str, tuple[date, date, str | None]] = {}
+
+# The current-conditions feed's report as an archive-shaped row. The archive
+# lags the current UTC day by hours on some days (09-20: no rows for the
+# day at 07:14Z while the station had reported at 06:30Z on the other
+# feed), so the report the prompt already carries is merged into the store
+# too, and the same-day reach can say 06:30 instead of nothing.
+_REPORT_PREFIXES = ("METAR ", "SPECI ")
+_WIND_GROUP = re.compile(r"\b(?:\d{3}|VRB)(\d{2,3})(?:G\d{2,3})?KT\b")
+_REPORT_TIME_CHARS = 16  # "2026-09-20T06:30" of "2026-09-20T06:30:00.000Z"
+_MISSING = "M"
+
+
+def current_report_row(icao: str, report: dict) -> list[str] | None:
+    """One (station, valid, metar, tmpf, sknt) row from a current-conditions
+    JSON report, in the archive's own units and spellings, or None when the
+    report carries no readable time or text.
+
+    The leading METAR/SPECI word is dropped because the archive writes the
+    text without it, and the store keys a row on (time, text): the archive's
+    own row for the same minute, when it arrives, is then the same row. That
+    the two texts otherwise match is expected from the samples seen, not yet
+    measured on a day both held; a mismatch costs one duplicate row, which
+    the cumulative fields tolerate.
+    """
+    when = str(report.get("reportTime") or "")[:_REPORT_TIME_CHARS]
+    text = str(report.get("rawOb") or "").strip()
+    if len(when) < _REPORT_TIME_CHARS or not text:
+        return None
+
+    for prefix in _REPORT_PREFIXES:
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+    temp = report.get("temp")
+    tmpf = f"{float(temp) * 9 / 5 + 32:.2f}" if isinstance(temp, (int, float)) else _MISSING
+    wind = _WIND_GROUP.search(text)
+    sknt = f"{int(wind.group(1)):.2f}" if wind else _MISSING
+    return [icao, when.replace("T", " "), text, tmpf, sknt]
+
+
+def prefetch_station_rows(
+    icao: str,
+    start: date,
+    end: date,
+    data_dir: str | Path,
+    *,
+    current_report: dict | None = None,
+) -> str | None:
+    """The run's one archive request for `start..end`, merged into the store,
+    with the current-conditions report merged beside it. Returns the
+    archive's reason when it failed, else None; the readers that follow read
+    the store either way — see _RUN_FETCH."""
+    _RUN_FETCH.pop(icao, None)
+    reason: str | None = None
+    try:
+        rows = fetch_metar_archive_rows(icao, start, end)
+        if rows:
+            station_store.merge_rows(data_dir, icao, rows)
+    except ArchiveUnavailable as failure:
+        reason = str(failure)
+
+    if current_report is not None:
+        row = current_report_row(icao, current_report)
+        if row is not None:
+            station_store.merge_rows(data_dir, icao, [row])
+
+    _RUN_FETCH[icao] = (start, end, reason)
+    return reason
+
+
+def reset_station_session() -> None:
+    """Forget the run's prefetch — the next reader fetches for itself."""
+    _RUN_FETCH.clear()
+
+
 def _station_rows(
     icao: str,
     start: date,
@@ -544,7 +650,23 @@ def _station_rows(
     Built only once the reach existed, because stored rows presented as
     current would have shown the morning as the day. With no store, or
     nothing stored, the failure propagates exactly as before.
+
+    WITHIN A RUN THAT PREFETCHED THE RANGE, no request is made: the store
+    holds what the prefetch fetched, and a prefetch that failed is one
+    failure for the run, handed to each reader as the same fallback.
     """
+    cached = _RUN_FETCH.get(icao)
+    if cached is not None and data_dir is not None and cached[0] <= start and end <= cached[1]:
+        _, _, reason = cached
+        stored = station_store.read_rows(data_dir, icao, start, end)
+        if reason is None:
+            return stored
+        if stored is None:
+            raise ArchiveUnavailable(reason)
+        if on_fallback is not None:
+            on_fallback(reason)
+        return stored
+
     try:
         rows = fetch_metar_archive_rows(icao, start, end)
     except ArchiveUnavailable as failure:

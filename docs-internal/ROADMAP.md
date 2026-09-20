@@ -22410,6 +22410,55 @@ supplementary row on the day the archive lags, so "reports through" can
 say 06:30 instead of nothing; the store merges by time and text, so a
 row from the other feed slots in.
 
+### Shipped 2026-09-20 — one request, a bounded retry, and the other feed's report as a row
+
+The three moves from the morning's check, operator's approval, Python
+only (the app fetches no station):
+
+1. **One archive request per run.** `run_forecast` calls
+   `prefetch_station_rows` before anything else reads the station: the
+   range today−2..today+1 (yesterday's overlay padded behind, the
+   same-day read padded ahead) fetched once into the store, and the
+   readers whose range it covers — the overlay, the window scorer, the
+   same-day snapshot — are served from the store without a request
+   (`_RUN_FETCH`, per run). A failed prefetch is ONE failure for the run,
+   handed to each reader as the same fallback with the archive's reason;
+   a reader asking outside the range (the Monday batch, rebuild-record)
+   fetches as before. Pinned: three readers, one request; outside the
+   range, a second; a failed prefetch hands stored rows and the reason to
+   every reader and raises only where nothing is stored; the pipeline
+   calls it once with that range and the current report, and not at all
+   without a station.
+2. **A bounded retry on the two busy answers.** 503 and 429 are retried
+   after 2 s and 6 s; a 500, a 404 or a timeout are not, since a 90 s
+   timeout tripled would hold the run for four minutes. The sentence then
+   reads "HTTP 429 after 3 attempts; first line: ...". The suite zeroes
+   the delays in conftest the way it zeroes Open-Meteo's.
+3. **The current-conditions report as a row.** `current_report_row` turns
+   the feed's JSON into the archive's own shape — time, text with the
+   leading METAR/SPECI word dropped, tmpf and sknt in its spellings, "M"
+   where the report carries none — and the prefetch merges it beside the
+   archive's rows. The store keys on (time, text), so the archive's own
+   row for that minute, when it arrives, is the same row; that the texts
+   otherwise match is expected from the samples, not yet measured on a
+   day both held, and a mismatch costs one duplicate the cumulative
+   fields tolerate.
+
+**Driven live** into a scratch store at 07:24Z: the archive answered
+09-19's rows and none for 09-20; the report of 06:30Z became the day's
+one row; the same-day snapshot read "reports through 09:30", high and
+low 25 °C, no wind (a CAVOK report with no wind group, so sknt is "M").
+That is the sentence the 03:01Z run had nothing to say for. Four
+mutations bit — the retry, the per-run cache, the prefix strip, the
+report merge. Driven through the real CLI: transcripts identical, the
+drive stubs the prefetch like the readers. 1450 Python.
+
+**Not checked:** the dedupe on a day both feeds hold the same minute; the
+next run is the reading. And the prompt's own `airport_metar` block still
+fetches the current report a second time inside the guidance — two cheap
+requests to the other feed per run rather than one; joining them is a
+small later change.
+
 ### Measured 2026-09-17: three recent days' station readings changed on re-fetch
 
 `rebuild-record` re-applies the station to every cached day, and on the

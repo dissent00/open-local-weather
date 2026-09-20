@@ -128,6 +128,9 @@ def patch_everything_outside_the_process() -> None:
     open_meteo.fetch_archive_range = lambda lat, lon, start, end, tz: archive_fixture(end)
     solar.sun_times = sun_fixture
     metar_fetch.fetch_metar = lambda icao: None
+    # The run's one archive request (item 151, 2026-09-20) sits above the
+    # stubbed readers and would reach the network guard; stubbed like them.
+    metar_fetch.prefetch_station_rows = lambda *a, **k: None
     # What the station has already seen today. Read once per run by the
     # pipeline; this returns whatever STATION currently says, so a case can
     # move the weather between runs the way a real afternoon does.

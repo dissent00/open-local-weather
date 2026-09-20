@@ -3472,6 +3472,15 @@ def _issue_forecast(
     )
 
 
+# How far behind today the run's one archive request reaches: yesterday's
+# overlay asks yesterday padded by a day, which is two days back.
+STATION_PREFETCH_DAYS_BACK = 2
+
+
+def _first_report(reports: list[dict] | None) -> dict | None:
+    return reports[0] if reports else None
+
+
 def run_forecast(
     deps: PipelineDeps,
     today: date | None = None,
@@ -3524,6 +3533,21 @@ def run_forecast(
     """
     location = deps.location
     today = today or today_in_tz(location.timezone)
+
+    # ROADMAP item 151, 2026-09-20: the run's ONE archive request, covering
+    # every range the readers below ask for on a normal day (the overlay's
+    # yesterday and the windows' padded days behind, the same-day read's
+    # padded day ahead), with the current-conditions report merged beside it
+    # for the days the archive lags. The readers then read the store.
+    if location.metar_station_icao and deps.data_dir is not None:
+        metar_fetch.prefetch_station_rows(
+            location.metar_station_icao,
+            add_days(today, -STATION_PREFETCH_DAYS_BACK),
+            add_days(today, metar_fetch.ARCHIVE_PADDING_DAYS),
+            deps.data_dir,
+            current_report=_first_report(metar_fetch.fetch_metar(location.metar_station_icao)),
+        )
+
     existing_entry = log_store.read_log_entry(deps.data_dir, today)
 
     if existing_entry is None:

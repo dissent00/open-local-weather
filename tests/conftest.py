@@ -11,7 +11,7 @@ this is a correctness concern rather than a convenience.
 
 import pytest
 
-from openlocalweather.fetch import open_meteo
+from openlocalweather.fetch import metar, open_meteo
 
 
 @pytest.fixture(autouse=True)
@@ -27,3 +27,16 @@ def _no_retry_sleeping(monkeypatch):
     # reason. A test that is ABOUT the delay values sets them back itself.
     monkeypatch.setattr(open_meteo, "TIMEOUT_RETRY_DELAY_S", 0)
     monkeypatch.setattr(open_meteo.time, "sleep", lambda _: None)
+    # The station archive's retry, item 151 (2026-09-20), zeroed the same way.
+    monkeypatch.setattr(metar, "ARCHIVE_RETRY_DELAYS_S", (0, 0))
+    monkeypatch.setattr(metar.time, "sleep", lambda _: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_station_prefetch(monkeypatch):
+    """The run's one archive request, item 151 (2026-09-20), is a network
+    call at the top of run_forecast that the pipeline tests never mocked —
+    they stub the readers below it. A no-op here keeps every existing test
+    off the network; the prefetch's own tests import the function directly
+    at collection time and so get the real one."""
+    monkeypatch.setattr(metar, "prefetch_station_rows", lambda *a, **k: None)
