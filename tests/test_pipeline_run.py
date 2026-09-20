@@ -3969,6 +3969,12 @@ def test_a_run_prefetches_the_station_once_for_every_reader(tmp_path, monkeypatc
                             (icao, start, end, data_dir, current_report)))
     report = {"rawOb": "METAR HKKI 110300Z 07005KT CAVOK 22/16 Q1017", "reportTime": "2026-08-11T03:00:00.000Z", "temp": 22}
     monkeypatch.setattr(metar_fetch, "fetch_metar", lambda icao: [report])
+    # The readers below the prefetch are stubbed as every station test stubs
+    # them; this test is about the call above them.
+    monkeypatch.setattr(
+        pipeline.metar_fetch, "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, None),
+    )
     deps = make_deps(tmp_path)
     deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
 
