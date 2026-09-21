@@ -89,7 +89,19 @@ code; this is a recommendation, not a queue.
 on 132), 131 (the retrospective half is a free query over stored hashes and
 can be run whenever a prompt A/B is actually wanted), 54/55/56.
 
-### The next action
+### The next action, as of 2026-09-21
+
+**Item 159 — retire the Overview and let the tiles carry it.** Decided by the
+operator this afternoon after item 158's ten steps and three further fixes;
+the reasoning, the measurements and the build order are in that item. Start
+at step 1, the comparison composer, because every other step depends on what
+it emits.
+
+`ensemble` item 23 already ships the two-column tile grid and consumes the
+wire contract, so the app is waiting on the pipeline rather than the other
+way round.
+
+### The previous next action, kept for its reasoning
 
 **Read the 2026-09-18 03:01 run.** It is the first live run carrying the
 station window fetch (139), the sustained wind on predictions and observed
@@ -24487,3 +24499,129 @@ not meaning.
 prompt vectors or to `daypart_without_sun`, each excluded with its reason in
 `NOT_PHRASE_VECTORS`. The prompts are documents, not phrases; the sunless
 vector stores `""` as a data field standing in for null.
+
+---
+
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21, not yet built**
+
+The operator, after ten steps of item 158 and three more fixes on top of it:
+
+> *"I think the overview goes. These tiles ... look to me to cover all that we
+> wanted from the overview, including the comparisons. The daily / extended /
+> marine / synoptic forecasts seem to 'just work' a lot better than the
+> overview ever did, and so this seems like a good way to get rid of a
+> complicated pain point with a ton of rules."*
+
+### Why it is the right call, measured rather than felt
+
+**Most of the Overview was already a second telling.** Its three sentences on
+2026-09-21 were the day-over-day comparison, today's rain with its thunder
+timing, and the three-day outlook. The middle one is already carried by the
+Rain and Onset tiles AND more precisely — the tile says "afternoon
+(13:00-16:00)" where the sentence said "from the afternoon". The third
+duplicates the Extended Outlook section below it. Only the comparison had no
+other home, and the tiles now give it one.
+
+**It never stopped talking.** Across the 16 comparisons in the prompt archive,
+`overview_comparison` returned "nothing worth saying" ZERO times. On a day
+when nothing changed it filled with "about the same", "similar winds", "winds
+and cloud little changed" — a report that there is nothing to report, which is
+what made it read as noise.
+
+**Its rules are the largest single block of prompt left.** Two dedicated rule
+paragraphs total 5,312 characters of a 39,997-character narrative prompt
+(13%); six paragraphs mention the Overview and total 10,909 (27%). That is
+the biggest lever on item 148's axis.
+
+**Nothing in code parses the section** — only comments mention it — so removal
+is structurally clean.
+
+### What must survive, and where it goes
+
+- **The thunder guarantee.** `instability.py`'s founding case: on 2026-08-26 a
+  forecast opened "similar warmth, calmer winds, and dry again" while models
+  built CAPE to 2,600, and the instability sat far below where a reader who
+  stopped at the top never saw it. THE RAIN TILE CARRIES THIS. On a dry but
+  convective day it reads "Isolated T-storms" over "from 15:00" — which also
+  ends the "Dry / T-storms likely" contradiction the operator objected to, and
+  never prints the word "Dry" beside a storm.
+- **The comparison**, as per-dimension modifiers on the tile each concerns,
+  speaking only when that dimension moves into its own top decile.
+- **The extended view**, which the Extended Outlook section already carries.
+
+### The comparison rule, measured
+
+Not a fixed set of dimensions, and not a sentence. A change is worth saying
+when it is unusual FOR THAT DIMENSION AT THIS STATION, which each dimension's
+own day-to-day distribution gives for free. Over the 40 day-pairs in the
+record:
+
+| dimension | median daily move | top decile |
+|---|---:|---:|
+| high | 1.0 °C | 2.2 °C |
+| gust | 5.8 km/h | 11.1 km/h |
+| cloud | 16.9 pts | 34.5 pts |
+| rain | 0.5 mm | 6.0 mm |
+
+Speaking only on a top-decile move gives 13 of 40 days, usually one word; the
+top quartile gives 24 of 40 and often three. The decile rule catches all ten
+of the largest real moves in the record, including the 18 km/h wind jump on
+09-13 and the 45-point cloud clearance on 09-07.
+
+IT TRAVELS, which is the other reason to prefer it: the threshold is derived
+from the station's own history, so the same code gives a two-degree bar here
+and a much larger one somewhere with seasons, with nothing configured.
+
+**Two cautions.** Forty pairs is thin for a decile — four observations sit
+above it — so the percentile should be re-read at about ninety days and the
+distribution should probably roll rather than run all-time. And a percentile
+rule always finds a top decile, so it speaks about a third of the time even
+in a dull month; that is correct for a comparison, which is inherently
+relative, but it is a choice.
+
+### The order to build it in
+
+1. **The comparison composer.** Shared logic, vector-pinned, emitting
+   per-dimension modifiers rather than a sentence. Everything else depends on
+   what it emits. `describe_day_over_day` becomes its caller or its casualty.
+2. **The cloud anchors**, from the HOURLY series the narrative already reasons
+   from, not the daily mean. On 2026-09-21 the models' Day+0 mean was 45% with
+   a 14 to 64 spread while the day ran clear to overcast — one number for that
+   day is true and useless.
+3. **The wind anchors**, from `wind.describe_wind_shift`'s own pair, as values
+   rather than a sentence, so tile and prose cannot disagree about when the
+   wind turned.
+4. **UV and air quality split** into number and word. They arrive as prose
+   ("9.4 (Very High)"); splitting them by parsing a sentence in a renderer
+   would be the wrong side of the seam, so this is a schema and prompt change.
+5. **The Overview removed** from the narrative prompt, with its rules. Run
+   item 77's harness on the cut, because removing rules can move behaviour as
+   easily as adding them — item 59 step 3 proved that when splitting the call
+   turned `rain_expected` from a label into prose for ten days.
+6. **The page and the mailer** render the tiles. `ensemble` item 23 has the
+   wire contract the app already consumes, and the three surfaces should share
+   the tile vocabulary while differing in column count — two on a phone, wider
+   on a page.
+
+### The contract the app already consumes
+
+Built ahead of the data on the operator's instruction, so the pipeline has a
+shape to fill rather than a description to interpret — `ensemble` item 23:
+
+```
+'wind_anchors':  [{when, direction, sustained_kmh, gust_kmh}, ...]  time order
+'cloud_anchors': [{when, cover}, ...]                              time order
+'comparison':    {temp, wind, cloud, rain}    each null unless it moved
+```
+
+Speeds in km/h whatever the reader's unit; the unit lives in the tile header
+and the value converts at render. `direction` may be absent and the tile drops
+the letters rather than apologising — the common case, at 3 of 18 archived
+runs for a single agreed bearing and 7 of 18 for the shift.
+
+### Not yet decided
+
+Whether the Rain tile carries a comparison at all. A near-zero day against
+another near-zero day flips "wetter"/"drier" on a rounding difference, and
+rain is the dimension where the absolute matters more than the change.
+
