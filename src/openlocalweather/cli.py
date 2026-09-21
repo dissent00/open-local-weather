@@ -73,6 +73,7 @@ from openlocalweather.llm.anthropic import DEFAULT_MAX_TOKENS as DEFAULT_ANTHROP
 from openlocalweather.llm.anthropic import AnthropicProvider
 from openlocalweather.llm.gemini import GeminiProvider
 from openlocalweather.llm.gemini_interactions import GeminiInteractionsProvider, LLMResponseError
+from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
 from openlocalweather.observed import describe_observed_so_far
@@ -202,7 +203,10 @@ def _env(name: str, default: str = "") -> str:
 
 
 def _build_llm_provider(
-    *, thinking_level: str | None = None, providers: list[str] | None = None
+    *,
+    thinking_level: str | None = None,
+    providers: list[str] | None = None,
+    fallback_models: list[str] | None = None,
 ):
     """Builds the configured LLMProvider.
 
@@ -229,10 +233,105 @@ def _build_llm_provider(
     is how a one-off runs against a different provider without editing a
     committed file, which is exactly how this endpoint was first driven.
     """
-    provider_name = (
-        _env("LLM_PROVIDER") or (providers or [DEFAULT_LLM_PROVIDER])[0]
-    ).lower()
+    # ONE NAME, OR AN ORDER — ROADMAP item 81, 2026-09-21.
+    #
+    # The environment override still selects exactly ONE provider, because
+    # that is what it is for: `LLM_PROVIDER=gemini-interactions ...
+    # tools/rerender_narrative.py` is a one-off against a named endpoint, and
+    # a one-off that quietly fell through to a second vendor would report the
+    # wrong thing about the first.
+    #
+    # A LIST FROM CONFIG IS A CHAIN. `config.py` has carried this field as a
+    # list since 2026-09-15 with a validator saying only the first entry was
+    # used; that validator's warning is what this removes.
+    override = _env("LLM_PROVIDER")
+    names = (
+        [override.lower()]
+        if override
+        else [name.lower() for name in (providers or [DEFAULT_LLM_PROVIDER])]
+    )
 
+    # A NAME NOTHING CAN BUILD IS ALWAYS FATAL, checked before anything is
+    # attempted. `_build_one_llm_provider` signals both "unknown name" and
+    # "keys absent" with SystemExit, and the loop below treats SystemExit in a
+    # chain as "this deployment does not hold that vendor" — which is right
+    # for a missing key and badly wrong for a typo, since a misspelt entry
+    # would be dropped in silence and the deployment would run on a shorter
+    # chain than its config names. `config.py` validates the names it loads,
+    # so this guards the callers that bypass it.
+    unknown = [name for name in names if name not in VALID_LLM_PROVIDERS]
+    if unknown:
+        raise SystemExit(
+            f"Unknown LLM provider(s) {unknown} — expected one of "
+            f"{', '.join(VALID_LLM_PROVIDERS)}."
+        )
+
+    built = []
+    unavailable: list[str] = []
+    for name in names:
+        try:
+            built.append(
+                _build_one_llm_provider(
+                    name,
+                    thinking_level=thinking_level,
+                    fallback_models=fallback_models,
+                )
+            )
+        except SystemExit as e:
+            # A SINGLE NAME KEEPS ITS OLD BEHAVIOUR EXACTLY: the message that
+            # names the missing variable, and a non-zero exit. Nothing about a
+            # one-provider deployment changes, which is most of them.
+            if len(names) == 1:
+                raise
+            # In a CHAIN a missing key means "this deployment does not have
+            # that vendor", which is the operator's own answer to "if the user
+            # has the right api keys" — not an error. Collected rather than
+            # printed here so the order of the report follows the order of the
+            # chain even when the first entry is the one that is missing.
+            unavailable.append(f"{name}: {e}")
+
+    if not built:
+        raise SystemExit(
+            "No LLM provider could be built from llm_providers "
+            f"{names}. Each was unavailable:\n  " + "\n  ".join(unavailable)
+        )
+
+    for reason in unavailable:
+        print(
+            f"WARNING: configured LLM provider is unavailable and was dropped "
+            f"from the chain — {reason}",
+            file=sys.stderr,
+        )
+
+    if len(built) == 1:
+        return built[0]
+
+    # SAID OUT LOUD, every run. A deployment served by its second choice looks
+    # exactly like one served by its first, and which it was is the whole
+    # reliability question this chain exists to answer.
+    print(
+        "LLM fallback chain: "
+        + " -> ".join(
+            f"{type(p).__name__}({getattr(p, 'model', 'unknown')})" for p in built
+        ),
+        file=sys.stderr,
+    )
+    return FallbackProvider(built)
+
+
+def _build_one_llm_provider(
+    provider_name: str,
+    *,
+    thinking_level: str | None = None,
+    fallback_models: list[str] | None = None,
+):
+    """One provider by name, raising SystemExit when its keys are absent.
+
+    Split out of `_build_llm_provider` for the chain: the caller decides
+    whether a missing key ends the run or simply drops that entry, and this
+    stays the single place that knows which environment variable each vendor
+    needs.
+    """
     if provider_name == "gemini":
         api_key = _env("GEMINI_API_KEY")
         if not api_key:
@@ -284,6 +383,18 @@ def _build_llm_provider(
                 "(plus LLM_API_KEY for any hosted endpoint). "
                 "See QUICKSTART.md for per-service values."
             )
+        # The gateway's OWN fallback list — item 81. `LLM_FALLBACK_MODELS`
+        # overrides the config for a one-off, the same way LLM_PROVIDER does.
+        # `require_parameters` travels with it because a list of models is
+        # only as good as the routing behind it: without it OpenRouter may
+        # serve one through an upstream that treats the JSON schema as a hint,
+        # and the call is paid for and then fails validation.
+        configured = _env("LLM_FALLBACK_MODELS")
+        models = (
+            [m.strip() for m in configured.split(",") if m.strip()]
+            if configured
+            else list(fallback_models or [])
+        )
         return OpenAICompatProvider(
             # Empty is legitimate here: local runtimes like Ollama don't
             # need a key. Hosted endpoints will fail loudly on the first
@@ -292,6 +403,8 @@ def _build_llm_provider(
             model=model,
             base_url=base_url,
             json_mode=_env("LLM_JSON_MODE", "json_schema"),
+            fallback_models=models,
+            require_parameters=bool(models),
         )
 
     raise SystemExit(
@@ -345,7 +458,9 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
 
     gemini_thinking_level = _env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None
     llm_provider = _build_llm_provider(
-        thinking_level=gemini_thinking_level, providers=location.llm_providers
+        thinking_level=gemini_thinking_level,
+        providers=location.llm_providers,
+        fallback_models=location.llm_fallback_models,
     )
     waqi_token = _env("WAQI_TOKEN")
 
@@ -767,7 +882,11 @@ def _run_check_health(args: argparse.Namespace) -> int:
     location = load_location_config(args.config)
     # No thinking_level: the deprecation check is a factual lookup, not the
     # multi-step reasoning the forecast pipeline asks for.
-    llm = _build_llm_provider(thinking_level=None, providers=location.llm_providers)
+    llm = _build_llm_provider(
+        thinking_level=None,
+        providers=location.llm_providers,
+        fallback_models=location.llm_fallback_models,
+    )
     # Counted like any other call, through the SAME function the pipeline
     # and the replay use. This had its own near-copy until 2026-09-10, which
     # silently omitted the fail-closed check and the shout when a provider

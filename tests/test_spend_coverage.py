@@ -72,7 +72,17 @@ CAPPED_BY_CALLER = {
 
 
 def _generate_calls(tree: ast.Module) -> list[tuple[str, int]]:
-    """(enclosing function name, line) for every `<something>.generate(...)`."""
+    """(enclosing function name, line) for every `<something>.generate(...)`.
+
+    QUALIFIED `Class.method` WHEN THE FUNCTION IS ONE — added 2026-09-21 with
+    the fallback chain. `FallbackProvider.generate` calls `generate` on its
+    children and so appears here, and the only exemption key available was the
+    bare name "generate". That would have exempted every future method called
+    `generate` in the package, including the four providers' own, which is the
+    guard switching itself off to admit one caller. A qualified key exempts
+    exactly the one method. Module-level functions keep their bare name, so
+    every existing entry is unaffected.
+    """
     parents: dict[ast.AST, ast.AST] = {}
     for node in ast.walk(tree):
         for child in ast.iter_child_nodes(node):
@@ -90,8 +100,38 @@ def _generate_calls(tree: ast.Module) -> list[tuple[str, int]]:
             enclosing, (ast.FunctionDef, ast.AsyncFunctionDef)
         ):
             enclosing = parents.get(enclosing)
-        found.append((enclosing.name if enclosing else "<module>", node.lineno))
+        if enclosing is None:
+            found.append(("<module>", node.lineno))
+            continue
+
+        owner = parents.get(enclosing)
+        while owner is not None and not isinstance(
+            owner, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            owner = parents.get(owner)
+        prefix = f"{owner.name}." if isinstance(owner, ast.ClassDef) else ""
+        found.append((f"{prefix}{enclosing.name}", node.lineno))
     return found
+
+
+# Methods whose children are capped because the hooks their CALLER attached
+# are forwarded down to them. A different promise from CAPPED_BY_CALLER, which
+# says "somebody above me calls attach_spend_cap before calling me", and it is
+# checked differently: an AST cannot see a property setter fanning an
+# assignment out to a list, so the promise is kept by a behavioural test named
+# here rather than by a second scan.
+CAPPED_BY_FORWARDING = {
+    "FallbackProvider.generate": (
+        "ROADMAP item 81. `attach_spend_cap` assigns before_attempt, "
+        "after_attempt, after_response and on_poll onto the object it is "
+        "given; FallbackProvider's setters fan each assignment out to every "
+        "child, so a child's requests are counted by the caller's cap and "
+        "recorded against the child's own name via provider_identity. "
+        "Verified by test_fallback.py::"
+        "test_the_cap_reaches_every_provider_in_the_chain, which asserts the "
+        "forwarding rather than trusting it."
+    ),
+}
 
 
 def _names_used(fn: ast.FunctionDef) -> set[str]:
@@ -124,7 +164,7 @@ def test_every_call_to_a_model_is_counted():
 
     uncounted = []
     for path, fn_name, line in call_sites:
-        if fn_name in CAPPED_BY_CALLER:
+        if fn_name in CAPPED_BY_CALLER or fn_name in CAPPED_BY_FORWARDING:
             continue
         fn = _function(sources[path], fn_name)
         if fn is None or CAP not in _names_used(fn):

@@ -185,6 +185,20 @@ class LocationConfig(BaseModel):
     # to everyone's config file.
     llm_providers: list[str] = [DEFAULT_LLM_PROVIDER]
 
+    # The models an OpenRouter-style gateway should try, in order, INSIDE one
+    # request — ROADMAP item 81, 2026-09-21. Distinct from `llm_providers`
+    # above, which is the order of VENDORS this project walks itself: this
+    # list never leaves the gateway, and the gateway decides when to move down
+    # it. Empty for every deployment that does not use one.
+    #
+    # HERE RATHER THAN IN THE ENVIRONMENT, for the reason the provider itself
+    # moved here on 2026-09-15: which models serve a deployment is a decision
+    # that should have a diff, a commit message and a history, and a value
+    # typed into a hosting provider's web UI has none of those. `LLM_MODEL`
+    # stays in the environment because it is paired with `LLM_API_KEY` in the
+    # per-service setup; this is the deployment's own editorial choice.
+    llm_fallback_models: list[str] = []
+
     @field_validator("llm_providers")
     @classmethod
     def _known_providers(cls, v: list[str]) -> list[str]:
@@ -197,12 +211,13 @@ class LocationConfig(BaseModel):
         something the operator did not ask for. Caught at load, it names the
         valid set instead.
 
-        The warning on extra entries is the honest half of shipping a list
-        before the thing that consumes it. The shape is right for item 81's
-        fallback order and the schema should not have to change again to get
-        there; today only `[0]` is read, and an operator who writes a second
-        entry deserves to be told it does nothing rather than to discover it
-        during an outage.
+        THE LIST IS NOW AN ORDER, 2026-09-21. This validator used to warn
+        that entries after the first were ignored, which was the honest half
+        of shipping a list before the thing that consumes it. Item 81's chain
+        consumes it: `cli._build_llm_provider` builds every named provider,
+        drops the ones whose keys this deployment does not hold, and wraps
+        what is left in a `FallbackProvider`. The warning is gone because it
+        became false, and the schema never had to change to get here.
         """
         if not v:
             raise ValueError(
@@ -217,13 +232,6 @@ class LocationConfig(BaseModel):
                 f"{', '.join(VALID_LLM_PROVIDERS)}."
             )
 
-        if len(v) > 1:
-            print(
-                f"WARNING: llm_providers names {len(v)} providers and only the "
-                f"first ({v[0]}) is used. Fallback ordering is ROADMAP item 81 "
-                f"and is not built yet — the rest are ignored.",
-                file=sys.stderr,
-            )
 
         return [name.lower() for name in v]
 

@@ -173,6 +173,43 @@ location:
   # visible. Revert by putting `gemini` back.
   llm_providers:
     - gemini-interactions
+    # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
+    # replacement: Gemini answers when it can, and this takes the calls it
+    # sheds. Measured over 2026-08-28 to 09-21, the evening run failed on
+    # Gemini 500s and 503s five times in 29 runs and the morning run never did
+    # in 25 (one-sided Fisher p = 0.038), always after four attempts across
+    # roughly eight and a half minutes — long enough that no retry schedule
+    # this project would accept could have saved them.
+    #
+    # INERT UNTIL THE KEYS EXIST. With no LLM_API_KEY the entry is dropped and
+    # the run says so on stderr, which is the intended reading: a fallback
+    # that is configured and not yet reachable. Set LLM_API_KEY as a secret
+    # and LLM_BASE_URL and LLM_MODEL as repository variables to arm it.
+    - openai
+
+  # What the gateway itself tries, in order, inside ONE request — OpenRouter's
+  # `models` field. Different from the list above, which is the order this
+  # project walks between VENDORS; this order never leaves the gateway.
+  #
+  # ALL THREE ARE FREE TIERS and none is Gemini 3.6 Flash's equal; that was
+  # understood when they were chosen. Checked against OpenRouter's live model
+  # list on 2026-09-21: of 446 models, 24 are free, and there is no free Grok,
+  # Mistral, DeepSeek, Llama or Gemini among them. These three are the ones
+  # that advertise `response_format` with structured outputs AND hold the
+  # ~56,000-token prompt this project sends:
+  #
+  #   nemotron-3-super   120B MoE, 12B active, 262k context
+  #   dots-3-note        280B MoE, 16B active, 512k context
+  #   gemma-4-31b        30.7B dense, 262k context, closest to the incumbent
+  #                      by family, and `response_format` without strict
+  #                      structured outputs — the last resort of the three
+  #
+  # The free tier allows 20 requests a minute and 50 a day, against the four
+  # calls a day this deployment makes, so the ceiling is not the constraint.
+  llm_fallback_models:
+    - "nvidia/nemotron-3-super-120b-a12b:free"
+    - "dots-studio/dots-3-note-preview:free"
+    - "google/gemma-4-31b-it:free"
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   # The national CAP warning feed — ROADMAP item 2. Verified live

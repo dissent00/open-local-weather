@@ -10665,7 +10665,7 @@ redefine), item 77 (the harness any provider swap should be measured with).
 
 ---
 
-## 81. "Bring your own model" is a promise this project cannot keep · **Planned**
+## 81. "Bring your own model" is a promise this project cannot keep · **Partly shipped — the fallback chain and OpenRouter's model order built 2026-09-21; the supported matrix still needs a live run**
 
 Raised by the operator 2026-09-07, from item 80's finding: *"this means we'll
 need to define supported models/providers and keep up with this, rather than
@@ -10811,6 +10811,182 @@ both and mark rows stale), item 53.4 (the degradation machinery this reuses),
 item 68.
 
 ---
+
+
+### The chain, built 2026-09-21 — and the measurement that forced it
+
+The operator, reading the failure analysis of the 09-20 15:01Z run: *"the
+~25% failure rate on gemini during the US morning is pretty telling. I think
+we need to add a harness for openrouter that we can fail back to."*
+
+**The number, corrected.** That 25% was mine and it was wrong, because it
+mixed two Open-Meteo timeouts into the count. Split by cause over 2026-08-28
+to 09-21:
+
+| slot | runs | Gemini 5xx |
+|---|---:|---:|
+| 03:01Z | 25 | 0 |
+| 15:01Z | 29 | 5 |
+
+One-sided Fisher exact p = 0.038, which clears the bar the all-causes figure
+(p = 0.11) did not. All five were 500 or 503 after four attempts across
+roughly eight and a half minutes, so the vendor was shedding for longer than
+any retry schedule this project would accept. That is the finding: **the
+failures are capacity, not quota, and no amount of waiting repairs them.**
+15:01Z is the global busy hour for a free tier.
+
+### What was already built, deliberately, and what was left
+
+`config.py` has carried `llm_providers` as a LIST since 2026-09-15 with a
+validator that said out loud that only the first entry was read and named
+this item as the reason. `provider.py`'s docstring already said a new
+provider is a new class implementing the same Protocol and never a change to
+`pipeline.py`. So this is the thing that list was shaped for; the validator's
+warning is what the build removed, and no config file had to change shape.
+
+### Two orders, and they are not the same order
+
+- **`llm_providers` is the order of VENDORS this project walks itself.**
+  `FallbackProvider` holds the built providers and tries each in turn.
+- **`llm_fallback_models` is the order the GATEWAY walks inside one request.**
+  OpenRouter's `models` array. Checked against their API reference on
+  2026-09-21: it exists, it "attempts each one in order until a request
+  succeeds", and the response's `model` field names whichever served it.
+  I had told the operator it did not exist, from reading the model-routing
+  page, which is about the Auto Router. The operator said they thought it did.
+  They were right.
+
+That split is what keeps the code small: one hop is ours, because Gemini and
+OpenRouter are different vendors with different APIs, and everything after it
+is a list in a request body.
+
+### The one judgement the chain makes
+
+`LLMUnavailableError`, a SUBCLASS of `LLMResponseError` so every existing
+`except` keeps catching both. Only it falls through.
+
+- **Falls through:** the retry loop exhausted, an Interactions poll that never
+  reached a terminal state, and a non-retryable status in
+  `UNAVAILABLE_STATUS_CODES` — the retryable set plus 402, because on a
+  metered gateway no credit means this ACCOUNT cannot serve the request while
+  another vendor still can.
+- **Does not:** a schema validation failure, a 400, a 401, a 404. Those are
+  our prompt, our schema or our config, and the next model is handed exactly
+  the same ones. Falling back there pays twice to be told the same thing and
+  hides the real fault behind the second error message.
+
+### Three things it had to not break
+
+1. **The ledger must keep naming the vendor.** It read the provider class and
+   model straight off the object the cap was attached to, which was right
+   until a wrapper could sit between them; every row would have read
+   `FallbackProvider` and "unknown". `provider_identity` resolves through an
+   `active_provider` the wrapper sets for the duration of a call. The ledger
+   is what item 132 reasons from, and a chain that stopped it naming vendors
+   would answer the reliability question by destroying the evidence for it.
+2. **Every child must still be counted.** `attach_spend_cap` assigns its hooks
+   onto the object it is given, so `FallbackProvider`'s setters fan each
+   assignment out to every child. `tests/test_spend_coverage.py` caught the
+   new `.generate(` immediately, as designed — and its only exemption key was
+   the bare function name, which would have exempted every future method
+   called `generate`, including the four providers' own. The guard now
+   qualifies names as `Class.method`, so the exemption is exactly one method,
+   and the promise is kept by a behavioural test rather than by a second scan.
+3. **A one-provider deployment must not change.** It does not: a single name
+   whose key is missing raises the same SystemExit with the same message. In a
+   CHAIN a missing key means "this deployment does not hold that vendor",
+   which is the operator's own condition, and it is printed rather than fatal.
+
+### The models, and the part that is not good news
+
+The operator asked for free models near Gemini 3.6 Flash, ideally Grok or
+Mistral. Checked against OpenRouter's live model list on 2026-09-21: **446
+models, 24 free, and no free Grok, Mistral, DeepSeek, Llama or Gemini among
+them.** Every variant of those five families is paid.
+
+The three chosen, filtered for structured output and enough context for this
+deployment's ~56,000-token prompt:
+
+| model | context | note |
+|---|---:|---|
+| `nvidia/nemotron-3-super-120b-a12b:free` | 262k | 120B MoE, 12B active |
+| `dots-studio/dots-3-note-preview:free` | 512k | 280B MoE, 16B active |
+| `google/gemma-4-31b-it:free` | 262k | 30.7B dense; `response_format` without strict structured outputs, so it is the last resort |
+
+Two traps found while filtering, both worth remembering. The largest free
+model, `nemotron-3-ultra-550b` with a 1M window, does not advertise
+`response_format` at all and cannot serve these schemas. And `z-ai/glm-5.2:free`
+describes itself as a 1M-token model while OpenRouter reports its context as
+32,768 — a free endpoint capped far below the model's nominal window, which
+the model card does not say. `openrouter/free` was rejected for a different
+reason: it picks a free model at random per request, and a forecast that gets
+SCORED cannot have a different model each issuance.
+
+**None of the three is Gemini 3.6 Flash's equal, and the operator said so
+before choosing them:** *"I agree none are up to Gemini's standard, and this
+may mean the project is a dead end, as an unreliable forecasting tool is
+almost worse than none at all."* That is the right worry and it is the thing
+the supported matrix has to answer.
+
+### The harness, and what it does and does not say
+
+Item 77's manual form: the REAL narrative system prompt (39,482 chars) and
+this morning's REAL archived user prompt (106,730 chars), handed to a cold
+worker with no context, asked for the JSON the schema demands. The archived
+NEXT THREE DAYS value was patched to the FIXED composer output first — the
+archive is from before item 158's join fix, and testing a model's ability to
+copy a malformed sentence would have measured nothing.
+
+Verified by reading the output, not by the worker's own report:
+
+- Valid JSON; validates against `GeminiNarrativeResponse`; 4,246 characters of
+  narrative across all seven sections.
+- **All four composed blocks reproduced correctly**: `overview_comparison`
+  verbatim, the convective `timing` clause verbatim, `NEXT THREE DAYS` and the
+  wind shift with the leading capital the rules require.
+- The Overview carries no number, no model name and no CAPE jargon; the
+  comparison is not restated later; the sun-worded timing sentence appears
+  nowhere but the Overview, which is item 158 step 1's rule.
+- The model added no sentence of its own to the Overview, which the rule says
+  is the normal answer.
+
+**WHAT THIS DOES NOT SAY.** The worker is a Claude Haiku model, not one of the
+three. So this is evidence that the prompt is MODEL-PORTABLE — that 39,000
+characters written against one vendor's failure modes can be followed by a
+different family without special pleading — and it is not evidence about
+nemotron, dots-3 or gemma. That needs `LLM_API_KEY` and one command:
+
+    LLM_PROVIDER=openai LLM_BASE_URL=https://openrouter.ai/api/v1 \
+    LLM_MODEL=nvidia/nemotron-3-super-120b-a12b:free \
+    LLM_API_KEY=... .venv/bin/olw replay --out /tmp/nemotron
+
+`olw replay` is the right driver: it already sends the frozen prompt vectors
+through whatever provider is configured, already routes through the spend cap,
+and `LLM_PROVIDER` already selects exactly one provider so a one-off cannot
+fall through and report the wrong thing about the first.
+
+### Verified
+
+1,473 Python and 205 Dart. Eight mutations bit. **Two did not, and that is the
+finding worth keeping:** every chain test handed the wrapper a stub that
+raised `LLMUnavailableError`, so changing the code that actually PRODUCES one
+back to `LLMResponseError` left the Dart suite green at 203 tests and cost the
+Python suite only an unrelated config assertion. Stubs pin the branch; they
+say nothing about whether the thing the branch catches is ever thrown. Both
+sides now drive a real provider through a real retry loop against an endpoint
+that only answers 503, and both mutations bite.
+
+### Not done
+
+The supported matrix itself, which is this item's actual deliverable and needs
+the live runs above. `llm_providers` naming both `openai` and `anthropic`
+cannot be expressed, because `LLM_API_KEY`, `LLM_MODEL` and `LLM_BASE_URL` are
+single-valued and shared; Gemini to OpenRouter does not collide, so this is
+recorded rather than fixed. And the chain is INERT on the live deployment
+until `LLM_API_KEY` is set as a secret with `LLM_BASE_URL` and `LLM_MODEL` as
+repository variables — until then every run prints that the `openai` entry was
+dropped, which is the honest reading of a fallback that is configured and not
+yet reachable.
 
 ## 82. Hazards nobody's model forecasts, and the duplicate-warning problem · **Planned**
 

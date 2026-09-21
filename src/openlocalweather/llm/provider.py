@@ -44,6 +44,33 @@ DEFAULT_LLM_PROVIDER = "gemini"
 T = TypeVar("T", bound=BaseModel)
 
 
+def provider_identity(provider) -> tuple[str, str]:
+    """Who to record for the request about to happen: (class name, model).
+
+    ROADMAP item 81, 2026-09-21. The spend ledger names the provider and the
+    model on every row, and it read them straight off the object the cap was
+    attached to. That was exactly right while the object that took the call
+    was the object that made it.
+
+    A FALLBACK CHAIN BREAKS THAT. `attach_spend_cap` wraps the chain, so every
+    row would read `FallbackProvider` and a model of "unknown" — and the
+    ledger is the instrument item 132's whole question rests on, which is
+    which vendor is actually serving this deployment and at what rate it
+    fails. A chain that made the ledger stop naming vendors would answer the
+    reliability question by destroying the evidence for it.
+
+    So a wrapper declares which of its children is live by setting
+    `active_provider`, and this resolves through it. Recursive, because a
+    chain may hold a chain; `None` means nothing is delegating right now and
+    the object itself is the answer.
+    """
+    active = getattr(provider, "active_provider", None)
+    if active is not None:
+        return provider_identity(active)
+
+    return type(provider).__name__, getattr(provider, "model", "unknown")
+
+
 class LLMProvider(Protocol):
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:
         """Calls the LLM and returns a validated instance of response_schema.

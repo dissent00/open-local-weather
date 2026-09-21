@@ -40,7 +40,7 @@ from typing import TypeVar
 import requests
 from pydantic import BaseModel, ValidationError
 
-from openlocalweather.llm.errors import LLMResponseError
+from openlocalweather.llm.errors import LLMUnavailableError, LLMResponseError
 from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,
@@ -62,6 +62,12 @@ REQUEST_TIMEOUT_S = 120  # generous: some hosted models are slow to first token
 # llm/provider.py's contract, and the two differ already — this one
 # honors Retry-After, which Gemini's API doesn't send.
 RETRYABLE_STATUS_CODES = frozenset({408, 409, 429, 500, 502, 503, 504})
+# The statuses that mean "this vendor cannot serve you", as opposed to "this
+# request was wrong" — ROADMAP item 81's fallback chain branches on the
+# difference. A superset of the retryable set: by the time a status is read
+# here the retries are spent, and 402 (no credit on a metered gateway) is
+# worth another vendor although it is never worth another attempt.
+UNAVAILABLE_STATUS_CODES = RETRYABLE_STATUS_CODES | {402}
 # 30s, 60s, 420s across four attempts. Kept in step with gemini.py, which
 # carries the reasoning and the measurement — the argument is about how
 # provider capacity recovers, which is not a Gemini trait, and leaving two of
@@ -98,6 +104,8 @@ class OpenAICompatProvider:
         model: str,
         base_url: str,
         json_mode: str = "json_schema",
+        fallback_models: list[str] | None = None,
+        require_parameters: bool = False,
         temperature: float | None = None,
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
@@ -121,6 +129,22 @@ class OpenAICompatProvider:
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.json_mode = json_mode
+        # OPENROUTER'S OWN FALLBACK, inside one request — ROADMAP item 81.
+        # `models` is tried in order until one succeeds, so the gateway walks
+        # its own list and the chain above this only has to carry the hop
+        # BETWEEN vendors. Empty for every other endpoint in this class's
+        # family: `models` and `provider` are OpenRouter extensions and OpenAI
+        # itself rejects unknown top-level fields, so they are sent only when
+        # a deployment asks for them by configuring a list.
+        self.fallback_models = list(fallback_models or [])
+        # `provider.require_parameters` restricts routing to upstreams that
+        # support every parameter in the request. Without it OpenRouter may
+        # route to one that treats `response_format` as a hint — their own
+        # docs say enforcement varies and some providers "treat schemas as
+        # strong hints" — and the call is paid for and then fails validation,
+        # which this project would read as the MODEL being unable to follow
+        # the schema rather than the route being wrong.
+        self.require_parameters = require_parameters
         self.temperature = temperature
         # Called immediately before EACH HTTP request, including every retry.
         #
@@ -183,7 +207,7 @@ class OpenAICompatProvider:
                 )
                 time.sleep(delay)
 
-        raise LLMResponseError(
+        raise LLMUnavailableError(
             f"LLM request to {self.endpoint} failed after {MAX_ATTEMPTS} attempts: {last_exc}"
         ) from last_exc
 
@@ -217,6 +241,13 @@ class OpenAICompatProvider:
         }
         if self.temperature is not None:
             payload["temperature"] = self.temperature
+        if self.fallback_models:
+            # The primary FIRST, then the alternates: `model` above names the
+            # one this deployment chose and the ledger records, and `models`
+            # is the order the gateway walks if it cannot serve it.
+            payload["models"] = [self.model, *self.fallback_models]
+        if self.require_parameters:
+            payload["provider"] = {"require_parameters": True}
 
         resp = self._post_with_retry(payload)
 
@@ -230,7 +261,23 @@ class OpenAICompatProvider:
         if resp.status_code != 200 or "error" in body:
             err = body.get("error", {})
             message = err.get("message") if isinstance(err, dict) else str(err)
-            raise LLMResponseError(
+            # WHICH KIND OF FAILURE, so a chain above can tell a vendor that is
+            # down from a request that was wrong — ROADMAP item 81. Reached
+            # when the retry loop returned a status it does not retry, or when
+            # a 200 carried an error body, which OpenRouter does for an
+            # upstream that refused.
+            #
+            # A 402 is here because on a credit-metered gateway it means this
+            # ACCOUNT cannot serve the request while another provider still
+            # can, which is the chain's whole purpose. A 400, 401 or 404 is
+            # not: the key, the model name or the schema is wrong, and every
+            # later entry is handed the same one.
+            error = (
+                LLMUnavailableError
+                if resp.status_code in UNAVAILABLE_STATUS_CODES
+                else LLMResponseError
+            )
+            raise error(
                 f"LLM error (HTTP {resp.status_code}): {message or resp.text[:500]}"
             )
 

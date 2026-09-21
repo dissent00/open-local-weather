@@ -26,6 +26,16 @@ class OpenAiCompatProvider implements LlmProvider {
   /// `json_object` only guarantees valid JSON, so the schema is injected
   /// into the prompt instead — the fallback that makes local runtimes usable.
   final String jsonMode;
+
+  /// The models an OpenRouter-style gateway should try, in order, inside ONE
+  /// request — upstream item 81. Empty for every other endpoint this class
+  /// covers. See the payload below for why it is conditional.
+  final List<String> fallbackModels;
+
+  /// Restricts the gateway to upstreams supporting every parameter in the
+  /// request, which for this project means the JSON schema.
+  final bool requireParameters;
+
   final http.Client _client;
 
   /// Attempts, backoff and timeout as one decision. Defaults to the
@@ -46,6 +56,8 @@ class OpenAiCompatProvider implements LlmProvider {
     required this.model,
     required this.baseUrl,
     this.jsonMode = 'json_schema',
+    this.fallbackModels = const [],
+    this.requireParameters = false,
     http.Client? client,
     this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
@@ -103,6 +115,21 @@ class OpenAiCompatProvider implements LlmProvider {
           {'role': 'user', 'content': userPrompt},
         ],
         'response_format': responseFormat,
+        // OPENROUTER'S OWN FALLBACK, inside one request — upstream item 81.
+        // `models` is tried in order until one succeeds, so the gateway walks
+        // its own list and the chain above only carries the hop BETWEEN
+        // vendors. Sent only when a deployment configures a list: these are
+        // OpenRouter extensions and OpenAI itself rejects unknown top-level
+        // fields, while this class also covers Groq, Together, vLLM and
+        // Ollama. The primary comes first, because `model` above is the one
+        // the record names.
+        if (fallbackModels.isNotEmpty) 'models': [model, ...fallbackModels],
+        // Without this OpenRouter may route to an upstream that treats
+        // `response_format` as a hint — their docs say enforcement varies —
+        // and the call is paid for and then fails validation, which reads as
+        // the MODEL being unable to follow the schema rather than the route
+        // being wrong.
+        if (requireParameters) 'provider': {'require_parameters': true},
       },
       label: 'LLM',
       policy: retryPolicy,
@@ -113,7 +140,12 @@ class OpenAiCompatProvider implements LlmProvider {
     if (resp.statusCode != 200 || body.containsKey('error')) {
       final err = body['error'];
       final msg = err is Map ? err['message'] : null;
-      throw LlmResponseError('LLM error (HTTP ${resp.statusCode}): ${msg ?? resp.body}');
+      // WHICH KIND OF FAILURE, so a chain above can tell a vendor that is down
+      // from a request that was wrong — upstream item 81.
+      final detail = 'LLM error (HTTP ${resp.statusCode}): ${msg ?? resp.body}';
+      throw unavailableStatusCodes.contains(resp.statusCode)
+          ? LlmUnavailableError(detail)
+          : LlmResponseError(detail);
     }
 
     final choices = (body['choices'] as List?) ?? const [];

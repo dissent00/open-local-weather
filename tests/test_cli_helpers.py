@@ -64,7 +64,7 @@ from openlocalweather.llm.openai_compat import OpenAICompatProvider
 
 LLM_ENV_VARS = (
     "LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL",
-    "LLM_JSON_MODE", "LLM_MAX_TOKENS",
+    "LLM_JSON_MODE", "LLM_MAX_TOKENS", "LLM_FALLBACK_MODELS",
     "GEMINI_API_KEY", "GEMINI_MODEL",
 )
 
@@ -377,6 +377,119 @@ def test_the_live_config_is_what_we_think_it_is():
     """
     from openlocalweather.config import load_location_config
 
-    assert load_location_config("config/location.yaml").llm_providers == [
-        "gemini-interactions"
+    live = load_location_config("config/location.yaml")
+    # THE ORDER IS THE CHANGE — ROADMAP item 81, 2026-09-21. Gemini answers
+    # when it can and the gateway takes what it sheds.
+    assert live.llm_providers == ["gemini-interactions", "openai"]
+    # The three the operator chose on 2026-09-21, from OpenRouter's live free
+    # list. Pinned by NAME because a typo in a model id is a run that fails at
+    # the gateway, on the day the primary was already down.
+    assert live.llm_fallback_models == [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "dots-studio/dots-3-note-preview:free",
+        "google/gemma-4-31b-it:free",
     ]
+
+
+# ---------------------------------------------------------------------------
+# The chain — ROADMAP item 81
+# ---------------------------------------------------------------------------
+
+
+def test_a_list_of_providers_builds_a_chain(monkeypatch):
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("LLM_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+
+    provider = _build_llm_provider(providers=["gemini", "openai"])
+    assert isinstance(provider, FallbackProvider)
+    assert provider.model == "gemini-3.6-flash"
+
+
+def test_a_provider_whose_key_is_absent_is_dropped_loudly(monkeypatch, capsys):
+    """The operator's own condition — "if the user has the right api keys".
+    A missing second key is not an error, it is a deployment that holds one
+    vendor. It still gets SAID: a chain silently shorter than its config is
+    the failure `config.py`'s validator was written against."""
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")  # and no LLM_* at all
+
+    provider = _build_llm_provider(providers=["gemini", "openai"])
+    assert isinstance(provider, GeminiProvider), "the chain kept an unbuildable entry"
+
+    err = capsys.readouterr().err
+    assert "unavailable and was dropped" in err
+    assert "openai" in err
+
+
+def test_a_chain_with_nothing_buildable_exits_naming_every_reason(monkeypatch):
+    with pytest.raises(SystemExit, match="No LLM provider could be built"):
+        _build_llm_provider(providers=["gemini", "openai"])
+
+
+def test_one_provider_missing_its_key_still_exits_as_it_always_did(monkeypatch):
+    """Most deployments name one provider. Nothing about them changes."""
+    with pytest.raises(SystemExit, match="GEMINI_API_KEY"):
+        _build_llm_provider(providers=["gemini"])
+
+
+def test_the_environment_override_selects_exactly_one(monkeypatch):
+    """`LLM_PROVIDER=... tools/rerender_narrative.py` is a one-off against a
+    named endpoint, and a one-off that fell through to a second vendor would
+    report the wrong thing about the first."""
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    monkeypatch.setenv("LLM_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("LLM_MODEL", "some/model")
+
+    provider = _build_llm_provider(providers=["gemini", "openai"])
+    assert not isinstance(provider, FallbackProvider)
+    assert isinstance(provider, GeminiProvider)
+
+
+def test_the_gateway_is_handed_its_own_model_order(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("LLM_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
+
+    provider = _build_llm_provider(
+        fallback_models=["dots-studio/dots-3-note-preview:free", "google/gemma-4-31b-it:free"]
+    )
+    assert provider.fallback_models == [
+        "dots-studio/dots-3-note-preview:free",
+        "google/gemma-4-31b-it:free",
+    ]
+    # Travels with the list: a model order is only as good as the routing
+    # behind it, and without this the gateway may serve one through an
+    # upstream that treats the JSON schema as a hint.
+    assert provider.require_parameters is True
+
+
+def test_no_model_order_means_no_openrouter_extensions(monkeypatch):
+    """`models` and `provider` are OpenRouter fields. OpenAI itself rejects
+    unknown top-level keys, and this class also covers Groq, Together, vLLM
+    and Ollama."""
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setenv("LLM_MODEL", "gpt-5-mini")
+
+    provider = _build_llm_provider()
+    assert provider.fallback_models == []
+    assert provider.require_parameters is False
+
+
+def test_a_misspelt_provider_in_a_chain_is_fatal_not_dropped(monkeypatch):
+    """The trap the diff review caught. A chain treats SystemExit as "this
+    deployment does not hold that vendor", which is right for a missing key
+    and wrong for a typo: the run would quietly use a shorter chain than its
+    config names, on the day the primary was already down."""
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    with pytest.raises(SystemExit, match="Unknown LLM provider"):
+        _build_llm_provider(providers=["gemini", "openai-compatible"])

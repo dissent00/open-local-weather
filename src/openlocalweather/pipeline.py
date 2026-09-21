@@ -81,6 +81,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_extended_trend,
 )
+from openlocalweather.llm.provider import provider_identity
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
@@ -581,10 +582,18 @@ def attach_spend_cap(
         # eligible to be completed with this attempt's outcome.
         pending["at"] = None
         at = datetime.now(timezone.utc)
+        # THE VENDOR THAT IS ABOUT TO SPEND, not the object the cap was
+        # attached to — ROADMAP item 81. These two were the same thing until a
+        # fallback chain could sit between them, and reading them off the
+        # wrapper would write `FallbackProvider` and "unknown" on every row.
+        # The ledger is what item 132 reasons from; a chain that stopped it
+        # naming vendors would answer the reliability question by destroying
+        # the evidence for it. See `provider_identity`.
+        name, model = provider_identity(provider)
         used = record_attempt(
             data_dir,
-            provider=type(provider).__name__,
-            model=getattr(provider, "model", "unknown"),
+            provider=name,
+            model=model,
             purpose=purpose,
             max_calls=max_calls,
             now=at,
@@ -634,8 +643,8 @@ def attach_spend_cap(
     if hasattr(provider, "on_poll"):
         provider.on_poll = lambda: record_poll(
             data_dir,
-            provider=type(provider).__name__,
-            model=getattr(provider, "model", "unknown"),
+            provider=provider_identity(provider)[0],
+            model=provider_identity(provider)[1],
             purpose=purpose,
         )
 

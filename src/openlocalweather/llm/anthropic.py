@@ -35,7 +35,7 @@ from typing import Any, TypeVar
 import requests
 from pydantic import BaseModel, ValidationError
 
-from openlocalweather.llm.errors import LLMResponseError
+from openlocalweather.llm.errors import LLMUnavailableError, LLMResponseError
 from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
     OUTCOME_TIMEOUT,
@@ -171,7 +171,7 @@ class AnthropicProvider:
                 )
                 time.sleep(delay)
 
-        raise LLMResponseError(
+        raise LLMUnavailableError(
             f"Anthropic request failed after {MAX_ATTEMPTS} attempts: {last_exc}"
         ) from last_exc
 

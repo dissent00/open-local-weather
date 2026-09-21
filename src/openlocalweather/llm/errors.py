@@ -26,3 +26,29 @@ class LLMResponseError(RuntimeError):
     the scored forecast exists and is worth keeping; see
     DEGRADATION_NARRATIVE.
     """
+
+
+class LLMUnavailableError(LLMResponseError):
+    """The vendor could not be reached or would not finish — as distinct from
+    answering with something we could not use.
+
+    ROADMAP item 81, added 2026-09-21 for the fallback chain. A chain has to
+    decide, at the moment one provider fails, whether trying the NEXT one is
+    a repair or a waste, and the two failures look identical through
+    `LLMResponseError`:
+
+    - A 503 after four attempts across eight and a half minutes means Google
+      is shedding load. Another vendor is very likely fine. Measured over
+      2026-08-28 to 09-21: five such failures in 29 evening runs and none in
+      25 morning ones (p = 0.038), all of them 500 or 503.
+    - A response that fails schema validation means OUR prompt, OUR schema or
+      this model's inability to follow them. The next model is handed the same
+      prompt and the same schema, so it will very likely fail the same way —
+      at double the cost, and with the real fault hidden behind a second
+      error message.
+
+    So only THIS one falls through. A SUBCLASS rather than a sibling because
+    every existing `except LLMResponseError` must keep catching both: the
+    judgment call still aborts the run and the rendering call still degrades
+    the issuance, whichever kind of failure ended the chain.
+    """

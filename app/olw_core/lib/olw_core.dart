@@ -42,6 +42,7 @@ export 'src/llm/gemini.dart';
 export 'src/llm/openai_compat.dart';
 export 'src/llm/prompt.dart';
 export 'src/llm/provider.dart';
+export 'src/llm/fallback.dart';
 export 'src/llm/schema.dart';
 export 'src/open_meteo.dart';
 export 'src/review.dart';

@@ -61,7 +61,7 @@ from typing import Callable, TypeVar
 import requests
 from pydantic import BaseModel, ValidationError
 
-from openlocalweather.llm.errors import LLMResponseError
+from openlocalweather.llm.errors import LLMUnavailableError, LLMResponseError
 from openlocalweather.llm.gemini import MAX_ATTEMPTS, RETRY_DELAYS_S, RETRYABLE_STATUS_CODES
 from openlocalweather.llm.provider import (
     AfterAttempt,
@@ -347,7 +347,7 @@ class GeminiInteractionsProvider:
                 )
                 time.sleep(delay)
 
-        raise LLMResponseError(
+        raise LLMUnavailableError(
             f"Interactions submit failed after {MAX_ATTEMPTS} attempts: {last_exc}"
         )
 
@@ -382,7 +382,7 @@ class GeminiInteractionsProvider:
             if last.get("status") in TERMINAL_STATUSES:
                 return last
 
-        raise LLMResponseError(
+        raise LLMUnavailableError(
             f"Interaction {interaction_id} did not reach a terminal state within "
             f"{sum(POLL_DELAYS_S)}s (last status {last.get('status')!r})."
         )

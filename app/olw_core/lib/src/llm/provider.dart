@@ -72,12 +72,40 @@ class LlmResponseError implements Exception {
   String toString() => 'LlmResponseError: $message';
 }
 
+/// The vendor could not be reached or would not finish — as distinct from
+/// answering with something we could not use. Upstream ROADMAP item 81.
+///
+/// A fallback chain has to decide, the moment one provider fails, whether
+/// trying the next is a repair or a waste, and the two look identical through
+/// [LlmResponseError]. A 503 after four attempts means the vendor is shedding
+/// load and another one is very likely fine. A response that fails schema
+/// validation means the prompt, the schema, or this model's ability to follow
+/// them, and the next model is handed the same prompt and the same schema.
+///
+/// A SUBCLASS rather than a sibling, so every existing `on LlmResponseError`
+/// keeps catching both: the judgment call still aborts and the narrative call
+/// still degrades, whichever kind of failure ended the chain.
+class LlmUnavailableError extends LlmResponseError {
+  LlmUnavailableError(super.message);
+  @override
+  String toString() => 'LlmUnavailableError: $message';
+}
+
 /// Transient statuses worth retrying, shared by all three providers.
 ///
 /// 529 is Anthropic's `overloaded_error`. It is included for everyone
 /// because it costs nothing and this project has already lost a whole run to
 /// exactly this class of failure before retries existed.
 const Set<int> retryableStatusCodes = {408, 409, 429, 500, 502, 503, 504, 529};
+
+/// The statuses meaning "this vendor cannot serve you", as opposed to "this
+/// request was wrong" — upstream item 81's chain branches on the difference.
+/// A superset of the retryable set: by the time a status is read here the
+/// retries are spent, and 402 (no credit on a metered gateway) is worth
+/// another vendor although it is never worth another attempt. A 400, 401 or
+/// 404 is not: the key, the model id or the schema is wrong, and every later
+/// entry is handed the same one.
+const Set<int> unavailableStatusCodes = {...retryableStatusCodes, 402};
 
 /// How hard to try, how long to wait, and how long to allow one request.
 ///
@@ -242,7 +270,9 @@ Future<http.Response> postWithRetry({
     }
     if (attempt < policy.attempts) await Future<void>.delayed(delay);
   }
-  throw LlmResponseError(
+  // UNAVAILABLE, not merely failed: the retries are spent and nothing
+  // answered, which is the one failure another vendor can repair.
+  throw LlmUnavailableError(
       '$label request failed after ${policy.attempts} attempts: $lastError');
 }
 

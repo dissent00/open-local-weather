@@ -34,7 +34,7 @@ from openlocalweather.llm.provider import (
     http_outcome,
     report_outcome,
 )
-from openlocalweather.llm.errors import LLMResponseError
+from openlocalweather.llm.errors import LLMUnavailableError, LLMResponseError
 from openlocalweather.llm.schema import gemini_schema_facts, to_gemini_schema
 
 # Re-exported: it lived here until 2026-09-11 and cli.py, the other
@@ -232,7 +232,7 @@ class GeminiProvider:
                 )
                 time.sleep(delay)
 
-        raise LLMResponseError(
+        raise LLMUnavailableError(
             f"Gemini request failed after {MAX_ATTEMPTS} attempts: {last_exc}"
         ) from last_exc
 

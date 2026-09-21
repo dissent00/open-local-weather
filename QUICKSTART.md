@@ -221,6 +221,42 @@ Set `llm_providers: [openai]` in `config/location.yaml`, then under
 > endpoint doesn't support strict structured output. Add a variable
 > `LLM_JSON_MODE` = `json_object` and try again.
 
+### Keeping a second vendor in reserve
+
+`llm_providers` is an ORDER, not a single choice. Name more than one and each
+is tried in turn when the one before it is unavailable:
+
+```yaml
+llm_providers:
+  - gemini-interactions
+  - openai
+```
+
+A provider whose key this deployment does not hold is dropped from the chain
+and said so on stderr, so you can name one before you have its key.
+
+Only a vendor being DOWN moves down the list — a timeout, a 429, a 5xx, or a
+402 on a metered gateway. A response that fails schema validation does not:
+the next model is handed the same prompt and the same schema, so it would fail
+the same way at twice the cost, with the real fault hidden behind the second
+error.
+
+On OpenRouter you can also give the gateway its own order, tried inside ONE
+request, which costs nothing extra and never leaves their infrastructure:
+
+```yaml
+llm_fallback_models:
+  - "nvidia/nemotron-3-super-120b-a12b:free"
+  - "dots-studio/dots-3-note-preview:free"
+```
+
+Setting this also sends `provider.require_parameters`, which keeps OpenRouter
+from routing you to an upstream that treats the JSON schema as a hint. Free
+model ids end in `:free` and allow 20 requests a minute and 50 a day, against
+the four calls a day two issuances cost. Check the model's context window
+against your own prompt size first — `olw prompt-size` prints it, and this
+deployment's is about 56,000 tokens.
+
 ---
 
 ## Step 5 — Turn on GitHub Pages
