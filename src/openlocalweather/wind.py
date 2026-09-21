@@ -141,9 +141,22 @@ def _directions_at(hourly: dict, models: list[str], hour: int) -> list[float]:
     return out
 
 
-def _values_at(hourly: dict, models: list[str], hour: int, variable: str) -> list[float]:
+def values_at(hourly: dict, models: list[str], hour: int, variable: str) -> list[float]:
     """Each model's value of `variable` at local `hour`, suffixed key first
-    and the bare key as the fallback, exactly as the directions are read."""
+    and the bare key as the fallback, exactly as the directions are read.
+
+    PUBLIC SINCE 2026-09-21 because `tiles.py` samples the same block at the
+    same anchors for the sky — ROADMAP item 159 step 2. A second reader of
+    this shape would be a second thing to keep in step with the suffixed and
+    bare key fallback, which is the sort of detail that diverges silently.
+
+    THE BLOCK IS ONE WHOLE LOCAL DAY, not a forward window: its caller passes
+    `guidance.primary_hourly`, which is `forecast_days=1` and runs 00:00 to
+    23:00. Worth stating because HOURS AHEAD in the prompt is a FORWARD window
+    over the same variables, and reading an anchor out of that one instead
+    resolves 03:00 to tomorrow — which is exactly the false alarm raised and
+    withdrawn on 2026-09-21.
+    """
     hours = hourly.get("hourly") or {}
     times = hours.get("time") or []
     idx = next((i for i, t in enumerate(times) if _hour_of(t) == hour), None)
@@ -199,11 +212,11 @@ def describe_wind_timeline(
     parts: list[str] = []
     hours: list[int] = []
     for hour, when in SHIFT_ANCHORS:
-        speeds = _values_at(hourly, models, hour, "wind_speed_10m")
+        speeds = values_at(hourly, models, hour, "wind_speed_10m")
         if not speeds:
             continue
 
-        gusts = _values_at(hourly, models, hour, "wind_gusts_10m")
+        gusts = values_at(hourly, models, hour, "wind_gusts_10m")
         point = consensus_direction(_directions_at(hourly, models, hour))
         lead = f"{_ADJECTIVE[point]} {when}" if point else when
         clause = f"{lead} at {_kmh_and_kt(sum(speeds) / len(speeds))}"

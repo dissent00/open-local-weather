@@ -4130,3 +4130,78 @@ def test_a_tile_value_that_fits_leaves_no_finding(tmp_path, monkeypatch):
     assert not [
         f for f in (entry.meta.narrative_findings or []) if f.kind == CLAIM_DISPLAY_TOO_LONG
     ]
+
+
+# ---------------------------------------------------------------------------
+# Which hourly block a clock-sensitive composer is given — 2026-09-21
+# ---------------------------------------------------------------------------
+
+
+def _hourly_with_directions(times: list[str], bearing: float) -> dict:
+    fields: dict[str, list] = {"time": times}
+    for model in MODELS:
+        n = len(times)
+        fields[f"precipitation_{model}"] = [0.0] * n
+        fields[f"windgusts_10m_{model}"] = [10.0] * n
+        fields[f"wind_gusts_10m_{model}"] = [10.0] * n
+        fields[f"wind_speed_10m_{model}"] = [8.0] * n
+        fields[f"temperature_2m_{model}"] = [22.0] * n
+        fields[f"pressure_msl_{model}"] = [1012.0] * n
+        fields[f"cloud_cover_{model}"] = [10.0] * n
+        # The anchors that matter carry the bearing; the rest repeat it, so a
+        # clause built from EITHER block is well formed and only its CONTENT
+        # says which block it came from.
+        fields[f"wind_direction_10m_{model}"] = [bearing] * n
+    return {"hourly": fields}
+
+
+def test_the_wind_shift_is_given_the_whole_day_not_the_forward_window(
+    tmp_path, monkeypatch
+):
+    """THE WIRING, pinned behaviourally — and the reason it is worth pinning.
+
+    `guidance.primary_hourly` is a `forecast_days=1` fetch covering one whole
+    local day; `guidance.forward_hourly` is that same block trimmed to the
+    hours ahead. They carry the SAME VARIABLES UNDER THE SAME NAMES, so
+    `describe_wind_shift(guidance.forward_hourly, ...)` compiles, runs, and
+    produces a plausible clause — in which the 03:00 anchor resolves to
+    TOMORROW, because a forward window from 06:00 does not reach today's small
+    hours. The clause would then describe a rotation running backwards in
+    time and nothing would catch it: the vectors pass their own fixture and
+    cannot see the wiring.
+
+    I made exactly that mistake on 2026-09-21 while reading the archived
+    prompt, which shows the forward window and not the day. The composer was
+    correct; my reading was not. This test is what would have answered it in
+    one line.
+    """
+    today_block = _hourly_with_directions(
+        [f"2026-08-11T{h:02d}:00" for h in (0, 3, 6, 12, 18, 21)], 45.0
+    )
+    forward_block = _hourly_with_directions(
+        [f"2026-08-11T{h:02d}:00" for h in (6, 12, 18)]
+        + [f"2026-08-12T{h:02d}:00" for h in (0, 3, 6)],
+        225.0,
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: today_block
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_block
+    )
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 1))
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    prompt = llm.user_prompts
+    shift = prompt.split("WIND SHIFT")[1].split("\n")[1]
+    # 45° is northeasterly and lives only in the whole-day block; 225° is
+    # southwesterly and lives only in the forward window.
+    assert "northeast" in shift, f"the wind shift was built from the wrong block: {shift}"
+    assert "southwest" not in shift, shift

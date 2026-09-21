@@ -1157,6 +1157,28 @@ void main() {
       }
     });
 
+    test('cloud_anchors', () {
+      // Upstream item 159 step 2. Read from the WHOLE DAY the wind shift
+      // reads, at the same anchors, so the two tiles describe the same three
+      // moments. Empty when every anchor is behind the reader.
+      for (final c in loadVectors('cloud_anchors.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = cloudAnchors(
+          (i['hourly_multi_model'] as Map).cast<String, Object?>(),
+          (i['models'] as List).cast<String>(),
+          issuedHour: i['issued_hour'] as int,
+        );
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+
+    test('sky_word', () {
+      for (final c in loadVectors('sky_word.json')['cases'] as List) {
+        final v = ((c as Map)['input'] as Map)['cover_pct'] as num?;
+        expectMatches(skyWord(v?.toDouble()), c['expected'], c['name'] as String);
+      }
+    });
+
     test('notable_moves', () {
       for (final c in loadVectors('tile_notable_moves.json')['cases'] as List) {
         final history = [
@@ -1852,6 +1874,8 @@ void main() {
       'forward_calendar.json',
       'false_weekday_claims.json',
       'overlong_display_values.json',
+      'cloud_anchors.json',
+      'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',
       'daypart_without_sun.json',

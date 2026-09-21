@@ -1464,6 +1464,24 @@ class IssuanceSnapshot(BaseModel):
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
+
+    # THE SKY AT EACH ANCHOR HOUR, for the at-a-glance tiles — ROADMAP item
+    # 159 step 2, `ensemble` item 23. `[{"when": ..., "cover": ...}]` in time
+    # order, empty when no anchor is still ahead.
+    #
+    # FROM CODE, NOT FROM THE NARRATIVE, like `temp_high_low_display` above
+    # and for the same reason: the model is not asked to do work this project
+    # can do, and a display value the model writes drifts in shape — which is
+    # what `rain_expected` did the day the call was split.
+    #
+    # A DAY'S SHAPE RATHER THAN ITS MEAN. On 2026-09-21 the models' Day+0
+    # cloud mean was 45% with a 14-to-64 spread while the day ran clear in the
+    # morning to overcast under afternoon convection, which is what the
+    # forecast's own prose said. One number for that day is true and useless.
+    #
+    # NOT ON IssuanceSnapshot: a snapshot preserves what an earlier issuance
+    # PUBLISHED, and the tiles always show the current one.
+    cloud_anchors: list[dict[str, str]] = Field(default_factory=list)
     mslp_trend_24h: str
     synoptic_pattern: str
     uv_index_max: str | None = None

@@ -154,7 +154,16 @@ List<double> _directionsAt(Map<String, Object?> hourly, List<String> models, int
 /// Lowercase and unpunctuated, for the same reason describeExtendedTrend ships
 /// a clause: the prompt uses it verbatim, so anything left to phrase is
 /// something that can be phrased wrong.
-List<double> _valuesAt(
+/// Each model's value of `variable` at local `hour`, suffixed key first and
+/// the bare key as the fallback. PUBLIC SINCE 2026-09-21 because
+/// `tiles.dart` samples the same block at the same anchors for the sky.
+///
+/// THE BLOCK IS ONE WHOLE LOCAL DAY, not a forward window: the caller
+/// passes the `forecast_days=1` fetch, which runs 00:00 to 23:00. Worth
+/// stating because the forward window carries the same variables under the
+/// same names, and reading an anchor out of that one resolves 03:00 to
+/// tomorrow.
+List<double> valuesAt(
     Map<String, Object?> hourly, List<String> models, int hour, String variable) {
   final hours = hourly['hourly'];
   if (hours is! Map<String, Object?>) return const [];
@@ -197,10 +206,10 @@ String? describeWindTimeline(Map<String, Object?> hourly, List<String> models,
   final parts = <String>[];
   final hours = <int>[];
   for (final (hour, label) in shiftAnchors) {
-    final speeds = _valuesAt(hourly, models, hour, 'wind_speed_10m');
+    final speeds = valuesAt(hourly, models, hour, 'wind_speed_10m');
     if (speeds.isEmpty) continue;
 
-    final gusts = _valuesAt(hourly, models, hour, 'wind_gusts_10m');
+    final gusts = valuesAt(hourly, models, hour, 'wind_gusts_10m');
     final point = consensusDirection(_directionsAt(hourly, models, hour));
     final lead = point != null ? '${_adjective[point]} $label' : label;
     var clause = '$lead at ${_kmhAndKt(speeds.reduce((a, b) => a + b) / speeds.length)}';

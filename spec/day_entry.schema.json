@@ -498,6 +498,16 @@
           "default": null,
           "title": "Air Quality Aqi"
         },
+        "cloud_anchors": {
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "title": "Cloud Anchors",
+          "type": "array"
+        },
         "degradations": {
           "anyOf": [
             {

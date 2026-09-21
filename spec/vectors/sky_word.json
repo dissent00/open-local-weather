@@ -1,0 +1,84 @@
+{
+  "vector_format_version": 1,
+  "function": "sky_word",
+  "description": "ROADMAP item 159. The plain word for a sky cover percentage. The boundaries are the midpoints of the NWS sky-condition categories in eighths -- clear at 0, few at 1-2, scattered at 3-4, broken at 5-7, overcast at 8 -- converted to percent. The same standard CLOUD_CHANGE_BANDS_PCT draws its one-okta floor from, and nothing measured locally: item 95 is why.",
+  "cases": [
+    {
+      "name": "0.0%",
+      "input": {
+        "cover_pct": 0.0
+      },
+      "expected": "Clear"
+    },
+    {
+      "name": "6.2%",
+      "input": {
+        "cover_pct": 6.2
+      },
+      "expected": "Clear"
+    },
+    {
+      "name": "6.25%",
+      "input": {
+        "cover_pct": 6.25
+      },
+      "expected": "Mostly clear"
+    },
+    {
+      "name": "31.24%",
+      "input": {
+        "cover_pct": 31.24
+      },
+      "expected": "Mostly clear"
+    },
+    {
+      "name": "31.25%",
+      "input": {
+        "cover_pct": 31.25
+      },
+      "expected": "Partly cloudy"
+    },
+    {
+      "name": "56.24%",
+      "input": {
+        "cover_pct": 56.24
+      },
+      "expected": "Partly cloudy"
+    },
+    {
+      "name": "56.25%",
+      "input": {
+        "cover_pct": 56.25
+      },
+      "expected": "Mostly cloudy"
+    },
+    {
+      "name": "93.74%",
+      "input": {
+        "cover_pct": 93.74
+      },
+      "expected": "Mostly cloudy"
+    },
+    {
+      "name": "93.75%",
+      "input": {
+        "cover_pct": 93.75
+      },
+      "expected": "Overcast"
+    },
+    {
+      "name": "100.0%",
+      "input": {
+        "cover_pct": 100.0
+      },
+      "expected": "Overcast"
+    },
+    {
+      "name": "absent",
+      "input": {
+        "cover_pct": null
+      },
+      "expected": null
+    }
+  ]
+}

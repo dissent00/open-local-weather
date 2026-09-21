@@ -296,6 +296,71 @@ def export_overlong_display_values() -> None:
     )
 
 
+def export_cloud_anchors() -> None:
+    """ROADMAP item 159 step 2 — the sky at each anchor hour.
+
+    A DAY'S SHAPE, NOT ITS MEAN. On 2026-09-21 the models' Day+0 cloud mean
+    was 45% with a 14-to-64 spread while the day ran clear in the morning to
+    overcast under afternoon convection, which is what the forecast's own
+    prose said. One number for that day is true and useless.
+
+    THE BLOCK IS A WHOLE LOCAL DAY, 00:00 to 23:00 — `primary_hourly`, the
+    same one the wind shift reads. Not the forward window, which carries the
+    same variables under the same names and resolves 03:00 to tomorrow.
+    """
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors, sky_word
+
+    def block(covers):
+        hours = {"time": [f"2026-09-21T{h:02d}:00" for h in range(len(covers))]}
+        for model in MODELS:
+            hours[f"cloud_cover_{model}"] = list(covers)
+        return {"hourly": hours}
+
+    shape = (
+        [5] * 6
+        + [10, 20, 30, 40, 55, 60]
+        + [70, 80, 95, 100, 100, 100]
+        + [100, 80, 60, 40, 20, 10]
+    )
+    flat = [50] * 24
+    cases = [
+        ("the day 2026-09-21 had: clear, building, overcast", block(shape), 0),
+        ("a morning run keeps the anchor that has passed", block(shape), 6),
+        ("an evening run with every anchor behind it says nothing", block(shape), 18),
+        ("a sky that does not change still says so", block(flat), 0),
+        ("no cloud series at all is empty, not clear",
+         {"hourly": {"time": [f"2026-09-21T{h:02d}:00" for h in range(24)]}}, 0),
+        ("a block that stops before the last anchor", block(shape[:14]), 0),
+    ]
+    write(
+        "cloud_anchors.json",
+        "cloud_anchors",
+        "ROADMAP item 159. The sky at each anchor hour, in time order, for the "
+        "at-a-glance tiles. Read from the WHOLE DAY the wind shift reads, at "
+        "the same anchors, so the two tiles describe the same three moments. "
+        "Empty when every anchor is behind the reader -- item 118's rule.",
+        [{"name": n, "input": {"hourly_multi_model": h, "models": list(MODELS),
+                               "issued_hour": i},
+          "expected": cloud_anchors(h, MODELS, issued_hour=i)} for n, h, i in cases],
+    )
+
+    covers = [0.0, 6.2, 6.25, 31.24, 31.25, 56.24, 56.25, 93.74, 93.75, 100.0]
+    write(
+        "sky_word.json",
+        "sky_word",
+        "ROADMAP item 159. The plain word for a sky cover percentage. The "
+        "boundaries are the midpoints of the NWS sky-condition categories in "
+        "eighths -- clear at 0, few at 1-2, scattered at 3-4, broken at 5-7, "
+        "overcast at 8 -- converted to percent. The same standard "
+        "CLOUD_CHANGE_BANDS_PCT draws its one-okta floor from, and nothing "
+        "measured locally: item 95 is why.",
+        [{"name": f"{c}%", "input": {"cover_pct": c}, "expected": sky_word(c)}
+         for c in covers] + [{"name": "absent", "input": {"cover_pct": None},
+                              "expected": sky_word(None)}],
+    )
+
+
 def export_tile_comparison() -> None:
     """ROADMAP item 159 step 1 — the modifier a tile carries, or nothing.
 
@@ -5686,6 +5751,7 @@ def main() -> None:
     export_false_weekday_claims()
     export_overlong_display_values()
     export_tile_comparison()
+    export_cloud_anchors()
     export_scoring()
     export_extract()
     export_aqi()

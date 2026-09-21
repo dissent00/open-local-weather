@@ -15,6 +15,7 @@
 library;
 
 import 'comparison.dart';
+import 'wind.dart';
 
 /// How many day-to-day pairs the record must hold before a percentile means
 /// anything. At 30 the top decile has three observations above it; below that
@@ -105,4 +106,77 @@ Map<String, String> comparisonModifiers(
   }
 
   return said;
+}
+
+/// THE SKY, IN THE STANDARD'S OWN CATEGORIES.
+///
+/// NWS sky condition is reported in eighths: clear at 0, few at 1-2,
+/// scattered at 3-4, broken at 5-7, overcast at 8. The boundaries here are the
+/// midpoints between those categories converted to percent. Nothing invented
+/// and no local measurement — the same source `cloudChangeBandsPct` draws its
+/// one-okta floor from.
+///
+/// The WORDS are plain rather than the aviation abbreviations. A tile is read
+/// by someone deciding whether to hang washing out, not by a pilot.
+const List<(double, String)> skyCoverBandsPct = [
+  (6.25, 'Clear'),
+  (31.25, 'Mostly clear'),
+  (56.25, 'Partly cloudy'),
+  (93.75, 'Mostly cloudy'),
+];
+const String overcastLabel = 'Overcast';
+
+/// What a tile calls each anchor hour, positionally paired with
+/// `shiftAnchors`. Separate from that list's own labels because those are
+/// prose for a clause — "overnight", "by midday" — and a tile has room for a
+/// word. The HOURS are shared, which is the part that matters: the sky and the
+/// wind must describe the same three moments.
+const List<String> tileAnchorWords = ['early', 'midday', 'evening'];
+
+/// The plain word for a sky cover percentage, or null.
+String? skyWord(double? coverPct) {
+  if (coverPct == null) return null;
+
+  for (final (threshold, word) in skyCoverBandsPct) {
+    if (coverPct < threshold) return word;
+  }
+  return overcastLabel;
+}
+
+/// The sky at each anchor hour, as a tile's lines, in time order.
+///
+/// A DAY'S SHAPE, NOT ITS MEAN. On 2026-09-21 the models' Day+0 cloud mean was
+/// 45% with a 14-to-64 spread while the day ran clear in the morning to
+/// overcast under afternoon convection — which is what the forecast's own
+/// prose said. One number for that day is true and useless.
+///
+/// EMPTY WHEN EVERY ANCHOR IS BEHIND THE READER — upstream item 118, the same
+/// rule `describeWindShift` follows. The test is "is any of it still ahead",
+/// not "drop what has passed": a morning reader still wants to know the day
+/// started clear.
+List<Map<String, String>> cloudAnchors(
+  Map<String, Object?> hourly,
+  List<String> models, {
+  required int issuedHour,
+}) {
+  final out = <Map<String, String>>[];
+  final hours = <int>[];
+
+  for (var i = 0; i < shiftAnchors.length && i < tileAnchorWords.length; i++) {
+    final (hour, _) = shiftAnchors[i];
+    final covers = valuesAt(hourly, models, hour, 'cloud_cover');
+    if (covers.isEmpty) continue;
+
+    // The models' MEAN, matching every other consensus here. A spread is a
+    // real fact about a sky and belongs where there is room to name which
+    // model said what.
+    final label = skyWord(covers.reduce((a, b) => a + b) / covers.length);
+    if (label != null) {
+      out.add({'when': tileAnchorWords[i], 'cover': label});
+      hours.add(hour);
+    }
+  }
+
+  if (out.isEmpty || hours.every((h) => h <= issuedHour)) return const [];
+  return out;
 }

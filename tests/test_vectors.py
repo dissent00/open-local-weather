@@ -780,6 +780,24 @@ def test_vectors_extended_trend():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_cloud_anchors():
+    """ROADMAP item 159 step 2 — the sky at each anchor, from the WHOLE DAY."""
+    from openlocalweather.tiles import cloud_anchors
+
+    for case in load("cloud_anchors.json")["cases"]:
+        i = case["input"]
+        got = cloud_anchors(i["hourly_multi_model"], i["models"], issued_hour=i["issued_hour"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_sky_word():
+    from openlocalweather.tiles import sky_word
+
+    for case in load("sky_word.json")["cases"]:
+        got = sky_word(case["input"]["cover_pct"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_tile_comparison():
     """ROADMAP item 159 — the modifier a tile carries, or nothing. Half the
     cases assert SILENCE, which is what the sentence this replaces could
@@ -1073,6 +1091,8 @@ def test_every_vector_file_is_exercised():
         "extended_trend.json",
         "phrase_defect.json",
         "overlong_display_values.json",
+        "cloud_anchors.json",
+        "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",
         "describe_day_rain.json",

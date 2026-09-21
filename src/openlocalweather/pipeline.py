@@ -81,6 +81,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_extended_trend,
 )
+from openlocalweather.tiles import cloud_anchors
 from openlocalweather.llm.provider import provider_identity
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
@@ -1178,6 +1179,17 @@ def _locked_blocks(
         ),
         # ROADMAP item 118: the anchors are hours of the day, so a clause with
         # none of them still ahead describes a day the reader has finished.
+        #
+        # THE WHOLE DAY, NOT THE FORWARD WINDOW, and the distinction is not
+        # cosmetic. `primary_hourly` is `forecast_days=1` and runs 00:00 to
+        # 23:00; `forward_hourly` is that same block trimmed to the hours
+        # ahead, carrying THE SAME VARIABLES UNDER THE SAME NAMES. Passing the
+        # forward one compiles, runs and yields a plausible clause in which
+        # the 03:00 anchor resolves to TOMORROW — a rotation running backwards
+        # in time, and nothing in the vectors could see it, because they pass
+        # their own fixture and never the wiring. Pinned by
+        # test_the_wind_shift_is_given_the_whole_day_not_the_forward_window
+        # after that exact misreading on 2026-09-21.
         "wind_shift": describe_wind_shift(
             guidance.primary_hourly, MODELS, issued_hour=issued_hour
         ),
@@ -2455,6 +2467,13 @@ def _compose_log_entry(
         temp_high_c=tp.temp_high_c,
         temp_low_c=tp.temp_low_c,
         temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
+        # THE WHOLE DAY, not the forward window — the same block and the same
+        # anchors the wind shift takes, so the two tiles describe the same
+        # three moments. See the wind shift's call site for why that
+        # distinction is worth stating.
+        cloud_anchors=cloud_anchors(
+            guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+        ),
         mslp_trend_24h=tp.mslp_trend_24h or "",
         synoptic_pattern=tp.synoptic_pattern or "",
         uv_index_max=tp.uv_index_max,

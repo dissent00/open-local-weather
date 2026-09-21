@@ -24502,7 +24502,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; step 1 SHIPPED the same day, steps 2-6 open**
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1 and 2 SHIPPED the same day, steps 3-6 open**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
@@ -24665,6 +24665,67 @@ mirror so the tiles and the prose read one band table rather than two.
 One test was wrong before the code was: the ninetieth percentile of thirty
 ones and a single ten is one, not ten. Corrected by running it, and the
 corrected case is worth keeping — one freak afternoon must not move the bar.
+
+### Step 2 SHIPPED 2026-09-21 — the sky, as the day's shape
+
+`tiles.cloud_anchors` / `tiles.dart`'s `cloudAnchors`: the sky at each of the
+forecast's own anchor hours, in time order, on the entry as `cloud_anchors`.
+
+**A DAY'S SHAPE, NOT ITS MEAN**, and 2026-09-21 is the argument. The models'
+Day+0 cloud mean was 45% with a 14-to-64 spread, while the day ran clear in
+the morning to overcast under afternoon convection — which is what the
+forecast's own prose said: *"Sky conditions will transition from clear to
+partly cloudy in the morning toward overcast during peak afternoon
+convection."* One number for that day is true and useless.
+
+**The words are the standard's own.** NWS sky condition in eighths — clear at
+0, few at 1-2, scattered at 3-4, broken at 5-7, overcast at 8 — with the
+boundaries taken as the midpoints converted to percent. The same source
+`CLOUD_CHANGE_BANDS_PCT` draws its one-okta floor from, and nothing measured
+locally: item 95 is why. Plain words rather than the aviation abbreviations,
+because a tile is read by someone deciding whether to hang washing out.
+
+**From code, not from the narrative**, and stored on the entry beside
+`temp_high_low_display` for the same reason that one is: a display value the
+model writes drifts in shape, which is exactly what `rain_expected` did the
+day item 59 step 3 split the call.
+
+**Item 118's rule applies unchanged** — empty when every anchor is behind the
+reader, and the test is "is any of it still ahead", not "drop what has
+passed".
+
+### A false alarm, and the guard it earned
+
+Building this I reported a defect in `describe_wind_shift` that does not
+exist. I read the `time` array out of HOURS AHEAD in the archived prompt — a
+FORWARD window — and concluded the 03:00 anchor was resolving to tomorrow. The
+composer reads `guidance.primary_hourly`, which is `forecast_days=1` and runs
+00:00 to 23:00, so 03:00 is today's. The clause has always been right and item
+118's guard is right to withhold it in the evening.
+
+The operator's question is what found it: *"isn't the fix just to report
+forward from the current local time?"* — which only makes sense under a
+forward window, and checking why it did not apply sent me to the call site.
+
+**But the bug I imagined is one line from being real.** The two blocks carry
+THE SAME VARIABLES UNDER THE SAME NAMES, so
+`describe_wind_shift(guidance.forward_hourly, ...)` compiles, runs and yields a
+plausible clause in which 03:00 is tomorrow — a rotation running backwards in
+time. The vectors pass their own fixture and cannot see the wiring; nothing
+would have caught it.
+
+So the detour earned two things.
+`test_the_wind_shift_is_given_the_whole_day_not_the_forward_window` makes the
+two blocks disagree, drives the pipeline and asserts which one reaches the
+clause; it fails the moment the wrong block is wired. And both call sites now
+say which block they take and why, because "the hourly data" names two
+different things here and only one of them is a whole day.
+
+**The paradigm itself was not the problem.** Item 117b raised "a forecast is a
+forecast" and item 118 audited every locked sentence against the clock on
+2026-09-13. The audit happened and its answers hold. What was missing was
+PROVENANCE — which composer reads which block — and that is what the guard and
+the notes add.
 
 ### Not yet decided
 

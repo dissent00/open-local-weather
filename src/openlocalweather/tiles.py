@@ -137,3 +137,95 @@ def comparison_modifiers(
             said[dimension] = label
 
     return said
+
+
+# THE SKY, IN THE STANDARD'S OWN CATEGORIES.
+#
+# NWS sky condition is reported in eighths: clear at 0, few at 1-2, scattered
+# at 3-4, broken at 5-7, overcast at 8. The boundaries below are the midpoints
+# between those categories converted to percent — 0.5, 2.5, 4.5 and 7.5 oktas.
+#
+# NOTHING INVENTED AND NO LOCAL MEASUREMENT, which is the same discipline
+# CLOUD_CHANGE_BANDS_PCT records: the one-okta resolution there and the
+# category boundaries here come from the same standard. Item 95 is why —
+# a Kisumu gust factor once got baked into a published scale.
+#
+# The WORDS are plain rather than the aviation abbreviations. A tile is read
+# by someone deciding whether to hang washing out, not by a pilot, and "Few"
+# means something different to each of them.
+SKY_COVER_BANDS_PCT = (
+    (6.25, "Clear"),
+    (31.25, "Mostly clear"),
+    (56.25, "Partly cloudy"),
+    (93.75, "Mostly cloudy"),
+)
+OVERCAST_LABEL = "Overcast"
+
+# What a tile calls each anchor hour, positionally paired with
+# `wind.SHIFT_ANCHORS`. Separate from that tuple's own labels because those
+# are prose for a clause — "overnight", "by midday" — and a tile has room for
+# a word. The HOURS are shared, which is the part that matters: the sky and
+# the wind must describe the same three moments or a reader comparing two
+# tiles is comparing different times of day.
+TILE_ANCHOR_WORDS = ("early", "midday", "evening")
+
+
+def sky_word(cover_pct: float | None) -> str | None:
+    """The plain word for a sky cover percentage, or None."""
+    if cover_pct is None:
+        return None
+
+    for threshold, word in SKY_COVER_BANDS_PCT:
+        if cover_pct < threshold:
+            return word
+
+    return OVERCAST_LABEL
+
+
+def cloud_anchors(
+    hourly: dict,
+    models: list[str],
+    *,
+    issued_hour: int,
+) -> list[dict[str, str]]:
+    """The sky at each anchor hour, as a tile's lines, in time order.
+
+    A DAY'S SHAPE, NOT ITS MEAN, and 2026-09-21 is the argument. The models'
+    Day+0 mean that day was 45% with a 14-to-64 spread, while the day ran
+    clear in the morning to overcast under afternoon convection — which is
+    what the forecast's own prose said. One number for that day is true and
+    useless, and it is the number a naive cloud tile would have shown.
+
+    READ FROM THE HOURLY SERIES the narrative already reasons from, not from
+    the daily block. `cloud_cover` per model is in HOURS AHEAD and is where
+    that sentence came from.
+
+    EMPTY WHEN EVERY ANCHOR IS BEHIND THE READER — ROADMAP item 118, the same
+    rule `describe_wind_shift` follows and for the same reason: a tile whose
+    every hour has gone describes a day the reader has finished. The test is
+    "is any of it still ahead", not "drop what has passed", because the first
+    anchor is behind a 06:00 run too and a morning reader still wants to know
+    the day started clear.
+    """
+    from openlocalweather.wind import SHIFT_ANCHORS, values_at
+
+    out: list[dict[str, str]] = []
+    hours: list[int] = []
+
+    for (hour, _), word in zip(SHIFT_ANCHORS, TILE_ANCHOR_WORDS):
+        covers = values_at(hourly, models, hour, "cloud_cover")
+        if not covers:
+            continue
+
+        # The models' MEAN, matching every other consensus in this project.
+        # A spread is a real fact about a sky and belongs in the discussion,
+        # where there is room to name which model said what.
+        label = sky_word(sum(covers) / len(covers))
+        if label is not None:
+            out.append({"when": word, "cover": label})
+            hours.append(hour)
+
+    if not out or all(hour <= issued_hour for hour in hours):
+        return []
+
+    return out
