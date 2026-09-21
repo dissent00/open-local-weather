@@ -163,7 +163,22 @@ class ObservedSoFar:
     precipitation: bool | None = None
     high_c: float | None = None
     low_c: float | None = None
+    # THE PEAK SUSTAINED WIND, from the station's `sknt` maximum. Named here
+    # for what it is because it was not named that where a reader could see
+    # it: until 2026-09-21 `describe_observed_so_far` rendered this exact
+    # field as "peak gust N km/h", so every prompt since item 121 told the
+    # forecaster a gust had been measured when the station had filed none and
+    # had measured a sustained speed. `disagreement.sustained_wind_gap` in the
+    # same run documented the same field as sustained. One number, two names,
+    # in one prompt — which is the confusion item 146 exists to end.
     peak_wind_kmh: float | None = None
+
+    # THE GUST THE STATION ACTUALLY FILED, and None on almost every day
+    # because METAR files a gust group only when a gust occurs. Absent means
+    # no gust was reported, never that the air was calm — the sustained field
+    # above is what says how hard it blew.
+    peak_gust_kmh: float | None = None
+
     # Mean cover in eighths across the day's reports so far.
     cloud_oktas: float | None = None
     thunder: bool | None = None

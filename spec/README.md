@@ -105,7 +105,7 @@ absent values are `null`, never omitted keys.
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `describe_day_rain.json` | `describe_day_rain` | 32 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 22 |
-| `observed_so_far.json` | `describe_observed_so_far` | 18 |
+| `observed_so_far.json` | `describe_observed_so_far` | 21 |
 | `llm_should_reason.json` | `llm_should_reason` | 11 |
 | `comparison_subject.json` | `comparison_subject` | 14 |
 | `glossary.json` | `GLOSSARY` | 19 |
@@ -120,7 +120,7 @@ absent values are `null`, never omitted keys.
 | `llm_schema_strict.json` | `to_strict_json_schema` | 1 |
 | `llm_system_prompt.json` | `build_judgment_prompt` + `build_narrative_prompt` | 7 |
 | `llm_schema_split.json` | `to_gemini_schema` (judgment / narrative) | 2 |
-| `observation_disagreements.json` | `observation_disagreements` | 21 |
+| `observation_disagreements.json` | `observation_disagreements` | 26 |
 | `notable_disagreements.json` | `notable_disagreements` | 9 |
 | `notable_disagreement_notes.json` | `describe_notable_disagreements` | 5 |
 | `low_divergence.json` | `low_divergence` | 14 |

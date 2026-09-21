@@ -458,12 +458,14 @@ void main() {
             tempHighC: (s['temp_high_c'] as num?)?.toDouble(),
             onsetHour: s['onset_hour'] as String?,
             tempLowC: (s['temp_low_c'] as num?)?.toDouble(),
+            peakGustKmh: (s['peak_gust_kmh'] as num?)?.toDouble(),
           ),
           ObservedSoFar(
             precipitation: o['precipitation'] as bool?,
             highC: (o['high_c'] as num?)?.toDouble(),
             precipitationOnset: o['precipitation_onset'] as String?,
             lowC: (o['low_c'] as num?)?.toDouble(),
+            peakGustKmh: (o['peak_gust_kmh'] as num?)?.toDouble(),
           ),
           lowIsSettled: i['low_is_settled'] as bool?,
         );
@@ -1277,6 +1279,7 @@ void main() {
             highC: (o['high_c'] as num?)?.toDouble(),
             lowC: (o['low_c'] as num?)?.toDouble(),
             peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble(),
+            peakGustKmh: (o['peak_gust_kmh'] as num?)?.toDouble(),
             cloudOktas: (o['cloud_oktas'] as num?)?.toDouble(),
             reportedThrough: o['reported_through'] as String?,
           ),

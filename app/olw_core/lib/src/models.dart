@@ -65,6 +65,7 @@ class ObservedSoFar {
     this.highC,
     this.lowC,
     this.peakWindKmh,
+    this.peakGustKmh,
     this.cloudOktas,
     this.reportedThrough,
   });
@@ -76,7 +77,18 @@ class ObservedSoFar {
   final bool? thunder;
   final double? highC;
   final double? lowC;
+
+  /// THE PEAK SUSTAINED WIND, from the station's `sknt` maximum. Named here
+  /// for what it is because it was not named that where a reader could see
+  /// it: until 2026-09-21 `describeObservedSoFar` rendered this exact field
+  /// as "peak gust N km/h", so every prompt since upstream item 121 told the
+  /// forecaster a gust had been measured on days the station filed none.
   final double? peakWindKmh;
+
+  /// The gust the station actually filed, and null on almost every day
+  /// because METAR files a gust group only when a gust occurs. Absent means
+  /// no gust was reported, never that the air was calm.
+  final double? peakGustKmh;
 
   /// Mean cover in eighths across the day's reports so far.
   final double? cloudOktas;
@@ -186,6 +198,18 @@ class LowDivergence {
 
 const String disagreementRainWhileDry = 'rain_observed_while_dry_called';
 const String disagreementHighExceeded = 'high_already_exceeded';
+
+/// A gust the station has already filed above the day's called peak.
+///
+/// NO MARGIN, and here that is right where it would not be elsewhere: the
+/// calibrated gust is ALREADY the record's best estimate, corrected by each
+/// model's measured bias, so there is no instrument error left to absorb.
+/// Membership in the disagreement list is a SPENDING decision, which is
+/// affordable because this fires almost never — over the 30 days to
+/// 2026-09-21 the upstream station filed a gust in one hour of 609 — and
+/// because a gust past the called peak contradicts the section somebody
+/// takes a boat out on.
+const String disagreementGustExceeded = 'gust_already_exceeded';
 const String disagreementLowDiverges = 'observed_low_diverges';
 const String disagreementOnsetAlreadyPassed = 'onset_already_passed';
 

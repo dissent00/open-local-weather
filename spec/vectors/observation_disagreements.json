@@ -10,13 +10,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -31,13 +37,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": false,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -50,13 +62,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 33.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -71,13 +89,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 24.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -90,13 +114,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 31.9,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -109,13 +139,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": false,
           "high_c": 32.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -130,13 +166,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -149,13 +191,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": 99.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -168,13 +216,19 @@
           "rain": false,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": 35.0,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -190,13 +244,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": "18:00",
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "14:00",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -211,13 +271,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": "18:00",
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "17:30",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -230,13 +296,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": "14:00",
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "18:00",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -249,13 +321,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": "18:00",
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "17:00",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -270,13 +348,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": "18:00",
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "9:00",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -291,13 +375,19 @@
           "rain": true,
           "temp_high_c": 30.0,
           "onset_hour": null,
-          "temp_low_c": null
+          "temp_low_c": null,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": true,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": "14:00",
-          "low_c": null
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -310,13 +400,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": 18.2
+          "temp_low_c": 18.2,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": 20.0,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": 20.0
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -329,13 +425,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": -0.5
+          "temp_low_c": -0.5,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": 2.0,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": 2.0
+          "reported_through": null
         },
         "low_is_settled": true
       },
@@ -350,13 +452,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": -0.5
+          "temp_low_c": -0.5,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": 2.0,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": 2.0
+          "reported_through": null
         },
         "low_is_settled": false
       },
@@ -369,13 +477,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": 2.0
+          "temp_low_c": 2.0,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": -1.0,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": -1.0
+          "reported_through": null
         },
         "low_is_settled": false
       },
@@ -390,13 +504,19 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": -0.5
+          "temp_low_c": -0.5,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": 2.0,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": 2.0
+          "reported_through": null
         },
         "low_is_settled": null
       },
@@ -409,13 +529,146 @@
           "rain": null,
           "temp_high_c": null,
           "onset_hour": null,
-          "temp_low_c": -0.5
+          "temp_low_c": -0.5,
+          "peak_gust_kmh": null
         },
         "observed": {
           "precipitation": null,
           "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
           "precipitation_onset": null,
-          "low_c": null
+          "reported_through": null
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "a gust above the called peak contradicts it",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": null,
+          "peak_gust_kmh": 41.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": 48.2,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "low_is_settled": true
+      },
+      "expected": [
+        "gust_already_exceeded"
+      ]
+    },
+    {
+      "name": "a gust under the called peak settles nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": null,
+          "peak_gust_kmh": 41.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": 30.0,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "exactly at the called peak is not above it",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": null,
+          "peak_gust_kmh": 41.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": 41.5,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "no gust filed is the usual day and says nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": null,
+          "peak_gust_kmh": 41.5
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "low_is_settled": true
+      },
+      "expected": []
+    },
+    {
+      "name": "no called peak says nothing",
+      "input": {
+        "standing": {
+          "rain": null,
+          "temp_high_c": null,
+          "onset_hour": null,
+          "temp_low_c": null,
+          "peak_gust_kmh": null
+        },
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": 48.2,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
         },
         "low_is_settled": true
       },

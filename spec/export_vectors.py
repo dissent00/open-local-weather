@@ -3180,40 +3180,51 @@ def export_observation_disagreements() -> None:
         ("a night whose end is UNKNOWN resolves to silence",
          (None, None, None, -0.5), (None, None, None, 2.0), None),
         ("no station low says nothing", (None, None, None, -0.5), (None, None, None, None), True),
+        # THE GUST, 2026-09-21. A fifth element on each tuple: the called peak
+        # gust, and the gust the station FILED. No margin — the calibrated
+        # figure is already bias-corrected, so there is no instrument error
+        # left to absorb.
+        ("a gust above the called peak contradicts it",
+         (None, None, None, None, 41.5), (None, None, None, None, 48.2), True),
+        ("a gust under the called peak settles nothing",
+         (None, None, None, None, 41.5), (None, None, None, None, 30.0), True),
+        ("exactly at the called peak is not above it",
+         (None, None, None, None, 41.5), (None, None, None, None, 41.5), True),
+        ("no gust filed is the usual day and says nothing",
+         (None, None, None, None, 41.5), (None, None, None, None, None), True),
+        ("no called peak says nothing",
+         (None, None, None, None, None), (None, None, None, None, 48.2), True),
     ]
 
     cases = []
-    for (
-        name,
-        (rain, high_call, onset_call, low_call),
-        (precipitation, high_obs, onset_obs, low_obs),
-        settled,
-    ) in scenarios:
+    for name, call, obs, settled in scenarios:
+        rain, high_call, onset_call, low_call = call[:4]
+        gust_call = call[4] if len(call) > 4 else None
+        precipitation, high_obs, onset_obs, low_obs = obs[:4]
+        gust_obs = obs[4] if len(obs) > 4 else None
         standing = StandingCall(
-            rain=rain, temp_high_c=high_call, onset_hour=onset_call, temp_low_c=low_call
+            rain=rain, temp_high_c=high_call, onset_hour=onset_call,
+            temp_low_c=low_call, peak_gust_kmh=gust_call,
         )
         observed = ObservedSoFar(
             precipitation=precipitation,
             high_c=high_obs,
             precipitation_onset=onset_obs,
             low_c=low_obs,
+            peak_gust_kmh=gust_obs,
         )
         cases.append(
             {
                 "name": name,
+                # asdict RATHER THAN A HAND-WRITTEN KEY LIST, for the reason
+                # `export_observed_so_far` carries: the list silently dropped
+                # a new field on the day it was added, and the only thing that
+                # noticed was the Dart side failing on a key that was not
+                # there. A serialiser edited whenever the dataclass changes is
+                # a second definition of the dataclass.
                 "input": {
-                    "standing": {
-                        "rain": rain,
-                        "temp_high_c": high_call,
-                        "onset_hour": onset_call,
-                        "temp_low_c": low_call,
-                    },
-                    "observed": {
-                        "precipitation": precipitation,
-                        "high_c": high_obs,
-                        "precipitation_onset": onset_obs,
-                        "low_c": low_obs,
-                    },
+                    "standing": asdict(standing),
+                    "observed": asdict(observed),
                     "low_is_settled": settled,
                 },
                 "expected": observation_disagreements(
@@ -4949,6 +4960,17 @@ def export_observed_so_far() -> None:
         ("no issuance clock", ObservedSoFar(thunder=True), None),
         ("thunder without rain is a real outcome", ObservedSoFar(
             precipitation=False, thunder=True), "16:00"),
+        # THE WIND, 2026-09-21. `peak_wind_kmh` is the station's `sknt`
+        # maximum and has always been SUSTAINED; this composer called it a
+        # gust until that date, so every prompt since item 121 asserted a
+        # measurement the station had not made. These three pin the three
+        # shapes: sustained alone, both, and a gust with no sustained reading.
+        ("a sustained reading is not a gust", ObservedSoFar(
+            peak_wind_kmh=7.41), "06:01"),
+        ("a filed gust is reported beside the sustained wind", ObservedSoFar(
+            peak_wind_kmh=22.22, peak_gust_kmh=40.74), "18:01"),
+        ("a gust with no sustained reading still reports", ObservedSoFar(
+            peak_gust_kmh=40.74), "18:01"),
         # The ties. Half-to-even sends .5 to the EVEN neighbour, so 32.5 goes
         # down and 33.5 goes up — the pair is the point, either alone passes
         # under half-away-from-zero too.
@@ -4977,19 +4999,14 @@ def export_observed_so_far() -> None:
         [
             {
                 "name": name,
-                "input": {
-                    "observed": {
-                        "precipitation": o.precipitation,
-                        "precipitation_onset": o.precipitation_onset,
-                        "thunder": o.thunder,
-                        "high_c": o.high_c,
-                        "low_c": o.low_c,
-                        "peak_wind_kmh": o.peak_wind_kmh,
-                        "cloud_oktas": o.cloud_oktas,
-                        "reported_through": o.reported_through,
-                    },
-                    "as_of": as_of,
-                },
+                # asdict RATHER THAN A HAND-WRITTEN KEY LIST, 2026-09-21. The
+                # list was here and it silently dropped `peak_gust_kmh` the day
+                # the field was added: the exporter ran, the vector wrote, the
+                # Python suite passed, and only the Dart side failed — because
+                # it was the one reading the key that was not there. A
+                # serialiser that has to be edited whenever the dataclass
+                # changes is a second definition of the dataclass.
+                "input": {"observed": asdict(o), "as_of": as_of},
                 "expected": describe_observed_so_far(o, as_of=as_of),
             }
             for name, o, as_of in cases

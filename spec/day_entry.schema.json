@@ -1255,6 +1255,18 @@
           "default": null,
           "title": "Low C"
         },
+        "peak_gust_kmh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Gust Kmh"
+        },
         "peak_wind_kmh": {
           "anyOf": [
             {

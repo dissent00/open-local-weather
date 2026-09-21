@@ -23,7 +23,7 @@ def test_every_dimension_reported_in_the_contract_order():
     )
     assert describe_observed_so_far(observed, as_of="14:00") == (
         "As of 14:00: rain from 13:00; thunder; high so far 27°C / 81°F; "
-        "low so far 18°C / 65°F; peak gust 31 km/h; sky 6/8."
+        "low so far 18°C / 65°F; peak sustained 31 km/h; sky 6/8."
     )
 
 
@@ -67,8 +67,14 @@ def test_temperature_ties_go_half_to_even(celsius, expected):
 
 
 @pytest.mark.parametrize("kmh,expected", [(30.5, 30), (31.5, 32), (0.5, 0)])
-def test_gust_ties_go_half_to_even(kmh, expected):
+def test_sustained_ties_go_half_to_even(kmh, expected):
     got = describe_observed_so_far(ObservedSoFar(peak_wind_kmh=kmh))
+    assert got == f"So far today: peak sustained {expected} km/h."
+
+
+@pytest.mark.parametrize("kmh,expected", [(30.5, 30), (31.5, 32), (0.5, 0)])
+def test_gust_ties_go_half_to_even(kmh, expected):
+    got = describe_observed_so_far(ObservedSoFar(peak_gust_kmh=kmh))
     assert got == f"So far today: peak gust {expected} km/h."
 
 
@@ -247,3 +253,49 @@ def test_the_reach_is_stated_beside_the_clock():
 def test_the_reach_is_stated_without_a_clock_too():
     observed = ObservedSoFar(thunder=True, reported_through="14:45")
     assert describe_observed_so_far(observed) == "So far today, reports through 14:45: thunder."
+
+
+# ---------------------------------------------------------------------------
+# The wind clauses — 2026-09-21. One number had two names.
+# ---------------------------------------------------------------------------
+
+
+def test_the_sustained_wind_is_not_called_a_gust():
+    """The live defect. `ObservedSoFar.peak_wind_kmh` is the station's `sknt`
+    maximum and has always been sustained — `disagreement.sustained_wind_gap`
+    says so in the same run — and this rendered it as "peak gust N km/h".
+    Every prompt since item 121 told the forecaster a gust had been measured
+    on days the station filed none."""
+    said = describe_observed_so_far(
+        ObservedSoFar(peak_wind_kmh=7.41), as_of="06:01"
+    )
+    assert "peak sustained 7 km/h" in said
+    assert "gust" not in said, "a sustained reading is still being called a gust"
+
+
+def test_a_filed_gust_is_reported_beside_the_sustained_wind():
+    """Both, because they are different measurements of the same hour and the
+    forecast is published and scored on the gust."""
+    said = describe_observed_so_far(
+        ObservedSoFar(peak_wind_kmh=22.22, peak_gust_kmh=40.74), as_of="18:01"
+    )
+    assert "peak sustained 22 km/h" in said
+    assert "peak gust 41 km/h" in said
+
+
+def test_no_gust_filed_says_nothing_about_gusts():
+    """Almost every day. An absent gust group means the station reported no
+    gust, never that it measured calm — and a "peak gust 0" or a silence
+    dressed as a reading would be the p01i failure in another costume."""
+    said = describe_observed_so_far(
+        ObservedSoFar(peak_wind_kmh=7.41), as_of="06:01"
+    )
+    assert "gust" not in said
+
+
+def test_a_gust_without_a_sustained_reading_still_reports():
+    """The sustained column can be M on a row whose report text carries a
+    wind group, so the two are independently absent."""
+    said = describe_observed_so_far(ObservedSoFar(peak_gust_kmh=40.74), as_of="18:01")
+    assert "peak gust 41 km/h" in said
+    assert "sustained" not in said

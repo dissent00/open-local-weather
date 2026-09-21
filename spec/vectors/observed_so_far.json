@@ -8,29 +8,31 @@
       "input": {
         "observed": {
           "precipitation": true,
-          "precipitation_onset": "13:00",
-          "thunder": true,
           "high_c": 27.4,
           "low_c": 18.1,
           "peak_wind_kmh": 31.4,
+          "peak_gust_kmh": null,
           "cloud_oktas": 5.5,
+          "thunder": true,
+          "precipitation_onset": "13:00",
           "reported_through": null
         },
         "as_of": "14:00"
       },
-      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak gust 31 km/h; sky 6/8."
+      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak sustained 31 km/h; sky 6/8."
     },
     {
       "name": "negatives are reported, absences omitted",
       "input": {
         "observed": {
           "precipitation": false,
-          "precipitation_onset": null,
-          "thunder": false,
           "high_c": 22.0,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": false,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "09:00"
@@ -42,12 +44,13 @@
       "input": {
         "observed": {
           "precipitation": true,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "12:00"
@@ -59,12 +62,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "14:00"
@@ -76,12 +80,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": true,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": null
@@ -93,12 +98,13 @@
       "input": {
         "observed": {
           "precipitation": false,
-          "precipitation_onset": null,
-          "thunder": true,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "16:00"
@@ -106,16 +112,71 @@
       "expected": "As of 16:00: no rain; thunder."
     },
     {
+      "name": "a sustained reading is not a gust",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": 7.41,
+          "peak_gust_kmh": null,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "as_of": "06:01"
+      },
+      "expected": "As of 06:01: peak sustained 7 km/h."
+    },
+    {
+      "name": "a filed gust is reported beside the sustained wind",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": 22.22,
+          "peak_gust_kmh": 40.74,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "as_of": "18:01"
+      },
+      "expected": "As of 18:01: peak sustained 22 km/h; peak gust 41 km/h."
+    },
+    {
+      "name": "a gust with no sustained reading still reports",
+      "input": {
+        "observed": {
+          "precipitation": null,
+          "high_c": null,
+          "low_c": null,
+          "peak_wind_kmh": null,
+          "peak_gust_kmh": 40.74,
+          "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
+          "reported_through": null
+        },
+        "as_of": "18:01"
+      },
+      "expected": "As of 18:01: peak gust 41 km/h."
+    },
+    {
       "name": "temperature tie, rounds down to even",
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": 32.5,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -127,12 +188,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": 33.5,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -144,12 +206,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": -0.5,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -161,46 +224,49 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": 30.5,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: peak gust 30 km/h."
+      "expected": "As of 15:00: peak sustained 30 km/h."
     },
     {
       "name": "gust tie, rounds up to even",
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": 31.5,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: peak gust 32 km/h."
+      "expected": "As of 15:00: peak sustained 32 km/h."
     },
     {
       "name": "sky tie, rounds up to even",
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": 5.5,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -212,12 +278,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": 6.5,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -229,12 +296,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": 8.0,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -246,12 +314,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": 0.0,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": null
         },
         "as_of": "15:00"
@@ -263,12 +332,13 @@
       "input": {
         "observed": {
           "precipitation": false,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": 22.0,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": "05:45"
         },
         "as_of": "06:01"
@@ -280,12 +350,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": true,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": true,
+          "precipitation_onset": null,
           "reported_through": "14:45"
         },
         "as_of": null
@@ -297,12 +368,13 @@
       "input": {
         "observed": {
           "precipitation": null,
-          "precipitation_onset": null,
-          "thunder": null,
           "high_c": null,
           "low_c": null,
           "peak_wind_kmh": null,
+          "peak_gust_kmh": null,
           "cloud_oktas": null,
+          "thunder": null,
+          "precipitation_onset": null,
           "reported_through": "05:45"
         },
         "as_of": "06:01"

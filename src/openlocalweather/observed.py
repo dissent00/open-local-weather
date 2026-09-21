@@ -61,7 +61,8 @@ def describe_observed_so_far(
         _thunder(observed),
         _temperature("high so far", observed.high_c),
         _temperature("low so far", observed.low_c),
-        _gust(observed.peak_wind_kmh),
+        _sustained(observed.peak_wind_kmh),
+        _gust(observed.peak_gust_kmh),
         _sky(observed.cloud_oktas),
     ]
     said = [c for c in clauses if c is not None]
@@ -109,7 +110,36 @@ def _temperature(label: str, celsius: float | None) -> str | None:
     return f"{label} {format_temp_c(celsius)}"
 
 
+def _sustained(kmh: float | None) -> str | None:
+    """The station's peak SUSTAINED wind, named as such.
+
+    IT WAS CALLED A GUST HERE UNTIL 2026-09-21, and that is the whole reason
+    this function has a docstring. `ObservedSoFar.peak_wind_kmh` is the `sknt`
+    maximum and has always been sustained — `disagreement.sustained_wind_gap`
+    documents it that way in the same run — so every prompt since item 121
+    handed the forecaster "peak gust 7 km/h" on days the station had filed no
+    gust at all and had measured a sustained speed.
+
+    The cost of that is not cosmetic. Item 146 exists because the forecast is
+    published and SCORED on a gust while the only local measurement beside it
+    was sustained, and the block a forecaster reads before writing about wind
+    was quietly asserting the two were the same thing.
+    """
+    if kmh is None:
+        return None
+
+    return f"peak sustained {round(kmh)} km/h"
+
+
 def _gust(kmh: float | None) -> str | None:
+    """The gust the station actually filed, or nothing.
+
+    ABSENT ON ALMOST EVERY DAY and it says nothing when it is. METAR files a
+    gust group only when a gust occurs — over the 30 days to 2026-09-21,
+    exactly one hour at this station carried one — so a silence here means no
+    gust was reported, and a "peak gust 0" would be the p01i failure in
+    another costume: a constant dressed as a measurement.
+    """
     if kmh is None:
         return None
 

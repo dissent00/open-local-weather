@@ -41,7 +41,8 @@ String? describeObservedSoFar(ObservedSoFar? observed, {String? asOf}) {
       _thunder(observed),
       _temperature('high so far', observed.highC),
       _temperature('low so far', observed.lowC),
-      _gust(observed.peakWindKmh),
+      _sustained(observed.peakWindKmh),
+      _gust(observed.peakGustKmh),
       _sky(observed.cloudOktas),
     ])
       if (clause != null) clause,
@@ -85,6 +86,24 @@ String? _temperature(String label, double? celsius) {
   return '$label ${formatTempC(celsius)}';
 }
 
+/// The station's peak SUSTAINED wind, named as such.
+///
+/// IT WAS CALLED A GUST HERE UNTIL 2026-09-21. `ObservedSoFar.peakWindKmh` is
+/// the `sknt` maximum and has always been sustained, so every prompt since
+/// upstream item 121 handed the forecaster "peak gust 7 km/h" on days the
+/// station had filed no gust and had measured a sustained speed. Upstream
+/// item 146 exists because the forecast is published and SCORED on a gust
+/// while the only local measurement beside it was sustained, and the block a
+/// forecaster reads before writing about wind asserted the two were one.
+String? _sustained(double? kmh) {
+  if (kmh == null) return null;
+
+  return 'peak sustained ${roundLikePython(kmh, 0).toInt()} km/h';
+}
+
+/// The gust the station actually filed, or nothing. Absent on almost every
+/// day — METAR files a gust group only when a gust occurs — and a silence
+/// here means none was reported, never a measured calm.
 String? _gust(double? kmh) {
   if (kmh == null) return null;
 

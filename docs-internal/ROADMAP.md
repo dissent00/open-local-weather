@@ -21340,6 +21340,104 @@ Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.
 ---
 
 
+### The prompt half, 2026-09-21 — one number had two names
+
+The operator: *"let's do the prompt work for the wind and gusts."* Looking
+for where to put the new measurements found a defect instead.
+
+**`describe_observed_so_far` rendered the SUSTAINED wind as a gust.**
+`ObservedSoFar.peak_wind_kmh` is the station's `sknt` maximum and has always
+been sustained — `disagreement.sustained_wind_gap` documents it that way in
+the same module — and the observed clause printed it as "peak gust N km/h".
+So every prompt since item 121 told the forecaster a gust had been measured
+on days the station filed none, in the block read immediately before writing
+about wind. Live on 2026-09-21: *"peak gust 7 km/h"*, from a station that
+filed no gust group at all.
+
+One run's prompt called one number a sustained wind in one place and a peak
+gust in another. That is the confusion THIS ITEM EXISTS TO END, sitting
+inside the prompt the whole time the item was open.
+
+**AND IT WAS NOT ONLY THE PROMPT.** `publish/pages.py` composes the same
+sentence for the site — `forecast.html.jinja` renders it under the forecast —
+so every reader of the page has been told a gust was measured too. This was a
+published number with the wrong name on it, not an internal one.
+
+**Three clauses now, named for what they are.** "peak sustained N km/h"
+always; "peak gust N km/h" only when the station filed one, which is almost
+never; and nothing at all about gusts on the days it did not, because an
+absent gust group means none was reported and a zero would be the `p01i`
+failure in another costume.
+
+**A rule in the system prompt had gone false.** It read: *"This deployment
+has NEVER recorded a gust group at its airport station, so it cannot observe
+convective gusts at all."* True when written and false since 2026-09-03,
+when the station filed 22 kt under a cumulonimbus. It now says the station
+almost never files one, gives the rate — one hour in 609 over thirty days —
+keeps the half that still matters (absence is an instrument gap, never
+evidence), and adds what to do when a gust IS there, including that "peak
+sustained" beside it is a different quantity.
+
+**The gust can now contradict the forecast.**
+`DISAGREEMENT_GUST_EXCEEDED` fires when the station's filed gust passes the
+day's published calibrated peak. NO MARGIN, the operator's decision, and
+right here where it would be wrong elsewhere: the calibrated figure is
+already bias-corrected per model, so there is no instrument error left to
+absorb. Membership in that list is a SPENDING decision — any code there buys
+a judgment call and a narrative — which is affordable precisely because it
+fires almost never, and worth it because the section it contradicts is the
+one somebody takes a boat out on.
+
+**The bearing is stored and NOT checked**, the operator agreeing. One month
+of bearings and no measured sense of how often the shift clause is wrong; a
+threshold now would be picked from nothing, which is item 100's lesson. It
+accumulates at the three anchors the forecast's own clause names.
+
+**A second exporter defect, found by the Dart side.** `export_observed_so_far`
+serialised its input with a hand-written key list, which silently dropped
+`peak_gust_kmh` the day it was added: the exporter ran, the vector wrote, the
+Python suite passed, and only Dart failed, because it was the one reading a
+key that was not there. Both that exporter and
+`export_observation_disagreements` now use `asdict`. A serialiser edited
+whenever the dataclass changes is a second definition of the dataclass.
+
+**Verified.** 1,497 Python and 206 Dart. Four mutations bit: the sustained
+clause renamed back to a gust, the old bug restored by feeding the gust
+clause the sustained field, the disagreement reading the sustained wind, and
+equality counting as exceeding. Driven before and after: transcripts
+identical, the data dump moving only by the new null field, the prompt hashes
+and +516 characters of narrative prompt.
+
+**The harness, on the rare case rather than the ordinary one.** Item 77's
+manual form: today's real 106,702-character user prompt with the observed
+block carrying BOTH a sustained reading and a filed gust of 48 km/h — above
+the day's calibrated peak of 41.5 — handed with the rebuilt system prompt to
+a cold worker of another model family. Testing the ordinary day would have
+tested nothing, since the ordinary day is the one where nothing is there.
+
+Verified by reading the output, not by the worker's report:
+
+- Valid JSON, schema validates, 4,325 characters across all seven sections.
+- The gust is reported AS a gust, at 48 km/h, and is never called sustained.
+- It says the forecast peak was beaten, in Today's Forecast, in Severe
+  Weather and in the Confidence Notes.
+- It connected the exceedance to the review's standing finding that every
+  Day+0 model under-predicts wind, and concluded the calibrated peak "should
+  be regarded as conservative" — which is the rule about naming a model on
+  the wrong side of its own record, applied without being asked.
+- The unremarkable 7 km/h sustained figure is simply not mentioned, which is
+  editorial judgement rather than a rule and is the right call.
+- Pipeline vocabulary stays in the Confidence Notes, where the rule allows
+  it. All three composed blocks come back with the capitalisation the rules
+  require.
+
+**Not done.** No live run has produced the corrected sentence; tonight's
+15:01Z is the first that can, and it will say "peak sustained" rather than
+"peak gust" for the first time since item 121. The observed bearing is in no
+prompt and no check. The harness worker is a Claude model rather than the
+deployment's own, so this says the rule is followable, not that Gemini will
+follow it.
+
 ### The station's own gust and bearing, 2026-09-21 — and where they were hiding
 
 The operator, having asked whether the wind is measured and reported at both

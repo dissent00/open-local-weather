@@ -76,11 +76,35 @@ class StandingCall:
     # actually recorded rather than against a later model run.
     temp_low_c: float | None = None
 
+    # THE CALLED PEAK GUST — 2026-09-21. The calibrated figure the forecast
+    # publishes for the whole day, which is the number the Winam Gulf section
+    # hands a boater and the number the record scores. Compared against the
+    # gust the STATION filed, never against its sustained wind: that
+    # conflation is what item 146 exists to end, and until this date the
+    # observed block invited it by calling the sustained reading a gust.
+    peak_gust_kmh: float | None = None
+
 
 DISAGREEMENT_RAIN_WHILE_DRY = "rain_observed_while_dry_called"
 DISAGREEMENT_HIGH_EXCEEDED = "high_already_exceeded"
 DISAGREEMENT_ONSET_ALREADY_PASSED = "onset_already_passed"
 DISAGREEMENT_LOW_DIVERGES = "observed_low_diverges"
+# A gust the station has already filed above the day's called peak.
+#
+# NO MARGIN, the operator's decision on 2026-09-21, and it is the right
+# one here for a reason the other thresholds do not share: the calibrated
+# gust is ALREADY the record's best estimate, corrected by each model's
+# measured bias, so there is no instrument error left to absorb. A margin
+# would be a number nobody has measured.
+#
+# MEMBERSHIP HERE IS A SPENDING DECISION — `reasoning.llm_should_reason`
+# buys a judgment call and a narrative for any code in this list. That is
+# affordable because this fires almost never: over the 30 days to
+# 2026-09-21 the station filed a gust in exactly one hour of 609. And a
+# gust already past the day's called peak is precisely the case where
+# re-forecasting is worth the call, because the section it contradicts is
+# the one somebody takes a boat out on.
+DISAGREEMENT_GUST_EXCEEDED = "gust_already_exceeded"
 
 # How far above the standing high an observation must sit before it counts.
 #
@@ -387,6 +411,18 @@ def observation_disagreements(
         and observed.high_c >= standing.temp_high_c + temp_margin_c
     ):
         found.append(DISAGREEMENT_HIGH_EXCEEDED)
+
+    # THE GUST, AGAINST THE GUST. `observed.peak_gust_kmh` is what the station
+    # FILED, which is null on almost every day; `peak_wind_kmh` beside it is
+    # the sustained maximum and can never reach this test. One-directional
+    # like the rest: a gust under the called peak proves nothing, because the
+    # day is not over.
+    if (
+        standing.peak_gust_kmh is not None
+        and observed.peak_gust_kmh is not None
+        and observed.peak_gust_kmh > standing.peak_gust_kmh
+    ):
+        found.append(DISAGREEMENT_GUST_EXCEEDED)
 
     # THE CALL IS RIGHT ABOUT THE DAY AND WRONG ABOUT THE HOUR — item 138.
     #

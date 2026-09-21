@@ -43,6 +43,7 @@ class StandingCall {
     this.tempHighC,
     this.onsetHour,
     this.tempLowC,
+    this.peakGustKmh,
   });
 
   final bool? rain;
@@ -50,6 +51,14 @@ class StandingCall {
 
   /// The called overnight minimum — upstream item 143.
   final double? tempLowC;
+
+  /// THE CALLED PEAK GUST. The calibrated figure the forecast publishes for
+  /// the whole day, which is what the marine section hands a boater and what
+  /// the record scores. Compared against the gust the station FILED, never
+  /// against its sustained wind: that conflation is what upstream item 146
+  /// exists to end, and until 2026-09-21 the observed block invited it by
+  /// calling the sustained reading a gust.
+  final double? peakGustKmh;
 
   /// "HH:MM", the hour the standing call put the rain's arrival at. Separate
   /// from [rain] because a call can be right about the DAY and wrong about
@@ -98,6 +107,16 @@ List<String> observationDisagreements(
   final seen = observed.highC;
   if (high != null && seen != null && seen >= high + tempMarginC) {
     found.add(disagreementHighExceeded);
+  }
+
+  // THE GUST, AGAINST THE GUST. `observed.peakGustKmh` is what the station
+  // FILED, null on almost every day; `peakWindKmh` beside it is the sustained
+  // maximum and can never reach this test. One-directional like the rest: a
+  // gust under the called peak proves nothing, because the day is not over.
+  final calledGust = standing.peakGustKmh;
+  final seenGust = observed.peakGustKmh;
+  if (calledGust != null && seenGust != null && seenGust > calledGust) {
+    found.add(disagreementGustExceeded);
   }
 
   // THE CALL IS RIGHT ABOUT THE DAY AND WRONG ABOUT THE HOUR — item 138.

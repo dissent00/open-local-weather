@@ -4,6 +4,7 @@ import pytest
 
 from openlocalweather.models import DeviationBands
 from openlocalweather.disagreement import (
+    DISAGREEMENT_GUST_EXCEEDED,
     DISAGREEMENT_HIGH_EXCEEDED,
     DISAGREEMENT_LOW_DIVERGES,
     DISAGREEMENT_ONSET_ALREADY_PASSED,
@@ -424,3 +425,51 @@ def test_tuning_the_high_and_onset_bands_can_never_change_what_is_spent():
                 bands=DeviationBands(high_c=tenth / 10, onset_min=minutes),
             )
             assert got == baseline, f"high band {tenth / 10} / onset band {minutes} changed what is SPENT"
+
+
+# ---------------------------------------------------------------------------
+# A gust that has already beaten the forecast — 2026-09-21
+# ---------------------------------------------------------------------------
+
+
+def test_a_gust_above_the_called_peak_is_a_contradiction():
+    """The forecast publishes one calibrated peak gust for the day, and the
+    Winam Gulf section is what a boater acts on. A station gust already above
+    it by mid-morning settles the question the day was supposed to answer."""
+    found = observation_disagreements(
+        StandingCall(peak_gust_kmh=41.5),
+        ObservedSoFar(peak_gust_kmh=48.2),
+    )
+    assert DISAGREEMENT_GUST_EXCEEDED in found
+
+
+def test_a_gust_below_the_called_peak_settles_nothing():
+    """One-directional, like every other test here. The day is not over, so a
+    gust under the called peak is not evidence the peak will not come."""
+    found = observation_disagreements(
+        StandingCall(peak_gust_kmh=41.5),
+        ObservedSoFar(peak_gust_kmh=30.0),
+    )
+    assert DISAGREEMENT_GUST_EXCEEDED not in found
+
+
+def test_the_sustained_wind_cannot_trigger_the_gust_code():
+    """The whole point of naming the two apart. A sustained reading above the
+    called GUST is not a gust above the called gust — that comparison is the
+    one item 146 exists to stop, and it used to be invited by a prompt that
+    called the sustained figure a gust."""
+    found = observation_disagreements(
+        StandingCall(peak_gust_kmh=41.5),
+        ObservedSoFar(peak_wind_kmh=48.2),
+    )
+    assert DISAGREEMENT_GUST_EXCEEDED not in found
+
+
+def test_no_gust_filed_is_not_a_contradiction():
+    """Almost every day. An absent gust group is the station reporting none,
+    and a check that read it as zero would be silent; one that read it as
+    contradiction would fire daily."""
+    found = observation_disagreements(
+        StandingCall(peak_gust_kmh=41.5), ObservedSoFar(peak_wind_kmh=7.4)
+    )
+    assert DISAGREEMENT_GUST_EXCEEDED not in found

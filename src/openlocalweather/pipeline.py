@@ -1978,6 +1978,10 @@ def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
         # what tomorrow's verification grades, so it is the number the
         # station's reading should be allowed to diverge from.
         temp_low_c=entry.temp_low_c,
+        # FROM THE ENTRY, like the low: `peak_wind_primary_kmh` is the
+        # calibrated gust this issuance PUBLISHED for the day, which is the
+        # number a reader was given and the one the record scores.
+        peak_gust_kmh=entry.peak_wind_primary_kmh,
     )
 
 
@@ -2101,6 +2105,7 @@ def _observed_so_far(
         high_c=measured.high_c if measured is not None else None,
         low_c=measured.low_c if measured is not None else None,
         peak_wind_kmh=measured.peak_wind_kmh if measured is not None else None,
+        peak_gust_kmh=measured.peak_gust_kmh if measured is not None else None,
     )
     if not fallback:
         return observed, None

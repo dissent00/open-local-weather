@@ -116,7 +116,7 @@ def test_the_page_shows_what_the_station_had_already_seen():
 
     assert "Observed so far today" in html
     assert "rain from 13:00; thunder; high so far 27°C / 81°F" in html
-    assert "peak gust 31 km/h; sky 6/8." in html
+    assert "peak sustained 31 km/h; sky 6/8." in html
     # The withheld dimension is named rather than silently missing — C9.
     assert "never how much" in html
 
