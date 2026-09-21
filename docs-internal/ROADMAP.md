@@ -24502,7 +24502,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1 and 2 SHIPPED the same day, steps 3-6 open**
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-3 SHIPPED the same day, steps 4-6 open**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
@@ -24693,6 +24693,78 @@ day item 59 step 3 split the call.
 **Item 118's rule applies unchanged** — empty when every anchor is behind the
 reader, and the test is "is any of it still ahead", not "drop what has
 passed".
+
+### Step 3 SHIPPED 2026-09-21 — the wind, and the defect the drive found
+
+`tiles.wind_anchors` reads the SAME block at the SAME three hours as
+`cloud_anchors`, and returns `[{"when", "direction"?, "sustained_kmh"?,
+"gust_kmh"?}]` in time order. Two tiles side by side that named different
+times of day would be worse than one tile, so
+`test_the_wind_and_the_sky_describe_the_same_moments` asserts the pairing
+rather than trusting that both call `SHIFT_ANCHORS`.
+
+**Speeds are always km/h.** The reader's unit lives in the tile's header and
+converts at render, which is what makes °F/°C and knots/km-h a one-label
+change instead of a rebuild of every string. **The bearing is usually
+absent** — a single agreed bearing existed on 3 of 18 archived runs — and the
+tile drops the letters rather than apologising in words.
+
+**THE DEFECT: both anchor fields were declared on the wrong class, and
+nothing caught it for a day.** `cloud_anchors` shipped in step 2 on
+`IssuanceSnapshot` instead of `DailyLogEntry`. Pydantic's default
+`extra="ignore"` meant `DailyLogEntry(cloud_anchors=...)` threw the value
+away WITHOUT RAISING, so the sky never reached the record and an empty field
+was written into every earlier-issuance snapshot instead. 1,534 tests were
+green over it, because every one of them called the composer directly; the
+committed entry schema agreed with itself, because it is generated from the
+model. The comment beside the field said "NOT ON IssuanceSnapshot" while
+sitting inside IssuanceSnapshot — the code matched neither the comment nor
+the intent.
+
+What found it was driving the real pipeline and diffing the written record
+against a control, which is this repo's own rule and the only step that
+could have: a vector pins agreement between two languages, not correctness,
+and a unit test on a pure function never builds an entry.
+`test_the_tiles_anchors_survive_the_entry_that_is_written` is the guard, and
+it asserts the VALUES off disk rather than the field names.
+
+**The driver could not have exercised it either, until now.**
+`hourly_fixture` — the PRIMARY block, a whole local day in reality — carried
+three hours (00:00, 06:00, 12:00) and no cloud, no sustained wind and no
+bearing at all. Every anchor composer found nothing in it. Widening it to 24
+realistic hours broke NO test, which says how little was resting on the
+three. It now carries a day with a shape: clear morning to overcast
+afternoon, wind backing southwest to south and easing after a late peak. A
+flat fixture cannot tell a working composer from one reading the wrong hour.
+
+One thing noted and not chased: the fixture serves gusts under the legacy
+`windgusts_10m` spelling, which the real FORECAST endpoint does not return —
+`open_meteo.py` asks it for `wind_gusts_10m`, and the NOTE there says why.
+Any test resting on the legacy name is resting on a shape the API does not
+serve. The archive endpoint is the one that uses it.
+
+**A second defect, in the Dart port, measured not guessed.** `cloudAnchors`
+averaged with `reduce`, which is not Python's `sum()` — CPython's is
+Neumaier-compensated. Over 400,000 boundary-targeted draws the two means
+differ on 24,168 and **the published word differs on 12,059**: five covers of
+5.8, 6.0, 6.1, 6.4 and 6.95 read "Mostly clear" compensated and "Clear" under
+`reduce`. `windAnchors` had the sibling fault available in `roundLikePython`,
+whose absence a sweep of 8,000 draws puts at 506 disagreements (6.3%). Both
+now use `mean` and `roundLikePython`; a vector case for each pins the
+difference, since the old fixtures all summed exactly and could not.
+
+**Verified.** 1,535 Python, 212 Dart, `dart analyze` clean. Eight mutations
+each bit their own case: the item 118 guard in both languages, the direction
+gate, the rounding, the gust, the anchor order, and both arithmetic faults
+above. Driven through the real pipeline before and after against a HEAD
+worktree on the SAME fixture: transcripts identical, and the record's only
+change is the two anchor lists arriving with values where the control wrote
+an empty field into a snapshot.
+
+**Not checked.** No live run has produced these; the app does not yet read
+the two fields off the wire (`ensemble` item 23), and nothing renders them on
+the page or in the mailer yet — that is step 6.
+
 
 ### A false alarm, and the guard it earned
 

@@ -312,9 +312,13 @@ def export_cloud_anchors() -> None:
     from openlocalweather.tiles import cloud_anchors, sky_word
 
     def block(covers):
+        # an hour's entry is a number every model shares, or a tuple giving
+        # model `i` its own -- the shape the summation cases need
         hours = {"time": [f"2026-09-21T{h:02d}:00" for h in range(len(covers))]}
-        for model in MODELS:
-            hours[f"cloud_cover_{model}"] = list(covers)
+        for i, model in enumerate(MODELS):
+            hours[f"cloud_cover_{model}"] = [
+                c[i] if isinstance(c, tuple) else c for c in covers
+            ]
         return {"hourly": hours}
 
     shape = (
@@ -332,6 +336,14 @@ def export_cloud_anchors() -> None:
         ("no cloud series at all is empty, not clear",
          {"hourly": {"time": [f"2026-09-21T{h:02d}:00" for h in range(24)]}}, 0),
         ("a block that stops before the last anchor", block(shape[:14]), 0),
+        # THE MEAN'S SUMMATION METHOD IS VISIBLE IN THE PUBLISHED WORD.
+        # These five cover 31.25 exactly under Python's compensated `sum()`
+        # and 6.2499999999999991 under a plain left-to-right accumulation, so
+        # the tile reads "Mostly clear" or "Clear" depending on which the port
+        # uses. Dart said "Clear" until 2026-09-21; nothing else here caught
+        # it, because every other fixture's covers sum exactly.
+        ("the summation method decides the word at a band edge",
+         block([(5.8, 6.0, 6.1, 6.4, 6.95)] * 24), 0),
     ]
     write(
         "cloud_anchors.json",
@@ -360,6 +372,90 @@ def export_cloud_anchors() -> None:
                               "expected": sky_word(None)}],
     )
 
+
+def export_wind_anchors() -> None:
+    """ROADMAP item 159 step 3 -- the wind at each anchor hour.
+
+    THE SAME THREE MOMENTS AS THE SKY. `cloud_anchors` above reads the same
+    block at the same hours; two tiles side by side that described different
+    times of day would be worse than one tile, and `test_tiles.py` asserts the
+    pairing directly.
+
+    THE BEARING IS USUALLY ABSENT and these cases say so out loud: measured
+    over the prompt archive, a single agreed bearing existed on 3 of 18 runs.
+    `consensus_direction` needs three models and 0.75 agreement, so the
+    disagreement cases here are the normal day, not the edge.
+    """
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    def block(speeds, gusts=None, bearings=None):
+        n = len(next(iter(speeds.values()))) if isinstance(speeds, dict) else len(speeds)
+        hours = {"time": [f"2026-09-21T{h:02d}:00" for h in range(n)]}
+        for i, model in enumerate(MODELS):
+            if isinstance(speeds, dict):
+                if model not in speeds:
+                    continue
+                hours[f"wind_speed_10m_{model}"] = list(speeds[model])
+            else:
+                hours[f"wind_speed_10m_{model}"] = list(speeds)
+            if gusts is not None:
+                hours[f"wind_gusts_10m_{model}"] = list(gusts)
+            if bearings is not None:
+                # `bearings` is per-hour; an int is shared by every model and
+                # agrees by construction, a tuple gives model `i` its own.
+                hours[f"wind_direction_10m_{model}"] = [
+                    b[i] if isinstance(b, tuple) else b for b in bearings
+                ]
+        return {"hourly": hours}
+
+    speeds = [8.0] * 6 + [12.0] * 6 + [22.0] * 6 + [18.0] * 6
+    gusts = [14.0] * 6 + [20.0] * 6 + [35.0] * 6 + [29.0] * 6
+    agreed = [225] * 12 + [200] * 6 + [190] * 6
+    # each model a different quarter of the rose: no bearing survives the gate
+    split = [(10, 100, 190, 280, 45)] * 24
+
+    cases = [
+        ("a day that backs, with gusts, every bearing agreed",
+         block(speeds, gusts, agreed), 0),
+        ("models that disagree on the bearing give speeds alone",
+         block(speeds, gusts, split), 0),
+        ("no direction series at all reads the same as disagreement",
+         block(speeds, gusts), 0),
+        ("sustained without gusts", block(speeds, None, agreed), 0),
+        ("a morning run keeps the anchor that has passed",
+         block(speeds, gusts, agreed), 6),
+        ("an evening run with every anchor behind it says nothing",
+         block(speeds, gusts, agreed), 18),
+        ("no wind series at all is empty",
+         {"hourly": {"time": [f"2026-09-21T{h:02d}:00" for h in range(24)]}}, 0),
+        ("a block that stops before the last anchor",
+         block(speeds[:14], gusts[:14], agreed[:14]), 0),
+        # THE ROUNDING IS VISIBLE IN THE PUBLISHED NUMBER. Four models at
+        # 10.7, 24.7, 59.9 and 10.1 mean 26.349999999999998, which Python
+        # rounds to 26.3. Dart's obvious spelling multiplies by ten first,
+        # which lands exactly on 263.5 and rounds it away to 26.4 -- the fault
+        # rounding.dart was written for, on 6.3% of a swept 8,000 draws. Four
+        # models, not five, because dividing by five almost never reaches an
+        # x.x5 whose true value sits below it.
+        ("the rounding is visible when four models mean an exact half",
+         block({m: [26.0] * 3 + [v] * 21 for m, v in
+                zip(MODELS, (10.7, 24.7, 59.9, 10.1))}, None, agreed), 0),
+    ]
+    write(
+        "wind_anchors.json",
+        "wind_anchors",
+        "ROADMAP item 159. The wind at each anchor hour, in time order, for "
+        "the at-a-glance tiles: the mean sustained speed, the mean gust and "
+        "the agreed bearing when one exists. SPEEDS ARE ALWAYS KM/H -- the "
+        "reader's unit is applied at render, so the setting is a label "
+        "change and not a rebuild. Read from the WHOLE LOCAL DAY at the same "
+        "anchors as `cloud_anchors`, so the two tiles name the same three "
+        "moments. Empty when every anchor is behind the reader -- item 118.",
+        [{"name": n, "input": {"hourly_multi_model": h, "models": list(MODELS),
+                               "issued_hour": i},
+          "expected": wind_anchors(h, MODELS, issued_hour=i)} for n, h, i in cases],
+    )
 
 def export_tile_comparison() -> None:
     """ROADMAP item 159 step 1 — the modifier a tile carries, or nothing.
@@ -5752,6 +5848,7 @@ def main() -> None:
     export_overlong_display_values()
     export_tile_comparison()
     export_cloud_anchors()
+    export_wind_anchors()
     export_scoring()
     export_extract()
     export_aqi()

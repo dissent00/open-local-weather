@@ -790,6 +790,16 @@ def test_vectors_cloud_anchors():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_wind_anchors():
+    """ROADMAP item 159 step 3 — the wind at the same anchors as the sky."""
+    from openlocalweather.tiles import wind_anchors
+
+    for case in load("wind_anchors.json")["cases"]:
+        i = case["input"]
+        got = wind_anchors(i["hourly_multi_model"], i["models"], issued_hour=i["issued_hour"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_word():
     from openlocalweather.tiles import sky_word
 
@@ -1092,6 +1102,7 @@ def test_every_vector_file_is_exercised():
         "phrase_defect.json",
         "overlong_display_values.json",
         "cloud_anchors.json",
+        "wind_anchors.json",
         "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",

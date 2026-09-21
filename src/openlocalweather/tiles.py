@@ -229,3 +229,68 @@ def cloud_anchors(
         return []
 
     return out
+
+
+def wind_anchors(
+    hourly: dict,
+    models: list[str],
+    *,
+    issued_hour: int,
+) -> list[dict[str, object]]:
+    """The wind at each anchor hour, as a tile's lines, in time order.
+
+    THE SAME ANCHORS AND THE SAME BLOCK AS THE SKY, which is the point: two
+    tiles side by side must describe the same three moments or a reader
+    comparing them is comparing different times of day.
+
+    VALUES, NOT A SENTENCE. `describe_wind_shift` and
+    `describe_wind_timeline` already compose prose from these hours; a tile
+    needs the numbers, and re-deriving them here from a parsed clause would be
+    the mistake `ensemble` item 23 names — splitting a sentence in a renderer
+    is the wrong side of the seam.
+
+    SPEEDS STAY IN KM/H whatever the reader's unit. The unit lives in the
+    tile's header and the value is converted at render, which is what makes
+    the setting a one-label change rather than a rebuild of every string.
+
+    `direction` IS ABSENT MORE OFTEN THAN PRESENT and the tile drops the
+    letters rather than apologising in words: measured over the prompt
+    archive, a single agreed bearing existed on 3 of 18 runs. A bearing cannot
+    be averaged, so this is `consensus_direction`'s gated answer and nothing
+    else — see `wind.vector_mean`.
+
+    EMPTY WHEN EVERY ANCHOR IS BEHIND THE READER — ROADMAP item 118, the rule
+    both prose composers follow.
+    """
+    from openlocalweather.wind import (
+        SHIFT_ANCHORS,
+        directions_at,
+        consensus_direction,
+        values_at,
+    )
+
+    out: list[dict[str, object]] = []
+    hours: list[int] = []
+
+    for (hour, _), word in zip(SHIFT_ANCHORS, TILE_ANCHOR_WORDS):
+        speeds = values_at(hourly, models, hour, "wind_speed_10m")
+        gusts = values_at(hourly, models, hour, "wind_gusts_10m")
+        if not speeds and not gusts:
+            continue
+
+        anchor: dict[str, object] = {"when": word}
+        point = consensus_direction(directions_at(hourly, models, hour))
+        if point is not None:
+            anchor["direction"] = point
+        if speeds:
+            anchor["sustained_kmh"] = round(sum(speeds) / len(speeds), 1)
+        if gusts:
+            anchor["gust_kmh"] = round(sum(gusts) / len(gusts), 1)
+
+        out.append(anchor)
+        hours.append(hour)
+
+    if not out or all(hour <= issued_hour for hour in hours):
+        return []
+
+    return out

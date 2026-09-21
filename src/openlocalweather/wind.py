@@ -126,7 +126,16 @@ _PLAIN = {
 }
 
 
-def _directions_at(hourly: dict, models: list[str], hour: int) -> list[float]:
+def directions_at(hourly: dict, models: list[str], hour: int) -> list[float]:
+    """Each model's wind bearing at local `hour`, in degrees.
+
+    PUBLIC SINCE 2026-09-21 for the same reason `values_at` is: `tiles.py`
+    samples this block at the same anchors, and a second reader of the
+    suffixed-then-bare key fallback is a second thing to keep in step. Dart
+    forces the question — `tiles.dart` is a different library and cannot see
+    a private member — so the two languages agree here rather than the port
+    growing a copy.
+    """
     hours = hourly.get("hourly") or {}
     times = hours.get("time") or []
     idx = next((i for i, t in enumerate(times) if _hour_of(t) == hour), None)
@@ -217,7 +226,7 @@ def describe_wind_timeline(
             continue
 
         gusts = values_at(hourly, models, hour, "wind_gusts_10m")
-        point = consensus_direction(_directions_at(hourly, models, hour))
+        point = consensus_direction(directions_at(hourly, models, hour))
         lead = f"{_ADJECTIVE[point]} {when}" if point else when
         clause = f"{lead} at {_kmh_and_kt(sum(speeds) / len(speeds))}"
         if gusts:
@@ -288,7 +297,7 @@ def describe_wind_shift(
     # The hour each named anchor came from, kept only for the check below.
     hours: list[int] = []
     for hour, when in SHIFT_ANCHORS:
-        point = consensus_direction(_directions_at(hourly, models, hour))
+        point = consensus_direction(directions_at(hourly, models, hour))
         if point is not None:
             named.append((point, when))
             hours.append(hour)

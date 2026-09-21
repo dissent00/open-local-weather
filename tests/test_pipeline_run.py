@@ -31,6 +31,7 @@ from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     DailyLogEntry,
     GroundAQIReading,
+    IssuanceSnapshot,
     LogEntryMeta,
     ModelPredictionsByLead,
 )
@@ -56,12 +57,43 @@ LOCATION = LocationConfig(
 
 
 def hourly_fixture() -> dict:
-    fields: dict[str, list] = {"time": ["2026-08-11T00:00", "2026-08-11T06:00", "2026-08-11T12:00"]}
+    """The PRIMARY block: one whole local day, 00:00 to 23:00.
+
+    WHY IT IS A WHOLE DAY. The real call is `forecast_days=1` and returns 24
+    rows; this carried three (00:00, 06:00, 12:00) until 2026-09-21, which
+    meant every anchor-sampling composer — the wind shift, and the tile
+    anchors at 03:00, 12:00 and 18:00 — found nothing here and returned empty
+    through the whole suite AND through the driver. The tile work shipped
+    against a fixture that could not exercise it. Widening it to 24 hours
+    broke no test, which says how little was resting on the three.
+
+    WIND AND CLOUD UNDER THE FORECAST ENDPOINT'S OWN NAMES. `open_meteo.py`
+    asks that endpoint for `wind_speed_10m`, `wind_gusts_10m` (underscored,
+    and the NOTE there says why), `wind_direction_10m` and `cloud_cover`. The
+    legacy `windgusts_10m` below is kept because parts of this suite were
+    written against it; the real forecast response does not carry that
+    spelling, so a test that depends on it is testing a shape the API does not
+    return. Not chased here.
+
+    THE DAY HAS A SHAPE: clear morning building to overcast under afternoon
+    convection, wind backing from southwest to south and easing after its
+    late-afternoon peak. A flat day cannot tell a working composer from one
+    that reads the wrong hour.
+    """
+    cloud = [5] * 6 + [10, 20, 30, 40, 55, 60] + [70, 80, 95, 100, 100, 100] + [100, 80, 60, 40, 20, 10]
+    speed = [8.0] * 6 + [12.0] * 6 + [22.0] * 6 + [18.0] * 6
+    bearing = [225] * 12 + [200] * 6 + [190] * 6
+
+    fields: dict[str, list] = {"time": [f"2026-08-11T{h:02d}:00" for h in range(24)]}
     for model in MODELS:
-        fields[f"precipitation_{model}"] = [0.0, 0.0, 0.0]
-        fields[f"windgusts_10m_{model}"] = [10.0, 12.0, 15.0]
-        fields[f"temperature_2m_{model}"] = [18.0, 22.0, 26.0]
-        fields[f"pressure_msl_{model}"] = [1012.0, 1011.0, 1010.0]
+        fields[f"precipitation_{model}"] = [0.0] * 24
+        fields[f"windgusts_10m_{model}"] = [10.0 + h / 4 for h in range(24)]
+        fields[f"wind_gusts_10m_{model}"] = [s * 1.6 for s in speed]
+        fields[f"wind_speed_10m_{model}"] = list(speed)
+        fields[f"wind_direction_10m_{model}"] = list(bearing)
+        fields[f"cloud_cover_{model}"] = list(cloud)
+        fields[f"temperature_2m_{model}"] = [18.0 + h / 3 for h in range(24)]
+        fields[f"pressure_msl_{model}"] = [1012.0 - h * 0.1 for h in range(24)]
     return {"hourly": fields}
 
 
@@ -4205,3 +4237,41 @@ def test_the_wind_shift_is_given_the_whole_day_not_the_forward_window(
     # southwesterly and lives only in the forward window.
     assert "northeast" in shift, f"the wind shift was built from the wrong block: {shift}"
     assert "southwest" not in shift, shift
+
+
+def test_the_tiles_anchors_survive_the_entry_that_is_written(tmp_path, monkeypatch):
+    """The anchors reach the DAY'S RECORD, not a field pydantic throws away.
+
+    THE DEFECT THIS EXISTS FOR, found on 2026-09-21 by driving the pipeline
+    rather than by any test. `cloud_anchors` and `wind_anchors` were declared
+    on `IssuanceSnapshot` instead of `DailyLogEntry`, and pydantic's default
+    `extra="ignore"` meant the pipeline's `DailyLogEntry(cloud_anchors=...,
+    wind_anchors=...)` DISCARDED both without raising. 1,534 tests stayed
+    green because every one of them called the composers directly, and the
+    committed entry schema agreed with itself because it was generated from
+    the wrong class.
+
+    So this asserts the one thing a unit test cannot: that the value is still
+    there after the entry has been built and read back off disk.
+    """
+    deps = make_deps(tmp_path)
+    issue(deps, today=date(2026, 8, 11))
+
+    stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+
+    # the fixture's day: clear morning, overcast afternoon, wind backing from
+    # southwest and easing after a late peak
+    assert stored.cloud_anchors == [
+        {"when": "early", "cover": "Clear"},
+        {"when": "midday", "cover": "Mostly cloudy"},
+        {"when": "evening", "cover": "Overcast"},
+    ]
+    assert stored.wind_anchors == [
+        {"when": "early", "direction": "SW", "sustained_kmh": 8.0, "gust_kmh": 12.8},
+        {"when": "midday", "direction": "SSW", "sustained_kmh": 22.0, "gust_kmh": 35.2},
+        {"when": "evening", "direction": "S", "sustained_kmh": 18.0, "gust_kmh": 28.8},
+    ]
+
+    # and a snapshot of an EARLIER issuance must not carry them at all
+    assert "cloud_anchors" not in IssuanceSnapshot.model_fields
+    assert "wind_anchors" not in IssuanceSnapshot.model_fields

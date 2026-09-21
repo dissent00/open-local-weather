@@ -1464,24 +1464,6 @@ class IssuanceSnapshot(BaseModel):
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
-
-    # THE SKY AT EACH ANCHOR HOUR, for the at-a-glance tiles — ROADMAP item
-    # 159 step 2, `ensemble` item 23. `[{"when": ..., "cover": ...}]` in time
-    # order, empty when no anchor is still ahead.
-    #
-    # FROM CODE, NOT FROM THE NARRATIVE, like `temp_high_low_display` above
-    # and for the same reason: the model is not asked to do work this project
-    # can do, and a display value the model writes drifts in shape — which is
-    # what `rain_expected` did the day the call was split.
-    #
-    # A DAY'S SHAPE RATHER THAN ITS MEAN. On 2026-09-21 the models' Day+0
-    # cloud mean was 45% with a 14-to-64 spread while the day ran clear in the
-    # morning to overcast under afternoon convection, which is what the
-    # forecast's own prose said. One number for that day is true and useless.
-    #
-    # NOT ON IssuanceSnapshot: a snapshot preserves what an earlier issuance
-    # PUBLISHED, and the tiles always show the current one.
-    cloud_anchors: list[dict[str, str]] = Field(default_factory=list)
     mslp_trend_24h: str
     synoptic_pattern: str
     uv_index_max: str | None = None
@@ -1574,6 +1556,47 @@ class DailyLogEntry(BaseModel):
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
+
+    # THE SKY AT EACH ANCHOR HOUR, for the at-a-glance tiles — ROADMAP item
+    # 159 step 2, `ensemble` item 23. `[{"when": ..., "cover": ...}]` in time
+    # order, empty when no anchor is still ahead.
+    #
+    # FROM CODE, NOT FROM THE NARRATIVE, like `temp_high_low_display` above
+    # and for the same reason: the model is not asked to do work this project
+    # can do, and a display value the model writes drifts in shape — which is
+    # what `rain_expected` did the day the call was split.
+    #
+    # A DAY'S SHAPE RATHER THAN ITS MEAN. On 2026-09-21 the models' Day+0
+    # cloud mean was 45% with a 14-to-64 spread while the day ran clear in the
+    # morning to overcast under afternoon convection, which is what the
+    # forecast's own prose said. One number for that day is true and useless.
+    #
+    # ON DailyLogEntry AND NOT ON IssuanceSnapshot, deliberately: a snapshot
+    # preserves what an EARLIER issuance published, and the tiles always show
+    # the current one.
+    #
+    # THIS COMMENT WAS ONCE FALSE AND THE CODE MATCHED THE COMMENT, NOT THE
+    # INTENT. Both fields were declared on IssuanceSnapshot from 2026-09-21
+    # until the same day. Pydantic's default `extra="ignore"` meant the
+    # pipeline's `DailyLogEntry(cloud_anchors=..., wind_anchors=...)` threw
+    # both away WITHOUT RAISING, so the sky never reached the record and no
+    # test noticed: every one of them called the composers directly, and the
+    # committed entry schema was generated from the wrong class, so it agreed
+    # with itself. Driving the real pipeline is what found it --
+    # `test_the_tiles_anchors_survive_the_entry_that_is_written` is the guard.
+    cloud_anchors: list[dict[str, str]] = Field(default_factory=list)
+
+    # THE WIND AT EACH ANCHOR HOUR, for the at-a-glance tiles — the same
+    # anchors and the same block as `cloud_anchors`, so two tiles side by side
+    # describe the same three moments.
+    #
+    # `[{"when", "direction"?, "sustained_kmh"?, "gust_kmh"?}]` in time order.
+    # SPEEDS STAY IN KM/H whatever the reader's unit: the unit lives in the
+    # tile's header and the value converts at render, which is what makes the
+    # setting a one-label change. `direction` is absent more often than
+    # present — a single agreed bearing existed on 3 of 18 archived runs — and
+    # the tile drops the letters rather than apologising in words.
+    wind_anchors: list[dict[str, object]] = Field(default_factory=list)
     mslp_trend_24h: str
     synoptic_pattern: str
     uv_index_max: str | None = None

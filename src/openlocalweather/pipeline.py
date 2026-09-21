@@ -81,7 +81,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_extended_trend,
 )
-from openlocalweather.tiles import cloud_anchors
+from openlocalweather.tiles import cloud_anchors, wind_anchors
 from openlocalweather.llm.provider import provider_identity
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
@@ -2472,6 +2472,9 @@ def _compose_log_entry(
         # three moments. See the wind shift's call site for why that
         # distinction is worth stating.
         cloud_anchors=cloud_anchors(
+            guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+        ),
+        wind_anchors=wind_anchors(
             guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
         ),
         mslp_trend_24h=tp.mslp_trend_24h or "",

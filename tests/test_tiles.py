@@ -229,3 +229,110 @@ def test_the_words_are_the_standards_own_categories():
     assert sky_word(93.75) == "Overcast"
     assert sky_word(100.0) == "Overcast"
     assert sky_word(None) is None
+
+
+# ---------------------------------------------------------------------------
+# The wind at each anchor — ROADMAP item 159 step 3
+# ---------------------------------------------------------------------------
+
+
+def wind_block(speeds, gusts, bearings) -> dict:
+    """A WHOLE LOCAL DAY, like `day_block` and for the same reason."""
+    from openlocalweather.defaults import MODELS
+
+    hours = {"time": [f"2026-09-21T{h:02d}:00" for h in range(24)]}
+    for model in MODELS:
+        hours[f"wind_speed_10m_{model}"] = list(speeds)
+        hours[f"wind_gusts_10m_{model}"] = list(gusts)
+        if bearings is not None:
+            hours[f"wind_direction_10m_{model}"] = list(bearings)
+    return {"hourly": hours}
+
+
+LIGHT_THEN_FRESH = ([9.0] * 12 + [22.0] * 12, [15.0] * 12 + [52.0] * 12)
+NE_THEN_SW = [30.0] * 12 + [225.0] * 12
+
+
+def test_the_wind_anchors_are_values_in_time_order():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    said = wind_anchors(
+        wind_block(*LIGHT_THEN_FRESH, NE_THEN_SW), MODELS, issued_hour=0
+    )
+    assert [a["when"] for a in said] == ["early", "midday", "evening"]
+    assert said[0] == {
+        "when": "early",
+        "direction": "NNE",
+        "sustained_kmh": 9.0,
+        "gust_kmh": 15.0,
+    }
+    assert said[1]["direction"] == "SW"
+    assert said[1]["gust_kmh"] == 52.0
+
+
+def test_speeds_stay_in_kilometres_whatever_the_reader_wants():
+    """The unit lives in the tile's header and the value converts at render,
+    which is what makes the setting a one-label change rather than a rebuild
+    of every string."""
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    said = wind_anchors(
+        wind_block(*LIGHT_THEN_FRESH, NE_THEN_SW), MODELS, issued_hour=0
+    )
+    assert said[1]["sustained_kmh"] == 22.0, "a speed was converted at the source"
+
+
+def test_no_agreed_bearing_drops_the_letters_not_the_anchor():
+    """A bearing cannot be averaged, so this is consensus_direction's gated
+    answer and nothing else. Measured over the prompt archive, a single agreed
+    bearing existed on 3 of 18 runs, so this is the common case."""
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    # THE GATE IS ACROSS MODELS, not across hours — written wrong the first
+    # time, with every model given the same bearing, which agrees by
+    # construction. Here each model points a different way at the same hour,
+    # which is what a scattered forecast actually looks like.
+    block = wind_block(*LIGHT_THEN_FRESH, None)
+    for offset, model in enumerate(MODELS):
+        block["hourly"][f"wind_direction_10m_{model}"] = [
+            float(offset * 72) % 360
+        ] * 24
+
+    said = wind_anchors(block, MODELS, issued_hour=0)
+    assert said, "the anchors were dropped along with the bearing"
+    assert all("direction" not in a for a in said)
+    assert said[0]["sustained_kmh"] == 9.0
+
+
+def test_an_hour_with_no_wind_at_all_is_absent():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    bare = {"hourly": {"time": [f"2026-09-21T{h:02d}:00" for h in range(24)]}}
+    assert wind_anchors(bare, MODELS, issued_hour=0) == []
+
+
+def test_an_evening_run_with_every_anchor_behind_it_says_nothing_about_wind():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import wind_anchors
+
+    assert (
+        wind_anchors(wind_block(*LIGHT_THEN_FRESH, NE_THEN_SW), MODELS, issued_hour=18)
+        == []
+    )
+
+
+def test_the_wind_and_the_sky_describe_the_same_moments():
+    """Two tiles side by side must name the same three hours, or a reader
+    comparing them is comparing different times of day."""
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors, wind_anchors
+
+    block = wind_block(*LIGHT_THEN_FRESH, NE_THEN_SW)
+    block["hourly"].update(day_block(CLEAR_TO_OVERCAST)["hourly"])
+    sky = cloud_anchors(block, MODELS, issued_hour=0)
+    wind = wind_anchors(block, MODELS, issued_hour=0)
+    assert [a["when"] for a in sky] == [a["when"] for a in wind]

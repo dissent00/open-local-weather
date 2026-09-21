@@ -1172,6 +1172,21 @@ void main() {
       }
     });
 
+    test('wind_anchors', () {
+      // Upstream item 159 step 3. The same block and the same anchors as the
+      // sky, so the two tiles name the same three moments. Speeds are always
+      // km/h; the reader's unit is applied at render.
+      for (final c in loadVectors('wind_anchors.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = windAnchors(
+          (i['hourly_multi_model'] as Map).cast<String, Object?>(),
+          (i['models'] as List).cast<String>(),
+          issuedHour: i['issued_hour'] as int,
+        );
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+
     test('sky_word', () {
       for (final c in loadVectors('sky_word.json')['cases'] as List) {
         final v = ((c as Map)['input'] as Map)['cover_pct'] as num?;
@@ -1875,6 +1890,7 @@ void main() {
       'false_weekday_claims.json',
       'overlong_display_values.json',
       'cloud_anchors.json',
+      'wind_anchors.json',
       'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',

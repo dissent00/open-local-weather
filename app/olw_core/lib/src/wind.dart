@@ -107,7 +107,13 @@ int? _hourOf(String stamp) {
   return int.tryParse(parts[1].substring(0, 2));
 }
 
-List<double> _directionsAt(Map<String, Object?> hourly, List<String> models, int hour) {
+/// Each model's wind bearing at local [hour], in degrees.
+///
+/// Public because `tiles.dart` samples this block at the same anchors and is
+/// a different library, so it cannot see a private member. Upstream widened
+/// `_directions_at` to match rather than let the port grow its own copy of
+/// the suffixed-then-bare key fallback.
+List<double> directionsAt(Map<String, Object?> hourly, List<String> models, int hour) {
   final hours = hourly['hourly'];
   if (hours is! Map) return const [];
   final times = hours['time'];
@@ -210,7 +216,7 @@ String? describeWindTimeline(Map<String, Object?> hourly, List<String> models,
     if (speeds.isEmpty) continue;
 
     final gusts = valuesAt(hourly, models, hour, 'wind_gusts_10m');
-    final point = consensusDirection(_directionsAt(hourly, models, hour));
+    final point = consensusDirection(directionsAt(hourly, models, hour));
     final lead = point != null ? '${_adjective[point]} $label' : label;
     var clause = '$lead at ${_kmhAndKt(speeds.reduce((a, b) => a + b) / speeds.length)}';
     if (gusts.isNotEmpty) {
@@ -232,7 +238,7 @@ String? describeWindShift(Map<String, Object?> hourly, List<String> models,
   // The hour each named anchor came from, kept only for the check below.
   final hours = <int>[];
   for (final (hour, label) in shiftAnchors) {
-    final point = consensusDirection(_directionsAt(hourly, models, hour));
+    final point = consensusDirection(directionsAt(hourly, models, hour));
     if (point != null) {
       named.add((point, label));
       hours.add(hour);

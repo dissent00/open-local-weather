@@ -15,6 +15,8 @@
 library;
 
 import 'comparison.dart';
+import 'rounding.dart';
+import 'scoring.dart' show mean;
 import 'wind.dart';
 
 /// How many day-to-day pairs the record must hold before a percentile means
@@ -170,11 +172,74 @@ List<Map<String, String>> cloudAnchors(
     // The models' MEAN, matching every other consensus here. A spread is a
     // real fact about a sky and belongs where there is room to name which
     // model said what.
-    final label = skyWord(covers.reduce((a, b) => a + b) / covers.length);
+    //
+    // `mean`, NOT `reduce`: Python's `sum()` is Neumaier-compensated and a
+    // plain left-to-right accumulation drifts from it by an ULP on mixed
+    // magnitudes — see sums.dart. That ULP is invisible until a mean lands on
+    // one of skyWord's boundaries, where it flips the published word. Written
+    // with `reduce` on 2026-09-21 and corrected the same day; no vector case
+    // had caught it, because the fixtures' covers sum exactly.
+    final label = skyWord(mean(covers.cast<double?>()));
     if (label != null) {
       out.add({'when': tileAnchorWords[i], 'cover': label});
       hours.add(hour);
     }
+  }
+
+  if (out.isEmpty || hours.every((h) => h <= issuedHour)) return const [];
+  return out;
+}
+
+/// The wind at each anchor hour, as a tile's lines, in time order.
+///
+/// THE SAME ANCHORS AND THE SAME BLOCK AS THE SKY, which is the point: two
+/// tiles side by side must describe the same three moments or a reader
+/// comparing them is comparing different times of day.
+///
+/// VALUES, NOT A SENTENCE. `describeWindShift` and `describeWindTimeline`
+/// already compose prose from these hours; a tile needs the numbers, and
+/// re-deriving them by parsing a clause in the renderer is the wrong side of
+/// the seam — this repo's item 23.
+///
+/// SPEEDS STAY IN KM/H whatever the reader's unit. The unit lives in the
+/// tile's header and the value is converted at render, which is what makes
+/// the setting a one-label change rather than a rebuild of every string.
+///
+/// `direction` IS ABSENT MORE OFTEN THAN PRESENT and the tile drops the
+/// letters rather than apologising in words: measured over the upstream
+/// prompt archive, a single agreed bearing existed on 3 of 18 runs. A bearing
+/// cannot be averaged, so this is [consensusDirection]'s gated answer and
+/// nothing else.
+///
+/// Empty when every anchor is behind the reader — upstream item 118.
+List<Map<String, Object>> windAnchors(
+  Map<String, Object?> hourly,
+  List<String> models, {
+  required int issuedHour,
+}) {
+  final out = <Map<String, Object>>[];
+  final hours = <int>[];
+
+  for (var i = 0; i < shiftAnchors.length && i < tileAnchorWords.length; i++) {
+    final (hour, _) = shiftAnchors[i];
+    final speeds = valuesAt(hourly, models, hour, 'wind_speed_10m');
+    final gusts = valuesAt(hourly, models, hour, 'wind_gusts_10m');
+    if (speeds.isEmpty && gusts.isEmpty) continue;
+
+    final anchor = <String, Object>{'when': tileAnchorWords[i]};
+    final point = consensusDirection(directionsAt(hourly, models, hour));
+    if (point != null) {
+      anchor['direction'] = point;
+    }
+    if (speeds.isNotEmpty) {
+      anchor['sustained_kmh'] = roundLikePython(mean(speeds.cast<double?>())!, 1);
+    }
+    if (gusts.isNotEmpty) {
+      anchor['gust_kmh'] = roundLikePython(mean(gusts.cast<double?>())!, 1);
+    }
+
+    out.add(anchor);
+    hours.add(hour);
   }
 
   if (out.isEmpty || hours.every((h) => h <= issuedHour)) return const [];
