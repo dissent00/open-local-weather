@@ -66,6 +66,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from openlocalweather.wind import SHIFT_ANCHORS
 from openlocalweather.store import station_reports as station_store
 
 METAR_URL = "https://aviationweather.gov/api/data/metar"
@@ -403,6 +404,25 @@ class StationReadings:
     low_c: float | None = None
     peak_wind_kmh: float | None = None
 
+    # THE GUST, and it is a different quantity from `peak_wind_kmh` above,
+    # which is the peak SUSTAINED wind from `sknt`. Added 2026-09-21: the
+    # forecast publishes a calibrated gust and is scored on one, and until now
+    # the only local measurement beside it was a sustained speed, which is the
+    # gap ROADMAP item 146 records. None on almost every day, because METAR
+    # files a gust group only when a gust occurs.
+    peak_gust_kmh: float | None = None
+
+    # The bearing at each of `ANCHOR_HOURS`, keyed by the local hour as a
+    # string, or None when the day filed none at those hours.
+    #
+    # NOT A DAILY MEAN, measured: over the 30 days to 2026-09-21 the vector
+    # agreement of this station's own hourly bearings across a day ran a
+    # median of 0.26 and never reached 0.6, because the lake breeze reverses
+    # the wind. A daily bearing would be an average of opposites. The hours
+    # are the forecast's own — `wind.SHIFT_ANCHORS` — so what is recorded is
+    # comparable to the shift clause the forecast publishes.
+    anchor_wind_direction_deg: dict[str, float] | None = None
+
 
 def _number(raw: str) -> float | None:
     """A reading, or None for the service's absence markers.
@@ -418,6 +438,88 @@ def _number(raw: str) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+# The wind group of a raw report: direction, sustained speed, and the gust
+# when one is filed. `24007KT`, `VRB01KT`, `36012G22KT`, `///02KT`.
+#
+# READ FROM THE REPORT TEXT WE ALREADY STORE, rather than from the archive's
+# own `drct` and `gust` columns, and that is the whole design of this. Adding
+# columns would change the stored row's width, and the daily parse is
+# positional — the store refuses a file whose columns differ from the ones
+# being written, so every one of the 45 days already on disk would have to be
+# migrated or refetched. The report text is in every row of all of them, and
+# in the rows the current-conditions feed contributes too.
+#
+# MEASURED AGAINST THE ARCHIVE'S OWN DECODE, 2026-09-21, over 609 rows and 30
+# days at HKKI: direction agreed on 608 and gust on 609 of 609. The single
+# miss is a malformed report, `HKKI 061100Z 24007 9999 ...`, whose wind group
+# carries no unit; the archive decodes it leniently as 240 and this does not.
+# The unit is required on purpose — a pattern that accepts a bare five-digit
+# group can match things that are not wind, and one hour's direction is
+# cheaper than a wrong bearing — and the archive's lenient reading of that
+# row produced a sustained speed of 13.61 against a group that says 07,
+# which matches neither knots nor km/h and is its own argument.
+# The group opens at a space or the string start rather than at `\b`: a
+# word boundary cannot sit before a slash, so `///02KT` — direction failed,
+# speed good — would not have matched at all and a usable speed would have
+# been thrown away with the bearing. No row in the 609 carries one, so this
+# is a form handled before it is seen; checked over the same 609 rows, the
+# opening changes no answer.
+_WIND_GROUP = re.compile(
+    r"(?:(?<=\s)|^)(\d{3}|VRB|///)(\d{2,3}|//)(?:G(\d{2,3}))?(KT|MPS|KMH)\b"
+)
+
+# `VRB` is a real observation and it is not a direction: the wind was
+# genuinely variable. `///` is the sensor failing. Both are None here, which
+# is why this returns None rather than raising — an absent bearing and a
+# refused one look the same to everything downstream, and they should.
+_NO_BEARING = ("VRB", "///")
+
+
+def parse_wind_group(report: str) -> tuple[float | None, float | None, float | None]:
+    """(bearing degrees, sustained, gust) from a raw report, in its own units.
+
+    Speeds come back in whatever unit the group names, because the caller
+    knows which station it asked about and this does not; HKKI files KT. A
+    group that does not parse is three Nones rather than a partial answer.
+    """
+    match = _WIND_GROUP.search(report or "")
+    if match is None:
+        return None, None, None
+
+    bearing = None if match.group(1) in _NO_BEARING else float(match.group(1))
+    sustained = None if match.group(2) == "//" else float(match.group(2))
+    gust = float(match.group(3)) if match.group(3) else None
+    return bearing, sustained, gust
+
+
+# The local hours the observed direction is sampled at, and they are the
+# forecast's own — `wind.SHIFT_ANCHORS`. The point of recording a bearing is
+# to be able to check the shift clause the forecast publishes, and a check
+# against different hours checks nothing.
+#
+# THERE IS NO DAILY MEAN BEARING HERE, and that is measured rather than
+# assumed. Over the 30 days to 2026-09-21 the vector agreement of HKKI's own
+# hourly directions across a day ran a median of 0.26 and never once reached
+# 0.6 — the lake breeze turns the wind right round, so a single daily bearing
+# would be an average of opposites presented as a fact. The models' own gate
+# would have returned None on 27 of the 30 days; this returns the hours
+# instead, which is what the day actually has.
+#
+# DERIVED FROM `wind.SHIFT_ANCHORS`, NOT COPIED FROM IT. A second tuple of
+# the same three numbers would let the observed hours and the forecast's
+# drift apart silently, and the only symptom would be a verification that
+# quietly compares different times of day. `wind` imports only `defaults`,
+# so there is no cycle.
+ANCHOR_HOURS = tuple(hour for hour, _ in SHIFT_ANCHORS)
+
+# The daily path's row, by name. It used to be reshaped by the caller into
+# (station, valid, tmpf, sknt) so that positional reads would land, which put
+# the shape in one function and the indices in another; the report text is
+# needed here now, so the full row arrives and the positions are named.
+_I_STATION, _I_VALID, _I_METAR, _I_TMPF, _I_SKNT = 0, 1, 2, 3, 4
+_ROW_WIDTH = 5
 
 
 def station_readings_by_date(
@@ -441,34 +543,57 @@ def station_readings_by_date(
     local_zone = ZoneInfo(timezone_name)
     temps: dict[date, list[float]] = {}
     winds: dict[date, list[float]] = {}
+    gusts: dict[date, list[float]] = {}
+    bearings: dict[date, dict[str, float]] = {}
 
     for row in rows:
-        if len(row) < 4 or row[0] == "station":
+        if len(row) < _ROW_WIDTH or row[_I_STATION] == "station":
             continue
         try:
-            observed_at = datetime.strptime(row[1], "%Y-%m-%d %H:%M")
+            observed_at = datetime.strptime(row[_I_VALID], "%Y-%m-%d %H:%M")
         except ValueError:
             continue
 
-        local_date = observed_at.replace(tzinfo=timezone.utc).astimezone(local_zone).date()
+        observed_at = observed_at.replace(tzinfo=timezone.utc).astimezone(local_zone)
+        local_date = observed_at.date()
         if local_date < start or local_date > end:
             continue
 
-        tmpf = _number(row[2])
+        tmpf = _number(row[_I_TMPF])
         if tmpf is not None:
             temps.setdefault(local_date, []).append(round((tmpf - 32) * 5 / 9, 2))
 
-        sknt = _number(row[3])
+        sknt = _number(row[_I_SKNT])
         if sknt is not None:
             winds.setdefault(local_date, []).append(round(sknt * KM_PER_KNOT, 2))
 
+        # THE GUST AND THE BEARING COME OUT OF THE REPORT TEXT, not out of
+        # columns — see `parse_wind_group`. The archive's own `gust` column is
+        # not requested, and until 2026-09-21 nothing read the bearing at all
+        # though every stored row carried it.
+        bearing, _, gust = parse_wind_group(row[_I_METAR])
+        if gust is not None:
+            gusts.setdefault(local_date, []).append(round(gust * KM_PER_KNOT, 2))
+        # ONE BEARING PER ANCHOR HOUR, and the LAST report in that hour wins
+        # rather than the first: a SPECI filed mid-hour is the one that caught
+        # the change, which is why the store keys rows on time AND text.
+        if bearing is not None and observed_at.hour in ANCHOR_HOURS:
+            bearings.setdefault(local_date, {})[str(observed_at.hour)] = bearing
+
     readings: dict[date, StationReadings] = {}
-    for day in sorted(set(temps) | set(winds)):
-        t, w = temps.get(day, []), winds.get(day, [])
+    for day in sorted(set(temps) | set(winds) | set(gusts) | set(bearings)):
+        t, w, g = temps.get(day, []), winds.get(day, []), gusts.get(day, [])
         readings[day] = StationReadings(
             high_c=max(t) if t else None,
             low_c=min(t) if t else None,
             peak_wind_kmh=max(w) if w else None,
+            # THE HIGHEST GUST FILED, and None when none was — which is almost
+            # every day. METAR files a gust group only when a gust occurs, so
+            # an absent value here means "no gust worth reporting", not "no
+            # measurement". Over the 30 days to 2026-09-21 exactly one hour at
+            # HKKI carried one: 22 kt under a cumulonimbus on 2026-09-03.
+            peak_gust_kmh=max(g) if g else None,
+            anchor_wind_direction_deg=bearings.get(day) or None,
         )
     return readings
 
@@ -566,7 +691,6 @@ _RUN_FETCH: dict[str, tuple[date, date, str | None]] = {}
 # feed), so the report the prompt already carries is merged into the store
 # too, and the same-day reach can say 06:30 instead of nothing.
 _REPORT_PREFIXES = ("METAR ", "SPECI ")
-_WIND_GROUP = re.compile(r"\b(?:\d{3}|VRB)(\d{2,3})(?:G\d{2,3})?KT\b")
 _REPORT_TIME_CHARS = 16  # "2026-09-20T06:30" of "2026-09-20T06:30:00.000Z"
 _MISSING = "M"
 
@@ -593,8 +717,12 @@ def current_report_row(icao: str, report: dict) -> list[str] | None:
             text = text[len(prefix):]
     temp = report.get("temp")
     tmpf = f"{float(temp) * 9 / 5 + 32:.2f}" if isinstance(temp, (int, float)) else _MISSING
-    wind = _WIND_GROUP.search(text)
-    sknt = f"{int(wind.group(1)):.2f}" if wind else _MISSING
+    # ONE PARSER FOR BOTH PATHS. This had its own wind regex until 2026-09-21,
+    # matching only the speed and only in knots; `parse_wind_group` reads the
+    # same group for the archive path and is measured against the archive's
+    # own decode. Two regexes over one grammar is two things to keep in step.
+    _, sustained, _ = parse_wind_group(text)
+    sknt = f"{sustained:.2f}" if sustained is not None else _MISSING
     return [icao, when.replace("T", " "), text, tmpf, sknt]
 
 
@@ -757,11 +885,10 @@ def observed_station_data(
         reports.append((observed_at.replace(tzinfo=timezone.utc), row[2]))
 
     weather = _weather_from_reports(reports, start, end, timezone_name)
-    # Columns after the raw report: station, valid, metar, tmpf, sknt. The
-    # bucketing wants (station, valid, tmpf, sknt), so the report is dropped.
-    readings = station_readings_by_date(
-        [(r[0], r[1], *r[3:]) for r in rows if len(r) >= 5], start, end, timezone_name
-    )
+    # THE WHOLE ROW, report text included — 2026-09-21. It used to be reshaped
+    # to drop the report, which is the one field the gust and the bearing come
+    # out of.
+    readings = station_readings_by_date(rows, start, end, timezone_name)
     return weather, (readings or None)
 
 

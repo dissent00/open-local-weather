@@ -589,3 +589,61 @@ def compute_rain_pct_trend(
     else:
         label = "stable"
     return label, delta
+
+
+def verify_secondary_predictions(
+    entry: DailyLogEntry,
+    actuals_secondary: dict[date, DailyActual],
+    *,
+    today: date,
+) -> bool:
+    """Score the second point's Day+0 against the second point's own actuals.
+
+    ROADMAP item 6, closed 2026-09-21. The pipeline has fetched the secondary
+    point's actuals every day since this project started, `actuals_cache`
+    has faithfully stored them, and nothing has ever read them — verification
+    receives `actuals_primary` alone. Meanwhile the secondary's peak gust is
+    published in every forecast, in the section a boater acts on, and was
+    never scored. A latent no-op inherited from the Apps Script original,
+    which passed `dailyActualsSecondary` into its scorer and ignored it too.
+
+    THE SAME SCORER, NOT A SECOND ONE. `score_prediction` against a
+    `DailyActual` is what the primary gets, and the secondary point has its
+    own reanalysis actual of the same shape, so the two records are
+    comparable by construction. A separate wind-only scorer would have been
+    smaller and would have made the lake's record a different kind of thing
+    from the town's.
+
+    ROW 0, matching `scored_predictions`: the numbers the record scores are
+    the day's first issuance. Returns whether anything was written, so the
+    caller knows to save.
+    """
+    rows = resolve_prediction_rows(entry)
+    if not rows:
+        return False
+
+    row = rows[0]
+    if row.secondary_verified_at is not None or not row.secondary_predictions:
+        return False
+
+    # A Day+0 claim is about the entry's own day, and a day is scorable once
+    # it has finished — the same floor `window_is_scorable` applies, reached
+    # here by the calendar because this claim covers one whole local day.
+    if entry.date >= today:
+        return False
+
+    actual = actuals_secondary.get(entry.date)
+    if actual is None:
+        return False
+
+    scores = {
+        predicted.model: score_prediction(predicted, actual, 0)
+        for predicted in row.secondary_predictions
+        if predicted.model
+    }
+    if not scores:
+        return False
+
+    row.secondary_scores = scores
+    row.secondary_verified_at = datetime.now(timezone.utc)
+    return True

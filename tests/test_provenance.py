@@ -171,10 +171,12 @@ def test_the_station_temperature_and_wind_are_bucketed_per_local_day():
     from openlocalweather.fetch.metar import station_readings_by_date
 
     rows = [
-        # station, valid (UTC), tmpf, sknt
-        ("HKKI", "2026-08-11 03:00", "68.0", "10.0"),
-        ("HKKI", "2026-08-11 09:00", "86.0", "20.0"),
-        ("HKKI", "2026-08-11 21:30", "60.8", "5.0"),
+        # station, valid (UTC), metar, tmpf, sknt — the report text is carried
+        # because the gust and the bearing are read out of it (item 45's
+        # readings gained both on 2026-09-21).
+        ("HKKI", "2026-08-11 03:00", "HKKI 110300Z 09010KT CAVOK 20/14 Q1016", "68.0", "10.0"),
+        ("HKKI", "2026-08-11 09:00", "HKKI 110900Z 24020KT CAVOK 30/12 Q1015", "86.0", "20.0"),
+        ("HKKI", "2026-08-11 21:30", "HKKI 112130Z VRB05KT CAVOK 16/12 Q1017", "60.8", "5.0"),
     ]
     by_date = station_readings_by_date(
         rows, date(2026, 8, 11), date(2026, 8, 12), "Africa/Nairobi"
@@ -193,7 +195,7 @@ def test_a_late_evening_report_belongs_to_the_local_day():
     output would describe different days."""
     from openlocalweather.fetch.metar import station_readings_by_date
 
-    rows = [("HKKI", "2026-08-11 21:30", "50.0", "1.0")]
+    rows = [("HKKI", "2026-08-11 21:30", "HKKI 112130Z 09001KT CAVOK 10/08 Q1016", "50.0", "1.0")]
     by_date = station_readings_by_date(
         rows, date(2026, 8, 11), date(2026, 8, 13), "Africa/Nairobi"
     )
@@ -207,8 +209,8 @@ def test_missing_and_trace_markers_are_absences_not_values():
     from openlocalweather.fetch.metar import station_readings_by_date
 
     rows = [
-        ("HKKI", "2026-08-11 03:00", "M", "M"),
-        ("HKKI", "2026-08-11 09:00", "77.0", "M"),
+        ("HKKI", "2026-08-11 03:00", "HKKI 110300Z /////KT CAVOK /////", "M", "M"),
+        ("HKKI", "2026-08-11 09:00", "HKKI 110900Z /////KT CAVOK 25/12 Q1015", "77.0", "M"),
     ]
     day = station_readings_by_date(
         rows, date(2026, 8, 11), date(2026, 8, 11), "Africa/Nairobi"

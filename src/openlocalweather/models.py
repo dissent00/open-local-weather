@@ -584,6 +584,27 @@ class DailyActual(BaseModel):
     station_low_c: float | None = None
     station_peak_wind_kmh: float | None = None
 
+    # THE GUST THE STATION ACTUALLY FILED — 2026-09-21. The line above is the
+    # peak SUSTAINED wind from `sknt`, and until now it was the only local
+    # wind measurement in the record, sitting beside a forecast that is
+    # published and scored as a GUST. That mismatch is ROADMAP item 146's
+    # sustained-wind gap; this is the other side of it.
+    #
+    # ABSENT ON ALMOST EVERY DAY, and that is the measurement, not a defect:
+    # METAR files a gust group only when a gust occurs, and over the 30 days
+    # to 2026-09-21 exactly one hour at HKKI carried one — 22 kt under a
+    # cumulonimbus on 09-03. A day with no value saw no gust worth reporting;
+    # it is not a day nobody measured.
+    station_peak_gust_kmh: float | None = None
+
+    # The station's own bearing at the hours the forecast's shift clause
+    # names, keyed by local hour — see `metar.ANCHOR_HOURS`. There is no daily
+    # bearing here on purpose: measured over 30 days, this station's hourly
+    # directions have a vector agreement whose median is 0.26 and whose
+    # maximum is 0.53, because the lake breeze reverses them, so one number
+    # for a day would be an average of opposites.
+    station_wind_direction_deg: dict[str, float] | None = None
+
     # TWO CLOUD OBSERVATIONS, IN DIFFERENT UNITS, AND NEITHER IS THE OTHER —
     # ROADMAP items 87 and 65, which recorded "the forecast predicts
     # cloud_cover; nothing observes it" while both of these were being
@@ -849,6 +870,45 @@ class IssuancePredictions(BaseModel):
     # hours, and `extract.extract_window_predictions` declines rather than
     # publishing six hours dressed as twenty-four.
     window_predictions: list[ModelPrediction] = Field(default_factory=list)
+
+    # THE SECOND POINT'S DAY+0, per model — ROADMAP item 6, 2026-09-21.
+    #
+    # The pipeline has fetched the secondary point's actuals every day since
+    # this project started and nothing has ever read them: verification
+    # receives `actuals_primary` alone. Meanwhile the secondary's peak gust is
+    # PUBLISHED in every forecast, in the section boaters act on, and has
+    # never been scored. That is the no-op item 6 was raised on, inherited
+    # from the Apps Script original which passed `dailyActualsSecondary` into
+    # its scorer and ignored it too.
+    #
+    # Storing the per-model numbers is what makes the section scoreable the
+    # way the primary is. Measured first, over the 10 days where a published
+    # gulf gust and a cached gulf actual both exist: mean error +4.99 km/h and
+    # MAE 9.33, against 4.68 for the primary. The sign is the record's own,
+    # OBSERVED MINUS PREDICTED, so positive means the lake blew harder than
+    # the forecast said. Twice as wrong as the town, and biased toward
+    # UNDER-forecasting, which for wind on water is the dangerous direction.
+    # Ten days is thin, which is the other reason this accumulates rather than
+    # being declared.
+    #
+    # EMPTY ON EVERY ROW WRITTEN BEFORE 2026-09-21, and on any run with no
+    # secondary point configured.
+    secondary_predictions: list[ModelPrediction] = Field(default_factory=list)
+
+    # What those predictions turned out to be worth, per model, scored by the
+    # SAME scorer the primary uses against the secondary point's own
+    # reanalysis actuals. The full VerificationScore rather than a wind figure
+    # alone: the secondary point has its own temperatures and its own rain,
+    # they cost nothing extra once the actual is in hand, and a record that
+    # keeps only the number somebody asked for first is a record that has to
+    # be rebuilt for the second question.
+    secondary_scores: dict[str, VerificationScore] = Field(default_factory=dict)
+
+    # When they were scored. None means not yet — the day has to finish first,
+    # exactly like the window's. Separate from `window_verified_at` because
+    # the two are scored against different points and can succeed
+    # independently: the lake's archive can answer when the town's did not.
+    secondary_verified_at: datetime | None = None
 
     # THE LOCAL INSTANT THE WINDOW OPENED, floored to the hour — the exact
     # value `daypart.forward_hours` sliced the forecast at.

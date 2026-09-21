@@ -509,6 +509,21 @@ class DailyActual {
   final double? stationLowC;
   final double? stationPeakWindKmh;
 
+  /// THE GUST THE STATION ACTUALLY FILED — upstream 2026-09-21.
+  /// [stationPeakWindKmh] above is the peak SUSTAINED wind, and until now it
+  /// was the only local wind measurement in the record, sitting beside a
+  /// forecast published and scored as a GUST. Absent on almost every day and
+  /// that is the measurement, not a defect: METAR files a gust group only
+  /// when a gust occurs, and over 30 days to 2026-09-21 exactly one hour at
+  /// HKKI carried one.
+  final double? stationPeakGustKmh;
+
+  /// The station's bearing at the hours the forecast's shift clause names,
+  /// keyed by local hour. NO DAILY BEARING on purpose: measured over 30 days,
+  /// the hourly directions' vector agreement had a median of 0.26 and a
+  /// maximum of 0.53, so one number for a day would average opposites.
+  final Map<String, double>? stationWindDirectionDeg;
+
   /// TWO CLOUD OBSERVATIONS, IN DIFFERENT UNITS, AND NEITHER IS THE OTHER.
   /// [cloudCoverPct] is the reanalysis daily MEAN, 0-100, and had been fetched
   /// and discarded on every archive call. [stationCloudOktas] is the airport's
@@ -584,6 +599,8 @@ class DailyActual {
     this.stationHighC,
     this.stationLowC,
     this.stationPeakWindKmh,
+    this.stationPeakGustKmh,
+    this.stationWindDirectionDeg,
     this.cloudCoverPct,
     this.stationCloudOktas,
     this.lightning,
@@ -634,6 +651,9 @@ class DailyActual {
         stationHighC: _toDouble(j['station_high_c']),
         stationLowC: _toDouble(j['station_low_c']),
         stationPeakWindKmh: _toDouble(j['station_peak_wind_kmh']),
+        stationPeakGustKmh: _toDouble(j['station_peak_gust_kmh']),
+        stationWindDirectionDeg: (j['station_wind_direction_deg'] as Map?)
+            ?.map((k, v) => MapEntry(k as String, _toDouble(v)!)),
         cloudCoverPct: _toDouble(j['cloud_cover_pct']),
         stationCloudOktas: _toDouble(j['station_cloud_oktas']),
         provenance: (j['provenance'] as Map?)?.map(
@@ -656,6 +676,8 @@ class DailyActual {
         'station_high_c': stationHighC,
         'station_low_c': stationLowC,
         'station_peak_wind_kmh': stationPeakWindKmh,
+        'station_peak_gust_kmh': stationPeakGustKmh,
+        'station_wind_direction_deg': stationWindDirectionDeg,
         'cloud_cover_pct': cloudCoverPct,
         'station_cloud_oktas': stationCloudOktas,
         'provenance': provenance,

@@ -1286,7 +1286,7 @@ DNS propagation is the only slow part; the code is a few hours.
 
 ---
 
-## 6. Verify secondary-point predictions · **Planned**
+## 6. Verify secondary-point predictions · **SHIPPED 2026-09-21 — wired up, the preferred option; the first scores land 2026-09-22**
 
 Found during review: the pipeline fetches and caches **secondary-point
 actuals** (Lake Victoria) every single day — an extra API call — and
@@ -1307,6 +1307,58 @@ Two honest options:
 - **Or stop fetching it** and drop the wasted daily call.
 
 Either is fine. Silently fetching data nobody reads is not.
+
+---
+
+
+### Shipped 2026-09-21 — the option that keeps the data
+
+The operator chose the first of the two: *"Let's parse the direction column
+and wire up the gulf scoring."*
+
+**Measured before building**, which is what decided that it was worth
+building. Over the 10 days where a published gulf gust and a cached gulf
+actual both exist:
+
+| point | mean error | MAE | n |
+|---|---:|---:|---:|
+| Winam Gulf | +4.99 km/h | 9.33 | 10 |
+| Kisumu | +2.76 km/h | 4.68 | 5 |
+
+The sign is the record's own, OBSERVED MINUS PREDICTED, so positive means the
+wind blew harder than the forecast said. The lake is about twice as wrong as
+the town and biased toward under-forecasting, which for wind on water is the
+dangerous direction to be wrong in. Ten days is thin and this is why the
+answer is an instrument rather than a claim.
+
+**What was built.** `IssuancePredictions.secondary_predictions` stores the
+second point's Day+0 per model, from the same `_secondary_day0` extraction the
+prompt's wind timeline is already composed from, so it costs no fetch and no
+second definition. `verify_secondary_predictions` scores them with
+`score_prediction` — THE SAME SCORER THE PRIMARY GETS, not a wind-only one, so
+the lake's record is the same kind of thing as the town's and the extra
+columns cost nothing once the actual is in hand. It runs in the same pass as
+`verify_closed_windows`, reading the secondary actuals from the cache rather
+than fetching: they have been stored every day since the project started and
+read by nothing, which was the whole complaint.
+
+That read does not contradict `_verify_recent_windows`'s rule against touching
+the actuals cache. What the rule forbids is widening this function's FETCH,
+which would put a partial today where tomorrow's verification would score
+against it; this only reads, and the scorer refuses any day that has not
+finished.
+
+**Verified.** Driven against the real record: 41 cached lake days, the real
+09-20 entry, its published 26.5 km/h against an observed 34.9, scored +8.4.
+Four mutations bit, one of which the first pass did not catch — the guard
+against stamping a row verified with an empty score set was reachable through
+a prediction with an empty model name and nothing tested it.
+
+**Not done.** Nothing reads `secondary_scores` yet: no page, no review, no
+prompt. The rows only start carrying predictions today, so the first real
+scores land on 2026-09-22 and the first week of them around 09-28. Surfacing
+them is the next decision, and it should be taken when there is something to
+surface.
 
 ---
 
@@ -20999,7 +21051,7 @@ Related: items 143, 144, 138, 121, 122, 6, and `ensemble` items 20 and 19.
 
 ---
 
-## 146. Compare sustained to sustained, and gust to gust · **Steps 1-3 SHIPPED 2026-09-16/17 — step 3 stores a measurement, not a check; step 4 Planned**
+## 146. Compare sustained to sustained, and gust to gust · **Steps 1-3 SHIPPED 2026-09-16/17; the station's OWN gust and bearing added 2026-09-21; step 4 Planned**
 
 The operator, 2026-09-16, reading item 145's claim that a wind deviation
 cannot be offered here:
@@ -21286,6 +21338,69 @@ redefine the one that exists.
 Related: items 144, 145, 126, 121, 133, and `ensemble` item 20.
 
 ---
+
+
+### The station's own gust and bearing, 2026-09-21 — and where they were hiding
+
+The operator, having asked whether the wind is measured and reported at both
+points: *"Let's parse the direction column."*
+
+**The answer to where it was.** Nowhere new. `ARCHIVE_DATA_COLUMNS` asks for
+`metar`, `tmpf` and `sknt`, and the raw report in that first column has
+carried the bearing and the gust in its wind group on every row of all 45
+stored days. Nothing parsed it. The gap this item was raised on — a forecast
+published and scored as a GUST with only a sustained speed measured beside it
+— had its other half sitting in the record the whole time.
+
+**Read from the report text, not from new columns**, and that is the design
+rather than an accident. Adding `drct` and `gust` to the request would widen
+the stored row, and `station_reports` refuses a file whose columns differ from
+the ones being written, so all 45 days would need migrating or refetching. The
+text is already in every row, including the ones the current-conditions feed
+contributes.
+
+**Measured against the archive's own decode**, 609 rows over the 30 days to
+2026-09-21:
+
+| field | agreement |
+|---|---|
+| direction | 608 / 609 |
+| gust | 609 / 609 |
+| sustained | 608 / 609 |
+
+The single miss is one malformed report, `HKKI 061100Z 24007 9999 ...`, whose
+wind group carries no unit. The archive decodes it leniently as 240 degrees
+and gives it a sustained speed of 13.61, which matches neither knots nor km/h
+and is its own argument for requiring the unit.
+
+**THERE IS NO DAILY BEARING, and that is measured.** The obvious shape — one
+direction per day, like the high and the peak wind — was tested first and
+refused: across those 30 days the vector agreement of the station's own hourly
+directions within a day ran a median of 0.26 and never once reached 0.6. The
+lake breeze turns the wind right round, so a daily mean would be an average of
+opposites presented as a fact, and the models' own gate would have returned
+nothing on 27 of the 30 days. What is stored instead is the bearing at the
+three hours the FORECAST's shift clause names — `wind.SHIFT_ANCHORS`, local
+03, 12 and 18 — because the point of recording a bearing is to be able to
+check the clause that is published, and a check against different hours checks
+nothing.
+
+**One parser, not two.** `current_report_row` had its own wind regex, matching
+only the speed and only in knots. Both paths now use `parse_wind_group`.
+
+**The first gust in the record.** Exactly one hour in 609 carries one:
+2026-09-03 at 17:00Z, `36012G22KT` under a cumulonimbus — 12 kt sustained
+gusting 22. Item 152's watcher was built for this moment and is correct to
+have been; it watches the archive's `gust` COLUMN, which is how the exclusion
+would be overturned on its own terms. Reading the text does not retire that
+watcher, and `p01i` still needs it.
+
+**Not done.** Nothing reads `station_peak_gust_kmh` or
+`station_wind_direction_deg` yet — they are stored, not scored, which is item
+45's sequencing and the same standing this item's step 3 has. The forecast's
+shift clause is still unverified; what changed is that it is now verifiABLE.
+Surfacing the observed bearing in the prompt's own observed sentence would be
+a prompt change and needs the harness.
 
 ## 147. The learning loop was cut in half by the two-call split, and the review already does the job better · **SHIPPED 2026-09-16**
 

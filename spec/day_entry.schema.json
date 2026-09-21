@@ -409,6 +409,33 @@
         "predictions": {
           "$ref": "#/$defs/ModelPredictionsByLead"
         },
+        "secondary_predictions": {
+          "items": {
+            "$ref": "#/$defs/ModelPrediction"
+          },
+          "title": "Secondary Predictions",
+          "type": "array"
+        },
+        "secondary_scores": {
+          "additionalProperties": {
+            "$ref": "#/$defs/VerificationScore"
+          },
+          "title": "Secondary Scores",
+          "type": "object"
+        },
+        "secondary_verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Secondary Verified At"
+        },
         "window_opened_local": {
           "anyOf": [
             {

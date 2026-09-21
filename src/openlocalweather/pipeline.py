@@ -182,7 +182,10 @@ from openlocalweather.observed import (
     observed_baseline,
 )
 from openlocalweather.reasoning import llm_should_reason
-from openlocalweather.verify.scoring import verify_closed_windows
+from openlocalweather.verify.scoring import (
+    verify_closed_windows,
+    verify_secondary_predictions,
+)
 from openlocalweather.disagreement import (
     StandingCall,
     low_divergence,
@@ -1296,6 +1299,8 @@ def apply_station_readings(actual: DailyActual, measured) -> None:
         ("station_high_c", measured.high_c),
         ("station_low_c", measured.low_c),
         ("station_peak_wind_kmh", measured.peak_wind_kmh),
+        ("station_peak_gust_kmh", measured.peak_gust_kmh),
+        ("station_wind_direction_deg", measured.anchor_wind_direction_deg),
     ):
         if value is None:
             continue
@@ -2471,6 +2476,11 @@ def _compose_log_entry(
                 # prompt orders the sentence used VERBATIM and nothing could
                 # verify that, because the sentence was nowhere in the record.
                 day_over_day=day_over_day,
+                # ROADMAP item 6. The same extraction the prompt's wind
+                # timeline is composed from, kept so the Gulf section can be
+                # scored against the secondary actuals this pipeline has been
+                # caching and discarding since it was written.
+                secondary_predictions=_secondary_day0(guidance, deps.location),
             )
         ],
         # Superseded by prediction_rows and deliberately not written — see
@@ -2661,6 +2671,18 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     # effort like the archive: no station, or a fetch that failed, scores the
     # window against the reanalysis alone, which is what happened before.
     station_reports = _station_reports(location, start, end, deps.data_dir)
+
+    # THE SECONDARY POINT'S ACTUALS, FROM THE CACHE — ROADMAP item 6. This
+    # does not contradict the paragraph above: what that forbids is widening
+    # this function's FETCH into the cache's, which would put a partial today
+    # where tomorrow's verification would score against it. This only READS,
+    # and `verify_secondary_predictions` refuses any day that has not finished.
+    # The lake has been fetched and cached every day since this project
+    # started and read by nothing; no new request is needed to score it.
+    actuals_secondary = actuals_cache_store.as_date_dict(
+        actuals_cache_store.read_actuals_cache(deps.data_dir).secondary
+    )
+
     changed: list[date] = []
     for d in log_store.list_log_dates(deps.data_dir):
         if not (start <= d <= end):
@@ -2668,10 +2690,19 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
         entry = log_store.read_log_entry(deps.data_dir, d)
         if entry is None:
             continue
-        if verify_closed_windows(
+        scored_window = verify_closed_windows(
             entry, archive, today=today,
             station_reports=station_reports, timezone_name=location.timezone,
-        ):
+        )
+        # ROADMAP item 6, in the same pass and from the cache rather than a
+        # fetch: the secondary actuals are already stored by every run. TWO
+        # INDEPENDENT RESULTS, deliberately — the lake's archive can answer on
+        # a day the town's did not, and an `or` that short-circuited would
+        # make one point's gap the other's.
+        scored_secondary = verify_secondary_predictions(
+            entry, actuals_secondary, today=today
+        )
+        if scored_window or scored_secondary:
             log_store.write_log_entry(deps.data_dir, entry)
             changed.append(d)
 

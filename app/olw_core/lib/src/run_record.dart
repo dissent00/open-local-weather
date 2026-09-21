@@ -31,6 +31,7 @@ class RunRecord {
     List<ModelPrediction> day3 = const [],
     List<ModelPrediction> day7 = const [],
     List<ModelPrediction> windowPredictions = const [],
+    List<ModelPrediction> secondaryPredictions = const [],
     DateTime? windowOpenedLocal,
   })  : assert(issuedAt.isUtc, 'issued_at is a UTC instant'),
         _raw = {
@@ -41,6 +42,19 @@ class RunRecord {
             'day7': [for (final p in day7) p.toJson()],
           },
           'window_predictions': [for (final p in windowPredictions) p.toJson()],
+          // Upstream ROADMAP item 6. The second point's Day+0 per model, so
+          // the gulf section can be scored against actuals the server has
+          // cached and discarded since this project was written. Empty on
+          // every row written before 2026-09-21 and wherever no secondary
+          // point is configured, which is this app today.
+          'secondary_predictions': [
+            for (final p in secondaryPredictions) p.toJson()
+          ],
+          // Written empty and filled by the server's verification pass, the
+          // same way `window_scores` is: a row is created before the day it
+          // describes has finished, so nothing can be scored yet.
+          'secondary_scores': <String, Object?>{},
+          'secondary_verified_at': null,
           'window_opened_local':
               windowOpenedLocal == null ? null : _naiveStamp(windowOpenedLocal),
           'window_scores': <String, Object?>{},
@@ -63,6 +77,25 @@ class RunRecord {
 
   List<ModelPrediction> get windowPredictions => [
         for (final p in (_raw['window_predictions'] as List? ?? const []))
+          ModelPrediction.fromJson((p as Map).cast<String, Object?>())
+      ];
+
+  /// What the second point's Day+0 turned out to be worth, per model —
+  /// upstream ROADMAP item 6. Empty until the day has finished and the
+  /// server's pass has scored it against the second point's own actuals.
+  Map<String, VerificationScore> get secondaryScores => {
+        for (final e in ((_raw['secondary_scores'] as Map?) ?? const {}).entries)
+          e.key as String:
+              VerificationScore.fromJson((e.value as Map).cast<String, Object?>())
+      };
+
+  DateTime? get secondaryVerifiedAt {
+    final s = _raw['secondary_verified_at'] as String?;
+    return s == null ? null : DateTime.parse(s);
+  }
+
+  List<ModelPrediction> get secondaryPredictions => [
+        for (final p in (_raw['secondary_predictions'] as List? ?? const []))
           ModelPrediction.fromJson((p as Map).cast<String, Object?>())
       ];
 

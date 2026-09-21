@@ -416,3 +416,80 @@ def test_the_archives_own_row_for_that_minute_is_not_a_second_row(tmp_path):
         m.get(_ARCHIVE, text=_archive_csv(archive_row))
         prefetch_station_rows("HKKI", date(2026, 9, 18), date(2026, 9, 21), tmp_path, current_report=_REPORT)
     assert store.read_rows(tmp_path, "HKKI", _TODAY, _TODAY) == [archive_row]
+
+
+# ---------------------------------------------------------------------------
+# The wind group — direction and gust out of the report text, 2026-09-21
+# ---------------------------------------------------------------------------
+
+
+def test_the_wind_group_reads_bearing_speed_and_gust():
+    from openlocalweather.fetch.metar import parse_wind_group
+
+    assert parse_wind_group("HKKI 210000Z 09004KT 9999 FEW020 23/17 Q1016") == (90.0, 4.0, None)
+    # The one hour in 609 that carried a gust, 2026-09-03 under a cumulonimbus.
+    assert parse_wind_group("HKKI 031700Z 36012G22KT 9999 FEW024CB 26/11") == (360.0, 12.0, 22.0)
+
+
+def test_variable_and_failed_are_absences_not_bearings():
+    """`VRB` is a real observation that is not a direction — the wind was
+    genuinely variable. `///` is the sensor failing. Both must be None, or a
+    day of light shifting air acquires a confident bearing."""
+    from openlocalweather.fetch.metar import parse_wind_group
+
+    assert parse_wind_group("HKKI 200000Z VRB01KT CAVOK 19/16 Q1018") == (None, 1.0, None)
+    # The speed survives a failed vane, which is why the group opens at a
+    # space rather than at a word boundary: `\b` cannot precede a slash.
+    assert parse_wind_group("HKKI 010000Z ///02KT CAVOK 20/10") == (None, 2.0, None)
+    assert parse_wind_group("HKKI 010000Z /////KT CAVOK 20/10") == (None, None, None)
+
+
+def test_a_group_without_its_unit_is_refused():
+    """Measured 2026-09-21 over 609 rows: this is the single row the archive
+    and this parser disagree on. The archive reads `24007` leniently as 240
+    degrees and gives it a sustained speed of 13.61, which matches neither
+    knots nor km/h. A pattern loose enough to accept a bare five-digit group
+    can match things that are not wind."""
+    from openlocalweather.fetch.metar import parse_wind_group
+
+    assert parse_wind_group("HKKI 061100Z 24007 9999 FEW029 32/11 Q1017") == (None, None, None)
+
+
+def test_the_day_keeps_its_highest_gust_and_its_anchor_bearings():
+    from datetime import date
+
+    from openlocalweather.fetch.metar import station_readings_by_date
+
+    rows = [
+        # 00:00Z is 03:00 local — the overnight anchor.
+        ("HKKI", "2026-09-03 00:00", "HKKI 030000Z 09004KT CAVOK 23/17 Q1016", "73.40", "4.00"),
+        # 09:00Z is 12:00 local — the midday anchor, after the turn.
+        ("HKKI", "2026-09-03 09:00", "HKKI 030900Z 24008KT CAVOK 30/14 Q1015", "86.00", "8.00"),
+        # 15:00Z is 18:00 local — the evening anchor, but variable, so no bearing.
+        ("HKKI", "2026-09-03 15:00", "HKKI 031500Z VRB02KT CAVOK 28/13 Q1015", "82.40", "2.00"),
+        # 17:00Z is 20:00 local — not an anchor, but it carries the gust.
+        ("HKKI", "2026-09-03 17:00", "HKKI 031700Z 36012G22KT 9999 FEW024CB 26/11", "78.80", "12.00"),
+    ]
+    day = station_readings_by_date(
+        rows, date(2026, 9, 3), date(2026, 9, 3), "Africa/Nairobi"
+    )[date(2026, 9, 3)]
+
+    assert day.peak_gust_kmh == pytest.approx(40.74, abs=0.01)  # 22 kt
+    assert day.anchor_wind_direction_deg == {"3": 90.0, "12": 240.0}
+    # The sustained peak is a DIFFERENT quantity and still the one from sknt.
+    assert day.peak_wind_kmh == pytest.approx(22.22, abs=0.01)  # 12 kt
+
+
+def test_a_day_with_no_gust_filed_records_none_not_zero():
+    """Almost every day. METAR files a gust group only when a gust occurs, so
+    an absent value means no gust worth reporting, never a measured calm."""
+    from datetime import date
+
+    from openlocalweather.fetch.metar import station_readings_by_date
+
+    rows = [("HKKI", "2026-09-04 00:00", "HKKI 040000Z 09004KT CAVOK 23/17", "73.40", "4.00")]
+    day = station_readings_by_date(
+        rows, date(2026, 9, 4), date(2026, 9, 4), "Africa/Nairobi"
+    )[date(2026, 9, 4)]
+
+    assert day.peak_gust_kmh is None
