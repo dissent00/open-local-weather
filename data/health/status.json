@@ -1,3 +1,23 @@
 {
-  "cap_feed": "quiet"
+  "cap_feed": "quiet",
+  "observation:primary:cloud_cover_pct": "present 2026-09-20",
+  "observation:primary:high_c": "present 2026-09-20",
+  "observation:primary:low_c": "present 2026-09-20",
+  "observation:primary:mslp_trend": "present 2026-09-20",
+  "observation:primary:peak_wind_kmh": "present 2026-09-20",
+  "observation:primary:precip_mm": "present 2026-09-20",
+  "observation:primary:precipitation": "present 2026-09-20",
+  "observation:primary:rain": "present 2026-09-20",
+  "observation:primary:station_cloud_oktas": "present 2026-09-20",
+  "observation:primary:station_high_c": "present 2026-09-20",
+  "observation:primary:station_low_c": "present 2026-09-20",
+  "observation:primary:station_peak_wind_kmh": "present 2026-09-20",
+  "observation:primary:thunder": "present 2026-09-20",
+  "observation:secondary:cloud_cover_pct": "present 2026-09-20",
+  "observation:secondary:high_c": "present 2026-09-20",
+  "observation:secondary:low_c": "present 2026-09-20",
+  "observation:secondary:mslp_trend": "present 2026-09-20",
+  "observation:secondary:peak_wind_kmh": "present 2026-09-20",
+  "observation:secondary:precip_mm": "present 2026-09-20",
+  "observation:secondary:rain": "present 2026-09-20"
 }
