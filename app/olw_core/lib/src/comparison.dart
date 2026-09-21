@@ -223,7 +223,11 @@ double? _round1(double? v) => v == null ? null : roundLikePython(v, 1);
 /// because a change too small to remark on has no direction worth naming.
 /// Every band above it is a MODIFIER on [up] or [down], and an empty modifier
 /// means the bare word.
-String? _bandLabel(
+/// Maps a signed delta onto a felt-change band. Public since 2026-09-21
+/// because `tiles.dart` composes the same vocabulary for the at-a-glance
+/// tiles — upstream item 159 — and a second copy of the band reading
+/// would be a second thing to keep in step with the prose.
+String? bandLabel(
   double? delta,
   List<(double, String)> bands,
   String up,
@@ -731,12 +735,12 @@ DayOverDayComparison? computeDayOverDay(
     }
   }
 
-  final highLabel = _bandLabel(highDelta, tempChangeBandsC, 'warmer', 'cooler');
+  final highLabel = bandLabel(highDelta, tempChangeBandsC, 'warmer', 'cooler');
   final cloudLabel =
-      _bandLabel(cloudDelta, cloudChangeBandsPct, 'cloudier', 'clearer');
+      bandLabel(cloudDelta, cloudChangeBandsPct, 'cloudier', 'clearer');
   final rainUnchanged = rainContrast != null && rainKeysMatch;
   final windLabel =
-      _bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
+      bandLabel(windDelta, windChangeBandsKmh, 'windier', 'calmer');
 
   return DayOverDayComparison(
     yesterdayHighC: baseline.highC,

@@ -296,6 +296,72 @@ def export_overlong_display_values() -> None:
     )
 
 
+def export_tile_comparison() -> None:
+    """ROADMAP item 159 step 1 — the modifier a tile carries, or nothing.
+
+    THE SILENCE CASES ARE THE POINT. What this replaces spoke every day: over
+    the 16 comparisons in the prompt archive `overview_comparison` returned
+    "nothing worth saying" zero times, so a quiet day filled with "about the
+    same". Half these cases assert an empty answer.
+
+    The GATE is local — the ninetieth percentile of this station's own
+    day-to-day moves — and the WORD is not: it comes from the same band tables
+    the prose uses, whose cloud boundaries are one and three oktas.
+    """
+    from openlocalweather.tiles import comparison_modifiers, notable_moves
+
+    gates = {"temp": 2.2, "wind": 11.1, "cloud": 34.5}
+    cases = [
+        ("a quiet day says nothing at all", {"temp": 1.0, "wind": 4.0, "cloud": 9.0}, gates),
+        ("only the dimension that moved speaks", {"temp": 0.4, "wind": 18.4, "cloud": 3.0}, gates),
+        ("temperature says degrees, not an adjective", {"temp": -2.6}, gates),
+        ("and warms the same way", {"temp": 2.6}, gates),
+        ("three oktas is 'much' on the standard's own scale", {"cloud": 40.0}, gates),
+        ("clearing reads the same way", {"cloud": -40.0}, gates),
+        ("past the gate but inside the band: the bare word", {"cloud": 35.0}, gates),
+        ("exactly at the gate speaks", {"wind": 11.1}, gates),
+        ("just under it does not", {"wind": 11.0}, gates),
+        ("no gate means the record cannot say, so nothing does",
+         {"temp": 9.0, "cloud": 80.0}, {}),
+        ("one gate present, one absent", {"temp": 9.0, "cloud": 80.0}, {"cloud": 34.5}),
+        ("an unmeasured dimension is absent, never zero", {"temp": None, "wind": 18.0}, gates),
+        ("rain is not a dimension here", {"rain": 40.0}, {**gates, "rain": 6.0}),
+        ("every dimension at once", {"temp": -3.1, "wind": 20.0, "cloud": -45.0}, gates),
+    ]
+    write(
+        "tile_comparison.json",
+        "comparison_modifiers",
+        "ROADMAP item 159. One short modifier per tile, or nothing. The gate "
+        "is the ninetieth percentile of this station's own day-to-day moves, "
+        "measured; the word comes from the band tables the prose already "
+        "uses. Half these cases assert SILENCE, which is what the sentence "
+        "this replaces could never produce -- it spoke on every one of the 16 "
+        "archived days.",
+        [{"name": n, "input": {"deltas": d, "notable": g},
+          "expected": comparison_modifiers(d, g)} for n, d, g in cases],
+    )
+
+    history = [
+        {"high_c": 20.0 + (i % 5), "peak_wind_kmh": None, "cloud_cover_pct": 10.0 * (i % 6)}
+        for i in range(40)
+    ]
+    short = [{"high_c": 20.0 + (i % 3)} for i in range(10)]
+    write(
+        "tile_notable_moves.json",
+        "notable_moves",
+        "ROADMAP item 159. The size a day-to-day move must reach, per "
+        "dimension, read off the station's own record. A dimension with fewer "
+        "than 30 pairs is ABSENT rather than given a threshold from noise -- "
+        "item 100 applied to itself.",
+        [
+            {"name": "a full record gives a gate per measured dimension",
+             "input": {"history": history}, "expected": notable_moves(history)},
+            {"name": "a short record gives none at all",
+             "input": {"history": short}, "expected": notable_moves(short)},
+        ],
+    )
+
+
 def export_false_weekday_claims() -> None:
     """The pairings a narrative asserts, checked against the calendar.
 
@@ -5619,6 +5685,7 @@ def main() -> None:
     export_forward_calendar()
     export_false_weekday_claims()
     export_overlong_display_values()
+    export_tile_comparison()
     export_scoring()
     export_extract()
     export_aqi()

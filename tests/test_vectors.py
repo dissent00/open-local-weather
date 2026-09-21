@@ -780,6 +780,26 @@ def test_vectors_extended_trend():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_tile_comparison():
+    """ROADMAP item 159 — the modifier a tile carries, or nothing. Half the
+    cases assert SILENCE, which is what the sentence this replaces could
+    never produce."""
+    from openlocalweather.tiles import comparison_modifiers
+
+    for case in load("tile_comparison.json")["cases"]:
+        i = case["input"]
+        got = comparison_modifiers(i["deltas"], i["notable"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_tile_notable_moves():
+    from openlocalweather.tiles import notable_moves
+
+    for case in load("tile_notable_moves.json")["cases"]:
+        got = notable_moves(case["input"]["history"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_overlong_display_values():
     """ROADMAP item 7 — the stat-grid tiles against the box they render in.
     The PASSING cases are real values from the month the model got this right,
@@ -1053,6 +1073,8 @@ def test_every_vector_file_is_exercised():
         "extended_trend.json",
         "phrase_defect.json",
         "overlong_display_values.json",
+        "tile_comparison.json",
+        "tile_notable_moves.json",
         "describe_day_rain.json",
         "describe_day_over_day.json",
         "glossary.json",

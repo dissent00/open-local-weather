@@ -1138,6 +1138,36 @@ void main() {
     });
   });
 
+  group('tiles', () {
+    test('comparison_modifiers', () {
+      // Upstream item 159. Half these cases assert SILENCE, which is what the
+      // sentence this replaces could never produce: over the 16 archived
+      // comparisons it returned "nothing worth saying" zero times.
+      for (final c in loadVectors('tile_comparison.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final deltas = <String, double?>{
+          for (final e in (i['deltas'] as Map).entries)
+            e.key as String: (e.value as num?)?.toDouble(),
+        };
+        final notable = <String, double>{
+          for (final e in (i['notable'] as Map).entries)
+            e.key as String: (e.value as num).toDouble(),
+        };
+        expectMatches(comparisonModifiers(deltas, notable), c['expected'], c['name'] as String);
+      }
+    });
+
+    test('notable_moves', () {
+      for (final c in loadVectors('tile_notable_moves.json')['cases'] as List) {
+        final history = [
+          for (final d in ((c as Map)['input'] as Map)['history'] as List)
+            (d as Map).cast<String, Object?>()
+        ];
+        expectMatches(notableMoves(history), c['expected'], c['name'] as String);
+      }
+    });
+  });
+
   group('phrasing', () {
     test('phrase_defect', () {
       // Upstream ROADMAP item 158, 2026-09-21. The check a golden vector
@@ -1822,6 +1852,8 @@ void main() {
       'forward_calendar.json',
       'false_weekday_claims.json',
       'overlong_display_values.json',
+      'tile_comparison.json',
+      'tile_notable_moves.json',
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',

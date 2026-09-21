@@ -104,6 +104,8 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 41 |
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
+| `tile_comparison.json` | `comparison_modifiers` | 14 |
+| `tile_notable_moves.json` | `notable_moves` | 2 |
 | `describe_day_rain.json` | `describe_day_rain` | 32 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 22 |
 | `observed_so_far.json` | `describe_observed_so_far` | 21 |

@@ -1,0 +1,229 @@
+{
+  "vector_format_version": 1,
+  "function": "comparison_modifiers",
+  "description": "ROADMAP item 159. One short modifier per tile, or nothing. The gate is the ninetieth percentile of this station's own day-to-day moves, measured; the word comes from the band tables the prose already uses. Half these cases assert SILENCE, which is what the sentence this replaces could never produce -- it spoke on every one of the 16 archived days.",
+  "cases": [
+    {
+      "name": "a quiet day says nothing at all",
+      "input": {
+        "deltas": {
+          "temp": 1.0,
+          "wind": 4.0,
+          "cloud": 9.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {}
+    },
+    {
+      "name": "only the dimension that moved speaks",
+      "input": {
+        "deltas": {
+          "temp": 0.4,
+          "wind": 18.4,
+          "cloud": 3.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "wind": "much windier"
+      }
+    },
+    {
+      "name": "temperature says degrees, not an adjective",
+      "input": {
+        "deltas": {
+          "temp": -2.6
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "temp": "3\u00b0 cooler"
+      }
+    },
+    {
+      "name": "and warms the same way",
+      "input": {
+        "deltas": {
+          "temp": 2.6
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "temp": "3\u00b0 warmer"
+      }
+    },
+    {
+      "name": "three oktas is 'much' on the standard's own scale",
+      "input": {
+        "deltas": {
+          "cloud": 40.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "cloud": "much cloudier"
+      }
+    },
+    {
+      "name": "clearing reads the same way",
+      "input": {
+        "deltas": {
+          "cloud": -40.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "cloud": "much clearer"
+      }
+    },
+    {
+      "name": "past the gate but inside the band: the bare word",
+      "input": {
+        "deltas": {
+          "cloud": 35.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "cloud": "cloudier"
+      }
+    },
+    {
+      "name": "exactly at the gate speaks",
+      "input": {
+        "deltas": {
+          "wind": 11.1
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "wind": "windier"
+      }
+    },
+    {
+      "name": "just under it does not",
+      "input": {
+        "deltas": {
+          "wind": 11.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {}
+    },
+    {
+      "name": "no gate means the record cannot say, so nothing does",
+      "input": {
+        "deltas": {
+          "temp": 9.0,
+          "cloud": 80.0
+        },
+        "notable": {}
+      },
+      "expected": {}
+    },
+    {
+      "name": "one gate present, one absent",
+      "input": {
+        "deltas": {
+          "temp": 9.0,
+          "cloud": 80.0
+        },
+        "notable": {
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "cloud": "much cloudier"
+      }
+    },
+    {
+      "name": "an unmeasured dimension is absent, never zero",
+      "input": {
+        "deltas": {
+          "temp": null,
+          "wind": 18.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "wind": "much windier"
+      }
+    },
+    {
+      "name": "rain is not a dimension here",
+      "input": {
+        "deltas": {
+          "rain": 40.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5,
+          "rain": 6.0
+        }
+      },
+      "expected": {}
+    },
+    {
+      "name": "every dimension at once",
+      "input": {
+        "deltas": {
+          "temp": -3.1,
+          "wind": 20.0,
+          "cloud": -45.0
+        },
+        "notable": {
+          "temp": 2.2,
+          "wind": 11.1,
+          "cloud": 34.5
+        }
+      },
+      "expected": {
+        "temp": "3\u00b0 cooler",
+        "wind": "much windier",
+        "cloud": "much clearer"
+      }
+    }
+  ]
+}

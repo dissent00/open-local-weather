@@ -24502,7 +24502,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21, not yet built**
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; step 1 SHIPPED the same day, steps 2-6 open**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
@@ -24618,6 +24618,53 @@ Speeds in km/h whatever the reader's unit; the unit lives in the tile header
 and the value converts at render. `direction` may be absent and the tile drops
 the letters rather than apologising — the common case, at 3 of 18 archived
 runs for a single agreed bearing and 7 of 18 for the shift.
+
+### Step 1 SHIPPED 2026-09-21 — the comparison, as modifiers
+
+`tiles.py` / `tiles.dart`: `notable_moves` reads the gate off the record,
+`comparison_modifiers` returns at most one short string per dimension and
+usually returns nothing.
+
+**THE SIMPLE FIX WAS TRIED FIRST AND MEASURED INSUFFICIENT.** The existing
+band tables already have a no-change label; the obvious repair was to emit
+null instead of printing "about the same". Measured over the 40 day-pairs,
+that still let something speak on 35 of 40 days at 1.6 dimensions each —
+barely quieter than always. The bands are standards-derived and right about
+PERCEPTIBILITY, and at this station a perceptible change happens most days,
+so perceptibility is the wrong question for a tile.
+
+| rule | days something speaks | dimensions each |
+|---|---:|---:|
+| band floor (perceptible) | 35 / 40 | 1.6 |
+| top quartile | 24 / 40 | — |
+| **top decile** | **11 / 40** | **1.2** |
+
+**THE GATE IS LOCAL, THE WORD IS NOT.** Whether to speak comes from the
+ninetieth percentile of this station's own moves, so the same code gives a
+2.2 °C bar here and a wider one where seasons move, with nothing configured.
+The word comes from the band tables the prose already uses, whose cloud
+boundaries are one and three oktas from the NWS resolution — keeping a sample
+of 40 days out of the vocabulary.
+
+**TEMPERATURE SAYS DEGREES, NOT AN ADJECTIVE**, and the combination forced it:
+the bands call 2.2 °C "slightly" because they are built for a climate where
+six degrees is ordinary, and "slightly cooler" on a day the gate has just
+called unusual undercuts itself. So the tile reads "3° cooler".
+
+**`notable_moves` refuses below 30 pairs** — item 100 applied to itself. At 30
+the decile has three observations above it; below that it is noise wearing a
+number, and a deployment with less history says nothing rather than inventing
+a threshold.
+
+Verified: 1,518 Python, 209 Dart, vector-pinned on both sides with half the
+cases asserting SILENCE. Four mutations bit: the gate ignored, the minimum-
+pairs guard removed, temperature falling back to the adjective, and the
+percentile becoming the maximum. `_bandLabel` became public in the Dart
+mirror so the tiles and the prose read one band table rather than two.
+
+One test was wrong before the code was: the ninetieth percentile of thirty
+ones and a single ten is one, not ten. Corrected by running it, and the
+corrected case is worth keeping — one freak afternoon must not move the bar.
 
 ### Not yet decided
 
