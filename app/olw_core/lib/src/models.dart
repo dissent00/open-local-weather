@@ -229,6 +229,28 @@ const double tempContradictionMarginC = 2.0;
 /// window is agreement. Unmeasured, and conservative on purpose.
 const int onsetContradictionMarginMin = 60;
 
+/// "9.1 (Very high)" — the number the model called, the word code looked up.
+///
+/// The same split as [formatTempHighLow], and for the same reason. Upstream
+/// measured it: `uv_index_max` came back in 4 shapes over 41 archived days and
+/// `air_quality_aqi` in TWENTY over 39, ten of those a range rather than a
+/// number. See scales.dart for the band tables.
+///
+/// MATCHES PYTHON'S `f"{value:g}"` on this domain: a whole value loses its
+/// decimal point, so 9.0 renders as "9" and 9.1 as "9.1". Dart's own
+/// `toString` would give "9.0". `:g` also switches to exponent form above
+/// 1e6, which neither a UV index nor an AQI reaches — the port is correct on
+/// the values these fields hold and is not a general `%g`.
+String? formatIndexAndBand(num? value, String? band) {
+  if (value == null) return null;
+
+  final shown = value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
+
+  return band == null ? shown : '$shown ($band)';
+}
+
 String formatTempHighLow(double highC, double lowC) =>
     '${formatTempC(highC)} high, ${formatTempC(lowC)} low';
 

@@ -1061,3 +1061,41 @@ def test_a_day_issued_once_has_no_first_issuance_page():
     from openlocalweather.publish.pages import _first_issuance
 
     assert _first_issuance(make_entry(date(2026, 8, 11))) is None
+
+
+def test_the_morning_view_carries_no_value_the_snapshot_never_recorded():
+    """An archived issuance's page must not borrow the CURRENT run's data.
+
+    `_entry_as_morning_view` rebuilds a full `DailyLogEntry` from an
+    `IssuanceSnapshot` so one template renders both, and it overwrites every
+    field the snapshot carries. The fields it does NOT carry are the problem:
+    `cloud_anchors`, `wind_anchors`, `uv_index` and `air_quality_index` were
+    added to the day record in ROADMAP item 159 steps 2-4 and deliberately
+    left off the snapshot, because the tiles always show the current run.
+
+    Left alone, the rebuild would hand a page labelled "Morning" the evening
+    run's sky, its wind and the halves of its UV and AQI, beside that
+    morning's own display strings. The page template does not render them
+    YET — step 6 does — so this is the cheap moment to make the rule true.
+    """
+    entry = _refreshed_entry().model_copy(
+        update={
+            "cloud_anchors": [{"when": "evening", "cover": "Overcast"}],
+            "wind_anchors": [{"when": "evening", "sustained_kmh": 30.0}],
+            "uv_index": 9.1,
+            "air_quality_index": 85,
+        }
+    )
+
+    morning_view = _entry_as_morning_view(entry)
+
+    assert morning_view.cloud_anchors == []
+    assert morning_view.wind_anchors == []
+    assert morning_view.uv_index is None
+    assert morning_view.air_quality_index is None
+
+    # and the snapshot's own display strings still win, which is the point of
+    # the rebuild
+    from openlocalweather.publish.pages import _first_issuance
+
+    assert morning_view.uv_index_max == _first_issuance(entry).uv_index_max

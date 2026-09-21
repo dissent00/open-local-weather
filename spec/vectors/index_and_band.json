@@ -1,0 +1,103 @@
+{
+  "vector_format_version": 1,
+  "function": "format_index_and_band",
+  "description": "ROADMAP item 159. The display string for a UV or air quality index: the model's number joined to the word code looked up. Replaces a display string the model wrote, which drifted into 4 shapes for UV and 20 for AQI. A whole value drops its decimal point, matching Python's `:g` -- the case a Dart `toString` port gets wrong.",
+  "cases": [
+    {
+      "name": "None + None",
+      "input": {
+        "value": null,
+        "band": null
+      },
+      "expected": null
+    },
+    {
+      "name": "9.1 + 'Very high'",
+      "input": {
+        "value": 9.1,
+        "band": "Very high"
+      },
+      "expected": "9.1 (Very high)"
+    },
+    {
+      "name": "9.0 + 'Very high'",
+      "input": {
+        "value": 9.0,
+        "band": "Very high"
+      },
+      "expected": "9 (Very high)"
+    },
+    {
+      "name": "11.0 + 'Extreme'",
+      "input": {
+        "value": 11.0,
+        "band": "Extreme"
+      },
+      "expected": "11 (Extreme)"
+    },
+    {
+      "name": "0.0 + 'Low'",
+      "input": {
+        "value": 0.0,
+        "band": "Low"
+      },
+      "expected": "0 (Low)"
+    },
+    {
+      "name": "2.75 + 'Low'",
+      "input": {
+        "value": 2.75,
+        "band": "Low"
+      },
+      "expected": "2.75 (Low)"
+    },
+    {
+      "name": "85 + 'Moderate'",
+      "input": {
+        "value": 85,
+        "band": "Moderate"
+      },
+      "expected": "85 (Moderate)"
+    },
+    {
+      "name": "50 + 'Good'",
+      "input": {
+        "value": 50,
+        "band": "Good"
+      },
+      "expected": "50 (Good)"
+    },
+    {
+      "name": "301 + 'Hazardous'",
+      "input": {
+        "value": 301,
+        "band": "Hazardous"
+      },
+      "expected": "301 (Hazardous)"
+    },
+    {
+      "name": "125 + 'Unhealthy for sensitive groups'",
+      "input": {
+        "value": 125,
+        "band": "Unhealthy for sensitive groups"
+      },
+      "expected": "125 (Unhealthy for sensitive groups)"
+    },
+    {
+      "name": "9.4 + None",
+      "input": {
+        "value": 9.4,
+        "band": null
+      },
+      "expected": "9.4"
+    },
+    {
+      "name": "85 + None",
+      "input": {
+        "value": 85,
+        "band": null
+      },
+      "expected": "85"
+    }
+  ]
+}

@@ -106,6 +106,9 @@ absent values are `null`, never omitted keys.
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
 | `cloud_anchors.json` | `cloud_anchors` | 7 |
 | `wind_anchors.json` | `wind_anchors` | 9 |
+| `uv_band.json` | `uv_band` | 11 |
+| `aqi_band.json` | `aqi_band` | 13 |
+| `index_and_band.json` | `format_index_and_band` | 12 |
 | `sky_word.json` | `sky_word` | 11 |
 | `tile_comparison.json` | `comparison_modifiers` | 14 |
 | `tile_notable_moves.json` | `notable_moves` | 2 |

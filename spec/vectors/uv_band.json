@@ -1,0 +1,84 @@
+{
+  "vector_format_version": 1,
+  "function": "uv_band",
+  "description": "ROADMAP item 159. The WHO's word for a UV index, from 'Global Solar UV Index: A Practical Guide' -- 0-2 low, 3-5 moderate, 6-7 high, 8-10 very high, 11 and over extreme. Code's job since 2026-09-21: the field had NO format rule before that, and the model's own '(Very High)' convention appeared on 21 of 41 archived days.",
+  "cases": [
+    {
+      "name": "absent",
+      "input": {
+        "index": null
+      },
+      "expected": null
+    },
+    {
+      "name": "0.0",
+      "input": {
+        "index": 0.0
+      },
+      "expected": "Low"
+    },
+    {
+      "name": "2.9",
+      "input": {
+        "index": 2.9
+      },
+      "expected": "Low"
+    },
+    {
+      "name": "3.0",
+      "input": {
+        "index": 3.0
+      },
+      "expected": "Moderate"
+    },
+    {
+      "name": "5.9",
+      "input": {
+        "index": 5.9
+      },
+      "expected": "Moderate"
+    },
+    {
+      "name": "6.0",
+      "input": {
+        "index": 6.0
+      },
+      "expected": "High"
+    },
+    {
+      "name": "7.9",
+      "input": {
+        "index": 7.9
+      },
+      "expected": "High"
+    },
+    {
+      "name": "8.0",
+      "input": {
+        "index": 8.0
+      },
+      "expected": "Very high"
+    },
+    {
+      "name": "10.9",
+      "input": {
+        "index": 10.9
+      },
+      "expected": "Very high"
+    },
+    {
+      "name": "11.0",
+      "input": {
+        "index": 11.0
+      },
+      "expected": "Extreme"
+    },
+    {
+      "name": "15.4",
+      "input": {
+        "index": 15.4
+      },
+      "expected": "Extreme"
+    }
+  ]
+}

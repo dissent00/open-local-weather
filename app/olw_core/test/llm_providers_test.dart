@@ -236,8 +236,11 @@ void main() {
       // The second half, and not redundant: a degenerate loop that fits inside
       // the token budget stops for a perfectly good reason.
       final payload = jsonDecode(jsonEncode(validPayload)) as Map<String, Object?>;
-      (payload['today_properties'] as Map<String, Object?>)['uv_index_max'] =
-          '8.75 Registered Midday ${'Passtaken ' * 1600}';
+      // `synoptic_pattern`, because uv_index_max stopped being a string on
+      // 2026-09-21 — upstream item 159 step 4. The guard is about a runaway
+      // TEXT field, so it has to sit on one that still is.
+      (payload['today_properties'] as Map<String, Object?>)['synoptic_pattern'] =
+          'Weak easterly flow ${'Passtaken ' * 1600}';
       final cap = _Cap(geminiEnvelopeFinishing('STOP', payload));
       expect(
         () => GeminiProvider(apiKey: 'k', model: 'm', client: cap.client)
@@ -475,8 +478,8 @@ void main() {
         tempLowC: 18.0,
         mslpTrend24h: 'Falling slowly',
         synopticPattern: 'Weak easterly flow',
-        uvIndexMax: '9 (Very High)',
-        airQualityAqi: '42 (Good)',
+        uvIndexMax: 9.0,
+        airQualityAqi: 42,
       );
       final json = original.toJson();
       expect(json['rain_expected'], original.rainExpected);

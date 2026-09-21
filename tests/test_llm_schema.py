@@ -118,7 +118,11 @@ def test_the_display_bound_is_enforced_here_and_never_sent_to_the_provider():
             rain=False,
             temp_high_c=26.0,
             temp_low_c=18.0,
-            uv_index_max="x" * (MAX_DISPLAY_STRING + 1),
+            # `synoptic_pattern`, not `uv_index_max`: the latter became a
+            # plain number on 2026-09-21 (item 159 step 4), and a string in a
+            # float field raises whatever its length, so this test would have
+            # gone on passing without the bound existing at all.
+            synoptic_pattern="x" * (MAX_DISPLAY_STRING + 1),
         )
 
 

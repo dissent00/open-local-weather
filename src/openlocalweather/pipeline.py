@@ -81,6 +81,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_extended_trend,
 )
+from openlocalweather.scales import aqi_band, uv_band
 from openlocalweather.tiles import cloud_anchors, wind_anchors
 from openlocalweather.llm.provider import provider_identity
 from openlocalweather.phrasing import phrase_defect
@@ -227,6 +228,7 @@ from openlocalweather.models import (
     NarrativeFinding,
     RunDegradation,
     TrackRecord,
+    format_index_and_band,
     format_temp_high_low,
 )
 from openlocalweather.store import actuals_cache as actuals_cache_store
@@ -2479,8 +2481,15 @@ def _compose_log_entry(
         ),
         mslp_trend_24h=tp.mslp_trend_24h or "",
         synoptic_pattern=tp.synoptic_pattern or "",
-        uv_index_max=tp.uv_index_max,
-        air_quality_aqi=tp.air_quality_aqi,
+        # THE DISPLAY IS COMPOSED HERE, the halves stored beside it. The model
+        # supplies the number; `scales.py` supplies the word from the WHO and
+        # US EPA tables. Same seam as `temp_high_low_display` two lines up.
+        uv_index_max=format_index_and_band(tp.uv_index_max, uv_band(tp.uv_index_max)),
+        air_quality_aqi=format_index_and_band(
+            tp.air_quality_aqi, aqi_band(tp.air_quality_aqi)
+        ),
+        uv_index=tp.uv_index_max,
+        air_quality_index=tp.air_quality_aqi,
         ground_aqi=guidance.ground_aqi_readings,
         # From code, not from the narrative. Empty strings mean the sun times
         # were unavailable — see daypart_without_sun — and are stored as None

@@ -126,8 +126,17 @@ class TodayProperties(BaseModel):
     rain_probability_pct: int | None = None
     mslp_trend_24h: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
     synoptic_pattern: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
-    uv_index_max: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
-    air_quality_aqi: str | None = Field(default=None, max_length=MAX_DISPLAY_STRING)
+    # PLAIN NUMBERS SINCE 2026-09-21, like temp_high_c above and for the same
+    # reason. Both were display strings the model wrote, and the archive says
+    # what that produced: 41 UV values in 4 shapes, and 39 AQI values in
+    # TWENTY -- ten of them a RANGE rather than a number, the unit spelled
+    # four ways, and two with the band word before the number. The band word
+    # is now looked up in code from the published tables (`scales.py`). The
+    # NUMBER stays here, though only the AQI one is really a judgement —
+    # `uv_index` comes from one model, with `best_match` duplicating it value
+    # for value. See `scales.py`, and item 161.
+    uv_index_max: float | None = None
+    air_quality_aqi: int | None = None
 
 
 # ROADMAP item 72, minimal shape.

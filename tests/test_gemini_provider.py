@@ -277,7 +277,11 @@ def test_a_display_string_that_ran_away_is_refused():
     run's UV was "8.7 (Very High)", fifteen characters.
     """
     payload = json.loads(json.dumps(VALID_PAYLOAD))
-    payload["today_properties"]["uv_index_max"] = "8.75 Registered Midday " + "Passtaken " * 1600
+    # `synoptic_pattern`, not `uv_index_max`: the latter is the field the real
+    # 15,930-character repetition loop arrived in, but it became a plain number
+    # on 2026-09-21 (item 159 step 4) and a string in it now raises whatever
+    # its length. This test would have kept passing with the bound deleted.
+    payload["today_properties"]["synoptic_pattern"] = "Weak easterly flow " + "Passtaken " * 1600
 
     with requests_mock.Mocker() as m:
         m.post(URL, json=envelope_finishing("STOP", payload))

@@ -418,6 +418,14 @@ def detect_trigger_regression(
 # other scored fields. The secondary point's stays here because nothing scores
 # it: it is still the number "boaters would act on" and still reaches no other
 # check. The name changed in the split; the 09-09..11 gap above is this field's.
+#
+# `uv_index_max` and `air_quality_aqi` ARE STILL WATCHED THOUGH CODE NOW
+# COMPOSES THEM — ROADMAP item 159 step 4, 2026-09-21. The model stopped
+# writing the display string and started writing a plain number, with the band
+# word looked up from the published tables. The absence this watches still
+# ORIGINATES with the model: no number means no display, and the tile leaves
+# the page exactly as before. What changed is that a value which is present is
+# now guaranteed a shape, which this check never tested for anyway.
 NARRATED_FIELDS = (
     "rain_expected",
     "peak_wind_secondary_kmh",

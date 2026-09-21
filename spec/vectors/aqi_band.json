@@ -1,0 +1,98 @@
+{
+  "vector_format_version": 1,
+  "function": "aqi_band",
+  "description": "ROADMAP item 159. The US EPA's word for an air quality index. The same thresholds prompt.py already stated in prose, which means the model was doing this lookup by hand every run -- and publishing it in 20 distinct shapes across 39 archived values. 'Unhealthy for sensitive groups' is spelled out, not 'USG'.",
+  "cases": [
+    {
+      "name": "absent",
+      "input": {
+        "index": null
+      },
+      "expected": null
+    },
+    {
+      "name": "0",
+      "input": {
+        "index": 0
+      },
+      "expected": "Good"
+    },
+    {
+      "name": "50",
+      "input": {
+        "index": 50
+      },
+      "expected": "Good"
+    },
+    {
+      "name": "51",
+      "input": {
+        "index": 51
+      },
+      "expected": "Moderate"
+    },
+    {
+      "name": "100",
+      "input": {
+        "index": 100
+      },
+      "expected": "Moderate"
+    },
+    {
+      "name": "101",
+      "input": {
+        "index": 101
+      },
+      "expected": "Unhealthy for sensitive groups"
+    },
+    {
+      "name": "150",
+      "input": {
+        "index": 150
+      },
+      "expected": "Unhealthy for sensitive groups"
+    },
+    {
+      "name": "151",
+      "input": {
+        "index": 151
+      },
+      "expected": "Unhealthy"
+    },
+    {
+      "name": "200",
+      "input": {
+        "index": 200
+      },
+      "expected": "Unhealthy"
+    },
+    {
+      "name": "201",
+      "input": {
+        "index": 201
+      },
+      "expected": "Very unhealthy"
+    },
+    {
+      "name": "300",
+      "input": {
+        "index": 300
+      },
+      "expected": "Very unhealthy"
+    },
+    {
+      "name": "301",
+      "input": {
+        "index": 301
+      },
+      "expected": "Hazardous"
+    },
+    {
+      "name": "500",
+      "input": {
+        "index": 500
+      },
+      "expected": "Hazardous"
+    }
+  ]
+}

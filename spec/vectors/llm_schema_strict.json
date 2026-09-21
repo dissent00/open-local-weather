@@ -102,13 +102,13 @@
               },
               "uv_index_max": {
                 "type": [
-                  "string",
+                  "number",
                   "null"
                 ]
               },
               "air_quality_aqi": {
                 "type": [
-                  "string",
+                  "integer",
                   "null"
                 ]
               }

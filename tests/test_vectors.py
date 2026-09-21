@@ -800,6 +800,31 @@ def test_vectors_wind_anchors():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_uv_band():
+    from openlocalweather.scales import uv_band
+
+    for case in load("uv_band.json")["cases"]:
+        got = uv_band(case["input"]["index"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_aqi_band():
+    from openlocalweather.scales import aqi_band
+
+    for case in load("aqi_band.json")["cases"]:
+        got = aqi_band(case["input"]["index"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_index_and_band():
+    from openlocalweather.models import format_index_and_band
+
+    for case in load("index_and_band.json")["cases"]:
+        i = case["input"]
+        got = format_index_and_band(i["value"], i["band"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_word():
     from openlocalweather.tiles import sky_word
 
@@ -1103,6 +1128,9 @@ def test_every_vector_file_is_exercised():
         "overlong_display_values.json",
         "cloud_anchors.json",
         "wind_anchors.json",
+        "uv_band.json",
+        "aqi_band.json",
+        "index_and_band.json",
         "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",

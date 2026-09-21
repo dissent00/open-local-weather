@@ -146,6 +146,16 @@ class FakeLLMProvider:
                 temp_high_c=27.0,
                 temp_low_c=18.0,
                 temp_high_low="27°C / 81°F",
+                # ROADMAP item 159 step 4, and the same fault as the wind
+                # pair above: the stub supplied NEITHER of these, so every
+                # assertion about them passed on a null and would have passed
+                # with the composition deleted. Both are plain numbers now —
+                # the band word is code's — and these two are the real
+                # blended values from 2026-09-21, which land one band short of
+                # their own ceilings: 9.1 is "Very high" and not "Extreme",
+                # 85 is "Moderate" and not "Unhealthy for sensitive groups".
+                uv_index_max=9.1,
+                air_quality_aqi=85,
             ),
             today_narrative="## Overview\nDry and warm.",
             whatsapp_summary=None,
@@ -4275,3 +4285,31 @@ def test_the_tiles_anchors_survive_the_entry_that_is_written(tmp_path, monkeypat
     # and a snapshot of an EARLIER issuance must not carry them at all
     assert "cloud_anchors" not in IssuanceSnapshot.model_fields
     assert "wind_anchors" not in IssuanceSnapshot.model_fields
+
+
+def test_the_index_halves_are_on_the_day_record(tmp_path, monkeypatch):
+    """UV and AQI reach the record as a number, a word and a joined display.
+
+    THE NUMBER IS STILL THE MODEL'S — its blended call across the models and
+    the ground sensors, which is a judgement about which source to trust.
+    THE WORD IS CODE'S, looked up in `scales.py` from the WHO and US EPA
+    tables. The archive is why: 41 stored UV values in 4 shapes and 39 AQI
+    values in TWENTY, ten of those a range rather than a number.
+
+    Asserted off disk rather than on the model, because that is the check the
+    anchor fields did not have when they spent a day being silently discarded
+    by pydantic — see `test_the_tiles_anchors_survive_the_entry_that_is_written`.
+    """
+    deps = make_deps(tmp_path)
+    issue(deps, today=date(2026, 8, 11))
+
+    stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+
+    assert stored.uv_index == 9.1
+    assert stored.air_quality_index == 85
+    assert stored.uv_index_max == "9.1 (Very high)"
+    assert stored.air_quality_aqi == "85 (Moderate)"
+
+    # and a snapshot of an EARLIER issuance carries the display, not the halves
+    assert "uv_index" not in IssuanceSnapshot.model_fields
+    assert "air_quality_index" not in IssuanceSnapshot.model_fields

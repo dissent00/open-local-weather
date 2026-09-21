@@ -287,6 +287,30 @@ def format_temp_high_low(high_c: float, low_c: float) -> str:
     return f"{format_temp_c(high_c)} high, {format_temp_c(low_c)} low"
 
 
+def format_index_and_band(value: float | int | None, band: str | None) -> str | None:
+    """"9.1 (Very high)" — the number the model called, the word code looked up.
+
+    THE SAME SPLIT AS `format_temp_high_low`, and for the same reason: an
+    LLM-written display value drifts in form, and the archive measured it.
+    `uv_index_max` came back in 4 shapes over 41 days and `air_quality_aqi` in
+    TWENTY over 39, ten of those a range rather than a number.
+
+    Kept on the entry under the field's ORIGINAL NAME so the page template and
+    every existing reader are untouched; the number and the word are also
+    stored separately, which is what the tiles read.
+
+    A UV index is fractional and an AQI is not, so the number is rendered as
+    the model gave it rather than forced to a shape: `9.1` stays `9.1` and `85`
+    stays `85`, without a trailing `.0`.
+    """
+    if value is None:
+        return None
+
+    shown = f"{value:g}"
+
+    return f"{shown} ({band})" if band else shown
+
+
 def format_temp_c(celsius: float, *, decimals: int = 0) -> str:
     """One temperature, in both units — the half of `format_temp_high_low`
     that is about a single number.
@@ -1599,8 +1623,37 @@ class DailyLogEntry(BaseModel):
     wind_anchors: list[dict[str, object]] = Field(default_factory=list)
     mslp_trend_24h: str
     synoptic_pattern: str
+
+    # COMPOSED BY CODE SINCE 2026-09-21, not written by the model.
+    #
+    # These two keep their names and their type so the page template, the
+    # mailer and every stored entry read exactly as before; what changed is
+    # who writes them. `format_index_and_band` joins the model's number to the
+    # word `scales.py` looks up, which is the `temp_high_low_display` split
+    # applied to the two fields that needed it most: 41 UV values in 4 shapes,
+    # 39 AQI values in 20.
     uv_index_max: str | None = None
     air_quality_aqi: str | None = None
+
+    # THE HALVES, for the at-a-glance tiles — `ensemble` item 23. The tile
+    # puts the number and the word on separate lines at the same size, so it
+    # needs them apart; splitting the display string back up in a renderer is
+    # the seam mistake this project keeps not making, and on the AQI string it
+    # would have failed on more than a quarter of the archived days.
+    #
+    # THE NUMBER IS STILL THE MODEL'S, and the two fields differ on why. For
+    # AQI it is a real judgement: ground stations and CAMS are separate
+    # sources that disagree, and stations go stale. For UV it is NOT —
+    # checked against the 2026-09-21 archive, only `gfs_seamless` serves a UV
+    # index and `best_match` duplicates it value for value, so there is one
+    # source and nothing to blend. Computing UV in code is item 161.
+    #
+    # ON DailyLogEntry ONLY, and this time VERIFIED rather than asserted:
+    # `test_the_index_halves_are_on_the_day_record` builds an entry and reads
+    # it back. The anchor fields above spent a day on IssuanceSnapshot with a
+    # comment claiming otherwise, thrown away silently by pydantic.
+    uv_index: float | None = None
+    air_quality_index: int | None = None
     # Raw per-station readings only — the range/highest-station summary
     # used in the narrative and on the site is deterministically recomputed
     # from this on demand (see aqi.summarize_ground_aqi), not persisted

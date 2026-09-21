@@ -1592,6 +1592,18 @@
       "default": null,
       "title": "Air Quality Aqi"
     },
+    "air_quality_index": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Air Quality Index"
+    },
     "cloud_anchors": {
       "items": {
         "additionalProperties": {
@@ -1814,6 +1826,18 @@
     "temp_low_c": {
       "title": "Temp Low C",
       "type": "number"
+    },
+    "uv_index": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uv Index"
     },
     "uv_index_max": {
       "anyOf": [

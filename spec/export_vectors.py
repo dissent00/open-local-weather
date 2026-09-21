@@ -457,6 +457,77 @@ def export_wind_anchors() -> None:
           "expected": wind_anchors(h, MODELS, issued_hour=i)} for n, h, i in cases],
     )
 
+def export_scales() -> None:
+    """ROADMAP item 159 step 4 -- the published word for an index value.
+
+    EVERY CASE IS A BOUNDARY OR AN END. A band table has nothing interesting
+    between its edges, and the edges are where a port drifts: the WHO's bands
+    are stated on "below this threshold", so 2.9 is low and 3.0 is moderate,
+    and the EPA's are exact integers because the AQI is defined on whole
+    numbers.
+    """
+    from openlocalweather.scales import aqi_band, uv_band
+
+    uv = [None, 0.0, 2.9, 3.0, 5.9, 6.0, 7.9, 8.0, 10.9, 11.0, 15.4]
+    write(
+        "uv_band.json",
+        "uv_band",
+        "ROADMAP item 159. The WHO's word for a UV index, from 'Global Solar "
+        "UV Index: A Practical Guide' -- 0-2 low, 3-5 moderate, 6-7 high, "
+        "8-10 very high, 11 and over extreme. Code's job since 2026-09-21: "
+        "the field had NO format rule before that, and the model's own "
+        "'(Very High)' convention appeared on 21 of 41 archived days.",
+        [{"name": "absent" if v is None else str(v), "input": {"index": v},
+          "expected": uv_band(v)} for v in uv],
+    )
+
+
+    from openlocalweather.models import format_index_and_band
+
+    pairs = [
+        (None, None),
+        (9.1, "Very high"),
+        # A WHOLE FLOAT IS THE CASE THAT SURVIVED THE FIRST MUTATION PASS.
+        # Python's `:g` drops the decimal point, so 9.0 is "9" and not "9.0";
+        # Dart's own `toString` gives "9.0". Nothing else here distinguishes
+        # the two spellings.
+        (9.0, "Very high"),
+        (11.0, "Extreme"),
+        (0.0, "Low"),
+        (2.75, "Low"),
+        (85, "Moderate"),
+        (50, "Good"),
+        (301, "Hazardous"),
+        (125, "Unhealthy for sensitive groups"),
+        # a number with no band is the number alone, never "9 (None)"
+        (9.4, None),
+        (85, None),
+    ]
+    write(
+        "index_and_band.json",
+        "format_index_and_band",
+        "ROADMAP item 159. The display string for a UV or air quality index: "
+        "the model's number joined to the word code looked up. Replaces a "
+        "display string the model wrote, which drifted into 4 shapes for UV "
+        "and 20 for AQI. A whole value drops its decimal point, matching "
+        "Python's `:g` -- the case a Dart `toString` port gets wrong.",
+        [{"name": f"{v!r} + {b!r}", "input": {"value": v, "band": b},
+          "expected": format_index_and_band(v, b)} for v, b in pairs],
+    )
+
+    aqi = [None, 0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 500]
+    write(
+        "aqi_band.json",
+        "aqi_band",
+        "ROADMAP item 159. The US EPA's word for an air quality index. The "
+        "same thresholds prompt.py already stated in prose, which means the "
+        "model was doing this lookup by hand every run -- and publishing it "
+        "in 20 distinct shapes across 39 archived values. 'Unhealthy for "
+        "sensitive groups' is spelled out, not 'USG'.",
+        [{"name": "absent" if v is None else str(v), "input": {"index": v},
+          "expected": aqi_band(v)} for v in aqi],
+    )
+
 def export_tile_comparison() -> None:
     """ROADMAP item 159 step 1 — the modifier a tile carries, or nothing.
 
@@ -5849,6 +5920,7 @@ def main() -> None:
     export_tile_comparison()
     export_cloud_anchors()
     export_wind_anchors()
+    export_scales()
     export_scoring()
     export_extract()
     export_aqi()

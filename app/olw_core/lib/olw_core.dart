@@ -35,6 +35,7 @@ export 'src/models.dart';
 export 'src/calibration.dart';
 export 'src/cell.dart';
 export 'src/comparison.dart';
+export 'src/scales.dart';
 export 'src/tiles.dart';
 export 'src/config.dart';
 export 'src/llm/anthropic.dart';

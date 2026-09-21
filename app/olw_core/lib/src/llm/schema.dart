@@ -22,6 +22,7 @@ library;
 /// byte-for-byte the same, which is one less thing to reason about when
 /// comparing them.
 import '../models.dart';
+import '../scales.dart';
 
 const String forecastSchemaName = 'GeminiForecastResponse';
 
@@ -94,8 +95,8 @@ Map<String, Object?> _geminiTodayProperties() => {
         'rain_probability_pct': {'type': 'INTEGER', 'nullable': true},
         'mslp_trend_24h': {'type': 'STRING', 'nullable': true},
         'synoptic_pattern': {'type': 'STRING', 'nullable': true},
-        'uv_index_max': {'type': 'STRING', 'nullable': true},
-        'air_quality_aqi': {'type': 'STRING', 'nullable': true},
+        'uv_index_max': {'type': 'NUMBER', 'nullable': true},
+        'air_quality_aqi': {'type': 'INTEGER', 'nullable': true},
       },
       'required': [
         'rain_expected',
@@ -188,10 +189,10 @@ Map<String, Object?> _strictTodayProperties() => {
           'type': ['string', 'null']
         },
         'uv_index_max': {
-          'type': ['string', 'null']
+          'type': ['number', 'null']
         },
         'air_quality_aqi': {
-          'type': ['string', 'null']
+          'type': ['integer', 'null']
         },
       },
       'required': [
@@ -285,6 +286,14 @@ class TodayProperties {
   /// [formatTempHighLow].
   String get tempHighLow => formatTempHighLow(tempHighC, tempLowC);
 
+  /// The UV index with the WHO's word, composed the same way and for the same
+  /// reason — upstream item 159 step 4.
+  String? get uvIndexDisplay => formatIndexAndBand(uvIndexMax, uvBand(uvIndexMax));
+
+  /// The air quality index with the US EPA's word.
+  String? get airQualityDisplay =>
+      formatIndexAndBand(airQualityAqi, aqiBand(airQualityAqi));
+
   /// The scored commitment.
   ///
   /// [rainExpected] and [onsetWindow] above are prose, written for a reader.
@@ -310,8 +319,8 @@ class TodayProperties {
 
   final String? mslpTrend24h;
   final String? synopticPattern;
-  final String? uvIndexMax;
-  final String? airQualityAqi;
+  final double? uvIndexMax;
+  final int? airQualityAqi;
 
   const TodayProperties({
     required this.rainExpected,
@@ -343,8 +352,8 @@ class TodayProperties {
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
         mslpTrend24h: _bounded(j['mslp_trend_24h'], 'mslp_trend_24h'),
         synopticPattern: _bounded(j['synoptic_pattern'], 'synoptic_pattern'),
-        uvIndexMax: _bounded(j['uv_index_max'], 'uv_index_max'),
-        airQualityAqi: _bounded(j['air_quality_aqi'], 'air_quality_aqi'),
+        uvIndexMax: _toDouble(j['uv_index_max']),
+        airQualityAqi: (j['air_quality_aqi'] as num?)?.toInt(),
       );
 
   /// The counterpart to [fromJson], using the SAME wire keys.
@@ -506,11 +515,11 @@ Map<String, Object?> geminiJudgmentSchema() => {
               'nullable': true,
             },
             'uv_index_max': {
-              'type': 'STRING',
+              'type': 'NUMBER',
               'nullable': true,
             },
             'air_quality_aqi': {
-              'type': 'STRING',
+              'type': 'INTEGER',
               'nullable': true,
             },
           },
@@ -702,10 +711,10 @@ Map<String, Object?> strictJudgmentSchema() => {
               'type': ['string', 'null'],
             },
             'uv_index_max': {
-              'type': ['string', 'null'],
+              'type': ['number', 'null'],
             },
             'air_quality_aqi': {
-              'type': ['string', 'null'],
+              'type': ['integer', 'null'],
             },
           },
           'required': ['rain_expected', 'onset_window', 'peak_wind_primary_kmh', 'peak_wind_secondary_kmh', 'temp_high_c', 'temp_low_c', 'rain', 'onset_hour', 'precip_mm', 'rain_probability_pct', 'mslp_trend_24h', 'synoptic_pattern', 'uv_index_max', 'air_quality_aqi'],

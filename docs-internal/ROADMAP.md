@@ -11123,6 +11123,31 @@ through whatever provider is configured, already routes through the spend cap,
 and `LLM_PROVIDER` already selects exactly one provider so a one-off cannot
 fall through and report the wrong thing about the first.
 
+### The chain stayed unarmed, and the very next evening run paid for it
+
+2026-09-21, 15:01Z. The evening run failed on FOUR consecutive Gemini HTTP
+503s — 15:01:56, 15:02:27, 15:03:59 and a fourth at 15:11:00 — which is the
+exact failure this item was opened for, on the same day it was built, at the
+hour the measurement predicted. No forecast went out.
+
+**It is not a code defect and there is nothing to fix.** `config/location.yaml`
+already lists `openai` as the second link in the chain and the three
+OpenRouter models it should try inside one request. The chain is INERT because
+`LLM_API_KEY` does not exist: `gh secret list` shows only `GEMINI_API_KEY` and
+`WAQI_TOKEN`. The run behaved exactly as the config comment says it will — the
+entry is dropped and the run says so on stderr.
+
+**Arming it is the operator's, and only the operator's.** Three repository
+settings, and an agent must not handle any of them:
+
+- `LLM_API_KEY` — an OpenRouter key, as a repository SECRET.
+- `LLM_BASE_URL` — `https://openrouter.ai/api/v1`, as a repository VARIABLE.
+- `LLM_MODEL` — the first model in the gateway's own order, as a VARIABLE.
+
+Until those exist, every Gemini capacity shed is a missed forecast, and the
+measured rate is five evening runs in 29.
+
+
 ### Verified
 
 1,473 Python and 205 Dart. Eight mutations bit. **Two did not, and that is the
@@ -24502,7 +24527,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-3 SHIPPED the same day, steps 4-6 open**
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-4 SHIPPED the same day, steps 5-6 open**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
@@ -24766,6 +24791,159 @@ the two fields off the wire (`ensemble` item 23), and nothing renders them on
 the page or in the mailer yet — that is step 6.
 
 
+### Step 4 SHIPPED 2026-09-21 — the index, the word, and who writes which
+
+The tile wants "9.1" on one line and "Very high" under it. Both fields were
+free text the model wrote, so the renderer would have had to split a sentence.
+The archive says how badly that would have gone:
+
+| field | stored values | distinct SHAPES |
+|---|---:|---:|
+| `uv_index_max` | 41 | 4 |
+| `air_quality_aqi` | 39 | **20** |
+
+Ten of the 39 AQI values are a RANGE rather than a number — "78-87
+(Moderate)", "94 - 97 US AQI (Moderate)", "78–87 (Moderate)" with an en-dash,
+"67 - 80 (Moderate)" with spaces. The unit is spelled "US AQI", "USAQI", "AQI"
+or omitted. Two put the word FIRST: "Moderate (US AQI 85)". A tile parsing
+that string would have been wrong on more than a quarter of the record.
+
+UV is tidier and still not usable: the band word appears on 21 of 41 days, so
+a tile reading it out would be blank on half of them. **There was no format
+rule for `uv_index_max` at all** — the "(Very High)" convention was entirely
+the model's invention.
+
+**The split, and what it does NOT change.** The model now returns a plain
+NUMBER for each; what moved into code is the LOOKUP.
+
+**The two fields differ on whether that number is a judgement, and only one
+of them is.** For AQI it genuinely is: ground stations and CAMS are separate
+sources that disagree, stations go stale, and on 2026-09-21 all three stations
+served `aqi: null` beside PM2.5 of 128, 104 and 92 µg/m³ while CAMS said 61.
+Choosing is work and it stays the model's.
+
+**For UV there is nothing to blend, and this was not known before today.**
+Checked against the 2026-09-21 03:03Z archived prompt: of the five models only
+`gfs_seamless` serves `uv_index`, and `best_match`'s hourly array is
+value-for-value identical to it across all 30 values, while ECMWF, ICON and
+UKMO are null throughout. The prompt's "your synthesized BLENDED call across
+all models" cannot be true of this field. Asking for it is asking the model to
+copy one number — exactly the work `format_temp_high_low` exists to stop. It
+is left as the model's here because computing it is a second change, filed as
+item 161, and the band lookup was the thing blocking the tile. `prompt.py` already stated the US EPA thresholds in prose — "0-50
+Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous" — so the model
+has been doing a table lookup by hand every run and publishing its arithmetic.
+`scales.py` / `scales.dart` hold that table and the WHO's UV scale beside it.
+
+**The display keeps its name and its type.** `format_index_and_band` joins the
+number to the word, and the entry still stores it as `uv_index_max` and
+`air_quality_aqi`, so the page template, the mailer and every stored entry
+read exactly as before. The halves — `uv_index`, `air_quality_index` — are new
+and are what the tiles read. This is `temp_high_low_display`'s split applied
+to the two fields that needed it most, and the same reasoning: item 159's
+whole point is that a renderer must not take a word out of a sentence.
+
+"Unhealthy for sensitive groups" is spelled out rather than "USG". The prompt
+abbreviated it; the one day the record reached that band the model expanded it
+anyway. An abbreviation a reader has to decode is not an at-a-glance answer.
+
+**Two tests were passing for the wrong reason and are now fixed.**
+`test_a_display_string_that_ran_away_is_refused` and the `MAX_DISPLAY_STRING`
+bound check both put an over-long string in `uv_index_max`. Once that field is
+a float, a string raises whatever its length, so both would have gone on
+passing with the bound DELETED. They now sit on `synoptic_pattern`, which is
+still a bounded display string. The Dart mirror had the same fault. Worth
+naming: the real 15,930-character repetition loop that earned that guard
+arrived in `uv_index_max`, so moving it is not cosmetic.
+
+**And the stub supplied neither field**, so every assertion about them passed
+on a null — the same fault the wind pair's comment records from 2026-09-16.
+It now carries 9.1 and 85, real blended values from today, each landing one
+band short of its own ceiling.
+
+**Verified.** 1,539 Python, 215 Dart, `dart analyze` clean. Eleven mutations
+each bit their own case: both band tables shifted, both `<` widened to `<=`,
+the top band unreachable in each language, the word dropped from the display,
+the AQI read against the UV table, a half not stored, and the naive
+`toString` port. That last one SURVIVED the first pass — every fixture value
+was either an int or a non-whole float, so nothing distinguished `9` from
+`9.0` — and a vector case now pins it. A 6,000-draw sweep of the formatter
+across the two languages disagrees on none.
+
+**Driven through the real CLI** with `tools/drive_forecast_cli.py` against a
+HEAD worktree, control run twice: the two control runs are byte-identical, the
+transcript is unchanged, and the record's only movement is the composed
+display, the two halves, and the judgment prompt growing 170 characters. The
+narrative prompt is untouched at 38,349, which is right — the field list is
+the judgment call's.
+
+**Item 77's harness read the new rule cold and found two faults in it, both
+mine, both fixed before this shipped.**
+
+**It named the words it forbade.** The first draft read "the band word, 'Very
+high' or 'Moderate', is LOOKED UP in code ... do not produce one". The reader's
+note: the forbidden strings are named inside the sentence that forbids them,
+which is priming, not instruction. They are gone; the rule now says a band
+word, a unit and a range are all wrong and points at `temp_high_c` as the
+precedent.
+
+**And it left `air_quality_aqi` genuinely undecidable.** The reader called it
+"the field I would most likely get wrong" and gave FOUR defensible answers for
+the same day, which is worse than the drift the split was meant to end:
+
+| reading | value on 2026-09-21 |
+|---|---:|
+| `us_aqi` at the current hour | 61 |
+| `us_aqi`, day's peak | 66 |
+| `european_aqi` at the current hour | 44 |
+| `european_aqi`, day's peak | 52 |
+
+CAMS serves both series and nothing said which. Nothing said which hour
+either, and the field is named `air_quality_aqi` while its neighbour is
+`uv_index_max` — so its own name argues for "now" and its neighbour for "the
+peak". **The split is what made this urgent**: ten of the 39 archived values
+were a RANGE, which is exactly how a model hedges an unanswerable question,
+and a plain number cannot hedge.
+
+**The call, and it is the operator's to overturn.** `us_aqi`, never
+`european_aqi`, because every AQI rule in the prompt is the US EPA's and the
+band table now in code is the US EPA's. TODAY's PEAK, because the US AQI is
+defined as a daily index and because the peak is the number a reader acts on
+for a health call. Both are now stated in the rule rather than left to be
+inferred. The same sentence names the WHO scale for UV only — the first draft
+said "the published WHO and US EPA tables" as though both governed both, and
+the WHO publishes PM guidelines, not an AQI.
+
+The reader also flagged that three models' `daily_units` for UV read
+"undefined", which is a string a careless run could publish as a unit. The
+rule now says so.
+
+**What the harness found that is NOT this change** is filed as items 160-162.
+The UV finding is folded in above because it bears directly on who should
+write that field.
+
+**A third defect, found while checking who else reads these fields.**
+`_entry_as_morning_view` rebuilds a full `DailyLogEntry` from an
+`IssuanceSnapshot` so one template renders both an archived issuance and the
+current one. It overwrites every field the snapshot carries — and the four
+that steps 2-4 deliberately left OFF the snapshot were being kept from the
+CURRENT entry. A page labelled "Morning" would have shown the evening run's
+sky, its wind, and the halves of its UV and AQI, sitting beside that morning's
+own display strings. Nothing renders them yet, which made this the cheap
+moment. All four are now cleared in the rebuild, and
+`test_the_morning_view_carries_no_value_the_snapshot_never_recorded` fails
+when either pair is put back.
+
+**Not checked, and stated plainly.** No live run has produced either field as
+a number; the first one will. Item 77's harness was run on the new judgment
+prompt, but step 3 of its method could NOT be satisfied: no archived judgment
+prompt hash is reproducible at HEAD under any flag combination, so the cold
+read used a current prompt rather than a hash-matched replay of a known-bad
+day. The `coverage.py` watcher still lists both fields and still works — an
+absence still originates with the model, since no number means no display —
+but it is now watching a code-composed value, which is noted beside the list.
+
+
 ### A false alarm, and the guard it earned
 
 Building this I reported a defect in `describe_wind_shift` that does not
@@ -24805,3 +24983,121 @@ Whether the Rain tile carries a comparison at all. A near-zero day against
 another near-zero day flips "wetter"/"drier" on a rounding difference, and
 rain is the dimension where the absolute matters more than the change.
 
+
+---
+
+## 160. Two wind blocks in the same prompt, one ordering silence and one handing over a sentence · **Open, found 2026-09-21 by item 77's harness**
+
+Verified in the 2026-09-21 03:03Z archived user prompt, four lines apart:
+
+```
+WIND DIRECTION (... one rose point the models actually share, or nothing ...):
+Unavailable — the models do not share a bearing. Say nothing about direction.
+
+WIND SHIFT (... one finished clause, use it VERBATIM or not at all):
+north-northeasterly overnight, turning southwest by midday
+```
+
+One block orders silence on direction. The next hands over a finished clause
+naming two of them and orders it published verbatim. Rule 1 of the system
+prompt makes both "final — use as given", so there is no way to obey both.
+
+**The code is not necessarily wrong; the PROSE is.** `consensus_direction`
+gates on the models sharing a bearing at ONE hour, and `describe_wind_shift`
+names only the anchors where agreement did hold. A day can honestly have no
+single bearing and still have two anchors that agree. What is wrong is the
+wording: "Say nothing about direction" is a blanket order issued by a block
+that only knows about its own question.
+
+**What to do, not yet decided.** Either WIND DIRECTION's absent case stops
+issuing an order and says what it actually means ("no single bearing holds
+across the day"), or the two blocks are merged so one voice speaks about
+direction. The first is smaller. Neither has been measured for how often the
+pair appears in this contradictory combination — that count is the first
+thing to get, over the prompt archive.
+
+---
+
+## 161. `uv_index_max` is one model's number that the forecaster is asked to re-type · **Open, found 2026-09-21 by item 77's harness**
+
+Verified in the 2026-09-21 03:03Z archived prompt: of the five models, only
+`gfs_seamless` serves `uv_index`, and `best_match`'s hourly array is
+value-for-value identical to it across all 30 values. ECMWF, ICON and UKMO are
+null throughout, hourly and daily.
+
+So the prompt's "This is your synthesized BLENDED call across all models" is
+false for this field. There is one source. Asking the model for the number is
+asking it to copy, which is precisely the work `format_temp_high_low` was
+written to take away, and the same trap the prompt already flags for rain
+probability — "best_match equals ECMWF under a second name" — but does not
+flag here.
+
+**Item 159 step 4 moved the BAND into code and deliberately left the number
+alone**, because computing it is a separate change and the band was what
+blocked the tile. This is that change: take `uv_index_max` from the daily
+block the way `cape_max` is taken, drop it from `today_properties`, and let
+`scales.uv_band` continue to do the rest.
+
+**Measure first.** Over the archive, how often does the model's stated UV
+differ from `gfs`'s own `uv_index_max` for that day? The answer decides
+whether this is a correctness fix or only a tidiness one, and it is one script
+over `data/prompts/` and `data/log/`.
+
+---
+
+## 162. Instructions the judgment call cannot obey, carried in the judgment prompt · **Open, found 2026-09-21 by item 77's harness**
+
+The judgment system prompt opens by saying the call produces
+`today_properties` and `extended_properties` "and nothing else — you are not
+writing the forecast anyone reads." It then carries roughly a dozen
+instructions about sections that call cannot write: "State explicitly in the
+Forecaster Confidence Notes", "list each by name in the Detailed Discussion",
+"Lead with those periods", "do not describe yourself as a model in the
+narrative".
+
+A cold reader's report: the rule that kills them all is stated **once**, early,
+while the instructions it kills are repeated throughout. Its first attempt
+would add `forecaster_confidence_notes` and `detailed_discussion` keys — a
+schema violation produced by obeying the prompt.
+
+One of them is a hard impossibility rather than dead weight. The staleness
+rule says a guidance cycle older than a threshold "belongs in the Forecaster
+Confidence Notes — there is no quiet middle band". On that day `hours_old` was
+9.0. There is no such field, so the instruction can neither be obeyed nor
+ignored.
+
+**What to do.** The two prompts are built from a shared block table, so this
+is a question of which blocks each call gets, not of rewriting rules. Measure
+the cost first with `olw prompt-size`: the judgment prompt is ~19,900
+characters and the narrative-only rules are a real fraction of it, so this is
+a token saving as well as a correctness one. Do not cut by eye — item 158 step
+9 is the record of how much a prompt sentence can be carrying.
+
+---
+
+## 163. GROUND AQI LAST KNOWN says no station is timestamped while three are · **Open, found 2026-09-21 by item 77's harness**
+
+Verified in the 2026-09-21 03:03Z archived prompt. The block reads:
+
+```
+GROUND AQI LAST KNOWN (... the most recent reading any station actually took,
+with its age; state as given):
+Unavailable — no station has a timestamped reading at all.
+```
+
+All three stations in GROUND AQI STATIONS, fourteen lines above it, carry
+`"measured_at": "2026-09-20 21:00:00+00:00"` and `"hours_old": 6.0`.
+
+The condition being tested is almost certainly "no station has a numeric
+**AQI**" — all three had `"aqi": null`, carrying only PM2.5 — and the message
+says "timestamped **reading**", which is a different and false claim. The
+prompt then orders the model to state it as given, so obeying rule 1 publishes
+a falsehood, and the rule against presenting a measurement as absent
+(system-prompt rule 5) forbids exactly that.
+
+This is the block item 91 added so that a stale reading is quoted rather than
+dropped. It works; its absent-case wording does not.
+
+**Small and worth doing properly**: the failing test first, on the shape the
+archive actually held — three stations, `aqi` null, PM2.5 present, six hours
+old — then the message. Check the same wording in the Dart port.

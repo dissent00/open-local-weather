@@ -1187,6 +1187,31 @@ void main() {
       }
     });
 
+    test('uv_band', () {
+      for (final c in loadVectors('uv_band.json')['cases'] as List) {
+        final v = ((c as Map)['input'] as Map)['index'] as num?;
+        expectMatches(uvBand(v?.toDouble()), c['expected'], c['name'] as String);
+      }
+    });
+
+    test('aqi_band', () {
+      for (final c in loadVectors('aqi_band.json')['cases'] as List) {
+        final v = ((c as Map)['input'] as Map)['index'] as int?;
+        expectMatches(aqiBand(v), c['expected'], c['name'] as String);
+      }
+    });
+
+    test('index_and_band', () {
+      for (final c in loadVectors('index_and_band.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        expectMatches(
+          formatIndexAndBand(i['value'] as num?, i['band'] as String?),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+
     test('sky_word', () {
       for (final c in loadVectors('sky_word.json')['cases'] as List) {
         final v = ((c as Map)['input'] as Map)['cover_pct'] as num?;
@@ -1891,6 +1916,9 @@ void main() {
       'overlong_display_values.json',
       'cloud_anchors.json',
       'wind_anchors.json',
+      'uv_band.json',
+      'aqi_band.json',
+      'index_and_band.json',
       'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',
