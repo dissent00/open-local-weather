@@ -101,7 +101,8 @@ absent values are `null`, never omitted keys.
 | `gust_calibration.json` | `calibrated_gust_consensus` | The Day+0 consensus gust with each model's own measured bias added back. The correction is the record's stored actual-minus-predicted, so it is ADDED; a model short of the check threshold is absent from it rather than corrected by zero. |
 | `prompt_rounding.json` | `_round_for_prompt` | The precision pass applied to the prompt payload: one decimal place by default, because the instruments are recorded to 0.1, with a per-field table for the quantities one place would destroy. |
 | `comparison_for_prompt.json` | `comparison_for_prompt` | 5 |
-| `extended_trend.json` | `describe_extended_trend` | 37 |
+| `extended_trend.json` | `describe_extended_trend` | 41 |
+| `phrase_defect.json` | `phrase_defect` | 18 |
 | `describe_day_rain.json` | `describe_day_rain` | 32 |
 | `describe_day_over_day.json` | `describe_day_over_day` | 22 |
 | `observed_so_far.json` | `describe_observed_so_far` | 18 |
@@ -315,6 +316,24 @@ Two corollaries:
   input is produced.** `last_day_name` is the example. When a fix touches a
   value the vector accepts rather than computes, widen the vector — another
   case will not reach it.
+
+- **A vector whose EXPECTED is a wrong answer pins the defect**, and both
+  suites then agree on it. `export_vectors.py` computes every `expected` by
+  CALLING the Python implementation, so a golden vector can prove the two
+  languages match and that nothing moved by accident — it can never say the
+  answer was right, because the answer is defined as whatever the code
+  returns. `extended_trend.json` held "much the same through Monday, with ,
+  and showers and thunderstorms likely each day" as its pinned answer for
+  three days while both suites were green and the sentence went out in two
+  published forecasts.
+
+  The answer is a check whose claim does NOT come from the implementation.
+  `phrasing.phrase_defect` is one: a claim about the SHAPE of a composed
+  phrase, and `write()` refuses to export a phrase that fails it — by
+  exclusion, so a composer written next year is covered the day it exists.
+  It is the only point in the cycle where a golden-output vector can be told
+  its answer is wrong, because every later check compares against the file.
+  See `docs-internal/ROADMAP.md` item 158, "The lone tail".
 
 See `docs-internal/ROADMAP.md` item 88.
 

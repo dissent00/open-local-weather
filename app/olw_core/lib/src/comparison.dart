@@ -935,7 +935,29 @@ String _joinNames(List<String> names) => names.length == 1
 /// each day" does not read as one clause. A pair takes the commas too when a
 /// tail carries its own "and".
 String _joinTails(List<String> tails) {
-  if (tails.length <= 2 && !tails.any((t) => t.contains(' and '))) {
+  // ONE TAIL IS ALREADY A PHRASE, joined to nothing, so it comes back
+  // untouched — and this case must be taken BEFORE the "and" test below,
+  // because a lone tail very often carries its own "and": every combined
+  // clause does ("showers and thunderstorms likely each day"), as does every
+  // two-day name join ("showers possible Wednesday and Thursday").
+  //
+  // Without this the comma branch ran on a one-element list, where
+  // `sublist(0, 0).join(', ')` is empty, and the phrase came out as
+  // ", and showers and thunderstorms likely each day" — published in the
+  // upstream Overview on 2026-09-20 and 09-21, because the prompt orders
+  // these phrases used verbatim and the model obliged. `extended_trend.json`
+  // PINNED the broken string rather than catching it: the exporter computes
+  // each expected by calling the Python implementation, so both languages
+  // agreed, exactly and wrongly. See `phrasing.dart`.
+  //
+  // EMPTY STAYS '', which is what the old `length <= 2` branch returned for
+  // it: the only caller guards against an empty list, and ', with ' is a shape
+  // `phraseDefect` catches rather than a RangeError in a live run.
+  if (tails.length <= 1) {
+    return tails.isEmpty ? '' : tails.first;
+  }
+
+  if (tails.length == 2 && !tails.any((t) => t.contains(' and '))) {
     return tails.join(' and ');
   }
 

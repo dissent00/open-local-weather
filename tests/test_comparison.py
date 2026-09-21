@@ -6,6 +6,7 @@ missing layer: every expectation below was worked out by hand.
 """
 
 from openlocalweather.comparison import (
+    _join_tails,
     comparison_for_prompt,
     compute_day_over_day,
     describe_day_over_day,
@@ -1141,4 +1142,59 @@ def test_the_comparison_hands_the_station_and_the_timing_to_todays_side():
                                station_label=_STATION, convective_timing=_EVENING)
     assert got.overview_comparison == (
         "Showers reported at Kisumu Airport as of 15:00, with thunder possible from the evening, peaking overnight."
+    )
+
+
+# ---------------------------------------------------------------------------
+# The tail join — ROADMAP item 158, the defect of 2026-09-20
+# ---------------------------------------------------------------------------
+
+
+def test_a_lone_tail_carrying_its_own_and_is_not_punctuated_as_a_list():
+    """The live defect of 2026-09-20 and 09-21, in one line.
+
+    `_join_tails` takes the comma branch whenever any tail carries " and ",
+    because "showers possible Saturday and Sunday and dry Monday" does not
+    parse. With ONE tail there is nothing to comma-join, so the branch built
+    ", and " on top of an empty string and two published Overviews read
+    "much the same through Thursday, with , and showers and thunderstorms
+    likely each day". The model used it verbatim, as the prompt orders.
+    """
+    assert (
+        _join_tails(["showers and thunderstorms likely each day"])
+        == "showers and thunderstorms likely each day"
+    )
+
+
+def test_the_span_with_one_combined_clause_reads_as_a_sentence():
+    """The same defect through the public composer, with 2026-09-21's own
+    inputs: a uniform wet span whose every day carries one tier folds to a
+    single clause, and that clause carries an "and"."""
+    assert describe_extended_trend(
+        today_high_c=31.0,
+        day_highs_c=[30.5, 30.8, 30.6],
+        day_precip_mm=[6.0, 5.0, 7.0],
+        day_names=["Tuesday", "Wednesday", "Thursday"],
+        today_wind_kmh=16.0,
+        day_winds_kmh=[16.5, 16.2, 16.0],
+        day_thunder=["likely", "likely", "likely"],
+        day_after_precip_mm=4.0,
+    ) == (
+        "temperatures and winds much the same through Thursday, "
+        "with showers and thunderstorms likely each day"
+    )
+
+
+def test_two_tails_still_take_the_commas_when_one_carries_an_and():
+    """The branch the fix must not undo: a PAIR whose member carries its own
+    "and" still needs the comma, or "showers possible Saturday and Sunday and
+    dry Monday" runs three clauses together."""
+    assert _join_tails(["showers possible Saturday and Sunday", "dry Monday"]) == (
+        "showers possible Saturday and Sunday, and dry Monday"
+    )
+
+
+def test_a_plain_pair_keeps_the_bare_and():
+    assert _join_tails(["dry Sunday", "thunderstorms likely each day"]) == (
+        "dry Sunday and thunderstorms likely each day"
     )

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'phrasing.dart';
 import 'daypart.dart';
 import 'solar.dart';
 import 'dates.dart';
@@ -52,6 +53,42 @@ const String degradationHoursAheadNarrowed = 'hours_ahead_narrowed';
 /// succeeded. Losing the scored call because the prose blipped would put a
 /// hole in the accuracy record to avoid publishing a short page.
 const String degradationNarrative = 'narrative_unavailable';
+
+/// A phrase code composed for the prompt came out malformed and was dropped
+/// rather than published — upstream ROADMAP item 158, 2026-09-21. The prompt
+/// orders these phrases used VERBATIM, so nothing stands between a composer's
+/// output and the reader: on 09-20 and 09-21 a join artefact reached two
+/// published Overviews as "much the same through Thursday, with , and
+/// showers". See `phrasing.dart`.
+const String degradationComposedPhrase = 'composed_phrase_malformed';
+
+/// [phrase] if it is shaped like a finished phrase, else null and a mark.
+///
+/// Mirrors `_sound_phrase` in pipeline.py, including the choice to DROP rather
+/// than raise: every one of these blocks is already null on some runs by
+/// design, so the prompt has a rendering for absence and the model has a rule
+/// for it. Printing the artefact does not — the prompt says verbatim, and the
+/// model obeys.
+String? _soundPhrase(
+  String name,
+  String? phrase,
+  List<RunDegradation> degradations,
+) {
+  final reason = phraseDefect(phrase);
+  if (reason == null) {
+    return phrase;
+  }
+
+  degradations.add(RunDegradation(
+    code: degradationComposedPhrase,
+    summary: 'One sentence this forecast normally composes came out malformed '
+        'and was left out. Everything else is unaffected.',
+    detail: 'The composed block \'$name\' failed the phrase shape check '
+        '($reason) and was dropped rather than sent to the forecaster, which '
+        'would have published it verbatim: \'$phrase\'',
+  ));
+  return null;
+}
 
 /// One block the prompt expects that arrived absent or narrower than usual.
 ///
@@ -547,10 +584,27 @@ Future<ForecastRun> generateForecast({
         ? null
         : {
             ...instability.toJson(),
-            'timing': describeConvectiveTiming(
-                convectiveTimingFor(resolvedIssuance, today, instability)),
+            'timing': _soundPhrase(
+                'instability.timing',
+                describeConvectiveTiming(
+                    convectiveTimingFor(resolvedIssuance, today, instability)),
+                degradations),
           },
-    yesterdayActual: yesterdayActual,
+    // THE OVERVIEW'S OPENING SENTENCE, guarded like the rest — upstream item
+    // 158, 2026-09-21. It arrives as one key of the comparison map rather than
+    // as an argument of its own, and it is the phrase with the least standing
+    // between it and the reader: the rules order the Overview opened with it,
+    // verbatim, unaltered. Mirrors `_build_forecast_prompt` in pipeline.py.
+    yesterdayActual: yesterdayActual is Map<String, Object?> &&
+            yesterdayActual.containsKey('overview_comparison')
+        ? {
+            ...yesterdayActual,
+            'overview_comparison': _soundPhrase(
+                'overview_comparison',
+                yesterdayActual['overview_comparison'] as String?,
+                degradations),
+          }
+        : yesterdayActual,
     // Applied to THIS run's extraction, above. The Python pipeline calibrates
     // over its Day+0 list WITH the persistence and climatology yardsticks in
     // it; here they are added by the caller after the run, so this consensus
@@ -586,7 +640,11 @@ Future<ForecastRun> generateForecast({
       'day7': day7.map((p) => p.toJson()).toList(),
     },
     guidanceRecency: guidanceRecency,
-    extendedTrend: extendedTrend,
+    // Guarded on the way in — upstream item 158, 2026-09-21. The check is
+    // applied at the prompt's own arguments because that is this file's
+    // equivalent of `_locked_blocks`: the one place every composed phrase
+    // passes through on its way to a reader.
+    extendedTrend: _soundPhrase('extended_trend', extendedTrend, degradations),
     // THE APP OMITTED TWO OF THESE ENTIRELY — upstream ROADMAP item 104.
     //
     // describeWindShift and consensusDirection have been ported, exported and
@@ -605,8 +663,11 @@ Future<ForecastRun> generateForecast({
     ]),
     // Item 118: the anchors are hours of the day, so a clause with none of
     // them still ahead describes a day the reader has already finished.
-    windShift: describeWindShift(hourly, models,
-        issuedHour: issuedHourOf(resolvedIssuance)),
+    windShift: _soundPhrase(
+        'wind_shift',
+        describeWindShift(hourly, models,
+            issuedHour: issuedHourOf(resolvedIssuance)),
+        degradations),
     forecastWindows: issuanceWindows(resolvedIssuance, today),
     // The day names the Extended Outlook writes with, handed over finished so
     // the model never maps a date to a weekday itself — see forwardCalendar.
@@ -616,9 +677,13 @@ Future<ForecastRun> generateForecast({
     // "so far" ended. Null in the standalone app today, which has no station
     // source — `airport_metar` above is null for the same reason — and the
     // prompt prints its gap line.
-    observedSoFar: describeObservedSoFar(
-      observedSoFar,
-      asOf: _localTimeOf(resolvedIssuance),
+    observedSoFar: _soundPhrase(
+      'observed_so_far',
+      describeObservedSoFar(
+        observedSoFar,
+        asOf: _localTimeOf(resolvedIssuance),
+      ),
+      degradations,
     ),
   );
 

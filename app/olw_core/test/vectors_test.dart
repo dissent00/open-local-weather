@@ -1136,6 +1136,29 @@ void main() {
     });
   });
 
+  group('phrasing', () {
+    test('phrase_defect', () {
+      // Upstream ROADMAP item 158, 2026-09-21. The check a golden vector
+      // structurally cannot be: `export_vectors.py` computes every other
+      // `expected` here by calling the Python implementation, so a composer
+      // defect is pinned as the answer and this suite agrees with it exactly
+      // and wrongly — which is what happened to `extended_trend.json` for the
+      // three days the malformed Overview was published.
+      //
+      // The PASSING cases carry as much weight as the failing ones. A check
+      // that rejected everything would satisfy the artefact cases and quietly
+      // drop every real sentence out of the app's forecasts.
+      for (final c in casesOf('phrase_defect.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expectMatches(
+          phraseDefect(i['text'] as String?),
+          c['expected'],
+          c['name'] as String,
+        );
+      }
+    });
+  });
+
   group('day over day', () {
     test('compute_day_over_day', () {
       for (final c in casesOf('day_over_day.json')) {
@@ -1766,6 +1789,7 @@ void main() {
       'verification.json',
       'day_over_day.json',
       'extended_trend.json',
+      'phrase_defect.json',
       'describe_day_rain.json',
       'observed_so_far.json',
       'llm_should_reason.json',

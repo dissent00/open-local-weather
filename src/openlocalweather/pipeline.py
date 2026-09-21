@@ -81,6 +81,7 @@ from openlocalweather.comparison import (
     compute_day_over_day,
     describe_extended_trend,
 )
+from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
 from openlocalweather.daypart import (
@@ -197,6 +198,7 @@ from openlocalweather.models import (
     ObservedSoFar,
     PromptSize,
     InformationMoved,
+    DEGRADATION_COMPOSED_PHRASE,
     DEGRADATION_NARRATIVE,
     summary_carries_a_figure,
     summary_contradicts_its_row,
@@ -876,6 +878,21 @@ def _build_forecast_prompt(
     for `issued_hour`, and it is what caught `sandbox/sweep.py` when the two
     fell out of step.
     """
+    # THE OVERVIEW'S OPENING SENTENCE, guarded like the locked blocks — item
+    # 158, 2026-09-21. It reaches the prompt as one key of the comparison dict
+    # rather than as a block of its own, so `_locked_blocks` cannot cover it,
+    # and it is the phrase with the least standing between it and the reader:
+    # the rules order it opened with, verbatim, unaltered.
+    if yesterday_actual and "overview_comparison" in yesterday_actual:
+        yesterday_actual = {
+            **yesterday_actual,
+            "overview_comparison": _sound_phrase(
+                "overview_comparison",
+                yesterday_actual["overview_comparison"],
+                guidance.degradations,
+            ),
+        }
+
     return build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
@@ -901,7 +918,16 @@ def _build_forecast_prompt(
                 **asdict(guidance.instability),
                 # Item 158, step 1: the clause the Overview uses verbatim
                 # when the comparison does not already carry the thunder.
-                "timing": describe_convective_timing(_convective_timing(guidance, today)),
+                # Guarded like the locked blocks, and for the same reason:
+                # this clause is the Overview's thunder sentence and the
+                # prompt orders it used VERBATIM. It is composed here rather
+                # than in `_locked_blocks` only because it belongs inside the
+                # instability block the model already reads.
+                "timing": _sound_phrase(
+                    "instability.timing",
+                    describe_convective_timing(_convective_timing(guidance, today)),
+                    guidance.degradations,
+                ),
             }
             if guidance.instability is not None
             else None
@@ -952,6 +978,62 @@ EXTENDED_SPAN_LEADS = (1, 2, 3)
 DAY_AFTER_SPAN_LEAD = 4
 
 
+# The blocks of `_locked_blocks` whose value is a PHRASE the prompt hands the
+# model to use verbatim, as opposed to a number, a date or a structure. Named
+# one by one rather than walked, because the cost of a false positive here is
+# dropping a real sentence out of a live forecast — `forward_calendar` and
+# `forecast_windows` carry strings too, and they are data.
+_COMPOSED_PHRASE_BLOCKS = (
+    "observed_so_far",
+    "low_divergence_note",
+    "extended_trend",
+    "wind_shift",
+)
+
+
+def _sound_phrase(
+    name: str, phrase: str | None, degradations: list[RunDegradation]
+) -> str | None:
+    """`phrase` if it is shaped like a finished phrase, else None and a mark.
+
+    ROADMAP item 158, 2026-09-21. The second half of the answer to the defect
+    that published "much the same through Thursday, with , and showers and
+    thunderstorms likely each day": the vector exporter refuses to PIN a
+    malformed phrase, and this refuses to PUBLISH one on the inputs no vector
+    case reaches.
+
+    Dropping is the right failure here because every one of these blocks is
+    already null on some runs by design — the models share no bearing, nothing
+    has been observed yet — so the prompt has a rendering for absence and the
+    model has a rule for it. Printing the artefact does not: the prompt orders
+    the phrase to be used verbatim, and on 2026-09-20 and 09-21 the model did
+    exactly that.
+    """
+    reason = phrase_defect(phrase)
+    if reason is None:
+        return phrase
+
+    print(
+        f"Composed phrase {name!r} is malformed ({reason}); dropping it.",
+        file=sys.stderr,
+    )
+    degradations.append(
+        RunDegradation(
+            code=DEGRADATION_COMPOSED_PHRASE,
+            summary=(
+                "One sentence this forecast normally composes came out "
+                "malformed and was left out. Everything else is unaffected."
+            ),
+            detail=(
+                f"The composed block {name!r} failed the phrase shape check "
+                f"({reason}) and was dropped rather than sent to the "
+                f"forecaster, which would have published it verbatim: {phrase!r}"
+            ),
+        )
+    )
+    return None
+
+
 def _locked_blocks(
     guidance: ForwardGuidance,
     day0_predictions: list,
@@ -998,7 +1080,7 @@ def _locked_blocks(
     """
     issued_hour = _issued_hour(guidance.issuance)
 
-    return {
+    blocks = {
         # What the station has already measured today — ROADMAP item 121.
         #
         # HERE, WITH THE OTHER LOCKED BLOCKS, for the reason this function
@@ -1104,6 +1186,34 @@ def _locked_blocks(
             else None
         ),
     }
+
+    # EVERY COMPOSED PHRASE, CHECKED IN THE ONE PLACE THEY ARE COMPOSED. This
+    # function exists because a block wired on one path and not the other
+    # renders as a legitimate absence and nobody can tell; a block composed
+    # into punctuation renders as a sentence and nobody can tell either, until
+    # it is in the published Overview. Same choke point, second failure mode.
+    for name in _COMPOSED_PHRASE_BLOCKS:
+        blocks[name] = _sound_phrase(name, blocks[name], guidance.degradations)
+
+    # The footnotes are a LIST of phrases, so a bad one is dropped from it
+    # rather than voiding the rest — item 145 composes them independently.
+    blocks["observation_footnotes"] = [
+        note
+        for index, note in enumerate(blocks["observation_footnotes"])
+        if _sound_phrase(f"observation_footnotes[{index}]", note, guidance.degradations)
+        is not None
+    ]
+
+    # Nested one level down, and the reason it is checked by hand rather than
+    # by walking the dict: `consensus_gust_kmh` beside it is a number.
+    if blocks["secondary_wind"] is not None:
+        blocks["secondary_wind"]["timeline"] = _sound_phrase(
+            "secondary_wind.timeline",
+            blocks["secondary_wind"]["timeline"],
+            guidance.degradations,
+        )
+
+    return blocks
 
 
 def _secondary_day0(guidance: ForwardGuidance, location: LocationConfig) -> list[ModelPrediction]:

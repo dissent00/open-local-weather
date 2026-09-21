@@ -780,6 +780,21 @@ def test_vectors_extended_trend():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_phrase_defect():
+    """ROADMAP item 158 — the shape check that a golden vector cannot be.
+
+    The FAILING cases pin the artefacts; the PASSING ones pin that a real
+    composed sentence survives, which is the half with teeth. A false positive
+    here does not print punctuation, it drops a true sentence out of a live
+    forecast.
+    """
+    from openlocalweather.phrasing import phrase_defect
+
+    for case in load("phrase_defect.json")["cases"]:
+        got = phrase_defect(case["input"]["text"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_convective_tier():
     """ROADMAP item 158 step 2 — the thunder word for a coming day, from how
     many models cross the CAPE threshold. Agreement, not magnitude: the
@@ -1024,6 +1039,7 @@ def test_every_vector_file_is_exercised():
         "comparison_for_prompt.json",
         "day_over_day.json",
         "extended_trend.json",
+        "phrase_defect.json",
         "describe_day_rain.json",
         "describe_day_over_day.json",
         "glossary.json",

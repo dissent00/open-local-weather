@@ -1,0 +1,133 @@
+{
+  "vector_format_version": 1,
+  "function": "phrase_defect",
+  "description": "ROADMAP item 158. Whether a composed phrase is shaped like something a reader can be handed. The prompt orders these phrases used VERBATIM, so nothing stands between the composer and the reader: on 2026-09-20 and 09-21 a join artefact reached two published Overviews as \"much the same through Thursday, with , and showers ...\". A golden vector could not catch that, because export_vectors.py computes each expected by calling the code it is pinning. This one can, because its answer is a claim about SHAPE that is true independently of what any composer produced. The passing cases matter as much as the failing ones: a false positive drops a true sentence from a live forecast.",
+  "cases": [
+    {
+      "name": "an absence is not a defect - every composer returns None for one",
+      "input": {
+        "text": null
+      },
+      "expected": null
+    },
+    {
+      "name": "an empty phrase is",
+      "input": {
+        "text": ""
+      },
+      "expected": "empty"
+    },
+    {
+      "name": "and so is one that is only spaces",
+      "input": {
+        "text": "   "
+      },
+      "expected": "empty"
+    },
+    {
+      "name": "the defect published on 2026-09-20 and 09-21",
+      "input": {
+        "text": "temperatures much the same through Monday, with , and showers and thunderstorms likely each day"
+      },
+      "expected": "space before ','"
+    },
+    {
+      "name": "the same phrase, composed correctly",
+      "input": {
+        "text": "temperatures much the same through Monday, with showers and thunderstorms likely each day"
+      },
+      "expected": null
+    },
+    {
+      "name": "a doubled space is a join that lost an item",
+      "input": {
+        "text": "showers possible  Saturday"
+      },
+      "expected": "doubled space"
+    },
+    {
+      "name": "an unspaced empty list item",
+      "input": {
+        "text": "showers possible Saturday,,and dry Monday"
+      },
+      "expected": "empty item in a list"
+    },
+    {
+      "name": "a phrase that stops on its conjunction",
+      "input": {
+        "text": "dry Sunday and"
+      },
+      "expected": "ends on 'and'"
+    },
+    {
+      "name": "a phrase that stops on its comma",
+      "input": {
+        "text": "dry Sunday,"
+      },
+      "expected": "ends on ','"
+    },
+    {
+      "name": "a phrase that stops on 'with'",
+      "input": {
+        "text": "much the same through Monday, with"
+      },
+      "expected": "ends on 'with'"
+    },
+    {
+      "name": "a phrase that begins on its conjunction",
+      "input": {
+        "text": "and dry Sunday"
+      },
+      "expected": "starts on 'and'"
+    },
+    {
+      "name": "a phrase that begins on its comma",
+      "input": {
+        "text": ", dry Sunday"
+      },
+      "expected": "starts on ','"
+    },
+    {
+      "name": "a comma inside a number is not punctuation to trip on",
+      "input": {
+        "text": "gusts reaching 1,000 J/kg of instability"
+      },
+      "expected": null
+    },
+    {
+      "name": "the day-over-day sentence, semicolon and full stop and all",
+      "input": {
+        "text": "Slightly cooler than yesterday; winds and cloud little changed."
+      },
+      "expected": null
+    },
+    {
+      "name": "a list that legitimately takes the comma before its 'and'",
+      "input": {
+        "text": "showers possible Saturday and Sunday, and dry Monday"
+      },
+      "expected": null
+    },
+    {
+      "name": "the wind shift's two anchors",
+      "input": {
+        "text": "north-northeasterly overnight, turning southwest by midday"
+      },
+      "expected": null
+    },
+    {
+      "name": "a hyphenated opening is not a conjunction",
+      "input": {
+        "text": "north-northeasterly overnight"
+      },
+      "expected": null
+    },
+    {
+      "name": "'and' inside a word does not end a phrase",
+      "input": {
+        "text": "thunder over the highland"
+      },
+      "expected": null
+    }
+  ]
+}

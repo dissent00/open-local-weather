@@ -703,7 +703,7 @@
         ],
         "day_after_precip_mm": 4.0
       },
-      "expected": "temperatures much the same through Monday, with , and showers and thunderstorms likely each day"
+      "expected": "temperatures much the same through Monday, with showers and thunderstorms likely each day"
     },
     {
       "name": "three wet days without thunder",
@@ -1052,6 +1052,126 @@
         "day_after_precip_mm": 2.2
       },
       "expected": "temperatures much the same through Monday, with gusts reaching storm force, showers possible Saturday, dry Sunday, rain possible from Monday, and thunderstorms likely each day"
+    },
+    {
+      "name": "a lone folded clause: three wet days under one tier, 09-21's own",
+      "input": {
+        "today_high_c": 31.0,
+        "day_highs_c": [
+          30.5,
+          30.8,
+          30.6
+        ],
+        "day_precip_mm": [
+          6.0,
+          5.0,
+          7.0
+        ],
+        "day_names": [
+          "Saturday",
+          "Sunday",
+          "Monday"
+        ],
+        "today_wind_kmh": 16.0,
+        "day_winds_kmh": [
+          16.5,
+          16.2,
+          16.0
+        ],
+        "day_thunder": [
+          "likely",
+          "likely",
+          "likely"
+        ],
+        "day_after_precip_mm": 4.0
+      },
+      "expected": "temperatures and winds much the same through Monday, with showers and thunderstorms likely each day"
+    },
+    {
+      "name": "a lone clause naming two days, joined by its own 'and'",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          2.0,
+          3.0
+        ],
+        "day_names": [
+          "Saturday",
+          "Sunday",
+          "Monday"
+        ],
+        "today_wind_kmh": null,
+        "day_winds_kmh": null,
+        "day_thunder": null,
+        "day_after_precip_mm": 0.0
+      },
+      "expected": "temperatures much the same through Monday, with showers possible Sunday and Monday"
+    },
+    {
+      "name": "a lone thunder-only clause over two named days",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "day_names": [
+          "Saturday",
+          "Sunday",
+          "Monday"
+        ],
+        "today_wind_kmh": null,
+        "day_winds_kmh": null,
+        "day_thunder": [
+          null,
+          "likely",
+          "likely"
+        ],
+        "day_after_precip_mm": 0.0
+      },
+      "expected": "temperatures much the same through Monday, with thunderstorms likely Sunday and Monday"
+    },
+    {
+      "name": "a lone arrival clause combining rain and thunder",
+      "input": {
+        "today_high_c": 30.0,
+        "day_highs_c": [
+          30.2,
+          30.1,
+          29.8
+        ],
+        "day_precip_mm": [
+          0.0,
+          0.0,
+          6.0
+        ],
+        "day_names": [
+          "Saturday",
+          "Sunday",
+          "Monday"
+        ],
+        "today_wind_kmh": null,
+        "day_winds_kmh": null,
+        "day_thunder": [
+          null,
+          null,
+          "likely"
+        ],
+        "day_after_precip_mm": 9.0
+      },
+      "expected": "temperatures much the same through Monday, with rain and thunderstorms likely from Monday"
     }
   ]
 }

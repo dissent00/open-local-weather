@@ -12,6 +12,7 @@ from openlocalweather.llm.schema import (
     GeminiNarrativeResponse,
 )
 from openlocalweather.models import (
+    DEGRADATION_COMPOSED_PHRASE,
     DEGRADATION_EXTENDED_OUTLOOK,
     DEGRADATION_NARRATIVE,
     DEGRADATION_SECONDARY_EXTENDED_OUTLOOK,
@@ -3988,3 +3989,76 @@ def test_a_deployment_without_a_station_does_not_prefetch(tmp_path, monkeypatch)
     monkeypatch.setattr(metar_fetch, "prefetch_station_rows", lambda *a, **k: calls.append(a))
     issue(make_deps(tmp_path), today=date(2026, 8, 11))
     assert calls == []
+
+
+def test_a_malformed_composed_phrase_is_dropped_rather_than_published(
+    tmp_path, monkeypatch
+):
+    """ROADMAP item 158, 2026-09-21 — the runtime half of the shape check.
+
+    The 09-20 and 09-21 defect was not a bad INPUT. `describe_extended_trend`
+    was handed ordinary weather and composed an artefact out of it, and every
+    layer below did its job: the prompt told the model to use the phrase
+    verbatim, and the model did.
+
+    So the fault is simulated where it actually occurred — at the composer's
+    return — rather than by feeding the pipeline strange numbers. What this
+    pins is that a malformed phrase does not reach the forecaster, and that
+    dropping it leaves a mark rather than passing silently, which is the
+    difference between a degradation and a bug nobody counts.
+    """
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    monkeypatch.setattr(
+        pipeline,
+        "describe_extended_trend",
+        lambda *a, **k: "much the same through Thursday, with , and showers",
+    )
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert "with , and showers" not in llm.user_prompts, (
+        "a malformed phrase reached the forecaster, which publishes it verbatim"
+    )
+    # AND THE DROP LEAVES NO HOLE. The block falls back to the absence line it
+    # already has for a genuinely quiet span, which the Overview rules answer
+    # with "omit it when it says Unavailable" — so a dropped phrase is a case
+    # the prompt already knows how to handle rather than a new one.
+    assert "Unavailable — omit the extended clause." in llm.user_prompts
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    marks = [d for d in (entry.meta.degradations or []) if d.code == DEGRADATION_COMPOSED_PHRASE]
+    assert len(marks) == 1, "the drop was silent"
+    assert "extended_trend" in marks[0].detail
+    # The reason is named, because the next person's first question is which
+    # artefact it was and the phrase itself is in the detail beside it.
+    assert "space before ','" in marks[0].detail
+
+
+def test_a_sound_phrase_is_passed_through_untouched(tmp_path, monkeypatch):
+    """The half with teeth. A check that drops everything also passes this
+    suite's malformed case, so the real sentence has to survive."""
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    monkeypatch.setattr(
+        pipeline,
+        "describe_extended_trend",
+        lambda *a, **k: "temperatures much the same through Thursday, with "
+                        "showers and thunderstorms likely each day",
+    )
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert "showers and thunderstorms likely each day" in llm.user_prompts
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert not [
+        d for d in (entry.meta.degradations or []) if d.code == DEGRADATION_COMPOSED_PHRASE
+    ]

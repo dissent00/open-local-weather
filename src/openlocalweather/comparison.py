@@ -907,12 +907,41 @@ def _join_names(names: list[str]) -> str:
 
 
 def _join_tails(tails: list[str]) -> str:
+    # ONE TAIL IS ALREADY A PHRASE. It is joined to nothing, so it comes back
+    # untouched — and this case has to be taken BEFORE the "and" test below,
+    # because a lone tail very often carries its own "and": every combined
+    # clause does ("showers and thunderstorms likely each day"), as does every
+    # two-day name join ("showers possible Wednesday and Thursday").
+    #
+    # Without this line those fell to the comma branch, where `tails[:-1]` is
+    # empty, `", ".join([])` is "", and the result was ", and showers and
+    # thunderstorms likely each day" — published in the Overview on 2026-09-20
+    # and 09-21 as "much the same through Thursday, with , and showers ...".
+    # The model used it verbatim because the prompt orders it to; a composed
+    # phrase reaches the reader with nothing in between, so its punctuation is
+    # not cosmetic. 44 distinct sentences in the reachable input space carried
+    # it, and they were the interesting days: the ones with both rain and
+    # thunder, or a run of two named days.
+    #
+    # `extended_trend.json` PINNED THE BROKEN STRING rather than catching it,
+    # because `export_vectors.py` computes each `expected` by calling this
+    # code. A golden vector proves Python and Dart agree; it cannot say the
+    # answer was right. That is what `phrasing.phrase_defect` is for, and the
+    # exporter now refuses to write a phrase that fails it.
+    #
+    # EMPTY STAYS "", which is what the old `<= 2` branch returned for it. The
+    # only caller guards against an empty list, and if a future one does not,
+    # ", with " is a shape `phrase_defect` catches rather than an IndexError
+    # that aborts a live run.
+    if len(tails) <= 1:
+        return tails[0] if tails else ""
+
     # Two tails read as a pair; three or more need the commas, and the last
     # one keeps its comma so "rain possible from Monday, and thunderstorms
     # likely each day" does not read as one clause. A pair takes the commas
     # too when a tail carries its own "and": "showers possible Saturday and
     # Sunday and dry Monday" does not parse.
-    if len(tails) <= 2 and not any(" and " in t for t in tails):
+    if len(tails) == 2 and not any(" and " in t for t in tails):
         return " and ".join(tails)
 
     return f"{', '.join(tails[:-1])}, and {tails[-1]}"

@@ -1007,6 +1007,19 @@ DEGRADATION_DAILY_GUIDANCE_UNREADABLE = "daily_guidance_unreadable"
 # prose around numbers that were never decided is not a degraded forecast,
 # it is an invented one.
 DEGRADATION_NARRATIVE = "narrative_unavailable"
+# A phrase code composed for the prompt came out malformed and was dropped
+# rather than published — ROADMAP item 158, 2026-09-21. See
+# `phrasing.phrase_defect` for the whole account; in short, the prompt orders
+# these phrases to be used VERBATIM, so nothing stands between a composer's
+# output and the reader, and on 09-20 and 09-21 a join artefact reached two
+# published Overviews as "much the same through Thursday, with , and showers".
+#
+# A DEGRADATION RATHER THAN A RAISE, for the reason the outlook one exists: a
+# forecast missing its three-day phrase beats no forecast. A degradation
+# rather than silence, because `check_recent_degradations` is generic over
+# codes, so the same code twice in twenty issuances turns check-health red —
+# and a composer defect that recurs is a code defect that nobody has fixed.
+DEGRADATION_COMPOSED_PHRASE = "composed_phrase_malformed"
 
 
 class NarrativeFinding(BaseModel):

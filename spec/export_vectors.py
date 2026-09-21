@@ -81,6 +81,7 @@ from openlocalweather.calibration import calibrated_gust_consensus, gust_correct
 from openlocalweather.llm.prompt import _round_for_prompt
 from openlocalweather.comparison import compute_day_over_day, comparison_subject, describe_extended_trend
 from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.phrasing import phrase_defect
 from openlocalweather.reasoning import LLMRefreshPolicy, llm_should_reason
 from openlocalweather.disagreement import (
     low_divergence,
@@ -126,7 +127,71 @@ def dump(value: Any) -> Any:
     return value
 
 
+# The vector files whose `expected` is NOT a phrase a reader is handed.
+#
+# BY EXCLUSION, NOT BY ALLOWLIST, and that is the whole point of the design.
+# An allowlist covers the composers someone remembered; this covers every
+# composer that exists, and taking one out costs a deliberate line with a
+# reason beside it. The hole being closed was created by exactly the opposite
+# habit — see `phrasing.phrase_defect`.
+#
+# - The two prompt files are whole DOCUMENTS, not phrases: they run to tens of
+#   thousands of characters, they carry blank lines and aligned columns, and
+#   "doubled space" is their normal shape rather than a join artefact.
+# - `daypart_without_sun` stores "" for a sunrise that could not be fetched.
+#   That is a DATA field standing in for null, not a phrase that came out
+#   empty, and the vector exists precisely to pin the sunless case.
+NOT_PHRASE_VECTORS = frozenset({
+    "llm_system_prompt.json",
+    "llm_user_prompt.json",
+    "daypart_without_sun.json",
+    # Its `expected` values are the CHECK'S OWN MESSAGES — "space before ','",
+    # "ends on 'and'" — so running the check over them asks the guard to judge
+    # its own vocabulary. They happen to pass today; the exclusion is here so
+    # that a future message worded slightly differently cannot stop the
+    # exporter from writing the file that pins the check.
+    "phrase_defect.json",
+})
+
+
+def _phrase_defects(value, path: str = "expected"):
+    """Every malformed phrase inside an exported `expected`, with its path.
+
+    Recursive because a composer may return a dataclass or a dict of phrases —
+    `secondary_wind` carries its timeline inside one — and a phrase nested in a
+    structure reaches the reader exactly as a bare one does.
+    """
+    if isinstance(value, str):
+        reason = phrase_defect(value)
+        if reason is not None:
+            yield path, reason, value
+    elif isinstance(value, dict):
+        for key, inner in value.items():
+            yield from _phrase_defects(inner, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, inner in enumerate(value):
+            yield from _phrase_defects(inner, f"{path}[{index}]")
+
+
 def write(filename: str, function: str, description: str, cases: list[dict]) -> None:
+    # THE VECTOR IS THE PINNED ANSWER, so a malformed phrase written here is a
+    # defect promoted to a specification — which is how "with , and showers and
+    # thunderstorms likely each day" came to sit in extended_trend.json as the
+    # expected output while the suite stayed green in both languages. Refusing
+    # to WRITE it is the only point in the cycle where a golden-output vector
+    # can be told its answer is wrong, because every later check compares
+    # against the file. ROADMAP item 158, 2026-09-21.
+    if filename not in NOT_PHRASE_VECTORS:
+        for case in cases:
+            for path, reason, text in _phrase_defects(case.get("expected")):
+                raise ValueError(
+                    f"{filename}: case {case.get('name', '?')!r} would pin a "
+                    f"malformed phrase at {path} ({reason}): {text!r}. "
+                    "Fix the composer — do not add the file to "
+                    "NOT_PHRASE_VECTORS unless its `expected` is genuinely "
+                    "not a phrase a reader is handed."
+                )
+
     payload = {
         "vector_format_version": VECTOR_FORMAT_VERSION,
         "function": function,
@@ -3894,6 +3959,28 @@ def export_extended_trend() -> None:
         ("a warning, two day-clauses and the thunder tail take the commas",
          30.0, [30.2, 30.1, 29.8], [1.6, 0.1, 2.7], weekend, 90.0, [92.0, 88.0, 91.0],
          ["likely", "likely", "likely"], 2.2),
+        # A LONE TAIL THAT CARRIES ITS OWN "and" — the defect published on
+        # 2026-09-20 and 09-21, pinned here in each of the four shapes that
+        # reach it. `_join_tails` took the comma branch on any tail containing
+        # " and ", and with ONE tail `tails[:-1]` is empty, so the phrase came
+        # out as ", and showers and thunderstorms likely each day".
+        #
+        # The case above it, "three alike days are one clause", ALREADY
+        # exercised this path and pinned the broken string as its expected
+        # answer, which is why the suite stayed green in both languages. These
+        # four are here so the shape is named rather than merely covered.
+        ("a lone folded clause: three wet days under one tier, 09-21's own",
+         31.0, [30.5, 30.8, 30.6], [6.0, 5.0, 7.0], weekend, 16.0, [16.5, 16.2, 16.0],
+         ["likely", "likely", "likely"], 4.0),
+        ("a lone clause naming two days, joined by its own 'and'",
+         30.0, [30.2, 30.1, 29.8], [0.0, 2.0, 3.0], weekend, None, None,
+         None, 0.0),
+        ("a lone thunder-only clause over two named days",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 0.0], weekend, None, None,
+         [None, "likely", "likely"], 0.0),
+        ("a lone arrival clause combining rain and thunder",
+         30.0, [30.2, 30.1, 29.8], [0.0, 0.0, 6.0], weekend, None, None,
+         [None, None, "likely"], 9.0),
     ]
 
     cases = []
@@ -3935,6 +4022,65 @@ def export_extended_trend() -> None:
         "Rain is always 'possible': measured 2026-09-18, the models' stated "
         "daily probability at Days+1..+3 sorted nothing at any floor.",
         cases,
+    )
+
+
+def export_phrase_defect() -> None:
+    """ROADMAP item 158, 2026-09-21 — the shape check both languages apply to
+    a composed phrase before it reaches a reader.
+
+    PINNED IN BOTH LANGUAGES because both compose. The app builds its own
+    prompt through `olw_core`, so a phrase that Python would drop and Dart
+    would publish is the divergence this file exists to prevent — and unlike
+    the composers it guards, this function's answer does not depend on
+    weather data, so the cases can state the whole rule.
+    """
+    cases = [
+        ("an absence is not a defect - every composer returns None for one", None),
+        ("an empty phrase is", ""),
+        ("and so is one that is only spaces", "   "),
+        ("the defect published on 2026-09-20 and 09-21",
+         "temperatures much the same through Monday, with , and showers and "
+         "thunderstorms likely each day"),
+        ("the same phrase, composed correctly",
+         "temperatures much the same through Monday, with showers and "
+         "thunderstorms likely each day"),
+        ("a doubled space is a join that lost an item", "showers possible  Saturday"),
+        ("an unspaced empty list item", "showers possible Saturday,,and dry Monday"),
+        ("a phrase that stops on its conjunction", "dry Sunday and"),
+        ("a phrase that stops on its comma", "dry Sunday,"),
+        ("a phrase that stops on 'with'", "much the same through Monday, with"),
+        ("a phrase that begins on its conjunction", "and dry Sunday"),
+        ("a phrase that begins on its comma", ", dry Sunday"),
+        # The shapes a real composer produces, which must all pass. A false
+        # positive here drops a true sentence out of a live forecast, so these
+        # are as load-bearing as the failures above.
+        ("a comma inside a number is not punctuation to trip on",
+         "gusts reaching 1,000 J/kg of instability"),
+        ("the day-over-day sentence, semicolon and full stop and all",
+         "Slightly cooler than yesterday; winds and cloud little changed."),
+        ("a list that legitimately takes the comma before its 'and'",
+         "showers possible Saturday and Sunday, and dry Monday"),
+        ("the wind shift's two anchors",
+         "north-northeasterly overnight, turning southwest by midday"),
+        ("a hyphenated opening is not a conjunction", "north-northeasterly overnight"),
+        ("'and' inside a word does not end a phrase", "thunder over the highland"),
+    ]
+    write(
+        "phrase_defect.json",
+        "phrase_defect",
+        "ROADMAP item 158. Whether a composed phrase is shaped like something "
+        "a reader can be handed. The prompt orders these phrases used VERBATIM, "
+        "so nothing stands between the composer and the reader: on 2026-09-20 "
+        "and 09-21 a join artefact reached two published Overviews as "
+        "\"much the same through Thursday, with , and showers ...\". A golden "
+        "vector could not catch that, because export_vectors.py computes each "
+        "expected by calling the code it is pinning. This one can, because its "
+        "answer is a claim about SHAPE that is true independently of what any "
+        "composer produced. The passing cases matter as much as the failing "
+        "ones: a false positive drops a true sentence from a live forecast.",
+        [{"name": n, "input": {"text": t}, "expected": phrase_defect(t)}
+         for n, t in cases],
     )
 
 
@@ -5430,6 +5576,7 @@ def main() -> None:
     export_cell_key()
     export_convective_timing()
     export_convective_tier()
+    export_phrase_defect()
     export_wind_direction()
     export_comparison_for_prompt()
     export_day_over_day()

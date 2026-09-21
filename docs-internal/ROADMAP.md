@@ -23173,7 +23173,7 @@ after (controls byte-identical): the prompt header and the null column on
 
 ---
 
-## 158. The Overview loses the day's shape at the joins the composers were built to protect · **ALL STEPS CLOSED 2026-09-18: 1, 2, 4, 5, 7, 8, 9 and 10 shipped, 3 folded into 123, 6 closed with a ninety-day revisit**
+## 158. The Overview loses the day's shape at the joins the composers were built to protect · **ALL STEPS CLOSED 2026-09-18: 1, 2, 4, 5, 7, 8, 9 and 10 shipped, 3 folded into 123, 6 closed with a ninety-day revisit; a defect from step 2 shipped and was fixed 2026-09-21 — see the section at the end**
 
 The operator, reading the 2026-09-18 06:01 Overview — *"Clearer than
 yesterday. Dry but thundery. Warming through Monday, with rain becoming
@@ -23909,3 +23909,98 @@ Related: 83, 104 (contract item 8), 61, 48, 65, 73, 144, 148, 152, 110,
 121, 118, 100.
 
 ---
+
+
+### The lone tail — a step 2 defect that reached two published forecasts, fixed 2026-09-21
+
+**What a reader saw**, in the Overview on 09-20 and again on 09-21:
+
+> Temperatures and winds much the same through Thursday, with , and showers
+> and thunderstorms likely each day.
+
+**One line.** `_join_tails` takes the comma branch whenever any tail carries
+" and ", because "showers possible Saturday and Sunday and dry Monday" does
+not parse. With ONE tail there is nothing to comma-join: `tails[:-1]` is
+empty, `", ".join([])` is `""`, and the branch built ", and " on top of
+nothing. A lone tail carries its own "and" more often than not — every
+combined rain-and-thunder clause does, and so does every two-day name join —
+so the defect landed on the days worth forecasting and skipped the quiet ones.
+09-19 escaped because it had two tails.
+
+Swept over 50,625 inputs: 44 distinct malformed sentences before, none after.
+
+**The model is not at fault and could not have been.** The prompt orders these
+phrases used VERBATIM, and it says so four times. That instruction is right —
+it is what stops the welding items 83 and 104 were raised on — but it means a
+composer's output reaches the reader with nothing in between, so a composer's
+punctuation is not cosmetic.
+
+### Why nothing caught it, which is the part worth keeping
+
+`extended_trend.json` HELD THE BROKEN STRING as its expected answer. The case
+"three alike days are one clause, not three" exercised the exact path, and
+pinned the artefact:
+
+```
+"expected": "temperatures much the same through Monday, with , and showers and thunderstorms likely each day"
+```
+
+Both suites were green. `vectors_test.dart` compared Dart to that file and
+agreed — exactly, and wrongly. The nine mutations run for step 2 each bit
+their own case; none could have found this, because a mutation test asks
+whether a guard notices a CHANGE, not whether the pinned answer was ever
+right.
+
+**That is structural, not an oversight.** `spec/export_vectors.py` computes
+every `expected` by CALLING the Python implementation. A golden-output vector
+can prove the two languages agree and that nothing moved by accident. It can
+never say the answer was wrong, because the answer is defined as whatever the
+code returns. Every composer in this repo is pinned that way.
+
+**So the second half of this fix is the check a golden vector cannot be.**
+`phrasing.phrase_defect` / `phrasing.dart`'s `phraseDefect` is a claim about
+the SHAPE of a phrase — empty, doubled space, space before punctuation, empty
+list item, stops or starts on a conjunction — true independently of what any
+composer produced. It is applied at two points:
+
+1. **`write()` in the exporter refuses to write a malformed phrase**, by
+   exclusion rather than allowlist, so a composer written next year is covered
+   the day it exists. This is where the defect would have been caught, on
+   09-18, before it ever ran. Proved by putting the bug back: the export
+   aborts naming the file, the case, the reason and the string.
+2. **The pipeline drops one rather than publishing it**, at `_locked_blocks`
+   and its three outliers (`instability.timing`, `overview_comparison`,
+   `secondary_wind.timeline`), recording `composed_phrase_malformed`. Dropping
+   rather than raising because every one of these blocks is already null on
+   some runs by design, so the prompt has a rendering for absence — the
+   dropped block reads "Unavailable — omit the extended clause", which the
+   Overview rules already answer. A degradation rather than silence because
+   `check_recent_degradations` is generic over codes, so the same code twice in
+   twenty issuances turns check-health red.
+
+The check is itself vector-pinned, in `phrase_defect.json`, 18 cases. Its
+PASSING cases carry as much weight as its failing ones: a check that rejected
+everything would satisfy every artefact case and quietly drop every real
+sentence out of a live forecast. Run over all 19 existing phrase vectors it
+flagged exactly one string — the real defect — and nothing else.
+
+**Verified.** 1457 Python, 197 Dart. Five mutations bit: the lone-tail guard
+in each language, the exporter's refusal, the pipeline's application of the
+check, and a phrase rule removed from the Dart validator. Driven through the
+real CLI with the control: all three artifacts identical before and after, and
+that is a REPORT OF A GAP rather than a pass — the drive's fixture is dry with
+no CAPE, so it never reaches a lone tail and never drops a phrase. What
+exercises the fix is the vector case carrying 09-21's own numbers and the two
+run-level tests.
+
+**Not checked.** No live run has produced the corrected sentence; tonight's
+15:01Z is the first that can. The app composes the same phrase through
+`forecast.dart` and was carrying the same defect at its pin, so it needs the
+re-pin. Whether any OTHER composer has a defect of a different class — a wrong
+day, a wrong band — is untouched by this: the shape check reads punctuation,
+not meaning.
+
+**Left open deliberately.** `phrase_defect` is not applied to the two whole
+prompt vectors or to `daypart_without_sun`, each excluded with its reason in
+`NOT_PHRASE_VECTORS`. The prompts are documents, not phrases; the sunless
+vector stores `""` as a data field standing in for null.

@@ -16,6 +16,7 @@
 library;
 
 export 'src/daypart.dart';
+export 'src/phrasing.dart';
 export 'src/aqi.dart';
 export 'src/coverage.dart';
 export 'src/baselines.dart';
