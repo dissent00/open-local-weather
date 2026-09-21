@@ -780,6 +780,18 @@ def test_vectors_extended_trend():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_overlong_display_values():
+    """ROADMAP item 7 — the stat-grid tiles against the box they render in.
+    The PASSING cases are real values from the month the model got this right,
+    because a check that fired on those would report the good regime as the
+    defect."""
+    from openlocalweather.claims import overlong_display_values
+
+    for case in load("overlong_display_values.json")["cases"]:
+        got = overlong_display_values(case["input"]["properties"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_phrase_defect():
     """ROADMAP item 158 — the shape check that a golden vector cannot be.
 
@@ -1040,6 +1052,7 @@ def test_every_vector_file_is_exercised():
         "day_over_day.json",
         "extended_trend.json",
         "phrase_defect.json",
+        "overlong_display_values.json",
         "describe_day_rain.json",
         "describe_day_over_day.json",
         "glossary.json",

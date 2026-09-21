@@ -5,6 +5,7 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
+from openlocalweather.claims import CLAIM_DISPLAY_TOO_LONG
 from openlocalweather.disagreement import DISAGREEMENT_RAIN_WHILE_DRY
 from openlocalweather.llm.gemini import LLMResponseError
 from openlocalweather.llm.schema import (
@@ -4061,4 +4062,71 @@ def test_a_sound_phrase_is_passed_through_untouched(tmp_path, monkeypatch):
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert not [
         d for d in (entry.meta.degradations or []) if d.code == DEGRADATION_COMPOSED_PHRASE
+    ]
+
+
+def test_an_overlong_tile_value_is_recorded_as_a_finding(tmp_path, monkeypatch):
+    """ROADMAP item 7, and the wiring a mutation pass found untested.
+
+    `overlong_display_values` had vectors on both sides and nothing proved the
+    RUN consulted it: deleting the call from `_narrative_findings` left all
+    1,503 tests green. The check is only worth having if what it finds reaches
+    the record, so this drives the pipeline rather than the function.
+
+    The value is the real one published on 2026-09-20, 149 characters of prose
+    in a box the page renders as a tile.
+    """
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    overlong = (
+        "Dry conditions expected today with zero measurable accumulation, though "
+        "scattered thunderstorm activity remains possible late afternoon into evening."
+    )
+    llm = FakeLLMProvider()
+    llm.response = llm.response.model_copy(
+        update={
+            "today_properties": llm.response.today_properties.model_copy(
+                update={"rain_expected": overlong}
+            )
+        }
+    )
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    found = [f for f in (entry.meta.narrative_findings or []) if f.kind == CLAIM_DISPLAY_TOO_LONG]
+    assert len(found) == 1, "the tile check never reached the run"
+    assert found[0].quote == overlong
+    assert "149 characters" in found[0].detail
+    # THE RUN STILL PUBLISHES. This is a layout complaint, and a reader would
+    # rather have an overlong tile than no forecast — the same call the
+    # weekday check carries.
+    assert entry.rain_expected == overlong
+
+
+def test_a_tile_value_that_fits_leaves_no_finding(tmp_path, monkeypatch):
+    """The half with teeth: a check that flagged the good month would report
+    the regime this is meant to restore as the defect."""
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    llm = FakeLLMProvider()
+    llm.response = llm.response.model_copy(
+        update={
+            "today_properties": llm.response.today_properties.model_copy(
+                update={"rain_expected": "Isolated Evening Showers & Thunderstorms"}
+            )
+        }
+    )
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert not [
+        f for f in (entry.meta.narrative_findings or []) if f.kind == CLAIM_DISPLAY_TOO_LONG
     ]

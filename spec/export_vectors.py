@@ -249,6 +249,53 @@ def export_weekday_name() -> None:
     )
 
 
+def export_overlong_display_values() -> None:
+    """The stat-grid tiles, checked against the box they render in.
+
+    ROADMAP item 7, 2026-09-21. `rain_expected` and `onset_window` had no rule
+    and needed none for a month — the model inferred "tile" from a combined
+    prompt. Item 59 step 3 split that prompt and the field became prose on the
+    very next run, reaching 149 characters in a box built for a phrase.
+
+    THE PASSING CASES ARE REAL VALUES from the month it got right, because a
+    check that fired on those would report the good regime as the defect.
+    """
+    from openlocalweather.claims import overlong_display_values
+
+    cases = [
+        ("the shortest real value", {"rain_expected": "Dry / No Rain"}),
+        ("a real tile value", {"rain_expected": "Evening Thunderstorms"}),
+        ("the longest real value that still fit",
+         {"rain_expected": "Isolated Evening Showers & Thunderstorms"}),
+        ("exactly at the ceiling is inside it", {"rain_expected": "x" * 48}),
+        ("one over is not", {"rain_expected": "x" * 49}),
+        ("2026-09-20, what a reader actually saw", {"rain_expected":
+            "Dry conditions expected today with zero measurable accumulation, though "
+            "scattered thunderstorm activity remains possible late afternoon into evening."}),
+        ("the first run after the call split", {"rain_expected":
+            "Rain and thunderstorms expected this evening and tonight"}),
+        ("both tile fields, both over", {
+            "rain_expected": "y" * 60, "onset_window": "z" * 60}),
+        ("a field that is NOT a tile is not checked", {
+            "rain_expected": "Dry", "synoptic_pattern": "w" * 120}),
+        ("a null onset window on a dry day", {"rain_expected": "Dry", "onset_window": None}),
+        ("nothing at all", {}),
+    ]
+    write(
+        "overlong_display_values.json",
+        "overlong_display_values",
+        "ROADMAP item 7. The stat grid renders rain_expected and onset_window "
+        "as TILES, and nothing measured their length until one reached 149 "
+        "characters. The ceiling is read off the record rather than chosen: "
+        "over the 32 days to 2026-09-11 every value but one was 48 or fewer, "
+        "and every value after the call split was longer. Recorded as a "
+        "finding, never refused -- a bound tight enough to reject a wordy but "
+        "correct forecast leaves the day with no forecast at all.",
+        [{"name": n, "input": {"properties": p}, "expected": overlong_display_values(p)}
+         for n, p in cases],
+    )
+
+
 def export_false_weekday_claims() -> None:
     """The pairings a narrative asserts, checked against the calendar.
 
@@ -5571,6 +5618,7 @@ def main() -> None:
     export_weekday_name()
     export_forward_calendar()
     export_false_weekday_claims()
+    export_overlong_display_values()
     export_scoring()
     export_extract()
     export_aqi()

@@ -135,3 +135,50 @@ List<Map<String, Object?>> falseWeekdayClaims(String text, DateTime today) {
 
   return findings;
 }
+
+/// A tile value long enough that the page cannot render it as one.
+const String claimDisplayTooLong = 'display_value_too_long';
+
+/// The ceiling, READ OFF THE RECORD rather than chosen.
+///
+/// `rain_expected` and `onset_window` render in the stat grid beside
+/// "High / Low" and "UV Index" — a box with room for a phrase. No rule ever
+/// governed their length and for a month none was needed: over the 32 days to
+/// 2026-09-11 every `rain_expected` but one was 48 characters or fewer.
+///
+/// Then the call split (upstream item 59 step 3) and the first run under it
+/// wrote 56. Every run since has been longer, the worst 149. The old
+/// behaviour was EMERGENT, inferred from a combined prompt that also carried
+/// the prose rules, and splitting the call removed the context without anyone
+/// measuring what it had been holding up. 48 separates the two regimes almost
+/// perfectly: 1 of 32 above it before, 10 of 10 after.
+const int displayValueMaxChars = 48;
+
+/// Which fields are tiles. Named rather than inferred: `synoptic_pattern` and
+/// `mslp_trend_24h` are short strings too and are NOT in the grid.
+const List<String> displayValueFields = ['rain_expected', 'onset_window'];
+
+/// Every tile field whose value is too long for the box it renders in.
+///
+/// RECORDED, NOT REFUSED. A bound tight enough to reject a wordy but correct
+/// forecast leaves the day with none at all, and this is a LAYOUT complaint —
+/// a reader would rather have an overlong tile than nothing. What the finding
+/// buys is that the drift shows in the record on the day it starts.
+List<Map<String, String>> overlongDisplayValues(
+  Map<String, Object?> properties, {
+  int limit = displayValueMaxChars,
+}) {
+  final found = <Map<String, String>>[];
+  for (final field in displayValueFields) {
+    final value = properties[field];
+    if (value is! String || value.length <= limit) continue;
+
+    found.add({
+      'kind': claimDisplayTooLong,
+      'quote': value,
+      'detail': '$field is ${value.length} characters; the page renders it '
+          'as a tile and has room for $limit.',
+    });
+  }
+  return found;
+}

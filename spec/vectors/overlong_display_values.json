@@ -1,0 +1,136 @@
+{
+  "vector_format_version": 1,
+  "function": "overlong_display_values",
+  "description": "ROADMAP item 7. The stat grid renders rain_expected and onset_window as TILES, and nothing measured their length until one reached 149 characters. The ceiling is read off the record rather than chosen: over the 32 days to 2026-09-11 every value but one was 48 or fewer, and every value after the call split was longer. Recorded as a finding, never refused -- a bound tight enough to reject a wordy but correct forecast leaves the day with no forecast at all.",
+  "cases": [
+    {
+      "name": "the shortest real value",
+      "input": {
+        "properties": {
+          "rain_expected": "Dry / No Rain"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "a real tile value",
+      "input": {
+        "properties": {
+          "rain_expected": "Evening Thunderstorms"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "the longest real value that still fit",
+      "input": {
+        "properties": {
+          "rain_expected": "Isolated Evening Showers & Thunderstorms"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "exactly at the ceiling is inside it",
+      "input": {
+        "properties": {
+          "rain_expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "one over is not",
+      "input": {
+        "properties": {
+          "rain_expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      },
+      "expected": [
+        {
+          "kind": "display_value_too_long",
+          "quote": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "detail": "rain_expected is 49 characters; the page renders it as a tile and has room for 48."
+        }
+      ]
+    },
+    {
+      "name": "2026-09-20, what a reader actually saw",
+      "input": {
+        "properties": {
+          "rain_expected": "Dry conditions expected today with zero measurable accumulation, though scattered thunderstorm activity remains possible late afternoon into evening."
+        }
+      },
+      "expected": [
+        {
+          "kind": "display_value_too_long",
+          "quote": "Dry conditions expected today with zero measurable accumulation, though scattered thunderstorm activity remains possible late afternoon into evening.",
+          "detail": "rain_expected is 149 characters; the page renders it as a tile and has room for 48."
+        }
+      ]
+    },
+    {
+      "name": "the first run after the call split",
+      "input": {
+        "properties": {
+          "rain_expected": "Rain and thunderstorms expected this evening and tonight"
+        }
+      },
+      "expected": [
+        {
+          "kind": "display_value_too_long",
+          "quote": "Rain and thunderstorms expected this evening and tonight",
+          "detail": "rain_expected is 56 characters; the page renders it as a tile and has room for 48."
+        }
+      ]
+    },
+    {
+      "name": "both tile fields, both over",
+      "input": {
+        "properties": {
+          "rain_expected": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+          "onset_window": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+        }
+      },
+      "expected": [
+        {
+          "kind": "display_value_too_long",
+          "quote": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+          "detail": "rain_expected is 60 characters; the page renders it as a tile and has room for 48."
+        },
+        {
+          "kind": "display_value_too_long",
+          "quote": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+          "detail": "onset_window is 60 characters; the page renders it as a tile and has room for 48."
+        }
+      ]
+    },
+    {
+      "name": "a field that is NOT a tile is not checked",
+      "input": {
+        "properties": {
+          "rain_expected": "Dry",
+          "synoptic_pattern": "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "a null onset window on a dry day",
+      "input": {
+        "properties": {
+          "rain_expected": "Dry",
+          "onset_window": null
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "nothing at all",
+      "input": {
+        "properties": {}
+      },
+      "expected": []
+    }
+  ]
+}

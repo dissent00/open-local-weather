@@ -1362,7 +1362,7 @@ surface.
 
 ---
 
-## 7. Operational hardening · **Planned**
+## 7. Operational hardening · **Planned — the stat-grid tiles fixed 2026-09-21, see the section at the end**
 
 - **Pipeline failure alerting.** Currently relies on GitHub's default
   workflow-failure email. Fine, but easy to miss in a busy inbox — and 60
@@ -1398,6 +1398,100 @@ surface.
   backup slot to eventually catch it later.
 
 ---
+
+
+### The stat grid became prose, and the call split did it — 2026-09-21
+
+The operator, on the published page: *"the boxes at the top - rain yesterday
+was too many characters."* True, and the cause turned out to be datable.
+
+**`rain_expected` renders as a TILE** in the stat grid beside "High / Low"
+and "UV Index". Its length over the 42 days of the record:
+
+| | chars |
+|---|---:|
+| shortest | 13 |
+| median | 40 |
+| 90th percentile | 61 |
+| longest, 2026-09-20 | **149** |
+
+**It is not drift, it is a switch.** Split at 2026-09-12:
+
+| window | days | over 48 chars |
+|---|---:|---:|
+| 08-11 to 09-11 | 32 | 1 (3%) |
+| 09-12 to 09-21 | 10 | 10 (100%) |
+
+Before, every value is a label: "Dry / No Rain", "Evening Thunderstorms",
+"Isolated Evening Showers & Thunderstorms". After, every value is a sentence:
+"Rain and thunderstorms expected this evening and tonight", then 59, 81, 61,
+59, 58, 101, 91, 149.
+
+**The cause is item 59 step 3.** The call was split into a judgment and a
+rendering call on 2026-09-11, and the first run under the split was 09-12.
+Checked against the pre-split prompt: NO RULE HAS EVER GOVERNED THIS FIELD'S
+LENGTH, in either version. The tile behaviour was EMERGENT — the model
+inferred "short label" from a combined prompt that also carried the prose
+rules — and splitting the call took that context away. Nobody measured what
+it had been holding up, and the field has been prose in a box ever since,
+invisible for ten days because nothing looked at the page.
+
+That is the finding worth keeping, and it is bigger than this field. A prompt
+split is a refactor with behavioural consequences that no test can see: item
+131's retrospective A/B over stored prompt hashes is the instrument that
+would have caught it, and it exists and was not run.
+
+**Fixed in the prompt, the operator's call.** A rule in the judgment prompt —
+which is where `today_properties` is now decided — saying these are tile
+labels and not sentences, with the ceiling, real examples from the month the
+model got it right, and the instruction that the sentence version belongs in
+Today's Forecast where it is being written anyway.
+
+**48 characters, read off the record rather than chosen.** It is the boundary
+the model itself kept for a month: 1 of 32 values above it before the split,
+10 of 10 after. `onset_window` never crossed it at all; its longest is 46.
+
+**RECORDED, NOT REFUSED.** `claims.overlong_display_values` adds a
+`NarrativeFinding` rather than failing the run, and the schema's
+`MAX_DISPLAY_STRING` stays at 1,000 as the runaway catch. Its own comment
+already argues the case: a bound tight enough to reject a wordy but correct
+forecast leaves the day with no forecast at all. This is a layout complaint,
+and a reader would rather have an overlong tile than nothing. What the finding
+buys is that the next drift shows in the record on the day it starts.
+
+**Verified.** 1,505 Python and 207 Dart, vector-pinned on both sides with the
+PASSING cases taken from real values of the good month — a check that fired
+on those would report the regime being restored as the defect. Four mutations
+bit. **One did not at first:** deleting the call from `_narrative_findings`
+left all 1,503 tests green, because the check had vectors on both sides and
+nothing proved the RUN consulted it. That is the second time today the same
+shape of gap appeared, and the run-level test now closes it.
+
+**The harness, on the JUDGMENT call**, which is where these fields are now
+decided and where the rule was added. Today's real 106,684-character user
+prompt with the rebuilt judgment prompt, handed to a cold worker of another
+model family. Verified by reading the output, not its report:
+
+| field | value | chars |
+|---|---|---:|
+| `rain_expected` | Showers & Thunderstorms Likely | 30 |
+| `onset_window` | Afternoon to Evening | 20 |
+
+Title case, no full stop, and the same shape as the month before the split —
+"Isolated Evening Showers & Thunderstorms" was a real value then. The check
+finds nothing in it. `rain` is true with a stated 82%, so the tile and the
+scored boolean agree, which is the older rule the new one sits beside.
+
+The worker returned an EMPTY `extended_properties`, citing the rule that
+permits omitting a lead rather than guessing at it. Worth checking and
+checked: the live runs carry `olw_blend` at Day+0, Day+3 and Day+7 on every
+September day, so that was the harness model being cautious and not a defect
+in the prompt or the record.
+
+**Not done.** No live run has produced a tile-shaped value yet; tonight's
+15:01Z is the first that can. Nothing reads the new finding kind — it
+accumulates beside the weekday one, and its count is the evidence for whether
+anything stronger is ever worth buying.
 
 ## 8. Multi-provider LLM support · **Done**
 

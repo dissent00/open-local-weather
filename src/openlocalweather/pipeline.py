@@ -193,7 +193,7 @@ from openlocalweather.disagreement import (
     sustained_wind_gap,
     observation_disagreements,
 )
-from openlocalweather.claims import false_weekday_claims
+from openlocalweather.claims import false_weekday_claims, overlong_display_values
 from openlocalweather.models import (
     DeviationBands,
     LowDivergence,
@@ -504,9 +504,21 @@ def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
     None was written before the check existed, and is unchecked rather than
     clean.
     """
+    # TWO CHECKS NOW, and the second is not about the prose — ROADMAP item 7,
+    # 2026-09-21. `rain_expected` and `onset_window` are rendered as TILES on
+    # the page, and nothing measured their length until one reached 149
+    # characters. This function is where a machine-checkable fault in what was
+    # published already lands, so the tile check belongs beside the weekday
+    # one rather than in a second mechanism.
+    props = getattr(llm_response, "today_properties", None)
+    tiles = props.model_dump() if hasattr(props, "model_dump") else (props or {})
+
     return [
         NarrativeFinding(**finding)
-        for finding in false_weekday_claims(llm_response.today_narrative or "", today)
+        for finding in (
+            *false_weekday_claims(llm_response.today_narrative or "", today),
+            *overlong_display_values(tiles),
+        )
     ]
 
 

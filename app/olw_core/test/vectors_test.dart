@@ -1514,6 +1514,19 @@ void main() {
       }
     });
 
+    test('overlong_display_values', () {
+      // Upstream ROADMAP item 7. The stat grid renders rain_expected and
+      // onset_window as TILES and nothing measured their length until one
+      // reached 149 characters. The PASSING cases are real values from the
+      // month the model got this right — a check that fired on those would
+      // report the good regime as the defect.
+      for (final c in loadVectors('overlong_display_values.json')['cases'] as List) {
+        final props = ((c as Map)['input'] as Map)['properties'] as Map;
+        final got = overlongDisplayValues(props.cast<String, Object?>());
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('a false weekday claim is found exactly where Python finds one', () {
       for (final c in loadVectors('false_weekday_claims.json')['cases'] as List) {
         final i = (c as Map)['input'] as Map;
@@ -1808,6 +1821,7 @@ void main() {
       'forecast_windows.json',
       'forward_calendar.json',
       'false_weekday_claims.json',
+      'overlong_display_values.json',
       'daypart_without_sun.json',
       'daypart_clock.json',
       'daypart_forward_hours.json',

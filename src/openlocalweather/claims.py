@@ -152,3 +152,64 @@ def false_weekday_claims(text: str, today: date) -> list[dict]:
         record(match, claimed, when)
 
     return findings
+
+
+# A tile value long enough that the page cannot render it as one.
+CLAIM_DISPLAY_TOO_LONG = "display_value_too_long"
+
+# The ceiling, and it is READ OFF THE RECORD rather than chosen.
+#
+# `rain_expected` and `onset_window` are rendered in the stat grid beside
+# "High / Low" and "UV Index" — a box with room for a phrase. No rule ever
+# governed their length, and for a month none was needed: over the 32 days to
+# 2026-09-11 every `rain_expected` but one came in at 48 characters or fewer,
+# with the single exception at 49. "Dry / No Rain", "Evening Thunderstorms",
+# "Isolated Evening Showers & Thunderstorms".
+#
+# THEN THE CALL SPLIT — item 59 step 3, 2026-09-11 — and the first run under
+# it, on 09-12, wrote 56 characters. Every run since has been longer: 59, 81,
+# 61, 59, 58, 101, 91, 149, 60. The old behaviour was EMERGENT, inferred from
+# a combined prompt that also carried the prose rules, and splitting the call
+# took the context away without anyone measuring what it had been holding up.
+#
+# So 48 is the boundary the model itself kept for a month, and it separates
+# the two regimes almost perfectly: 1 of 32 above it before, 10 of 10 after.
+# `onset_window` never crossed it at all — its longest is 46.
+DISPLAY_VALUE_MAX_CHARS = 48
+
+# Which fields are tiles. Named rather than inferred: `synoptic_pattern` and
+# `mslp_trend_24h` are also short strings and are NOT rendered in the grid, so
+# a check that bounded every short field would report a defect the page does
+# not have.
+DISPLAY_VALUE_FIELDS = ("rain_expected", "onset_window")
+
+
+def overlong_display_values(properties: dict, limit: int = DISPLAY_VALUE_MAX_CHARS) -> list[dict]:
+    """Every tile field whose value is too long for the box it renders in.
+
+    RECORDED, NOT REFUSED, which is the same call the weekday check carries
+    and for a stronger reason here: the schema's own `MAX_DISPLAY_STRING`
+    comment says a bound tight enough to refuse a wordy but correct forecast
+    leaves the day with no forecast at all, and this is a LAYOUT complaint.
+    A reader would rather have an overlong tile than nothing. What the finding
+    buys is that the drift is visible in the record on the day it starts,
+    instead of a month later when somebody looks at the page.
+    """
+    found = []
+    for field in DISPLAY_VALUE_FIELDS:
+        value = properties.get(field)
+        if not isinstance(value, str) or len(value) <= limit:
+            continue
+
+        found.append(
+            {
+                "kind": CLAIM_DISPLAY_TOO_LONG,
+                "quote": value,
+                "detail": (
+                    f"{field} is {len(value)} characters; the page renders it "
+                    f"as a tile and has room for {limit}."
+                ),
+            }
+        )
+
+    return found
