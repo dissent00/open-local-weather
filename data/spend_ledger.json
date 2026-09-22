@@ -2,54 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-15T03:05:15.493861+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.173
-    },
-    {
-      "at": "2026-09-15T03:12:16.668344+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 6.488
-    },
-    {
-      "at": "2026-09-15T15:04:18.747479+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_500",
-      "elapsed_s": 3.167
-    },
-    {
-      "at": "2026-09-15T15:04:51.916321+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_500",
-      "elapsed_s": 1.666
-    },
-    {
-      "at": "2026-09-15T15:05:53.584061+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_500",
-      "elapsed_s": 15.796
-    },
-    {
-      "at": "2026-09-15T15:13:09.381319+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "refresh",
-      "outcome": "http_500",
-      "elapsed_s": 5.101
-    },
-    {
       "at": "2026-09-16T03:01:38.354525+00:00",
       "provider": "GeminiInteractionsProvider",
       "model": "gemini-3.6-flash",
@@ -368,6 +320,86 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 26.65
+    },
+    {
+      "at": "2026-09-22T15:12:05.066307+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.812
+    },
+    {
+      "at": "2026-09-22T15:12:35.880975+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.851
+    },
+    {
+      "at": "2026-09-22T15:13:37.734049+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 2.577
+    },
+    {
+      "at": "2026-09-22T15:20:40.312851+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 3.716
+    },
+    {
+      "at": "2026-09-22T15:20:44.033673+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 82.118
+    },
+    {
+      "at": "2026-09-22T15:22:06.155372+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 16.111
+    },
+    {
+      "at": "2026-09-22T15:22:52.268400+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 2.005
+    },
+    {
+      "at": "2026-09-22T15:23:54.276003+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 9.622
+    },
+    {
+      "at": "2026-09-22T15:31:03.900170+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_429",
+      "elapsed_s": 1.001
+    },
+    {
+      "at": "2026-09-22T15:31:04.904113+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 282.194
     }
   ]
 }
