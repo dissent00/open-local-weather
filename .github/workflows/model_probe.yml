@@ -1,0 +1,64 @@
+# Ask the candidate models to write a real narrative, and check its shape.
+#
+# ROADMAP item 81's supported matrix. Manual only: it spends the gateway's
+# rate limit and answers a question that does not change daily.
+#
+# RUNS HERE RATHER THAN ON A LAPTOP because the key is a repository secret
+# and should stay one. Nothing about the probe needs it locally.
+name: Model probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "Archived day to take the prompt pair from (YYYY-MM-DD)"
+        required: true
+      models:
+        description: "Space-separated model ids to try"
+        required: true
+        default: >-
+          nvidia/nemotron-3-super-120b-a12b:free
+          dots-studio/dots-3-note-preview:free
+          nex-agi/nex-n2.5-pro:free
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      # The same allowlist the forecast uses — see forecast.yml for why it is
+      # an allowlist rather than a dump of the repository's secrets.
+      - name: Provider credentials
+        env:
+          ALL_VARS: ${{ toJSON(vars) }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          set -o pipefail
+          emit() {
+            jq -r --arg p '^[A-Z0-9_]+_(API_KEY|BASE_URL|MODEL|FALLBACK_MODELS|JSON_MODE|MAX_TOKENS)$' '
+              to_entries[]
+              | select(.key | test($p))
+              | select(.value != null and .value != "")
+              | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
+          }
+          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+
+      - name: Probe
+        run: |
+          set -o pipefail
+          python tools/probe_models.py \
+            "${{ inputs.day }}" ${{ inputs.models }} 2>&1 | tee "$RUNNER_TEMP/probe.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: model-probe
+          path: ${{ runner.temp }}/probe.log
