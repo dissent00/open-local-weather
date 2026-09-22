@@ -176,6 +176,80 @@ def last_known_ground_aqi(
     )
 
 
+# WHAT THE LAST-KNOWN BLOCK SAYS WHEN THERE IS NOTHING TO SAY.
+#
+# `last_known_ground_aqi` returns None when no reading carries BOTH a numeric
+# AQI and a timestamp, and that is THREE different situations. The block
+# asserted one of them — "no station has a timestamped reading at all" — and on
+# the commonest of the three it is false: measured over the stored record on
+# 2026-09-22, 11 of 43 days had no numeric AQI from any station, and on the two
+# of those inside the prompt archive every station carried `measured_at` and
+# `hours_old` while the block denied it. Rule 1 orders the model to state the
+# block as given; rule 5 forbids presenting a measurement as absent. ROADMAP
+# item 163.
+#
+# THE INSTRUCTION RIDES HERE RATHER THAN IN THE SYSTEM PROMPT'S AIR-QUALITY
+# RULE, and that is the operator's point: a deployment whose stations are
+# reliable never reaches this branch, so a rule sentence would cost it
+# characters on every run for a case it never hits. These strings appear only
+# on the days they apply.
+#
+# NOTHING HERE IS LOCAL. A station feeding particulates while the aggregator
+# has not computed an index is how WAQI reports, not how Kisumu's sensors
+# behave — item 95's rule, checked rather than assumed.
+LAST_KNOWN_NO_STATIONS = (
+    "Unavailable — no station reported at all. Air quality comes from the "
+    "model guidance alone; say so plainly rather than going silent."
+)
+LAST_KNOWN_NO_NUMERIC_AQI = (
+    "Unavailable — the stations are reporting but none of them carried a "
+    "numeric AQI. Say that, and take the figure from the model guidance. They "
+    "are NOT down and NOT absent: their own readings, with their timestamps "
+    "and ages, are in GROUND AQI STATIONS above. Do not convert a PM figure "
+    "into an AQI yourself."
+)
+LAST_KNOWN_NO_TIMESTAMP = (
+    "Unavailable — a station reported a numeric AQI but none of those readings "
+    "carries a timestamp, so there is no most-recent to name. Quote the value "
+    "without claiming when it was taken."
+)
+
+
+def _aqi_value(reading) -> float | None:
+    """A reading's AQI, whether it arrives typed or as a mapping.
+
+    BOTH SHAPES ARE REAL at this seam. The pipeline holds `GroundAQIReading`
+    objects; the prompt layer is loosely typed and the vector exporter feeds
+    it plain dicts. A version of this that only did `reading.aqi` worked in
+    production and raised on the vectors' own fixtures.
+    """
+    if isinstance(reading, dict):
+        return reading.get("aqi")
+
+    return getattr(reading, "aqi", None)
+
+
+def last_known_absence(readings) -> str:
+    """Which kind of nothing `last_known_ground_aqi` found.
+
+    Only meaningful when that function returned None; the caller asks for this
+    instead of asserting a cause it has not checked.
+
+    THE ORDER OF THE BRANCHES IS THE POINT. "No numeric AQI" is tested before
+    "no timestamp" because a reading can lack both, and of the two the missing
+    NUMBER is what stops the block having anything to quote — saying the
+    timestamps are missing when the values are is the exact error this
+    replaces.
+    """
+    if not readings:
+        return LAST_KNOWN_NO_STATIONS
+
+    if not any(_aqi_value(r) is not None for r in readings):
+        return LAST_KNOWN_NO_NUMERIC_AQI
+
+    return LAST_KNOWN_NO_TIMESTAMP
+
+
 def merge_ground_aqi(
     stored: list[GroundAQIReading], fresh: list[GroundAQIReading]
 ) -> list[GroundAQIReading]:

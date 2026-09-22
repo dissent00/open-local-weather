@@ -1,0 +1,66 @@
+{
+  "vector_format_version": 1,
+  "function": "last_known_absence",
+  "description": "ROADMAP item 163. Which of three absences the last-known ground-AQI block is reporting. The block used to assert ONE of them -- 'no station has a timestamped reading at all' -- which on 11 of 43 archived days was false: the stations were reporting, timestamped, and simply carried no AQI number. Rule 1 orders the model to state the block as given and rule 5 forbids presenting a measurement as absent, so obeying one broke the other. The INSTRUCTION rides in these strings rather than in the system prompt's air-quality rule, so a deployment whose stations are reliable never pays for it.",
+  "cases": [
+    {
+      "name": "no station reported at all",
+      "input": {
+        "readings": []
+      },
+      "expected": "Unavailable \u2014 no station reported at all. Air quality comes from the model guidance alone; say so plainly rather than going silent."
+    },
+    {
+      "name": "stations reporting, no numeric AQI -- 11 of 43 archived days",
+      "input": {
+        "readings": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": null,
+            "pm25": 52.0,
+            "measured_at": "2026-09-21 23:00:00+00:00"
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": null,
+            "pm25": 42.0,
+            "measured_at": "2026-09-21 23:00:00+00:00"
+          }
+        ]
+      },
+      "expected": "Unavailable \u2014 the stations are reporting but none of them carried a numeric AQI. Say that, and take the figure from the model guidance. They are NOT down and NOT absent: their own readings, with their timestamps and ages, are in GROUND AQI STATIONS above. Do not convert a PM figure into an AQI yourself."
+    },
+    {
+      "name": "a number exists but carries no timestamp",
+      "input": {
+        "readings": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 70,
+            "pm25": 52.0,
+            "measured_at": null
+          }
+        ]
+      },
+      "expected": "Unavailable \u2014 a station reported a numeric AQI but none of those readings carries a timestamp, so there is no most-recent to name. Quote the value without claiming when it was taken."
+    },
+    {
+      "name": "one station has a number and one does not -- the number wins",
+      "input": {
+        "readings": [
+          {
+            "name": "a",
+            "aqi": null,
+            "measured_at": null
+          },
+          {
+            "name": "b",
+            "aqi": 70,
+            "measured_at": null
+          }
+        ]
+      },
+      "expected": "Unavailable \u2014 a station reported a numeric AQI but none of those readings carries a timestamp, so there is no most-recent to name. Quote the value without claiming when it was taken."
+    }
+  ]
+}

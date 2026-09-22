@@ -41,6 +41,13 @@ ordered the narrative silent while the tile printed "midday SW". Midday agrees
 on 15 of 17 days and is southwesterly on every one. Both now read the same
 `wind_anchors` call.
 
+**Item 163 — the prompt stopped publishing a falsehood.** GROUND AQI LAST
+KNOWN said "no station has a timestamped reading at all" on days every station
+was timestamped and only the AQI number was missing: false on 11 of the 12
+days it appeared. The block now names which of three absences it found, and
+the instruction rides in the block rather than the rule, so a deployment with
+reliable sensors never pays for it.
+
 **Item 166 — the docs say a forecast is a forecast.** Two sweeps found 55
 places asserting the old morning/evening design, 16 of them broken rather than
 stale: `QUICKSTART.md` named two Apps Script functions that do not exist, and
@@ -55,12 +62,13 @@ while model cycles and the station archive are UTC.
    inert because `LLM_API_KEY` does not exist. Nothing else on this list
    matters as much as a forecast that does not appear, and the work is three
    repository settings the operator must make.
-2. **Item 163 — the prompt publishes a falsehood.** GROUND AQI LAST KNOWN
-   says "no station has a timestamped reading at all" while three stations
-   carry `measured_at` and `hours_old`; the condition it means to test is "no
-   station has a numeric AQI". Rule 1 orders the model to state it as given.
-   Re-checked on the 2026-09-22 prompt and still live. Cheap, and the only
-   open item that makes the forecast say something untrue.
+2. **Item 161** — `uv_index_max` is one model's number the forecaster is
+   asked to re-type: only `gfs_seamless` serves a UV index and `best_match`
+   duplicates it value for value, so the prompt's "your synthesized BLENDED
+   call" cannot be true of it. Measure the drift between the model's stated
+   UV and GFS's own figure first; it is one script over `data/prompts/` and
+   `data/log/`, and the answer decides whether this is a correctness fix or
+   only a tidiness one.
 3. **Item 161** — `uv_index_max` is one model's number the forecaster is
    asked to re-type. Measure the drift first; it is one script.
 4. **Item 162** — narrative-section instructions carried in the judgment
@@ -25504,7 +25512,7 @@ a token saving as well as a correctness one. Do not cut by eye — item 158 step
 
 ---
 
-## 163. GROUND AQI LAST KNOWN says no station is timestamped while three are · **Open, found 2026-09-21 by item 77's harness**
+## 163. GROUND AQI LAST KNOWN says no station is timestamped while three are · **SHIPPED 2026-09-22 — the block names which absence**
 
 Verified in the 2026-09-21 03:03Z archived prompt. The block reads:
 
@@ -25527,9 +25535,107 @@ a falsehood, and the rule against presenting a measurement as absent
 This is the block item 91 added so that a stale reading is quoted rather than
 dropped. It works; its absent-case wording does not.
 
-**Small and worth doing properly**: the failing test first, on the shape the
-archive actually held — three stations, `aqi` null, PM2.5 present, six hours
-old — then the message. Check the same wording in the Dart port.
+### Measured, and one figure withdrawn
+
+`last_known_ground_aqi` returns None when no reading carries BOTH a numeric
+AQI and a timestamp — three situations, one message.
+
+| the day was | days |
+|---|---:|
+| a usable last-known exists | 31 |
+| stations reported, timestamped, no numeric AQI | 11 |
+| stations present, none timestamped | 1 |
+
+**The message was false on 11 of the 12 days it appeared.** Only two of those
+11 fall inside the prompt archive, and on both every station carried
+`measured_at` and `hours_old` while the block denied it.
+
+**WITHDRAWN before it reached a decision:** a first pass reported that 8 of
+the 11 had a FRESH station reporting no AQI, which would have made the
+governing rule's "because every station is stale" premise plainly wrong. It
+was computed by comparing stored readings against `generated_at_utc`, and
+those can come from different runs — it produced negative ages. On the two
+days that ARE observable, every station was stale, so the premise held. The
+rule change shrank accordingly.
+
+### The operator's question changed the design
+
+> *"We're building around ground stations that are unreliable, but not all
+> will be like they are here. Is there anything in the proposed build that is
+> specific to very unreliable ground AQI stations?"*
+
+Checked: `aqi.py` carries no locally-measured value, and the three-hour
+staleness threshold is reasoned from WAQI's general update cadence with its
+comment saying so. Item 95's trap was already avoided. The three absences are
+properties of how WAQI reports — a station feeding particulates while the
+aggregator has not computed an index — not of these sensors being poor.
+
+**But the first design put the instruction in the system prompt's air-quality
+rule, and that WAS a cost borne by everyone.** The system prompt is built from
+flags alone and cannot know what today's stations returned, so a deployment
+with reliable sensors would carry the text on every run and never use it —
+exactly the bloat item 162 exists to remove.
+
+**So the instruction rides in the BLOCK instead**, which is in the user prompt,
+built per run, and which this project already uses that way: "state as given
+if present", "Use it VERBATIM or not at all", "Say nothing about direction".
+It appears only on the days it applies. The governing rule needed one clause,
+not a paragraph: its promise that the last-known block "carries the most
+recent reading" is now "usually carries", plus a line saying the block says
+why when it is empty.
+
+### What was NOT added
+
+A clause forbidding PM-to-AQI conversion in the rule. The harness reader said
+it would do that on a first attempt; checked across every day with no numeric
+AQI, a PM figure has never appeared inside an AQI sentence in a published
+forecast. The instruction is in the block's own message, where it costs a good
+deployment nothing, rather than in the rule.
+
+### Verified
+
+1,551 Python, 217 Dart. Four mutations bit their own case: the branch order
+reversed so a missing NUMBER reads as a missing time, the dict input shape
+dropped, the message claiming the sensors are down, and the pipeline never
+passing the reason. **All four SURVIVED the first pass** — the initial test
+handed the message straight to `build_user_prompt`, so it checked the
+rendering and neither the composer nor the wiring. A vector file and a
+run-level test that drives the pipeline with stations reporting no AQI closed
+it.
+
+**The driver could not see this change at all until it was fixed.** Its
+fixture configured NO waqi stations, so `ground_stations_configured` was False
+and the entire air-quality apparatus — both blocks and their rule — was
+omitted from every driven prompt. The first control diff came back byte-clean
+and proved nothing. The fixture now configures one, which broke exactly one
+test: the no-stations case, which had been relying on the shared fixture
+happening to have none. It builds its own stationless config now.
+
+**Item 77's harness read it cold and got every part right.** Asked what state
+the sensors were in, it answered: reporting, not down and not absent, stale at
+four hours, and carrying no AQI number — "it is a reporting format difference:
+these stations measure particulates but do not calculate or transmit an AQI
+number themselves". It took the figure from the forecaster's call, named the
+PM values only in the Detailed Discussion, and refused the conversion,
+quoting the block's own instruction back. Asked whether the guidance was
+clear, it said the three blocks agree on the core fact. Compare the old block,
+which on that same day asserted no station was timestamped while all three
+carried `measured_at` and `hours_old`.
+
+**One thing the worker invented, and it is not this change's doing.** It
+justified refusing the conversion by writing that PM-to-AQI "depends on
+humidity, composition, and the specific AQI formula in use". The US EPA
+conversion is a deterministic piecewise-linear table; humidity does not enter
+it. Right behaviour, invented reason, published in Forecaster Confidence
+Notes. Haiku rather than the production model, and the prompt's own
+never-invent rule already covers it — noted because the harness is only
+useful if what it gets wrong is written down too.
+
+**An unpassed reason renders as a wiring gap, loudly.** `ground_aqi_last_known_absence`
+defaults to None, and the block then says the reason was not supplied and that
+this is a wiring gap rather than a fact about the stations. A bare
+"Unavailable." would have read as an answer — the same failure as the message
+this item replaces.
 
 ---
 

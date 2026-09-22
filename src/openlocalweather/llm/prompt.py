@@ -81,7 +81,7 @@ def _blocks(
         else '- No ground AQI stations are configured for this location, so air quality comes from model (CAMS) data alone. State it plainly with the EPA thresholds and do NOT mention ground stations, sensors, or their absence - nothing is missing, and a daily note that no station reported would report a failure that did not happen.'
     )
     air_quality_guidance = (
-        'AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous. WHEN NOTHING IS FRESH, QUOTE THE LAST REAL READING RATHER THAN GOING SILENT. If "GROUND AQI SUMMARY" is not applicable because every station is stale, "GROUND AQI LAST KNOWN" carries the most recent reading anyone actually took, with its station, its value, its age in hours and how many stations reported at that hour. State it in that form - no current ground data; the last actual reading was X at STATION, N hours ago; the model guidance says Y - using the pre-computed values as given. Both halves are required: the reader gets the real measurement AND the model estimate, and can see which is which. Do not present a stale reading as current, and do not silently drop it either - a forecast that said nothing about ground sensors one morning and listed all three the next taught readers nothing about either day. When multiple ground AQI stations are configured, a PRE-COMPUTED range (min-max) and the name of the currently-worst station are provided under "GROUND AQI SUMMARY" in the user message - state that range in Today\'s Forecast and explicitly name the worst station there (use the pre-computed values as given). List each individual station\'s own reading by name in the Detailed Discussion.'
+        'AIR QUALITY: cross-reference ground sensor data against model (CAMS) data if both are present; explicitly flag any notable disparity. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous. WHEN NOTHING IS FRESH, QUOTE THE LAST REAL READING RATHER THAN GOING SILENT. If "GROUND AQI SUMMARY" is not applicable, "GROUND AQI LAST KNOWN" usually carries the most recent reading anyone actually took, with its station, its value, its age in hours and how many stations reported at that hour. IT CAN ITSELF BE EMPTY, and when it is it says WHY in its own words — follow those; they are the pre-computed answer for that case. State it in that form - no current ground data; the last actual reading was X at STATION, N hours ago; the model guidance says Y - using the pre-computed values as given. Both halves are required: the reader gets the real measurement AND the model estimate, and can see which is which. Do not present a stale reading as current, and do not silently drop it either - a forecast that said nothing about ground sensors one morning and listed all three the next taught readers nothing about either day. When multiple ground AQI stations are configured, a PRE-COMPUTED range (min-max) and the name of the currently-worst station are provided under "GROUND AQI SUMMARY" in the user message - state that range in Today\'s Forecast and explicitly name the worst station there (use the pre-computed values as given). List each individual station\'s own reading by name in the Detailed Discussion.'
         if ground_stations_configured
         else 'AIR QUALITY: model (CAMS) data is the only source configured here, so state it as the estimate it is. US EPA AQI thresholds: 0-50 Good, 51-100 Moderate, 101-150 USG, 151+ Unhealthy/Hazardous.'
     )
@@ -838,6 +838,11 @@ def build_user_prompt(
     review_context: Any = None,
     model_predictions_context: Any = None,
     ground_aqi_last_known: Any = None,
+    # WHICH KIND OF NOTHING, when `ground_aqi_last_known` is None — item 163.
+    # Composed by `aqi.last_known_absence` and passed in, so this file asserts
+    # no cause it has not been told. The block used to claim one of three
+    # absences unconditionally, and on the commonest it was false.
+    ground_aqi_last_known_absence: str | None = None,
     instability: Any = None,
     ground_stations_configured: bool = True,
     local_bulletin_configured: bool = True,
@@ -958,7 +963,7 @@ GROUND AQI SUMMARY (pre-computed by code — state as given if present):
 {_json(ground_aqi_summary) if ground_aqi_summary is not None else "Not applicable — no station reported a numeric AQI right now."}
 
 GROUND AQI LAST KNOWN (pre-computed by code — the most recent reading any station actually took, with its age; state as given):
-{_json(ground_aqi_last_known) if ground_aqi_last_known is not None else "Unavailable — no station has a timestamped reading at all."}"""
+{_json(ground_aqi_last_known) if ground_aqi_last_known is not None else (ground_aqi_last_known_absence or "Unavailable — and the reason was not supplied to this prompt, which is a wiring gap rather than a fact about the stations. Take the air quality from the model guidance and say nothing about the ground sensors either way.")}"""
         if ground_stations_configured
         else ""
     )

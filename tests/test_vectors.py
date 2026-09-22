@@ -836,6 +836,15 @@ def test_vectors_compose_tiles():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_last_known_absence():
+    """ROADMAP item 163 — which kind of nothing the block reports."""
+    from openlocalweather.aqi import last_known_absence
+
+    for case in load("last_known_absence.json")["cases"]:
+        got = last_known_absence(case["input"]["readings"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_word():
     from openlocalweather.tiles import sky_word
 
@@ -1143,6 +1152,7 @@ def test_every_vector_file_is_exercised():
         "aqi_band.json",
         "index_and_band.json",
         "compose_tiles.json",
+        "last_known_absence.json",
         "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",

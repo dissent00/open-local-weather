@@ -163,6 +163,61 @@ String _isoLikePython(DateTime value) {
 /// about time, and one cannot be made about a reading whose time is unknown.
 /// Ties resolve to the highest AQI, matching the worst-station rule already
 /// used for the fresh range.
+/// What the last-known block says when there is nothing to say.
+///
+/// [lastKnownGroundAqi] returns null when no reading carries BOTH a numeric
+/// AQI and a timestamp, and that is THREE situations. The block asserted one —
+/// "no station has a timestamped reading at all" — and on the commonest it is
+/// false: upstream measured 11 of 43 stored days with no numeric AQI from any
+/// station, and on the two inside the prompt archive every station carried a
+/// timestamp and an age while the block denied it. Upstream item 163.
+///
+/// THE INSTRUCTION RIDES IN THE BLOCK, not in the system prompt's air-quality
+/// rule. A deployment whose stations are reliable never reaches this branch,
+/// so a rule sentence would cost it characters on every run for a case it
+/// never hits.
+///
+/// Nothing here is local: a station feeding particulates while the aggregator
+/// has not computed an index is how WAQI reports, not how one place's sensors
+/// behave.
+const String lastKnownNoStations =
+    'Unavailable — no station reported at all. Air quality comes from the '
+    'model guidance alone; say so plainly rather than going silent.';
+const String lastKnownNoNumericAqi =
+    'Unavailable — the stations are reporting but none of them carried a '
+    'numeric AQI. Say that, and take the figure from the model guidance. They '
+    'are NOT down and NOT absent: their own readings, with their timestamps '
+    'and ages, are in GROUND AQI STATIONS above. Do not convert a PM figure '
+    'into an AQI yourself.';
+const String lastKnownNoTimestamp =
+    'Unavailable — a station reported a numeric AQI but none of those readings '
+    'carries a timestamp, so there is no most-recent to name. Quote the value '
+    'without claiming when it was taken.';
+
+/// Which kind of nothing [lastKnownGroundAqi] found.
+///
+/// THE ORDER OF THE BRANCHES IS THE POINT. "No numeric AQI" is tested before
+/// "no timestamp" because a reading can lack both, and of the two the missing
+/// NUMBER is what stops the block having anything to quote.
+/// A reading's AQI, whether it arrives typed or as a map.
+///
+/// BOTH SHAPES ARE REAL at this seam: the runner holds `GroundAqiReading`
+/// objects, and the prompt layer is loosely typed — the vector fixtures feed
+/// it plain maps. A version that only read `.aqi` worked in one and threw in
+/// the other.
+Object? _aqiValue(Object? reading) {
+  if (reading is GroundAqiReading) return reading.aqi;
+  if (reading is Map) return reading['aqi'];
+  return null;
+}
+
+String lastKnownAbsence(Object? readings) {
+  final list = readings is Iterable ? readings.toList() : const [];
+  if (list.isEmpty) return lastKnownNoStations;
+  if (!list.any((r) => _aqiValue(r) != null)) return lastKnownNoNumericAqi;
+  return lastKnownNoTimestamp;
+}
+
 GroundAqiLastKnown? lastKnownGroundAqi(
   List<GroundAqiReading> readings,
   DateTime now,

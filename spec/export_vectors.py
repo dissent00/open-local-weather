@@ -41,6 +41,7 @@ from typing import Any
 
 from openlocalweather.cycle import round_hours_to_tenths
 from openlocalweather.aqi import (
+    last_known_absence,
     STALE_THRESHOLD_HOURS,
     hours_old,
     is_stale,
@@ -1748,6 +1749,50 @@ def export_llm_schemas() -> None:
 
 
 
+def export_last_known_absence() -> None:
+    """ROADMAP item 163 -- which kind of nothing the last-known block found.
+
+    THE BRANCH ORDER IS THE CASE THAT MATTERS. A reading can lack both a
+    number and a timestamp, and the block's old message picked the wrong one:
+    it said no station was timestamped on days when every station was, and
+    only the AQI figure was missing. Measured on the stored record, that was
+    11 of 43 days.
+
+    BOTH INPUT SHAPES ARE PINNED. The pipeline holds typed readings and the
+    prompt layer is loosely typed, so a version reading only the attribute
+    worked in production and raised on these very fixtures.
+    """
+    from openlocalweather.aqi import last_known_absence
+
+    cases = [
+        ("no station reported at all", []),
+        ("stations reporting, no numeric AQI -- 11 of 43 archived days",
+         [{"name": "Kisumu Airport", "aqi": None, "pm25": 52.0,
+           "measured_at": "2026-09-21 23:00:00+00:00"},
+          {"name": "Dunga Beach", "aqi": None, "pm25": 42.0,
+           "measured_at": "2026-09-21 23:00:00+00:00"}]),
+        ("a number exists but carries no timestamp",
+         [{"name": "Kisumu Airport", "aqi": 70, "pm25": 52.0, "measured_at": None}]),
+        ("one station has a number and one does not -- the number wins",
+         [{"name": "a", "aqi": None, "measured_at": None},
+          {"name": "b", "aqi": 70, "measured_at": None}]),
+    ]
+    write(
+        "last_known_absence.json",
+        "last_known_absence",
+        "ROADMAP item 163. Which of three absences the last-known ground-AQI "
+        "block is reporting. The block used to assert ONE of them -- 'no "
+        "station has a timestamped reading at all' -- which on 11 of 43 "
+        "archived days was false: the stations were reporting, timestamped, "
+        "and simply carried no AQI number. Rule 1 orders the model to state "
+        "the block as given and rule 5 forbids presenting a measurement as "
+        "absent, so obeying one broke the other. The INSTRUCTION rides in "
+        "these strings rather than in the system prompt's air-quality rule, "
+        "so a deployment whose stations are reliable never pays for it.",
+        [{"name": n, "input": {"readings": r}, "expected": last_known_absence(r)}
+         for n, r in cases],
+    )
+
 def export_user_prompt() -> None:
     """The per-run message. Locked verbatim for the same reason as the system
     prompt, plus one specific to this half: every "Unavailable — ..." string
@@ -1773,6 +1818,9 @@ def export_user_prompt() -> None:
         "verification_context": [{"lead_time_days": 0, "per_model_scores": {"gfs_seamless": {"rain_correct": True}}}],
         "track_record_context": [{"model": "gfs_seamless", "lead_time_days": 0, "rain_pct": 62.5}],
         "ground_aqi_readings": [{"name": "Dunga Beach", "aqi": 42}],
+        # Item 163: the block names WHICH absence. Passed here so the
+        # vectors exercise a real message rather than the wiring-gap text.
+        "ground_aqi_last_known_absence": last_known_absence([]),
         "ground_aqi_summary": {"lowest": 40, "highest": 55, "worst_station": "Dunga Beach"},
         "yesterday_actual": {"high_label": "about the same", "rain_contrast": "drier"},
         "today_weather_data": weather,
@@ -6011,6 +6059,7 @@ def main() -> None:
     export_forecast_horizon()
     export_llm_schemas()
     export_system_prompt()
+    export_last_known_absence()
     export_user_prompt()
     export_weekly_review()
     export_synoptic()

@@ -65,6 +65,7 @@ from openlocalweather.aqi import (
     GroundAQISummary,
     hours_old,
     is_stale,
+    last_known_absence,
     last_known_ground_aqi,
     merge_ground_aqi,
     summarize_ground_aqi,
@@ -937,6 +938,9 @@ def _build_forecast_prompt(
             if guidance.ground_aqi_last_known is not None
             else None
         ),
+        # WHICH KIND OF NOTHING — item 163. Computed here, beside the value it
+        # explains, so the prompt states a cause rather than assuming one.
+        ground_aqi_last_known_absence=last_known_absence(guidance.ground_aqi_readings or []),
         ground_stations_configured=bool(deps.location.waqi_stations),
         local_bulletin_configured=bool(deps.location.local_bulletin_source_name),
         instability=(

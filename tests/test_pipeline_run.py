@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 
-from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint
+from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint, WaqiStation
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
 from openlocalweather.claims import CLAIM_DISPLAY_TOO_LONG
@@ -52,7 +52,13 @@ LOCATION = LocationConfig(
     secondary_point=SecondaryPoint(),  # disabled — keeps fixtures simpler
     region_points=[RegionPoint(name="Neighbor", lat=1.5, lon=2.5)],
     metar_station_icao="",  # skip METAR
-    waqi_stations=[],  # skip WAQI
+    # A STATION IS CONFIGURED so the driver actually reaches the ground-AQI
+    # blocks. It carried none until 2026-09-22, which meant
+    # `ground_stations_configured` was False and the whole air-quality
+    # apparatus — the summary, the last-known block and their rule — was
+    # omitted from every driven prompt. A change to any of them diffed clean
+    # against a control and proved nothing. The fetch is still stubbed.
+    waqi_stations=[WaqiStation(name="Kisumu Airport", station_id="A418534")],
     local_bulletin_url="",  # NullBulletinFetcher
 )
 
@@ -769,7 +775,14 @@ def test_llm_receives_stale_flag_and_hours_old_per_reading(tmp_path, monkeypatch
 
 def test_no_stations_configured_says_nothing_about_ground_stations(tmp_path):
     """A fork that polls no stations must not be told about a source it does
-    not have. LOCATION has waqi_stations=[].
+    not have.
+
+    BUILDS ITS OWN STATIONLESS CONFIG rather than relying on LOCATION having
+    none. It used to say "LOCATION has waqi_stations=[]" and depend on that —
+    so when the shared fixture gained a station on 2026-09-22, to make the
+    driver reach the ground-AQI blocks at all, this test broke. The break was
+    in the test: a check that depends on what a fixture happens to contain is
+    a check that fires on the wrong thing.
 
     The blocks used to be rendered as "Unavailable — no ground station
     reported data today", which is a fetch failure being reported for
@@ -779,7 +792,7 @@ def test_no_stations_configured_says_nothing_about_ground_stations(tmp_path):
     """
     llm = FakeLLMProvider()
     deps = PipelineDeps(
-        location=LOCATION,
+        location=LOCATION.model_copy(update={"waqi_stations": []}),
         data_dir=tmp_path,
         llm_provider=llm,
         public_webpage_url="https://example.org",
@@ -4449,3 +4462,46 @@ def test_the_direction_block_reaches_the_prompt_with_its_anchors(tmp_path, monke
     block = llm.user_prompts.split("WIND DIRECTION")[1].split("\n\n")[0]
 
     assert '"midday": "SW"' in block, block
+
+
+def test_the_prompt_says_which_ground_aqi_absence_it_found(tmp_path, monkeypatch):
+    """The reason reaches the prompt — ROADMAP item 163.
+
+    THE COMPOSER WAS RIGHT AND NOTHING CARRIED ITS ANSWER, which is the fault
+    this item shares with three others in 159. A mutation deleting the
+    pipeline's `last_known_absence(...)` argument left the whole suite green:
+    the block fell back to its wiring-gap text and no assertion looked.
+
+    THE SHAPE IS THE ARCHIVE'S OWN, 2026-09-22: three stations reporting,
+    timestamped, four hours old, carrying PM figures and no AQI number. On
+    that day the block said "no station has a timestamped reading at all"
+    while every station carried `measured_at` and `hours_old`.
+    """
+    from openlocalweather.config import WaqiStation
+
+    measured = datetime(2026, 8, 10, 23, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        pipeline.waqi_fetch,
+        "fetch_ground_aqi_stations",
+        lambda stations, token: [
+            GroundAQIReading(name="Kisumu Airport", station_id="A418534",
+                             aqi=None, pm25=52.0, pm10=15.0, measured_at=measured),
+            GroundAQIReading(name="Dunga Beach", station_id="A418504",
+                             aqi=None, pm25=42.0, pm10=12.0, measured_at=measured),
+        ],
+    )
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = LOCATION.model_copy(
+        update={"waqi_stations": LOCATION.waqi_stations or [
+            WaqiStation(name="Kisumu Airport", station_id="A418534")]}
+    )
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    block = llm.user_prompts.split("GROUND AQI LAST KNOWN")[1].split("\n\n")[0]
+
+    assert "reporting but none of them carried a numeric AQI" in block
+    assert "NOT down and NOT absent" in block
+    # the false claim, and the wiring-gap fallback, are both absent
+    assert "no station has a timestamped reading at all" not in llm.user_prompts
+    assert "the reason was not supplied to this prompt" not in llm.user_prompts

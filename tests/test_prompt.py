@@ -883,3 +883,59 @@ def test_the_direction_block_speaks_per_anchor_not_per_day():
     assert "must not carry it across the day" in system
     assert "SAY NOTHING ABOUT DIRECTION FOR THAT PART OF THE DAY" in system
     assert '"variable"' in system and '"shifting"' in system
+
+
+def _aqi_reading(**over):
+    """A station reading in the shape the archive holds."""
+    base = {"name": "Kisumu Airport", "station_id": "A418534", "aqi": None,
+            "pm25": 52.0, "pm10": 15.0,
+            "measured_at": "2026-09-21 23:00:00+00:00"}
+    return {**base, **over}
+
+
+def _user_prompt_with(readings, last_known_absence=None):
+    return build_user_prompt(
+        today=date(2026, 9, 22), yesterday=date(2026, 9, 21),
+        public_webpage_url="https://example.com/", verification_context={},
+        track_record_context=[], ground_aqi_readings=readings,
+        ground_aqi_summary=None, yesterday_actual=None, today_weather_data={},
+        local_bulletin_source_name="", local_bulletin_text="",
+        ground_aqi_last_known_absence=last_known_absence,
+    )
+
+
+def test_the_last_known_block_says_which_kind_of_nothing_it_is():
+    """ROADMAP item 163. The block asserted one absence and there are three.
+
+    `last_known_ground_aqi` returns None when no reading carries BOTH a
+    numeric AQI and a timestamp, and the block said "no station has a
+    timestamped reading at all" — which on the commonest of those cases is
+    FALSE. Measured over the stored record: 11 of 43 days had no numeric AQI
+    from any station, and on the two of those that fall inside the prompt
+    archive every station carried `measured_at` and `hours_old` while the
+    block denied it. Rule 1 orders the model to state it as given, and
+    system-prompt rule 5 forbids presenting a measurement as absent, so
+    obeying one breaks the other.
+
+    THE INSTRUCTION RIDES IN THE BLOCK, NOT THE RULE. A deployment whose
+    stations are reliable never reaches this branch, and a sentence in the
+    system prompt would cost it characters on every run for a case it never
+    hits. Blocks in this prompt already carry their own instructions — "state
+    as given if present", "Use it VERBATIM or not at all" — so this one does
+    too, and appears only on the days it applies.
+    """
+    reported_no_number = _user_prompt_with(
+        [_aqi_reading(), _aqi_reading(name="Dunga Beach", station_id="A1")],
+        last_known_absence=(
+            "Unavailable — the stations are reporting but none of them carried a "
+            "numeric AQI. Say that, and take the figure from the model guidance. "
+            "They are NOT down and NOT absent: their own readings, with their "
+            "timestamps and ages, are in GROUND AQI STATIONS above."
+        ),
+    )
+    block = reported_no_number.split("GROUND AQI LAST KNOWN")[1].split("\n\n")[0]
+
+    assert "reporting but none of them carried a numeric AQI" in block
+    assert "NOT down and NOT absent" in block
+    # the false claim is gone
+    assert "no station has a timestamped reading at all" not in reported_no_number

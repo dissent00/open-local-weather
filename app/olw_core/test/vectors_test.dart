@@ -1072,6 +1072,7 @@ void main() {
           trackRecordContext: i['track_record_context'],
           groundAqiReadings: i['ground_aqi_readings'],
           groundAqiSummary: i['ground_aqi_summary'],
+          groundAqiLastKnownAbsence: i['ground_aqi_last_known_absence'] as String?,
           yesterdayActual: i['yesterday_actual'],
           todayWeatherData: (i['today_weather_data'] as Map).cast<String, Object?>(),
           localBulletinSourceName: i['local_bulletin_source_name'] as String,
@@ -1222,6 +1223,16 @@ void main() {
           metric: i['metric'] as bool,
         );
         expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+
+    test('last_known_absence', () {
+      // Upstream item 163. Which of three absences the block reports; the old
+      // message asserted one of them and was false on 11 of 43 archived days.
+      for (final c in loadVectors('last_known_absence.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        expectMatches(lastKnownAbsence(i['readings']), c['expected'],
+            c['name'] as String);
       }
     });
 
@@ -1933,6 +1944,7 @@ void main() {
       'aqi_band.json',
       'index_and_band.json',
       'compose_tiles.json',
+      'last_known_absence.json',
       'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',

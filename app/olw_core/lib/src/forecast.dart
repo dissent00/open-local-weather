@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
+import 'aqi.dart';
 import 'phrasing.dart';
 import 'tiles.dart';
 import 'daypart.dart';
@@ -575,6 +576,9 @@ Future<ForecastRun> generateForecast({
     groundAqiReadings: groundAqiReadings,
     groundAqiSummary: groundAqiSummary,
     groundAqiLastKnown: groundAqiLastKnown,
+    // WHICH KIND OF NOTHING — upstream item 163, computed beside the value
+    // it explains so the prompt states a cause rather than assuming one.
+    groundAqiLastKnownAbsence: lastKnownAbsence(groundAqiReadings),
     groundStationsConfigured: groundStationsConfigured,
     localBulletinConfigured: localBulletinSourceName.isNotEmpty,
     // Upstream item 158, step 1: the clause the Overview uses verbatim when
