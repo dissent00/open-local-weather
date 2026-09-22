@@ -16,6 +16,7 @@ import argparse
 import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import requests
@@ -75,7 +76,12 @@ from openlocalweather.llm.gemini import GeminiProvider
 from openlocalweather.llm.gemini_interactions import GeminiInteractionsProvider, LLMResponseError
 from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
-from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
+from openlocalweather.llm.provider import (
+    CREDENTIAL_FAMILIES,
+    DEFAULT_ENV_PREFIXES,
+    DEFAULT_LLM_PROVIDER,
+    VALID_LLM_PROVIDERS,
+)
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
@@ -202,6 +208,118 @@ def _env(name: str, default: str = "") -> str:
     return os.environ.get(name, "").strip() or default
 
 
+@dataclass(frozen=True)
+class _ProviderEntry:
+    """One link in the chain, with the credentials it reads already decided.
+
+    ROADMAP item 81, 2026-09-22. The chain built on 09-21 walked VENDOR NAMES,
+    and a name was wired to one fixed set of environment variables. That is
+    what stopped the list being extended: two gateways cannot both be `openai`
+    when both would read LLM_BASE_URL and LLM_MODEL.
+
+    `label` is what the operator called this link and what stderr and the
+    warnings name. With two `openai` entries, "openai was dropped" does not
+    say which one.
+    """
+
+    kind: str
+    label: str
+    env_prefix: str
+    fallback_models: tuple[str, ...] = ()
+
+    def env(self, suffix: str, default: str = "") -> str:
+        return _env(f"{self.env_prefix}_{suffix}", default)
+
+
+def _resolve_provider_entries(
+    providers: list, fallback_models: list[str] | None
+) -> list[_ProviderEntry]:
+    """Normalises a config list of strings and/or mappings into entries.
+
+    A BARE STRING KEEPS EVERY VARIABLE IT HAD. `DEFAULT_ENV_PREFIXES` maps it
+    to the prefix the project has always used, so an existing config file
+    behaves identically and no deployment has to change to get here — the same
+    discipline as the 2026-09-15 list change.
+
+    `fallback_models` is the top-level `llm_fallback_models`, and it reaches
+    BARE STRING entries only. A single gateway is the case that field was
+    written for; once a chain holds two, a top-level list cannot say which
+    one it means, so a mapping entry gets only the order it declares.
+    """
+    resolved: list[_ProviderEntry] = []
+    for raw in providers:
+        if isinstance(raw, str):
+            kind = raw.strip().lower()
+            resolved.append(
+                _ProviderEntry(
+                    kind=kind,
+                    label=kind,
+                    env_prefix=DEFAULT_ENV_PREFIXES.get(kind, "LLM"),
+                    fallback_models=tuple(fallback_models or ()),
+                )
+            )
+            continue
+
+        entry = raw if isinstance(raw, dict) else raw.model_dump()
+        kind = str(entry.get("kind", "")).strip().lower()
+        own = entry.get("fallback_models")
+        resolved.append(
+            _ProviderEntry(
+                kind=kind,
+                label=str(entry.get("name") or kind).strip().lower(),
+                env_prefix=str(
+                    entry.get("env_prefix") or DEFAULT_ENV_PREFIXES.get(kind, "LLM")
+                ).strip().upper(),
+                # A MAPPING ENTRY DOES NOT INHERIT THE TOP-LEVEL LIST, and
+                # this is the one line of this change that driving found and
+                # the tests did not. `llm_fallback_models` holds OpenRouter
+                # model ids; a five-link chain built from the live config on
+                # 2026-09-22 handed all three to the `groq` entry, which
+                # would have asked Groq for "google/gemma-4-31b-it:free".
+                # A bare string still inherits it, which is the deployment
+                # shape the field was written for.
+                fallback_models=tuple(own or ()),
+            )
+        )
+
+    return resolved
+
+
+def _reject_colliding_entries(entries: list[_ProviderEntry]) -> None:
+    """Two links that would read each other's credentials, or the same link twice.
+
+    Both are always config mistakes and both were silent. Sharing a prefix is
+    legitimate for ONE case and the map is what says so: `gemini` and
+    `gemini-interactions` are one key reaching two APIs.
+    """
+    seen: dict[tuple[str, str], str] = {}
+    for entry in entries:
+        key = (entry.kind, entry.env_prefix)
+        if key in seen:
+            raise SystemExit(
+                f"llm_providers names {entry.kind!r} twice reading the same "
+                f"{entry.env_prefix}_* variables — the second link would be "
+                f"identical to the first. Give one its own env_prefix, or "
+                f"remove it."
+            )
+        seen[key] = entry.label
+
+    by_prefix: dict[str, list[_ProviderEntry]] = {}
+    for entry in entries:
+        by_prefix.setdefault(entry.env_prefix, []).append(entry)
+
+    for prefix, sharing in by_prefix.items():
+        families = {CREDENTIAL_FAMILIES.get(e.kind, e.kind) for e in sharing}
+        if len(families) > 1:
+            names = ", ".join(sorted(e.kind for e in sharing))
+            raise SystemExit(
+                f"llm_providers entries {names} would all read {prefix}_API_KEY "
+                f"and {prefix}_MODEL, so at least one would be built with "
+                f"another's credentials and fail at call time, after the "
+                f"attempt was spent. Give each its own env_prefix."
+            )
+
+
 def _build_llm_provider(
     *,
     thinking_level: str | None = None,
@@ -245,11 +363,11 @@ def _build_llm_provider(
     # list since 2026-09-15 with a validator saying only the first entry was
     # used; that validator's warning is what this removes.
     override = _env("LLM_PROVIDER")
-    names = (
-        [override.lower()]
-        if override
-        else [name.lower() for name in (providers or [DEFAULT_LLM_PROVIDER])]
+    entries = _resolve_provider_entries(
+        [override.lower()] if override else list(providers or [DEFAULT_LLM_PROVIDER]),
+        fallback_models,
     )
+    names = [entry.kind for entry in entries]
 
     # A NAME NOTHING CAN BUILD IS ALWAYS FATAL, checked before anything is
     # attempted. `_build_one_llm_provider` signals both "unknown name" and
@@ -266,34 +384,39 @@ def _build_llm_provider(
             f"{', '.join(VALID_LLM_PROVIDERS)}."
         )
 
+    # CHECKED BEFORE ANYTHING IS BUILT, for the same reason the name check is:
+    # a collision produces a provider that looks configured and fails on the
+    # call, which is the most expensive place to find out.
+    _reject_colliding_entries(entries)
+
     built = []
     unavailable: list[str] = []
-    for name in names:
+    for entry in entries:
         try:
             built.append(
-                _build_one_llm_provider(
-                    name,
-                    thinking_level=thinking_level,
-                    fallback_models=fallback_models,
-                )
+                _build_one_llm_provider(entry, thinking_level=thinking_level)
             )
         except SystemExit as e:
             # A SINGLE NAME KEEPS ITS OLD BEHAVIOUR EXACTLY: the message that
             # names the missing variable, and a non-zero exit. Nothing about a
             # one-provider deployment changes, which is most of them.
-            if len(names) == 1:
+            if len(entries) == 1:
                 raise
             # In a CHAIN a missing key means "this deployment does not have
             # that vendor", which is the operator's own answer to "if the user
             # has the right api keys" — not an error. Collected rather than
             # printed here so the order of the report follows the order of the
             # chain even when the first entry is the one that is missing.
-            unavailable.append(f"{name}: {e}")
+            unavailable.append(f"{entry.label}: {e}")
 
     if not built:
         raise SystemExit(
             "No LLM provider could be built from llm_providers "
-            f"{names}. Each was unavailable:\n  " + "\n  ".join(unavailable)
+            # THE LABELS, not the kinds: a chain of three gateways is three
+            # entries of kind `openai`, and ['openai', 'openai', 'openai']
+            # names none of them.
+            f"{[entry.label for entry in entries]}. Each was unavailable:\n  "
+            + "\n  ".join(unavailable)
         )
 
     for reason in unavailable:
@@ -320,10 +443,9 @@ def _build_llm_provider(
 
 
 def _build_one_llm_provider(
-    provider_name: str,
+    entry: _ProviderEntry,
     *,
     thinking_level: str | None = None,
-    fallback_models: list[str] | None = None,
 ):
     """One provider by name, raising SystemExit when its keys are absent.
 
@@ -332,22 +454,25 @@ def _build_one_llm_provider(
     stays the single place that knows which environment variable each vendor
     needs.
     """
-    if provider_name == "gemini":
-        api_key = _env("GEMINI_API_KEY")
+    if entry.kind == "gemini":
+        api_key = entry.env("API_KEY")
         if not api_key:
-            raise SystemExit("GEMINI_API_KEY environment variable is required (LLM_PROVIDER=gemini).")
+            raise SystemExit(
+                f"{entry.env_prefix}_API_KEY environment variable is required "
+                f"(llm_providers entry {entry.label!r})."
+            )
         return GeminiProvider(
             api_key=api_key,
-            model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+            model=entry.env("MODEL", DEFAULT_GEMINI_MODEL),
             thinking_level=thinking_level,
         )
 
-    if provider_name == "gemini-interactions":
-        api_key = _env("GEMINI_API_KEY")
+    if entry.kind == "gemini-interactions":
+        api_key = entry.env("API_KEY")
         if not api_key:
             raise SystemExit(
-                "GEMINI_API_KEY environment variable is required "
-                "(LLM_PROVIDER=gemini-interactions)."
+                f"{entry.env_prefix}_API_KEY environment variable is required "
+                f"(llm_providers entry {entry.label!r})."
             )
         # NO `thinking_level`. It is a `generationConfig` field on
         # `generateContent`; whether this API takes an equivalent is unmeasured,
@@ -355,32 +480,34 @@ def _build_one_llm_provider(
         # passing it — the run would look configured and behave otherwise.
         return GeminiInteractionsProvider(
             api_key=api_key,
-            model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+            model=entry.env("MODEL", DEFAULT_GEMINI_MODEL),
         )
 
-    if provider_name == "anthropic":
-        api_key = _env("LLM_API_KEY")
-        model = _env("LLM_MODEL")
+    if entry.kind == "anthropic":
+        api_key = entry.env("API_KEY")
+        model = entry.env("MODEL")
         if not api_key or not model:
             raise SystemExit(
-                "LLM_PROVIDER=anthropic requires LLM_API_KEY and LLM_MODEL to be set. "
+                f"llm_providers entry {entry.label!r} (anthropic) requires "
+                f"{entry.env_prefix}_API_KEY and {entry.env_prefix}_MODEL to be set. "
                 "See QUICKSTART.md for recommended model ids."
             )
         return AnthropicProvider(
             api_key=api_key,
             model=model,
             # Only needed for a proxy/gateway; defaults to api.anthropic.com.
-            base_url=_env("LLM_BASE_URL", DEFAULT_ANTHROPIC_BASE_URL),
-            max_tokens=int(_env("LLM_MAX_TOKENS", str(DEFAULT_ANTHROPIC_MAX_TOKENS))),
+            base_url=entry.env("BASE_URL", DEFAULT_ANTHROPIC_BASE_URL),
+            max_tokens=int(entry.env("MAX_TOKENS", str(DEFAULT_ANTHROPIC_MAX_TOKENS))),
         )
 
-    if provider_name == "openai":
-        base_url = _env("LLM_BASE_URL")
-        model = _env("LLM_MODEL")
+    if entry.kind == "openai":
+        base_url = entry.env("BASE_URL")
+        model = entry.env("MODEL")
         if not base_url or not model:
             raise SystemExit(
-                "LLM_PROVIDER=openai requires LLM_BASE_URL and LLM_MODEL to be set "
-                "(plus LLM_API_KEY for any hosted endpoint). "
+                f"llm_providers entry {entry.label!r} (openai) requires "
+                f"{entry.env_prefix}_BASE_URL and {entry.env_prefix}_MODEL to be set "
+                f"(plus {entry.env_prefix}_API_KEY for any hosted endpoint). "
                 "See QUICKSTART.md for per-service values."
             )
         # The gateway's OWN fallback list — item 81. `LLM_FALLBACK_MODELS`
@@ -389,26 +516,26 @@ def _build_one_llm_provider(
         # only as good as the routing behind it: without it OpenRouter may
         # serve one through an upstream that treats the JSON schema as a hint,
         # and the call is paid for and then fails validation.
-        configured = _env("LLM_FALLBACK_MODELS")
+        configured = entry.env("FALLBACK_MODELS")
         models = (
             [m.strip() for m in configured.split(",") if m.strip()]
             if configured
-            else list(fallback_models or [])
+            else list(entry.fallback_models)
         )
         return OpenAICompatProvider(
             # Empty is legitimate here: local runtimes like Ollama don't
             # need a key. Hosted endpoints will fail loudly on the first
             # call, which is clearer than guessing at intent up front.
-            api_key=_env("LLM_API_KEY"),
+            api_key=entry.env("API_KEY"),
             model=model,
             base_url=base_url,
-            json_mode=_env("LLM_JSON_MODE", "json_schema"),
+            json_mode=entry.env("JSON_MODE", "json_schema"),
             fallback_models=models,
             require_parameters=bool(models),
         )
 
     raise SystemExit(
-        f"Unknown LLM_PROVIDER {provider_name!r} — expected one of {', '.join(VALID_LLM_PROVIDERS)}."
+        f"Unknown LLM provider kind {entry.kind!r} — expected one of {', '.join(VALID_LLM_PROVIDERS)}."
     )
 
 

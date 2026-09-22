@@ -236,6 +236,48 @@ llm_providers:
 A provider whose key this deployment does not hold is dropped from the chain
 and said so on stderr, so you can name one before you have its key.
 
+**More than two, and more than one of a kind.** The entries above are
+shorthand: each reads the environment variables its vendor has always used,
+which means two OpenAI-compatible gateways would both read `LLM_BASE_URL` and
+`LLM_MODEL` and you would get the same endpoint twice. To chain several, give
+each one a name and its own variable prefix:
+
+```yaml
+llm_providers:
+  - gemini-interactions          # GEMINI_API_KEY, GEMINI_MODEL
+  - kind: openai
+    name: openrouter
+    env_prefix: OPENROUTER       # OPENROUTER_API_KEY / _BASE_URL / _MODEL
+    fallback_models:             # this gateway's own in-request order
+      - nvidia/nemotron-3-super-120b-a12b:free
+  - kind: openai
+    name: groq
+    env_prefix: GROQ             # GROQ_API_KEY / _BASE_URL / _MODEL
+  - kind: openai
+    name: together
+    env_prefix: TOGETHER
+```
+
+`kind` is one of the four names above. `name` is what the chain calls this
+link on stderr and in the warnings — with two `openai` entries, "openai was
+dropped" would not say which. `env_prefix` replaces `LLM` in every variable
+that entry reads: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`,
+`OPENROUTER_MODEL`, and optionally `OPENROUTER_JSON_MODE`.
+
+A few rules worth knowing before you hit them:
+
+- **A bare string keeps every variable it had.** Mixing the two forms in one
+  list is fine, and an existing config needs no change.
+- **The top-level `llm_fallback_models` reaches bare `openai` entries only.**
+  Once a chain holds two gateways it cannot say which it means, so a named
+  entry carries its own `fallback_models` or none.
+- **Two entries that would read the same variables are refused at startup**,
+  because one of them would be built with the other's key and model id and
+  fail on the call, after the attempt was spent. The one exception is
+  deliberate: `gemini` and `gemini-interactions` are one key reaching two
+  APIs, so chaining them to try the newer API and fall back to the older one
+  works as you would expect.
+
 Only a vendor being DOWN moves down the list — a timeout, a 429, a 5xx, or a
 402 on a metered gateway. A response that fails schema validation does not:
 the next model is handed the same prompt and the same schema, so it would fail

@@ -493,3 +493,211 @@ def test_a_misspelt_provider_in_a_chain_is_fatal_not_dropped(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
     with pytest.raises(SystemExit, match="Unknown LLM provider"):
         _build_llm_provider(providers=["gemini", "openai-compatible"])
+
+
+# ---------------------------------------------------------------------------
+# Per-entry credentials — ROADMAP item 81, 2026-09-22
+#
+# The chain built on 2026-09-21 walks a list of VENDOR NAMES, and each name
+# is wired to one fixed set of environment variables. That is what stops the
+# list being extended the way the operator asked for on 2026-09-22: "gemini
+# first, then openrouter, then another and another as long as I have api keys
+# and providers". Two gateways cannot both be `openai`, because they would
+# read the same LLM_API_KEY, LLM_BASE_URL and LLM_MODEL.
+# ---------------------------------------------------------------------------
+
+
+# These read `FallbackProvider._providers` directly. It is private and stays
+# private — the chain's ORDER is what these tests are about, and there is no
+# public way to see it. Widening the class for a test would be the tail
+# wagging the dog; CLAUDE.md asks before widening visibility, so this does
+# not.
+def _clear_llm_env(monkeypatch):
+    for var in (
+        "LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL",
+        "LLM_FALLBACK_MODELS", "GEMINI_API_KEY", "GEMINI_MODEL",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_two_gateways_each_read_their_own_credentials(monkeypatch):
+    """The ask itself: a chain of two OpenAI-compatible endpoints.
+
+    Before this, the second entry was unreachable — both would read
+    LLM_BASE_URL and LLM_MODEL, so the chain would hold two providers
+    pointing at the same endpoint with the same model.
+    """
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("OPENROUTER_MODEL", "or-model")
+    monkeypatch.setenv("GROQ_API_KEY", "groq-key")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("GROQ_MODEL", "groq-model")
+
+    built = _build_llm_provider(
+        providers=[
+            {"kind": "openai", "name": "openrouter", "env_prefix": "OPENROUTER"},
+            {"kind": "openai", "name": "groq", "env_prefix": "GROQ"},
+        ]
+    )
+
+    assert isinstance(built, FallbackProvider)
+    first, second = built._providers
+    assert (first.model, first.base_url) == ("or-model", "https://openrouter.ai/api/v1")
+    assert (second.model, second.base_url) == ("groq-model", "https://api.groq.com/openai/v1")
+    assert first.api_key != second.api_key
+
+
+def test_a_bare_string_entry_keeps_the_old_variables(monkeypatch):
+    """No config file has to change. The 2026-09-15 discipline, again."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("LLM_MODEL", "legacy-model")
+
+    built = _build_llm_provider(providers=["openai"])
+
+    assert built.model == "legacy-model"
+    assert built.base_url == "https://example.test/v1"
+
+
+def test_entries_sharing_an_env_prefix_are_fatal(monkeypatch):
+    """Always a config mistake, and silent before this.
+
+    `anthropic` and `openai` both read LLM_API_KEY and LLM_MODEL, so a chain
+    holding both BUILDS and then hands one of them the other's credentials —
+    failing at call time, after spending an attempt and a ledger row.
+    """
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("LLM_MODEL", "m")
+
+    with pytest.raises(SystemExit) as e:
+        _build_llm_provider(providers=["anthropic", "openai"])
+
+    assert "LLM" in str(e.value)
+    assert "anthropic" in str(e.value) and "openai" in str(e.value)
+
+
+def test_a_named_entry_whose_key_is_absent_is_dropped_by_its_name(monkeypatch, capsys):
+    """The warning must name the ENTRY, not the vendor.
+
+    With two `openai` entries, "openai was dropped" does not say which.
+    """
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("OPENROUTER_MODEL", "or-model")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+
+    built = _build_llm_provider(
+        providers=[
+            "gemini",
+            {"kind": "openai", "name": "groq", "env_prefix": "GROQ"},
+            {"kind": "openai", "name": "openrouter", "env_prefix": "OPENROUTER"},
+        ]
+    )
+
+    err = capsys.readouterr().err
+    # THE WARNING'S OWN SUBJECT, not merely the word somewhere in the line.
+    # A mutation replacing the label with the vendor survived the looser
+    # check on 2026-09-22, because the SystemExit message quoted underneath
+    # names the entry too — so "groq" appeared either way.
+    assert "groq:" in err
+    assert "openai:" not in err
+    assert type(built).__name__ == "FallbackProvider"
+    assert len(built._providers) == 2
+
+
+def test_fallback_models_belong_to_the_entry_that_uses_them(monkeypatch):
+    """Top-level `llm_fallback_models` cannot say WHICH gateway it means."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("OPENROUTER_MODEL", "or-model")
+    monkeypatch.setenv("GROQ_API_KEY", "k2")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("GROQ_MODEL", "groq-model")
+
+    built = _build_llm_provider(
+        providers=[
+            {
+                "kind": "openai", "name": "openrouter", "env_prefix": "OPENROUTER",
+                "fallback_models": ["a:free", "b:free"],
+            },
+            {"kind": "openai", "name": "groq", "env_prefix": "GROQ"},
+        ]
+    )
+
+    assert built._providers[0].fallback_models == ["a:free", "b:free"]
+    assert built._providers[1].fallback_models == []
+
+
+def test_one_vendor_two_apis_share_the_one_key(monkeypatch):
+    """The chain `CREDENTIAL_FAMILIES` exists to PERMIT.
+
+    `gemini` and `gemini-interactions` are one account reaching two APIs, so
+    they share GEMINI_API_KEY by design — trying the newer API and falling
+    back to the older one is the intended use. A rule that simply forbade a
+    shared prefix would ban it, and nothing caught that until this test: the
+    mutation putting `gemini-interactions` in its own family survived a full
+    suite on 2026-09-22.
+    """
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "one-key")
+
+    built = _build_llm_provider(providers=["gemini-interactions", "gemini"])
+
+    first, second = built._providers
+    assert type(first).__name__ == "GeminiInteractionsProvider"
+    assert type(second).__name__ == "GeminiProvider"
+    assert first.api_key == second.api_key == "one-key"
+
+
+def test_a_named_entry_does_not_inherit_the_top_level_model_order(monkeypatch):
+    """Found by DRIVING the real config, not by the tests above — 2026-09-22.
+
+    `llm_fallback_models` is OpenRouter's in-request `models` array, holding
+    OpenRouter model ids. A five-link chain built from the live config handed
+    all three of them to the `groq` entry, which would ask Groq for
+    "google/gemma-4-31b-it:free".
+
+    The top-level field exists for the one deployment shape it was written
+    for: a single bare `openai` entry. A BARE STRING still inherits it, so
+    nothing in an existing config changes. A MAPPING ENTRY names its own
+    gateway, so it gets only what it declares — which is the whole reason the
+    field moved onto the entry.
+    """
+    _clear_llm_env(monkeypatch)
+    for prefix in ("OPENROUTER", "GROQ"):
+        monkeypatch.setenv(f"{prefix}_API_KEY", "k")
+        monkeypatch.setenv(f"{prefix}_BASE_URL", f"https://{prefix.lower()}.test/v1")
+        monkeypatch.setenv(f"{prefix}_MODEL", f"{prefix.lower()}-model")
+
+    built = _build_llm_provider(
+        providers=[
+            {"kind": "openai", "name": "openrouter", "env_prefix": "OPENROUTER"},
+            {"kind": "openai", "name": "groq", "env_prefix": "GROQ"},
+        ],
+        fallback_models=["nvidia/nemotron:free", "google/gemma:free"],
+    )
+
+    openrouter, groq = built._providers
+    assert openrouter.fallback_models == []
+    assert groq.fallback_models == []
+
+
+def test_a_bare_openai_entry_still_inherits_the_top_level_model_order(monkeypatch):
+    """The other half, and the reason the field still exists at top level."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("LLM_MODEL", "nvidia/nemotron:free")
+
+    built = _build_llm_provider(
+        providers=["openai"], fallback_models=["nvidia/nemotron:free", "google/gemma:free"]
+    )
+
+    assert built.fallback_models == ["nvidia/nemotron:free", "google/gemma:free"]

@@ -104,6 +104,52 @@ class AcknowledgedGap(BaseModel):
         )
 
 
+class LLMProviderEntry(BaseModel):
+    """One link in the fallback chain that names its own credentials.
+
+    ROADMAP item 81, 2026-09-22, from the operator: *"I want to be able to
+    have multiple sources in cascading order. So gemini first, then
+    openrouter, then another and another as long as I have api keys and
+    providers."*
+
+    The chain itself already walked a list of any length. What stopped it
+    being extended was that a VENDOR NAME decided which environment variables
+    were read, so two OpenAI-compatible gateways were indistinguishable: both
+    would read LLM_BASE_URL and LLM_MODEL and the chain would hold the same
+    endpoint twice.
+
+    A BARE STRING IS STILL VALID AND STILL MEANS WHAT IT MEANT. This list
+    accepts strings and mappings together, so no existing config file has to
+    change — the same discipline as the 2026-09-15 change that made the field
+    a list in the first place.
+    """
+
+    # The matrix row: vendor plus API. What `VALID_LLM_PROVIDERS` names.
+    kind: str
+    # What this link is CALLED in warnings, on stderr and in the record. With
+    # two `openai` entries, "openai was dropped" does not say which one.
+    name: str | None = None
+    # The credential namespace: OPENROUTER means OPENROUTER_API_KEY,
+    # OPENROUTER_BASE_URL, OPENROUTER_MODEL. Defaults per kind to the names
+    # this project has always used.
+    env_prefix: str | None = None
+    # The gateway's OWN in-request order (OpenRouter's `models`), which is a
+    # different order from this chain. It belongs to the entry because once a
+    # chain holds two gateways, a top-level list cannot say which it means.
+    fallback_models: list[str] | None = None
+
+    @field_validator("kind")
+    @classmethod
+    def _known_kind(cls, v: str) -> str:
+        kind = v.strip().lower()
+        if kind not in VALID_LLM_PROVIDERS:
+            raise ValueError(
+                f"unknown llm_providers kind {v!r}: expected "
+                f"{', '.join(VALID_LLM_PROVIDERS)}."
+            )
+        return kind
+
+
 class LocationConfig(BaseModel):
     region_name: str
     primary_place_name: str
@@ -183,7 +229,7 @@ class LocationConfig(BaseModel):
     # the validator says so out loud, so the shape is honest about what it
     # does; adding the fallback later is then a change to behaviour and not
     # to everyone's config file.
-    llm_providers: list[str] = [DEFAULT_LLM_PROVIDER]
+    llm_providers: list[str | LLMProviderEntry] = [DEFAULT_LLM_PROVIDER]
 
     # The models an OpenRouter-style gateway should try, in order, INSIDE one
     # request — ROADMAP item 81, 2026-09-21. Distinct from `llm_providers`
@@ -201,7 +247,7 @@ class LocationConfig(BaseModel):
 
     @field_validator("llm_providers")
     @classmethod
-    def _known_providers(cls, v: list[str]) -> list[str]:
+    def _known_providers(cls, v: list) -> list:
         """Rejects a name nothing can build, and says that only the first is
         used.
 
@@ -225,15 +271,22 @@ class LocationConfig(BaseModel):
                 f"expected one of {', '.join(VALID_LLM_PROVIDERS)}."
             )
 
-        unknown = [name for name in v if name.lower() not in VALID_LLM_PROVIDERS]
+        # A MAPPING ENTRY VALIDATES ITS OWN `kind`, so this checks only the
+        # bare strings. Both paths reject a name nothing can build, and for
+        # the same reason: caught at load it names the valid set, where a
+        # typo reaching the builder would be dropped from the chain in
+        # silence and the deployment would run shorter than its config says.
+        unknown = [
+            name for name in v
+            if isinstance(name, str) and name.lower() not in VALID_LLM_PROVIDERS
+        ]
         if unknown:
             raise ValueError(
                 f"unknown llm_providers {unknown}: expected "
                 f"{', '.join(VALID_LLM_PROVIDERS)}."
             )
 
-
-        return [name.lower() for name in v]
+        return [name.lower() if isinstance(name, str) else name for name in v]
 
     # When a LATER issuance of a day may spend an LLM call — ROADMAP items 121
     # and 120. Observations refresh in code on every run regardless; this

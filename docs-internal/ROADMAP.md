@@ -57,13 +57,9 @@ while model cycles and the station archive are UTC.
 
 ### What is next, and why
 
-0. **AFTER 162, RETURN TO 81 — AND THE OPERATOR WANTS ITS BEHAVIOUR CHANGED.**
-   Noted 2026-09-22: *"Then we can return to 81... and I want to change the
-   way it behaves."* WHAT the change is has not been said yet, so do not
-   design one from the item as written — ask first. The item currently
-   describes a vendor chain walked in order, with OpenRouter's own in-request
-   `models` fallback inside the second link. Read `config/location.yaml`'s
-   `llm_providers` and `llm_fallback_models` before the conversation.
+0. **DONE 2026-09-22 — the behaviour change to 81 was cascading past two**,
+   and it shipped as per-entry credentials. See item 81's own "Cascading past
+   two" section. The app half is item 168 and is NOT started.
 1. **Arm the fallback chain — item 81, and it is not an agent's to do.** The
    evening run of 09-21 failed on four Gemini 503s and no forecast went out.
    The chain is configured and inert because `LLM_API_KEY` does not exist;
@@ -11271,12 +11267,80 @@ that only answers 503, and both mutations bite.
 The supported matrix itself, which is this item's actual deliverable and needs
 the live runs above. `llm_providers` naming both `openai` and `anthropic`
 cannot be expressed, because `LLM_API_KEY`, `LLM_MODEL` and `LLM_BASE_URL` are
-single-valued and shared; Gemini to OpenRouter does not collide, so this is
-recorded rather than fixed. And the chain is INERT on the live deployment
+single-valued and shared; Gemini to OpenRouter does not collide, so this was
+recorded rather than fixed — **and it is fixed now, in the section below.**
+And the chain is INERT on the live deployment
 until `LLM_API_KEY` is set as a secret with `LLM_BASE_URL` and `LLM_MODEL` as
 repository variables — until then every run prints that the `openai` entry was
 dropped, which is the honest reading of a fallback that is configured and not
 yet reachable.
+
+### Cascading past two — per-entry credentials, 2026-09-22
+
+The operator: *"I want to be able to have multiple sources in cascading order.
+So gemini first, then openrouter, then another and another as long as I have
+api keys and providers."*
+
+**The chain length was never the limit.** `llm_providers` already took a list
+of any length, `FallbackProvider` already walked it, and a missing key already
+dropped a link with a warning. What stopped the list being extended is that a
+VENDOR NAME decided which environment variables were read:
+
+| kind | variables, before |
+|---|---|
+| `gemini`, `gemini-interactions` | `GEMINI_API_KEY`, `GEMINI_MODEL` |
+| `anthropic` | `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_MAX_TOKENS` |
+| `openai` | `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, … |
+
+So a deployment could hold exactly ONE OpenAI-compatible gateway. OpenRouter
+then Groq then Together is four words to say and was unrepresentable: all
+three are `openai`, and all three would read the same three variables.
+
+**An entry now names its own credentials.** A mapping entry carries `kind`
+(the matrix row), `name` (what warnings and stderr call it), `env_prefix` (the
+credential namespace) and its own `fallback_models`. A BARE STRING still means
+exactly what it meant and reads exactly the variables it read, so no config
+file had to change — the same discipline as the 2026-09-15 change that made
+the field a list.
+
+**The collision recorded above is now refused at startup.** `anthropic` and
+`openai` sharing `LLM_*` was never a deployment anyone ran, which is the only
+reason it was never seen: the chain BUILDS, hands one of them the other's key
+and model id, and fails on the call, after the attempt is spent and the ledger
+row written. `CREDENTIAL_FAMILIES` is what makes the refusal precise rather
+than a blanket ban on a shared prefix, because one shared prefix is
+deliberate: `gemini` and `gemini-interactions` are one key reaching two APIs,
+and chaining them to try the newer API and fall back to the older one is the
+intended use. That case had no test until a mutation moved
+`gemini-interactions` into its own family and a full suite stayed green.
+
+**One defect found by DRIVING, not by the tests.** A five-link chain built
+from the live config handed the top-level `llm_fallback_models` — three
+OpenRouter model ids — to the `groq` entry, which would have asked Groq for
+`google/gemma-4-31b-it:free`. The unit test that was supposed to cover this
+passed because it never had a top-level list present at the same time as a
+mapping entry that omitted its own. The rule is now: the top-level field
+reaches BARE STRING entries only, which is the single-gateway shape it was
+written for.
+
+The tests hand the builder plain dicts; the deployment hands it pydantic
+objects that came out of YAML. That seam is where this repo's inert-field
+defects have all lived, and `tools/` has no driver for it because
+`drive_forecast_cli.py` injects a `FakeLLMProvider` and never builds one. The
+five-link drive was a throwaway script; if this area is touched again, make it
+a real one.
+
+**Seven mutations, seven bites** after the two gaps above were closed.
+
+**What this does NOT do.** It does not touch the supported matrix, which is
+the rest of this item. A longer chain makes it MORE likely a run is served by
+a combination nobody validated, so the degradation this item already specifies
+gets more valuable, not less. `LLM_PROVIDER` still selects exactly one. And
+the chain is still inert until the keys exist, which is the operator's alone.
+
+The app side is NOT this change — see item 168.
+
+---
 
 ## 82. Hazards nobody's model forecasts, and the duplicate-warning problem · **Planned**
 
@@ -26012,3 +26076,46 @@ nothing now, with one real source, and is the difference between slotting an
 agency in later and an archaeology exercise. It does NOT add a config field:
 a setting with one possible value is speculative, and item 11's ladder should
 decide the shape rather than this item guessing it.
+
+---
+
+## 168. The app can hold one key, so it cannot cascade · **Open, raised 2026-09-22**
+
+Item 81's chain is a pipeline feature. The Flutter app has its own provider
+layer and it is single-valued end to end:
+
+- `lib/data/key_store.dart` — `read()` / `write(String apiKey)` / `clear()`
+  against ONE storage key. Not a map, not per-provider.
+- `lib/data/provider_factory.dart` — `buildLlmProvider(settings, apiKey)`
+  switches on `settings.provider`, a single name.
+- `lib/data/forecast_runner.dart` — has no fallback path.
+
+So a reader picks one vendor and one key, and a bad night for that vendor is
+a night with no forecast — the failure item 81 measured on the pipeline side
+(five 500s and 503s in 29 runs at the 15:01Z slot, one-sided Fisher p =
+0.038), with no second link to take the shed calls.
+
+**What it would take**, scoped when the operator chose pipeline-first on
+2026-09-22:
+
+1. `KeyStore` keyed by provider rather than holding one value. This is the
+   part with a migration: a key already in secure storage has to keep working
+   and end up attributed to the vendor it belongs to.
+2. `AppSettings` carrying an ordered list instead of `provider` + one model.
+3. `forecast_runner` falling through on `LlmUnavailableError` — the same
+   judgement the pipeline's `FallbackProvider` makes, and `olw_core` already
+   has the error class, so the rule does not need re-deciding.
+4. Onboarding and settings UI for entering several keys and ordering them,
+   which is the bulk of it and the part this repo has least of.
+
+`olw_core` holds the provider classes, so some of this is a shared change and
+lands with a re-pin. Check whether `FallbackProvider` itself is worth porting
+before writing a Dart one.
+
+**Do not start this by porting the pipeline's config shape.** The app has no
+YAML and no environment variables; `env_prefix` is meaningless there. What
+carries over is the CONCEPT — an ordered list of links, each with its own
+credential, dropped when the credential is absent — and the one rule worth
+copying exactly is which failures fall through (item 81: vendor down, not our
+prompt or our schema).
+

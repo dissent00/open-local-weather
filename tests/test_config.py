@@ -210,3 +210,49 @@ def test_the_high_and_onset_bands_resolve_field_by_field(tmp_path):
     assert got.high_c == 1.0
     assert got.onset_min == DeviationBands().onset_min
     assert got.low_c == DeviationBands().low_c
+
+
+def test_a_mapping_entry_loads_beside_a_bare_string(tmp_path):
+    """Mixed forms in one list — ROADMAP item 81, 2026-09-22.
+
+    The chain's first link is the incumbent named the way it always was; the
+    ones after it name their own credentials. Both have to load from the same
+    YAML list or the change would force every config file to be rewritten.
+    """
+    from openlocalweather.config import LLMProviderEntry, load_location_config
+
+    src = (Path("config/location.yaml")).read_text()
+    src = src.replace(
+        "  llm_providers:\n    - gemini-interactions\n",
+        "  llm_providers:\n"
+        "    - gemini-interactions\n"
+        "    - kind: openai\n"
+        "      name: openrouter\n"
+        "      env_prefix: OPENROUTER\n"
+        "      fallback_models:\n"
+        "        - a:free\n",
+        1,
+    )
+    path = tmp_path / "location.yaml"
+    path.write_text(src)
+
+    cfg = load_location_config(str(path))
+    first, second = cfg.llm_providers[0], cfg.llm_providers[1]
+
+    assert first == "gemini-interactions"
+    assert isinstance(second, LLMProviderEntry)
+    assert (second.kind, second.name, second.env_prefix) == (
+        "openai", "openrouter", "OPENROUTER",
+    )
+    assert second.fallback_models == ["a:free"]
+
+
+def test_a_mapping_entry_with_an_unknown_kind_is_rejected_at_load():
+    """Same guard the bare strings have had, on the other form."""
+    import pytest
+    from pydantic import ValidationError
+
+    from openlocalweather.config import LLMProviderEntry
+
+    with pytest.raises(ValidationError, match="unknown llm_providers kind"):
+        LLMProviderEntry(kind="opeanai")

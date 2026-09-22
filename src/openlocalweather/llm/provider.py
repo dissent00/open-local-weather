@@ -36,6 +36,35 @@ from pydantic import BaseModel
 # Groq, Together, vLLM and Ollama — see that module's docstring.
 VALID_LLM_PROVIDERS = ("gemini", "gemini-interactions", "anthropic", "openai")
 
+# WHICH CREDENTIALS EACH KIND READS — ROADMAP item 81, 2026-09-22.
+#
+# Two entries in a chain may share an environment prefix only when they are
+# the same vendor holding the same account: `gemini` and `gemini-interactions`
+# are one key reaching two APIs, and chaining them is the intended way to try
+# the newer API and fall back to the older one.
+#
+# `anthropic` and `openai` are NOT that, and before this map they collided in
+# silence. Both read LLM_API_KEY and LLM_MODEL, so a chain naming both built
+# successfully and handed one of them the other's key and model id — failing
+# at call time, after the attempt was spent and the ledger row written. No
+# deployment had both, which is the only reason it was never seen.
+CREDENTIAL_FAMILIES = {
+    "gemini": "gemini",
+    "gemini-interactions": "gemini",
+    "anthropic": "anthropic",
+    "openai": "openai",
+}
+
+# The prefix each kind reads when an entry does not name one. These are the
+# variable names the project has always used, so a chain of bare strings
+# reads exactly what it read before.
+DEFAULT_ENV_PREFIXES = {
+    "gemini": "GEMINI",
+    "gemini-interactions": "GEMINI",
+    "anthropic": "LLM",
+    "openai": "LLM",
+}
+
 # The fallback for a deployment whose config does not name one. Gemini because
 # it is the one with a free tier, and this project exists for people who will
 # not be holding a paid API key.
