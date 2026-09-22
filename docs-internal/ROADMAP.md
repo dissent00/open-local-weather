@@ -35,6 +35,19 @@ pipeline**, not by any test: the anchors on the wrong pydantic class, and
 has a run-level test that reads the value back off disk. That is the habit
 worth carrying, not the fixes.
 
+**Item 160 — the wind bearing is per anchor.** The old block asked whether ONE
+bearing held for the whole day and answered null on 18 of 19 issuances, then
+ordered the narrative silent while the tile printed "midday SW". Midday agrees
+on 15 of 17 days and is southwesterly on every one. Both now read the same
+`wind_anchors` call.
+
+**Item 166 — the docs say a forecast is a forecast.** Two sweeps found 55
+places asserting the old morning/evening design, 16 of them broken rather than
+stale: `QUICKSTART.md` named two Apps Script functions that do not exist, and
+`ARCHITECTURE.md` described prompt behaviour the test suite forbids. The day
+boundary was undocumented entirely — the record is keyed on the LOCAL day
+while model cycles and the station archive are UTC.
+
 ### What is next, and why
 
 1. **Arm the fallback chain — item 81.** The evening run of 09-21 failed on
@@ -42,10 +55,12 @@ worth carrying, not the fixes.
    inert because `LLM_API_KEY` does not exist. Nothing else on this list
    matters as much as a forecast that does not appear, and the work is three
    repository settings the operator must make.
-2. **Items 160 and 163**, both found by item 77's harness and both cheap: a
-   direction block ordering silence beside one handing over a direction
-   clause, and a ground-AQI block asserting no station is timestamped while
-   three are. The second publishes a falsehood under rule 1.
+2. **Item 163 — the prompt publishes a falsehood.** GROUND AQI LAST KNOWN
+   says "no station has a timestamped reading at all" while three stations
+   carry `measured_at` and `hours_old`; the condition it means to test is "no
+   station has a numeric AQI". Rule 1 orders the model to state it as given.
+   Re-checked on the 2026-09-22 prompt and still live. Cheap, and the only
+   open item that makes the forecast say something untrue.
 3. **Item 161** — `uv_index_max` is one model's number the forecaster is
    asked to re-type. Measure the drift first; it is one script.
 4. **Item 162** — narrative-section instructions carried in the judgment
