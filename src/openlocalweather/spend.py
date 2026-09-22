@@ -234,10 +234,14 @@ def calls_in_window(
     also works on rows written before this existed, which a new field would
     not.
 
-    The case it cannot see is the same model reached through two different
-    hosts; those two links would share a budget they do not share in life.
-    Recorded rather than solved: it needs the ledger to name the chain ENTRY,
-    which is item 171's business and wants doing once for both.
+    TWO CASES IT CANNOT SEE, and the second is the one this deployment will
+    meet first. The same model reached through two hosts shares a budget it
+    does not share in life — and, the other way round, one gateway serving
+    several models gets a budget PER MODEL: OpenRouter's in-request `models`
+    list means one entry can serve three, each counted against its own
+    ceiling, while OpenRouter's free tier is 50 a day across the ACCOUNT.
+    Recorded rather than solved: both want the ledger to name the chain
+    ENTRY, which is item 171's business and wants doing once for both.
 
     `model` alone is ignored without a `provider` — a model id is not an
     account, and narrowing by one without the other would invent a budget

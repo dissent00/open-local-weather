@@ -25996,10 +25996,23 @@ provider rather than in its constructor because the four provider classes are
 `olw_core`'s, shared verbatim with the app, and a ceiling is a deployment's
 concern.
 
-**The case it cannot see** is the same model reached through two hosts; those
-links share a budget they do not share in life. Left rather than solved,
-because fixing it wants the ledger naming the chain ENTRY — item 171 — and
-that should be done once for both.
+**Two cases it cannot see**, both from the same root — the count keys on
+(class, model) while a ceiling belongs to an ACCOUNT:
+
+- The same model reached through two hosts shares one budget it does not
+  share in life.
+- THE OPPOSITE, AND THE ONE THIS DEPLOYMENT WILL MEET FIRST: one gateway
+  serving several models gets a budget PER MODEL. OpenRouter's in-request
+  `models` list means a single entry can serve nemotron, dots-3-note and
+  nex-n2.5-pro, each counted separately against its own 20 — while
+  OpenRouter's free tier is 50 a day across the ACCOUNT. Three models could
+  spend 60 against a 50 limit and this cap would not notice.
+
+Neither is urgent at four calls a day, and both want the same repair: the
+ledger naming the chain ENTRY rather than the class it was built from, so a
+budget follows the credential. That is item 171, and it should be done once
+for both. Until then the per-entry number is a floor on honesty rather than a
+guarantee, and the comment in `calls_in_window` says so.
 
 Six mutations, six bites. Three survived the first pass and all three were
 in the config-to-enforcement path: the limit stored and read by nothing. That
