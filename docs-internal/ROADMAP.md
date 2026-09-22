@@ -26079,7 +26079,7 @@ decide the shape rather than this item guessing it.
 
 ---
 
-## 168. The app can hold one key, so it cannot cascade · **Open, raised 2026-09-22**
+## 168. The app can hold one key, so it cannot cascade · **SHIPPED 2026-09-22 — ensemble 8fcbfc5, and no olw_core change was needed**
 
 Item 81's chain is a pipeline feature. The Flutter app has its own provider
 layer and it is single-valued end to end:
@@ -26108,9 +26108,12 @@ a night with no forecast — the failure item 81 measured on the pipeline side
 4. Onboarding and settings UI for entering several keys and ordering them,
    which is the bulk of it and the part this repo has least of.
 
-`olw_core` holds the provider classes, so some of this is a shared change and
-lands with a re-pin. Check whether `FallbackProvider` itself is worth porting
-before writing a Dart one.
+**`FallbackProvider` was already there.** `olw_core` exports it and
+`LlmUnavailableError`, so nothing shared changed and no re-pin was needed —
+the scope guessed above was wrong in the app's favour. What the work actually
+was: a keyed `KeyStore`, a `ProviderEntry` list on `AppSettings`, a chain
+builder, and the screens. See ensemble's own ROADMAP item 24 for what shipped,
+including the two defects reading the diff found.
 
 **Do not start this by porting the pipeline's config shape.** The app has no
 YAML and no environment variables; `env_prefix` is meaningless there. What
