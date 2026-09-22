@@ -384,11 +384,19 @@ def test_the_live_config_is_what_we_think_it_is():
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at
     # the gateway, on the day the primary was already down.
+    # THE SECOND AND THIRD TRIES. The first is `LLM_MODEL`, which the request
+    # prepends — naming it here too would send it twice. Both of these carry
+    # `structured_outputs` and `response_format` on OpenRouter's list, which
+    # is what `require_parameters` restricts routing to; `gemma-4-31b` was
+    # dropped 2026-09-22 for advertising only the second.
     assert live.llm_fallback_models == [
-        "nvidia/nemotron-3-super-120b-a12b:free",
         "dots-studio/dots-3-note-preview:free",
-        "google/gemma-4-31b-it:free",
+        "nex-agi/nex-n2.5-pro:free",
     ]
+    # FREE TIERS ONLY — the operator's constraint, so that anyone can run
+    # this configuration without an account that bills. A paid id landing
+    # here should be a deliberate decision, not a drift.
+    assert all(m.endswith(":free") for m in live.llm_fallback_models)
 
 
 # ---------------------------------------------------------------------------

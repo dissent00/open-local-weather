@@ -297,6 +297,13 @@ fourth gateway needs a config entry and its two variables and nothing else.
 Names outside that shape — `WAQI_TOKEN`, `LLM_PROVIDER`, the repository's own
 `github_token` — are deliberately not passed.
 
+**This deployment uses free tiers only**, and that is deliberate rather than
+thrifty: anyone should be able to run the shipped configuration without an
+account that bills. Pick a model that advertises BOTH `structured_outputs`
+and `response_format` on OpenRouter's model list — this project sends a
+strict JSON schema and also sets `require_parameters`, so an upstream that
+only honours the loose form is skipped rather than used.
+
 **Leave `LLM_PROVIDER` unset.** It overrides the file and selects exactly ONE
 provider, which is what you want for a one-off run against a named endpoint
 and is the quickest way to silently disable a chain you just configured.

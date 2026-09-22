@@ -207,10 +207,34 @@ location:
   #
   # The free tier allows 20 requests a minute and 50 a day, against the four
   # calls a day this deployment makes, so the ceiling is not the constraint.
+  # FREE TIERS ONLY, AND THAT IS A PROJECT CONSTRAINT RATHER THAN A BUDGET.
+  # Stated by the operator 2026-09-22: "think of the OLW user with limited
+  # resources". Anyone can run this deployment's exact configuration without
+  # an account that bills, and a fallback that quietly costs money would make
+  # that untrue for the reader who most needs it to hold. The paid options
+  # were priced the same day — the chain fires only when the primary is down,
+  # a few tens of runs a year, so the bill would have been under a dollar —
+  # and the constraint is not about the amount.
+  #
+  # THE FIRST LINK IS `LLM_MODEL`, not this list. The request carries
+  # `models: [LLM_MODEL, *these]`, so these are the SECOND and THIRD tries
+  # and naming the primary here again would just send it twice.
+  #
+  # Both carry `structured_outputs` AND `response_format` on OpenRouter's own
+  # model list, checked 2026-09-22. That pairing is the filter that matters:
+  # `require_parameters` is sent whenever this list is non-empty, so routing
+  # is restricted to upstreams that honour the schema, and a model without
+  # strict support is dead weight in the list rather than a safety net.
+  #
+  # `google/gemma-4-31b-it:free` WAS THIRD AND WAS DROPPED for exactly that:
+  # it advertises `response_format` and NOT `structured_outputs`. It was
+  # chosen on 09-21 as "the last resort of the three" when the free set was
+  # thinner; `nex-n2.5-pro` now does the same job without the caveat.
+  # `qwen/qwen3.8-27b:free` is strict but does not advertise
+  # `response_format` at all, which is the field this project actually sends.
   llm_fallback_models:
-    - "nvidia/nemotron-3-super-120b-a12b:free"
     - "dots-studio/dots-3-note-preview:free"
-    - "google/gemma-4-31b-it:free"
+    - "nex-agi/nex-n2.5-pro:free"
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   # The national CAP warning feed — ROADMAP item 2. Verified live
