@@ -9838,6 +9838,24 @@ not in the session that built it.
 >    covering it, and make the reader report the line number of every block
 >    BEFORE it writes anything, so a short read is visible instead of
 >    arriving disguised as a data gap.
+> **`tools/harness_inputs.py` BUILDS THE PAIR NOW** — added 2026-09-22, after
+> three runs assembled by hand each got something wrong. It takes a date and
+> an output directory, renders the system prompt with production flags, and
+> appends a reconstructed FORECASTER'S CALL to the archived user message. Two
+> things it gets right that hand assembly did not:
+>
+> - **`extended_properties` is reconstructable and must not be left empty.**
+>   The blend's own Day+3 and Day+7 commitment is on the prediction row as the
+>   `olw_blend` model. Left empty, a reader reports the Extended Outlook as
+>   narrating a call that does not exist, which is an artefact and wastes the
+>   only part of the read that judges that section.
+> - **It WARNS when the archive predates a prompt change.** The archive is the
+>   prompt as it was built that day, so a block edited since reproduces in its
+>   OLD form, silently, and the reader audits a prompt that no longer exists.
+>   There is no general fix — the guidance inputs are not stored, so the user
+>   message cannot be rebuilt — so it names the stale blocks and says to splice
+>   the current one in or wait for a fresher archive.
+>
 > **STEP 2 IS WRITTEN FOR THE JUDGMENT CALL. For the NARRATIVE call the
 > archived `user_prompt` is the WRONG INPUT** — added 2026-09-22 after it
 > wasted a whole read. `build_narrative_user_prompt` APPENDS the judgment
@@ -25378,6 +25396,26 @@ block it wrote *"Wind southwesterly by midday"*, named no direction at either
 null anchor, used neither banned word, and reported that it did not have to
 guess. The rule it broke was present and correct in both runs; what changed is
 that there is now something true it is allowed to say.
+
+**A SECOND HARNESS RUN ON THE SHIPPED CODE SAYS THE FIX PERMITS BUT DOES NOT
+COMPEL.** The first run, on the same worker, wrote *"Wind southwesterly by
+midday"* and used the bearing. The second wrote *"Gusty winds reach 37 km/h
+(20 kt), concentrated through the afternoon and evening hours"* and named no
+bearing at all, with the block offering `"midday": "SW"` in front of it.
+
+Neither is a violation — silence was always allowed — but it is worth being
+plain about what changed. The old block FORBADE naming the one thing that was
+known. The new one ALLOWS it. Nothing requires it, and on one of two runs the
+model declined.
+
+**Whether it should be required is the operator's call and is not made here.**
+The case for requiring it: midday agrees on 15 of 17 days, is southwesterly on
+every one, and is the hour a boater is asking about, so a forecast omitting it
+is discarding the most reliable direction fact of the day. The case against: a
+mandate is a rule, rules have costs, and the secondary point's timeline already
+names a bearing for the water in its own section — so a reader who gets "SSW by
+midday" for the Gulf and nothing for ashore may be reading a real difference
+rather than a gap.
 
 **Not checked.** No live run has used it; the first is today at 15:01.
 
