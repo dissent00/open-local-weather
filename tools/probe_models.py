@@ -33,6 +33,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from openlocalweather.config import load_location_config
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
+from openlocalweather.pipeline import attach_spend_cap
 from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
 from openlocalweather.llm.schema import GeminiNarrativeResponse
 
@@ -94,6 +95,15 @@ def main() -> int:
         provider = OpenAICompatProvider(
             api_key=key, model=model, base_url=BASE_URL,
             json_mode="json_schema", require_parameters=True,
+        )
+        # COUNTED, like every other caller that reaches a model. These are
+        # free endpoints and the temptation is to skip it, which is exactly
+        # the reasoning that left `olw replay` uncounted while printing that
+        # it was counted. A probe that loops on a retry storm should hit the
+        # same ceiling a forecast would.
+        attach_spend_cap(
+            provider, ROOT / "data", max_calls=cfg.max_llm_calls_per_24h,
+            purpose="probe",
         )
         try:
             got = provider.generate(system, user, GeminiNarrativeResponse)
