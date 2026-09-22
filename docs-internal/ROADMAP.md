@@ -25186,6 +25186,64 @@ own `_tiles()`. Until that lands the app is the one surface still composing
 for itself, which is the situation this step exists to end.
 
 
+### Step 6 part 3 SHIPPED 2026-09-22 — the mailer renders what it is handed
+
+The Apps Script mailer in `mailer/` is the third renderer, and the one that
+cannot run the composer: it fetches `data/log/<date>.json` from
+raw.githubusercontent and renders it in JavaScript inside Google's own
+infrastructure. It held its own hand-maintained list of which fields to show.
+
+**Its own files record what that cost.** Sunrise and sunset reached the site
+on 2026-08-22; the mailer was edited on 08-31, did not pick them up, and went
+TWENTY-THREE DAYS rendering an email the site had outgrown, while
+`buildStatGridHtml`'s comment claimed "same fields". The harness could not
+catch it, because its fixture was frozen eleven days before the fields
+existed.
+
+**So the entry now publishes its composed tiles.** `_with_tiles` attaches
+`compose_tiles`' output at both of `_compose_log_entry`'s return paths — both,
+because a re-issue merges into the existing entry and must recompose rather
+than inherit the morning's. `buildStatGridHtml` renders that list and knows no
+field name at all. A seventh tile added upstream arrives in the email without
+an edit.
+
+**Stored derived data, deliberately**, on the same argument as
+`temp_high_low_display`: the alternative is a FOURTH implementation of the
+composer after Python, Dart and the page, and this file is the evidence for
+what that costs. One subtlety recorded beside the field: the page composes at
+render time, so re-rendering an archived day gives it today's composition
+while the stored field preserves the day's own. They cannot disagree in
+practice, since the mailer only ever sends the current day.
+
+**The harness check that named fields is gone.** It asserted the words
+"Sunrise" and "Sunset" — it would have caught that one field and no other.
+It now asserts that every tile the entry carries appears with every one of
+its lines, and that a supporting line is not rendered as a reading. The
+fixture was refreshed from the real 2026-09-22 entry, which is what the old
+check's own comment asked for and what makes the new one able to fail.
+
+**One test was passing on an accident** and broke when the fixture became
+real: the clean-run check used the fixture directly, which only worked while
+the captured day happened to carry no degradations. It now builds its own
+clean entry.
+
+**Verified.** 1,546 Python, 216 Dart, the mailer harness green. Three
+mutations bit: rendering only the first tile, rendering a supporting line as
+a reading, and deleting the pre-2026-09-22 fallback. A fourth was withdrawn
+as badly chosen — it changed no behaviour for the case it claimed to test.
+Driven through the real CLI: the record carries six tiles.
+
+**Not changed, and stated.** The plain-text AFD body still carries no tile
+block. Its numbers arrive inside the narrative's own sections and Today's
+Forecast is required to cover temperature, rain, wind, sky, UV and air
+quality, so the premise holds even though the Overview that used to open that
+body is gone. Worth revisiting only if a text-only reader says otherwise.
+
+**The script is deployed by hand** and this change is not live until it is
+pasted into Apps Script. Nothing breaks in the meantime: the deployed copy
+reads fields that all still exist, and renders the old ungrouped set.
+
+
 ### A false alarm, and the guard it earned
 
 Building this I reported a defect in `describe_wind_shift` that does not

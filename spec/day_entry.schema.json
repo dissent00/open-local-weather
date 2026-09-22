@@ -1846,6 +1846,14 @@
       "title": "Temp Low C",
       "type": "number"
     },
+    "tiles": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Tiles",
+      "type": "array"
+    },
     "uv_index": {
       "anyOf": [
         {

@@ -526,7 +526,7 @@ const SITE_WARN_FG = '#6b4f00';
  * text in a monospace <pre>, on the theory the two representations could
  * never drift apart if one was literally the other escaped). Replaced on
  * request — subscribers wanted the HTML version to look like the actual
- * GitHub Pages site (system font, the stat-grid summary, real headings)
+ * GitHub Pages site (system font, the at-a-glance tiles, real headings)
  * for HTML-capable clients, with the fixed-width AFD look kept only as
  * the plain-text fallback for clients that can't render HTML at all. The
  * two are now independently built from the same `entry`/`config` inputs
@@ -601,37 +601,84 @@ function buildEmailHtml(config, entry, dateStr, runLabel) {
 </div>`;
 }
 
-/** Builds the site's stat-grid ("High/Low", "Rain", "Onset Window", "UV
- * Index", "Air Quality") as an HTML <table> — matches forecast.html.jinja's
- * .stat-grid section, same fields, same conditional-on-present logic
- * (onset_window/uv_index_max/air_quality_aqi/sunrise+sunset only shown
- * when the entry actually has them). When the site's grid gains a field,
- * this one has to gain it too — that has drifted once already. A <table> with the legacy `cellspacing` attribute
- * for gaps, not CSS grid/gap, since that's the reliable choice across
- * email clients including Outlook. */
+/** Renders `entry.tiles` as an HTML <table>. RENDERS — it does not decide.
+ *
+ * THE COMPOSITION MOVED UPSTREAM on 2026-09-22. `tiles.compose_tiles` in the
+ * Python pipeline decides which tiles exist, in what order and what each line
+ * says, and publishes the answer onto the entry; the site and the app render
+ * the same list. This file used to hold its own copy of that decision — a
+ * hand-maintained list of fields — and the comment above it claimed "same
+ * fields" while being wrong.
+ *
+ * THAT IS WHY THIS FUNCTION NOW KNOWS NOTHING. It went TWENTY-THREE DAYS
+ * behind the site on sunrise and sunset, because the site gained a field and
+ * nothing here noticed. A renderer that only renders what it is handed cannot
+ * fall behind. If the site gains a seventh tile tomorrow, this sends it
+ * without an edit.
+ *
+ * `primary` means A READING and sits at value size; a supporting line — the
+ * band words under UV/AQI, the day-over-day modifier — drops to the muted
+ * size. Paired data stays the same size on purpose: sunrise and sunset, UV
+ * and air quality, and the two anchors of a wind shift are two readings
+ * rather than a reading with a footnote.
+ *
+ * TWO PER ROW, matching the app. A <table> with the legacy `cellspacing`
+ * attribute for gaps, not CSS grid/gap, since that is the reliable choice
+ * across email clients including Outlook.
+ */
+const EMAIL_TILE_COLUMNS = 2;
+
 function buildStatGridHtml(entry) {
-  const stats = [['High / Low', entry.temp_high_low_display], ['Rain', entry.rain_expected]];
-  if (entry.onset_window) stats.push(['Onset Window', entry.onset_window]);
-  if (entry.uv_index_max) stats.push(['UV Index', entry.uv_index_max]);
-  if (entry.air_quality_aqi) stats.push(['Air Quality', entry.air_quality_aqi]);
-  // Both or neither, exactly as forecast.html.jinja does it: in polar night
-  // there is no sunrise to report, and half a pair reads as a rendering fault
-  // rather than as the honest answer it is.
-  //
-  // ADDED 2026-09-14, TWENTY-THREE DAYS LATE. The site published these on
-  // 2026-08-22; this file was edited on 2026-08-31 and did not pick them up,
-  // while the comment above went on claiming "same fields". The harness could
-  // not catch it because its fixture was frozen at 2026-08-11, before the
-  // fields existed — see test_mailer.js, which now checks for them and says
-  // to keep the fixture current.
-  if (entry.sunrise && entry.sunset) {
-    stats.push(['Sunrise', entry.sunrise]);
-    stats.push(['Sunset', entry.sunset]);
+  const tiles = tilesOf(entry);
+  if (!tiles.length) return '';
+
+  const cell = tile => {
+    const heading = tile.unit ? `${tile.label} (${tile.unit})` : tile.label;
+    const lines = (tile.lines || []).map(line => {
+      const style = line.primary
+        ? `font-size: 1em; font-weight: 600; color: ${SITE_FG};`
+        : `font-size: 0.85em; color: ${SITE_MUTED};`;
+      return `<div style="${style} line-height: 1.35;">${escapeHtml(String(line.text))}</div>`;
+    }).join('');
+    return `<td width="50%" style="background: ${SITE_CARD_BG}; border: 1px solid ${SITE_BORDER}; border-radius: 8px; padding: 0.7em 0.9em; vertical-align: top;"><div style="font-size: 0.72em; color: ${SITE_MUTED}; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.15em;">${escapeHtml(heading)}</div>${lines}</td>`;
+  };
+
+  const rows = [];
+  for (let i = 0; i < tiles.length; i += EMAIL_TILE_COLUMNS) {
+    rows.push('<tr>' + tiles.slice(i, i + EMAIL_TILE_COLUMNS).map(cell).join('') + '</tr>');
   }
 
-  const cells = stats.map(([label, value]) => `<td style="background: ${SITE_CARD_BG}; border: 1px solid ${SITE_BORDER}; border-radius: 8px; padding: 0.7em 0.9em; vertical-align: top;"><div style="font-size: 0.72em; color: ${SITE_MUTED}; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.15em;">${escapeHtml(label)}</div><div style="font-size: 1em; font-weight: 600; color: ${SITE_FG};">${escapeHtml(String(value))}</div></td>`).join('');
+  return `<table role="presentation" cellpadding="0" cellspacing="8" width="100%" style="border-collapse: separate; margin: 0.8em 0;">${rows.join('')}</table>`;
+}
 
-  return `<table role="presentation" cellpadding="0" cellspacing="8" style="border-collapse: separate; margin: 0.8em 0;"><tr>${cells}</tr></table>`;
+/** The entry's composed tiles, or a set built from the fields an older entry
+ * carries.
+ *
+ * THE FALLBACK IS A REAL CASE, not defensive padding. `tiles` first appears
+ * on entries written from 2026-09-22; every archived day before that has the
+ * loose fields and no tiles, and the mailer's own grace window can reach
+ * yesterday. It is deliberately the OLD ungrouped set rather than an attempt
+ * to re-compose: re-composing here would be the fourth implementation this
+ * change exists to avoid, and an old entry has no wind or cloud anchors to
+ * compose from anyway.
+ */
+function tilesOf(entry) {
+  if (Array.isArray(entry.tiles) && entry.tiles.length) return entry.tiles;
+
+  const legacy = [];
+  const add = (label, text) => {
+    if (text) legacy.push({ label, unit: null, lines: [{ text: String(text), primary: true }] });
+  };
+  add('High / Low', entry.temp_high_low_display);
+  add('Rain', entry.rain_expected);
+  add('Onset Window', entry.onset_window);
+  add('UV Index', entry.uv_index_max);
+  add('Air Quality', entry.air_quality_aqi);
+  if (entry.sunrise && entry.sunset) {
+    add('Sunrise', entry.sunrise);
+    add('Sunset', entry.sunset);
+  }
+  return legacy;
 }
 
 /** Converts narrative_markdown into real HTML matching the GitHub Pages

@@ -27,8 +27,7 @@ so it's immune to any future page-template change.
   prose reflowed to a fixed width. What non-HTML clients see.
 - `htmlBody` — styled to match the [GitHub Pages
   site](https://dissent00.github.io/open-local-weather/) itself: system
-  font, the same High/Low/Rain/Onset/UV/AQI/Sunrise/Sunset stat-grid,
-  narrative rendered
+  font, the same at-a-glance tiles the site shows, narrative rendered
   as real `<h2>`/`<h3>`/`<p>`/`<ul>` HTML rather than monospace text. What
   most subscribers actually see, since HTML-capable clients prefer
   `htmlBody` over `body` when both are present.
@@ -127,7 +126,7 @@ Until then it is kept in step, which is the rest of this section.
 
 ## Keeping it in step with the pipeline
 
-This file is deployed by hand, and it drifts. Sunrise and sunset reached the
+This file is deployed by hand, and it drifted. Sunrise and sunset reached the
 site on 2026-08-22; this mailer was edited on 2026-08-31, did not pick them
 up, and went 23 days rendering an email the site had outgrown — while
 `buildStatGridHtml`'s own comment claimed "same fields".
@@ -137,6 +136,25 @@ frozen at 2026-08-11, eleven days before the fields existed, so the only
 entry it ever rendered had nothing to render. A frozen fixture cannot fail on
 a field added after it was captured, which makes every check here weaker than
 it looks.
+
+**SINCE 2026-09-22 THIS FILE DECIDES NOTHING ABOUT THE TILES.** The pipeline
+composes them — `tiles.compose_tiles`, the same function the site and the app
+render from — and publishes the answer as `tiles` on the day's entry.
+`buildStatGridHtml` renders that list and knows no field names at all, so a
+seventh tile added upstream arrives here without an edit. The drift above was
+possible only because this file held its own copy of a decision made
+elsewhere; it no longer holds one.
+
+What still has to be kept current is the FIXTURE, and the harness says so in
+its own assertion: refresh `fixtures/sample_entry.json` from a real
+`data/log` entry whenever the pipeline gains a reader-facing field, or the
+checks here pass on an entry that has nothing new to show.
+
+The plain-text AFD body still carries no tile block, deliberately — its
+numbers arrive inside the narrative's own sections, and Today's Forecast is
+required to cover temperature, rain, wind, sky, UV and air quality. Worth
+revisiting if a reader on a text-only client says otherwise, since the
+Overview that used to open that body was retired on 2026-09-22.
 
 So, when the pipeline gains a reader-facing field:
 

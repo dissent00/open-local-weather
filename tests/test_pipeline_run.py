@@ -4366,3 +4366,37 @@ def test_the_comparison_modifiers_reach_the_day_record(tmp_path, monkeypatch):
     stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
 
     assert stored.comparison == {"wind": "windier"}, stored.comparison
+
+
+def test_the_entry_carries_its_composed_tiles(tmp_path, monkeypatch):
+    """The tiles ride on the record, for a consumer that cannot compose them.
+
+    THE APPS SCRIPT MAILER IS THAT CONSUMER. It fetches `data/log/<date>.json`
+    from raw.githubusercontent and renders it in JavaScript inside Google's
+    infrastructure, so it cannot call `compose_tiles`. Publishing the composed
+    tiles is what stops it needing a fourth implementation after Python, Dart
+    and the page — and `mailer/test_mailer.js` records what that costs: the
+    mailer ran twenty-three days behind the site because it had to know which
+    fields the site showed.
+
+    BOTH RETURN PATHS, which is the part worth a test. A later issuance merges
+    into the existing entry, and its tiles must be recomposed from the merged
+    result rather than carried over from the morning — so this issues twice
+    and changes the rain call in between.
+    """
+    from openlocalweather.tiles import compose_tiles
+
+    deps = make_deps(tmp_path)
+    issue(deps, today=date(2026, 8, 11))
+
+    stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+    assert stored.tiles == compose_tiles(stored.model_dump(mode="json"), metric=True)
+    assert [t["label"] for t in stored.tiles][:2] == ["High / Low", "Rain"]
+
+    # a RE-ISSUE recomposes rather than inheriting
+    deps.llm_provider.response.today_properties.rain_expected = "Heavy Rain All Day"
+    issue(deps, today=date(2026, 8, 11))
+
+    reissued = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+    rain = next(t for t in reissued.tiles if t["label"] == "Rain")
+    assert rain["lines"][0]["text"] == "Heavy Rain All Day", reissued.tiles

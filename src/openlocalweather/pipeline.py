@@ -85,6 +85,7 @@ from openlocalweather.scales import aqi_band, uv_band
 from openlocalweather.tiles import (
     cloud_anchors,
     comparison_modifiers,
+    compose_tiles,
     notable_moves,
     wind_anchors,
 )
@@ -2407,6 +2408,28 @@ def _prompt_size_with_growth(
     )
 
 
+def _with_tiles(entry: DailyLogEntry) -> DailyLogEntry:
+    """The entry with its at-a-glance tiles composed onto it.
+
+    COMPOSED HERE RATHER THAN AT RENDER because one consumer cannot compose.
+    The Apps Script mailer fetches `data/log/<date>.json` from
+    raw.githubusercontent and renders it in JavaScript inside Google's
+    infrastructure; it has no way to call `compose_tiles`. Without this it
+    would need a fourth implementation of the composer after Python, Dart and
+    the page — and `mailer/test_mailer.js` records what that costs: the
+    mailer ran TWENTY-THREE DAYS behind the site because it had to know which
+    fields the site showed, and nothing noticed.
+
+    APPLIED AT BOTH RETURNS of `_compose_log_entry`, which is why it is a
+    function rather than an argument: a later issuance merges into the
+    existing entry and its tiles must be recomposed from the merged result,
+    not carried over from the morning.
+    """
+    return entry.model_copy(
+        update={"tiles": compose_tiles(entry.model_dump(mode="json"), metric=True)}
+    )
+
+
 def _tile_comparison(
     deps: PipelineDeps, day_over_day: DayOverDayComparison | None
 ) -> dict[str, str]:
@@ -2639,7 +2662,7 @@ def _compose_log_entry(
     )
 
     if existing_entry is None:
-        return issuance
+        return _with_tiles(issuance)
 
     # WHAT A LATER ISSUANCE MUST NOT REWRITE.
     #
@@ -2676,7 +2699,7 @@ def _compose_log_entry(
     # settle.
     snapshot = existing_entry.to_issuance_snapshot()
 
-    return issuance.model_copy(
+    merged = issuance.model_copy(
         update={
             # APPEND-ONLY, and row 0 is never rewritten. This is the
             # write-once rule the accuracy record rests on, in its general
@@ -2722,6 +2745,8 @@ def _compose_log_entry(
             ),
         }
     )
+
+    return _with_tiles(merged)
 
 
 def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:

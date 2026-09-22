@@ -513,8 +513,18 @@ console.log('PASS: a degraded run says so in both email bodies');
 
 // --- ...and a clean run says nothing at all. A banner that appears on every
 // email is a banner nobody reads. ---
+//
+// BUILDS ITS OWN CLEAN ENTRY rather than assuming the fixture is one. It used
+// to pass `sampleEntryRaw` straight through, which only worked while the
+// captured day happened to have no degradations — so refreshing the fixture
+// from a real entry on 2026-09-22 broke it, and the break was in the test
+// rather than the code. A check that depends on what a fixture happens to
+// contain is a check that fires on the wrong thing.
 reset();
-servedEntry = sampleEntryRaw;
+servedEntry = {
+  ...sampleEntryRaw,
+  meta: { ...sampleEntryRaw.meta, degradations: [] },
+};
 sendForecastEmail();
 assert.ok(
   !sentEmails[0].body.includes('LESS THAN USUAL'),
@@ -541,38 +551,86 @@ console.log('PASS: an entry predating the field still sends');
 
 console.log('\nALL MAILER HARNESS CHECKS PASSED');
 
-// --- The stat grid must carry what the SITE's stat grid carries. ---
+// --- The stat grid must carry every tile the entry carries. ---
 //
-// This check exists because the mailer went 23 days behind without anything
-// noticing. Sunrise and sunset reached forecast.html.jinja on 2026-08-22;
-// the mailer was edited on 2026-08-31 and never picked them up, and
-// buildStatGridHtml's own comment still claimed "same fields". Nothing could
-// have caught it: the fixture was frozen at 2026-08-11, eleven days before
-// the fields existed, so the only entry this harness ever rendered had
-// nothing to render.
+// THIS CHECK USED TO NAME FIELDS, and that is the thing it was written
+// against. The mailer went 23 days behind the site because sunrise and sunset
+// reached forecast.html.jinja on 2026-08-22, this file was edited on 08-31
+// and never picked them up, and buildStatGridHtml's own comment went on
+// claiming "same fields". The check added then asserted the words "Sunrise"
+// and "Sunset" — which caught that one field and would have caught no other.
 //
-// KEEP THE FIXTURE CURRENT. A frozen fixture cannot fail on a field added
-// after it was captured, which makes every check here weaker than it looks —
-// refresh mailer/fixtures/sample_entry.json from a real data/log entry when
-// the pipeline gains a reader-facing field.
+// SINCE 2026-09-22 THE MAILER DECIDES NOTHING. `tiles.compose_tiles` in the
+// Python pipeline composes the tiles and publishes them onto the entry; this
+// file renders that list. So the check is now the general one: every tile the
+// entry carries appears, with its heading and every one of its lines. A
+// seventh tile added upstream tomorrow passes without an edit here, which is
+// the property the old check could not have.
 reset();
 servedEntry = sampleEntryRaw;
 sendForecastEmail();
-const sunHtml = sentEmails[0].htmlBody;
+const gridHtml = sentEmails[0].htmlBody;
+
 assert.ok(
-  sampleEntryRaw.sunrise && sampleEntryRaw.sunset,
-  'the fixture is too old to test this — refresh it from a real data/log entry'
+  Array.isArray(sampleEntryRaw.tiles) && sampleEntryRaw.tiles.length,
+  'the fixture predates composed tiles — refresh it from a real data/log entry'
+);
+sampleEntryRaw.tiles.forEach(tile => {
+  const heading = tile.unit ? `${tile.label} (${tile.unit})` : tile.label;
+  assert.ok(
+    gridHtml.includes(escapeHtml(heading)),
+    `the stat grid is missing the tile "${heading}"`
+  );
+  tile.lines.forEach(line => {
+    assert.ok(
+      gridHtml.includes(escapeHtml(String(line.text))),
+      `the tile "${heading}" is missing its line "${line.text}"`
+    );
+  });
+});
+console.log(`PASS: the stat grid carries all ${sampleEntryRaw.tiles.length} tiles the entry publishes`);
+
+// --- A supporting line is not rendered as a reading. ---
+//
+// `primary` means A READING and not "important". The band words under UV/AQI
+// and the day-over-day modifier are supporting, and rendering them at value
+// size says they are the same kind of thing. The app's own suite let exactly
+// this through once, because its finder matched text regardless of style.
+const supporting = sampleEntryRaw.tiles
+  .flatMap(t => t.lines)
+  .filter(l => !l.primary);
+if (supporting.length) {
+  supporting.forEach(line => {
+    const at = gridHtml.indexOf(escapeHtml(String(line.text)));
+    const openingTag = gridHtml.lastIndexOf('<div style="', at);
+    // Asserted as "not bold" rather than against the muted colour constant:
+    // the palette is the .gs file's own and is not in this harness's scope,
+    // and weight is the property that carries the distinction anyway.
+    assert.ok(
+      !gridHtml.slice(openingTag, at).includes('font-weight: 600'),
+      `the supporting line "${line.text}" is rendered as a reading`
+    );
+  });
+  console.log(`PASS: ${supporting.length} supporting line(s) render smaller than a reading`);
+} else {
+  console.log('SKIP: the fixture has no supporting line to check — quiet day');
+}
+
+// --- An entry with no tiles at all still sends something. ---
+//
+// Every archived day before 2026-09-22 has the loose fields and no `tiles`,
+// and the mailer's grace window can reach yesterday, so this is a live path
+// rather than defensive padding.
+reset();
+servedEntry = { ...sampleEntryRaw };
+delete servedEntry.tiles;
+sendForecastEmail();
+assert.ok(
+  sentEmails[0].htmlBody.includes('High / Low'),
+  'an entry without composed tiles must still render the fields it has'
 );
 assert.ok(
-  sunHtml.includes('Sunrise') && sunHtml.includes(sampleEntryRaw.sunrise),
-  'the HTML stat grid must carry sunrise, as the site does'
+  sentEmails[0].htmlBody.includes(escapeHtml(sampleEntryRaw.temp_high_low_display)),
+  'the fallback must carry the temperature it does have'
 );
-assert.ok(
-  sunHtml.includes('Sunset') && sunHtml.includes(sampleEntryRaw.sunset),
-  'the HTML stat grid must carry sunset, as the site does'
-);
-assert.ok(
-  sentEmails[0].body.includes(sampleEntryRaw.sunrise),
-  'the plain-text body must carry sunrise too — both representations, same data'
-);
-console.log('PASS: the stat grid carries the sun times the site shows');
+console.log('PASS: an entry predating composed tiles falls back to its own fields');

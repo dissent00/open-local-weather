@@ -1687,6 +1687,29 @@ class DailyLogEntry(BaseModel):
     # answer for a September day, and re-deriving it in December would
     # re-judge a past day by a future climate.
     comparison: dict[str, str] = Field(default_factory=dict)
+
+    # THE COMPOSED TILES, for a consumer that cannot run the composer.
+    #
+    # `[{"label", "unit", "lines": [{"text", "primary"}]}]` exactly as
+    # `tiles.compose_tiles` returns it, metric.
+    #
+    # STORED DERIVED DATA, deliberately, and the same argument as
+    # `temp_high_low_display`: the Apps Script mailer in `mailer/` fetches
+    # this file from raw.githubusercontent and renders it in JavaScript
+    # inside Google's infrastructure. It cannot import `compose_tiles`. The
+    # alternative is a FOURTH implementation of the composer after Python,
+    # Dart and the page — and `mailer/test_mailer.js` records what that
+    # costs: the mailer went TWENTY-THREE DAYS behind the site because it
+    # had to know which fields the site showed, and nothing noticed.
+    #
+    # A renderer that only renders what it is handed cannot fall behind.
+    #
+    # ONE SUBTLETY WORTH KNOWING: the page composes at RENDER time, so
+    # re-rendering an archived day gives it today's composition, while this
+    # field preserves the day's own. They cannot disagree in practice —
+    # the mailer only ever sends the current day — and where they could, the
+    # stored one is the more honest answer about what was published.
+    tiles: list[dict] = Field(default_factory=list)
     # Raw per-station readings only — the range/highest-station summary
     # used in the narrative and on the site is deterministically recomputed
     # from this on demand (see aqi.summarize_ground_aqi), not persisted
