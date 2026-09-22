@@ -25941,6 +25941,79 @@ faking the clock at the one seam the pipeline actually reads.
 
 ---
 
+## 170. One spend cap across a chain of vendors · **Raised 2026-09-22 by the operator**
+
+*"Calls against OpenRouter are not the same cap."* Correct, and the cap
+predates the chain: `spend.calls_in_window` counts EVERY ledger row in the
+rolling 24 hours, whatever served it, against one `max_llm_calls_per_24h`.
+
+**The shape of the mistake, measured the day the chain first fired.** The
+15:01Z run spent about eight calls — four Gemini 503 attempts per call, twice
+— and then three more went on probing free models. Fifteen of twenty gone,
+with five left at the next morning's run, while NEITHER vendor's real quota
+was close to touched and nothing had been billed at all: Gemini is free tier
+here and so are all three OpenRouter models.
+
+So a failing vendor makes the deployment poorer at the expense of the working
+one. That is exactly backwards for a mechanism whose whole purpose is
+surviving a vendor's bad hour, and it can refuse tomorrow's forecast on the
+strength of yesterday's failures.
+
+**What the cap is actually for** — spend.py's own note: it counts CALLS
+rather than forecasts because one forecast can cost several attempts, and
+capping successful forecasts would not cap spend. That reasoning holds for
+ONE account. Across a chain it conflates accounts that bill separately, or
+do not bill at all.
+
+**The shape of the answer.** A cap per credential, because that is what maps
+to a real account and a real bill. The ledger already carries `provider` and
+`model` on every row, so nothing new has to be stored — but `provider` is the
+CLASS name, so two OpenAI-compatible entries would share a budget they do not
+share in life. That is the same defect as item 81's attribution gap below:
+both want the ledger to name the chain ENTRY rather than the class it was
+built from. Fix them together.
+
+Per-entry `max_calls_per_24h`, defaulting to the global for any entry that
+does not set one, keeps every existing deployment behaving as it does now.
+
+**Until then the mitigation is a bigger number**, which is honest rather than
+elegant: with everything on free tiers the ceiling protects against a runaway
+loop and nothing else.
+
+---
+
+## 171. The record names the wrong model when the chain falls back · **Found 2026-09-22, in production**
+
+The 15:01Z run was served end to end by
+`nvidia/nemotron-3-super-120b-a12b:free` after Gemini returned four 503s. The
+stored entry says:
+
+```
+meta.llm_model    = gemini-3.6-flash
+meta.llm_provider = FallbackProvider
+```
+
+The spend ledger got it right — `provider_identity` resolves through
+`active_provider` during a call, exactly as item 81 designed. The day record
+did not, because `pipeline.py` writes
+`llm_model=getattr(deps.llm_provider, "model", "unknown")`, and
+`FallbackProvider.model` is documented as answering *"the idle question — what
+will this deployment use"*, returning the FIRST entry. It is being asked after
+the call, when the honest answer is "whoever served it".
+
+**Why it is worse than a wrong label.** These records feed the accuracy page
+and the scoring. A forecast written by a free fallback model is filed under
+the incumbent's name, so the incumbent is credited or blamed for a document it
+did not write — and the one run where the chain was exercised is the one run
+whose provenance matters most.
+
+The app has the same seam and it was closed there on the same day (ensemble
+item 24): each chain link gets its own counting hook, so the spend record
+follows what actually ran. The pipeline needs the entry, not the class — see
+item 170, which wants the same thing for the cap.
+
+---
+
 ## 164. `describe_day_over_day` is computed every run and read by nothing · **Open, 2026-09-22**
 
 Item 159 step 5 took `overview_comparison` out of `PROMPT_COMPARISON_FIELDS`,
