@@ -25941,6 +25941,47 @@ faking the clock at the one seam the pipeline actually reads.
 
 ---
 
+## 172. The supported matrix, measured: one free model in five · **Measured 2026-09-22**
+
+Item 81 asked for a matrix of combinations that have actually been RUN. Here
+is the first one, produced by `tools/probe_models.py` against the real
+narrative prompt, the production provider class, the production schema and
+`require_parameters`. Every free OpenRouter model advertising strict
+structured outputs and at least 256k of context was tried.
+
+| model | result |
+|---|---|
+| `nvidia/nemotron-3-super-120b-a12b:free` | every newline returned as the letter `n` — six `n##` heading joins |
+| `dots-studio/dots-3-note-preview:free` | 1,030 chars, no heading starts a line |
+| `nex-agi/nex-n2.5-pro:free` | **shape OK** — 5,865 chars, 44 newlines, 5 headings |
+| `nex-agi/nex-n2.5-mini:free` | empty content, `finish_reason='error'` |
+| `qwen/qwen3.8-27b:free` | HTTP 429 after four attempts — unreachable |
+
+**One in five.** And the one that works shares an endpoint family with two
+that 429'd, so its availability is not guaranteed either.
+
+**What this settles.** The chain's models were chosen on 2026-09-21 from
+parameter counts, context windows and capability flags. Three calls showed
+that ranking to be worthless: the model put FIRST is the one that mangles
+newlines, and the one put last is the only one that works. Capability flags
+say what an endpoint advertises, not what it does with a 104,000-character
+user message.
+
+**What it does not settle.** Shape is not quality. Nothing here says whether
+`nex-n2.5-pro` writes a GOOD forecast — only that it writes a structurally
+publishable one. That needs a reader, and item 77's harness is how.
+
+**The consequence for the product**, raised by the operator the same day: a
+free tier this thin cannot be sold as reliability. `429` is in
+`UNAVAILABLE_STATUS_CODES`, so a rate-limited fallback with nothing behind it
+produces no forecast — the same outcome as 09-21 by a different route. Free
+OpenRouter is a bonus tier. The app's real free path is Gemini's own free
+tier, where a reader whose morning tap hits a 503 taps again five minutes
+later; unattended scheduled generation is the only case that genuinely needs
+a second vendor.
+
+---
+
 ## 170. One spend cap across a chain of vendors · **SHIPPED 2026-09-22 — a ceiling per credential**
 
 *"Calls against OpenRouter are not the same cap."* Correct, and the cap
