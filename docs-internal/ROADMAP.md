@@ -15,6 +15,48 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-09-22
+
+The 2026-09-17 block below is kept for its reasoning. Its figures are five
+days and two items out of date, and its top pick has shipped.
+
+### What closed, 2026-09-21 to 09-22
+
+**Item 159 in full — the Overview is gone.** Its day-over-day comparison is
+now a modifier inside the tile it concerns, the sky and the wind are three
+named anchors each, UV and air quality are a number and a looked-up band
+word, and one composer draws the tiles for the app, the page and the email.
+The narrative prompt lost 3,879 characters and the email gained a summary it
+never had.
+
+**Three composers in that item were shipped inert and found by driving the
+pipeline**, not by any test: the anchors on the wrong pydantic class, and
+`comparison_modifiers` with no caller at all. Every composer in the item now
+has a run-level test that reads the value back off disk. That is the habit
+worth carrying, not the fixes.
+
+### What is next, and why
+
+1. **Arm the fallback chain — item 81.** The evening run of 09-21 failed on
+   four Gemini 503s and no forecast went out. The chain is configured and
+   inert because `LLM_API_KEY` does not exist. Nothing else on this list
+   matters as much as a forecast that does not appear, and the work is three
+   repository settings the operator must make.
+2. **Items 160 and 163**, both found by item 77's harness and both cheap: a
+   direction block ordering silence beside one handing over a direction
+   clause, and a ground-AQI block asserting no station is timestamped while
+   three are. The second publishes a falsehood under rule 1.
+3. **Item 161** — `uv_index_max` is one model's number the forecaster is
+   asked to re-type. Measure the drift first; it is one script.
+4. **Item 162** — narrative-section instructions carried in the judgment
+   prompt, which has no field that can hold them. Measure with
+   `olw prompt-size` before cutting.
+5. **Items 87 and 123** unblock when the cloud pairs reach ten.
+
+Item 164 (a composer nothing reads) and 165 (no imperial form for the
+comparison) are tidy-ups with their own sections; neither blocks anything.
+
+
 ## Working order, as of 2026-09-17
 
 Every number here was read out of the data on 2026-09-17, not carried
@@ -24541,7 +24583,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-4 SHIPPED 2026-09-21, step 5 on 2026-09-22, step 6 open**
+## 159. Retire the Overview; the tiles carry it · **ALL SIX STEPS SHIPPED: 1-4 on 2026-09-21, 5 and 6 on 2026-09-22**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
