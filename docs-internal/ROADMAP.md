@@ -57,6 +57,13 @@ while model cycles and the station archive are UTC.
 
 ### What is next, and why
 
+0. **AFTER 162, RETURN TO 81 — AND THE OPERATOR WANTS ITS BEHAVIOUR CHANGED.**
+   Noted 2026-09-22: *"Then we can return to 81... and I want to change the
+   way it behaves."* WHAT the change is has not been said yet, so do not
+   design one from the item as written — ask first. The item currently
+   describes a vendor chain walked in order, with OpenRouter's own in-request
+   `models` fallback inside the second link. Read `config/location.yaml`'s
+   `llm_providers` and `llm_fallback_models` before the conversation.
 1. **Arm the fallback chain — item 81, and it is not an agent's to do.** The
    evening run of 09-21 failed on four Gemini 503s and no forecast went out.
    The chain is configured and inert because `LLM_API_KEY` does not exist;
@@ -25565,7 +25572,7 @@ which is the roll working on real numbers rather than a fixture.
 
 ---
 
-## 162. Instructions the judgment call cannot obey, carried in the judgment prompt · **Open, found 2026-09-21 by item 77's harness**
+## 162. Instructions the judgment call cannot obey, carried in the judgment prompt · **SHIPPED 2026-09-22 — three were moved, not cut; the item's premise was inverted**
 
 The judgment system prompt opens by saying the call produces
 `today_properties` and `extended_properties` "and nothing else — you are not
@@ -25586,12 +25593,79 @@ Confidence Notes — there is no quiet middle band". On that day `hours_old` was
 9.0. There is no such field, so the instruction can neither be obeyed nor
 ignored.
 
-**What to do.** The two prompts are built from a shared block table, so this
-is a question of which blocks each call gets, not of rewriting rules. Measure
-the cost first with `olw prompt-size`: the judgment prompt is ~19,900
-characters and the narrative-only rules are a real fraction of it, so this is
-a token saving as well as a correctness one. Do not cut by eye — item 158 step
-9 is the record of how much a prompt sentence can be carrying.
+**What was found, and it is the opposite of the item above.** The item read
+these as dead weight in the judgment prompt, to be deleted for a token saving.
+Measuring which blocks each call actually gets — `weighting`,
+`review_findings`, `today_props` and `lead_time` go to the judgment call
+ONLY, while `data_quality` is shared — showed that three of them were not
+duplicated anywhere. They were in a judgment-only block, so deleting them
+would have LOST them: the narrative call, the only one that can obey an
+instruction about the Forecaster Confidence Notes or about its own voice, had
+never been told.
+
+The narrative prompt already covered rankings and insufficient data in its own
+words. On not describing itself as a model it said NOTHING, which is the one a
+reader would have noticed.
+
+So the change was **move three, reword two, leave one, split nothing**:
+
+- **Moved** into the narrative's Forecaster Confidence Notes brief: the
+  weighting disclosure, the `data_sufficiency` instruction, and "do not
+  describe yourself as a model in the narrative".
+- **Reworded in place**, because both are rules the judgment call must obey
+  that merely named a section it cannot write: the tile rule no longer says
+  the prose "belongs in Today's Forecast, where you are writing it anyway",
+  and the extended rule now says "When you call Day+3 and Day+7".
+- **Left**: the staleness band, in the shared `data_quality` block.
+
+**The hardest of the three proved movable.** Disclosing that recent evidence
+outweighed a model's longer-term record looks unobeyable in the narrative,
+which gets numbers rather than reasoning — except the comparison is
+pre-computed as `rain_pct_trend` and `rain_pct_trend_delta` on every track
+record entry, and the narrative has those fields. The moved rule names them,
+which is why the narrative grew more than the judgment shrank.
+
+**It is not a token saving, against the item's prediction.** Measured by
+driving the CLI against a HEAD worktree: judgment 18,625 → 18,238 (**-387**),
+narrative 36,782 → 37,569 (**+787**), net **+400 characters**, with the user
+message unchanged at 47,947. The rest of the stored day record is
+byte-identical across the two runs — 68 differing characters in 35,209, all
+of them the prompt sha and those two sizes. The payoff is that three
+instructions are now given to the call that can obey them, not a smaller
+bill.
+
+The first cut of this change spent 245 of those characters on a line inside
+the narrative prompt explaining that the rules had been moved and why. A
+prompt is instructions to a model, not a changelog; that account is now a
+comment above `build_narrative_prompt`, per item 158 step 9, and the numbers
+above are measured after it was taken back out. It was caught by reading the
+diff, not by any test — nothing here can tell a rule from a note about one.
+
+**A SECOND CLAIM IN THIS ITEM WAS ALSO FALSE, and it is the more expensive
+lesson.** The item called the staleness rule "a hard impossibility", on the
+grounds that it reads on a guidance-cycle age for which "there is no such
+field". There is. `hours_old` sits in a block called GUIDANCE RECENCY, added
+2026-08-28 by 1d3b397, and it is present in the 2026-09-21 archive this item
+cites, carrying the 9.0 the item quotes. The cold reader returned a false
+"not found" and the item recorded it as measured fact — and a false "not
+found" from a harness reads exactly like a finding, which is how it survived
+into a roadmap item and nearly justified a deletion. Grep the archive for a
+field before acting on a report that it is missing.
+
+**Guards.** `test_narrative_instructions_are_in_the_narrative_prompt` asserts
+each moved instruction is in the narrative AND absent from the judgment
+prompt, so re-adding one to the judgment prompt fails even though the
+narrative still carries it. Four mutations were run against it and all four
+bit, including "told twice". The Dart mirror has no guard of its own and does
+not need one: `spec/vectors/llm_system_prompt.json` pins the system prompt
+character for character, and cutting the voice line from `prompt.dart` alone
+fails `system prompt matches Python character for character across all
+branches`.
+
+Three earlier mutations in this pass survived and were all my own error, not
+gaps: two targeted an anchor that does not exist in the source (the judgment
+weighting block is an f-string with `{rolling_window_short}` in it), and one
+renamed a label while leaving the sentence on the line.
 
 ---
 

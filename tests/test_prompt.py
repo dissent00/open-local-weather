@@ -939,3 +939,59 @@ def test_the_last_known_block_says_which_kind_of_nothing_it_is():
     assert "NOT down and NOT absent" in block
     # the false claim is gone
     assert "no station has a timestamped reading at all" not in reported_no_number
+
+
+def test_narrative_instructions_are_in_the_narrative_prompt():
+    """Three instructions were in the JUDGMENT prompt only — item 162.
+
+    THE ITEM CALLED THIS BLOAT TO CUT AND IT WAS THE OPPOSITE. The judgment
+    call returns `today_properties` and `extended_properties` and nothing
+    else, so an instruction about the Forecaster Confidence Notes or about
+    the narrative's voice cannot be obeyed there. But these three lived in
+    judgment-only blocks — `weighting`, `review_findings`, `today_props` —
+    so deleting them would have lost them: the narrative call was never told,
+    and never had been.
+
+    The narrative prompt covers rankings and insufficient data in its own
+    words. On not describing itself as a model it said NOTHING, which is the
+    one a reader would notice.
+
+    THE HARDEST OF THE THREE TURNED OUT TO BE MOVABLE. Disclosing that recent
+    evidence outweighed the long-term record looked unobeyable in both, since
+    the narrative gets the numbers and not the reasoning — but the comparison
+    is pre-computed as `rain_pct_trend` on every track-record entry, and the
+    narrative has that field in its user message.
+    """
+    judgment = build_judgment_prompt(KISUMU)
+    narrative = build_narrative_prompt(KISUMU)
+
+    MOVED = (
+        "State explicitly in the Forecaster Confidence Notes when you're doing this",
+        'Reflect the substance of "data_sufficiency" in the Forecaster Confidence Notes',
+        "do not describe yourself as a model in the narrative",
+    )
+    for text in MOVED:
+        assert text in narrative, f"the narrative call is still not told: {text!r}"
+        assert text not in judgment, f"the judgment call still carries: {text!r}"
+
+    # AND THE TWO THAT STAY ARE REWORDED, not moved: both are rules the
+    # judgment call must obey, which merely named a section it cannot write.
+    assert "where you are writing it anyway" not in judgment
+    assert "When the Extended Outlook draws on" not in judgment
+
+    # The staleness band is deliberately left: it lives in `data_quality`,
+    # which BOTH prompts share, so the narrative already gets it. Removing
+    # the dead copy means splitting a 2,510-character shared block to save
+    # about 250, and in the judgment prompt it names a section that call
+    # cannot write rather than contradicting anything.
+    #
+    # AND IT IS OBEYABLE, against the item's own claim. Item 162 called this
+    # one "a hard impossibility", reporting that the rule reads on a cycle
+    # age for which "there is no such field". There is: `hours_old` sits in
+    # a block called GUIDANCE RECENCY, added 2026-08-28 by 1d3b397, and it
+    # is present in the 2026-09-21 archive the item cites, carrying the 9.0
+    # the item quotes. The cold reader returned a false "not found" and the
+    # item wrote it down as fact; it was checked here on 2026-09-22 by
+    # grepping the archives for the field before acting on the claim.
+    band = "ANYTHING OLDER THAN THAT belongs in the Forecaster Confidence Notes"
+    assert band in narrative and band in judgment
