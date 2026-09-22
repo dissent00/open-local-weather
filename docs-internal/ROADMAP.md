@@ -25982,6 +25982,209 @@ a second vendor.
 
 ---
 
+## 173. Make the LLM optional, and find out whether it earns its place · **To explore, raised 2026-09-22**
+
+From the operator's question about cost and reliability: *"the app loses its
+appeal if you sometimes have to hit refresh 5 times in the course of an hour
+to get a (seemingly simple) forecast."*
+
+**Almost everything a reader sees is already deterministic.** Code extracts
+each model's Day+0/+3/+7 predictions from the raw guidance, calibrates gusts
+against the station's measured bias, derives the daypart horizon, reduces the
+nine-point synoptic ring to statements, scores the track record, and composes
+the tiles, the wind and cloud anchors, the day-over-day comparison, the
+extended-trend phrase and the convective timing. The prompt then forbids the
+model from altering most of it.
+
+What the model uniquely supplies is ONE SET OF NUMBERS — the blend across
+GFS, ECMWF, ICON, UKMO and the met service — and the prose.
+
+**A skill-weighted mean of those same extracted predictions is arithmetic.**
+The weights exist already: the track record is computed and `rain_pct_trend`
+is pre-computed per model and lead time. `BASELINE_MODEL_IDS =
+("persistence", "climatology")` shows non-LLM baselines are already a scored
+concept; this would be a third, `olw_code_blend`.
+
+Three things follow, and the second may matter more than the first:
+
+1. **The app always has a forecast.** Tiles, temperatures, wind, rain, UV,
+   hazard timing — offline, instant, free. A 503 stops being "no forecast"
+   and becomes "no discussion yet".
+2. **It answers whether the LLM beats arithmetic**, on the same accuracy page
+   and the same scoring, within weeks. Nobody knows today. If the margin is
+   small on ordinary days and large on convective ones, that is worth more
+   than any cost work.
+3. **The paid tier becomes an upgrade rather than a toll** — free numbers,
+   paid reasoning.
+
+**Related but separate: the two calls have different stakes.** The judgment
+call produces scored commitments and is the SMALLER prompt (19,861 chars of
+system); the narrative call is prose and the bigger one (37,964). A malformed
+narrative could degrade to code-rendered text instead of losing the forecast
+— which is exactly what 2026-09-22's nemotron output should have done.
+
+NOT STARTED, and deliberately not designed here. The operator: *"I'm not sure
+yet how that will play out."*
+
+---
+
+## 174. What the prompt could stop sending · **Measured 2026-09-22, nothing changed yet**
+
+The operator asked for the cost lever to be measured before anything was cut.
+This is that measurement, and it CONTRADICTS the proposal that prompted it.
+Read the "Why I was wrong" section before acting on any of it.
+
+### The size of the thing
+
+The user message on 2026-09-22 was **103,691 characters**, and it is sent to
+BOTH calls — the judgment call and the narrative call each receive the whole
+of it. At roughly four characters per token that is ~26,000 tokens twice, so
+about 52,000 of the ~66,000 input tokens a forecast costs.
+
+Four blocks are 88.5% of it:
+
+| block | chars | share |
+|---|---:|---:|
+| TODAY'S MULTI-MODEL GUIDANCE | 31,911 | 30.8% |
+| LONG-RUN REVIEW | 28,501 | 27.5% |
+| HOURS AHEAD | 22,723 | 21.9% |
+| EXTRACTED PER-MODEL PREDICTIONS | 8,572 | 8.3% |
+
+Everything the narrative quotes verbatim — the convective timing, the
+day-over-day comparison, the wind direction and shift, the UV block, the
+ground AQI blocks, NEXT THREE DAYS, the calendar — is about 12,000 characters
+together, 11.5% of the message.
+
+### Why I was wrong
+
+**The proposal was to ablate TODAY'S MULTI-MODEL GUIDANCE whole, on the
+grounds that its own distillation sits beside it.** The prompt does say so, in
+the extraction block's own words: *"pulled from the raw guidance in code —
+these exact values get scored, so reason from them rather than re-deriving
+your own from the arrays above"*.
+
+That reasoning was wrong twice.
+
+**First, the block is not one thing.** It holds six keys, and two of them are
+quoted by the narrative's own rules:
+
+| key | chars | what it is |
+|---|---:|---|
+| `primary_extended_daily` | 6,602 | raw daily arrays, 51 series x 8 days |
+| `secondary_extended_daily` | 6,609 | the same for the secondary point |
+| `regional_pressure` | 3,195 | the basin points the Synoptic Overview covers |
+| `air_quality` | 1,386 | CAMS, which the AQI rules fall back to |
+| `synoptic_scale_pressure` | 859 | the nine-point ring, quoted by name in the narrative prompt |
+| `airport_metar` | 538 | observations |
+
+Deleting the block would have removed the synoptic ring the Synoptic Overview
+is built from — a section, not a saving.
+
+**Second, and worse for the idea: the raw daily arrays are NOT redundant.**
+The 51 series are 5 models x 10 variables x 8 DAYS. The extracted rows cover
+Day+0, Day+3 and Day+7 only. So the arrays are the only source for days 1, 2
+and 4 through 6 — and the Extended Outlook uses them. Today's narrative said:
+
+> "For Wednesday and Thursday, daytime highs are expected in the upper
+> twenties to low thirties Celsius, with a spread of about 28-30 C on
+> Wednesday and 29-32 C on Thursday."
+
+Per-day, per-model spread for days 1 and 2. Nothing else in the prompt carries
+it. Ablating the arrays would not degrade the Extended Outlook subtly; it
+would remove the numbers it is made of.
+
+### What a cross-reference DOES and does not show
+
+Checking every block name against both system prompts found **nothing named by
+the judgment prompt alone**. Both calls name essentially everything. The
+hypothesis that the narrative is handed blocks it has no rule for is not
+supported.
+
+One caveat on method, because it bit twice today: `PEAK UV INDEX` first
+appeared in neither prompt, which would have made it an inert block. It was a
+case-sensitive match against a prompt that says "peak UV index". A false
+not-found reads exactly like a finding. Grep case-insensitively, then read the
+sentence.
+
+And a mention is not a need. The cross-reference proves the narrative REFERS
+to these blocks; it cannot prove it USES them. Only ablation can.
+
+### What is actually safe to cut, in order of confidence
+
+1. **API metadata, repeated in every fetched object.** `generationtime_ms`,
+   `utc_offset_seconds`, `timezone_abbreviation`, `elevation`, `latitude`,
+   `longitude`, `daily_units`, `_server_date` — carried by
+   `primary_extended_daily`, `secondary_extended_daily` and `air_quality`
+   alike. No rule anywhere reads them. Small, certain, and free.
+
+2. **The `uv_index_max_*` series — 5 of the 51 daily series.** Superseded by
+   the PEAK UV INDEX block that item 161 built, which takes the UV index from
+   the daily block in code, for the day the horizon points at. Check nothing
+   else reads them first; this is exactly the shape of an inert field.
+
+3. **Days 4, 5 and 6 of the daily arrays.** The Extended Outlook covers three
+   days, Day+7 is scored and carried by its own extracted row. Days 4 to 6
+   appear to serve nothing — three of eight values in 51 series. Verify
+   against `describe_extended_trend` before cutting.
+
+4. **HOURS AHEAD, 22,723 chars for 30 hours — 964 decimals, ~32 values an
+   hour.** The rules use it to place thunder by the clock and to trim the
+   forward window. Whether it needs every variable at every hour is a separate
+   measurement nobody has done.
+
+5. **LONG-RUN REVIEW, 28,501 chars, 204 decimals, no timestamps** — so it is
+   almost entirely prose findings. The largest single block after the
+   guidance, and the least examined. It deserves its own pass.
+
+### Why it is there at all
+
+Asked by the operator, and the history answers it. `TODAY'S MULTI-MODEL
+GUIDANCE` is in the FIRST prompt commit, a0dc2ff on 2026-08-11 — it predates
+every distillation. The extraction and the review findings both arrive on
+08-19, eight days later, and each arrives with a forbidding sentence rather
+than a deletion. 9ca811e says so in its own title: *"Feed review findings into
+the daily prompt, and forbid re-deriving them"*, and in its body: *"MODEL
+TRACK RECORD already hands the model raw per-model percentages... do not build
+your own from the raw percentages, which were withheld on purpose."*
+
+So the pattern was: add the computed answer, forbid use of the raw source,
+leave the raw source in place. Each fix was aimed at a real defect — the model
+inventing rankings, the model re-deriving numbers that then disagreed with the
+scored ones — and a sentence solved that defect completely. Removing the data
+would have been a larger, riskier edit that nothing at the time required.
+
+**There is precedent for the cut, done deliberately once.** The same week,
+430b9f3 replaced the whole extracted KMD PDF with a composed extract:
+*"~8,700 characters of letterhead, all 47 counties, and the glossary, of which
+a handful of lines concern this location. Now a composed extract of ~860
+characters... An 89% cut in both stored bytes and prompt tokens."* The
+bulletin got that treatment because someone looked at it. The guidance arrays
+never did.
+
+That commit also carries the warning against cutting too hard: the extract
+deliberately kept the met service's OWN WORDS, because *"'Moderate showers' is
+better narrative input than rain=True"*. The right operation is not "replace
+data with booleans". It is "replace bulk with a composed thing that keeps what
+the narrative needs".
+
+### The experiment, if one is wanted
+
+Item 77's harness runs against an archived day, so an ablation costs nothing
+and risks nothing. Rebuild the prompt without a candidate, run the narrative
+call, and compare against 2026-09-22's output, which exists for both Gemini
+and a free model.
+
+**What would count as evidence of harm:** the Extended Outlook losing its
+per-day ranges, the Synoptic Overview losing the ring's direction language,
+Today's Forecast losing the hour it places thunder at. Those are checkable by
+reading, which is the only instrument here — shape can be tested by code,
+usefulness cannot.
+
+**Do them one at a time.** Four candidates ablated together would say only
+that something broke.
+
+---
+
 ## 170. One spend cap across a chain of vendors · **SHIPPED 2026-09-22 — a ceiling per credential**
 
 *"Calls against OpenRouter are not the same cap."* Correct, and the cap
