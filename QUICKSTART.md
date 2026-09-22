@@ -324,6 +324,23 @@ fourth gateway needs a config entry and its two variables and nothing else.
 Names outside that shape — `WAQI_TOKEN`, `LLM_PROVIDER`, the repository's own
 `github_token` — are deliberately not passed.
 
+**Each link can carry its own call ceiling**, and usually should, because a
+cap belongs to an ACCOUNT rather than to a deployment. The numbers are not
+alike: 20 is Google's free calendar-day allowance, OpenRouter's free tier is
+50 a day on separate terms.
+
+```yaml
+  - kind: openai
+    name: openrouter
+    env_prefix: OPENROUTER
+    max_calls_per_24h: 50        # this link's own ceiling
+```
+
+A link without one uses the deployment's `max_llm_calls_per_24h`, so nothing
+changes for a single-provider setup. What it buys a chain is that a failing
+vendor's retries no longer spend the budget its fallback needs — four 503s
+and their retries come out of that vendor's allowance and nobody else's.
+
 **This deployment uses free tiers only**, and that is deliberate rather than
 thrifty: anyone should be able to run the shipped configuration without an
 account that bills. Pick a model that advertises BOTH `structured_outputs`

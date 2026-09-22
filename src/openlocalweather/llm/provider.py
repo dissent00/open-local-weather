@@ -93,11 +93,23 @@ def provider_identity(provider) -> tuple[str, str]:
     chain may hold a chain; `None` means nothing is delegating right now and
     the object itself is the answer.
     """
+    live = resolve_active(provider)
+    return type(live).__name__, getattr(live, "model", "unknown")
+
+
+def resolve_active(provider):
+    """The object actually taking the request, through any chain wrappers.
+
+    Split out of `provider_identity` for ROADMAP item 170: a cap per
+    credential needs the LIVE OBJECT, not just its name, because the limit
+    is carried on the link that was built from the config entry. Recursive
+    for the same reason identity is — a chain may hold a chain — and `None`
+    means nothing is delegating, so the object itself is the answer.
+    """
     active = getattr(provider, "active_provider", None)
     if active is not None:
-        return provider_identity(active)
-
-    return type(provider).__name__, getattr(provider, "model", "unknown")
+        return resolve_active(active)
+    return provider
 
 
 class LLMProvider(Protocol):

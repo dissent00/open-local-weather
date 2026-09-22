@@ -212,11 +212,45 @@ def _write_ledger(data_dir: str | Path, records: list[SpendRecord]) -> None:
 
 
 def calls_in_window(
-    records: list[SpendRecord], now: datetime, window: timedelta = WINDOW
+    records: list[SpendRecord],
+    now: datetime,
+    window: timedelta = WINDOW,
+    *,
+    provider: str | None = None,
+    model: str | None = None,
 ) -> int:
-    """Recomputed on every check — never stored, like every other statistic."""
+    """Recomputed on every check — never stored, like every other statistic.
+
+    NARROWED TO ONE CREDENTIAL when `provider` is given — ROADMAP item 170.
+    Counting every vendor against one ceiling was right while there was one
+    vendor; a chain makes it actively wrong, because a failing provider's
+    retries then spend the budget the working fallback needs. On 2026-09-22
+    eight Gemini 503 attempts left five of twenty for the next morning while
+    neither vendor's real quota had been touched.
+
+    MATCHED ON (CLASS, MODEL) RATHER THAN A LEDGER FIELD. Two links can share
+    a class — two OpenAI-compatible gateways are both `OpenAICompatProvider`
+    — but every entry names its own model, so the pair separates them. It
+    also works on rows written before this existed, which a new field would
+    not.
+
+    The case it cannot see is the same model reached through two different
+    hosts; those two links would share a budget they do not share in life.
+    Recorded rather than solved: it needs the ledger to name the chain ENTRY,
+    which is item 171's business and wants doing once for both.
+
+    `model` alone is ignored without a `provider` — a model id is not an
+    account, and narrowing by one without the other would invent a budget
+    that nothing corresponds to.
+    """
     cutoff = now - window
-    return sum(1 for r in records if r.at > cutoff)
+    return sum(
+        1
+        for r in records
+        if r.at > cutoff
+        and (provider is None or r.provider == provider)
+        and (provider is None or model is None or r.model == model)
+    )
 
 
 def prune(
@@ -296,16 +330,22 @@ def record_attempt(
     """
     now = now or datetime.now(timezone.utc)
     records = read_ledger(data_dir)
-    used = calls_in_window(records, now)
+    # PER CREDENTIAL — ROADMAP item 170. This is the enforcement point and it
+    # already knows which vendor and model is about to be called, so the
+    # ceiling it checks is that link's own rather than the deployment's. A
+    # failing vendor's retries no longer spend the budget its fallback needs.
+    used = calls_in_window(records, now, provider=provider, model=model)
 
     if used >= max_calls:
         oldest_in_window = min(
-            (r.at for r in records if r.at > now - WINDOW), default=now
+            (r.at for r in records
+             if r.at > now - WINDOW and r.provider == provider and r.model == model),
+            default=now,
         )
         frees_at = oldest_in_window + WINDOW
         raise SpendCapExceeded(
-            f"LLM call refused: {used} of {max_calls} allowed calls already made "
-            f"in the last 24 hours. The oldest of those ages out at "
+            f"LLM call refused: {provider} ({model}) has made {used} of its "
+            f"{max_calls} allowed calls in the last 24 hours. The oldest of those ages out at "
             f"{frees_at.isoformat()}. This is a hard cap, not a rate limit — "
             f"raise max_llm_calls_per_24h in config/location.yaml if it is set "
             f"too low for this deployment."

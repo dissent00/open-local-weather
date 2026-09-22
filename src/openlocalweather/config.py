@@ -138,6 +138,17 @@ class LLMProviderEntry(BaseModel):
     # chain holds two gateways, a top-level list cannot say which it means.
     fallback_models: list[str] | None = None
 
+    # This link's own 24-hour ceiling — ROADMAP item 170. None means the
+    # deployment's `max_llm_calls_per_24h`.
+    #
+    # A CAP BELONGS TO AN ACCOUNT, NOT TO A DEPLOYMENT, and the numbers are
+    # not alike: 20 is Google's free calendar-day allowance, which is where
+    # the global default came from, while OpenRouter's free tier is 50 a day
+    # on entirely separate terms. One number cannot hold both, and on
+    # 2026-09-22 it did not: eight Gemini 503 retries left five of twenty for
+    # the next morning while neither vendor's real quota had been touched.
+    max_calls_per_24h: int | None = None
+
     @field_validator("kind")
     @classmethod
     def _known_kind(cls, v: str) -> str:

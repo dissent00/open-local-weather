@@ -91,7 +91,7 @@ from openlocalweather.tiles import (
     notable_moves,
     wind_anchors,
 )
-from openlocalweather.llm.provider import provider_identity
+from openlocalweather.llm.provider import provider_identity, resolve_active
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
@@ -617,17 +617,25 @@ def attach_spend_cap(
         # naming vendors would answer the reliability question by destroying
         # the evidence for it. See `provider_identity`.
         name, model = provider_identity(provider)
+        # THIS LINK'S CEILING, NOT THE DEPLOYMENT'S — ROADMAP item 170. A cap
+        # belongs to an account, and a chain's accounts are different ones:
+        # 20 is Google's free calendar-day allowance, OpenRouter's free tier
+        # is 50 on separate terms. Until this, a failing vendor's retries
+        # spent the budget its fallback needed — eight Gemini 503 attempts on
+        # 2026-09-22 left five of twenty for the next morning, while neither
+        # vendor's real quota had been touched and nothing had been billed.
+        limit = getattr(resolve_active(provider), "max_calls_per_24h", None) or max_calls
         used = record_attempt(
             data_dir,
             provider=name,
             model=model,
             purpose=purpose,
-            max_calls=max_calls,
+            max_calls=limit,
             now=at,
         )
         pending["at"] = at
         recorded.append(used)
-        print(f"LLM call {used}/{max_calls} in the last 24h")
+        print(f"LLM call {used}/{limit} for {name} in the last 24h")
 
     def _complete(outcome: str, elapsed_s: float) -> None:
         complete_attempt(

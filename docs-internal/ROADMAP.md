@@ -25941,7 +25941,7 @@ faking the clock at the one seam the pipeline actually reads.
 
 ---
 
-## 170. One spend cap across a chain of vendors · **Raised 2026-09-22 by the operator**
+## 170. One spend cap across a chain of vendors · **SHIPPED 2026-09-22 — a ceiling per credential**
 
 *"Calls against OpenRouter are not the same cap."* Correct, and the cap
 predates the chain: `spend.calls_in_window` counts EVERY ledger row in the
@@ -25976,9 +25976,35 @@ built from. Fix them together.
 Per-entry `max_calls_per_24h`, defaulting to the global for any entry that
 does not set one, keeps every existing deployment behaving as it does now.
 
-**Until then the mitigation is a bigger number**, which is honest rather than
-elegant: with everything on free tiers the ceiling protects against a runaway
-loop and nothing else.
+### What shipped
+
+`calls_in_window` narrows to one credential when asked, matched on (class,
+model) rather than a new ledger field — two links can share a class, but
+every entry names its own model, and the pair works on rows written before
+this existed. `record_attempt` is the enforcement point and already knew both,
+so it now counts and refuses per credential, and says which one in the
+refusal: *"GeminiProvider (gemini-3.6-flash) has made 3 of its 3"*. A refusal
+that did not name the credential would send the operator to raise a number
+that was not the one in the way.
+
+`ProviderEntry.max_calls_per_24h` is the configurable half, None meaning the
+deployment's. The link carries it as an attribute set at build time, and the
+cap hook reads it off whichever link `resolve_active` says is live —
+`resolve_active` being `provider_identity`'s resolution, split out because a
+ceiling needs the OBJECT and not just its name. The attribute lives on the
+provider rather than in its constructor because the four provider classes are
+`olw_core`'s, shared verbatim with the app, and a ceiling is a deployment's
+concern.
+
+**The case it cannot see** is the same model reached through two hosts; those
+links share a budget they do not share in life. Left rather than solved,
+because fixing it wants the ledger naming the chain ENTRY — item 171 — and
+that should be done once for both.
+
+Six mutations, six bites. Three survived the first pass and all three were
+in the config-to-enforcement path: the limit stored and read by nothing. That
+is this repo's most expensive recurring defect and the tests now drive the
+CLI's own builder rather than asserting the field exists.
 
 ---
 

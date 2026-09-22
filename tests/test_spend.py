@@ -106,7 +106,11 @@ def test_the_refusal_says_when_capacity_returns(tmp_path):
     with pytest.raises(SpendCapExceeded) as e:
         _attempt(tmp_path, NOW + timedelta(minutes=5))
     message = str(e.value)
-    assert "3 of 3" in message
+    # "3 of ITS 3" since ROADMAP item 170: the ceiling belongs to one
+    # credential now, and a refusal that did not say whose would send the
+    # operator to raise a number that was not the one in the way.
+    assert "3 of its 3" in message
+    assert "GeminiProvider" in message and "gemini-3.6-flash" in message
     assert "ages out at" in message
     assert "config/location.yaml" in message, "says how to change it"
 

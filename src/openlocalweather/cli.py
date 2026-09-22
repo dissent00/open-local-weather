@@ -227,6 +227,13 @@ class _ProviderEntry:
     env_prefix: str
     fallback_models: tuple[str, ...] = ()
 
+    # This link's own 24-hour ceiling, or None for the deployment's — item
+    # 170. A cap belongs to an ACCOUNT: 20 is Google's free calendar-day
+    # allowance, OpenRouter's free tier is 50 on separate terms, and one
+    # number held both until a failing vendor's retries spent the budget its
+    # fallback needed.
+    max_calls_per_24h: int | None = None
+
     def env(self, suffix: str, default: str = "") -> str:
         return _env(f"{self.env_prefix}_{suffix}", default)
 
@@ -279,6 +286,7 @@ def _resolve_provider_entries(
                 # A bare string still inherits it, which is the deployment
                 # shape the field was written for.
                 fallback_models=tuple(own or ()),
+                max_calls_per_24h=entry.get("max_calls_per_24h"),
             )
         )
 
@@ -393,9 +401,17 @@ def _build_llm_provider(
     unavailable: list[str] = []
     for entry in entries:
         try:
-            built.append(
-                _build_one_llm_provider(entry, thinking_level=thinking_level)
-            )
+            link = _build_one_llm_provider(entry, thinking_level=thinking_level)
+            # ITS OWN CEILING, marked here rather than passed to the provider
+            # — item 170. The cap hook resolves whichever link is live and
+            # reads this off it, so a number in location.yaml reaches
+            # enforcement without threading through a pipeline that does not
+            # know what a chain entry is. An attribute because the provider
+            # classes are `olw_core`'s, shared verbatim with the app, and a
+            # ceiling is a deployment's concern rather than a provider's.
+            if entry.max_calls_per_24h is not None:
+                link.max_calls_per_24h = entry.max_calls_per_24h
+            built.append(link)
         except SystemExit as e:
             # A SINGLE NAME KEEPS ITS OLD BEHAVIOUR EXACTLY: the message that
             # names the missing variable, and a non-zero exit. Nothing about a
