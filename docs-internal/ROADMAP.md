@@ -57,26 +57,22 @@ while model cycles and the station archive are UTC.
 
 ### What is next, and why
 
-0. **DONE 2026-09-22 — the behaviour change to 81 was cascading past two**,
-   and it shipped as per-entry credentials. See item 81's own "Cascading past
-   two" section. The app half is item 168 and is NOT started.
+0. **SHIPPED 2026-09-22, all three:** item 162 (three narrative instructions
+   moved to the call that can obey them), item 81's cascading half (per-entry
+   credentials, so a chain can hold two gateways), and item 168 (the app
+   cascades too — no `olw_core` change was needed, and the app grew a
+   providers screen, a debug mode and a working model list along the way;
+   see ensemble's items 24 and 25).
 1. **Arm the fallback chain — item 81, and it is not an agent's to do.** The
    evening run of 09-21 failed on four Gemini 503s and no forecast went out.
    The chain is configured and inert because `LLM_API_KEY` does not exist;
    `gh secret list` still shows only `GEMINI_API_KEY` and `WAQI_TOKEN`.
-   Nothing on this list matters as much as a forecast that does not appear.
-2. **Item 162** — roughly a dozen narrative-section instructions are carried
-   in the JUDGMENT prompt, which has no field that can hold them, and a cold
-   reader's first attempt adds `forecaster_confidence_notes` as a key. One is
-   a hard impossibility rather than dead weight: the staleness rule says a
-   cycle older than the threshold "belongs in the Forecaster Confidence
-   Notes", and on a 9-hour-old cycle that cannot be obeyed or ignored.
-   Measure with `olw prompt-size` before cutting; item 158 step 9 is the
-   record of how much a prompt sentence can be carrying.
-3. **Items 87 and 123 are close but not ready.** The cloud pairs stand at 8
+   Nothing on this list matters as much as a forecast that does not appear,
+   and everything below it is smaller than that.
+2. **Items 87 and 123 are close but not ready.** The cloud pairs stand at 8
    of the 10 they need, so about 09-24. Read 123's 2026-09-22 note first: the
    tiles answered most of it and what remains is narrower than the item says.
-4. **Item 167**, raised by the operator today: a local agency may publish UV
+3. **Item 167**, raised by the operator 2026-09-22: a local agency may publish UV
    and there is nowhere to put it. `ModelPrediction` and `DayOutlook` both
    need a field, and the authority question — which source wins for a
    quantity — is item 11's ladder rather than a schema change.
