@@ -1205,11 +1205,16 @@ def describe_extended_trend(
 # withdrawn for the reason above: leaving them beside the composed sentence
 # leaves the temptation to re-weld them, and a rule would be all that stood
 # in the way.
+# `overview_comparison` LEFT THIS LIST 2026-09-22, item 159 step 5. The
+# Overview is gone from the narrative prompt and the comparison is rendered as
+# tile modifiers beside the numbers it concerns, so the composed sentence has
+# no reader. `describe_day_over_day` still builds it and its vectors still pin
+# it — deleting a measured composer is a separate decision, filed as item 164
+# — but nothing downstream reads it any more.
 PROMPT_COMPARISON_FIELDS = (
     "yesterday_rain",
     "yesterday_thunder",
     "today_rain_expected",
-    "overview_comparison",
 )
 
 

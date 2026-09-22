@@ -9796,6 +9796,20 @@ not in the session that built it.
 >    covering it, and make the reader report the line number of every block
 >    BEFORE it writes anything, so a short read is visible instead of
 >    arriving disguised as a data gap.
+> **STEP 2 IS WRITTEN FOR THE JUDGMENT CALL. For the NARRATIVE call the
+> archived `user_prompt` is the WRONG INPUT** — added 2026-09-22 after it
+> wasted a whole read. `build_narrative_user_prompt` APPENDS the judgment
+> call's answer to the archived message as "THE FORECASTER'S CALL", and only
+> the base is stored in `data/prompts/`. Hand the bare archive to a reader of
+> the narrative prompt and it correctly reports that the call block is
+> missing, then declares five dependent rules unfollowable — including "there
+> is no legal way to state today's high", because the rule that settles the
+> high reads `today_properties.temp_high_c` from the block that is not there.
+> Every one of those findings is an artefact of the setup and none of them is
+> a defect. Build the input with
+> `build_narrative_user_prompt(archived_user_prompt, judgment)` and say in the
+> brief which of the two calls is being read.
+>
 > 5. Ask for the narrative AND a compliance section naming anything
 >    ambiguous, self-contradictory, or impossible — with the instruction
 >    quoted. **Tell it not to smooth over an awkward result**: an ungrammatical
@@ -24527,7 +24541,7 @@ vector stores `""` as a data field standing in for null.
 
 ---
 
-## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-4 SHIPPED the same day, steps 5-6 open**
+## 159. Retire the Overview; the tiles carry it · **Decided 2026-09-21; steps 1-4 SHIPPED 2026-09-21, step 5 on 2026-09-22, step 6 open**
 
 The operator, after ten steps of item 158 and three more fixes on top of it:
 
@@ -24944,6 +24958,101 @@ absence still originates with the model, since no number means no display —
 but it is now watching a code-composed value, which is noted beside the list.
 
 
+### Step 5 SHIPPED 2026-09-22 — the Overview out of the narrative prompt
+
+**Measured before cutting, over the 43 archived narratives that have one.**
+The Overview named convection on 33 of them. On all 33 at least one section
+below said it too, and on 23 of the 33 THREE OR FOUR sections did:
+
+| sections below that also named it | days |
+|---:|---:|
+| 1 | 3 |
+| 2 | 7 |
+| 3 | 13 |
+| 4 | 10 |
+
+**Not once was the Overview the only place.** A first pass said there was one
+such day, 2026-09-04; that was a false positive from grepping for "thunder"
+when Severe Weather had written "lightning". A second figure from that pass —
+"the Overview says dry while Today's Forecast says rain on 17 of 25 days" —
+was also wrong and is not repeated here: those days say "dry" in AMOUNT
+beside a storm caveat, which is a real call and not a contradiction, or the
+match was on "Rainfall: 0.0 mm". Both numbers were withdrawn before they
+reached a commit message.
+
+Today's own output is the argument in miniature. The Overview read *"Largely
+dry, with thunder possible from the morning, peaking overnight"*, Today's
+Forecast opened *"Evening showers and thunderstorms are expected"*, and
+Severe Weather said *"Thunderstorms are possible from late morning"*. One
+day, three timings, three sections.
+
+**What went, and what it cost.** The `## Overview` heading, its 3,433-
+character rule, the 155-character bridge sentence, and the old 1,879-
+character instability rule: 5,490 characters removed, 1,274 re-added as the
+re-homed mandate. `overview_comparison` left `PROMPT_COMPARISON_FIELDS`, so
+the composed sentence no longer reaches the forecaster at all; the three
+booleans and the cell-versus-station caveat stay, because that caveat is
+about `yesterday_rain` and outlives the sentence. The narrative prompt falls
+from 41,322 characters to 37,443, and the judgment prompt does not move.
+
+**The instability mandate moved to Today's Forecast**, which is now the first
+section a reader meets. That is the whole reason it was the Overview's: the
+live case on 2026-08-26 had CAPE between 1100 and 2600 J/kg while a real
+forecast opened "similar warmth, calmer winds, and dry again" and discussed
+the instability only far below.
+
+**A guard that never existed.** Two mutations — deleting the mandate, and
+loosening "THIS section" to "some section" — left the entire suite green
+except the vector exporter's byte-for-byte comparison of the whole prompt,
+which fires on any edit at all and is a tripwire rather than a guard. The
+rule was four weeks old and had no test.
+`test_the_instability_mandate_lives_in_the_first_section` asserts the SECTION
+and not merely the words, because a warning that drifts to the bottom has
+failed in exactly the way the rule exists to prevent.
+
+**Item 77's harness caught a contradiction I had just sharpened.** The first
+draft of the mandate ordered the thunder "placed by the CLOCK from
+`onset_at` and `peak_at`". Rule 4 forbids claiming more precision than the
+models agree on — and `summarize_instability` sets `onset_at` to the FIRST
+hour ANY model crosses the threshold, its own comment calling it "the
+earliest warning". On the day read, four of five models crossed, hours apart,
+and the fifth never did. The cold reader said it would have written 09:00 and
+broken the rule that outranks it. The mandate now uses the `timing` phrase,
+which places the thunder without claiming an hour, and says why in the rule
+itself. The clock is allowed only where HOURS AHEAD shows agreement.
+
+The same read found the `left_out` checklist still demanding "the
+day-over-day comparison" appear in the narrative, after its sentence had
+been removed — an order to account for something no longer handed over. The
+checklist now names the comparison as deliberately absent.
+
+**A LESSON ABOUT THE HARNESS ITSELF, worth more than either fix.** Item 77's
+method says to take an archived `user_prompt` from `data/prompts/`. For the
+NARRATIVE call that is the wrong input: `build_narrative_user_prompt`
+APPENDS the judgment call's answer as "THE FORECASTER'S CALL", and only the
+base is archived. The reader therefore reported the call block missing and
+declared five dependent rules unfollowable, including "there is no legal way
+to state today's high". Every one of those is an artefact of the setup.
+Nothing was changed on account of them. **When the harness reads the
+narrative prompt, it must be handed
+`build_narrative_user_prompt(archived, judgment)`** — the method's step 2 is
+written for the judgment call and says so nowhere.
+
+**Verified.** 1,541 Python, 215 Dart, `dart analyze` clean. Four mutations
+bit their own case with the byte tripwire excluded: the heading restored, the
+mandate deleted, the mandate unsectioned, the sentence exported again. Driven
+through `tools/drive_forecast_cli.py` against a HEAD worktree with the
+control run twice: the two controls are byte-identical, the transcript is
+unchanged, and the record moves only by the prompt hashes and
+`narrative_prompt_chars` falling 3,879 on that fixture.
+
+**Not checked.** No live run has used the cut prompt. The user prompt grows
+about 82 characters on a real day: the guard that replaced the sentence is
+248 characters and the sentence it replaced was 166; that is deliberate, since the observed
+values are still in the block and inventing a comparison from them was a real
+failure. `describe_day_over_day` is now called and never read — item 164.
+
+
 ### A false alarm, and the guard it earned
 
 Building this I reported a defect in `describe_wind_shift` that does not
@@ -25101,3 +25210,25 @@ dropped. It works; its absent-case wording does not.
 **Small and worth doing properly**: the failing test first, on the shape the
 archive actually held — three stations, `aqi` null, PM2.5 present, six hours
 old — then the message. Check the same wording in the Dart port.
+
+---
+
+## 164. `describe_day_over_day` is computed every run and read by nothing · **Open, 2026-09-22**
+
+Item 159 step 5 took `overview_comparison` out of `PROMPT_COMPARISON_FIELDS`,
+so the composed sentence no longer reaches the forecaster. It is still built
+on every run by `comparison.describe_day_over_day`, still stored on the
+prediction row, and still pinned by `day_over_day.json` and
+`describe_day_over_day.json` with a Dart port beside it.
+
+**Deliberately left alone rather than deleted in the same change.** Deleting
+a measured composer, its vectors and its port is a separate decision with its
+own blast radius, and the row's copy is a record: item 127 added it precisely
+so the comparison the forecaster was handed could be checked later.
+
+**The question to answer before touching it:** does anything want the
+sentence now? The tiles carry the comparison as modifiers, and step 6 puts
+the tiles on the page and in the mailer, so the sentence has no renderer
+left. If the row's copy is also unread, the whole path goes; if the record is
+worth keeping, the composer stays and only its exporter changes. Check what
+reads `prediction_rows[].day_over_day.overview_comparison` before deciding.

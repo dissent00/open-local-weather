@@ -48,7 +48,9 @@ def test_heading_order_with_secondary_enabled():
     prompt = build_system_prompt(KISUMU)
     top_level = [t for level, t in headings(prompt) if level == "##"]
     assert top_level == [
-        "Overview",
+        # NO "Overview" — item 159 step 5 retired it 2026-09-22. Today's
+        # Forecast is the first section a reader meets, which is why the
+        # instability mandate moved there.
         "Today's Forecast",
         "Extended Outlook",
         "Severe Weather / Hazard Potential",
@@ -72,7 +74,9 @@ def test_secondary_section_omitted_when_disabled():
     top_level = [t for level, t in headings(prompt) if level == "##"]
     assert "Lake Victoria — Conditions for Boaters" not in top_level
     assert top_level == [
-        "Overview",
+        # NO "Overview" — item 159 step 5 retired it 2026-09-22. Today's
+        # Forecast is the first section a reader meets, which is why the
+        # instability mandate moved there.
         "Today's Forecast",
         "Extended Outlook",
         "Severe Weather / Hazard Potential",
@@ -304,7 +308,9 @@ def test_system_prompt_reissue_does_not_disturb_heading_order():
     prompt = build_system_prompt(KISUMU, verification_already_written=True)
     top_level = [t for level, t in headings(prompt) if level == "##"]
     assert top_level == [
-        "Overview",
+        # NO "Overview" — item 159 step 5 retired it 2026-09-22. Today's
+        # Forecast is the first section a reader meets, which is why the
+        # instability mandate moved there.
         "Today's Forecast",
         "Extended Outlook",
         "Severe Weather / Hazard Potential",
@@ -340,21 +346,52 @@ def test_the_days_earlier_narratives_are_never_sent():
     assert "Issued " not in prompt
 
 
-def test_system_prompt_asks_for_a_concrete_comparison_against_observed_conditions():
-    """The Overview used to be told to "compare to the previous day" while the
-    user message never supplied yesterday's conditions — so the model was
-    asked for a comparison it had no data for, inviting vagueness or
-    invention. Guards the instruction now that the data exists."""
+def test_the_narrative_no_longer_asks_for_a_day_over_day_sentence():
+    """The comparison is a tile modifier now, not a sentence — item 159.
+
+    THIS TEST IS THE INVERSE OF THE ONE IT REPLACES. That one guarded a long
+    set of rules teaching the model how to open the Overview with the
+    code-composed comparison: do not subtract the temperatures yourself, do
+    not manufacture a difference, never compare against yesterday's scores.
+    All of it existed because a sentence was being handed to a writer.
+
+    Nothing hands it over any more. `comparison_modifiers` puts "3° cooler"
+    inside the temperature tile and nothing inside a tile that did not move,
+    which is the thing the sentence could never do: across 16 archived runs
+    `overview_comparison` returned "nothing worth saying" ZERO times.
+
+    What the model still gets is the three BOOLEANS for context —
+    `yesterday_rain`, `yesterday_thunder`, `today_rain_expected` — and the
+    caveat about the reanalysis cell and the airport station being different
+    places, which is about `yesterday_rain` and outlives the sentence.
+    """
     prompt = build_system_prompt(KISUMU)
-    assert "DAY-OVER-DAY COMPARISON" in prompt
-    # The labels are computed in code; the LLM must not redo the subtraction.
-    assert "do not subtract the temperatures yourself" in prompt
-    # And must not invent a change when there genuinely isn't one.
-    assert "do not manufacture a difference" in prompt
-    # Must be anchored to observations, not to how the models scored.
-    assert "never against yesterday's forecast or its verification scores" in prompt
-    # And must degrade honestly when there's no record.
-    assert "omit the comparison rather than guessing" in prompt
+
+    assert "Overview" not in [t for _, t in headings(prompt)]
+    for gone in (
+        "overview_comparison",
+        "do not subtract the temperatures yourself",
+        "do not manufacture a difference",
+        "omit the comparison rather than guessing",
+    ):
+        assert gone not in prompt, f"the Overview's comparison rule survives: {gone!r}"
+
+    # the booleans and their caveat stay, in the USER prompt where they live
+    user = build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.com/",
+        verification_context={},
+        track_record_context=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual={"yesterday_rain": True, "today_rain_expected": False},
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+    )
+    assert "DAY-OVER-DAY COMPARISON" in user
+    assert "IS NOT A CONTRADICTION" in user
 
 
 def test_user_prompt_includes_yesterdays_observed_conditions():
@@ -728,3 +765,58 @@ def test_user_prompt_keeps_rendering_supplied_empty_record_blocks_as_lists():
     assert "no verification results supplied" not in prompt
     assert "no track record supplied" not in prompt
     assert "MODEL TRACK RECORD (already computed rolling stats, per model per lead time):\n[]" in prompt
+
+
+def _section(prompt: str, name: str) -> str:
+    """The rules under one narrative heading, up to the next one."""
+    start = prompt.index(f"## {name}")
+    rest = prompt[start + 4:]
+    end = rest.find("\n   ## ")
+    return rest if end < 0 else rest[:end]
+
+
+def test_the_instability_mandate_lives_in_the_first_section():
+    """A convective flag the code sets MUST reach the reader, and early.
+
+    THIS TEST DID NOT EXIST BEFORE 2026-09-22 and the rule it guards is four
+    weeks old. Two mutations proved the gap at item 159 step 5: deleting the
+    mandate outright, and loosening it from "THIS section" to "some section",
+    both left the whole suite green except the vector exporter's byte-for-byte
+    comparison of the entire prompt — which fires on any edit at all, so it is
+    a tripwire and not a guard.
+
+    The live case the rule was written against, 2026-08-26: afternoon CAPE
+    peaked between 1100 and 2600 J/kg across models, and a real forecast
+    opened "similar warmth, calmer winds, and dry again", discussing the
+    instability only far below, where a reader who stopped early never saw it.
+
+    IT MOVED HERE WHEN THE OVERVIEW WENT. The mandate used to be the
+    Overview's, for the same reason it is now Today's Forecast's: that is the
+    first section a reader meets. Asserting the SECTION and not just the
+    presence of the words is the point — a warning that drifts to the bottom
+    of the document has failed in the way this rule exists to prevent.
+    """
+    prompt = build_system_prompt(KISUMU)
+    today = _section(prompt, "Today's Forecast")
+
+    assert "THUNDER IS NOT OPTIONAL WHEN CODE SAYS IT IS THERE" in today
+    assert "THIS section must say thunderstorms are possible" in today
+    # the flag decides, and a dry day is not an exemption
+    assert "The flag decides; you phrase it." in today
+    assert "near-zero rainfall totals are NOT a reason to leave it out" in today
+    # and the numbers stay out of the section a reader acts on
+    assert "NO CAPE VALUES, NO J/kg AND NO MODEL NAMES HERE" in today
+
+    # THE MANDATE MUST NOT ORDER A CLOCK IT CANNOT JUSTIFY. Its first draft
+    # said "placed by the CLOCK from onset_at and peak_at", which collides
+    # with Rule 4 — never claim more precision than the models agree on.
+    # `summarize_instability` sets `onset_at` to the FIRST hour ANY model
+    # crosses the threshold, explicitly "the earliest warning" and not a
+    # consensus, so a named hour asserts an agreement that does not exist.
+    # A cold reader caught it, and said it would have written the hour.
+    assert "onset_at" in today and "not an hour they share" in today
+    assert 'that block\'s "timing" places the thunder' in today
+
+    # it is NOT in the later sections, which place the thunder their own way
+    for later in ("Extended Outlook", "Severe Weather / Hazard Potential"):
+        assert "THUNDER IS NOT OPTIONAL" not in _section(prompt, later)

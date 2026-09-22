@@ -1,10 +1,10 @@
 {
   "vector_format_version": 1,
   "function": "comparison_for_prompt",
-  "description": "The narrowing between the stored day-over-day comparison and what the prompt is shown: four fields, plus observed_from rebuilt from provenance. THE DELTAS ARE DROPPED ON PURPOSE \u2014 a rule asking the forecaster not to re-derive the comparison cannot beat a payload that hands it the arithmetic, which is why two fields were removed on 2026-09-05. observed_from is omitted rather than emitted empty, because an empty map would claim the sources were looked up and found absent.",
+  "description": "The narrowing between the stored day-over-day comparison and what the prompt is shown: three fields, plus observed_from rebuilt from provenance. THE DELTAS ARE DROPPED ON PURPOSE \u2014 a rule asking the forecaster not to re-derive the comparison cannot beat a payload that hands it the arithmetic, which is why two fields were removed on 2026-09-05. THE COMPOSED SENTENCE WENT THE SAME WAY on 2026-09-22: the Overview it opened no longer exists and the comparison reaches the reader beside the numbers it concerns. observed_from is omitted rather than emitted empty, because an empty map would claim the sources were looked up and found absent.",
   "cases": [
     {
-      "name": "the four fields and both sources",
+      "name": "the three fields and both sources",
       "input": {
         "comparison": {
           "yesterday_high_c": 29.6,
@@ -26,7 +26,6 @@
         "yesterday_rain": true,
         "yesterday_thunder": true,
         "today_rain_expected": true,
-        "overview_comparison": "Much like yesterday.",
         "observed_from": {
           "yesterday_rain": "era5_archive",
           "yesterday_thunder": "metar_station"
@@ -51,8 +50,7 @@
       "expected": {
         "yesterday_rain": true,
         "yesterday_thunder": true,
-        "today_rain_expected": true,
-        "overview_comparison": "Much like yesterday."
+        "today_rain_expected": true
       }
     },
     {
@@ -77,7 +75,6 @@
         "yesterday_rain": true,
         "yesterday_thunder": true,
         "today_rain_expected": true,
-        "overview_comparison": "Much like yesterday.",
         "observed_from": {
           "yesterday_rain": "era5_archive"
         }
@@ -87,14 +84,14 @@
       "name": "a field absent from the stored comparison is absent here",
       "input": {
         "comparison": {
-          "overview_comparison": "Dry again.",
+          "yesterday_rain": false,
           "provenance": {
-            "thunder": "metar_station"
+            "yesterday_thunder": "metar_station"
           }
         }
       },
       "expected": {
-        "overview_comparison": "Dry again."
+        "yesterday_rain": false
       }
     },
     {

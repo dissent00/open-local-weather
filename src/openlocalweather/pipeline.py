@@ -905,20 +905,13 @@ def _build_forecast_prompt(
     for `issued_hour`, and it is what caught `sandbox/sweep.py` when the two
     fell out of step.
     """
-    # THE OVERVIEW'S OPENING SENTENCE, guarded like the locked blocks — item
-    # 158, 2026-09-21. It reaches the prompt as one key of the comparison dict
-    # rather than as a block of its own, so `_locked_blocks` cannot cover it,
-    # and it is the phrase with the least standing between it and the reader:
-    # the rules order it opened with, verbatim, unaltered.
-    if yesterday_actual and "overview_comparison" in yesterday_actual:
-        yesterday_actual = {
-            **yesterday_actual,
-            "overview_comparison": _sound_phrase(
-                "overview_comparison",
-                yesterday_actual["overview_comparison"],
-                guidance.degradations,
-            ),
-        }
+    # THE OVERVIEW'S OPENING SENTENCE WAS GUARDED HERE, and the guard went with
+    # the Overview — item 159 step 5, 2026-09-22. `PROMPT_COMPARISON_FIELDS` no
+    # longer exports `overview_comparison`, so there was nothing left to check
+    # and a `_sound_phrase` call on a key that is never present is a guard that
+    # reads as protection and gives none. The comparison now reaches the reader
+    # as tile modifiers, which are values rather than a sentence and cannot be
+    # malformed in the way this was written for.
 
     return build_user_prompt(
         today=today,

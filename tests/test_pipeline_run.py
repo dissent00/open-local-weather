@@ -3756,16 +3756,19 @@ def test_an_evening_issuance_compares_tomorrow_against_today(tmp_path, monkeypat
     assert stored.rain_contrast is None
     assert stored.provenance["high_c"] == "metar_station"
 
+    # AND THE SENTENCE NO LONGER REACHES THE FORECASTER — item 159 step 5,
+    # 2026-09-22. It is still composed and still stored on the row above,
+    # because the record is the thing worth keeping; what changed is that the
+    # Overview it was written to open does not exist, and the comparison now
+    # reaches the reader as tile modifiers beside the numbers they concern.
+    # Asserting its ABSENCE here is what stops it drifting back in: the block
+    # is still handed over, with three booleans in it.
     prompt = llm.user_prompts
-    # Named for the days it means, and in the past tense for the day that is
-    # ending — 2026-08-11 was a Tuesday.
-    assert "than today (Tuesday) was" in prompt, (
-        "the evening subject never reached the pipeline"
+    assert "than today (Tuesday) was" not in prompt, (
+        "the composed comparison sentence is back in the prompt"
     )
-    # The dimensions no instrument here can pair are absent from the sentence:
-    # the station files sustained wind, eighths of sky, and no rain amount.
-    for artefact in ("windier", "calmer", "cloudier", "clearer"):
-        assert artefact not in prompt.split("than today (Tuesday) was")[0][-120:], artefact
+    assert "DAY-OVER-DAY COMPARISON" in prompt, "the booleans went with it"
+    assert "yesterday_rain" in prompt
 
 
 def test_the_morning_comparison_is_kept_on_the_row(tmp_path, monkeypatch):

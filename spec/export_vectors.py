@@ -3807,7 +3807,10 @@ def export_comparison_for_prompt() -> None:
     }
     no_provenance = {k: v for k, v in stored.items() if k != "provenance"}
     partial = dict(no_provenance, provenance={"rain": "era5_archive"})
-    sparse = {"overview_comparison": "Dry again.", "provenance": {"thunder": "metar_station"}}
+    # ONE EXPORTED FIELD AND A SOURCE. This used to hold only
+    # `overview_comparison`, which stopped being exported on 2026-09-22
+    # (item 159 step 5) — the case then expected `{}` and proved nothing.
+    sparse = {"yesterday_rain": False, "provenance": {"yesterday_thunder": "metar_station"}}
 
     cases = [
         {
@@ -3816,7 +3819,7 @@ def export_comparison_for_prompt() -> None:
             "expected": comparison_for_prompt(payload),
         }
         for name, payload in [
-            ("the four fields and both sources", stored),
+            ("the three fields and both sources", stored),
             ("no provenance stored — observed_from is omitted, not empty", no_provenance),
             ("one source stamped, one not", partial),
             ("a field absent from the stored comparison is absent here", sparse),
@@ -3827,11 +3830,14 @@ def export_comparison_for_prompt() -> None:
         "comparison_for_prompt.json",
         "comparison_for_prompt",
         "The narrowing between the stored day-over-day comparison and what "
-        "the prompt is shown: four fields, plus observed_from rebuilt from "
+        "the prompt is shown: three fields, plus observed_from rebuilt from "
         "provenance. THE DELTAS ARE DROPPED ON PURPOSE — a rule asking the "
         "forecaster not to re-derive the comparison cannot beat a payload "
         "that hands it the arithmetic, which is why two fields were removed "
-        "on 2026-09-05. observed_from is omitted rather than emitted empty, "
+        "on 2026-09-05. THE COMPOSED SENTENCE WENT THE SAME WAY on 2026-09-22: "
+        "the Overview it opened no longer exists and the comparison reaches the "
+        "reader beside the numbers it concerns. observed_from is omitted rather "
+        "than emitted empty, "
         "because an empty map would claim the sources were looked up and "
         "found absent.",
         cases,
