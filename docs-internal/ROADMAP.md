@@ -25882,6 +25882,49 @@ this item replaces.
 
 ---
 
+## 169. The suite depended on what time it was run · **SHIPPED 2026-09-22**
+
+CI was green on `d438b3a` at 10:45Z and red on `b853b62` at 12:23Z. The two
+commits differ in one file, `docs-internal/ROADMAP.md`. Nothing about the code
+changed, and the operator confirmed nothing outside the session had.
+
+**Five tests in `test_pipeline_run.py` took the run's clock from the wall.**
+`pipeline` calls `now_in_tz(location.timezone)` for the issuance moment, and
+the test fixture's location is UTC, so the suite's behaviour tracked the UTC
+hour:
+
+- `test_the_comparison_modifiers_reach_the_day_record` fails from **12:00**
+  onwards. `comparison_subject` returns None once the hour reaches
+  `COMPARISON_MORNING_ENDS_HOUR` — a comparison earns its place while the day
+  is mostly ahead, and by mid-afternoon the reader has lived it. Correct
+  behaviour; the test simply never said which hour it meant.
+- Four more fail **after sunset**, when the horizon no longer contains TODAY:
+  the convective flag, the Day+0 CAPE fallback, the tile anchors and the
+  index halves.
+
+So the suite went red twice a day, on unchanged code, and read exactly like
+flakiness.
+
+**The fix is an autouse fixture in `tests/conftest.py`** pinning the time of
+day to 08:30 for every test. THE DATE IS NOT PINNED: tests that reason about
+"today" use the real one and freezing it would change what they are about.
+Only the hour moves, which is the axis that was silently load-bearing.
+
+**No coverage was lost.** The tests that are ABOUT the evening set their own
+clock — there is a dusk test at 18:01 local for the UV horizon — and their
+`monkeypatch` runs after the fixture, so theirs wins. Swept over machine hours
+00, 06, 12, 15, 18 and 22 after the change: 1,570 pass at every one, where
+before 18:30 and 22:30 each failed four.
+
+**What this says about the method.** The failure was found by bisecting time
+rather than code, and two earlier attempts to reproduce it were invalid —
+one ran the pipeline outside pytest with no network mocks, another injected
+`now` into `run_forecast`, which only feeds the re-issue guard that `force`
+bypasses. Both produced confident wrong answers. The thing that worked was
+faking the clock at the one seam the pipeline actually reads.
+
+---
+
 ## 164. `describe_day_over_day` is computed every run and read by nothing · **Open, 2026-09-22**
 
 Item 159 step 5 took `overview_comparison` out of `PROMPT_COMPARISON_FIELDS`,

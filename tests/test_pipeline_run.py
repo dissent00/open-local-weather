@@ -4387,6 +4387,24 @@ def test_the_comparison_modifiers_reach_the_day_record(tmp_path, monkeypatch):
     """
     deps = make_deps(tmp_path)
 
+    # THE RUN'S CLOCK IS PINNED, and before this test it was not. A
+    # comparison exists only while the day is mostly ahead —
+    # `comparison_subject` returns None once the local hour reaches
+    # COMPARISON_MORNING_ENDS_HOUR (12) and before sunset — and this
+    # fixture's location is UTC. So the test passed before noon UTC and
+    # failed after it, every day, on unchanged code: CI was green at 10:45Z
+    # on 2026-09-22 and red at 12:23Z on a commit that changed only a
+    # markdown file.
+    #
+    # Pinning also makes the run COHERENT. `today` is 2026-08-11 while the
+    # wall clock is whatever today happens to be, so the run was reasoning
+    # about a day weeks in the past with a clock saying otherwise.
+    # NAIVE, like the real one: `now_in_tz` returns wall-clock time with no
+    # tzinfo because it is compared against Open-Meteo's naive local strings.
+    monkeypatch.setattr(
+        pipeline, "now_in_tz", lambda tz: datetime(2026, 8, 11, 8, 0)
+    )
+
     # WITHOUT A RECORD, SILENCE. The cache the fixture starts with holds a
     # handful of days, which is fewer than the thirty pairs `notable_moves`
     # demands, so no dimension has a gate and none can speak.
