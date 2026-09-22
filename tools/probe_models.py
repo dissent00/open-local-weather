@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from openlocalweather.config import load_location_config
+from openlocalweather.llm import openai_compat
 from openlocalweather.llm.openai_compat import OpenAICompatProvider
 from openlocalweather.pipeline import attach_spend_cap
 from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
@@ -62,11 +63,30 @@ def verdict(text: str) -> list[str]:
     return faults
 
 
+#: One quick retry and no more, for a probe.
+#:
+#: PRODUCTION WAITS 30s, 60s THEN 420s and is right to: nobody is watching a
+#: 03:01Z forecast and the argument is about how provider capacity recovers.
+#: A diagnostic is the opposite case — someone IS watching, and the answer
+#: "this endpoint is rate limited" arrives on the first 429 rather than eight
+#: minutes later. Measured 2026-09-22: a two-model probe against a rate-limited
+#: free tier ran 31 minutes on the production schedule and had still not
+#: reported anything.
+#:
+#: A 429 IS ITSELF THE FINDING here, not an obstacle to one. A fallback that
+#: cannot be reached when it is wanted is not a fallback, however well it
+#: writes.
+PROBE_RETRY_DELAYS_S = (5,)
+
+
 def main() -> int:
     key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
     if not key:
         print("LLM_API_KEY (or OPENROUTER_API_KEY) is required.", file=sys.stderr)
         return 2
+
+    openai_compat.RETRY_DELAYS_S = PROBE_RETRY_DELAYS_S
+    openai_compat.MAX_ATTEMPTS = len(PROBE_RETRY_DELAYS_S) + 1
 
     day, models = sys.argv[1], sys.argv[2:]
     archived = json.loads((ROOT / f"data/prompts/{day}.json").read_text())
@@ -108,7 +128,9 @@ def main() -> int:
         try:
             got = provider.generate(system, user, GeminiNarrativeResponse)
         except Exception as e:  # noqa: BLE001 — every failure is a result here
-            print(f"  {model}\n      REFUSED  {type(e).__name__}: {str(e)[:160]}\n")
+            detail = str(e)
+            kind = "RATE LIMITED" if "429" in detail else "REFUSED"
+            print(f"  {model}\n      {kind}  {type(e).__name__}: {detail[:160]}\n")
             worst = max(worst, 1)
             continue
 
