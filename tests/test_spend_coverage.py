@@ -65,8 +65,8 @@ CAPPED_BY_CALLER = {
     "_generate_forecast": (
         "Takes the provider as an argument. pipeline's wrapper around "
         "generate_forecast, adding the per-call meta snapshot. "
-        "run_daily_pipeline and run_refresh_pipeline attach the cap before "
-        "calling it."
+        "pipeline._issue_forecast attaches the cap before calling it — one "
+        "caller since item 104 merged the two pipelines."
     ),
 }
 

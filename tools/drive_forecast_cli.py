@@ -49,9 +49,8 @@ evidence.
 
 WHAT IT COVERS, AND WHAT IT DOES NOT. Four outcomes: a first issuance, a
 forced re-issue, a skipped repeat trigger, and item 121's observation-only
-refresh — the one an hourly cron should mostly produce. It does not drive `olw run-daily`
-or `olw run-refresh`, which print through the same two functions the forecast
-path already exercises. It has no test of its own: its entire output is a
+refresh — the one an hourly cron should mostly produce. It drives `olw forecast`, which since item 104 step 4 is the only verb that
+issues one; the `run-daily` and `run-refresh` verbs it used to skip are gone. It has no test of its own: its entire output is a
 diff, so a test would assert what the diff is for.
 
 Writes only inside the output directory given as its one argument. Used for

@@ -25549,3 +25549,95 @@ happens, in `compose_tiles`.
 `StatUnits` defaults to metric with no setting to change it, and the page and
 the email pass `metric=True`. This becomes real the day a unit toggle ships,
 and it should be fixed before that rather than after.
+
+---
+
+## 166. "A forecast is a forecast" — the docs caught up · **Partly done 2026-09-22; the soft tier is open**
+
+The operator, correcting the vocabulary this session had been using:
+
+> *"No such thing as a re-issuance anymore — just a forecast. If there's no
+> new model data, we just look at the observations from METAR/local weather
+> stations."*
+
+Two sweeps over both repos found **55 places** the old design was still
+asserted: 16 BROKEN (a name, instruction or example that does not match the
+code), 20 STALE (asserts the old design as current), 19 SOFT (morning/evening
+as shorthand in comments and test names).
+
+### What was broken, not merely stale
+
+- **`QUICKSTART.md` told a forker to run two Apps Script functions that do not
+  exist** — `createDailyTrigger` and `createEveningRefreshTrigger`. The mailer
+  has `createTriggers`. Setup stopped at step 4.
+- **`ARCHITECTURE.md` described prompt behaviour the test suite forbids.** It
+  said a later run "is told this is a later issuance, so it writes what
+  CHANGED, not a repeat". Diffing the two prompts, the ONLY difference is a
+  block saying this day's verification is already written; and
+  `test_prompt.py` asserts "LATER ISSUANCE" and "not a repeat" are ABSENT.
+- Four dead names in live prose: `olw run-daily`, `olw run-refresh`,
+  `run_refresh_pipeline`, `run_daily_pipeline`. `daily.yml`, deleted with the
+  backstop slots on 08-29, still cited twice by `health_check.yml`.
+- `olw forecast --help` offered "a narrative re-issue" as one of three kinds
+  of run, in the text a user reads.
+- **An orphaned doc comment in `olw_core`**: the paragraph describing the
+  removed `earlierToday` parameter was stranded above
+  `verificationAlreadyWritten`, so the live parameter carried another's
+  description. Neither sweep caught this one.
+- In the app: the Android notification channel read **"Morning forecast"** in
+  system settings while the user picks the hour; and `ROADMAP.md` carried a
+  standing instruction, "`earlierToday` stays … do not read the branch dying
+  as the wiring dying", that had been wrong since the parameter was removed.
+
+### The day boundary, which was undocumented entirely
+
+The operator asked which day defines "the day's first run". It is the LOCAL
+day — `today_in_tz(location.timezone)`. No doc said so. The only statement of
+either boundary anywhere was one line noting the station store is keyed by UTC
+day, two boxes below the log store that is keyed local, with nothing saying
+they differ.
+
+Both clocks are already in the record and they key different stores:
+
+| what | clock |
+|---|---|
+| log filename, `entry.date`, `meta.issued_local_time` | local |
+| `meta.generated_at_utc`, `guidance_initialised_at` | UTC |
+| `data/station/<ICAO>/<day>.json` | **UTC** |
+
+**The crossing is already handled and was already explained, in the one place
+it matters.** A local day overhangs its UTC date by the offset, so Nairobi's
+22nd spans 21:00Z on the 21st to 20:59Z on the 22nd and touches two UTC
+station files. `metar.ARCHIVE_PADDING_DAYS` pads a day each side and its
+comment says why. Nothing was broken; it was undocumented.
+
+**Where it would bite a forker.** At +3 both slots share a date under either
+clock, so nothing diverges here and nothing warns. At UTC-8 a 03:01Z slot is
+19:01 the PREVIOUS local day, so the run an operator thinks of as their
+morning writes yesterday's entry and becomes that day's second run. Cron is
+UTC, the record is local, and that gap is now stated in README.md and in a new
+ARCHITECTURE.md section.
+
+### What was deliberately NOT changed
+
+- **`ROADMAP.md:1810`, the operator's own recorded direction** that
+  "sensor-only runs re-render and are not new forecasts". A sweep flagged it;
+  it is a quotation, and on reading it is about SCORING under item 155 rather
+  than about what a run is called. Rewriting an operator's recorded words to
+  match a later vocabulary would damage the record.
+- **The SOFT tier, 19 findings**, almost all comments and test names using
+  morning/evening for first/later. Thirteen are in the app's scheduling layer
+  where "the morning forecast" is the only vocabulary it has. Real churn, low
+  reader benefit; worth its own pass or none.
+- `reissue_test.dart` keeps its filename, cited from four places.
+
+### One claim of this session's own, corrected before it shipped
+
+"The day's first run is the one the accuracy record scores" was about to go
+into README.md as a plain design statement. It is true of `scored_predictions`
+— which returns `rows[0]` and says so — but silent about the window series,
+which is verified per row, and the same docstring flags the split as
+provisional: "it does not yet make every row scored". Freezing that into prose
+would have been the same mistake `ARCHITECTURE.md` made about "what CHANGED".
+The operator's call was "first run scored is fine for now", so it is stated in
+the README with that scope and not as an invariant.

@@ -1,6 +1,6 @@
 name: Weekly Health Check
 
-# Decoupled from daily.yml's own cron on purpose — a health-check failure
+# Decoupled from forecast.yml's own trigger on purpose — a health-check failure
 # should never block or depend on that day's forecast run, and vice versa.
 # See health_check.py's module docstring for what these checks catch and
 # why (in short: a live Gemini deprecations-page read, since a bare
@@ -17,8 +17,10 @@ name: Weekly Health Check
 # health_check.check_aligned_window.
 on:
   schedule:
-    # Deliberately off the exact hour — see daily.yml's schedule comment
-    # for why ":00" schedules are the least reliable slot GitHub offers.
+    # Deliberately off the exact hour — see forecast.yml's header for why
+    # ":00" schedules are the least reliable slot GitHub offers. (daily.yml,
+    # which this used to cite, was removed with the backstop slots on
+    # 2026-08-29; forecast.yml now carries no `schedule:` block at all.)
     - cron: "17 4 * * 1" # ~04:17 UTC every Monday
   workflow_dispatch:
 

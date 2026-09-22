@@ -8,6 +8,11 @@ location.
 > the **generated GitHub Pages site** — anything put there gets published
 > publicly and overwritten by the pipeline. Internal docs live here.
 
+> **Checked against the code on 2026-09-22.** The 09-15 check predated items
+> 104, 121, 137, 138 and 159, and the stamp went on vouching for three claims
+> they had invalidated — see the later-run box below, which described prompt
+> behaviour the test suite actively forbids.
+>
 > **Checked against the code on 2026-09-15.** This document describes what is
 > TRUE and STABLE and cites `ROADMAP.md` for why; the roadmap is the argument,
 > this is the shape. It had gone 145 `src/` commits without a check (item 136)
@@ -36,7 +41,8 @@ See *The two-call split* and *Every run is an issuance* below.
 ```
                     ┌─────────────────────────────────────┐
                     │  operator's crontab -> workflow_    │
-                    │  dispatch (03:01 / 15:01 UTC)       │
+                    │  dispatch (this deployment: 03:01   │
+                    │  and 15:01 UTC; any hours you like) │
                     │  forecast.yml declares NO schedule: │
                     └──────────────────┬──────────────────┘
                                        │
@@ -100,7 +106,7 @@ See *The two-call split* and *Every run is an issuance* below.
    └────────────────────────────────────────────────────────────────────┘
 
    ┌────────────────────────────────────────────────────────────────────┐
-   │ A LATER RUN OF THE SAME DAY                                        │
+   │ A LATER RUN OF THE SAME DAY — STILL A FORECAST                     │
    │                                                                    │
    │ There is no separate evening function. `run_refresh_pipeline` and  │
    │ `run_daily_pipeline` were MERGED into `run_forecast` — item 104.   │
@@ -108,11 +114,17 @@ See *The two-call split* and *Every run is an issuance* below.
    │ and `_issue_forecast` branches on the answer:                      │
    │                                                                    │
    │    • repeats step 1 (fresh guidance, later model cycle)            │
-   │    • re-runs step 5 — the narrative prompt is told this is a       │
-   │      later issuance, so it writes what CHANGED, not a repeat       │
+   │    • re-runs step 5 — and is NOT told it is a later issuance.      │
+   │      The only difference in the narrative prompt is a block saying │
+   │      this day's verification is already written. Nothing asks for  │
+   │      "what changed": items 137/138 retired that, and               │
+   │      test_prompt.py asserts "LATER ISSUANCE" and "not a repeat"    │
+   │      are ABSENT. This box claimed otherwise until 2026-09-22.      │
    │    • steps 2-4 never run: nothing new to verify mid-day, and the   │
    │      day's predictions must stay what was actually published       │
-   │    • republishes docs/; web-only, does not email                   │
+   │    • republishes docs/. The PYTHON mailer is first-issuance only   │
+   │      and is unwired in production; the Apps Script mailer polls    │
+   │      and sends EVERY issuance, so a later run does reach readers.  │
    │                                                                    │
    │ WHY MERGED, and it is the opposite of what was expected: two       │
    │ bodies of code could not be held in step by intent. Six fields     │
@@ -317,6 +329,42 @@ across the forecast, archive, and air-quality APIs. Adding a model it
 already serves is one line in `defaults.MODELS`; replacing the provider
 entirely would mean rewriting `fetch/open_meteo.py` and `extract.py`
 together.
+
+## Two days, and which one owns what
+
+**The record is keyed on the LOCAL day.** `cli.py` calls
+`today_in_tz(location.timezone)`, so `data/log/YYYY-MM-DD.json`, `entry.date`
+and the phrase "the day's first run" all mean the station's own calendar date.
+A run at 23:50 local and a run at 00:10 local are different days' forecasts,
+whatever the UTC clock says.
+
+**The models run on UTC, and so does the station archive.** Both days are in
+the record already, doing different jobs:
+
+| what | clock |
+|---|---|
+| the log filename and `entry.date` | local |
+| `meta.issued_local_time` | local |
+| `meta.generated_at_utc` | UTC |
+| `guidance_initialised_at` (the model cycle) | UTC |
+| `data/station/<ICAO>/<day>.json` | **UTC** |
+
+The station store is the one that runs on the other clock from its neighbours,
+which is worth knowing before reading it.
+
+**A local day always overhangs its UTC date at one end**, by the size of the
+offset and in the direction of its sign. Nairobi's 2026-09-22 runs from 21:00Z
+on the 21st to 20:59Z on the 22nd, so one local day's observations live in TWO
+UTC-keyed station files. `metar.ARCHIVE_PADDING_DAYS` is why that works: one
+day of padding on each side of the fetch covers every real timezone.
+
+**FORKERS: GitHub's cron is UTC and the record is local.** At this deployment
+the offset is +3 and both slots land on the same date under either clock, so
+nothing diverges and nothing warns. At a large negative offset it does — a
+03:01Z slot is 19:01 the PREVIOUS local day at UTC-8, so the run you think of
+as your morning writes yesterday's entry and becomes that day's second run.
+Check which LOCAL day your chosen hours fall on before assuming the early slot
+is the day's first.
 
 ## Timing, and why it matters
 

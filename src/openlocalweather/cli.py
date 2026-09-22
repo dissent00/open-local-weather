@@ -1665,9 +1665,10 @@ def main(argv: list[str] | None = None) -> int:
     forecast = sub.add_parser(
         "forecast",
         help=(
-            "Forecast for today — a full run if the day has no entry yet, a narrative "
-            "re-issue if new model guidance has landed, and otherwise a free refresh of "
-            "what the station has observed. The verb to schedule, at any frequency."
+            "Forecast for today — a full run if the day has no entry yet, a fresh "
+            "forecast if new model guidance has landed, and otherwise a free refresh "
+            "of what the station has observed. Every run is a forecast; the verb to "
+            "schedule, at any frequency."
         ),
     )
     forecast.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")

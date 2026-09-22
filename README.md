@@ -141,12 +141,27 @@ overwrites it every run.)
 ## Status
 
 **Live**: [dissent00.github.io/open-local-weather](https://dissent00.github.io/open-local-weather/)
-runs twice daily for Kisumu, Kenya — a full forecast+verification cycle at
-~06:07 EAT, with the subscriber email following at ~06:20 EAT, and an
-optional evening refresh at ~18:07 EAT that re-synthesizes the narrative on
-a fresher model cycle without touching the accuracy loop (see
+runs for Kisumu, Kenya on the schedule its operator gives it — currently two
+forecasts a day, around 06:07 and 18:07 EAT, with the subscriber email
+following each.
+
+**Every run is a forecast.** There is no "morning run" and no "evening
+refresh": what differs between runs is only whether new model guidance has
+landed since the last one, and when it has not, the run works from what the
+airport and ground stations have actually observed. The day's FIRST run owns
+the predictions the accuracy record scores; later runs leave those alone (see
 [ARCHITECTURE.md](docs-internal/ARCHITECTURE.md) for why that distinction
-matters). Every forecast is committed to `data/log/` — the full, auditable
+matters).
+
+**The day is the LOCAL day.** `data/log/YYYY-MM-DD.json` is keyed on the
+station's own calendar date, so "the day's first run" means the first run
+after local midnight. Model cycles, the guidance timestamps and the station
+archive are UTC — a local day always overhangs its UTC date at one end, which
+is why the station fetch pads a day on each side. If you fork this, note that
+GitHub's cron is UTC: check which LOCAL day your chosen hours fall on before
+assuming the early slot is your morning.
+
+Every forecast is committed to `data/log/` — the full, auditable
 history of every prediction and its later verification, summarised on the
 site's [accuracy page](https://dissent00.github.io/open-local-weather/accuracy.html).
 

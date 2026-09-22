@@ -93,7 +93,7 @@ can be deleted.
 
 See the setup instructions in the header comment of
 [`AppsScriptMailer.gs`](AppsScriptMailer.gs) for deployment steps
-(script.google.com, Script Properties, authorizing both triggers).
+(script.google.com, Script Properties, authorizing the trigger).
 
 **Before deploying a change**, run the verification harness (mocks Apps
 Script's globals — `PropertiesService`, `UrlFetchApp`, `MailApp`, etc. —

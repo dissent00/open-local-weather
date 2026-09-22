@@ -2690,16 +2690,19 @@ def test_a_later_issuance_stores_the_blend_it_actually_made(tmp_path):
     assert blends[1].high_c == 31.0, "the evening's own call is on the record"
 
 
-def test_run_daily_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path):
-    """`olw run-daily` is reachable for a day that already has an entry, and
-    the body already treats that as a later issuance — it is where the prompt's
-    `verification_already_written` comes from. So first_issuance is a predicate here, not the
-    constant True that the function's name invites.
+def test_a_run_on_a_day_that_has_an_entry_reports_a_later_issuance(tmp_path):
+    """A run on a day that already has an entry says so in its result.
 
-    The CLI cannot reach this: `olw forecast` dispatches to run_refresh_pipeline
-    once the day has an entry, so no printed output would ever disagree. This
-    assertion is the only thing standing between the result and a lie about the
-    entry it just wrote.
+    `first_issuance` is a PREDICATE, not a constant. One verb, `olw forecast`,
+    serves every run of the day since item 104 merged the two pipelines, so
+    the same code path produces both the day's first forecast and its later
+    ones and must report which it just wrote.
+
+    THE NAMES IN THIS DOCSTRING WERE DEAD FOR WEEKS. It cited `olw run-daily`
+    and `run_refresh_pipeline`, neither of which exists, and built its whole
+    premise on a second CLI verb whose output could disagree with the first.
+    There is no second verb. The assertion below is what stands between the
+    result and a lie about the entry it just wrote.
     """
     first = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     assert first.first_issuance is True

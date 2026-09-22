@@ -319,8 +319,6 @@ Future<ForecastRun> generateForecast({
   /// no name is not a source. False drops the LOCAL BULLETIN block and the
   /// peer-model guidance, and the system prompt states the absence once so no
   /// forecast is attributed to a service that was never consulted.
-  /// Previous issuances today, oldest first. Empty or null means this is
-  /// the day's first run.
   /// Whether this day's verification has already been written by an earlier
   /// run — upstream items 137/138. Was derived from `earlierToday`, the
   /// payload of already-published narratives, which is no longer sent; the

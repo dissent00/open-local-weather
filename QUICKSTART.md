@@ -16,9 +16,9 @@ you want to.
 
 ## What you'll have when you're done
 
-- A page like `https://<you>.github.io/open-local-weather/` refreshed twice
-  a day.
-- An email each morning (and optionally each evening).
+- A page like `https://<you>.github.io/open-local-weather/` refreshed every
+  time the pipeline runs — as often as you schedule it.
+- An email for each forecast, whenever it lands.
 - `data/log/YYYY-MM-DD.json` committed daily — every prediction from every
   weather model, plus how it later scored. This is the file the system
   reads back to get better, and it's yours forever in git history.
@@ -128,7 +128,8 @@ free tier**, so start there unless you have a reason not to.
 | **Groq** | Free tier | [console.groq.com](https://console.groq.com) |
 | **Ollama** (local) | Free | Runs on your own machine — [see caveat](#ollama-and-other-local-models) |
 
-One run uses roughly 45,000 tokens. Two runs a day is comfortably inside
+One run uses roughly 45,000 tokens, in two calls. Two forecasts a day —
+this deployment's schedule, not a property of the system — is comfortably inside
 Gemini's free tier.
 
 ### Ollama and other local models
@@ -253,7 +254,7 @@ llm_fallback_models:
 Setting this also sends `provider.require_parameters`, which keeps OpenRouter
 from routing you to an upstream that treats the JSON schema as a hint. Free
 model ids end in `:free` and allow 20 requests a minute and 50 a day, against
-the four calls a day two issuances cost. Check the model's context window
+the calls your own schedule costs, at two per forecast. Check the model's context window
 against your own prompt size first — `olw prompt-size` prints it, and this
 deployment's is about 56,000 tokens.
 
@@ -296,9 +297,10 @@ Add secret `WAQI_TOKEN`, and list the stations in `config/location.yaml`:
 
 **Actions → Forecast → Run workflow**. Nothing runs it for you yet — see Step 9.
 
-One workflow covers every run of the day: the first run of a day produces
-the forecast and the numbers tomorrow scores, and any later run re-issues
-the narrative with a fresher model cycle, leaving those numbers alone.
+One workflow covers every run of the day. Every run is a forecast; what
+differs is only whether new model guidance has landed, and when it has not
+the run works from what the station has observed instead. The day's FIRST run
+owns the predictions tomorrow scores, and later runs leave those alone.
 
 Give it a couple of minutes, then verify all three:
 
@@ -336,11 +338,15 @@ Full instructions are in the header comment of
    - `TIMEZONE` — must match your `timezone`
    - `PUBLIC_URL` — your Pages URL, e.g.
      `https://you.github.io/open-local-weather/`
-4. Run `createDailyTrigger` once from the editor. Approve the permissions
+4. Run `createTriggers` once from the editor. Approve the permissions
    prompt — that consent screen *is* the authentication; there's no app
-   password step.
-5. If you also want the evening update, run `createEveningRefreshTrigger`
-   once too.
+   password step. That one trigger covers every forecast, at any hour: the
+   mailer polls, notices an issuance it has not sent, and sends it. There is
+   nothing to add for a second or third run of the day.
+
+   Upgrading from the older two-trigger version? Run `removeLegacyTriggers`
+   once afterwards. Apps Script keeps firing a trigger whose handler has been
+   deleted, and mails you about the failure each time.
 
 Recipients are managed by editing `SUBSCRIBER_EMAILS`. There's no
 self-serve signup form — that needs a verified domain, which is why it

@@ -1894,10 +1894,11 @@ def export_user_prompt() -> None:
             "newer_than_previous_issuance": True,
         },
     )
-    # Same re-issue, but no new cycle has landed since the morning — the
-    # case that changes what the prompt tells the model to write: stay
-    # quiet rather than manufacture a change. See prompt.py's
-    # "NO NEW GUIDANCE IS AN ANSWER" passage.
+    # A later run of the same day with no new cycle behind it. Item 121
+    # gave that case its own path: it refreshes what the station has observed
+    # and reaches no model at all, for zero spend. The comment here used to
+    # cite prompt.py's "NO NEW GUIDANCE IS AN ANSWER" passage, which was
+    # deleted with the re-issue concept — prompt.py records it as unreachable.
     refresh_no_new_cycle = dict(
         refresh,
         guidance_recency={
