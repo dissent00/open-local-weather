@@ -258,11 +258,36 @@ llm_providers:
     env_prefix: TOGETHER
 ```
 
-`kind` is one of the four names above. `name` is what the chain calls this
-link on stderr and in the warnings — with two `openai` entries, "openai was
-dropped" would not say which. `env_prefix` replaces `LLM` in every variable
-that entry reads: `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`,
-`OPENROUTER_MODEL`, and optionally `OPENROUTER_JSON_MODE`.
+`kind` is `gemini`, `gemini-interactions`, `anthropic` or `openai`. `name` is
+what the chain calls this link on stderr and in the warnings — with two
+`openai` entries, "openai was dropped" would not say which. `env_prefix` is
+the prefix on every variable that entry reads, so `OPENROUTER` means
+`OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` and
+optionally `OPENROUTER_JSON_MODE`.
+
+**A bare entry does not read `LLM_*` — it reads the default for its KIND**,
+and there are two defaults, not one:
+
+| `kind` | prefix when you do not name one | what that entry needs |
+|---|---|---|
+| `gemini`, `gemini-interactions` | `GEMINI_` | `_API_KEY`; `_MODEL` optional |
+| `openai` | `LLM_` | `_BASE_URL` and `_MODEL`; `_API_KEY` for any hosted endpoint |
+| `anthropic` | `LLM_` | `_API_KEY` and `_MODEL`; `_BASE_URL` optional |
+
+Read that table as a SLOT rather than an order. `LLM_` is the default for
+`openai` AND for `anthropic`, so exactly one entry between them can go
+unnamed; a second of either kind needs its own `env_prefix` whether it is the
+second link or the fifth. Gemini never competes for it. Which one you leave
+bare is your choice — naming OpenRouter and leaving Anthropic on `LLM_*`
+works just as well as the reverse.
+
+An `anthropic` link therefore looks like this, with no base URL:
+
+```yaml
+  - kind: anthropic
+    name: claude
+    env_prefix: CLAUDE           # CLAUDE_API_KEY, CLAUDE_MODEL
+```
 
 A few rules worth knowing before you hit them:
 
@@ -289,6 +314,8 @@ variables → Actions*, one secret and two variables per prefixed entry:
 | Secret | `GROQ_API_KEY` | your Groq key |
 | Variable | `GROQ_BASE_URL` | `https://api.groq.com/openai/v1` |
 | Variable | `GROQ_MODEL` | the primary model id for that link |
+| Secret | `CLAUDE_API_KEY` | an Anthropic key, for a `kind: anthropic` link |
+| Variable | `CLAUDE_MODEL` | e.g. `claude-sonnet-5` — no base URL needed |
 
 You do **not** have to edit the workflow to add a link. It passes every
 variable and secret whose name ends in `_API_KEY`, `_BASE_URL`, `_MODEL`,
