@@ -7,10 +7,14 @@
   "temp_high_c": 28.8,
   "temp_low_c": 18.2,
   "temp_high_low_display": "29°C / 84°F high, 18°C / 65°F low",
+  "cloud_anchors": [],
+  "wind_anchors": [],
   "mslp_trend_24h": "+0.6 hPa (steady)",
   "synoptic_pattern": "Strong regional gradient across Nyanza Basin (12 hPa spread: lowest 1006 hPa NE, highest 1018 hPa SE)",
   "uv_index_max": "9.0 (Very High)",
   "air_quality_aqi": "117 (Unhealthy for Sensitive Groups)",
+  "uv_index": null,
+  "air_quality_index": null,
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -532,6 +536,9 @@
           "mslp_trend": -1.6999999999999318
         }
       ],
+      "secondary_predictions": [],
+      "secondary_scores": {},
+      "secondary_verified_at": null,
       "window_opened_local": null,
       "window_scores": {},
       "window_verified_at": null,
@@ -543,9 +550,11 @@
     "high_c": 22.0,
     "low_c": 20.0,
     "peak_wind_kmh": 11.11,
+    "peak_gust_kmh": null,
     "cloud_oktas": 4.6,
     "thunder": false,
-    "precipitation_onset": "01:00"
+    "precipitation_onset": "01:00",
+    "reported_through": null
   },
   "model_predictions": null,
   "verification": {
@@ -560,7 +569,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }

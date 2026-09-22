@@ -7,10 +7,14 @@
   "temp_high_c": 32.2,
   "temp_low_c": 18.5,
   "temp_high_low_display": "32°C / 90°F high, 18°C / 65°F low",
+  "cloud_anchors": [],
+  "wind_anchors": [],
   "mslp_trend_24h": "-1.9 hPa",
   "synoptic_pattern": "Moderate large-scale gradient (9 hPa) between southeast high (1019 hPa) and northeast low (1010 hPa) with falling local surface pressure.",
   "uv_index_max": "9.4",
   "air_quality_aqi": "33 to 150",
+  "uv_index": null,
+  "air_quality_index": null,
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -532,9 +536,73 @@
           "mslp_trend": -2.699999999999932
         }
       ],
+      "secondary_predictions": [],
+      "secondary_scores": {},
+      "secondary_verified_at": null,
       "window_opened_local": "2026-09-20T06:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.0009,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 27.0,
+          "high_error_c": 0.29999999999999716,
+          "low_error_c": -0.10000000000000142,
+          "mslp_error_hpa": -1.2000000000000455,
+          "cloud_error_pct": -25.700000000000003,
+          "convective_correct": true,
+          "precip_error_mm": 0.1
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": true,
+          "rain_brier": 0.019600000000000003,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 7.899999999999999,
+          "high_error_c": 1.1000000000000014,
+          "low_error_c": 0.09999999999999787,
+          "mslp_error_hpa": -1.2000000000000455,
+          "cloud_error_pct": -2.3000000000000043,
+          "convective_correct": false,
+          "precip_error_mm": -0.30000000000000004
+        },
+        "icon_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.016900000000000002,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 4.299999999999997,
+          "high_error_c": -0.6000000000000014,
+          "low_error_c": -1.6000000000000014,
+          "mslp_error_hpa": -1.5000000000001137,
+          "cloud_error_pct": 0.6999999999999957,
+          "convective_correct": true,
+          "precip_error_mm": 0.1
+        },
+        "ukmo_seamless": {
+          "rain_correct": true,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 11.799999999999997,
+          "high_error_c": 2.0,
+          "low_error_c": 0.8999999999999986,
+          "mslp_error_hpa": -2.1000000000000227,
+          "cloud_error_pct": 30.099999999999998,
+          "convective_correct": false,
+          "precip_error_mm": 0.1
+        },
+        "best_match": {
+          "rain_correct": true,
+          "rain_brier": 0.019600000000000003,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 2.5,
+          "high_error_c": -0.5,
+          "low_error_c": -0.3000000000000007,
+          "mslp_error_hpa": -1.1000000000001364,
+          "cloud_error_pct": -0.20000000000000284,
+          "convective_correct": false,
+          "precip_error_mm": 0.1
+        }
+      },
+      "window_verified_at": "2026-09-22T03:02:10.374446Z",
       "day_over_day": {
         "yesterday_high_c": 29.9,
         "yesterday_low_c": 18.5,

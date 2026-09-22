@@ -7,10 +7,14 @@
   "temp_high_c": 31.0,
   "temp_low_c": 19.5,
   "temp_high_low_display": "31°C / 88°F high, 20°C / 67°F low",
+  "cloud_anchors": [],
+  "wind_anchors": [],
   "mslp_trend_24h": "falling (-0.8 hPa)",
   "synoptic_pattern": "Moderate gradient, lowest pressure to the north",
   "uv_index_max": "9.4 (Very High)",
   "air_quality_aqi": "66 (Moderate, CAMS model)",
+  "uv_index": null,
+  "air_quality_index": null,
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -532,6 +536,9 @@
           "mslp_trend": -0.8999999999999773
         }
       ],
+      "secondary_predictions": [],
+      "secondary_scores": {},
+      "secondary_verified_at": null,
       "window_opened_local": "2026-09-21T06:00:00",
       "window_scores": {},
       "window_verified_at": null,
@@ -578,6 +585,7 @@
     "high_c": 23.0,
     "low_c": 23.0,
     "peak_wind_kmh": 7.41,
+    "peak_gust_kmh": null,
     "cloud_oktas": 3.5,
     "thunder": false,
     "precipitation_onset": null,
@@ -586,7 +594,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
