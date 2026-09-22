@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
 import 'phrasing.dart';
+import 'tiles.dart';
 import 'daypart.dart';
 import 'solar.dart';
 import 'dates.dart';
@@ -657,10 +658,15 @@ Future<ForecastRun> generateForecast({
     // on a third surface, and it found it the same way: the blocks are
     // optional arguments defaulting to null, and a block nobody wired renders
     // exactly like a block with nothing to say.
-    windDirection: consensusDirection([
-      for (final p in day0)
-        if (p.windDirectionDeg != null) p.windDirectionDeg!,
-    ]),
+    // THE SAME CALL THE TILE MAKES — upstream item 160, 2026-09-22. This was
+    // `consensusDirection` over each model's DAILY mean bearing: one point for
+    // the whole day, null on 18 of 19 archived issuances, beside a tile
+    // printing "midday SW". The day has two bearings here.
+    anchorDirections: {
+      for (final a in windAnchors(hourly, models,
+          issuedHour: issuedHourOf(resolvedIssuance)))
+        a['when'] as String: a['direction'] as String?,
+    },
     // Item 118: the anchors are hours of the day, so a clause with none of
     // them still ahead describes a day the reader has already finished.
     windShift: _soundPhrase(

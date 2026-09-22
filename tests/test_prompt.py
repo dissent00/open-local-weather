@@ -820,3 +820,66 @@ def test_the_instability_mandate_lives_in_the_first_section():
     # it is NOT in the later sections, which place the thunder their own way
     for later in ("Extended Outlook", "Severe Weather / Hazard Potential"):
         assert "THUNDER IS NOT OPTIONAL" not in _section(prompt, later)
+
+
+def test_the_direction_block_speaks_per_anchor_not_per_day():
+    """A day with one agreed bearing must be able to say so — item 160.
+
+    THE CONTRADICTION THIS CLOSES, measured over the 19 archived issuances
+    that carry both a direction block and hourly bearings:
+
+        the day-level block had a bearing on          1 of 19
+        the midday anchor had one on                 15 of 17
+        the evening anchor had one on                 8 of 28
+
+    The old block asked whether ONE bearing held for the whole day. At this
+    station the day has two — a northerly land breeze and a southwesterly lake
+    breeze — so the honest answer to that question is almost always no, and
+    the block then ordered "Say nothing about direction". Meanwhile the tile,
+    fed by `wind_anchors`, printed "midday SW" on the page and in the app. One
+    record, two answers, and the prose was the one that had to stay quiet.
+
+    Both now read the SAME `wind_anchors` call, which is what makes them
+    unable to disagree.
+    """
+    hourly = {
+        "hourly": {
+            "time": [f"2026-08-11T{h:02d}:00" for h in range(24)],
+            **{
+                f"wind_direction_10m_{m}": [220.0] * 24
+                for m in ("gfs_seamless", "ecmwf_ifs025", "icon_seamless")
+            },
+            **{
+                f"wind_speed_10m_{m}": [12.0] * 24
+                for m in ("gfs_seamless", "ecmwf_ifs025", "icon_seamless")
+            },
+        }
+    }
+    prompt = build_user_prompt(
+        today=date(2026, 8, 11),
+        yesterday=date(2026, 8, 10),
+        public_webpage_url="https://example.com/",
+        verification_context={},
+        track_record_context=[],
+        ground_aqi_readings=[],
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data={},
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+        anchor_directions={"early": None, "midday": "SW", "evening": None},
+    )
+
+    # the agreed anchor is named, and named as ITS moment
+    assert "midday" in prompt and "SW" in prompt
+    # and the block no longer issues a blanket order the tile contradicts
+    assert "Say nothing about direction." not in prompt
+
+    # THE RULE THAT STOPS ONE ANCHOR BECOMING THE DAY. Added after a mutation
+    # replacing it with "you may describe the day with it" survived the whole
+    # suite: naming midday's bearing is the fix, and generalising it to a day
+    # whose evening agrees on 8 of 28 is the failure the fix could cause.
+    system = build_system_prompt(KISUMU)
+    assert "must not carry it across the day" in system
+    assert "SAY NOTHING ABOUT DIRECTION FOR THAT PART OF THE DAY" in system
+    assert '"variable"' in system and '"shifting"' in system

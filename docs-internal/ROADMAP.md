@@ -25286,7 +25286,7 @@ rain is the dimension where the absolute matters more than the change.
 
 ---
 
-## 160. Two wind blocks in the same prompt, one ordering silence and one handing over a sentence · **Open, found 2026-09-21 by item 77's harness**
+## 160. Two wind blocks in the same prompt, one ordering silence and one handing over a sentence · **SHIPPED 2026-09-22 — the block is per-anchor now**
 
 Verified in the 2026-09-21 03:03Z archived user prompt, four lines apart:
 
@@ -25309,12 +25309,77 @@ single bearing and still have two anchors that agree. What is wrong is the
 wording: "Say nothing about direction" is a blanket order issued by a block
 that only knows about its own question.
 
-**What to do, not yet decided.** Either WIND DIRECTION's absent case stops
-issuing an order and says what it actually means ("no single bearing holds
-across the day"), or the two blocks are merged so one voice speaks about
-direction. The first is smaller. Neither has been measured for how often the
-pair appears in this contradictory combination — that count is the first
-thing to get, over the prompt archive.
+### Measured first, and the measurement changed the fix
+
+Over the 19 archived issuances carrying both a direction block and hourly
+bearings:
+
+| | available |
+|---|---:|
+| the day-level WIND DIRECTION block | 1 of 19 |
+| the WIND SHIFT clause | 7 of 19 |
+| the midday anchor | 15 of 17 |
+| the evening anchor | 8 of 28 |
+
+**Midday is southwesterly on every one of the 15 days it agrees.** The evening
+agrees on fewer than a third, which is the lake breeze collapsing — the same
+0.95-against-0.48 split `consensus_direction`'s own docstring records.
+
+**So the block was asking the wrong question.** It asked whether ONE bearing
+held for the whole day, computed from each model's DAILY mean. At this station
+the day has two, a northerly land breeze and a southwesterly lake breeze, so
+the honest answer is almost always null — and the block then ordered "Say
+nothing about direction" while the tile, fed by `wind_anchors`, printed
+"midday SW" on the page and in the app. That contradiction was live on
+2026-09-22.
+
+**The rule also drew the opposite conclusion from its own measurement.** It
+said agreement runs 0.95 at midday and 0.48 in the evening, and concluded
+"the hours you would most want to name are the hours nobody agrees on". The
+first half is right and the second is false: midday is both the most agreed
+hour and the one a boater is asking about.
+
+**Neither of the two options filed above was the fix.** The block is now
+PER ANCHOR, carrying `{"early": null, "midday": "SW", "evening": null}`, and
+it is fed by the same `wind_anchors` call the tile makes — which is what makes
+the two unable to disagree rather than merely agreeing today. The rule permits
+naming a bearing as THAT MOMENT'S, forbids carrying it across the day or onto
+a null anchor, and keeps the ban on "variable" and "shifting" where an anchor
+has none.
+
+**A THIRD CASE THE OLD PAIR COULD NOT EXPRESS.** `describe_wind_shift` needs
+TWO agreed anchors, and the day-level block needed one bearing for the whole
+day. The commonest day here has exactly one agreed anchor — midday — so
+neither block could carry it and the prose was ordered silent about the one
+thing that was known.
+
+**Verified.** 1,548 Python, 216 Dart. Four mutations bit their own case: the
+anchors read from the forward window, the block fed an empty map, the blanket
+silence order restored, and the ban on generalising dropped. Two of those
+survived the first pass and earned new guards; a third mutation was withdrawn
+as a no-op, because `{} or {...}` is the second dict in Python.
+
+**THE FORWARD-WINDOW MUTATION IS THE ONE WORTH REMEMBERING.** Nothing caught
+it, and it is the mistake I made TWICE in one day: on 09-21 reading the
+archived prompt as though it were the local day, and again on 09-22 measuring
+this item, where the "overnight agrees 15 of 19" figure was reading TOMORROW's
+03:00 and had to be withdrawn before it reached a decision. The archived block
+is HOURS AHEAD. `test_the_wind_shift_is_given_the_whole_day_not_the_forward_window`
+now covers both consumers.
+
+**Cost.** The block grows 313 characters and the rule 348, about 661 a run,
+to make the commonest day's bearing sayable at all.
+
+**Item 77's harness, before and after, same worker model.** On the old block
+it wrote *"Wind will be variable through midday, then shift through the
+afternoon and evening"* — both banned words, on a day the block had ordered
+silence — and its own compliance note claimed it had complied. On the new
+block it wrote *"Wind southwesterly by midday"*, named no direction at either
+null anchor, used neither banned word, and reported that it did not have to
+guess. The rule it broke was present and correct in both runs; what changed is
+that there is now something true it is allowed to say.
+
+**Not checked.** No live run has used it; the first is today at 15:01.
 
 ---
 

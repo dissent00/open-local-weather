@@ -4252,6 +4252,20 @@ def test_the_wind_shift_is_given_the_whole_day_not_the_forward_window(
     assert "northeast" in shift, f"the wind shift was built from the wrong block: {shift}"
     assert "southwest" not in shift, shift
 
+    # AND THE DIRECTION BLOCK TAKES THE SAME BLOCK — item 160, 2026-09-22.
+    # Added because a mutation swapping it to the forward window survived the
+    # whole suite. That is the same mistake as above, on a second consumer,
+    # and I made it twice in one day: once on 2026-09-21 reading the archive,
+    # and again on 09-22 measuring how often a bearing exists, where the
+    # "overnight" figure was reading TOMORROW's 03:00 and had to be withdrawn.
+    #
+    # 45 degrees is northeasterly and lives only in the whole-day block; 225
+    # is southwesterly and lives only in the forward window. The block is
+    # keyed by anchor word, so this asserts the VALUES rather than the shape.
+    directions = prompt.split("WIND DIRECTION")[1].split("\n\n")[0]
+    assert "NE" in directions, f"the direction block was built from the wrong block: {directions}"
+    assert "SW" not in directions, directions
+
 
 def test_the_tiles_anchors_survive_the_entry_that_is_written(tmp_path, monkeypatch):
     """The anchors reach the DAY'S RECORD, not a field pydantic throws away.
@@ -4400,3 +4414,31 @@ def test_the_entry_carries_its_composed_tiles(tmp_path, monkeypatch):
     reissued = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
     rain = next(t for t in reissued.tiles if t["label"] == "Rain")
     assert rain["lines"][0]["text"] == "Heavy Rain All Day", reissued.tiles
+
+
+def test_the_direction_block_reaches_the_prompt_with_its_anchors(tmp_path, monkeypatch):
+    """The per-anchor bearings are IN the prompt, not merely computable.
+
+    A mutation feeding the block an empty map survived the whole suite, which
+    is the same class as every other inert composer this item has produced:
+    the function was right and nothing carried its answer.
+    """
+    today_block = _hourly_with_directions(
+        [f"2026-08-11T{h:02d}:00" for h in (0, 3, 6, 12, 18, 21)], 225.0
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: today_block
+    )
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 1))
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    block = llm.user_prompts.split("WIND DIRECTION")[1].split("\n\n")[0]
+
+    assert '"midday": "SW"' in block, block

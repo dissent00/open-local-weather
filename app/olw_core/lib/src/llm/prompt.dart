@@ -275,7 +275,7 @@ $secondaryHeadingBlock
 $localMetNamingRule''',
     'formatting': '''FORMATTING RULES:
    - NO PIPELINE VOCABULARY IN THE SECTIONS A READER ACTS ON. "Calibrated", "consensus", "pre-computed", "blend" and the names of the blocks in the user message belong in the Detailed Discussion and the Forecaster Confidence Notes; Today's Forecast says "gusts to 35 km/h (19 kt)", never "calibrated peak gusts of 35 km/h", which a real forecast wrote. Model names stay where a rule asks for them.
-   - Wind always as "X km/h (Y kt)", e.g. "23 km/h (12 kt)". Knots = km/h ÷ 1.852. THE BEARING IS PRE-COMPUTED AND OFTEN ABSENT: "WIND DIRECTION" in the user message carries one rose point when the models share one and null when they do not, because a compass bearing cannot be averaged and a set of models pointing different ways has no mean direction. When it carries a point, append "from the [POINT]"; when it is null, SAY NOTHING ABOUT DIRECTION - not "variable", not "shifting", not a guess from the raw arrays. Never derive a bearing yourself: measured here, agreement runs 0.95 at midday and 0.48 in the evening, so the hours you would most want to name are the hours nobody agrees on.
+   - Wind always as "X km/h (Y kt)", e.g. "23 km/h (12 kt)". Knots = km/h ÷ 1.852. THE BEARING IS PRE-COMPUTED PER ANCHOR HOUR: "WIND DIRECTION" carries one rose point for each of early, midday and evening, or null for that anchor, because a compass bearing cannot be averaged and a set of models pointing different ways has no mean direction. Where an anchor carries a point, you may name it AS THAT MOMENT'S - "southwesterly by midday" - and you must not carry it across the day or attach it to an anchor that is null. Where an anchor is null, SAY NOTHING ABOUT DIRECTION FOR THAT PART OF THE DAY - not "variable", not "shifting", not a guess from the raw arrays. Never derive a bearing yourself. THE DAY OFTEN HAS TWO BEARINGS AND ONE OF THEM IS RELIABLE: measured over the archive, midday agrees on 15 of 17 days and is southwesterly on every one of them, while the evening agrees on 8 of 28 as the lake breeze collapses. A block asking for one bearing for the WHOLE day answered null on 18 of 19 issuances and is why this is per-anchor.
 $windSectionRule
    - "WIND SHIFT" carries a finished clause for how the wind turns through the day - "northeasterly overnight, turning southwest by midday" - or nothing. Use it VERBATIM where it belongs, in Today's Forecast; a secondary-location section has its own timeline in SECONDARY POINT WIND and uses that instead. It is the best-supported wind fact this location has: the models disagree about a single daily bearing and agree about which way it turns. An anchor they split on has already been dropped, so do not fill the gap.
    - Temperatures always as "0°C / 32°F" format.
@@ -697,7 +697,11 @@ String buildUserPrompt({
   Object? instability,
   required Object? yesterdayActual,
   String? extendedTrend,
-  String? windDirection,
+  /// The rose point the models share AT EACH ANCHOR, or null for that anchor
+  /// — upstream item 160. Was one bearing for the whole day, which answered
+  /// null on 18 of 19 archived issuances because the day has two, and then
+  /// ordered the narrative to say nothing while the tile printed one.
+  Map<String, String?>? anchorDirections,
   String? windShift,
   /// The gust the record says to expect, in km/h — upstream item 126.
   /// Pre-computed because the bias it removes was measured by this project
@@ -868,8 +872,8 @@ ${yesterdayActual == null ? 'Unavailable — no observed record for yesterday; o
 NEXT THREE DAYS (pre-computed by code — one finished phrase, use it VERBATIM or not at all):
 ${extendedTrend ?? 'Unavailable — omit the extended clause.'}
 
-WIND DIRECTION (pre-computed by code — one rose point the models actually share, or nothing. A bearing cannot be averaged, so this is a vector consensus gated on agreement, and it is ABSENT far more often than it is present):
-${windDirection != null ? 'from the $windDirection' : 'Unavailable — the models do not share a bearing. Say nothing about direction.'}
+WIND DIRECTION (pre-computed by code — the rose point the models share AT EACH ANCHOR HOUR, or null for that anchor. A bearing cannot be averaged, so each is a vector consensus gated on agreement, and the agreement is NOT the same at every hour: measured here it runs 0.95 at midday and 0.48 in the evening. Name a bearing only at an anchor that has one, and only as THAT MOMENT'S — never carry it across the day. Where an anchor is null, say nothing about direction for that part of the day.):
+${anchorDirections != null && anchorDirections.isNotEmpty ? promptJson(anchorDirections) : 'Unavailable — no anchor still ahead has an agreed bearing. Say nothing about direction.'}
 
 WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
 ${windShift ?? 'Unavailable — omit any claim about the wind turning.'}

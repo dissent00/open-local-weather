@@ -1175,9 +1175,22 @@ def _locked_blocks(
         # The SHIFT is what survives: the models argue about a single daily
         # bearing and agree about which way it turns, so that is the fact
         # worth publishing.
-        "wind_direction": consensus_direction(
-            [p.wind_direction_deg for p in day0_predictions if p.wind_direction_deg is not None]
-        ),
+        # THE SAME CALL THE TILE MAKES — item 160, 2026-09-22. This was
+        # `consensus_direction` over each model's DAILY mean bearing: one
+        # rose point for the whole day, null on 18 of 19 archived issuances,
+        # and a blanket "Say nothing about direction" beside a tile printing
+        # "midday SW". The day has two bearings here, a northerly land breeze
+        # and a southwesterly lake breeze, so a single day-level question
+        # could not have a good answer.
+        #
+        # Reading `wind_anchors` rather than re-deriving is the point: the
+        # prompt and the tile now cannot disagree about what is known.
+        "anchor_directions": {
+            str(a["when"]): a.get("direction")
+            for a in wind_anchors(
+                guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+            )
+        },
         # ROADMAP item 118: the anchors are hours of the day, so a clause with
         # none of them still ahead describes a day the reader has finished.
         #
