@@ -528,6 +528,80 @@ def export_scales() -> None:
           "expected": aqi_band(v)} for v in aqi],
     )
 
+def export_compose_tiles() -> None:
+    """ROADMAP item 159 step 6 -- the tiles themselves, for three surfaces.
+
+    THE APP, THE PAGE AND THE EMAIL ALL RENDER FROM THIS. Before it, the app
+    composed tiles in Dart, the page listed seven ungrouped stats in a Jinja
+    template and the email showed none; three surfaces and three answers.
+    These cases are the contract between them.
+
+    HALF OF THEM ARE FALLBACKS, because every entry published before
+    2026-09-21 carries display strings and a peak gust rather than anchors and
+    halves, and every surface reads whatever the site last published.
+    """
+    from openlocalweather.tiles import compose_tiles
+
+    full = {
+        "temp_high_c": 29.5, "temp_low_c": 19.0,
+        "rain_expected": "Evening Showers & Thunderstorms",
+        "onset_window": "Late Afternoon into Evening",
+        "wind_anchors": [
+            {"when": "early", "sustained_kmh": 3.6, "gust_kmh": 5.3},
+            {"when": "midday", "direction": "SW", "sustained_kmh": 8.0, "gust_kmh": 17.7},
+            {"when": "evening", "sustained_kmh": 7.1, "gust_kmh": 16.9},
+        ],
+        "cloud_anchors": [
+            {"when": "early", "cover": "Overcast"},
+            {"when": "midday", "cover": "Mostly cloudy"},
+            {"when": "evening", "cover": "Mostly cloudy"},
+        ],
+        "uv_index": 9.4, "air_quality_index": 70,
+        "sunrise": "06:30", "sunset": "18:37",
+        "comparison": {"temp": "3° cooler", "wind": "windier"},
+    }
+    quiet = {**full, "comparison": {}}
+    legacy = {
+        "temp_high_c": 29.5, "temp_low_c": 19.0,
+        "rain_expected": "Unlikely",
+        "peak_wind_primary_kmh": 41.5,
+        "uv_index_max": "9.4 (Very High)", "air_quality_aqi": "66 (Moderate)",
+        "sunrise": "06:30", "sunset": "18:37",
+    }
+    cases = [
+        ("a full record, metric", full, True),
+        ("the same record in knots and Fahrenheit", full, False),
+        ("a quiet day says nothing extra", quiet, True),
+        ("an entry from before the anchors and the split", legacy, True),
+        ("the same one in knots", legacy, False),
+        ("nothing at all renders nothing", {}, True),
+        ("half a sun pair is no sun tile",
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "sunrise": "06:30"}, True),
+        ("a malformed anchor block renders no tile, not half a tile",
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "wind_anchors": "SW 15"}, True),
+        ("UV without air quality",
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "uv_index": 11.0}, True),
+        ("air quality without UV",
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "air_quality_index": 152}, True),
+        ("rain with no onset window is one line",
+         {"rain_expected": "Unlikely"}, True),
+        ("a comparison on a dimension with no tile says nothing",
+         {"rain_expected": "Unlikely", "comparison": {"cloud": "much cloudier"}}, True),
+    ]
+    write(
+        "compose_tiles.json",
+        "compose_tiles",
+        "ROADMAP item 159. The at-a-glance tiles, in reading order, for the "
+        "app, the GitHub Pages forecast and the email alike. A tile with "
+        "nothing to say is ABSENT rather than showing a dash. `primary` means "
+        "'a reading' and not 'important' -- paired data stays the same size, "
+        "and the day-over-day modifier is the one supporting line. THE UNIT "
+        "LIVES IN THE HEADER and never in a value, which is what makes "
+        "°C/°F and km/h/kt a one-label change.",
+        [{"name": n, "input": {"properties": p, "metric": m},
+          "expected": compose_tiles(p, metric=m)} for n, p, m in cases],
+    )
+
 def export_tile_comparison() -> None:
     """ROADMAP item 159 step 1 — the modifier a tile carries, or nothing.
 
@@ -5927,6 +6001,7 @@ def main() -> None:
     export_cloud_anchors()
     export_wind_anchors()
     export_scales()
+    export_compose_tiles()
     export_scoring()
     export_extract()
     export_aqi()

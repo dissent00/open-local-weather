@@ -145,6 +145,12 @@ class DayOverDayComparison {
   final double? highDeltaC;
   final double? lowDeltaC;
   final double? windDeltaKmh;
+
+  /// The cloud delta in percentage points. Upstream kept only the band
+  /// word until 2026-09-22 — enough for a sentence, not for a tile,
+  /// because `comparisonModifiers` gates on the NUMBER against this
+  /// station's own top decile before it picks a word at all.
+  final double? cloudDeltaPct;
   final String? highLabel;
   final String? windLabel;
 
@@ -178,6 +184,7 @@ class DayOverDayComparison {
     this.highDeltaC,
     this.lowDeltaC,
     this.windDeltaKmh,
+    this.cloudDeltaPct,
     this.highLabel,
     this.windLabel,
     this.cloudLabel,
@@ -200,6 +207,7 @@ class DayOverDayComparison {
         'high_delta_c': highDeltaC,
         'low_delta_c': lowDeltaC,
         'wind_delta_kmh': windDeltaKmh,
+        'cloud_delta_pct': cloudDeltaPct,
         'high_label': highLabel,
         'wind_label': windLabel,
         'cloud_label': cloudLabel,
@@ -756,6 +764,7 @@ DayOverDayComparison? computeDayOverDay(
     highDeltaC: highDelta,
     lowDeltaC: lowDelta,
     windDeltaKmh: windDelta,
+    cloudDeltaPct: cloudDelta,
     highLabel: highLabel,
     windLabel: windLabel,
     cloudLabel: cloudLabel,

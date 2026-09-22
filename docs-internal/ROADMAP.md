@@ -25101,6 +25101,49 @@ The page still renders seven ungrouped stats and the mailer renders none at
 all, which since step 5 means an email reader gets no summary whatsoever.
 
 
+### Step 6 part 2 SHIPPED 2026-09-22 — one composer, three surfaces
+
+`tiles.compose_tiles` now decides which tiles exist, in what order, and what
+each line says. Before it there were three answers to that question from one
+record: the app composed tiles in Dart, the page enumerated SEVEN UNGROUPED
+STATS in a Jinja template that no test had ever touched, and the email showed
+none at all.
+
+**The email is the urgent half.** Its body was the narrative and nothing
+else, which was survivable while the narrative opened with an Overview
+summarising the day. Step 5 retired the Overview that morning, so between
+these two commits an email reader had no at-a-glance anything. The markup
+deliberately differs from the page's — Gmail strips `<style>` blocks and
+Outlook renders through Word, so it is a two-column table with inline styles
+where the page uses CSS grid — and a test asserts every line of text matches,
+in order, which is what stops the two drifting again.
+
+**`phrase_defect` caught a defect in the composer's first draft, and it was
+a real one.** The app separated a wind anchor's columns with a DOUBLE SPACE —
+"early  NNE  9G15" — which reads well in a Flutter `Text` and COLLAPSES in
+HTML. One composer whose entire purpose is that the three surfaces cannot
+disagree would have produced a different string on two of them. Single space
+now, and visual separation belongs in layout.
+
+**The imperial temperature modifier is DROPPED RATHER THAN CONVERTED.** The
+stored comparison is metric, like every number in the record. "windier" and
+"much cloudier" carry no unit; "3° cooler" is Celsius degrees, so a
+Fahrenheit reader would see a magnitude wrong by a factor of 1.8. Converting
+needs the delta and only the word is stored, so the tile says nothing — the
+honest answer and the one the rest of the composer gives. Storing the delta
+beside the word is item 165. No surface selects imperial today.
+
+**Verified.** 1,545 Python, 216 Dart, 12 vector cases pinning the two
+languages, half of them the fallback paths that every entry published before
+2026-09-21 will take. The page's stat grid has a test for the first time, and
+it asserts the SEAM — the composer's tiles, in its order — rather than the
+styling.
+
+**Not done:** pointing the app's `StatGrid` at `composeTiles` instead of its
+own `_tiles()`. Until that lands the app is the one surface still composing
+for itself, which is the situation this step exists to end.
+
+
 ### A false alarm, and the guard it earned
 
 Building this I reported a defect in `describe_wind_shift` that does not
@@ -25280,3 +25323,26 @@ the tiles on the page and in the mailer, so the sentence has no renderer
 left. If the row's copy is also unread, the whole path goes; if the record is
 worth keeping, the composer stays and only its exporter changes. Check what
 reads `prediction_rows[].day_over_day.overview_comparison` before deciding.
+
+---
+
+## 165. The day-over-day modifier has no imperial form · **Open, 2026-09-22**
+
+`comparison_modifiers` renders the temperature modifier as a magnitude —
+"3° cooler" — because the bands call 2.2 °C "slightly" and that undercuts
+itself on a day the gate has just called unusual. Those are Celsius degrees.
+
+`compose_tiles` drops the modifier entirely when a reader asks for
+Fahrenheit, rather than showing a number wrong by a factor of 1.8. Wind and
+cloud are unaffected: "windier" and "much cloudier" carry no unit.
+
+**The fix is to store the delta beside the word**, so the composer can render
+"5° cooler" for the same day. The entry would carry `comparison` and the
+three deltas that passed their gates; `comparison_modifiers` keeps its
+contract and the conversion happens where every other unit conversion
+happens, in `compose_tiles`.
+
+**Not urgent, and say why:** no surface selects imperial. The app's
+`StatUnits` defaults to metric with no setting to change it, and the page and
+the email pass `metric=True`. This becomes real the day a unit toggle ships,
+and it should be fixed before that rather than after.

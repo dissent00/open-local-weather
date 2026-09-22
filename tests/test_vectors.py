@@ -825,6 +825,17 @@ def test_vectors_index_and_band():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_compose_tiles():
+    """ROADMAP item 159 step 6 — the tiles the app, the page and the email
+    all render from."""
+    from openlocalweather.tiles import compose_tiles
+
+    for case in load("compose_tiles.json")["cases"]:
+        i = case["input"]
+        got = compose_tiles(i["properties"], metric=i["metric"])
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_word():
     from openlocalweather.tiles import sky_word
 
@@ -1131,6 +1142,7 @@ def test_every_vector_file_is_exercised():
         "uv_band.json",
         "aqi_band.json",
         "index_and_band.json",
+        "compose_tiles.json",
         "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",

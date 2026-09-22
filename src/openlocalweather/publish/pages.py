@@ -28,6 +28,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.publish.narrative import narrative_to_html
+from openlocalweather.tiles import compose_tiles
 
 from openlocalweather.aqi import hours_old, is_stale, summarize_ground_aqi
 from openlocalweather.config import LocationConfig
@@ -307,6 +308,11 @@ def render_forecast_page(
         is_latest=is_latest,
         issuance_label=issuance_label,
         narrative_html=_narrative_html(entry),
+        # THE SAME COMPOSER THE APP AND THE EMAIL USE — item 159 step 6.
+        # Metric here because the page has no reader setting to consult; the
+        # unit lives in each tile's header, so adding one later is a flag on
+        # this call and no change to any value string.
+        tiles=compose_tiles(entry.model_dump(mode="json"), metric=True),
         # Composed through the same function the prompt uses, from the reading
         # stored on the entry — item 121. Not stored pre-composed, so the
         # wording is fixable for every day already written.

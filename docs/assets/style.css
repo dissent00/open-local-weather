@@ -137,8 +137,20 @@ p {
 }
 
 .stat .value {
+  display: block;
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+/* The day-over-day modifier. SMALLER THAN A READING AND LARGER THAN THE
+   LABEL, because it is neither: it is the one supporting line in a tile, and
+   rendering it at value size was caught by a mutation on the app's own grid
+   on 2026-09-21 — `find.text` matches whatever the style, so the suite stayed
+   green while the tile said two different kinds of thing in one voice. */
+.stat .modifier {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .archive-list {

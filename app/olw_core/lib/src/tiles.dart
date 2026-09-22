@@ -16,6 +16,8 @@ library;
 
 import 'comparison.dart';
 import 'rounding.dart';
+import 'models.dart' show formatIndexAndBand;
+import 'scales.dart';
 import 'scoring.dart' show mean;
 import 'wind.dart';
 
@@ -244,4 +246,185 @@ List<Map<String, Object>> windAnchors(
 
   if (out.isEmpty || hours.every((h) => h <= issuedHour)) return const [];
   return out;
+}
+
+/// Kilometres per hour in one knot.
+const double kmhPerKnot = 1.852;
+
+/// Two lines of wind and two of cloud, not three. The composers sample three
+/// hours; a tile shows the TURN, which is the pair the shift clause names.
+const int windTileAnchors = 2;
+const int cloudTileAnchors = 2;
+
+double? _num(Map<String, Object?> p, String key) {
+  final v = p[key];
+  return v is num ? v.toDouble() : null;
+}
+
+String? _str(Map<String, Object?> p, String key) {
+  final v = p[key];
+  if (v == null) return null;
+  final s = v.toString().trim();
+  return s.isEmpty ? null : s;
+}
+
+/// The anchors under [key], or nothing. Anything that is not a list of maps
+/// is treated as ABSENT rather than coerced: a malformed block should render
+/// no tile, not half of one.
+List<Map<String, Object?>> _anchorList(Map<String, Object?> p, String key) {
+  final v = p[key];
+  if (v is! List) return const [];
+  return [
+    for (final e in v)
+      if (e is Map) e.cast<String, Object?>(),
+  ];
+}
+
+Map<String, Object?> _line(String text, {bool primary = false}) =>
+    {'text': text, 'primary': primary};
+
+String _windLine(Map<String, Object?> anchor, {required bool metric}) {
+  String shown(double kmh) => (metric ? kmh : kmh / kmhPerKnot).round().toString();
+
+  final sustained = anchor['sustained_kmh'];
+  final gust = anchor['gust_kmh'];
+  String speed = '';
+  if (sustained is num && gust is num) {
+    speed = '${shown(sustained.toDouble())}G${shown(gust.toDouble())}';
+  } else if (gust is num) {
+    speed = 'G${shown(gust.toDouble())}';
+  } else if (sustained is num) {
+    speed = shown(sustained.toDouble());
+  }
+
+  // ONE SPACE, NOT TWO. A double space reads as a column separator in a
+  // Flutter Text and COLLAPSES in HTML, so the app would show a different
+  // string from the page and the email out of one composer whose whole point
+  // is that they cannot. Visual separation belongs in layout.
+  final parts = [
+    for (final key in ['when', 'direction'])
+      if ((anchor[key]?.toString().trim() ?? '').isNotEmpty)
+        anchor[key]!.toString().trim(),
+    if (speed.isNotEmpty) speed,
+  ];
+  return parts.join(' ');
+}
+
+/// The at-a-glance tiles this record can fill, in reading order.
+///
+/// ONE COMPOSER FOR THREE SURFACES — upstream item 159 step 6. This app, the
+/// GitHub Pages forecast and the email all show these tiles, and this decides
+/// which exist, in what order, and what each line says. Before it the app
+/// composed them here in Dart, the page listed seven ungrouped stats in a
+/// template and the email showed none at all.
+///
+/// A tile with nothing to say is ABSENT rather than showing a dash.
+///
+/// `primary` means "a reading" and not "important": paired data stays the
+/// same size, and the day-over-day modifier is the one supporting line.
+List<Map<String, Object?>> composeTiles(
+  Map<String, Object?> properties, {
+  bool metric = true,
+}) {
+  final rawComparison = properties['comparison'];
+  final comparison =
+      rawComparison is Map ? rawComparison.cast<String, Object?>() : const <String, Object?>{};
+
+  String? modifier(String dimension) {
+    // THE STORED VALUE IS METRIC. "windier" and "much cloudier" carry no
+    // unit; "3° cooler" is Celsius degrees, so an imperial reader would see a
+    // magnitude wrong by a factor of 1.8. Dropped rather than converted,
+    // because only the word is stored — upstream item 165.
+    if (dimension == 'temp' && !metric) return null;
+    final v = comparison[dimension];
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  final tiles = <Map<String, Object?>>[];
+
+  Map<String, Object?> tile(String label, String? unit, List<Map<String, Object?>> lines) =>
+      {'label': label, 'unit': unit, 'lines': lines};
+
+  final high = _num(properties, 'temp_high_c'), low = _num(properties, 'temp_low_c');
+  if (high != null && low != null) {
+    int degrees(double c) => (metric ? c : c * 9 / 5 + 32).round();
+    tiles.add(tile('High / Low', metric ? '°C' : '°F', [
+      _line('${degrees(high)}° / ${degrees(low)}°', primary: true),
+      if (modifier('temp') != null) _line(modifier('temp')!),
+    ]));
+  }
+
+  final rain = _str(properties, 'rain_expected');
+  if (rain != null) {
+    final onset = _str(properties, 'onset_window');
+    tiles.add(tile('Rain', null, [
+      _line(rain, primary: true),
+      if (onset != null) _line(onset, primary: true),
+    ]));
+  }
+
+  final wind = _anchorList(properties, 'wind_anchors');
+  if (wind.isNotEmpty) {
+    tiles.add(tile('Wind', metric ? 'km/h' : 'kt', [
+      for (final a in wind.take(windTileAnchors))
+        _line(_windLine(a, metric: metric), primary: true),
+      if (modifier('wind') != null) _line(modifier('wind')!),
+    ]));
+  } else {
+    final gust = _num(properties, 'peak_wind_primary_kmh');
+    if (gust != null) {
+      final shown = (metric ? gust : gust / kmhPerKnot).round();
+      tiles.add(tile('Wind gust', metric ? 'km/h' : 'kt', [
+        _line('$shown', primary: true),
+        if (modifier('wind') != null) _line(modifier('wind')!),
+      ]));
+    }
+  }
+
+  final sky = _anchorList(properties, 'cloud_anchors');
+  if (sky.isNotEmpty) {
+    tiles.add(tile('Cloud', null, [
+      for (final a in sky.take(cloudTileAnchors))
+        _line('${a['when'] ?? ''} ${a['cover'] ?? ''}'.trim(), primary: true),
+      if (modifier('cloud') != null) _line(modifier('cloud')!),
+    ]));
+  }
+
+  final uv = _num(properties, 'uv_index'), aqi = _num(properties, 'air_quality_index');
+  if (uv != null || aqi != null) {
+    final numbers = [
+      if (uv != null) formatIndexAndBand(uv, null)!,
+      if (aqi != null) formatIndexAndBand(aqi, null)!,
+    ].join(' / ');
+    final words = [
+      if (uv != null) uvBand(uv),
+      if (aqi != null) aqiBand(aqi.round()),
+    ].whereType<String>().join(' / ');
+    tiles.add(tile('UV / AQI', null, [
+      _line(numbers, primary: true),
+      if (words.isNotEmpty) _line(words),
+    ]));
+  } else {
+    final pair = [_str(properties, 'uv_index_max'), _str(properties, 'air_quality_aqi')];
+    if (pair.any((v) => v != null)) {
+      tiles.add(tile('UV / AQI', null, [
+        for (final v in pair)
+          if (v != null) _line(v, primary: true),
+      ]));
+    }
+  }
+
+  // BOTH OR NEITHER. In polar night there is no sunrise, and half a pair
+  // reads as a rendering fault rather than the honest answer.
+  final sunrise = _str(properties, 'sunrise'), sunset = _str(properties, 'sunset');
+  if (sunrise != null && sunset != null) {
+    tiles.add(tile('Sun', null, [
+      _line(sunrise, primary: true),
+      _line(sunset, primary: true),
+    ]));
+  }
+
+  return tiles;
 }

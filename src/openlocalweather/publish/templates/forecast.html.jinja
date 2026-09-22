@@ -51,26 +51,26 @@
      Each issuance gets its own URL instead — see publish/pages.py's
      GitHubPagesPublisher.publish() and IssuanceSnapshot's doc
      comment (models.py) for the full history of why. #}
+  {# THE TILES, COMPOSED IN CODE — ROADMAP item 159 step 6. Not listed here
+     any more. This template used to enumerate seven ungrouped stats, and the
+     app composed a different set in Dart: one record, two answers, and the
+     page's was never grouped the way the design asks. `tiles.compose_tiles`
+     is now the only thing that decides which tiles exist, in what order, and
+     what each line says, and the app and the email render from the same
+     function.
+
+     A `primary` line is a READING and sits at value size; the one supporting
+     line is the day-over-day modifier, which speaks on roughly a third of
+     days and is absent the rest. #}
   <div class="stat-grid">
-    <div class="stat"><span class="label">High / Low</span><span class="value">{{ entry.temp_high_low_display }}</span></div>
-    <div class="stat"><span class="label">Rain</span><span class="value">{{ entry.rain_expected }}</span></div>
-    {% if entry.onset_window %}
-    <div class="stat"><span class="label">Onset Window</span><span class="value">{{ entry.onset_window }}</span></div>
-    {% endif %}
-    {% if entry.uv_index_max %}
-    <div class="stat"><span class="label">UV Index</span><span class="value">{{ entry.uv_index_max }}</span></div>
-    {% endif %}
-    {% if entry.air_quality_aqi %}
-    <div class="stat"><span class="label">Air Quality</span><span class="value">{{ entry.air_quality_aqi }}</span></div>
-    {% endif %}
-    {# Computed in code from the day's astronomical data, never written by the
-       model. Both are shown only when both exist: in polar night there is no
-       sunrise to report, and half a pair reads as a rendering fault rather
-       than as the honest answer it is. #}
-    {% if entry.sunrise and entry.sunset %}
-    <div class="stat"><span class="label">Sunrise</span><span class="value">{{ entry.sunrise }}</span></div>
-    <div class="stat"><span class="label">Sunset</span><span class="value">{{ entry.sunset }}</span></div>
-    {% endif %}
+    {% for tile in tiles %}
+    <div class="stat">
+      <span class="label">{{ tile.label }}{% if tile.unit %} ({{ tile.unit }}){% endif %}</span>
+      {% for line in tile.lines %}
+      <span class="{{ "value" if line.primary else "modifier" }}">{{ line.text }}</span>
+      {% endfor %}
+    </div>
+    {% endfor %}
   </div>
 
   {{ narrative_html | safe }}

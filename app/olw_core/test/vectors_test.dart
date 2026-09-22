@@ -1212,6 +1212,19 @@ void main() {
       }
     });
 
+    test('compose_tiles', () {
+      // Upstream item 159 step 6. One composer for the app, the page and the
+      // email; these cases are the contract between them.
+      for (final c in loadVectors('compose_tiles.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = composeTiles(
+          (i['properties'] as Map).cast<String, Object?>(),
+          metric: i['metric'] as bool,
+        );
+        expectMatches(got, c['expected'], c['name'] as String);
+      }
+    });
+
     test('sky_word', () {
       for (final c in loadVectors('sky_word.json')['cases'] as List) {
         final v = ((c as Map)['input'] as Map)['cover_pct'] as num?;
@@ -1919,6 +1932,7 @@ void main() {
       'uv_band.json',
       'aqi_band.json',
       'index_and_band.json',
+      'compose_tiles.json',
       'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',

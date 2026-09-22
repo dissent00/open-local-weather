@@ -294,3 +294,229 @@ def wind_anchors(
         return []
 
     return out
+
+
+# The reader's units. THE HEADER CARRIES THE UNIT, never the value, which is
+# what makes this switchable: changing it rewrites one label per tile and no
+# value string at all.
+KMH_PER_KNOT = 1.852
+
+# Two lines of wind, not three. `wind_anchors` samples three hours; a tile
+# shows the TURN, which is the pair the shift clause itself names.
+WIND_TILE_ANCHORS = 2
+CLOUD_TILE_ANCHORS = 2
+
+
+def _num(properties: dict, key: str) -> float | None:
+    value = properties.get(key)
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _str(properties: dict, key: str) -> str | None:
+    value = properties.get(key)
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    return text or None
+
+
+def _anchor_list(properties: dict, key: str) -> list[dict]:
+    """The anchors under `key`, or nothing.
+
+    Anything that is not a list of maps is treated as ABSENT rather than
+    coerced: a malformed block should render no tile, not half of one.
+    """
+    value = properties.get(key)
+    if not isinstance(value, list):
+        return []
+
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _line(text: str, *, primary: bool = False) -> dict:
+    return {"text": text, "primary": primary}
+
+
+def _wind_line(anchor: dict, *, metric: bool) -> str:
+    """"early  NNE  9G15" — one anchor, in the reader's unit.
+
+    THE DIRECTION IS DROPPED when the models share no bearing, and the speeds
+    stand on their own rather than the tile apologising for what is missing.
+    Measured over the prompt archive, a single agreed bearing existed on 3 of
+    18 runs, so the short form is the normal one.
+    """
+    def shown(kmh: float) -> str:
+        return str(round(kmh if metric else kmh / KMH_PER_KNOT))
+
+    sustained = anchor.get("sustained_kmh")
+    gust = anchor.get("gust_kmh")
+    if sustained is not None and gust is not None:
+        speed = f"{shown(sustained)}G{shown(gust)}"
+    elif gust is not None:
+        speed = f"G{shown(gust)}"
+    elif sustained is not None:
+        speed = shown(sustained)
+    else:
+        speed = ""
+
+    parts = [str(anchor.get(key, "")).strip() for key in ("when", "direction")]
+
+    # ONE SPACE, NOT TWO, and `phrase_defect` is what forced it. The app used
+    # a double space as a column separator and it read well there, because
+    # Flutter renders the string literally — but HTML COLLAPSES IT, so the
+    # page and the email would have shown a different string from the app's,
+    # out of one composer whose whole purpose is that they cannot. Visual
+    # separation is the renderer's job and belongs in layout, not in
+    # characters that survive on one surface out of three.
+    return " ".join([p for p in parts if p] + ([speed] if speed else []))
+
+
+def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
+    """The at-a-glance tiles this record can fill, in reading order.
+
+    ONE COMPOSER FOR THREE SURFACES — ROADMAP item 159 step 6. The app, the
+    GitHub Pages forecast and the email all show these tiles, and this is the
+    only place that decides which tiles exist, what order they come in and
+    what each line says. Before this the app composed them in Dart, the page
+    listed seven ungrouped stats in a Jinja template, and the email showed
+    none at all; three surfaces, three answers, and the page's had never been
+    grouped the way the operator's design asks.
+
+    A TILE WITH NOTHING TO SAY IS ABSENT rather than showing a dash. An
+    em-dash in a stat tile reads as a measured nothing, which is the mistake
+    `DailyActual`'s three-valued fields exist to avoid.
+
+    NO PRESSURE TILE — the operator's call on 2026-09-21. A 24-hour pressure
+    trend is a forecaster's input, not an at-a-glance fact, and it belongs in
+    the discussion the narrative already carries.
+
+    `primary` IS THE ONLY STYLING THIS DECIDES, and it means "a reading"
+    rather than "important". Paired data stays the same size: sunrise and
+    sunset, UV and air quality, and the two anchors of a wind shift are two
+    readings rather than a reading with a footnote. The day-over-day modifier
+    is the one supporting line, and it drops.
+    """
+    from openlocalweather.scales import aqi_band, uv_band
+
+    comparison = properties.get("comparison")
+    comparison = comparison if isinstance(comparison, dict) else {}
+
+    def modifier(dimension: str) -> str | None:
+        """The stored modifier, or nothing.
+
+        THE STORED VALUE IS METRIC, like every number in the record. Wind and
+        cloud say "windier" and "much cloudier", which carry no unit and read
+        the same either way. TEMPERATURE SAYS A NUMBER OF DEGREES — "3°
+        cooler" — and those are Celsius degrees, so an imperial reader would
+        be shown a magnitude wrong by a factor of 1.8.
+
+        IT IS DROPPED RATHER THAN CONVERTED because converting needs the
+        delta and only the word is stored. Absent is the honest answer and
+        the one the rest of this composer gives; showing it would be a
+        measured claim that is false. Storing the delta beside the word, so
+        an imperial reader gets "5° cooler", is item 165.
+        """
+        if dimension == "temp" and not metric:
+            return None
+
+        text = comparison.get(dimension)
+        return str(text).strip() or None if text else None
+
+    tiles: list[dict] = []
+
+    high, low = _num(properties, "temp_high_c"), _num(properties, "temp_low_c")
+    if high is not None and low is not None:
+        def degrees(celsius: float) -> int:
+            return round(celsius if metric else celsius * 9 / 5 + 32)
+
+        tiles.append({
+            "label": "High / Low",
+            "unit": "°C" if metric else "°F",
+            "lines": [_line(f"{degrees(high)}° / {degrees(low)}°", primary=True)]
+            + ([_line(modifier("temp"))] if modifier("temp") else []),
+        })
+
+    rain = _str(properties, "rain_expected")
+    if rain is not None:
+        onset = _str(properties, "onset_window")
+        tiles.append({
+            "label": "Rain",
+            "unit": None,
+            "lines": [_line(rain, primary=True)]
+            + ([_line(onset, primary=True)] if onset else []),
+        })
+
+    wind = _anchor_list(properties, "wind_anchors")
+    if wind:
+        tiles.append({
+            "label": "Wind",
+            "unit": "km/h" if metric else "kt",
+            "lines": [
+                _line(_wind_line(a, metric=metric), primary=True)
+                for a in wind[:WIND_TILE_ANCHORS]
+            ] + ([_line(modifier("wind"))] if modifier("wind") else []),
+        })
+    else:
+        # THE FALLBACK IS A REAL CASE, not defensive padding: every entry
+        # written before 2026-09-21 carries a peak gust and no anchors, and
+        # every surface reads whatever was last published.
+        gust = _num(properties, "peak_wind_primary_kmh")
+        if gust is not None:
+            shown = round(gust if metric else gust / KMH_PER_KNOT)
+            tiles.append({
+                "label": "Wind gust",
+                "unit": "km/h" if metric else "kt",
+                "lines": [_line(str(shown), primary=True)]
+                + ([_line(modifier("wind"))] if modifier("wind") else []),
+            })
+
+    sky = _anchor_list(properties, "cloud_anchors")
+    if sky:
+        tiles.append({
+            "label": "Cloud",
+            "unit": None,
+            "lines": [
+                _line(f"{a.get('when', '')} {a.get('cover', '')}".strip(), primary=True)
+                for a in sky[:CLOUD_TILE_ANCHORS]
+            ] + ([_line(modifier("cloud"))] if modifier("cloud") else []),
+        })
+
+    uv, aqi = _num(properties, "uv_index"), _num(properties, "air_quality_index")
+    if uv is not None or aqi is not None:
+        from openlocalweather.models import format_index_and_band
+
+        numbers = " / ".join(
+            format_index_and_band(v, None)
+            for v in (uv, aqi) if v is not None
+        )
+        words = " / ".join(
+            w for w in (uv_band(uv) if uv is not None else None,
+                        aqi_band(round(aqi)) if aqi is not None else None) if w
+        )
+        tiles.append({
+            "label": "UV / AQI",
+            "unit": None,
+            "lines": [_line(numbers, primary=True)] + ([_line(words)] if words else []),
+        })
+    else:
+        # the same fallback, for entries written before the split
+        pair = [_str(properties, k) for k in ("uv_index_max", "air_quality_aqi")]
+        if any(pair):
+            tiles.append({
+                "label": "UV / AQI",
+                "unit": None,
+                "lines": [_line(v, primary=True) for v in pair if v],
+            })
+
+    # BOTH OR NEITHER. In polar night there is no sunrise to report, and half
+    # a pair reads as a rendering fault rather than as the honest answer.
+    sunrise, sunset = _str(properties, "sunrise"), _str(properties, "sunset")
+    if sunrise and sunset:
+        tiles.append({
+            "label": "Sun",
+            "unit": None,
+            "lines": [_line(sunrise, primary=True), _line(sunset, primary=True)],
+        })
+
+    return tiles

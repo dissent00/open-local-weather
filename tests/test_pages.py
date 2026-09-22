@@ -1,4 +1,5 @@
 import re
+from html import escape
 from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
@@ -1099,3 +1100,94 @@ def test_the_morning_view_carries_no_value_the_snapshot_never_recorded():
     from openlocalweather.publish.pages import _first_issuance
 
     assert morning_view.uv_index_max == _first_issuance(entry).uv_index_max
+
+
+def test_the_page_renders_the_shared_tiles():
+    """The page's tiles come from `compose_tiles`, like the app's and the
+    email's — ROADMAP item 159 step 6.
+
+    NOTHING TESTED THE STAT GRID BEFORE THIS. The template enumerated seven
+    ungrouped stats for months and no assertion touched them, which is how
+    the page and the app came to show different tile sets off one record
+    without anything noticing.
+
+    What is asserted is the SEAM, not the styling: that the tiles are the
+    composer's, in its order, and that a supporting line renders differently
+    from a reading. A tile that merely appears is not evidence the two
+    surfaces agree; the shared vectors are, and this proves the page uses
+    them.
+    """
+    from openlocalweather.tiles import compose_tiles
+
+    entry = make_entry(
+        date(2026, 8, 11),
+        uv_index=9.4,
+        air_quality_index=70,
+        comparison={"temp": "3° cooler"},
+    )
+    nav = build_nav_links("https://example.com", "owner/repo")
+    html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    tiles = compose_tiles(entry.model_dump(mode="json"), metric=True)
+    assert tiles, "the fixture produced no tiles, so this test proves nothing"
+
+    grid = re.search(r'<div class="stat-grid">.*?\n  </div>', html, re.S)
+    assert grid is not None
+    grid = grid.group()
+
+    # every tile the composer made, in its order, with its unit in the header
+    labels = re.findall(r'<span class="label">([^<]+)</span>', grid)
+    assert labels == [
+        f"{t['label']} ({t['unit']})" if t["unit"] else t["label"] for t in tiles
+    ]
+
+    # a reading and a supporting line are not the same element
+    assert '<span class="value">26° / 18°</span>' in grid
+    assert '<span class="modifier">3° cooler</span>' in grid
+
+    # and the seven ungrouped stats are gone
+    for old in (">UV Index<", ">Air Quality<", ">Onset Window<", ">Sunrise<", ">Sunset<"):
+        assert old not in html, f"the old ungrouped stat survives: {old}"
+
+
+def test_the_email_carries_the_same_tiles_as_the_page():
+    """The email body gained the tiles — ROADMAP item 159 step 6.
+
+    UNTIL THIS, THE EMAIL WAS THE NARRATIVE AND NOTHING ELSE. That was
+    survivable while the narrative opened with an Overview summarising the
+    day; step 5 retired the Overview, so an email reader was left with no
+    at-a-glance anything at all. This is the half of that change the email
+    was owed, and asserting the CONTENT matches the page is what stops the
+    two drifting again.
+
+    THE MARKUP DELIBERATELY DIFFERS. Gmail strips <style> blocks and Outlook
+    renders through Word, so the email uses a table with inline styles where
+    the page uses CSS grid. What must match is every line of text, in order.
+    """
+    from openlocalweather.publish.email_gmail import render_email_html
+    from openlocalweather.tiles import compose_tiles
+
+    entry = make_entry(date(2026, 8, 11), uv_index=9.4, air_quality_index=70)
+    tiles = compose_tiles(entry.model_dump(mode="json"), metric=True)
+    assert tiles, "the fixture produced no tiles, so this test proves nothing"
+
+    html = render_email_html(entry, "Kisumu")
+
+    for tile in tiles:
+        heading = tile["label"] + (f" ({tile['unit']})" if tile["unit"] else "")
+        assert f">{heading}</div>" in html, heading
+        for line in tile["lines"]:
+            assert f'>{escape(line["text"])}</div>' in html, line["text"]
+
+    # a reading and a supporting line are not styled alike, for the same
+    # reason the app's mutation pass found: one voice for two kinds of thing
+    assert "font-weight:600" in html
+    assert "color:#666" in html
+
+    # and an empty record renders no table rather than an empty one
+    from openlocalweather.publish.email_gmail import render_tile_table
+    assert render_tile_table(make_entry(date(2026, 8, 11)).model_copy(
+        update={"temp_high_c": None, "temp_low_c": None, "rain_expected": "",
+                "sunrise": None, "sunset": None, "uv_index_max": None,
+                "air_quality_aqi": None}
+    )) == ""

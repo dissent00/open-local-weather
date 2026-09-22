@@ -1,0 +1,743 @@
+{
+  "vector_format_version": 1,
+  "function": "compose_tiles",
+  "description": "ROADMAP item 159. The at-a-glance tiles, in reading order, for the app, the GitHub Pages forecast and the email alike. A tile with nothing to say is ABSENT rather than showing a dash. `primary` means 'a reading' and not 'important' -- paired data stays the same size, and the day-over-day modifier is the one supporting line. THE UNIT LIVES IN THE HEADER and never in a value, which is what makes \u00b0C/\u00b0F and km/h/kt a one-label change.",
+  "cases": [
+    {
+      "name": "a full record, metric",
+      "input": {
+        "properties": {
+          "temp_high_c": 29.5,
+          "temp_low_c": 19.0,
+          "rain_expected": "Evening Showers & Thunderstorms",
+          "onset_window": "Late Afternoon into Evening",
+          "wind_anchors": [
+            {
+              "when": "early",
+              "sustained_kmh": 3.6,
+              "gust_kmh": 5.3
+            },
+            {
+              "when": "midday",
+              "direction": "SW",
+              "sustained_kmh": 8.0,
+              "gust_kmh": 17.7
+            },
+            {
+              "when": "evening",
+              "sustained_kmh": 7.1,
+              "gust_kmh": 16.9
+            }
+          ],
+          "cloud_anchors": [
+            {
+              "when": "early",
+              "cover": "Overcast"
+            },
+            {
+              "when": "midday",
+              "cover": "Mostly cloudy"
+            },
+            {
+              "when": "evening",
+              "cover": "Mostly cloudy"
+            }
+          ],
+          "uv_index": 9.4,
+          "air_quality_index": 70,
+          "sunrise": "06:30",
+          "sunset": "18:37",
+          "comparison": {
+            "temp": "3\u00b0 cooler",
+            "wind": "windier"
+          }
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "30\u00b0 / 19\u00b0",
+              "primary": true
+            },
+            {
+              "text": "3\u00b0 cooler",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Evening Showers & Thunderstorms",
+              "primary": true
+            },
+            {
+              "text": "Late Afternoon into Evening",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Wind",
+          "unit": "km/h",
+          "lines": [
+            {
+              "text": "early 4G5",
+              "primary": true
+            },
+            {
+              "text": "midday SW 8G18",
+              "primary": true
+            },
+            {
+              "text": "windier",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Cloud",
+          "unit": null,
+          "lines": [
+            {
+              "text": "early Overcast",
+              "primary": true
+            },
+            {
+              "text": "midday Mostly cloudy",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "9.4 / 70",
+              "primary": true
+            },
+            {
+              "text": "Very high / Moderate",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Sun",
+          "unit": null,
+          "lines": [
+            {
+              "text": "06:30",
+              "primary": true
+            },
+            {
+              "text": "18:37",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "the same record in knots and Fahrenheit",
+      "input": {
+        "properties": {
+          "temp_high_c": 29.5,
+          "temp_low_c": 19.0,
+          "rain_expected": "Evening Showers & Thunderstorms",
+          "onset_window": "Late Afternoon into Evening",
+          "wind_anchors": [
+            {
+              "when": "early",
+              "sustained_kmh": 3.6,
+              "gust_kmh": 5.3
+            },
+            {
+              "when": "midday",
+              "direction": "SW",
+              "sustained_kmh": 8.0,
+              "gust_kmh": 17.7
+            },
+            {
+              "when": "evening",
+              "sustained_kmh": 7.1,
+              "gust_kmh": 16.9
+            }
+          ],
+          "cloud_anchors": [
+            {
+              "when": "early",
+              "cover": "Overcast"
+            },
+            {
+              "when": "midday",
+              "cover": "Mostly cloudy"
+            },
+            {
+              "when": "evening",
+              "cover": "Mostly cloudy"
+            }
+          ],
+          "uv_index": 9.4,
+          "air_quality_index": 70,
+          "sunrise": "06:30",
+          "sunset": "18:37",
+          "comparison": {
+            "temp": "3\u00b0 cooler",
+            "wind": "windier"
+          }
+        },
+        "metric": false
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0F",
+          "lines": [
+            {
+              "text": "85\u00b0 / 66\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Evening Showers & Thunderstorms",
+              "primary": true
+            },
+            {
+              "text": "Late Afternoon into Evening",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Wind",
+          "unit": "kt",
+          "lines": [
+            {
+              "text": "early 2G3",
+              "primary": true
+            },
+            {
+              "text": "midday SW 4G10",
+              "primary": true
+            },
+            {
+              "text": "windier",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Cloud",
+          "unit": null,
+          "lines": [
+            {
+              "text": "early Overcast",
+              "primary": true
+            },
+            {
+              "text": "midday Mostly cloudy",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "9.4 / 70",
+              "primary": true
+            },
+            {
+              "text": "Very high / Moderate",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Sun",
+          "unit": null,
+          "lines": [
+            {
+              "text": "06:30",
+              "primary": true
+            },
+            {
+              "text": "18:37",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a quiet day says nothing extra",
+      "input": {
+        "properties": {
+          "temp_high_c": 29.5,
+          "temp_low_c": 19.0,
+          "rain_expected": "Evening Showers & Thunderstorms",
+          "onset_window": "Late Afternoon into Evening",
+          "wind_anchors": [
+            {
+              "when": "early",
+              "sustained_kmh": 3.6,
+              "gust_kmh": 5.3
+            },
+            {
+              "when": "midday",
+              "direction": "SW",
+              "sustained_kmh": 8.0,
+              "gust_kmh": 17.7
+            },
+            {
+              "when": "evening",
+              "sustained_kmh": 7.1,
+              "gust_kmh": 16.9
+            }
+          ],
+          "cloud_anchors": [
+            {
+              "when": "early",
+              "cover": "Overcast"
+            },
+            {
+              "when": "midday",
+              "cover": "Mostly cloudy"
+            },
+            {
+              "when": "evening",
+              "cover": "Mostly cloudy"
+            }
+          ],
+          "uv_index": 9.4,
+          "air_quality_index": 70,
+          "sunrise": "06:30",
+          "sunset": "18:37",
+          "comparison": {}
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "30\u00b0 / 19\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Evening Showers & Thunderstorms",
+              "primary": true
+            },
+            {
+              "text": "Late Afternoon into Evening",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Wind",
+          "unit": "km/h",
+          "lines": [
+            {
+              "text": "early 4G5",
+              "primary": true
+            },
+            {
+              "text": "midday SW 8G18",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Cloud",
+          "unit": null,
+          "lines": [
+            {
+              "text": "early Overcast",
+              "primary": true
+            },
+            {
+              "text": "midday Mostly cloudy",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "9.4 / 70",
+              "primary": true
+            },
+            {
+              "text": "Very high / Moderate",
+              "primary": false
+            }
+          ]
+        },
+        {
+          "label": "Sun",
+          "unit": null,
+          "lines": [
+            {
+              "text": "06:30",
+              "primary": true
+            },
+            {
+              "text": "18:37",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "an entry from before the anchors and the split",
+      "input": {
+        "properties": {
+          "temp_high_c": 29.5,
+          "temp_low_c": 19.0,
+          "rain_expected": "Unlikely",
+          "peak_wind_primary_kmh": 41.5,
+          "uv_index_max": "9.4 (Very High)",
+          "air_quality_aqi": "66 (Moderate)",
+          "sunrise": "06:30",
+          "sunset": "18:37"
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "30\u00b0 / 19\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Unlikely",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Wind gust",
+          "unit": "km/h",
+          "lines": [
+            {
+              "text": "42",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "9.4 (Very High)",
+              "primary": true
+            },
+            {
+              "text": "66 (Moderate)",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Sun",
+          "unit": null,
+          "lines": [
+            {
+              "text": "06:30",
+              "primary": true
+            },
+            {
+              "text": "18:37",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "the same one in knots",
+      "input": {
+        "properties": {
+          "temp_high_c": 29.5,
+          "temp_low_c": 19.0,
+          "rain_expected": "Unlikely",
+          "peak_wind_primary_kmh": 41.5,
+          "uv_index_max": "9.4 (Very High)",
+          "air_quality_aqi": "66 (Moderate)",
+          "sunrise": "06:30",
+          "sunset": "18:37"
+        },
+        "metric": false
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0F",
+          "lines": [
+            {
+              "text": "85\u00b0 / 66\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Unlikely",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Wind gust",
+          "unit": "kt",
+          "lines": [
+            {
+              "text": "22",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "9.4 (Very High)",
+              "primary": true
+            },
+            {
+              "text": "66 (Moderate)",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "Sun",
+          "unit": null,
+          "lines": [
+            {
+              "text": "06:30",
+              "primary": true
+            },
+            {
+              "text": "18:37",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nothing at all renders nothing",
+      "input": {
+        "properties": {},
+        "metric": true
+      },
+      "expected": []
+    },
+    {
+      "name": "half a sun pair is no sun tile",
+      "input": {
+        "properties": {
+          "temp_high_c": 20.0,
+          "temp_low_c": 10.0,
+          "sunrise": "06:30"
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "20\u00b0 / 10\u00b0",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a malformed anchor block renders no tile, not half a tile",
+      "input": {
+        "properties": {
+          "temp_high_c": 20.0,
+          "temp_low_c": 10.0,
+          "wind_anchors": "SW 15"
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "20\u00b0 / 10\u00b0",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "UV without air quality",
+      "input": {
+        "properties": {
+          "temp_high_c": 20.0,
+          "temp_low_c": 10.0,
+          "uv_index": 11.0
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "20\u00b0 / 10\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "11",
+              "primary": true
+            },
+            {
+              "text": "Extreme",
+              "primary": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "air quality without UV",
+      "input": {
+        "properties": {
+          "temp_high_c": 20.0,
+          "temp_low_c": 10.0,
+          "air_quality_index": 152
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "High / Low",
+          "unit": "\u00b0C",
+          "lines": [
+            {
+              "text": "20\u00b0 / 10\u00b0",
+              "primary": true
+            }
+          ]
+        },
+        {
+          "label": "UV / AQI",
+          "unit": null,
+          "lines": [
+            {
+              "text": "152",
+              "primary": true
+            },
+            {
+              "text": "Unhealthy",
+              "primary": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rain with no onset window is one line",
+      "input": {
+        "properties": {
+          "rain_expected": "Unlikely"
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Unlikely",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a comparison on a dimension with no tile says nothing",
+      "input": {
+        "properties": {
+          "rain_expected": "Unlikely",
+          "comparison": {
+            "cloud": "much cloudier"
+          }
+        },
+        "metric": true
+      },
+      "expected": [
+        {
+          "label": "Rain",
+          "unit": null,
+          "lines": [
+            {
+              "text": "Unlikely",
+              "primary": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

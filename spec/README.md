@@ -109,6 +109,7 @@ absent values are `null`, never omitted keys.
 | `uv_band.json` | `uv_band` | 11 |
 | `aqi_band.json` | `aqi_band` | 13 |
 | `index_and_band.json` | `format_index_and_band` | 12 |
+| `compose_tiles.json` | `compose_tiles` | 12 |
 | `sky_word.json` | `sky_word` | 11 |
 | `tile_comparison.json` | `comparison_modifiers` | 14 |
 | `tile_notable_moves.json` | `notable_moves` | 2 |
