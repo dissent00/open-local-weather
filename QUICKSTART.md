@@ -278,6 +278,29 @@ A few rules worth knowing before you hit them:
   APIs, so chaining them to try the newer API and fall back to the older one
   works as you would expect.
 
+**What to set in GitHub for the chain above.** Under *Settings → Secrets and
+variables → Actions*, one secret and two variables per prefixed entry:
+
+| Where | Name | Value |
+|---|---|---|
+| Secret | `OPENROUTER_API_KEY` | your OpenRouter key (begins `sk-or-v1-`) |
+| Variable | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
+| Variable | `OPENROUTER_MODEL` | the primary model id for that link |
+| Secret | `GROQ_API_KEY` | your Groq key |
+| Variable | `GROQ_BASE_URL` | `https://api.groq.com/openai/v1` |
+| Variable | `GROQ_MODEL` | the primary model id for that link |
+
+You do **not** have to edit the workflow to add a link. It passes every
+variable and secret whose name ends in `_API_KEY`, `_BASE_URL`, `_MODEL`,
+`_FALLBACK_MODELS`, `_JSON_MODE` or `_MAX_TOKENS`, whatever the prefix, so a
+fourth gateway needs a config entry and its two variables and nothing else.
+Names outside that shape — `WAQI_TOKEN`, `LLM_PROVIDER`, the repository's own
+`github_token` — are deliberately not passed.
+
+**Leave `LLM_PROVIDER` unset.** It overrides the file and selects exactly ONE
+provider, which is what you want for a one-off run against a named endpoint
+and is the quickest way to silently disable a chain you just configured.
+
 Only a vendor being DOWN moves down the list — a timeout, a 429, a 5xx, or a
 402 on a metered gateway. A response that fails schema validation does not:
 the next model is handed the same prompt and the same schema, so it would fail

@@ -53,19 +53,53 @@ jobs:
       - name: Install package
         run: pip install -e .
 
+      # EVERY PROVIDER'S CREDENTIALS, WITHOUT NAMING THEM ONE BY ONE.
+      #
+      # ROADMAP item 81, 2026-09-22. A chain entry can carry its own
+      # `env_prefix`, so `llm_providers` may name OpenRouter and Groq and a
+      # fourth gateway, each reading OPENROUTER_*, GROQ_*, ... The env block
+      # below used to list LLM_* and GEMINI_* by hand, which meant a third
+      # provider was configured in `location.yaml`, built with nothing, and
+      # DROPPED FROM THE CHAIN IN SILENCE — the config said three links and
+      # the run held two. Adding a provider now needs a config line and its
+      # secrets, and no change to this file.
+      #
+      # THE PATTERN IS AN ALLOWLIST, not a dump of the repository's secrets.
+      # It passes only provider-shaped names — anything ending in _API_KEY,
+      # _BASE_URL, _MODEL, _FALLBACK_MODELS, _JSON_MODE or _MAX_TOKENS — so
+      # `github_token`, WAQI_TOKEN and PUBLIC_WEBPAGE_URL are all excluded.
+      # Verified against a fixture of both before this shipped.
+      #
+      # The heredoc form is used rather than KEY=VALUE because a value
+      # containing a newline would otherwise inject arbitrary variables.
+      - name: Provider credentials
+        env:
+          ALL_VARS: ${{ toJSON(vars) }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          # The guard in tests/test_workflows.py sees jq's own `|` operator
+          # and cannot tell it from a shell pipe. Setting pipefail anyway is
+          # cheaper than teaching it the difference, and correct regardless:
+          # a jq that fails here must not leave the chain quietly short.
+          set -o pipefail
+          emit() {
+            jq -r --arg p '^[A-Z0-9_]+_(API_KEY|BASE_URL|MODEL|FALLBACK_MODELS|JSON_MODE|MAX_TOKENS)$' '
+              to_entries[]
+              | select(.key | test($p))
+              | select(.value != null and .value != "")
+              | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
+          }
+          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+
       - name: Run health checks
         env:
           # --- LLM provider selection (see QUICKSTART.md) ---
-          # Leave all of these unset to use Gemini, the default.
+          # Leave LLM_PROVIDER unset to use the chain in location.yaml.
+          #
+          # The keys and per-provider settings are passed by the "Provider
+          # credentials" step above, whatever prefix a chain entry names —
+          # ROADMAP item 81. Only names that are not provider-shaped stay here.
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
-          LLM_MODEL: ${{ vars.LLM_MODEL }}
-          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
-          LLM_JSON_MODE: ${{ vars.LLM_JSON_MODE }}
-          LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          # --- Gemini (the default provider) ---
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
         # PIPEFAIL IS LOAD-BEARING, and its absence lost a forecast once
         # already — see ROADMAP item 66 and tests/test_workflows.py.

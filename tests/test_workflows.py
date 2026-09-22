@@ -168,3 +168,95 @@ def test_the_workflow_only_greps_run_kinds_the_cli_can_print():
         f"cli.py prints {sorted(printed - grepped)}, which the workflow "
         f"ignores. If that is deliberate, add it to this allowance and say why."
     )
+
+
+# ---------------------------------------------------------------------------
+# Provider credentials reach the run — ROADMAP item 81, 2026-09-22
+# ---------------------------------------------------------------------------
+
+#: The workflows that actually invoke the pipeline against a provider.
+PIPELINE_WORKFLOWS = ["forecast.yml", "health_check.yml"]
+
+#: The allowlist the workflows use, kept here so its behaviour is pinned
+#: rather than only asserted to exist.
+CREDENTIAL_PATTERN = (
+    r"^[A-Z0-9_]+_(API_KEY|BASE_URL|MODEL|FALLBACK_MODELS|JSON_MODE|MAX_TOKENS)$"
+)
+
+
+def _step_named(path: Path, name: str) -> dict | None:
+    doc = yaml.safe_load(path.read_text())
+    for job in (doc.get("jobs") or {}).values():
+        for step in job.get("steps") or []:
+            if step.get("name") == name:
+                return step
+    return None
+
+
+@pytest.mark.parametrize("name", PIPELINE_WORKFLOWS)
+def test_every_provider_prefix_reaches_the_run(name):
+    """A chain entry's own `env_prefix` must arrive in the environment.
+
+    THE DEFECT THIS EXISTS FOR: `llm_providers` can name OpenRouter and Groq
+    and a fourth gateway, each reading its own OPENROUTER_* / GROQ_* names —
+    item 81, 2026-09-22. The env blocks listed LLM_* and GEMINI_* by hand, so
+    a third provider was configured, built with nothing, and DROPPED FROM THE
+    CHAIN IN SILENCE. The config said three links and the run held two, and
+    nothing anywhere said otherwise.
+    """
+    path = REPO_ROOT / ".github" / "workflows" / name
+    step = _step_named(path, "Provider credentials")
+    assert step is not None, (
+        f"{name} has no 'Provider credentials' step, so only the prefixes "
+        "named by hand in its env block can reach the run"
+    )
+    assert "toJSON(vars)" in yaml.dump(step)
+    assert "toJSON(secrets)" in yaml.dump(step)
+    assert CREDENTIAL_PATTERN in step["run"], (
+        "the allowlist in the workflow has drifted from the one this file "
+        "pins; the test below is what says which names it admits"
+    )
+
+
+@pytest.mark.parametrize("name", PIPELINE_WORKFLOWS)
+def test_keys_are_not_also_named_by_hand(name):
+    """A hand-named key would mask the generic pass-through.
+
+    A step-level `env:` entry wins over `$GITHUB_ENV`, so re-adding
+    `LLM_API_KEY: ${{ secrets.LLM_API_KEY }}` would set it to the empty
+    string on a deployment that has moved to a prefixed name — which
+    `_env` reads as absent, dropping the link.
+    """
+    path = REPO_ROOT / ".github" / "workflows" / name
+    text = path.read_text()
+    for named in ("LLM_API_KEY:", "GEMINI_API_KEY:", "LLM_BASE_URL:", "LLM_MODEL:"):
+        assert named not in text, (
+            f"{name} names {named} by hand; the 'Provider credentials' step "
+            "already passes it, and the hand-written one takes precedence"
+        )
+
+
+def test_the_allowlist_admits_providers_and_nothing_else():
+    """What the pattern lets through, stated rather than assumed.
+
+    Checked against real names on both sides: `github_token` is present in
+    `toJSON(secrets)` on every run, and passing it into the environment of a
+    step that then runs arbitrary Python is not something to do by accident.
+    """
+    import re
+
+    admits = re.compile(CREDENTIAL_PATTERN)
+
+    for key in (
+        "LLM_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY",
+        "OPENROUTER_BASE_URL", "OPENROUTER_MODEL", "GEMINI_MODEL",
+        "MY_GATEWAY_API_KEY", "OPENROUTER_FALLBACK_MODELS",
+        "LLM_JSON_MODE", "LLM_MAX_TOKENS",
+    ):
+        assert admits.match(key), f"a provider name was refused: {key}"
+
+    for key in (
+        "github_token", "GITHUB_TOKEN", "WAQI_TOKEN", "PUBLIC_WEBPAGE_URL",
+        "LLM_PROVIDER", "GEMINI_THINKING_LEVEL", "TRIGGER_SOURCE",
+    ):
+        assert not admits.match(key), f"a non-provider name was admitted: {key}"

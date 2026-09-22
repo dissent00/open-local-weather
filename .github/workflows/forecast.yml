@@ -128,6 +128,44 @@ jobs:
           REPO="${{ github.event.repository.name }}"
           echo "url=https://${OWNER,,}.github.io/${REPO,,}/" >> "$GITHUB_OUTPUT"
 
+      # EVERY PROVIDER'S CREDENTIALS, WITHOUT NAMING THEM ONE BY ONE.
+      #
+      # ROADMAP item 81, 2026-09-22. A chain entry can carry its own
+      # `env_prefix`, so `llm_providers` may name OpenRouter and Groq and a
+      # fourth gateway, each reading OPENROUTER_*, GROQ_*, ... The env block
+      # below used to list LLM_* and GEMINI_* by hand, which meant a third
+      # provider was configured in `location.yaml`, built with nothing, and
+      # DROPPED FROM THE CHAIN IN SILENCE — the config said three links and
+      # the run held two. Adding a provider now needs a config line and its
+      # secrets, and no change to this file.
+      #
+      # THE PATTERN IS AN ALLOWLIST, not a dump of the repository's secrets.
+      # It passes only provider-shaped names — anything ending in _API_KEY,
+      # _BASE_URL, _MODEL, _FALLBACK_MODELS, _JSON_MODE or _MAX_TOKENS — so
+      # `github_token`, WAQI_TOKEN and PUBLIC_WEBPAGE_URL are all excluded.
+      # Verified against a fixture of both before this shipped.
+      #
+      # The heredoc form is used rather than KEY=VALUE because a value
+      # containing a newline would otherwise inject arbitrary variables.
+      - name: Provider credentials
+        env:
+          ALL_VARS: ${{ toJSON(vars) }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          # The guard in tests/test_workflows.py sees jq's own `|` operator
+          # and cannot tell it from a shell pipe. Setting pipefail anyway is
+          # cheaper than teaching it the difference, and correct regardless:
+          # a jq that fails here must not leave the chain quietly short.
+          set -o pipefail
+          emit() {
+            jq -r --arg p '^[A-Z0-9_]+_(API_KEY|BASE_URL|MODEL|FALLBACK_MODELS|JSON_MODE|MAX_TOKENS)$' '
+              to_entries[]
+              | select(.key | test($p))
+              | select(.value != null and .value != "")
+              | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
+          }
+          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+
       - name: Forecast
         env:
           # --- LLM provider selection (see QUICKSTART.md) ---
@@ -135,24 +173,21 @@ jobs:
           # not here — moved 2026-09-15. LLM_PROVIDER below still OVERRIDES
           # that file when it is set, which is how a one-off run tries another
           # provider without a commit; leave it unset for the configured one.
-          # The rest of these are per-provider settings and keys.
+          #
+          # THE KEYS AND PER-PROVIDER SETTINGS ARE NOT LISTED HERE any more —
+          # the "Provider credentials" step above passes every provider-shaped
+          # variable and secret, whatever prefix a chain entry names. Only the
+          # ones that do NOT fit that shape stay below.
           LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
-          LLM_MODEL: ${{ vars.LLM_MODEL }}
-          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
-          LLM_JSON_MODE: ${{ vars.LLM_JSON_MODE }}
-          LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           # --- Gemini: BOTH APIs, one key ---
           # `gemini` (generateContent) and `gemini-interactions` (the
           # Interactions API) are the same vendor and the same model reached
           # two ways, so they share GEMINI_API_KEY and GEMINI_MODEL. Switching
           # between them in location.yaml needs no change here.
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Which trigger produced this run. Recorded into the log entry so a
           # dead workflow_dispatch path is visible in the committed record
           # rather than hidden behind the cron slots still firing.
           TRIGGER_SOURCE: ${{ github.event_name }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
           WAQI_TOKEN: ${{ secrets.WAQI_TOKEN }}
         run: |

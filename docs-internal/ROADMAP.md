@@ -11328,6 +11328,32 @@ a real one.
 
 **Seven mutations, seven bites** after the two gaps above were closed.
 
+### The workflow had to pass them too, 2026-09-22
+
+Shipped incomplete and caught the same day, by the operator asking how to
+configure Gemini then OpenRouter then a third: **`env_prefix` worked in the
+config and nowhere else.** `forecast.yml` and `health_check.yml` listed
+`LLM_*` and `GEMINI_*` by hand, so a third entry reading `GROQ_*` would have
+been built with nothing and dropped from the chain in silence — the config
+saying three links and the run holding two, with only a stderr line to say
+so.
+
+Both workflows now pass every variable and secret whose name ends in
+`_API_KEY`, `_BASE_URL`, `_MODEL`, `_FALLBACK_MODELS`, `_JSON_MODE` or
+`_MAX_TOKENS`, whatever the prefix, so adding a link needs a config entry and
+its secrets and no workflow commit. It is an ALLOWLIST rather than a dump:
+`github_token` is in `toJSON(secrets)` on every run, and passing it into the
+environment of a step that then runs arbitrary Python is not a thing to do by
+accident. `WAQI_TOKEN`, `LLM_PROVIDER` and `PUBLIC_WEBPAGE_URL` are excluded
+by the same pattern, and `tests/test_workflows.py` pins which names it admits
+and which it refuses rather than only asserting the step exists.
+
+`set -o pipefail` is set in that step because the guard from item 66 sees
+jq's own `|` operator and cannot tell it from a shell pipe. Cheaper than
+teaching it the difference, and correct anyway.
+
+Five mutations, five bites.
+
 **What this does NOT do.** It does not touch the supported matrix, which is
 the rest of this item. A longer chain makes it MORE likely a run is served by
 a combination nobody validated, so the degradation this item already specifies
