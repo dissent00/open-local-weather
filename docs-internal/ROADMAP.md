@@ -57,25 +57,41 @@ while model cycles and the station archive are UTC.
 
 ### What is next, and why
 
-0. **SHIPPED 2026-09-22, all three:** item 162 (three narrative instructions
-   moved to the call that can obey them), item 81's cascading half (per-entry
-   credentials, so a chain can hold two gateways), and item 168 (the app
-   cascades too — no `olw_core` change was needed, and the app grew a
-   providers screen, a debug mode and a working model list along the way;
-   see ensemble's items 24 and 25).
-1. **Arm the fallback chain — item 81, and it is not an agent's to do.** The
-   evening run of 09-21 failed on four Gemini 503s and no forecast went out.
-   The chain is configured and inert because `LLM_API_KEY` does not exist;
-   `gh secret list` still shows only `GEMINI_API_KEY` and `WAQI_TOKEN`.
-   Nothing on this list matters as much as a forecast that does not appear,
-   and everything below it is smaller than that.
-2. **Items 87 and 123 are close but not ready.** The cloud pairs stand at 8
+1. **WATCH THE 03:01Z RUN ON 2026-09-23 — a dispatch may now wait for
+   approval.** On 2026-09-22 a forecast dispatch and two `model_probe`
+   dispatches all came back `action_required` with zero jobs started, and the
+   operator said it was the first time they had ever been asked to approve
+   anything here. `gh api .../actions/permissions` shows nothing unusual and
+   no environment carries a reviewer rule, so the cause is not in this repo's
+   files.
+   WHY IT MATTERS MORE THAN IT LOOKS: the crontab triggers
+   `workflow_dispatch`, so a gate that waits for a human turns an unattended
+   03:01Z run into no forecast — and it fails the same silent way item 66
+   did, with nothing red, nothing sent, and a line in a log nobody reads.
+   `health_check.yml` only looks weekly. If 09-23's morning run needs
+   approving, that is the finding and it outranks everything below.
+2. **The chain is ARMED and it FIRED — item 81's remaining half is the
+   supported matrix.** `LLM_API_KEY` was set 2026-09-22 13:06Z with
+   `LLM_BASE_URL` and `LLM_MODEL`. At 15:01Z Gemini returned four 503s across
+   nine minutes, the chain fell through, and
+   `nvidia/nemotron-3-super-120b-a12b:free` served both calls. A forecast
+   exists where 09-21 produced none.
+   IT ALSO PUBLISHED SOMETHING MALFORMED — see item 170 — which is the first
+   hard evidence that choosing models from capability flags is not enough.
+   `tools/probe_models.py` and `model_probe.yml` are the matrix in its
+   smallest useful form; run it before promoting any model into the chain.
+3. **Items 87 and 123 are close but not ready.** The cloud pairs stand at 8
    of the 10 they need, so about 09-24. Read 123's 2026-09-22 note first: the
    tiles answered most of it and what remains is narrower than the item says.
-3. **Item 167**, raised by the operator 2026-09-22: a local agency may publish UV
-   and there is nowhere to put it. `ModelPrediction` and `DayOutlook` both
+4. **Item 167**, raised by the operator 2026-09-22: a local agency may publish
+   UV and there is nowhere to put it. `ModelPrediction` and `DayOutlook` both
    need a field, and the authority question — which source wins for a
    quantity — is item 11's ladder rather than a schema change.
+
+Shipped 2026-09-22: item 162, item 81's cascading half, item 168 (the app
+cascades, with a providers screen, a debug mode and a working model list —
+ensemble items 24 and 25), and item 169 (the suite no longer depends on the
+hour it runs at).
 
 Item 164 (a composer nothing reads) and 165 (no imperial form for the
 comparison) are tidy-ups with their own sections; neither blocks anything.
