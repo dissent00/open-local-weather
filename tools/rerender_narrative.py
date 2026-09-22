@@ -99,10 +99,17 @@ from openlocalweather.defaults import BLEND_MODEL_ID  # noqa: E402
 # the ones the page prints. Both halves are needed: production sends all
 # fourteen, and a renderer told nothing about `rain` or `onset_hour` is being
 # asked to agree with a call it cannot see.
+#
+# `uv_index_max` LEFT THIS LIST 2026-09-22 with item 161, because it left
+# `TodayProperties`: code now takes the UV index from the daily block for the
+# day the horizon points at, and no longer asks the forecaster for it. The
+# entry still carries a `uv_index_max` DISPLAY STRING, which is why this is
+# worth stating — reading the entry's field of that name back into the call
+# would rebuild a field the schema no longer has.
 CALL_FIELDS_ON_ENTRY = (
     "rain_expected", "onset_window", "peak_wind_primary_kmh",
     "peak_wind_secondary_kmh", "temp_high_c", "temp_low_c",
-    "mslp_trend_24h", "synoptic_pattern", "uv_index_max", "air_quality_aqi",
+    "mslp_trend_24h", "synoptic_pattern", "air_quality_aqi",
 )
 # (TodayProperties name, attribute on the scored blend row)
 CALL_FIELDS_ON_BLEND = (

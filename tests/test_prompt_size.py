@@ -36,6 +36,8 @@ FULLY_POPULATED_HEADERS = [
     "NEXT THREE DAYS",
     "WIND DIRECTION",
     "WIND SHIFT",
+    # Item 161: the UV the forecaster is no longer asked to supply.
+    "PEAK UV INDEX",
     "CALIBRATED PEAK GUST",
     "OBSERVED SO FAR TODAY",
     "GROUND AQI STATIONS",

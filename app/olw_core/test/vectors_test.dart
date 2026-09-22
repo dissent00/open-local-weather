@@ -1073,6 +1073,7 @@ void main() {
           groundAqiReadings: i['ground_aqi_readings'],
           groundAqiSummary: i['ground_aqi_summary'],
           groundAqiLastKnownAbsence: i['ground_aqi_last_known_absence'] as String?,
+          peakUvIndex: i['peak_uv_index'],
           yesterdayActual: i['yesterday_actual'],
           todayWeatherData: (i['today_weather_data'] as Map).cast<String, Object?>(),
           localBulletinSourceName: i['local_bulletin_source_name'] as String,
@@ -1233,6 +1234,35 @@ void main() {
         final i = (c as Map)['input'] as Map;
         expectMatches(lastKnownAbsence(i['readings']), c['expected'],
             c['name'] as String);
+      }
+    });
+
+    test('day_uv_index', () {
+      // Upstream item 161. The horizon decides which day; the source is named.
+      // `horizonHasToday` is resolved here because the period strings belong
+      // to daypart and the Dart function needs only the answer.
+      for (final c in loadVectors('day_uv_index.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final horizon = (i['horizon'] as List).cast<String>();
+        final hasToday =
+            horizon.contains('today') || horizon.contains('the rest of today');
+        final got = dayUvIndex(
+          (i['daily'] as Map).cast<String, Object?>(),
+          horizonHasToday: hasToday,
+          today: DateTime.parse(i['today'] as String),
+        );
+        expectMatches(
+          got == null
+              ? null
+              : {
+                  'index': got.index,
+                  'target_date':
+                      got.targetDate.toIso8601String().split('T').first,
+                  'source': got.source,
+                },
+          c['expected'],
+          c['name'] as String,
+        );
       }
     });
 
@@ -1945,6 +1975,7 @@ void main() {
       'index_and_band.json',
       'compose_tiles.json',
       'last_known_absence.json',
+      'day_uv_index.json',
       'sky_word.json',
       'tile_comparison.json',
       'tile_notable_moves.json',

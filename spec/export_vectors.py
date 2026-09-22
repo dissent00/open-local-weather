@@ -1749,6 +1749,70 @@ def export_llm_schemas() -> None:
 
 
 
+def export_day_uv_index() -> None:
+    """ROADMAP item 161 -- which day's UV, and which source said so.
+
+    THE HORIZON DECIDES, and UV was the one field not following the rule
+    every other part of the forecast already uses. Today is in the horizon at
+    dawn, morning, midday and afternoon and GONE at dusk, evening and before
+    midnight; the 18:01 run classifies as dusk and its own prompt says "WHAT
+    MATTERS NOW: tonight, then tomorrow" while this field reported a peak six
+    hours past. Over 11 archived evening runs the rule changes the number on
+    6 and the BAND on 2.
+
+    THE SOURCE IS NAMED. Only `gfs_seamless` serves a UV index and
+    `best_match` repeats it value for value on all 28 archived issuances, so
+    the preference order is visible rather than discovered -- item 167 is
+    what slotting a national met service in would take.
+    """
+    from datetime import date as _date
+
+    from openlocalweather.daypart import (
+        REST_OF_TODAY, TODAY, TOMORROW, TONIGHT, UNTIL_DAWN,
+    )
+    from openlocalweather.uv import day_uv_index
+
+    def block(**by_model):
+        d = {"time": ["2026-09-22", "2026-09-23", "2026-09-24"]}
+        for model, values in by_model.items():
+            d[f"uv_index_max_{model}"] = list(values)
+        return {"daily": d}
+
+    both = block(gfs_seamless=[9.3, 7.5, 8.0], best_match=[9.3, 7.5, 8.0])
+    today = _date(2026, 9, 22)
+    cases = [
+        ("dawn -- today is the whole story", both, (TODAY, TONIGHT)),
+        ("midday -- the rest of today", both, (REST_OF_TODAY, TONIGHT)),
+        ("afternoon -- today, then tomorrow", both, (REST_OF_TODAY, TONIGHT, TOMORROW)),
+        ("dusk -- the horizon has rolled", both, (TONIGHT, TOMORROW)),
+        ("before midnight -- still tomorrow", both, (UNTIL_DAWN, TOMORROW)),
+        ("after midnight -- today is back", both, (UNTIL_DAWN, TODAY)),
+        ("only the blend serves one -- it answers, and is named",
+         block(best_match=[9.3, 7.5, 8.0]), (TODAY, TONIGHT)),
+        ("the preferred source is null for that day, so the next answers",
+         block(gfs_seamless=[None, 7.5], best_match=[9.3, 7.5]), (TODAY, TONIGHT)),
+        ("no source serves one at all", block(icon_seamless=[9.3, 7.5]), (TODAY, TONIGHT)),
+        ("the array stops before tomorrow",
+         block(gfs_seamless=[9.3], best_match=[9.3]), (TONIGHT, TOMORROW)),
+    ]
+    def shown(r):
+        return None if r is None else {
+            "index": r.index, "target_date": r.target_date.isoformat(), "source": r.source,
+        }
+    write(
+        "day_uv_index.json",
+        "day_uv_index",
+        "ROADMAP item 161. The UV index for the day the HORIZON points at, "
+        "and the source that served it. Today's maximum until the horizon "
+        "drops today at dusk, then tomorrow's -- the operator's rule, and the "
+        "one every other part of the forecast already followed. None rather "
+        "than a guess when no named source serves one: over 28 archived "
+        "issuances the arrays were never null and never short, so the absence "
+        "path is reasoned rather than observed.",
+        [{"name": n, "input": {"daily": d, "horizon": list(h), "today": today.isoformat()},
+          "expected": shown(day_uv_index(d, horizon=h, today=today))} for n, d, h in cases],
+    )
+
 def export_last_known_absence() -> None:
     """ROADMAP item 163 -- which kind of nothing the last-known block found.
 
@@ -1821,6 +1885,9 @@ def export_user_prompt() -> None:
         # Item 163: the block names WHICH absence. Passed here so the
         # vectors exercise a real message rather than the wiring-gap text.
         "ground_aqi_last_known_absence": last_known_absence([]),
+        # Item 161: the day's peak UV, for the day the horizon points at.
+        "peak_uv_index": {"index": 9.4, "date": "2026-08-19",
+                          "source": "gfs_seamless"},
         "ground_aqi_summary": {"lowest": 40, "highest": 55, "worst_station": "Dunga Beach"},
         "yesterday_actual": {"high_label": "about the same", "rain_contrast": "drier"},
         "today_weather_data": weather,
@@ -6059,6 +6126,7 @@ def main() -> None:
     export_forecast_horizon()
     export_llm_schemas()
     export_system_prompt()
+    export_day_uv_index()
     export_last_known_absence()
     export_user_prompt()
     export_weekly_review()

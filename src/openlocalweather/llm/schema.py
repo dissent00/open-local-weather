@@ -135,7 +135,13 @@ class TodayProperties(BaseModel):
     # NUMBER stays here, though only the AQI one is really a judgement —
     # `uv_index` comes from one model, with `best_match` duplicating it value
     # for value. See `scales.py`, and item 161.
-    uv_index_max: float | None = None
+    # `uv_index_max` LEFT THIS SCHEMA 2026-09-22, item 161. Only
+    # `gfs_seamless` served a UV index and `best_match` repeated it value for
+    # value on all 28 archived issuances, so "your synthesized BLENDED call
+    # across all models" was never true of it and the model was copying a
+    # number. Code now takes it from the daily block for the day the horizon
+    # points at — which is the part the model could not do, because at dusk
+    # the answer is tomorrow's maximum and nothing told it so.
     air_quality_aqi: int | None = None
 
 

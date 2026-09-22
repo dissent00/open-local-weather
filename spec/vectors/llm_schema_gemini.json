@@ -83,10 +83,6 @@
                 "type": "STRING",
                 "nullable": true
               },
-              "uv_index_max": {
-                "type": "NUMBER",
-                "nullable": true
-              },
               "air_quality_aqi": {
                 "type": "INTEGER",
                 "nullable": true

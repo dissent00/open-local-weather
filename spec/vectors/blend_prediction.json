@@ -18,7 +18,6 @@
         "rain_probability_pct": 65,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing",
-        "uv_index_max": 9.4,
         "air_quality_aqi": 88
       },
       "expected": {
@@ -53,7 +52,6 @@
         "rain_probability_pct": null,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing",
-        "uv_index_max": 9.4,
         "air_quality_aqi": 88
       },
       "expected": {
@@ -88,7 +86,6 @@
         "rain_probability_pct": 0,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing",
-        "uv_index_max": 9.4,
         "air_quality_aqi": 88
       },
       "expected": {
@@ -123,7 +120,6 @@
         "rain_probability_pct": 65,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing",
-        "uv_index_max": 9.4,
         "air_quality_aqi": 88
       },
       "expected": {
@@ -158,7 +154,6 @@
         "rain_probability_pct": 65,
         "mslp_trend_24h": "-0.4 hPa",
         "synoptic_pattern": "Troughing",
-        "uv_index_max": 9.4,
         "air_quality_aqi": 88
       },
       "expected": {

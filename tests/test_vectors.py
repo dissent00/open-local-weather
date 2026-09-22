@@ -845,6 +845,25 @@ def test_vectors_last_known_absence():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_day_uv_index():
+    """ROADMAP item 161 — which day's UV, and which source served it."""
+    from datetime import date as _date
+
+    from openlocalweather.uv import day_uv_index
+
+    for case in load("day_uv_index.json")["cases"]:
+        i = case["input"]
+        got = day_uv_index(
+            i["daily"], horizon=tuple(i["horizon"]), today=_date.fromisoformat(i["today"])
+        )
+        shown = None if got is None else {
+            "index": got.index,
+            "target_date": got.target_date.isoformat(),
+            "source": got.source,
+        }
+        assert shown == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_word():
     from openlocalweather.tiles import sky_word
 
@@ -1153,6 +1172,7 @@ def test_every_vector_file_is_exercised():
         "index_and_band.json",
         "compose_tiles.json",
         "last_known_absence.json",
+        "day_uv_index.json",
         "sky_word.json",
         "tile_comparison.json",
         "tile_notable_moves.json",

@@ -237,8 +237,8 @@ void main() {
       // the token budget stops for a perfectly good reason.
       final payload = jsonDecode(jsonEncode(validPayload)) as Map<String, Object?>;
       // `synoptic_pattern`, because uv_index_max stopped being a string on
-      // 2026-09-21 — upstream item 159 step 4. The guard is about a runaway
-      // TEXT field, so it has to sit on one that still is.
+      // 2026-09-21 and left the schema entirely on 09-22 (items 159/161). The
+      // guard is about a runaway TEXT field, so it has to sit on one that is.
       (payload['today_properties'] as Map<String, Object?>)['synoptic_pattern'] =
           'Weak easterly flow ${'Passtaken ' * 1600}';
       final cap = _Cap(geminiEnvelopeFinishing('STOP', payload));
@@ -478,7 +478,6 @@ void main() {
         tempLowC: 18.0,
         mslpTrend24h: 'Falling slowly',
         synopticPattern: 'Weak easterly flow',
-        uvIndexMax: 9.0,
         airQualityAqi: 42,
       );
       final json = original.toJson();

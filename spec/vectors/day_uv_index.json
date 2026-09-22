@@ -1,0 +1,323 @@
+{
+  "vector_format_version": 1,
+  "function": "day_uv_index",
+  "description": "ROADMAP item 161. The UV index for the day the HORIZON points at, and the source that served it. Today's maximum until the horizon drops today at dusk, then tomorrow's -- the operator's rule, and the one every other part of the forecast already followed. None rather than a guess when no named source serves one: over 28 archived issuances the arrays were never null and never short, so the absence path is reasoned rather than observed.",
+  "cases": [
+    {
+      "name": "dawn -- today is the whole story",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "midday -- the rest of today",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "afternoon -- today, then tomorrow",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "the rest of today",
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "dusk -- the horizon has rolled",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 7.5,
+        "target_date": "2026-09-23",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "before midnight -- still tomorrow",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "the remaining hours until dawn",
+          "tomorrow"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 7.5,
+        "target_date": "2026-09-23",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "after midnight -- today is back",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3,
+              7.5,
+              8.0
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "the remaining hours until dawn",
+          "today"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "gfs_seamless"
+      }
+    },
+    {
+      "name": "only the blend serves one -- it answers, and is named",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5,
+              8.0
+            ]
+          }
+        },
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "best_match"
+      }
+    },
+    {
+      "name": "the preferred source is null for that day, so the next answers",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              null,
+              7.5
+            ],
+            "uv_index_max_best_match": [
+              9.3,
+              7.5
+            ]
+          }
+        },
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": {
+        "index": 9.3,
+        "target_date": "2026-09-22",
+        "source": "best_match"
+      }
+    },
+    {
+      "name": "no source serves one at all",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_icon_seamless": [
+              9.3,
+              7.5
+            ]
+          }
+        },
+        "horizon": [
+          "today",
+          "tonight (dusk, evening and overnight through to dawn)"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": null
+    },
+    {
+      "name": "the array stops before tomorrow",
+      "input": {
+        "daily": {
+          "daily": {
+            "time": [
+              "2026-09-22",
+              "2026-09-23",
+              "2026-09-24"
+            ],
+            "uv_index_max_gfs_seamless": [
+              9.3
+            ],
+            "uv_index_max_best_match": [
+              9.3
+            ]
+          }
+        },
+        "horizon": [
+          "tonight (dusk, evening and overnight through to dawn)",
+          "tomorrow"
+        ],
+        "today": "2026-09-22"
+      },
+      "expected": null
+    }
+  ]
+}

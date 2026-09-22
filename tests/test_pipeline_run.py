@@ -112,6 +112,14 @@ def daily_fixture() -> dict:
         fields[f"temperature_2m_max_{model}"] = [27.0] * 8
         fields[f"temperature_2m_min_{model}"] = [18.0] * 8
         fields[f"pressure_msl_mean_{model}"] = [1010.0] * 8
+        # TODAY AND TOMORROW DIFFER, so a test can tell which day the horizon
+        # pointed at — item 161. Only gfs and best_match serve a UV index in
+        # the real feed; the others are null here for the same reason.
+        fields[f"uv_index_max_{model}"] = (
+            [9.1, 7.4] + [8.0] * 6
+            if model in ("gfs_seamless", "best_match")
+            else [None] * 8
+        )
     return {"daily": fields}
 
 
@@ -4343,10 +4351,16 @@ def test_the_index_halves_are_on_the_day_record(tmp_path, monkeypatch):
 
     stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
 
-    assert stored.uv_index == 9.1
     assert stored.air_quality_index == 85
-    assert stored.uv_index_max == "9.1 (Very high)"
     assert stored.air_quality_aqi == "85 (Moderate)"
+
+    # UV NO LONGER COMES FROM THE MODEL — item 161. It is taken from the
+    # daily block for the day the horizon points at, and the record says
+    # which source answered and for which date.
+    assert stored.uv_index == 9.1
+    assert stored.uv_index_max == "9.1 (Very high)"
+    assert stored.uv_index_source == "gfs_seamless"
+    assert stored.uv_index_date == date(2026, 8, 11)
 
     # and a snapshot of an EARLIER issuance carries the display, not the halves
     assert "uv_index" not in IssuanceSnapshot.model_fields
@@ -4505,3 +4519,44 @@ def test_the_prompt_says_which_ground_aqi_absence_it_found(tmp_path, monkeypatch
     # the false claim, and the wiring-gap fallback, are both absent
     assert "no station has a timestamped reading at all" not in llm.user_prompts
     assert "the reason was not supplied to this prompt" not in llm.user_prompts
+
+
+def test_the_uv_index_rolls_to_tomorrow_once_the_horizon_does(tmp_path, monkeypatch):
+    """At dusk the forecast is about tonight and tomorrow, and so is the UV.
+
+    THE SYSTEM CONTRADICTED ITSELF UNTIL 2026-09-22. `_horizon_for` drops
+    today at dusk, and the 18:01 run's own prompt says "WHAT MATTERS NOW:
+    tonight (dusk, evening and overnight through to dawn), then tomorrow" —
+    while `uv_index_max` went on reporting a peak that happened around
+    midday, six hours earlier. Over the 11 archived evening runs this rule
+    changes the number on 6 and the BAND a reader sees on 2, once from High
+    to Very high.
+
+    The fixture's daily UV is 9.1 today and 7.4 tomorrow, which straddles the
+    WHO boundary at 8.0, so the assertion is on the WORD a reader acts on and
+    not only on the figure.
+    """
+    from openlocalweather.scales import uv_band
+
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+
+    # 06:01 local — dawn, today still wholly ahead
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 1))
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+    morning = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+
+    assert morning.uv_index == 9.1
+    assert morning.uv_index_date == date(2026, 8, 11)
+    assert uv_band(morning.uv_index) == "Very high"
+
+    # 18:01 local — dusk, the horizon has rolled off today
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 18, 1))
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+    dusk = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+
+    assert dusk.uv_index == 7.4, "the UV did not roll with the horizon"
+    assert dusk.uv_index_date == date(2026, 8, 12)
+    assert uv_band(dusk.uv_index) == "High"
+    # and the source is recorded either way, so item 167 can swap it
+    assert dusk.uv_index_source == "gfs_seamless"

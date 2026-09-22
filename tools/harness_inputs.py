@@ -56,7 +56,10 @@ judgment = {
         "temp_low_c": entry["temp_low_c"],
         "mslp_trend_24h": entry["mslp_trend_24h"],
         "synoptic_pattern": entry["synoptic_pattern"],
-        "uv_index_max": entry.get("uv_index"),
+        # NO `uv_index_max` — it left `today_properties` with item 161 on
+        # 2026-09-22. Code takes the UV index from the daily block for the day
+        # the horizon points at, so reconstructing it here would hand the
+        # reader a field the schema no longer has.
         "air_quality_aqi": entry.get("air_quality_index"),
     },
     "extended_properties": extended,

@@ -111,6 +111,7 @@ absent values are `null`, never omitted keys.
 | `index_and_band.json` | `format_index_and_band` | 12 |
 | `compose_tiles.json` | `compose_tiles` | 12 |
 | `last_known_absence.json` | `last_known_absence` | 4 |
+| `day_uv_index.json` | `day_uv_index` | 10 |
 | `sky_word.json` | `sky_word` | 11 |
 | `tile_comparison.json` | `comparison_modifiers` | 14 |
 | `tile_notable_moves.json` | `notable_moves` | 2 |

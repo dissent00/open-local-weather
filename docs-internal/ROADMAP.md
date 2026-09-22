@@ -25455,7 +25455,7 @@ rather than a gap.
 
 ---
 
-## 161. `uv_index_max` is one model's number that the forecaster is asked to re-type · **Open, found 2026-09-21 by item 77's harness**
+## 161. `uv_index_max` is one model's number that the forecaster is asked to re-type · **SHIPPED 2026-09-22 — and the reason turned out to be the DAY, not the copying**
 
 Verified in the 2026-09-21 03:03Z archived prompt: of the five models, only
 `gfs_seamless` serves `uv_index`, and `best_match`'s hourly array is
@@ -25475,10 +25475,73 @@ blocked the tile. This is that change: take `uv_index_max` from the daily
 block the way `cape_max` is taken, drop it from `today_properties`, and let
 `scales.uv_band` continue to do the rest.
 
-**Measure first.** Over the archive, how often does the model's stated UV
-differ from `gfs`'s own `uv_index_max` for that day? The answer decides
-whether this is a correctness fix or only a tidiness one, and it is one script
-over `data/prompts/` and `data/log/`.
+### Measured, and the case the item was raised on did not survive
+
+Against the run that wrote each entry, the published figure matched GFS's own
+on 12 of 18 days, the six differences were rounding, and **the band a reader
+sees never once differed.** On the copying alone this was tidiness.
+
+**A finding withdrawn mid-investigation.** A first pass reported that
+2026-09-17 published 7.6 against GFS's 9.0 and flipped the band from Very
+high to High. GFS itself revised from 9.0 to 7.6 between the 03:02Z and
+15:02Z runs, and the entry was written by the later one. The model copied
+correctly; I had compared the stored value against the wrong issuance. Second
+time that day.
+
+### What DID justify it: the day, not the number
+
+`daypart._horizon_for` decides what a reader at this hour is waiting for.
+Today is in the horizon at dawn, morning, midday and afternoon, and GONE at
+dusk, evening and before midnight. The 18:01 run classifies as **dusk** and
+its own prompt says *"WHAT MATTERS NOW: tonight (dusk, evening and overnight
+through to dawn), then tomorrow"* — while `uv_index_max` went on reporting a
+peak that happened around midday, six hours earlier. The system contradicted
+itself, and UV was the one field not following a rule everything else did.
+
+Over the 11 archived evening runs the horizon rule changes the number on 6
+and the **band on 2**, once from High to Very high — the direction that
+understates a sun risk.
+
+The operator's wording: *"what we're noting is just the max for today, or the
+max for tomorrow if the sun has set and we're forecasting the next day."*
+
+### The source is named, because a local agency may serve one
+
+Of the five models only `gfs_seamless` serves a UV index; `best_match`
+duplicates it value for value on all 28 archived issuances; ECMWF, ICON and
+UKMO serve none. So "your synthesized BLENDED call across all models" was
+never true of this field.
+
+`UV_SOURCE_PREFERENCE` names the order and the entry records `uv_index_source`
+and `uv_index_date`. Deliberately NOT a config field: a setting with one
+possible value is speculative, and item 167 — raised by the operator in the
+same breath — should decide that shape from item 11's source ladder.
+
+### The hole this opened, found by the harness before it shipped
+
+Removing `uv_index_max` from `today_properties` left the narrative told to
+"Cover temperature, rain, wind, THE SKY, UV and air quality" with **no UV
+figure anywhere**. The harness read it cold and wrote no UV at all, saying the
+call gave it none — and independently flagged that the prompt "never instructs
+me how to handle this fragmented availability" across models.
+
+A `PEAK UV INDEX` block now carries the computed value, its date and its
+source, the way `CALIBRATED PEAK GUST` carries its own. The user prompt grows
+611 characters; the judgment prompt loses 14.
+
+### Verified
+
+1,554 Python, 218 Dart. Seven mutations bit their own case: the horizon
+ignored, inverted, and with `REST_OF_TODAY` dropped so midday rolls early;
+the source preference reversed so the blend is credited; a null taken rather
+than skipped; and the date and source each not recorded. Ten vector cases
+pin one phase per branch rather than only the two the crontab hits. Driven
+against a HEAD worktree: transcript identical, and the record gains the two
+new fields plus the block.
+
+**Not checked.** No live run has used it. On today's real data the block would
+read 9.4 for 2026-09-22 at the 06:01 run and 9.2 for 2026-09-23 at 18:01,
+which is the roll working on real numbers rather than a fixture.
 
 ---
 
@@ -25797,3 +25860,61 @@ provisional: "it does not yet make every row scored". Freezing that into prose
 would have been the same mistake `ARCHITECTURE.md` made about "what CHANGED".
 The operator's call was "first run scored is fine for now", so it is stated in
 the README with that scope and not as an invariant.
+
+---
+
+## 167. A local agency may publish UV, and there is nowhere to put it · **Raised 2026-09-22 by the operator**
+
+> *"Are we prepared to take other sources and add them — local weather
+> forecasting agencies for example may provide UV?"*
+
+### What is already true, and it is more than expected
+
+**A local agency is a first-class scored source, not decoration.** The Kenya
+Meteorological Department is configured as `local_bulletin_model_id:
+"kenya_met"`, flows through `scored_models`, and is verified on the same
+record as GFS and ECMWF at the same leads. The hard architectural question —
+can a peer agency be a scored predictor? — is answered yes and has been
+running for weeks.
+
+### What is missing
+
+**The pipe is shaped for prose and carries four quantities.**
+`BulletinFetcher.fetch()` returns a STRING, and each agency gets its own
+parser (`kmd_daily_parse`, `kmd_5day_parse`). What a parsed `DayOutlook` can
+hold is `high_c`, `low_c`, `rain_probability_pct` and `area_coverage_pct`.
+`ModelPrediction` is wider at fourteen fields, and UV is in neither. So an
+agency publishing a UV index has nowhere to put it.
+
+**There is no notion of which source is AUTHORITATIVE for a quantity.** Today
+it is implicit: Open-Meteo for the models, WAQI for air quality, the station
+for observations. If a national service published UV, nothing in the config
+or the code says whether it outranks a global model or sits beside it as
+another scored opinion. For UV specifically the agency has the better claim,
+because it is the body issuing the public sun-safety advice.
+
+**And there is no per-quantity coverage map.** `acknowledged_coverage_gaps`
+gives the idea a foothold, but a source is all-or-nothing rather than "this
+one provides UV and nothing else".
+
+### What it would take
+
+`ModelPrediction` gains a UV field — entry schema, Dart mirror, vectors, and
+the verification path that scores each model per lead. `DayOutlook` gains
+one, and each agency's parser learns to find it. That is the same surface as
+adding `peak_cape_jkg`, which is known and survivable rather than novel.
+
+The harder half is the authority question, and it is not a schema change.
+Read item 11's six-state source ladder (EXISTS → OPERATIONAL → ACCESSIBLE →
+FRESH → CAPABLE → REPRESENTATIVE) before designing this: "capable" is exactly
+"provides this quantity", and the two items are the same problem seen from
+two ends.
+
+### What item 161 did about it, so this does not have to undo anything
+
+161 takes the UV index from a NAMED source in a stated preference order, and
+the entry records which source answered and for which date. That costs
+nothing now, with one real source, and is the difference between slotting an
+agency in later and an archaeology exercise. It does NOT add a config field:
+a setting with one possible value is speculative, and item 11's ladder should
+decide the shape rather than this item guessing it.

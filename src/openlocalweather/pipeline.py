@@ -83,6 +83,7 @@ from openlocalweather.comparison import (
     describe_extended_trend,
 )
 from openlocalweather.scales import aqi_band, uv_band
+from openlocalweather.uv import day_uv_index
 from openlocalweather.tiles import (
     cloud_anchors,
     comparison_modifiers,
@@ -95,6 +96,7 @@ from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
 from openlocalweather.daypart import (
+    TODAY,
     convective_timing,
     describe_convective_timing,
     onset_word,
@@ -920,6 +922,14 @@ def _build_forecast_prompt(
     # as tile modifiers, which are values rather than a sentence and cannot be
     # malformed in the way this was written for.
 
+    # THE SAME CALL `_compose_log_entry` MAKES, so the prose and the record
+    # cannot disagree about which day the UV describes — item 161.
+    uv_for_prompt = day_uv_index(
+        guidance.primary_daily or {},
+        horizon=guidance.issuance.horizon if guidance.issuance else (TODAY,),
+        today=today,
+    )
+
     return build_user_prompt(
         today=today,
         yesterday=add_days(today, -1),
@@ -941,6 +951,14 @@ def _build_forecast_prompt(
         # WHICH KIND OF NOTHING — item 163. Computed here, beside the value it
         # explains, so the prompt states a cause rather than assuming one.
         ground_aqi_last_known_absence=last_known_absence(guidance.ground_aqi_readings or []),
+        # THE DAY'S PEAK UV — item 161. Same value the entry stores, so the
+        # prose and the tile cannot disagree about which day it describes.
+        peak_uv_index=(
+            {"index": uv_for_prompt.index,
+             "date": uv_for_prompt.target_date.isoformat(),
+             "source": uv_for_prompt.source}
+            if uv_for_prompt is not None else None
+        ),
         ground_stations_configured=bool(deps.location.waqi_stations),
         local_bulletin_configured=bool(deps.location.local_bulletin_source_name),
         instability=(
@@ -2532,6 +2550,17 @@ def _compose_log_entry(
     tp = llm_response.today_properties
     response_meta = _response_meta(last_response)
 
+    # THE HORIZON DECIDES WHICH DAY — item 161, and it is the rule every
+    # other part of the forecast already follows. `_horizon_for` drops today
+    # at dusk; this run's own prompt then says "WHAT MATTERS NOW: tonight,
+    # then tomorrow", and the UV field was the one thing still reporting a
+    # peak six hours past.
+    uv = day_uv_index(
+        guidance.primary_daily or {},
+        horizon=guidance.issuance.horizon if guidance.issuance else (TODAY,),
+        today=today,
+    )
+
     issuance = DailyLogEntry(
         date=today,
         rain_expected=tp.rain_expected,
@@ -2562,11 +2591,19 @@ def _compose_log_entry(
         # THE DISPLAY IS COMPOSED HERE, the halves stored beside it. The model
         # supplies the number; `scales.py` supplies the word from the WHO and
         # US EPA tables. Same seam as `temp_high_low_display` two lines up.
-        uv_index_max=format_index_and_band(tp.uv_index_max, uv_band(tp.uv_index_max)),
+        # UV COMES FROM THE DAILY BLOCK, NOT FROM THE MODEL — item 161. It
+        # follows the horizon: today's maximum until dusk drops today out of
+        # it, then tomorrow's. The forecaster is no longer asked for a number
+        # only one source served and it was copying.
+        uv_index_max=format_index_and_band(
+            uv.index if uv else None, uv_band(uv.index if uv else None)
+        ),
+        uv_index=uv.index if uv else None,
+        uv_index_date=uv.target_date if uv else None,
+        uv_index_source=uv.source if uv else None,
         air_quality_aqi=format_index_and_band(
             tp.air_quality_aqi, aqi_band(tp.air_quality_aqi)
         ),
-        uv_index=tp.uv_index_max,
         air_quality_index=tp.air_quality_aqi,
         ground_aqi=guidance.ground_aqi_readings,
         # From code, not from the narrative. Empty strings mean the sun times

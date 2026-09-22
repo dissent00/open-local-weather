@@ -100,12 +100,6 @@
                   "null"
                 ]
               },
-              "uv_index_max": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
               "air_quality_aqi": {
                 "type": [
                   "integer",
@@ -126,7 +120,6 @@
               "rain_probability_pct",
               "mslp_trend_24h",
               "synoptic_pattern",
-              "uv_index_max",
               "air_quality_aqi"
             ],
             "additionalProperties": false,

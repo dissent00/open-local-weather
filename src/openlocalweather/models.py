@@ -1666,6 +1666,24 @@ class DailyLogEntry(BaseModel):
     uv_index: float | None = None
     air_quality_index: int | None = None
 
+    # WHICH DAY THE UV INDEX DESCRIBES, and who said so — item 161.
+    #
+    # THE DATE IS NOT DECORATION. Today's maximum until the horizon rolls at
+    # dusk, then tomorrow's, because that is what every other part of the
+    # forecast does and UV was the one field not following. A stored 8.7
+    # means nothing on its own: without the date a reader of the record
+    # cannot tell whether it was the day's own peak or the next day's, and
+    # the accuracy work will eventually want to score it against the right
+    # day's observation.
+    #
+    # THE SOURCE IS NAMED because only `gfs_seamless` serves a UV index and
+    # `best_match` repeats it, so "the models' blend" was never true here. A
+    # national met service publishes the public sun-safety advice and would
+    # outrank both; item 167 is what accepting one would take, and storing
+    # the answer now is what makes that a swap rather than archaeology.
+    uv_index_date: date | None = None
+    uv_index_source: str | None = None
+
     # THE DAY-OVER-DAY MODIFIER PER TILE, or an empty map — item 159 step 6.
     # `{"temp": "3° cooler"}` and nothing for the dimensions that did not
     # move. This is what replaced the Overview's opening sentence, and the

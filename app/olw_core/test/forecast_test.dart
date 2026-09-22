@@ -66,7 +66,6 @@ final _llmPayload = {
     'temp_high_low': '27.5°C / 81.5°F high, 18.0°C / 64.4°F low',
     'mslp_trend_24h': 'Falling slowly',
     'synoptic_pattern': 'Weak easterly flow over the basin',
-    'uv_index_max': 9.0,
     'air_quality_aqi': 42,
   },
   'today_narrative': '## Overview\n\nShowers likely this afternoon.',

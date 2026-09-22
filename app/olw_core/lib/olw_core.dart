@@ -37,6 +37,7 @@ export 'src/cell.dart';
 export 'src/comparison.dart';
 export 'src/scales.dart';
 export 'src/tiles.dart';
+export 'src/uv.dart';
 export 'src/config.dart';
 export 'src/llm/anthropic.dart';
 export 'src/llm/forecast_call.dart';

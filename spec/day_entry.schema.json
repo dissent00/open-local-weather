@@ -1866,6 +1866,19 @@
       "default": null,
       "title": "Uv Index"
     },
+    "uv_index_date": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uv Index Date"
+    },
     "uv_index_max": {
       "anyOf": [
         {
@@ -1877,6 +1890,18 @@
       ],
       "default": null,
       "title": "Uv Index Max"
+    },
+    "uv_index_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Uv Index Source"
     },
     "verification": {
       "$ref": "#/$defs/VerificationByLead"

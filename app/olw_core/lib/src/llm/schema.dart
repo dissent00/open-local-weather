@@ -95,7 +95,6 @@ Map<String, Object?> _geminiTodayProperties() => {
         'rain_probability_pct': {'type': 'INTEGER', 'nullable': true},
         'mslp_trend_24h': {'type': 'STRING', 'nullable': true},
         'synoptic_pattern': {'type': 'STRING', 'nullable': true},
-        'uv_index_max': {'type': 'NUMBER', 'nullable': true},
         'air_quality_aqi': {'type': 'INTEGER', 'nullable': true},
       },
       'required': [
@@ -188,9 +187,6 @@ Map<String, Object?> _strictTodayProperties() => {
         'synoptic_pattern': {
           'type': ['string', 'null']
         },
-        'uv_index_max': {
-          'type': ['number', 'null']
-        },
         'air_quality_aqi': {
           'type': ['integer', 'null']
         },
@@ -208,7 +204,6 @@ Map<String, Object?> _strictTodayProperties() => {
         'rain_probability_pct',
         'mslp_trend_24h',
         'synoptic_pattern',
-        'uv_index_max',
         'air_quality_aqi',
       ],
       'additionalProperties': false,
@@ -286,10 +281,6 @@ class TodayProperties {
   /// [formatTempHighLow].
   String get tempHighLow => formatTempHighLow(tempHighC, tempLowC);
 
-  /// The UV index with the WHO's word, composed the same way and for the same
-  /// reason — upstream item 159 step 4.
-  String? get uvIndexDisplay => formatIndexAndBand(uvIndexMax, uvBand(uvIndexMax));
-
   /// The air quality index with the US EPA's word.
   String? get airQualityDisplay =>
       formatIndexAndBand(airQualityAqi, aqiBand(airQualityAqi));
@@ -319,7 +310,12 @@ class TodayProperties {
 
   final String? mslpTrend24h;
   final String? synopticPattern;
-  final double? uvIndexMax;
+  // `uvIndexMax` LEFT THIS CLASS 2026-09-22, upstream item 161. Only
+  // gfs_seamless served a UV index and best_match repeated it value for
+  // value, so "your synthesized BLENDED call across all models" was never
+  // true of it. Code takes it from the daily block for the day the horizon
+  // points at — the part the model could not do, because at dusk the answer
+  // is tomorrow's maximum and nothing told it so.
   final int? airQualityAqi;
 
   const TodayProperties({
@@ -335,7 +331,6 @@ class TodayProperties {
     this.rainProbabilityPct,
     this.mslpTrend24h,
     this.synopticPattern,
-    this.uvIndexMax,
     this.airQualityAqi,
   });
 
@@ -352,7 +347,6 @@ class TodayProperties {
         rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
         mslpTrend24h: _bounded(j['mslp_trend_24h'], 'mslp_trend_24h'),
         synopticPattern: _bounded(j['synoptic_pattern'], 'synoptic_pattern'),
-        uvIndexMax: _toDouble(j['uv_index_max']),
         airQualityAqi: (j['air_quality_aqi'] as num?)?.toInt(),
       );
 
@@ -377,7 +371,6 @@ class TodayProperties {
         'temp_high_low': tempHighLow,
         'mslp_trend_24h': mslpTrend24h,
         'synoptic_pattern': synopticPattern,
-        'uv_index_max': uvIndexMax,
         'air_quality_aqi': airQualityAqi,
       };
 }
@@ -512,10 +505,6 @@ Map<String, Object?> geminiJudgmentSchema() => {
             },
             'synoptic_pattern': {
               'type': 'STRING',
-              'nullable': true,
-            },
-            'uv_index_max': {
-              'type': 'NUMBER',
               'nullable': true,
             },
             'air_quality_aqi': {
@@ -710,14 +699,11 @@ Map<String, Object?> strictJudgmentSchema() => {
             'synoptic_pattern': {
               'type': ['string', 'null'],
             },
-            'uv_index_max': {
-              'type': ['number', 'null'],
-            },
             'air_quality_aqi': {
               'type': ['integer', 'null'],
             },
           },
-          'required': ['rain_expected', 'onset_window', 'peak_wind_primary_kmh', 'peak_wind_secondary_kmh', 'temp_high_c', 'temp_low_c', 'rain', 'onset_hour', 'precip_mm', 'rain_probability_pct', 'mslp_trend_24h', 'synoptic_pattern', 'uv_index_max', 'air_quality_aqi'],
+          'required': ['rain_expected', 'onset_window', 'peak_wind_primary_kmh', 'peak_wind_secondary_kmh', 'temp_high_c', 'temp_low_c', 'rain', 'onset_hour', 'precip_mm', 'rain_probability_pct', 'mslp_trend_24h', 'synoptic_pattern', 'air_quality_aqi'],
           'additionalProperties': false,
           'description': 'The LLM\'s synthesized, BLENDED call across all models — genuine\nreasoning, not any one model\'s raw number. Only rain_expected, rain,\ntemp_high_c and temp_low_c are required.\n\n`temp_high_low` is deliberately absent. It was a display string the model\nwrote, and it drifted in both value and format; it is now computed from\nthe two numbers here by `models.format_temp_high_low`. Asking a language\nmodel to convert units is asking it to do arithmetic, which this project\ndoes in code.',
         },
