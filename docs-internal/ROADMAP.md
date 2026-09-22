@@ -57,28 +57,31 @@ while model cycles and the station archive are UTC.
 
 ### What is next, and why
 
-1. **Arm the fallback chain — item 81.** The evening run of 09-21 failed on
-   four Gemini 503s and no forecast went out. The chain is configured and
-   inert because `LLM_API_KEY` does not exist. Nothing else on this list
-   matters as much as a forecast that does not appear, and the work is three
-   repository settings the operator must make.
-2. **Item 161** — `uv_index_max` is one model's number the forecaster is
-   asked to re-type: only `gfs_seamless` serves a UV index and `best_match`
-   duplicates it value for value, so the prompt's "your synthesized BLENDED
-   call" cannot be true of it. Measure the drift between the model's stated
-   UV and GFS's own figure first; it is one script over `data/prompts/` and
-   `data/log/`, and the answer decides whether this is a correctness fix or
-   only a tidiness one.
-3. **Item 161** — `uv_index_max` is one model's number the forecaster is
-   asked to re-type. Measure the drift first; it is one script.
-4. **Item 162** — narrative-section instructions carried in the judgment
-   prompt, which has no field that can hold them. Measure with
-   `olw prompt-size` before cutting.
-5. **Items 87 and 123** unblock when the cloud pairs reach ten.
+1. **Arm the fallback chain — item 81, and it is not an agent's to do.** The
+   evening run of 09-21 failed on four Gemini 503s and no forecast went out.
+   The chain is configured and inert because `LLM_API_KEY` does not exist;
+   `gh secret list` still shows only `GEMINI_API_KEY` and `WAQI_TOKEN`.
+   Nothing on this list matters as much as a forecast that does not appear.
+2. **Item 162** — roughly a dozen narrative-section instructions are carried
+   in the JUDGMENT prompt, which has no field that can hold them, and a cold
+   reader's first attempt adds `forecaster_confidence_notes` as a key. One is
+   a hard impossibility rather than dead weight: the staleness rule says a
+   cycle older than the threshold "belongs in the Forecaster Confidence
+   Notes", and on a 9-hour-old cycle that cannot be obeyed or ignored.
+   Measure with `olw prompt-size` before cutting; item 158 step 9 is the
+   record of how much a prompt sentence can be carrying.
+3. **Items 87 and 123 are close but not ready.** The cloud pairs stand at 8
+   of the 10 they need, so about 09-24. Read 123's 2026-09-22 note first: the
+   tiles answered most of it and what remains is narrower than the item says.
+4. **Item 167**, raised by the operator today: a local agency may publish UV
+   and there is nowhere to put it. `ModelPrediction` and `DayOutlook` both
+   need a field, and the authority question — which source wins for a
+   quantity — is item 11's ladder rather than a schema change.
 
 Item 164 (a composer nothing reads) and 165 (no imperial form for the
 comparison) are tidy-ups with their own sections; neither blocks anything.
-
+Item 155 owes the docs a pass when it lands and its section says which four
+sentences it will invalidate.
 
 ## Working order, as of 2026-09-17
 
@@ -18280,7 +18283,7 @@ is why that sentence is here.
 Related: items 121 (which raised it), 104 (C7 and C9, and the write-once rule
 this must respect), 102, 100.
 
-## 123. The Overview reports how the sky CHANGED, so a persistently cloudy day is never mentioned · **Planned — raised 2026-09-14**
+## 123. The Overview reports how the sky CHANGED, so a persistently cloudy day is never mentioned · **LARGELY ANSWERED by item 159 step 2 — read the 2026-09-22 note at the end before building anything** · **Planned — raised 2026-09-14**
 
 Operator, on the 2026-09-14 forecast:
 
@@ -19533,6 +19536,23 @@ who will not pay cannot rest on one provider's goodwill. So:
 Related: items 79 (the backoff and why it stops here), 80 (the Interactions
 API, which changes this question again), 81 (the supported matrix), 108 (the
 catch-up run), 111, 26, and `ops/README.md`.
+
+### The Overview is gone, and the tile answers the complaint — 2026-09-22
+
+The operator's words were that the Overview "decided not to note the both
+observed and forecast cloudy skies today", because it reported CHANGE and a
+persistent day has none. Item 159 retired the Overview and replaced it with
+tiles, and the cloud tile reports the sky's ABSOLUTE state at three anchors
+whether or not it moved. Today's record, on a persistently cloudy day:
+
+    cloud_anchors: early Overcast, midday Mostly cloudy, evening Mostly cloudy
+    comparison:    (silent — nothing moved past its own top decile)
+
+That is the complaint answered: the sky is named, and the change is separately
+silent, which is the right pair. What this item still has that the tile does
+not is the NARRATIVE half — whether the prose should say a persistently cloudy
+day is persistent, and on what evidence. Re-read the item with that narrowing
+in mind rather than building what it originally described.
 
 ---
 
