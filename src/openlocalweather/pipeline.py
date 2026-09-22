@@ -82,7 +82,12 @@ from openlocalweather.comparison import (
     describe_extended_trend,
 )
 from openlocalweather.scales import aqi_band, uv_band
-from openlocalweather.tiles import cloud_anchors, wind_anchors
+from openlocalweather.tiles import (
+    cloud_anchors,
+    comparison_modifiers,
+    notable_moves,
+    wind_anchors,
+)
 from openlocalweather.llm.provider import provider_identity
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
@@ -2402,6 +2407,40 @@ def _prompt_size_with_growth(
     )
 
 
+def _tile_comparison(
+    deps: PipelineDeps, day_over_day: DayOverDayComparison | None
+) -> dict[str, str]:
+    """One short modifier per tile, or nothing at all.
+
+    THE GATE IS READ OFF THE STATION'S OWN RECORD every run, from the actuals
+    cache, because "notable" is a claim about this place: measured here on
+    2026-09-22 the ninetieth-percentile day-to-day move is 2.2 °C, 10.5 km/h
+    and 34.4 percentage points of cloud, and a fixed threshold would either
+    shout every day somewhere hotter or never speak somewhere milder.
+
+    SILENCE IS THE POINT AND THE COMMON ANSWER. Its predecessor, the
+    Overview's opening sentence, returned "nothing worth saying" on ZERO of
+    16 archived runs, so a quiet day filled with "winds and cloud little
+    changed". Three things here can each be absent independently: the
+    comparison itself on a day with no observed record, a gate for a
+    dimension with fewer than 30 pairs, and a delta inside its gate.
+    """
+    if day_over_day is None:
+        return {}
+
+    cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
+    history = [cache.primary[k] for k in sorted(cache.primary)]
+
+    return comparison_modifiers(
+        {
+            "temp": day_over_day.high_delta_c,
+            "wind": day_over_day.wind_delta_kmh,
+            "cloud": day_over_day.cloud_delta_pct,
+        },
+        notable_moves(history),
+    )
+
+
 def _compose_log_entry(
     deps: PipelineDeps,
     guidance: ForwardGuidance,
@@ -2472,6 +2511,12 @@ def _compose_log_entry(
         wind_anchors=wind_anchors(
             guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
         ),
+        # THE COMPARISON, AS ONE MODIFIER PER TILE — item 159 step 6, and the
+        # first run that ever called step 1's composer. The gate comes from
+        # this station's own day-to-day record, so it adapts rather than
+        # importing a climate; an empty map is the ordinary answer and means
+        # every dimension sat inside its own top decile.
+        comparison=_tile_comparison(deps, day_over_day),
         mslp_trend_24h=tp.mslp_trend_24h or "",
         synoptic_pattern=tp.synoptic_pattern or "",
         # THE DISPLAY IS COMPOSED HERE, the halves stored beside it. The model

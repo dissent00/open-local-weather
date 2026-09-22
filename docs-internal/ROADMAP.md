@@ -25053,6 +25053,54 @@ values are still in the block and inventing a comparison from them was a real
 failure. `describe_day_over_day` is now called and never read — item 164.
 
 
+### Step 6 part 1 SHIPPED 2026-09-22 — the comparison was never wired
+
+**Step 1 shipped a composer nothing called.** `comparison_modifiers` and
+`notable_moves` were built, pinned by vectors on both sides and
+mutation-tested four ways on 2026-09-21, and no line of the pipeline ever
+invoked either. The step's roadmap entry does not say so, because nobody
+checked; a composer with no caller is green forever.
+
+**That is the THIRD time in this item.** Steps 2 and 3's anchors spent a day
+on the wrong pydantic class, discarded silently. The pattern is the same and
+the cause is not: a unit test on a pure function proves the function, and
+nothing proves the wiring except driving the pipeline and reading the record
+back off disk. Every composer in this item now has a run-level test that
+does exactly that.
+
+**The cloud delta was computed and thrown away.** `compute_day_over_day` kept
+`cloud_label`, the band word, and dropped the number it came from — enough
+for a sentence, not enough for a tile, because the gate is on the NUMBER.
+`cloud_delta_pct` now rides on the comparison, defaulted to None so the 43
+archived entries still read; all 43 were re-read to check.
+
+**The gate is this station's own top decile, read off the actuals cache every
+run.** On 2026-09-22 the 42-day record puts it at:
+
+| dimension | ninetieth-percentile day-to-day move |
+|---|---:|
+| temperature | 2.2 °C |
+| wind | 10.5 km/h |
+| cloud | 34.4 points |
+
+**And today it says nothing, which is the whole argument.** Today's stored
+deltas are −1.9 °C and −0.3 km/h, both inside their gates, so every tile
+stays quiet. The Overview on the same data opened *"Slightly cooler and
+cloudier than yesterday; winds little changed."* — a report that there is
+nothing to report, on a day the station's own record says was ordinary. That
+is the sentence this replaces, and the difference is not the wording.
+
+**Verified.** 1,542 Python. Five mutations bit their own case: the comparison
+not stored, the gate ignored, the history never read, the temp and wind
+deltas swapped, and the cloud delta thrown away again. The run-level test
+asserts BOTH halves — silence on a short record, and exactly the dimension
+that moved once forty days are seeded.
+
+**Not done in this part:** the shared tile composer, the page and the mailer.
+The page still renders seven ungrouped stats and the mailer renders none at
+all, which since step 5 means an email reader gets no summary whatsoever.
+
+
 ### A false alarm, and the guard it earned
 
 Building this I reported a defect in `describe_wind_shift` that does not

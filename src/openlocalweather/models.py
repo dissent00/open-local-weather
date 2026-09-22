@@ -234,14 +234,25 @@ class DayOverDayComparison:
     high_delta_c: float | None
     low_delta_c: float | None
     wind_delta_kmh: float | None
-    high_label: str | None
-    wind_label: str | None
+    # THE CLOUD DELTA WAS COMPUTED AND THROWN AWAY until 2026-09-22. Only its
+    # band word was kept, which is enough for a sentence and not enough for a
+    # tile: `tiles.comparison_modifiers` gates on the NUMBER against this
+    # station's own top decile before it chooses a word at all. Item 159
+    # step 6.
+    #
+    # DEFAULTED, like `provenance` below, because the archive does not have
+    # it. Every `day_over_day` stored before 2026-09-22 lacks the key, and
+    # making it required would make those rows unreadable — the repo's rule
+    # is to read both shapes forever rather than rewrite history.
+    cloud_delta_pct: float | None = None
+    high_label: str | None = None
+    wind_label: str | None = None
     # Items 87, 65 and 83. The fourth measurement, and the one the operator's
     # founding objection was about: "a cloudy/rainy day with the same temps,
     # wind speed, and AQI is not 'much the same' even though 3/4 vectors may
     # be the same."
-    cloud_label: str | None
-    rain_contrast: str | None
+    cloud_label: str | None = None
+    rain_contrast: str | None = None
     # The three labels above, composed into finished sentences — item 83.
     # This is what the PROMPT is given.
     #
@@ -250,7 +261,7 @@ class DayOverDayComparison:
     # scored". Checked 2026-09-14: nothing writes this dataclass to the entry
     # and no stored log carries a label. The labels stay HERE, on a structure
     # that lives for the length of a run. See PROMPT_COMPARISON_FIELDS.
-    overview_comparison: str | None
+    overview_comparison: str | None = None
     # Where yesterday's observed values were taken — item 98. Carried through
     # so comparison_for_prompt can name the source beside each boolean; the
     # comparison itself never reads it.
@@ -1654,6 +1665,28 @@ class DailyLogEntry(BaseModel):
     # comment claiming otherwise, thrown away silently by pydantic.
     uv_index: float | None = None
     air_quality_index: int | None = None
+
+    # THE DAY-OVER-DAY MODIFIER PER TILE, or an empty map — item 159 step 6.
+    # `{"temp": "3° cooler"}` and nothing for the dimensions that did not
+    # move. This is what replaced the Overview's opening sentence, and the
+    # difference that matters is the SILENCE: over 16 archived runs the
+    # sentence returned "nothing worth saying" ZERO times, so a quiet day
+    # filled with "winds and cloud little changed" — a report that there is
+    # nothing to report. A modifier belonging to one tile can simply be
+    # absent.
+    #
+    # THE GATE IS THIS STATION'S OWN TOP DECILE, read off the actuals cache
+    # by `notable_moves`, so it adapts to a climate rather than importing
+    # one. A deployment with fewer than 30 day-to-day pairs gets no gate for
+    # that dimension and therefore no modifier — silence, not a threshold
+    # invented from six days.
+    #
+    # STORED RATHER THAN DERIVED AT RENDER because the page, the mailer and
+    # the app must all say the same thing, and because a gate read off the
+    # record moves as the record grows: what was notable in September is the
+    # answer for a September day, and re-deriving it in December would
+    # re-judge a past day by a future climate.
+    comparison: dict[str, str] = Field(default_factory=dict)
     # Raw per-station readings only — the range/highest-station summary
     # used in the narrative and on the site is deterministically recomputed
     # from this on demand (see aqi.summarize_ground_aqi), not persisted

@@ -699,6 +699,7 @@ def compute_day_over_day(
         high_delta_c=high_delta,
         low_delta_c=low_delta,
         wind_delta_kmh=wind_delta,
+        cloud_delta_pct=cloud_delta,
         high_label=high_label,
         wind_label=wind_label,
         cloud_label=cloud_label,

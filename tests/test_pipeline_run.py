@@ -30,6 +30,7 @@ from openlocalweather.llm.provider import ResponseMeta
 from openlocalweather.llm.schema import GeminiForecastResponse, TodayProperties
 from openlocalweather.models import (
     DailyLogEntry,
+    DailyActual,
     GroundAQIReading,
     IssuanceSnapshot,
     LogEntryMeta,
@@ -4316,3 +4317,52 @@ def test_the_index_halves_are_on_the_day_record(tmp_path, monkeypatch):
     # and a snapshot of an EARLIER issuance carries the display, not the halves
     assert "uv_index" not in IssuanceSnapshot.model_fields
     assert "air_quality_index" not in IssuanceSnapshot.model_fields
+
+
+def test_the_comparison_modifiers_reach_the_day_record(tmp_path, monkeypatch):
+    """The tile's day-over-day modifier is COMPUTED AND STORED, not inert.
+
+    THE THIRD COMPOSER IN THIS ITEM TO BE SHIPPED AND NEVER CALLED. Item 159
+    step 1 built `comparison_modifiers` and `notable_moves`, pinned both with
+    vectors on two sides, mutation-tested four ways — and nothing in the
+    pipeline ever invoked either. Steps 2 and 3's anchors had the same fault
+    for a day, from a different cause. A composer with no caller is green
+    forever, so this asserts the value off disk.
+
+    THE GATE IS THE STATION'S OWN TOP DECILE and it is usually shut: measured
+    over the reference record on 2026-09-22 the gates are 2.2 °C, 10.5 km/h
+    and 34.4 percentage points, so a modifier speaks on roughly a third of
+    days across all three dimensions together. The fixture below moves the
+    temperature well past its gate and leaves wind and cloud inside theirs,
+    so the assertion is that ONE dimension speaks and the others stay quiet —
+    which is the behaviour the sentence this replaces could never produce.
+    """
+    deps = make_deps(tmp_path)
+
+    # WITHOUT A RECORD, SILENCE. The cache the fixture starts with holds a
+    # handful of days, which is fewer than the thirty pairs `notable_moves`
+    # demands, so no dimension has a gate and none can speak.
+    issue(deps, today=date(2026, 8, 11))
+    assert log_store.read_log_entry(deps.data_dir, date(2026, 8, 11)).comparison == {}
+
+    # WITH ONE, exactly the dimension that moved. Forty days whose own
+    # day-to-day moves are small put the gates at 3.0 °C, 2.0 km/h and 4.0
+    # points; the run's deltas are -0.2 °C and +14.4 km/h, so the wind clears
+    # its gate by sevenfold and the temperature does not come close.
+    cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
+    for i in range(40):
+        day = date(2026, 6, 1) + timedelta(days=i)
+        cache.primary[day.isoformat()] = DailyActual(
+            date=day,
+            high_c=25.0 + (i % 4),
+            low_c=18.0,
+            peak_wind_kmh=20.0 + (i % 3),
+            cloud_cover_pct=40.0 + (i % 5),
+            rain=False,
+        )
+    actuals_cache_store.write_actuals_cache(deps.data_dir, cache)
+
+    issue(deps, today=date(2026, 8, 11))
+    stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+
+    assert stored.comparison == {"wind": "windier"}, stored.comparison

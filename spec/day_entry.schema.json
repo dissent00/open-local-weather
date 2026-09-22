@@ -4,6 +4,18 @@
     "DayOverDayComparison": {
       "description": "Pre-computed comparison of today's consensus against yesterday's\nobservations. Every field is derived in code; the LLM's job is to phrase\n`summary`, not to recompute it.",
       "properties": {
+        "cloud_delta_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Delta Pct"
+        },
         "cloud_label": {
           "anyOf": [
             {
@@ -13,6 +25,7 @@
               "type": "null"
             }
           ],
+          "default": null,
           "title": "Cloud Label"
         },
         "high_delta_c": {
@@ -35,6 +48,7 @@
               "type": "null"
             }
           ],
+          "default": null,
           "title": "High Label"
         },
         "low_delta_c": {
@@ -57,6 +71,7 @@
               "type": "null"
             }
           ],
+          "default": null,
           "title": "Overview Comparison"
         },
         "provenance": {
@@ -83,6 +98,7 @@
               "type": "null"
             }
           ],
+          "default": null,
           "title": "Rain Contrast"
         },
         "today_calibrated_peak_wind_kmh": {
@@ -160,6 +176,7 @@
               "type": "null"
             }
           ],
+          "default": null,
           "title": "Wind Label"
         },
         "yesterday_high_c": {
@@ -231,12 +248,7 @@
         "today_calibrated_peak_wind_kmh",
         "high_delta_c",
         "low_delta_c",
-        "wind_delta_kmh",
-        "high_label",
-        "wind_label",
-        "cloud_label",
-        "rain_contrast",
-        "overview_comparison"
+        "wind_delta_kmh"
       ],
       "title": "DayOverDayComparison",
       "type": "object"
@@ -1613,6 +1625,13 @@
       },
       "title": "Cloud Anchors",
       "type": "array"
+    },
+    "comparison": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Comparison",
+      "type": "object"
     },
     "date": {
       "format": "date",
