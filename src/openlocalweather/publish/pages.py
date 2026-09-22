@@ -163,11 +163,18 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
     )
 
 
-def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
+def _issuance_label(entry: DailyLogEntry, *, first: bool) -> str | None:
     """Small "which issuance is this" tag shown in a page's meta line —
     e.g. "Updated 15:02". None for a page with nothing to disambiguate (a day
     that was never refreshed has only one issuance, and doesn't need a label
     saying so).
+
+    THE PARAMETER IS `first`, NOT `morning`. It was `morning` until
+    2026-09-22, which is the same claim the labels below dropped in 09-14 —
+    a first issuance at 14:00 is not a morning — argued against by this very
+    docstring while the signature went on making it. `morning_issuance` and
+    the `-morning` URL slug keep their names because they are stored data and
+    live links; a private parameter has no such obligation.
 
     IT NAMES THE CLOCK, NOT A TIME OF DAY. These read "Morning Issuance" and
     "Evening Update" until 2026-09-14, which was accurate only while the
@@ -206,7 +213,7 @@ def _issuance_label(entry: DailyLogEntry, *, morning: bool) -> str | None:
     deployment has never moved zones, and `reconcile_now` means the two are
     not always the same instant anyway.
     """
-    if morning:
+    if first:
         first = _first_issuance(entry)
         assert first is not None
         if first.issued_local_time:
@@ -369,8 +376,8 @@ def build_archive_items(
             # one issuance, no label needed to disambiguate it.
             items.append(ArchiveItem(date=d, slug=slug, label=None))
             continue
-        items.append(ArchiveItem(date=d, slug=slug, label=_issuance_label(entry, morning=False)))
-        items.append(ArchiveItem(date=d, slug=f"{slug}-morning", label=_issuance_label(entry, morning=True)))
+        items.append(ArchiveItem(date=d, slug=slug, label=_issuance_label(entry, first=False)))
+        items.append(ArchiveItem(date=d, slug=f"{slug}-morning", label=_issuance_label(entry, first=True)))
     return items
 
 
@@ -441,7 +448,7 @@ class GitHubPagesPublisher:
         if force or not current_page.exists():
             current_page.write_text(
                 render_forecast_page(
-                    entry, self.location, self.nav, is_latest=False, issuance_label=_issuance_label(entry, morning=False)
+                    entry, self.location, self.nav, is_latest=False, issuance_label=_issuance_label(entry, first=False)
                 )
             )
 
@@ -454,7 +461,7 @@ class GitHubPagesPublisher:
                         self.location,
                         self.nav,
                         is_latest=False,
-                        issuance_label=_issuance_label(entry, morning=True),
+                        issuance_label=_issuance_label(entry, first=True),
                     )
                 )
 
@@ -470,7 +477,7 @@ class GitHubPagesPublisher:
         # actually want. See IssuanceSnapshot's doc comment
         # (models.py) for the fuller history.
         index_html = render_forecast_page(
-            entry, self.location, self.nav, is_latest=True, issuance_label=_issuance_label(entry, morning=False)
+            entry, self.location, self.nav, is_latest=True, issuance_label=_issuance_label(entry, first=False)
         )
         (self.docs_dir / "index.html").write_text(index_html)
 

@@ -6,7 +6,7 @@ name: Forecast
 # workflow by time of day, and that was the wrong axis: the real distinction
 # is whether today already has an entry. The FIRST run of a day owns
 # verification and the day's model_predictions — the numbers tomorrow scores.
-# EVERY later run is an update: narrative only, predictions preserved
+# EVERY later run is a forecast in its own right; the day's predictions are preserved
 # byte-for-byte. `olw forecast` reads the day and decides; see
 # pipeline.run_forecast.
 #
@@ -53,7 +53,7 @@ name: Forecast
 #
 # The cost is also a message. The mailer sends on novelty
 # (mailer/AppsScriptMailer.gs), so a third issuance is a third email to every
-# subscriber. A missed morning is cheaper than that.
+# subscriber. A missed run is cheaper than that.
 #
 # ALL EIGHT WENT, not just the four that misbehave. A 15:0x slot delivered
 # late enough lands after midnight too — that was the original reading of the

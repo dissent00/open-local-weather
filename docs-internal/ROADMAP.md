@@ -23520,6 +23520,17 @@ against the record rather than against convenient samples.
 
 ## 155. Verification still scores "the first of the day", and the day is a legacy unit · **Raised 2026-09-17 — an audit, not a build; read with 139**
 
+> **THIS ITEM OWES THE DOCS A PASS WHEN IT LANDS — 2026-09-22.** Item 166
+> brought the docs level with "a forecast is a forecast", and deliberately
+> left three things scoped to the world before 155: the README's "the day's
+> FIRST run owns the predictions the accuracy record scores", the same claim
+> in `QUICKSTART.md`, and the operator's recorded direction that "sensor-only
+> runs re-render and are not new forecasts" (`ensemble/ROADMAP.md`, ~line
+> 1810). All three are true today and all three are sentences this item
+> invalidates. `scored_predictions`' own docstring already says the split is
+> provisional — "it does not yet make every row scored" — so when that stops
+> being true, those four places are the ones that will still claim otherwise.
+
 The operator, reviewing the app's storage design on 2026-09-17: *"the plan
 is to move to scoring each model run (we have the concept of model freshness)
 against observations. We moved away from the concept of a 'daily' forecast, a
@@ -25625,10 +25636,34 @@ ARCHITECTURE.md section.
   it is a quotation, and on reading it is about SCORING under item 155 rather
   than about what a run is called. Rewriting an operator's recorded words to
   match a later vocabulary would damage the record.
-- **The SOFT tier, 19 findings**, almost all comments and test names using
-  morning/evening for first/later. Thirteen are in the app's scheduling layer
-  where "the morning forecast" is the only vocabulary it has. Real churn, low
-  reader benefit; worth its own pass or none.
+
+  **OWED WHEN ITEM 155 LANDS — the operator's instruction, 2026-09-22.** That
+  item moves scoring to every run with new model data against the rolling
+  window, and settles what a sensor-only run is for the record. When it ships,
+  revisit the sensor-only wording HERE, in `ensemble`'s `ROADMAP.md` around
+  line 1810, and in whatever the README and ARCHITECTURE then say about which
+  runs are scored — the README's "the day's FIRST run owns the predictions the
+  accuracy record scores" is scoped to today deliberately and is one of the
+  sentences 155 will invalidate.
+- ~~**The SOFT tier, 19 findings.**~~ **DONE the same day** — the operator's
+  call: *"I'd like to fix the remaining locations — the benefit is to avoid
+  future confusion."* All 19 went, plus four the sweeps had not tabled.
+
+  The four worth naming. `pages.py`'s `_issuance_label(entry, *, morning:
+  bool)` is now `first:` — the parameter meant "is this the first issuance"
+  and its own docstring argued against its name while the signature went on
+  making the claim. `config/location.yaml`'s Fisher measurement now says "the
+  15:01 slot" and "the 03:01 slot" rather than the evening and morning runs,
+  which is MORE precise, not less: it names the slots the measurement was
+  actually taken over. The same file's call-cap rationale opened by asserting
+  the schedule. And "EVERY later run is an update: narrative only" appeared in
+  FOUR places in identical wording — `ARCHITECTURE.md` twice, `forecast.yml`,
+  `pipeline.py` — which is how a phrase propagates; all four now say a later
+  run is a forecast in its own right.
+
+  Thirteen of the nineteen were the app's scheduling layer, where "the morning
+  forecast" was the only vocabulary it had for a run the user picks the hour
+  for. They now say "scheduled forecast".
 - `reissue_test.dart` keeps its filename, cited from four places.
 
 ### One claim of this session's own, corrected before it shipped

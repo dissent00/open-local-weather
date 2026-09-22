@@ -114,8 +114,9 @@ location:
   # cost several calls if a provider is flaky. The run FAILS if this is hit,
   # loudly, rather than skipping quietly.
   #
-  # Two runs a day nominally, up to eight if every attempt retries to the
-  # limit, so 10 leaves headroom while making a runaway loop impossible.
+  # Two forecasts a day on this deployment's schedule, up to eight calls if
+  # every attempt retries to the limit, so 10 leaves headroom while making a
+  # runaway loop impossible.
   # Raised from 10 to 16 on 2026-09-03, and the reason it STAYS raised is not
   # the reason it was raised. The hypothesis was that a 60-second request
   # timeout fired part-way through generation, so retries were consuming the
@@ -175,8 +176,8 @@ location:
     - gemini-interactions
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
     # replacement: Gemini answers when it can, and this takes the calls it
-    # sheds. Measured over 2026-08-28 to 09-21, the evening run failed on
-    # Gemini 500s and 503s five times in 29 runs and the morning run never did
+    # sheds. Measured over 2026-08-28 to 09-21, the 15:01 slot failed on
+    # Gemini 500s and 503s five times in 29 runs and the 03:01 slot never did
     # in 25 (one-sided Fisher p = 0.038), always after four attempts across
     # roughly eight and a half minutes — long enough that no retry schedule
     # this project would accept could have saved them.

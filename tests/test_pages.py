@@ -179,7 +179,7 @@ def test_render_forecast_page_shows_only_current_issuance_even_when_morning_exis
     entry = _refreshed_entry()
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(
-        entry, LOCATION, nav, is_latest=True, issuance_label=_issuance_label(entry, morning=False)
+        entry, LOCATION, nav, is_latest=True, issuance_label=_issuance_label(entry, first=False)
     )
 
     assert "Evening: rain has arrived" in html
@@ -198,7 +198,7 @@ def test_render_forecast_page_morning_view_shows_only_morning_content():
     nav = build_nav_links("https://example.com", "owner/repo")
     morning_view = _entry_as_morning_view(entry)
     html = render_forecast_page(
-        morning_view, LOCATION, nav, is_latest=False, issuance_label=_issuance_label(entry, morning=True)
+        morning_view, LOCATION, nav, is_latest=False, issuance_label=_issuance_label(entry, first=True)
     )
 
     assert "Morning: dry and warm expected" in html
@@ -907,7 +907,7 @@ def test_the_forecast_and_the_observations_are_stamped_in_the_same_zone():
     entry.meta.observations_local_time = "16:45"
     entry.observed_so_far = ObservedSoFar(precipitation=True, precipitation_onset="15:10")
 
-    label = _issuance_label(entry, morning=False)
+    label = _issuance_label(entry, first=False)
 
     assert label == "Updated 14:28"
     assert "UTC" not in label, "a local clock must not be labelled UTC"
@@ -930,7 +930,7 @@ def test_an_entry_with_no_local_clock_keeps_the_utc_label():
     entry = _refreshed_entry()
     entry.meta.issued_local_time = None
 
-    label = _issuance_label(entry, morning=False)
+    label = _issuance_label(entry, first=False)
 
     assert label is not None and label.endswith("UTC")
 
@@ -953,8 +953,8 @@ def test_an_issuance_is_not_labelled_by_a_time_of_day_it_did_not_happen_at():
     )
     entry.meta.issued_local_time = "09:12"
 
-    first = _issuance_label(entry, morning=True)
-    latest = _issuance_label(entry, morning=False)
+    first = _issuance_label(entry, first=True)
+    latest = _issuance_label(entry, first=False)
 
     assert "Morning" not in first, f"a 14:00 issuance is not a morning: {first!r}"
     assert "Evening" not in latest, f"an 09:12 update is not an evening: {latest!r}"
@@ -974,8 +974,8 @@ def test_both_issuance_labels_are_in_the_same_zone():
     )
     entry.meta.issued_local_time = "18:45"
 
-    first = _issuance_label(entry, morning=True)
-    latest = _issuance_label(entry, morning=False)
+    first = _issuance_label(entry, first=True)
+    latest = _issuance_label(entry, first=False)
 
     assert first == "Issued 06:07"
     assert latest == "Updated 18:45"
@@ -991,7 +991,7 @@ def test_a_snapshot_with_no_local_clock_still_says_which_zone_it_is_in():
         update={"issued_local_time": None}
     )
 
-    assert _issuance_label(entry, morning=True).endswith("UTC")
+    assert _issuance_label(entry, first=True).endswith("UTC")
 
 
 def test_a_snapshot_records_the_local_clock_of_the_issuance_that_made_it():
@@ -1039,7 +1039,7 @@ def test_the_first_issuance_page_does_not_need_the_legacy_field():
     view = _entry_as_morning_view(modern)
     assert view.rain_expected == "Dry all day"
     assert "Morning: dry and warm" in view.narrative_markdown
-    assert _issuance_label(modern, morning=True) is not None
+    assert _issuance_label(modern, first=True) is not None
 
 
 def test_a_legacy_entry_still_finds_its_first_issuance():

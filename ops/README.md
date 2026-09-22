@@ -91,9 +91,9 @@ free, also no credit card, capped at 3 triggers/Worker at 1-minute
 granularity.
 
 Setup. There is **one workflow to call, `forecast.yml`**, and the two cron
-jobs differ only in their time — the day decides whether a run is its first
-or an update (see `pipeline.run_forecast`). Add a third job at another hour
-and it becomes a third issuance; nothing else needs to change. Runs less
+jobs differ only in their time — the day decides only whether a run is its
+first (see `pipeline.run_forecast`); every run is a forecast either way. Add a
+third job at another hour and it becomes a third issuance; nothing else needs to change. Runs less
 than an hour apart are refused as duplicate triggers.
 
 1. Create a **fine-grained GitHub PAT scoped to this repo only**, with

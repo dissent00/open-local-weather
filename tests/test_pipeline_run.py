@@ -887,7 +887,9 @@ def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# run_refresh_pipeline — the evening second run
+# A LATER RUN OF THE SAME DAY. Named for order, not for the clock:
+# `run_refresh_pipeline` was merged into `run_forecast` by item 104, and
+# nothing in these fixtures depends on the hour.
 # ---------------------------------------------------------------------------
 
 
@@ -898,14 +900,16 @@ def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
 # test_forecast_runs_the_full_pipeline_when_the_day_is_empty.
 
 
-def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
-    # First, a real morning run.
-    morning_deps = make_deps(tmp_path)
-    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
-    original_predictions = scored_predictions(morning_result.log_entry)
+def test_a_later_run_preserves_the_first_runs_model_predictions(tmp_path):
+    # NAMED FOR FIRST AND LATER, not morning and evening — nothing in these
+    # fixtures is clock-dependent, and the day does not have exactly two runs.
+    # First, the day's first run.
+    first_deps = make_deps(tmp_path)
+    first_result = issue(first_deps, today=date(2026, 8, 11), dry_run=False)
+    original_predictions = scored_predictions(first_result.log_entry)
 
-    # Then an evening refresh with DIFFERENT fresh model data.
-    evening_llm = FakeLLMProvider(
+    # Then a later run with DIFFERENT fresh model data.
+    later_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a — refresh",
             skill_profile_summaries=[],
@@ -916,7 +920,7 @@ def test_refresh_preserves_model_predictions_from_morning_run(tmp_path):
             today_narrative="## Overview\nRain has moved in this evening.",
         )
     )
-    refresh_deps = make_deps(tmp_path, llm=evening_llm)
+    refresh_deps = make_deps(tmp_path, llm=later_llm)
     refresh_result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=False)
 
     # Narrative/properties changed...
@@ -936,16 +940,16 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
     store moved from `morning_issuance` to `earlier_issuances` and this
     property did not; an assertion naming either one tests the storage rather
     than the guarantee, and would have to be rewritten again next time."""
-    morning_deps = make_deps(tmp_path)
-    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
-    assert len(morning_result.log_entry.issuance_log()) == 1, (
+    first_deps = make_deps(tmp_path)
+    first_result = issue(first_deps, today=date(2026, 8, 11), dry_run=False)
+    assert len(first_result.log_entry.issuance_log()) == 1, (
         "a day's first entry has exactly one issuance and nothing to preserve"
     )
-    assert morning_result.log_entry.morning_issuance is None, (
+    assert first_result.log_entry.morning_issuance is None, (
         "and no day written from here on gains the legacy field"
     )
 
-    evening_llm = FakeLLMProvider(
+    later_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a — refresh",
             skill_profile_summaries=[],
@@ -956,7 +960,7 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
             today_narrative="## Overview\nRain has moved in this evening.",
         )
     )
-    refresh_result = issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
 
     log = refresh_result.log_entry.issuance_log()
     assert len(log) == 2, "a second issuance must not replace the first"
@@ -967,7 +971,7 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
     assert snapshot.rain_expected == "Unlikely"  # FakeLLMProvider's default morning response
     assert snapshot.temp_high_c == 27.0
     assert "Dry and warm" in snapshot.narrative_markdown
-    assert snapshot.generated_at_utc == morning_result.log_entry.meta.generated_at_utc
+    assert snapshot.generated_at_utc == first_result.log_entry.meta.generated_at_utc
     # And the top-level fields really did move on to the evening's values —
     # the snapshot is an addition, not a substitute for the overwrite.
     assert refresh_result.log_entry.rain_expected == "Now raining"
@@ -1014,10 +1018,10 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
 
 
 def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
-    morning_deps = make_deps(tmp_path)
-    morning_result = issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
-    original_generated_at = morning_result.log_entry.meta.generated_at_utc
-    original_verification = morning_result.log_entry.verification
+    first_deps = make_deps(tmp_path)
+    first_result = issue(first_deps, today=date(2026, 8, 11), dry_run=False)
+    original_generated_at = first_result.log_entry.meta.generated_at_utc
+    original_verification = first_result.log_entry.verification
 
     refresh_deps = make_deps(tmp_path)
     refresh_result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=False)
@@ -1085,10 +1089,10 @@ def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_pat
     morning_llm = FakeLLMProvider()
     issue(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
 
-    evening_llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=True)
+    later_llm = FakeLLMProvider()
+    issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = evening_llm.system_prompts, evening_llm.user_prompts
+    system_prompt, user_prompt = later_llm.system_prompts, later_llm.user_prompts
     assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
     # AND THE DAY'S EARLIER NARRATIVE IS NOT SENT — items 137/138,
     # 2026-09-16. The system prompt still says verification is written,
@@ -1173,9 +1177,9 @@ def test_refresh_updates_ground_aqi_with_fresh_readings(tmp_path, monkeypatch):
             GroundAQIReading(name="Test Station", station_id="A1", aqi=30, measured_at=datetime.now(timezone.utc))
         ],
     )
-    morning_deps = make_deps(tmp_path)
-    morning_deps.location = location_with_station
-    issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    first_deps = make_deps(tmp_path)
+    first_deps.location = location_with_station
+    issue(first_deps, today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(
         waqi_fetch,
@@ -1257,9 +1261,9 @@ def _run_morning_then_refetching(tmp_path, monkeypatch, refetched, llm=None):
             )
         ],
     )
-    morning_deps = make_deps(tmp_path)
-    morning_deps.location = location
-    issue(morning_deps, today=date(2026, 8, 11), dry_run=False)
+    first_deps = make_deps(tmp_path)
+    first_deps.location = location
+    issue(first_deps, today=date(2026, 8, 11), dry_run=False)
 
     monkeypatch.setattr(waqi_fetch, "fetch_ground_aqi_stations", lambda stations, token: refetched)
     refresh_deps = make_deps(tmp_path, llm=llm)
@@ -2273,10 +2277,10 @@ def test_a_reissue_reports_true_when_a_newer_cycle_has_landed(tmp_path, monkeypa
             model=model, initialised_at=advanced_initialised, available_at=now - timedelta(minutes=30)
         ),
     )
-    evening_llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    later_llm = FakeLLMProvider()
+    issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
 
-    _, user_prompt = evening_llm.calls[0]
+    _, user_prompt = later_llm.calls[0]
     assert '"newer_than_previous_issuance": true' in user_prompt
 
 
@@ -2296,10 +2300,10 @@ def test_a_reissue_reports_false_when_no_newer_cycle_has_landed(tmp_path, monkey
     )
     issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    evening_llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=evening_llm), today=date(2026, 8, 11), dry_run=False)
+    later_llm = FakeLLMProvider()
+    issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
 
-    _, user_prompt = evening_llm.calls[0]
+    _, user_prompt = later_llm.calls[0]
     assert '"newer_than_previous_issuance": false' in user_prompt
 
 

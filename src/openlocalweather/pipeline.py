@@ -3770,7 +3770,8 @@ def run_forecast(
 
       - The FIRST run of a day owns verification and the day's
         model_predictions — the numbers tomorrow scores.
-      - EVERY later run is an update: narrative only, predictions preserved.
+      - EVERY later run is a forecast in its own right; the day's predictions
+        are preserved.
 
     THIS PARAGRAPH USED TO SAY THE OPPOSITE, and the correction is the
     finding. It read: "A dispatcher, not a rewrite. run_daily_pipeline and

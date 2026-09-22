@@ -33,7 +33,8 @@ the LLM which models to trust, per variable and per lead time.
 
 There is **one entry point, `run_forecast`, and it does not branch on the
 clock** — the first run of a day owns verification and the day's predictions;
-every later run is an update that rewrites the narrative and preserves them.
+every later run is a forecast of its own that rewrites the narrative and
+leaves those predictions alone.
 See *The two-call split* and *Every run is an issuance* below.
 
 ## Data flow
@@ -159,7 +160,8 @@ worth knowing before changing anything:
   error, wind error and onset error all move or they do not. Items 133 and
   134 are deliberately on that side of the line for exactly this reason.
 
-The judgment prompt is byte-identical whether or not this is a re-issue; only
+The judgment prompt is byte-identical whether this is the day's first run or
+its fourth; only
 the narrative prompt branches. So the half that decides the scored numbers is
 the simpler half, on purpose.
 
@@ -170,7 +172,7 @@ already has an entry, never on the time of day:
 
 - the **first** run of a day owns verification and the day's
   `model_predictions` — the numbers tomorrow scores
-- **every later** run is an update: narrative only, predictions preserved
+- **every later** run is a forecast in its own right; the day's predictions are preserved
 
 `prediction_rows` is append-only and row 0 is immutable. Those write-once
 rules live in one list in `_compose_log_entry`, which is the point of the
