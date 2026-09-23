@@ -26125,6 +26125,50 @@ None and the gate skips. That is a reasoned choice to keep one scored series
 on one instrument, not an oversight, and reopening it means deciding whether a
 mixed-source series is worth more than a consistent one.
 
+### Why METAR cannot close the amount gap, measured
+
+The operator's question: METAR has no accumulation, we judge wet/dry by
+amount, so we miss rainstorms. Half right, and the precise version is more
+useful.
+
+Wet/dry does NOT come from amount — `observed_convection()` unions it with
+thunder and station precipitation, so a storm the cell missed is not scored
+dry. It is the AMOUNT that is ERA5-only.
+
+METAR does carry INTENSITY (`-RA` light, `RA` moderate, `+RA` heavy), and the
+parser's regex already steps over the `[+-]` prefix while returning only a
+bool. So the obvious idea is to recover amount from intensity. Measured over
+the stored HKKI reports, it does not work here:
+
+- **Of 17 days with precipitation evidence, 3 show it ONLY as `RE` groups** —
+  "recent", meaning the rain fell between observations and had stopped before
+  the station filed. 2026-09-22 is one: `TS` at 16:00 local, `RETSRA` at
+  17:00, `RERA` at 20:00, and no rain group at observation time all day.
+- **Across every stored report, the at-observation intensities are `-TSRA`
+  ×11, `-RA` ×10, `SHRA` ×3, `-SHRA` ×1, `RA` ×1. Not one `+RA`.** The
+  station has never once recorded heavy rain at an observation time, on a
+  lake basin whose storms are the whole reason this project exists.
+
+The mechanism is the sampling interval, not the instrument: half-hourly to
+hourly filings against convective bursts of twenty minutes. What gets observed
+is the light edge; the heavy core falls between filings and survives only as
+`RE`. So intensity is systematically biased toward the weakest part of every
+storm, and calibrating millimetres from it would encode that bias.
+
+**Consequence for `precipitation_onset`.** An `RE` group means the rain has
+ALREADY STOPPED, so an onset taken from one is an upper bound, not a time:
+yesterday's stored 17:00 marks the first report mentioning rain that had
+happened, while the storm was at the station by 16:00. That is fine for the
+day-over-day description it feeds and would be wrong in a scored series,
+which is a second, independent reason the existing decision to keep station
+onset out of `onset_error_hrs` holds.
+
+**So the operator's read stands: this needs a source that measures area
+rainfall.** Satellite QPE or radar, not a better reading of the station. Until
+then `precip_mm` is ERA5's alone and every precipitation error inherits it —
+which should be stated wherever those figures are published rather than left
+for someone standing in the rain to discover.
+
 ### The lesson, which is the part worth keeping
 
 Three findings this day looked like defects in the verification and were not:
