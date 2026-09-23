@@ -841,6 +841,48 @@ def _forecast_windows_block(windows: Any) -> str:
     return "\n".join(f"- {w['label']}" for w in windows)
 
 
+#: Keys Open-Meteo puts on every response that no rule in either prompt reads.
+#:
+#: ROADMAP item 174. `daily_units` and `hourly_units` alone are 2,210
+#: characters PER FETCHED OBJECT, and the objects repeat: two extended-daily
+#: points, five regional pressure points, the air-quality fetch. Neither
+#: system prompt mentions them, and the units they state are the ones the
+#: prompt's own rules already name — °C, km/h, hPa, mm.
+#:
+#: WHAT IS DELIBERATELY NOT HERE: `latitude`, `longitude`, `timezone` and
+#: `elevation` stay. In `regional_pressure` the coordinates are the ONLY thing
+#: telling five basin points apart, and a saving that made them
+#: indistinguishable would cost the Synoptic Overview its subject.
+#:
+#: This removes no forecast value. Checked against the 2026-09-22 archive:
+#: 127 series before, 127 after, none changed.
+API_NOISE_KEYS = frozenset({
+    "generationtime_ms",
+    "utc_offset_seconds",
+    "timezone_abbreviation",
+    "daily_units",
+    "hourly_units",
+    "_server_date",
+})
+
+
+def _without_api_noise(value):
+    """Strips [API_NOISE_KEYS] from a fetched object, at any depth.
+
+    Recursive because `regional_pressure` is a LIST of fetched objects, each
+    carrying its own envelope and its own units dictionary.
+    """
+    if isinstance(value, dict):
+        return {
+            k: _without_api_noise(v)
+            for k, v in value.items()
+            if k not in API_NOISE_KEYS
+        }
+    if isinstance(value, list):
+        return [_without_api_noise(v) for v in value]
+    return value
+
+
 def build_user_prompt(
     today: date,
     yesterday: date,
@@ -1065,10 +1107,20 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
     # forward window for it, so dropping it would lose information rather than
     # a duplicate.
     weather_payload = {
-        "primary_extended_daily": today_weather_data.get("primary_extended_daily"),
-        "secondary_extended_daily": today_weather_data.get("secondary_extended_daily"),
-        "regional_pressure": today_weather_data.get("regional_pressure"),
-        "air_quality": today_weather_data.get("air_quality"),
+        # EVERY VALUE THE RULES READ, AND NOTHING THE API ADDS — item 174.
+        # See `API_NOISE_KEYS`: the units dictionaries and response envelopes
+        # repeat on each of the eight fetched objects here and are named by no
+        # rule in either prompt.
+        "primary_extended_daily": _without_api_noise(
+            today_weather_data.get("primary_extended_daily")
+        ),
+        "secondary_extended_daily": _without_api_noise(
+            today_weather_data.get("secondary_extended_daily")
+        ),
+        "regional_pressure": _without_api_noise(
+            today_weather_data.get("regional_pressure")
+        ),
+        "air_quality": _without_api_noise(today_weather_data.get("air_quality")),
         "airport_metar": today_weather_data.get("airport_metar"),
         # Added late, and briefly forgotten here — the pipeline passed it and
         # this rebuild dropped it, so the Synoptic Overview instructions
@@ -1100,7 +1152,7 @@ FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and 
 HOURS AHEAD ({_forward_window_scope(forward_hourly, forward_window_narrowed)}):
 {_json(forward_hourly) if forward_hourly is not None else "Unavailable this run."}
 
-TODAY'S MULTI-MODEL GUIDANCE:
+TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent):
 {_json(weather_payload)}
 
 EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):

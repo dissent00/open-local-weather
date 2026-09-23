@@ -26291,6 +26291,67 @@ small fraction of 31,911 characters.
 That is a change with a shape this repo already trusts, rather than an
 ablation that hopes nothing was using it.
 
+### What shipped, 2026-09-23 — the promotion, first instalment
+
+Not the restructure. Nesting the daily arrays by day made them BIGGER —
+9,794 to 13,119 — because with 8 days and 5 models the parallel-array form
+names each variable once while per-day rows repeat every name forty times.
+Measured before it was proposed to anyone.
+
+What shipped is the removal of what the API adds and no rule reads:
+`daily_units`, `hourly_units`, `generationtime_ms`, `utc_offset_seconds`,
+`timezone_abbreviation` and `_server_date`, from all eight fetched objects —
+two extended-daily points, five regional pressure points, the air-quality
+fetch. **6,881 characters off the user message, 13,762 per forecast**
+(~3,440 tokens), since it goes to both calls. 127 forecast series before,
+127 after, none changed.
+
+`latitude`, `longitude`, `timezone` and `elevation` STAY, and the harness
+proved that right rather than lucky: asked how it told the five basin points
+apart, a cold reader answered *"Only by coordinates and elevation... No
+element carries a place name."* A strip that took them would have cost the
+Synoptic Overview its subject.
+
+**The units are now stated once in the heading** rather than eight times in
+maps — which also repairs the anomaly this item found yesterday, that
+`TODAY'S MULTI-MODEL GUIDANCE:` was the only block in the message with a bare
+heading. The harness asked for this: on the first pass it reported
+*"`regional_pressure` has no `daily_units` block... taken by analogy, not
+from a units declaration."* It had inferred correctly, and it noticed.
+
+### What the vectors did not cover, and now do
+
+The change shipped green in both languages with NOTHING pinning it, because
+every fixture in `export_vectors.py` was already clean — no case reached the
+strip. Worse, `regional_pressure`'s fixture was
+`{"points": [{"name": "Kisumu", "mslp": 1012.4}]}`: a dict, with a NAME,
+where production sends a list of Open-Meteo objects with no name at all. A
+fixture that does not resemble production cannot fail when production breaks.
+
+Three of five mutations survived the first pass and every one was
+`regional_pressure` — the strip not applied to it, the strip taking its
+coordinates, and Dart's recursion into lists, which that key is the only one
+to exercise. With the fixture given production's shape: five mutations, five
+bites, across both languages.
+
+### Incidental findings from the harness, none caused by this change
+
+Recorded rather than chased; each wants its own look:
+
+- **`pm25` equals `aqi` exactly on all three ground stations** (66/66, 50/50,
+  38/38) while `pm10` differs. Kisumu Airport reading PM2.5 of 66 with PM10 of
+  15 is also physically impossible, PM2.5 being a subset of PM10. Suspect a
+  mislabelled field in the AQI parse.
+- **GFS's gusts at the secondary point are byte-identical to the primary's**
+  while its sustained wind differs — leaving GFS's over-water gust BELOW its
+  own sustained wind. Suspect the secondary fetch is not re-fetching gusts.
+- **UKMO carries a Day+7 `rain_probability_pct` while every other Day+7 field
+  is null**, so a model described as not forecasting that far still emits a
+  probability there.
+- **MODEL TRACK RECORD contradicts itself for `kenya_met` at Day+3**: 16
+  all-time checks and a 75% rate beside a `skill_profile_summary` saying
+  "Does not forecast at this lead".
+
 ### The experiment, if one is wanted
 
 Item 77's harness runs against an archived day, so an ablation costs nothing

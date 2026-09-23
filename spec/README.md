@@ -140,7 +140,7 @@ absent values are `null`, never omitted keys.
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |
 | `convective_tier.json` | `convective_tier` | 10 |
-| `llm_user_prompt.json` | `build_user_prompt` | 9 |
+| `llm_user_prompt.json` | `build_user_prompt` | 10 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
 | `scoring_score_prediction.json` | `score_prediction` | 31 |

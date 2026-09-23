@@ -693,6 +693,47 @@ String secondaryWindBlock(Object? secondaryWind) {
   return '\n$secondaryWindHeading\n${promptJson(secondaryWind)}\n';
 }
 
+/// Keys Open-Meteo puts on every response that no rule in either prompt reads.
+///
+/// Upstream ROADMAP item 174. `daily_units` and `hourly_units` alone are 2,210
+/// characters PER FETCHED OBJECT, and the objects repeat: two extended-daily
+/// points, five regional pressure points, the air-quality fetch. Neither
+/// system prompt mentions them, and the units they state are the ones the
+/// prompt's own rules already name.
+///
+/// WHAT IS DELIBERATELY NOT HERE: `latitude`, `longitude`, `timezone` and
+/// `elevation` stay. In `regional_pressure` the coordinates are the ONLY thing
+/// telling five basin points apart, and a saving that made them
+/// indistinguishable would cost the Synoptic Overview its subject.
+///
+/// Removes no forecast value: checked against the 2026-09-22 archive, 127
+/// series before and 127 after, none changed.
+const apiNoiseKeys = <String>{
+  'generationtime_ms',
+  'utc_offset_seconds',
+  'timezone_abbreviation',
+  'daily_units',
+  'hourly_units',
+  '_server_date',
+};
+
+/// Strips [apiNoiseKeys] from a fetched object, at any depth.
+///
+/// Recursive because `regional_pressure` is a LIST of fetched objects, each
+/// carrying its own envelope and its own units map.
+Object? withoutApiNoise(Object? value) {
+  if (value is Map) {
+    return {
+      for (final e in value.entries)
+        if (!apiNoiseKeys.contains(e.key)) e.key: withoutApiNoise(e.value),
+    };
+  }
+  if (value is List) {
+    return [for (final v in value) withoutApiNoise(v)];
+  }
+  return value;
+}
+
 String buildUserPrompt({
   required DateTime today,
   required DateTime yesterday,
@@ -801,10 +842,15 @@ String buildUserPrompt({
     //
     // The SECONDARY point's hourly stays: there is no forward window for it,
     // so dropping it would lose information rather than a duplicate.
-    'primary_extended_daily': todayWeatherData['primary_extended_daily'],
-    'secondary_extended_daily': todayWeatherData['secondary_extended_daily'],
-    'regional_pressure': todayWeatherData['regional_pressure'],
-    'air_quality': todayWeatherData['air_quality'],
+    // EVERY VALUE THE RULES READ, AND NOTHING THE API ADDS — upstream item
+    // 174. See `apiNoiseKeys`: the units maps and response envelopes repeat
+    // on each of the eight fetched objects here and are named by no rule.
+    'primary_extended_daily':
+        withoutApiNoise(todayWeatherData['primary_extended_daily']),
+    'secondary_extended_daily':
+        withoutApiNoise(todayWeatherData['secondary_extended_daily']),
+    'regional_pressure': withoutApiNoise(todayWeatherData['regional_pressure']),
+    'air_quality': withoutApiNoise(todayWeatherData['air_quality']),
     'airport_metar': todayWeatherData['airport_metar'],
     // See the Python implementation: this key was added late and omitted
     // here, so the prompt referred to data that never arrived.
@@ -873,7 +919,7 @@ ${forecastWindowsBlock(forecastWindows)}
 HOURS AHEAD (${_forwardWindowScope(forwardHourly, forwardWindowNarrowed)}):
 ${forwardHourly == null ? 'Unavailable this run.' : promptJson(forwardHourly)}
 
-TODAY'S MULTI-MODEL GUIDANCE:
+TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent):
 ${promptJson(weatherPayload)}
 
 EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):

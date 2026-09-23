@@ -155,6 +155,65 @@ NOT_PHRASE_VECTORS = frozenset({
 })
 
 
+#: `regional_pressure` as Open-Meteo actually returns it — see the vector case
+#: that uses it. Two points rather than production's five; the shape is what
+#: matters, and the coordinates differ so a strip that removed them would make
+#: the two indistinguishable.
+_REGIONAL_PRESSURE_AS_SENT = [
+    {
+        "latitude": -0.1054,
+        "longitude": 34.7935,
+        "generationtime_ms": 0.1,
+        "utc_offset_seconds": 10800,
+        "timezone": "Africa/Nairobi",
+        "timezone_abbreviation": "GMT+3",
+        "elevation": 1187.0,
+        "daily_units": {"time": "iso8601", "pressure_msl_mean": "hPa"},
+        "daily": {"time": ["2026-08-11"], "pressure_msl_mean": [1012.4]},
+    },
+    {
+        "latitude": 0.0351,
+        "longitude": 34.2757,
+        "generationtime_ms": 0.1,
+        "utc_offset_seconds": 10800,
+        "timezone": "Africa/Nairobi",
+        "timezone_abbreviation": "GMT+3",
+        "elevation": 1315.0,
+        "daily_units": {"time": "iso8601", "pressure_msl_mean": "hPa"},
+        "daily": {"time": ["2026-08-11"], "pressure_msl_mean": [1013.9]},
+    },
+]
+
+
+def _with_api_noise(weather: dict) -> dict:
+    """Puts back exactly what Open-Meteo sends and item 174 takes out.
+
+    The fixtures in this file were written clean, so without this no vector
+    case exercises `_without_api_noise` at all and a port could implement
+    nothing and still pass.
+    """
+    noise = {
+        "generationtime_ms": 0.1,
+        "utc_offset_seconds": 10800,
+        "timezone_abbreviation": "GMT+3",
+        "_server_date": "2026-08-11",
+    }
+    units = {"time": "iso8601", "temperature_2m_max": "\u00b0C", "windspeed_10m_max": "km/h"}
+
+    def dirty(value):
+        if isinstance(value, dict):
+            out = {k: dirty(v) for k, v in value.items()}
+            if "daily" in out or "hourly" in out:
+                out.update(noise)
+                out["daily_units" if "daily" in out else "hourly_units"] = dict(units)
+            return out
+        if isinstance(value, list):
+            return [dirty(v) for v in value]
+        return value
+
+    return {k: dirty(v) for k, v in weather.items()}
+
+
 def _phrase_defects(value, path: str = "expected"):
     """Every malformed phrase inside an exported `expected`, with its path.
 
@@ -2088,6 +2147,35 @@ def export_user_prompt() -> None:
         "rather than reported unavailable. The last case covers the overnight-low footnote, which is absent on every ordinary morning and would otherwise be pinned by nothing.",
         [
             case("fully populated", full),
+            # ITEM 174. Every case here carries CLEAN fetched objects, so none
+            # of them reaches the strip that removes Open-Meteo's units maps
+            # and response envelopes — the change shipped with both languages
+            # green and nothing pinning it. This case sends the noise and
+            # proves both strip it identically, including inside
+            # `regional_pressure`, which is a LIST of fetched objects each
+            # carrying its own copy.
+            case(
+                "the API's units and envelopes are stripped from every object",
+                dict(
+                    full,
+                    today_weather_data=dict(
+                        _with_api_noise(full.get("today_weather_data") or {}),
+                        # REGIONAL PRESSURE IN ITS PRODUCTION SHAPE. The
+                        # fixture elsewhere in this file is
+                        # `{"points": [{"name": "Kisumu", ...}]}`, which
+                        # production has never sent: it is a LIST of fetched
+                        # objects, each with its own envelope and units map
+                        # and NO name — the harness on 2026-09-23 could only
+                        # tell the five basin points apart by coordinate.
+                        #
+                        # So this is the one case that exercises the strip
+                        # recursing into a list, and the one that would catch
+                        # a strip which took the coordinates with it. Three
+                        # mutations survived without it.
+                        regional_pressure=_REGIONAL_PRESSURE_AS_SENT,
+                    ),
+                ),
+            ),
             case("a later issuance — differs only by its issuance hour", refresh, verification_already_written=True),
             case("a later issuance — no newer model cycle since the first", refresh_no_new_cycle, verification_already_written=True),
             case("cold start — every optional input absent", empty),

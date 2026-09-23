@@ -69,7 +69,23 @@ def test_the_guidance_block_is_split_per_source_and_the_pieces_fit_inside_it():
     # The pieces are the spans between top-level keys, so they cover the
     # block minus its header line and opening brace.
     assert 0 < sum(subs.values()) < sizes[GUIDANCE_BLOCK]
-    assert sum(subs.values()) > 0.9 * sizes[GUIDANCE_BLOCK]
+
+    # WHAT IS NOT COVERED IS THE HEADING, EXACTLY — item 174. This was
+    # "> 0.9 * the block", which is the same claim measured against the
+    # fixture's size rather than against the heading's. That held while the
+    # heading was `TODAY'S MULTI-MODEL GUIDANCE:` and broke the moment it
+    # gained the sentence naming the data's units, because in a 692-character
+    # fixture 190 characters of heading is 27% — while in the real prompt it
+    # is under 1%. Asserting the remainder IS the heading says what the test
+    # means and does not move with either size.
+    heading = next(
+        line for line in prompt.splitlines() if line.startswith(GUIDANCE_BLOCK)
+    )
+    remainder = sizes[GUIDANCE_BLOCK] - sum(subs.values())
+    assert remainder <= len(heading) + 8, (
+        f"{remainder} characters of the guidance block belong to no source, "
+        f"and its heading is only {len(heading)} — a source is being missed"
+    )
 
 
 def test_a_block_that_is_absent_is_absent_rather_than_zero():
