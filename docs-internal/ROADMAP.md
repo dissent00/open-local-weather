@@ -26722,9 +26722,20 @@ will not find themselves:
   UKMO Day+0 says it "slightly under-forecasts cloud cover", where the review
   for the same pair is a `bias` of "systematically under-forecasts", usable
   confidence. "Slightly" is the word reserved for `tendency`.
-- **`onset_error_hrs` is null for every model at every lead** in the
-  verification block, while MODEL TRACK RECORD carries non-null
-  `avg_onset_error_hrs_10` for the same Day+0 models.
+- ~~**`onset_error_hrs` is null for every model at every lead**~~ —
+  **WITHDRAWN 2026-09-23, this is correct behaviour.** Checked after the
+  operator reported real rain: `scoring.py` only sets it when the day
+  actually rained AND an onset was observed, and 2026-09-22 was dry at the
+  primary point — 0.2 mm, `rain=False`, `onset_hour=None`. The actuals cache
+  does carry observed onsets on wet days (09-21 `'15:00'`, 09-18 `'22:00'`),
+  and `avg_onset_error_hrs_10` averages the last ten checks, which include
+  those. A block of nulls after a dry day is the field working.
+
+  Recorded here rather than deleted because it is the fourth finding this
+  week that looked like a gap and was a dry day, a case-sensitive match or an
+  out-of-band input. The pattern is that a cold reader cannot see the
+  CONDITION under which a field is populated, only that it is empty — so
+  every "always null" finding needs the producing code read before it counts.
 - **The evening wind anchor is the one its own block distrusts.** WIND
   DIRECTION emits "SW" for the evening while stating that measured evening
   agreement runs 0.48 against 0.95 at midday, and the hourly directions after
