@@ -26073,6 +26073,75 @@ yet how that will play out."*
 
 ---
 
+## 177. The scored `rain` comes from ERA5, and the station disagrees 30% of the time · **Measured 2026-09-23, operator decision pending**
+
+The operator reported that 2026-09-22 poured where they stand. The stored
+actual for that day is `rain: False`, `precip_mm: 0.2`, `onset_hour: None`.
+
+It is NOT the rain threshold. Lowering it would flip the boolean and leave
+`precip_mm` at 0.2, which is the number every precipitation error statistic
+is measured against. The amount itself is what disagrees with the sky.
+
+**The same record already contains the contradiction**, from a second source,
+on the same day:
+
+| field | value | provenance |
+|---|---|---|
+| `rain` | False | `era5_archive` |
+| `precip_mm` | 0.2 | `era5_archive` |
+| `onset_hour` | None | `era5_archive` |
+| `precipitation` | **True** | `metar_station` |
+| `precipitation_onset` | **17:00** | `metar_station` |
+| `thunder` | **True** | `metar_station` |
+
+**Measured across the cache, 43 days carrying both:**
+
+- They disagree on **13, 30%**.
+- **6 days station-wet, archive-dry.** These score every model that called
+  rain as WRONG. Station onsets: 16:30, 17:00, 19:00, 19:00, 21:00, 21:00 —
+  every one afternoon or evening, which is the signature of convection an
+  ERA5-family grid cell at ~25-31 km averages away. The item-96 measurement
+  found the same thing for thunder: "diverged on 5 of 42 days, every one a
+  real storm the archive missed".
+- **7 days archive-wet, station-dry.** So this is NOT "the station is right".
+  A METAR is an hourly point observation and misses a brief shower between
+  filings; ERA5 is a cell mean and misses a storm that soaked one
+  neighbourhood. They measure different things.
+
+**Why it matters more than an ordinary data defect.** This project's stated
+value is that its accuracy claims are checkable. `rain` is the field the
+whole rain record scores against — `rolling_10_rain_pct`, `all_time_rain_pct`,
+the review's rain findings, the Brier scores. If 30% of the ground truth is
+contested, so is every figure built on it, including the ones the prompt tells
+the forecaster to reason from and the ones the public accuracy page shows.
+
+**The decision is the operator's, and it is not a bug fix.** "Did it rain in
+Kisumu" has more than one defensible answer, and picking one is a claim about
+what the forecast promises:
+
+1. **Keep ERA5.** Consistent, gridded, complete, already the yardstick for
+   every other variable. Scores a soaked reader as a dry day.
+2. **Prefer the station where it reports.** Closest to what a reader standing
+   in Kisumu experienced, which is what the forecast is read as claiming.
+   Costs consistency: the station has gaps, files hourly, and gives no
+   accumulation, so `precip_mm` would still come from ERA5 and could then sit
+   at 0.2 beside `rain: True`.
+3. **Score both and publish the disagreement.** Most honest, most work, and
+   it turns a contested figure into a stated uncertainty rather than hiding
+   it behind one number.
+
+**What cannot be fixed by choosing.** METAR does not reliably report
+accumulation, so the AMOUNT has no second source at this site. Any option
+leaves `precip_mm` on ERA5 alone.
+
+**Before acting, one check this has not done:** whether the six
+station-wet/archive-dry days are ERA5 missing the event or a day-boundary
+error. Kisumu is UTC+3, so a UTC-bucketed day runs 03:00 local to 02:59 local
+the next day, and rain in the 00:00-03:00 local window would land in the
+previous day's bucket. Every one of the six has an evening onset, which does
+not fit that pattern — but the fetch's bucketing should be read rather than
+inferred from six timestamps.
+
 ## 176. Two thirds of the record blocks is repeated key names · **Built 2026-09-23**
 
 Item 174 asked which FIELDS could go. The bigger number is not in the values
