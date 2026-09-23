@@ -27025,7 +27025,7 @@ CLI's own builder rather than asserting the field exists.
 
 ---
 
-## 171. The record names the wrong model when the chain falls back · **Found 2026-09-22, in production**
+## 171. The record names the wrong model when the chain falls back · **SHIPPED 2026-09-23**
 
 The 15:01Z run was served end to end by
 `nvidia/nemotron-3-super-120b-a12b:free` after Gemini returned four 503s. The
@@ -27054,6 +27054,38 @@ The app has the same seam and it was closed there on the same day (ensemble
 item 24): each chain link gets its own counting hook, so the spend record
 follows what actually ran. The pipeline needs the entry, not the class — see
 item 170, which wants the same thing for the cap.
+
+### Shipped 2026-09-23
+
+`provider_identity` was already correct and could not help: it resolves
+through `active_provider`, which `generate` clears in its `finally`, so
+anything reading AFTER the call — and the entry is written after — resolves
+back to the wrapper. The chain now remembers the child that answered
+(`last_served`, exposed as `served_provider`), and `served_identity()` reads
+it. Deliberately not cleared between calls, unlike `active_provider`: that one
+answers "who is spending right now" and must not go stale, this one answers
+"who produced the thing being recorded" and is only ever asked afterwards.
+
+**A forecast is two calls, and one field cannot be honest about both.** On
+2026-09-23 Gemini took the judgment call and `nex-agi/nex-n2.5-pro:free` wrote
+the narrative after four 429s. So `llm_model` names the JUDGMENT call — that
+is the output that gets scored and the key `replay.py` partitions the accuracy
+record by — and a new `narrative_llm_model` names the other, so the record can
+also say who wrote the document a reader actually read. None on entries
+written before the field existed, never "".
+
+Identity is snapshotted per call beside the existing `ResponseMeta` snapshot,
+for the same reason that one exists: it is only true while the call it
+describes is the last one made.
+
+Three mutations, three bites — reverting the read to the old `getattr`,
+making the chain forget who served, and dropping the per-call snapshot. The
+first is the original defect, so the guard is pinned against the bug itself
+rather than against its neighbourhood.
+
+**No Dart change.** `FallbackProvider` there has the same `providers.first`
+property, but the app records no model name in any entry, so there is nothing
+to misname.
 
 ---
 
