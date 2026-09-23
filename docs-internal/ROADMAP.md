@@ -26073,74 +26073,65 @@ yet how that will play out."*
 
 ---
 
-## 177. The scored `rain` comes from ERA5, and the station disagrees 30% of the time · **Measured 2026-09-23, operator decision pending**
+## 177. The rain BOOLEAN is already unioned; the AMOUNT is the gap · **Corrected 2026-09-23**
 
-The operator reported that 2026-09-22 poured where they stand. The stored
-actual for that day is `rain: False`, `precip_mm: 0.2`, `onset_hour: None`.
+**This item was recorded wrong earlier the same day and is rewritten here.**
+The first version claimed the scored `rain` comes from ERA5 and that six days
+"score every model that called rain as WRONG". Both are false. `verify/
+scoring.py` does not read `actual.rain`; it reads `actual.observed_convection()`,
+which is `rain or thunder or precipitation` — the union already exists, was
+built by item 53, and fires on **10 of the 43 stored days**, 2026-09-22 among
+them. Every model that called rain yesterday was scored CORRECT.
 
-It is NOT the rain threshold. Lowering it would flip the boolean and leave
-`precip_mm` at 0.2, which is the number every precipitation error statistic
-is measured against. The amount itself is what disagrees with the sky.
+The mistake was reading the stored field and assuming it was the scored one.
+`rain` is what ERA5 said; `observed_convection()` is what the forecast is
+measured against, and only the second is scoring. Same class as the
+`onset_error_hrs` withdrawal three hours earlier: a field's value read without
+the code that consumes it.
 
-**The same record already contains the contradiction**, from a second source,
-on the same day:
+**What triggered it was still real.** The operator reported 2026-09-22 poured;
+the stored `rain` is False on 0.2 mm. That day's record also carries
+`thunder: True`, `precipitation: True` and `precipitation_onset: '17:00'` from
+the station, so the system already knew, and the rain score already reflected
+it. What the operator saw in the data was the ERA5 field, not the verdict.
 
-| field | value | provenance |
-|---|---|---|
-| `rain` | False | `era5_archive` |
-| `precip_mm` | 0.2 | `era5_archive` |
-| `onset_hour` | None | `era5_archive` |
-| `precipitation` | **True** | `metar_station` |
-| `precipitation_onset` | **17:00** | `metar_station` |
-| `thunder` | **True** | `metar_station` |
+**Measured anyway, because the disagreement is worth knowing.** Across 43 days
+carrying both sources: they disagree on 13, 30% — 6 station-wet/archive-dry,
+7 archive-wet/station-dry. The six all have afternoon or evening station
+onsets, which is convection a ~25-31 km cell averages away. The seven the
+other way are an hourly METAR missing a brief shower. Neither source is
+"right"; they measure different things, and the union is the reasonable answer
+to that, which is what the code already does.
 
-**Measured across the cache, 43 days carrying both:**
+### What is genuinely NOT unioned, and cannot be
 
-- They disagree on **13, 30%**.
-- **6 days station-wet, archive-dry.** These score every model that called
-  rain as WRONG. Station onsets: 16:30, 17:00, 19:00, 19:00, 21:00, 21:00 —
-  every one afternoon or evening, which is the signature of convection an
-  ERA5-family grid cell at ~25-31 km averages away. The item-96 measurement
-  found the same thing for thunder: "diverged on 5 of 42 days, every one a
-  real storm the archive missed".
-- **7 days archive-wet, station-dry.** So this is NOT "the station is right".
-  A METAR is an hourly point observation and misses a brief shower between
-  filings; ERA5 is a cell mean and misses a storm that soaked one
-  neighbourhood. They measure different things.
+**`precip_mm` — the AMOUNT.** It comes from ERA5 alone and has no second
+source, because METAR does not reliably report accumulation. So
+`avg_precip_error_mm_10`, and every precipitation error in the review, is
+measured against a figure that read 0.2 mm on a day the operator watched
+pour. The rain boolean is defended; the millimetres are not.
 
-**Why it matters more than an ordinary data defect.** This project's stated
-value is that its accuracy claims are checkable. `rain` is the field the
-whole rain record scores against — `rolling_10_rain_pct`, `all_time_rain_pct`,
-the review's rain findings, the Brier scores. If 30% of the ground truth is
-contested, so is every figure built on it, including the ones the prompt tells
-the forecaster to reason from and the ones the public accuracy page shows.
+This is where satellite or radar would actually change something, and it is
+the operator's own read: the boolean gap is closed, the quantitative one is
+open and needs a source that measures area rainfall rather than a point or a
+25 km mean.
 
-**The decision is the operator's, and it is not a bug fix.** "Did it rain in
-Kisumu" has more than one defensible answer, and picking one is a claim about
-what the forecast promises:
+**Onset error, and that one is deliberate.** `onset_error_hrs` is measured
+against `onset_hour` (ERA5) and not against `observed_onset()`, which does
+union. The field comment says why: "quietly swapping a reanalysis quantity for
+a station one would change what every stored onset error means." So on the six
+station-wet days, onset error is simply not scored — `actual.onset_hour` is
+None and the gate skips. That is a reasoned choice to keep one scored series
+on one instrument, not an oversight, and reopening it means deciding whether a
+mixed-source series is worth more than a consistent one.
 
-1. **Keep ERA5.** Consistent, gridded, complete, already the yardstick for
-   every other variable. Scores a soaked reader as a dry day.
-2. **Prefer the station where it reports.** Closest to what a reader standing
-   in Kisumu experienced, which is what the forecast is read as claiming.
-   Costs consistency: the station has gaps, files hourly, and gives no
-   accumulation, so `precip_mm` would still come from ERA5 and could then sit
-   at 0.2 beside `rain: True`.
-3. **Score both and publish the disagreement.** Most honest, most work, and
-   it turns a contested figure into a stated uncertainty rather than hiding
-   it behind one number.
+### The lesson, which is the part worth keeping
 
-**What cannot be fixed by choosing.** METAR does not reliably report
-accumulation, so the AMOUNT has no second source at this site. Any option
-leaves `precip_mm` on ERA5 alone.
-
-**Before acting, one check this has not done:** whether the six
-station-wet/archive-dry days are ERA5 missing the event or a day-boundary
-error. Kisumu is UTC+3, so a UTC-bucketed day runs 03:00 local to 02:59 local
-the next day, and rain in the 00:00-03:00 local window would land in the
-previous day's bucket. Every one of the six has an evening onset, which does
-not fit that pattern — but the fetch's bucketing should be read rather than
-inferred from six timestamps.
+Three findings this day looked like defects in the verification and were not:
+`onset_error_hrs` null after a dry day, the schema "missing" from the prompt,
+and this. Each came from reading a stored value without the code that consumes
+it. A field's name is not its contract — `rain` is ERA5's opinion, and the
+thing with authority over the score is a method three files away.
 
 ## 176. Two thirds of the record blocks is repeated key names · **Built 2026-09-23**
 
