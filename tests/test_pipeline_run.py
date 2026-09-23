@@ -3,6 +3,7 @@ from datetime import date, datetime, time, timedelta, timezone
 import pytest
 
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint, WaqiStation
+from openlocalweather import dates as dates_module
 from openlocalweather.dates import now_in_tz
 from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
 from openlocalweather.claims import CLAIM_DISPLAY_TOO_LONG
@@ -1901,6 +1902,7 @@ def convective_forward_hourly():
 
 
 def test_user_prompt_carries_the_convective_flag(tmp_path, monkeypatch):
+    pin_clock(monkeypatch)
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
     )
@@ -1927,6 +1929,7 @@ def test_user_prompt_says_when_there_is_no_instability_data(tmp_path, monkeypatc
 
 
 def test_quiet_cape_does_not_set_the_convective_flag(tmp_path, monkeypatch):
+    pin_clock(monkeypatch)
     def calm(times):
         return [120.0] * len(times)
 
@@ -2363,6 +2366,27 @@ def test_a_run_that_knows_less_than_the_last_one_says_so(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def pin_clock(monkeypatch, on=date(2026, 8, 11), hour=8):
+    """Make the run's clock agree with the day the test pins.
+
+    THE MISMATCH THIS CLOSES IS A TIME BOMB, not a flake. The hourly fixtures
+    build their timestamps from `now_in_tz`, so a test that passes
+    `today=2026-08-11` to the pipeline while the fixture dates its hours today
+    is using TWO different days. It holds together until some arithmetic
+    crosses a boundary between them, and then fails for every date after —
+    `test_a_failed_forward_window_falls_back_to_the_day_zero_cape` ran for 43
+    days and died on 2026-09-23, with nothing in the code changed.
+
+    Item 169 pinned the suite's HOUR and left the date alone, on the grounds
+    that a test speaking about "today" should use the real one. Correct for a
+    test that reasons about today; wrong for one that has already chosen a
+    different day and told the pipeline so.
+    """
+    fixed = datetime(on.year, on.month, on.day, hour, 30)
+    monkeypatch.setattr(pipeline, "now_in_tz", lambda tz: fixed)
+    monkeypatch.setattr(dates_module, "now_in_tz", lambda tz: fixed)
+
+
 def today_only_hourly_from_now(**extra_series):
     """The day-0 fetch, anchored to the real clock so hours remain ahead.
 
@@ -2383,7 +2407,21 @@ def test_a_failed_forward_window_falls_back_to_the_day_zero_cape(tmp_path, monke
     `fetch_forecast_hourly_today` — same host, same endpoint, same variable
     list including cape — succeeded in every one of them. The convective
     outlook was reported "unavailable" with the data sitting in memory.
+
+    THE RUN'S CLOCK MATCHES THE DAY IT IS ABOUT, pinned 2026-09-23.
+    `today_only_hourly_from_now` builds its hours from `now_in_tz`, so on the
+    wall clock the fixture's hours were dated TODAY while the pipeline was
+    told 2026-08-11. That held together for 43 days and stopped dead on
+    2026-09-23 — passing for every date before it and failing for every date
+    after, on code that had not changed.
+
+    Item 169 pinned the suite's HOUR and left the date alone on the grounds
+    that a test speaking about "today" should use the real one. This is the
+    case that missed: a test which pins `today` for the pipeline and takes
+    its fixture's dates from the clock is not using the real date, it is
+    using two different ones.
     """
+    pin_clock(monkeypatch)
     monkeypatch.setattr(
         open_meteo,
         "fetch_forecast_hourly_forward",
@@ -2490,6 +2528,7 @@ def test_an_absent_cape_series_forbids_an_all_clear(tmp_path, monkeypatch):
 
 
 def test_a_present_cape_series_carries_no_gap_warning(tmp_path, monkeypatch):
+    pin_clock(monkeypatch)
     monkeypatch.setattr(
         open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: convective_forward_hourly()
     )

@@ -25932,6 +25932,34 @@ clock — there is a dusk test at 18:01 local for the UV horizon — and their
 00, 06, 12, 15, 18 and 22 after the change: 1,570 pass at every one, where
 before 18:30 and 22:30 each failed four.
 
+### The date case, found the next morning — 2026-09-23
+
+The fixture pinned the HOUR and deliberately left the date alone, reasoning
+that a test speaking about "today" should use the real one. That was right for
+tests which reason about today and wrong for four which do not:
+`test_a_failed_forward_window_falls_back_to_the_day_zero_cape` and three
+convective ones pass `today=date(2026, 8, 11)` to the pipeline while their
+hourly fixtures date their timestamps from `now_in_tz`. Two different days,
+held together by arithmetic that had not yet crossed a boundary between them.
+
+It crossed on 2026-09-23 — 43 days after the pinned date. Swept across dates,
+the first failed for every date from 09-23 onward and passed for every date
+before, on unchanged code. The other three were still ahead: two would have
+broken on 09-24 and two more by 10-01.
+
+`pin_clock(monkeypatch)` now makes the run's clock agree with the day the test
+pins. Swept again over 09-24, 10-15, 2027-01-15, 2027-06-15 and the 2028 leap
+day: 1,581 pass at every one.
+
+**One apparent failure was the instrument, not the suite.**
+`test_the_computed_sun_times_reach_the_prompt_and_the_entry` kept failing
+under the sweep because the test module imports `now_in_tz` by name, so
+patching the function's home module never reached the test's own call — it was
+comparing a faked pipeline date against a real one. The test is correct. A
+probe that patches a module but not its importers reports defects that are its
+own, which is the third false finding in two days and the same shape as the
+other two.
+
 **What this says about the method.** The failure was found by bisecting time
 rather than code, and two earlier attempts to reproduce it were invalid —
 one ran the pipeline outside pytest with no network mocks, another injected
@@ -26046,9 +26074,17 @@ Four blocks are 88.5% of it:
 | block | chars | share |
 |---|---:|---:|
 | TODAY'S MULTI-MODEL GUIDANCE | 31,911 | 30.8% |
-| LONG-RUN REVIEW | 28,501 | 27.5% |
 | HOURS AHEAD | 22,723 | 21.9% |
+| MODEL TRACK RECORD | 15,830 | 15.3% |
+| LONG-RUN REVIEW | 11,214 | 10.8% |
 | EXTRACTED PER-MODEL PREDICTIONS | 8,572 | 8.3% |
+
+CORRECTED 2026-09-23. The first cut of this table said LONG-RUN REVIEW was
+28,501 and MODEL TRACK RECORD 2,954. Both were wrong: the block boundaries
+came from a hand-written list of names, and the last name in it swallowed
+everything to the end of the message. Measured off the message's own heading
+lines there are 24 blocks, not 19, and the third largest is one the first
+attempt recorded as small.
 
 Everything the narrative quotes verbatim — the convective timing, the
 day-over-day comparison, the wind direction and shift, the UV block, the
@@ -26166,6 +26202,94 @@ deliberately kept the met service's OWN WORDS, because *"'Moderate showers' is
 better narrative input than rain=True"*. The right operation is not "replace
 data with booleans". It is "replace bulk with a composed thing that keeps what
 the narrative needs".
+
+### The two unexamined blocks, examined — 2026-09-23
+
+**HOURS AHEAD (22,723) is load-bearing, and for the NARRATIVE rather than the
+judgment.** Four rules cite it: *"Name an hour only where HOURS AHEAD shows
+the models agreeing on it"*, *"reasoning from HOURS AHEAD rather than reciting
+the calendar day"*, the coverage rule, and the left-out checklist. The
+judgment prompt names it once, definitionally. This inverts the original
+hypothesis a second time — if either call could lose it, it is the one that
+returns the numbers, not the one that writes the prose.
+
+Inside it, two things are not data: `hourly_units` is 1,921 characters of
+unit strings, one per series, for units the system prompt already states; and
+the usual API envelope (`generationtime_ms`, `timezone_abbreviation`,
+`elevation`) rides along again. The hourly `uv_index_*` series — five of
+fifty — are superseded by the PEAK UV INDEX block that item 161 built.
+
+**MODEL TRACK RECORD (15,830) carries the same fact three times.** One row,
+879 characters, 18 rows:
+
+- RAW: `rolling_10_rain_pct: 80.0`, `rolling_30_rain_pct: 70.0`
+- COMPUTED: `rain_pct_trend: "stable"`, `rain_pct_trend_delta: 10.0` — which
+  the prompt itself calls *"already the recent-vs-longer-term comparison
+  described above, done in code. Use this field as given"*
+- PROSE: `skill_profile_summary` — *"At Day+0, established as the weakest
+  rain caller while systematically over-forecasts cloud cover..."*
+
+And LONG-RUN REVIEW (11,214) sits above all three as the cross-model findings
+layer, with the rule *"NARRATE THE REVIEW'S FINDINGS FOR THAT PAIR, NOT THE
+TRACK RECORD'S RAW NUMBERS."* Four layers over one stored record, 27,044
+characters, 26% of the message.
+
+**But it is NOT dead weight, and this is where care is owed.** The 2026-09-22
+Confidence Notes said *"GFS underforecasted peak gusts by a mean of 18.5
+km/h, ECMWF by 10.9"* — that is `avg_wind_error_kmh_10`, read straight off
+the raw layer. And *"35 of 42 archived checks (83%)"* uses `all_time_correct`,
+`all_time_checks` and `all_time_rain_pct` together. The raw numbers ARE
+narrated; what is forbidden is RANKING from them. So the redundancy is real
+but narrower than the layering suggests: `rolling_10`/`rolling_30` beside a
+trend the prompt says to use as given, and `all_time_rain_pct` beside the two
+figures it divides.
+
+### Accretion or design — the question answered by the prompt itself
+
+Asked by the operator on 2026-09-22. Measuring how each block INTRODUCES
+itself answers it, because the prompt turns out to declare its own layers:
+
+| layer | chars | share | blocks |
+|---|---:|---:|---|
+| RAW — "reason from this" | 54,634 | 52.7% | 2 |
+| COMPUTED — "pre-computed by code" | ~47,600 | 45.9% | 19 |
+| source data, unlabelled | 1,431 | 1.4% | 3 |
+
+**The computed layer is DESIGNED, and visibly so.** Nineteen blocks, each
+announcing what computed it and how it may be used — "pre-computed by code —
+state as given if present", "use it VERBATIM or not at all", "already scored
+by code — write ABOUT these". Each is traceable to a defect it was added to
+close. That is a coherent system, and it is this project's stated principle
+made literal: code computes, the model reasons or states.
+
+**The raw layer is RESIDUAL, and one block gives it away.**
+`TODAY'S MULTI-MODEL GUIDANCE:` is the ONLY block in the message with a bare
+heading — no parenthetical, no provenance, no usage rule. Every block added
+deliberately explains itself; this one does not, because it predates the
+convention the others follow. It is in the first prompt commit, a0dc2ff of
+2026-08-11, and nothing has revisited it since.
+
+So the honest answer is BOTH, and the direction matters: **the prompt was
+designed upward and accreted downward.** Each new computed layer was added on
+purpose; the layer beneath it was left because removing it was never what the
+defect required.
+
+### What follows for the cut
+
+Not "delete the raw block" — yesterday's proposal, already withdrawn, and the
+Extended Outlook's per-day spreads for days 1 and 2 come from nowhere else.
+
+**Promote it instead.** The operation this project has performed nineteen
+times, and once spectacularly: 430b9f3 replaced the whole extracted KMD PDF
+with a composed extract, *"an 89% cut in both stored bytes and prompt
+tokens"*, while deliberately keeping the met service's own words. A composed
+`DAILY BY MODEL` block — 5 models x 10 variables x 8 days, without the
+Open-Meteo envelope, the units dictionary or the per-series key names
+repeated fifty times — would carry everything the Extended Outlook reads in a
+small fraction of 31,911 characters.
+
+That is a change with a shape this repo already trusts, rather than an
+ablation that hopes nothing was using it.
 
 ### The experiment, if one is wanted
 
