@@ -26334,6 +26334,38 @@ coordinates, and Dart's recursion into lists, which that key is the only one
 to exercise. With the fixture given production's shape: five mutations, five
 bites, across both languages.
 
+### The second harness run — the units gap is closed
+
+Asked where it got each unit, the cold reader answered: *"Nothing was
+guessed."* On the one it had inferred before: *"That is a declaration for the
+block, and `regional_pressure` sits inside it, so I treated it as covering
+these entries."* One sentence in a heading replaced eight units maps and the
+reader said so unprompted.
+
+It also told the five basin points apart unaided, and worked out something
+nobody had written down: the centre point carries no `location_id` where the
+other four carry 1-4, its elevation matches `primary_extended_daily`, and its
+three arrays are numerically identical to the primary point's `best_match`
+values — so the ring's centre is the home point under a single model rather
+than a multi-model figure.
+
+**Two "missing fields" it reported were the HARNESS, not the deployment**, and
+both are now fixed in `tools/harness_inputs.py`:
+
+- `onset_hour` — *"the field the prompt says was given to you is absent from
+  the call block"*. True of the harness and false of production: `pipeline`
+  maps the judgment's `onset_hour` onto the `olw_blend` prediction row as
+  `onset` and reads it back from there, and the 2026-09-23 record carries
+  `olw_blend.onset = "15:00"`, which is the "Mid-afternoon from 15:00" the
+  narrative published.
+- `target_date` null on all 21 extracted rows — populated on every row of the
+  real record, 0 nulls of 9 at Day+0.
+
+That is the THIRD false not-found in three days, after the cold reader's
+`hours_old` and the case-sensitive `PEAK UV INDEX`. All three read exactly
+like findings. A harness that invents a gap costs what one that hides a real
+one costs, and the instrument is now part of what gets checked.
+
 ### Incidental findings from the harness, none caused by this change
 
 Recorded rather than chased; each wants its own look:
@@ -26350,7 +26382,23 @@ Recorded rather than chased; each wants its own look:
   probability there.
 - **MODEL TRACK RECORD contradicts itself for `kenya_met` at Day+3**: 16
   all-time checks and a 75% rate beside a `skill_profile_summary` saying
-  "Does not forecast at this lead".
+  "Does not forecast at this lead", while `LONG-RUN REVIEW` carries a usable
+  Day+3 finding for it on 16 checks. A model cannot both have scored checks
+  at a lead and not forecast there.
+- **A Day+3 ranking finding counts six models** — "only 10 points across 6
+  models with enough checks" — where `day3` holds five and `data_sufficiency`
+  says `kenya_met` is excluded there.
+- **`skill_profile_summary` is stale against the review beside it**, twice:
+  `kenya_met` Day+0 says "no findings established" while the review carries an
+  established tendency on 33 checks, and `ecmwf_ifs025` Day+0 is null while
+  the review carries three.
+- **CAMS `us_aqi` is nearly flat (55-62) while its own `pm2_5` swings 9.0 to
+  36.9** in the same rows. Consistent with `us_aqi` being a rolling 24-hour
+  figure, which would mean the hourly series cannot be read as "the air right
+  now" — worth confirming before any rule leans on it.
+- **GFS's daily sustained wind exceeds its own gust on seven of eight days**
+  at the secondary point, which is the same fetch defect seen above from a
+  second angle.
 
 ### The experiment, if one is wanted
 

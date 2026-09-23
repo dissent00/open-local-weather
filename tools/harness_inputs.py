@@ -45,11 +45,28 @@ for lead, key in ((3, "day3"), (7, "day7")):
             "rain_probability_pct": blend.get("rain_probability_pct"),
         })
 
+_day0_rows = (entry.get("prediction_rows") or [{}])[0].get("predictions", {}).get("day0", [])
+_blend_day0 = next(
+    (r for r in _day0_rows if r.get("model") == "olw_blend"), None
+)
+
 judgment = {
     "today_properties": {
         "rain": True,
         "rain_expected": entry["rain_expected"],
         "onset_window": entry["onset_window"],
+        # FROM THE BLEND ROW, because the entry does not carry it at top
+        # level — `pipeline` maps the judgment's `onset_hour` onto the
+        # `olw_blend` prediction as `onset` and reads it back from there.
+        # Reconstructing without it made a cold reader report on 2026-09-23
+        # that "the field the prompt says was given to you is absent from the
+        # call block", which is true of the HARNESS and false of the
+        # deployment. A harness that invents a gap costs the same as one that
+        # hides a real one.
+        "onset_hour": _blend_day0.get("onset") if _blend_day0 else None,
+        "rain_probability_pct": (
+            _blend_day0.get("rain_probability_pct") if _blend_day0 else None
+        ),
         "peak_wind_primary_kmh": entry["peak_wind_primary_kmh"],
         "peak_wind_secondary_kmh": entry["peak_wind_secondary_kmh"],
         "temp_high_c": entry["temp_high_c"],
