@@ -26073,6 +26073,118 @@ yet how that will play out."*
 
 ---
 
+## 176. Two thirds of the record blocks is repeated key names · **Built 2026-09-23**
+
+Item 174 asked which FIELDS could go. The bigger number is not in the values
+at all. `MODEL TRACK RECORD` is 18 rows of the same 23 keys, and pretty-printed
+JSON repeats every key on every row: **10,332 of its 15,646 characters, 66%,
+are key names**. The values are 5,314.
+
+So the block does not need ablating. It needs a header.
+
+| block | JSON | tab-separated | saved |
+|---|---:|---:|---:|
+| MODEL TRACK RECORD | 15,646 | 3,876 | **11,770** |
+| EXTRACTED PER-MODEL PREDICTIONS | 8,324 | 1,652 | **6,672** |
+| CALENDAR | 693 | 199 | 494 |
+| GROUND AQI STATIONS | 640 | 287 | 353 |
+
+~20,800 a message, ~41,600 a forecast, ~10,400 tokens — about twice what both
+of item 174's trims achieved, while losing NO values and making no judgement
+about what is load-bearing. That last part is the argument: every trim so far
+has had to decide what a rule might need, and been wrong about it once.
+
+**Why ablating this block is the wrong tool, checked rule by rule.** Only
+`rain_pct_trend` and `rain_pct_trend_delta` are named by any rule in either
+system prompt. But three rules read the rest without naming fields:
+
+- "a lead time where every model has been unreliable lately is a lead time to
+  hedge in words" — reads the recent figures, and nothing pre-computes it.
+- "the pair has NO verified checks at all, WHICH MODEL TRACK RECORD SHOWS AS A
+  ZERO COUNT" — `all_time_checks: 0` is how the forecaster tells "not scored
+  at this lead" from "no findings established". Load-bearing, and it would
+  have gone in a naive ablation.
+- Rule 2 and the skill-profile rule FORBID quoting or ranking from the
+  figures, which reads like permission to drop them and is not: forbidding a
+  use is not the same as removing the input the other rules weigh.
+
+**Measured, because a smaller prompt that reads worse is not a saving.** 52
+extraction questions against the real block, 24 of them on cells sitting after
+three or more nulls:
+
+| format | correct |
+|---|---|
+| JSON as sent | 52/52 |
+| tab-separated, `-` for null | 52/52, answers identical |
+| tab-separated, EMPTY cell for null | **51/52** |
+
+**The null marker is not cosmetic.** The empty-cell variant returned the
+NEIGHBOURING column's value for a field with 14 nulls before it — asked for
+`notes`, it gave `skill_profile_summary`. Runs of consecutive tabs make a
+reader miscount columns; 17% of this block's 414 cells are null. `-` costs 103
+characters and removes the failure.
+
+**Design, if built:** header row of column names, one row per entry, tab
+separated, `-` for null, free-text column last, tabs and newlines stripped
+from cells. The heading states the row/column contract, that `-` is null and
+not zero, and the units — which is where item 174 already put them.
+
+**`notes` is dead, and is STILL BEING SENT.** `TrackRecordEntry.notes: str =
+""` and nothing in the codebase ever assigns it. It cost 306 characters a
+message as `"notes": ""` and now costs one column of `-`, and it is the column
+the misread landed on. Not removed here: the operator scoped this change to
+the format, and dropping a field is a different decision from re-rendering
+one. It wants its own line whenever field-level ablation is next opened.
+
+**NOT a finding, checked:** `forecast_horizon_days` is populated (7 for
+gfs/ecmwf/best_match, 6 for icon/ukmo, 0 for kenya_met) and deliberately not
+sent — `pipeline.py` pops it with a comment saying item 150 step 3 decides how
+the forecaster is told a lead is beyond reach. An oversight-shaped thing that
+is a pending decision.
+
+**That open question was answered before shipping.** Four harness pairs on
+the 2026-09-23 03:01 data, same inputs, JSON against tabulated, scored on how
+many of the seven call values reach the prose:
+
+| | JSON | tabulated |
+|---|---|---|
+| call values cited, of 7 | 5, 6, 7, 5 — mean 5.75 | 7, 6, 7, 7 — mean 6.75 |
+| headings | 5/5 ×4 | 5/5 ×4 |
+| J/kg in Today's Forecast | none | none |
+| thunder phrase verbatim | ×4 | ×4 |
+
+Not one run where the table scored worse. n=4 makes that suggestive rather
+than proven; "no regression" is what it establishes, and that was the gate.
+
+**Measured end to end**, 2026-09-23 03:01 archive through current code:
+**108,478 → 79,823, 28,655 characters off the user message, 26.4%** — 57,310
+a forecast across the two calls, ~14,300 tokens. Item 174's two trims are
+10,580 of that; tabulating is the other 18,075.
+
+**What it cost to build, and what that says.** Four assertions in the two
+suites named JSON notation rather than the value they guarded, and had to be
+rewritten; one of them, `'"high_c": 31.0'`, could not simply be re-quoted,
+because `31.0` alone matches any column of a tab-separated row. It got a
+`table_column` helper instead and is now stronger than it was. That is the
+honest cost of a format change: the tests that named the format had to change
+with it, and each one had to be read to check the guard survived.
+
+**A mutation survived and the fixture was the reason.** Removing Dart's
+`lastColumns` handling — the rule putting free text in the last column —
+passed both suites, because the track-record fixture was three keys with no
+`skill_profile_summary`. Given production's shape, two rows and a null, the
+mutation bites. Third time this exact gap has been found in this project:
+`regional_pressure`, `forward_hourly`, now this. A fixture simpler than
+production tests a function simpler than the one that ships.
+
+**The harness needed extending again, and for the reason it exists.** The
+archive is JSON, and the fresh prompt renders four of these blocks as tables,
+so the extractor that found a block by looking for `{` under its heading found
+nothing on the fresh side and silently re-rendered only two of six. Blocks are
+separated by blank lines and neither JSON nor a table contains one, so the
+fresh side now reads heading-to-blank-line and is format-agnostic. The archive
+side still parses JSON, which is all it will ever hold.
+
 ## 175. The Dart vector runner silently drops arguments · **Recorded 2026-09-23**
 
 Found while fixing one instance of it. `vectors_test.dart` called

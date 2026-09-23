@@ -781,6 +781,101 @@ FORWARD_HOURLY_UNITS = (
 )
 
 
+#: What a table cell shows where there is no value.
+#:
+#: NOT AN EMPTY CELL, and this is measured rather than stylistic — ROADMAP
+#: item 176. A first draft left nulls as empty strings, so a row with several
+#: absent values became a run of consecutive tabs. Asked for a field with 14
+#: nulls before it, a cold reader returned the NEIGHBOURING column's value: it
+#: had lost count. With this marker the same reader scored 52/52, matching
+#: JSON exactly. 17% of MODEL TRACK RECORD's 414 cells are null, so the runs
+#: are not rare. The marker costs about a hundred characters a block.
+TABLE_NULL = "-"
+
+
+def _table_cell(value: Any) -> str:
+    """One value, rendered so that it cannot break the row it sits in.
+
+    A literal tab or newline inside a cell would end the column or the row
+    early and silently shift everything after it, which is the one way a
+    table can corrupt data that JSON cannot.
+    """
+    if value is None or value == "":
+        return TABLE_NULL
+
+    if isinstance(value, bool):
+        return "true" if value else "false"
+
+    return str(value).replace("\t", " ").replace("\n", " ").replace("\r", " ")
+
+
+def _table(rows: Any, *, group_column: str | None = None, last_columns: tuple[str, ...] = ()) -> str:
+    """Uniform records as a tab-separated table: the column names once, in a
+    header, instead of repeated on every row.
+
+    WHY THIS EXISTS — ROADMAP item 176. Pretty-printed JSON repeats every key
+    on every record, and these blocks are uniform: MODEL TRACK RECORD is 18
+    rows of the same 23 keys, of which **10,332 of 15,646 characters, 66%,
+    are key names**. Across the four uniform blocks a header saves ~20,800
+    characters a message, ~41,600 a forecast, WITHOUT DROPPING A SINGLE VALUE.
+    That last part is the argument for doing it this way rather than by
+    ablation: every field this project has removed needed a judgement about
+    what some rule might be reading, and one of those judgements was wrong.
+
+    Measured before it was adopted: 52 extraction questions against the real
+    block, 24 of them on cells sitting after three or more nulls. JSON 52/52,
+    this format 52/52, answers identical. A forecaster given the tabulated
+    prompt also cited MORE of the call correctly than one given the JSON.
+
+    `group_column` flattens a dict of lists — EXTRACTED PER-MODEL PREDICTIONS
+    is keyed by lead — into one table with the key as its first column, which
+    is cheaper than four headers and keeps every row comparable.
+
+    `last_columns` pushes free text to the right. A long sentence in the
+    middle of a row is what a reader is most likely to lose its place in.
+    """
+    # ROUNDED LIKE `_json`, which applies `_round_for_prompt` before encoding.
+    # Nothing in today's payloads changes under it, so this buys nothing now
+    # and prevents a table and a JSON block disagreeing about the same number
+    # the first time a field arrives with more decimals — and Python and Dart
+    # disagreeing with it.
+    rounded = _round_for_prompt(rows)
+
+    if isinstance(rounded, dict):
+        flat = [
+            {group_column: group, **row}
+            for group, group_rows in rounded.items()
+            for row in (group_rows or [])
+        ]
+    else:
+        flat = list(rounded or [])
+
+    # SUPPLIED AND EMPTY IS NOT THE SAME AS NOT SUPPLIED — ensemble item 12.
+    # The app once let these default to `[]` and a forecaster read the empty
+    # list as a result. There are no columns to write a header from, so the
+    # old notation is kept for exactly this case: it says "supplied, no
+    # entries", which is what the caller's `is not None` guard is preserving.
+    if not flat:
+        return "[]"
+
+    # First-seen order, so the table reads in the order the record was built
+    # and a new field appears where it was added rather than alphabetically.
+    columns: list[str] = []
+    for row in flat:
+        for key in row:
+            if key not in columns:
+                columns.append(key)
+
+    for name in last_columns:
+        if name in columns:
+            columns.append(columns.pop(columns.index(name)))
+
+    lines = ["\t".join(columns)]
+    lines.extend("\t".join(_table_cell(row.get(c)) for c in columns) for row in flat)
+
+    return "\n".join(lines)
+
+
 def _forward_window_scope(forward_hourly: Any, narrowed: bool) -> str:
     """The parenthetical after "HOURS AHEAD", which has to state how far the
     window actually reaches.
@@ -1093,8 +1188,8 @@ def build_user_prompt(
     ground_aqi_block = (
         f"""
 
-GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
-{_json(ground_aqi_readings) if ground_aqi_readings else "Unavailable — no ground station reported data today."}
+GROUND AQI STATIONS (per-station readings, ONE ROW PER STATION; list each by name in the Detailed Discussion. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value):
+{_table(ground_aqi_readings) if ground_aqi_readings else "Unavailable — no ground station reported data today."}
 
 GROUND AQI SUMMARY (pre-computed by code — state as given if present):
 {_json(ground_aqi_summary) if ground_aqi_summary is not None else "Not applicable — no station reported a numeric AQI right now."}
@@ -1221,8 +1316,8 @@ Today's Date: {today.isoformat()} | Yesterday: {yesterday.isoformat()} | Public 
 
 ISSUED: {_issued_line(issuance)}
 
-CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 7 of the 39 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
-{_json(forward_calendar) if forward_calendar else "Unavailable — name no weekday and no date beyond what other blocks give you verbatim."}
+CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 7 of the 39 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
+{_table(forward_calendar) if forward_calendar else "Unavailable — name no weekday and no date beyond what other blocks give you verbatim."}
 
 FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
 {_forecast_windows_block(forecast_windows)}
@@ -1233,8 +1328,8 @@ HOURS AHEAD ({_forward_window_scope(forward_hourly, forward_window_narrowed)}):
 TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent, UV index unitless, particulates µg/m³, air-quality indices on the scale their own key names. THE METAR IS NOT IN THESE UNITS: its "wspd" is KNOTS, "visib" statute miles, "altim" hPa, "temp" and "dewp" °C, "wdir" degrees):
 {_json(weather_payload)}
 
-EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):
-{_json(model_predictions_context) if model_predictions_context is not None else "Unavailable this run."}
+EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value; the "lead" column says which call the row is: day0, day3, day7, or secondary_day0 for the second point; a null field means that model does not forecast it, never zero or "no"):
+{_table(model_predictions_context, group_column="lead") if model_predictions_context is not None else "Unavailable this run."}
 
 GUIDANCE RECENCY (pre-computed by code — how old the model data behind everything above is, as a FLOOR: the cycle the slowest fetched model is still on, which faster ones may have moved past):
 {_json(guidance_recency) if guidance_recency is not None else "Unavailable — this run could not establish which model cycle its guidance came from."}
@@ -1266,8 +1361,8 @@ OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — M
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. precip_error_mm -7.6 is a model that called 8 mm on a day that saw 0.4, and +5.2 one whose day total came in UNDER the rain that fell. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — the direction lives in these fields and nowhere else. THREE FIELDS HERE ARE NOT ERRORS AND ARE EASY TO MISREAD — ROADMAP item 142, finding 6, which found them arriving with real data and no instruction at all. "convective_correct" is whether that model's THUNDER call verified, true or false; on a day whose convective flag is true it is the most decision-relevant thing in this block, and a model that has been getting it wrong here is one to weigh less on thunder today. "rain_brier" scores the model's own rain PROBABILITY rather than its yes/no call - lower is better, 0 is a confident correct call, 0.25 is what an even hedge scores whatever happens, and above that is confidence in the wrong direction. best_match's rain probability IS ecmwf_ifs025's under a second name - measured identical on every stored row, and the review's data_sufficiency says so - so their rain_brier figures are the same evidence twice: weigh them once, and never count the pair as two models agreeing on a probability. "cloud_error_pct" is in PERCENTAGE POINTS and follows the same observed-minus-forecast convention as the rest. Most stored notes that had it backwards were corrected on 2026-09-10 and say so; the ones that could not be verified mechanically were left alone rather than guessed at):
 {_json(verification_context) if verification_context is not None else "Unavailable — no verification results supplied this run."}
 
-MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
-{_json(track_record_context) if track_record_context is not None else "Unavailable — no track record supplied this run."}
+MODEL TRACK RECORD (already computed rolling stats, ONE ROW PER MODEL PER LEAD TIME. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value — for a count that means the pair has never been scored at that lead, which is NOT the same as a zero. Percentages are percent, each error column is in the unit its name gives, dates are ISO):
+{_table(track_record_context, last_columns=("skill_profile_summary",)) if track_record_context is not None else "Unavailable — no track record supplied this run."}
 
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):

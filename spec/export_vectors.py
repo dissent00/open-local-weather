@@ -1973,7 +1973,28 @@ def export_user_prompt() -> None:
         "yesterday": date(2026, 8, 18),
         "public_webpage_url": "https://example.com/",
         "verification_context": [{"lead_time_days": 0, "per_model_scores": {"gfs_seamless": {"rain_correct": True}}}],
-        "track_record_context": [{"model": "gfs_seamless", "lead_time_days": 0, "rain_pct": 62.5}],
+        # PRODUCTION'S SHAPE, not a three-key stand-in — ROADMAP item 176.
+        # The old fixture had no `skill_profile_summary`, so the rule that
+        # pushes free text to the last column was reachable by no case and a
+        # mutation removing it SURVIVED both suites. Two rows, because one
+        # cannot show that a column keeps its position; a null in the second,
+        # because the null marker is the part a reader misreads without.
+        "track_record_context": [
+            {
+                "model": "gfs_seamless",
+                "lead_time_days": 0,
+                "rain_pct": 62.5,
+                "skill_profile_summary": "At Day+0, runs warm on daytime highs.",
+                "all_time_checks": 43,
+            },
+            {
+                "model": "ukmo_seamless",
+                "lead_time_days": 7,
+                "rain_pct": None,
+                "skill_profile_summary": None,
+                "all_time_checks": 0,
+            },
+        ],
         "ground_aqi_readings": [{"name": "Dunga Beach", "aqi": 42}],
         # Item 163: the block names WHICH absence. Passed here so the
         # vectors exercise a real message rather than the wiring-gap text.

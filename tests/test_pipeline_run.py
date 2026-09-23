@@ -383,6 +383,20 @@ def predictions_block(user_prompt: str) -> str:
     return user_prompt[start : user_prompt.index("\nCONVECTIVE INSTABILITY", start)]
 
 
+def table_column(block: str, column: str) -> list[str]:
+    """Every value in one column of a tab-separated block — ROADMAP item 176.
+
+    Worth a helper rather than a substring: in a table `31.0` on its own can
+    match any column of the row, so an assertion written that way would pass
+    for the right number in the wrong place. This reads the header, finds the
+    column's index, and returns that cell from each row.
+    """
+    lines = [l for l in block.splitlines() if "\t" in l]
+    header = lines[0].split("\t")
+    i = header.index(column)
+    return [l.split("\t")[i] for l in lines[1:]]
+
+
 def test_dry_run_does_not_write_any_files(tmp_path):
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=True)
@@ -1702,7 +1716,9 @@ def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypat
 
     _, user_prompt = evening.calls[-1]
     block = predictions_block(user_prompt)
-    assert '"high_c": 31.0' in block, "the evening is shown the cycle the evening read"
+    assert "31.0" in table_column(block, "high_c"), (
+        "the evening is shown the cycle the evening read"
+    )
 
     rows = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows
     assert len(rows) == 2
@@ -3077,7 +3093,10 @@ def test_a_stored_summary_carrying_a_figure_never_comes_back(tmp_path):
     _, user_prompt = llm.calls[-1]
 
     assert "MODEL TRACK RECORD" in user_prompt
-    assert '"skill_profile_summary"' in user_prompt, "the block never carried one"
+    # The column header, since the block is a table now — item 176. Still the
+    # same guard: it stops the assertion below passing because the summary
+    # column was absent altogether rather than because the figure was filtered.
+    assert "\tskill_profile_summary" in user_prompt, "the block never carried one"
     assert "63% of the time too warm" not in user_prompt
 
 

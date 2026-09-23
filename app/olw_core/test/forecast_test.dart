@@ -411,7 +411,10 @@ void main() {
 
     expect(llm.seenUserPrompt, contains('EXTRACTED PER-MODEL PREDICTIONS'));
     for (final p in run.day0Predictions.where((p) => p.model != blendModelId)) {
-      expect(llm.seenUserPrompt, contains('"model": "${p.model}"'));
+      // The predictions are a table now — upstream item 176 — so the model is
+      // a cell rather than a JSON value. Tab-delimited on both sides so this
+      // cannot pass on a substring of a longer model name.
+      expect(llm.seenUserPrompt, contains('\t${p.model}\t'));
     }
 
     // The blend is scored and stored, and never shown to the forecaster.
@@ -557,7 +560,8 @@ void main() {
     );
 
     expect(llm.seenUserPrompt, contains('GROUND AQI STATIONS'));
-    expect(llm.seenUserPrompt, contains('"aqi": 46'));
+    // A table row now — upstream item 176. Still the station's own reading.
+    expect(llm.seenUserPrompt, contains('\t46\t'));
     expect(
       llm.seenSystemPrompt,
       contains('Ground AQI stations may occasionally be offline'),
@@ -997,7 +1001,7 @@ void main() {
         reason: 'the calendar was not wired into this path');
     // The pairing itself, not just the block: 2026-08-19 is a Wednesday, and
     // a port a day out would render the block and still be wrong.
-    expect(llm.seenUserPrompt, contains('"day_name": "Wednesday"'));
+    expect(llm.seenUserPrompt, contains('2026-08-19\tWednesday'));
   });
 
   test('generateForecast computes the derived guidance recency floor', () async {

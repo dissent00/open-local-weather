@@ -174,8 +174,12 @@ def test_user_prompt_serializes_ground_aqi_readings_and_summary_when_present():
         local_bulletin_source_name="KMD",
         local_bulletin_text="text",
     )
-    assert '"aqi": 42' in prompt
-    assert "Kisumu Airport" in prompt
+    # THE STATIONS ARE A TABLE NOW — ROADMAP item 176 — so the assertion is on
+    # the row rather than on JSON notation. The summary beside it is still an
+    # object, which is the point of checking both here: one block changed
+    # format and its neighbour did not.
+    assert "name\tstation_id\taqi\tpm25\tpm10" in prompt
+    assert "Kisumu Airport\tA418534\t42\t18.0\t30.0" in prompt
     assert '"highest_station_name": "Dunga Beach"' in prompt
 
 
@@ -764,7 +768,9 @@ def test_user_prompt_keeps_rendering_supplied_empty_record_blocks_as_lists():
     prompt = _minimal_user_prompt()
     assert "no verification results supplied" not in prompt
     assert "no track record supplied" not in prompt
-    assert "MODEL TRACK RECORD (already computed rolling stats, per model per lead time):\n[]" in prompt
+    # The heading gained the table contract; the "[]" is what this guards.
+    assert "MODEL TRACK RECORD (already computed rolling stats, ONE ROW PER MODEL" in prompt
+    assert "which is NOT the same as a zero. Percentages are percent, each error column is in the unit its name gives, dates are ISO):\n[]" in prompt
 
 
 def _section(prompt: str, name: str) -> str:

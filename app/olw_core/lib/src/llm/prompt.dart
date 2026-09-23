@@ -622,6 +622,89 @@ const instabilityGapNotice =
     'measurements and none of them substitutes for CAPE. A reader was assured of a dry '
     'evening on 2026-08-29 by exactly that inference and was rained on.';
 
+/// What a table cell shows where there is no value.
+///
+/// NOT AN EMPTY CELL, and this is measured — upstream ROADMAP item 176. A
+/// first draft left nulls empty, so a row with several absent values became a
+/// run of consecutive tabs, and a cold reader asked for a field with 14 nulls
+/// before it returned the NEIGHBOURING column's value. With this marker the
+/// same reader scored 52/52, matching JSON exactly.
+const tableNull = '-';
+
+String _tableCell(Object? value) {
+  if (value == null || value == '') return tableNull;
+  if (value is bool) return value ? 'true' : 'false';
+
+  // A literal tab or newline would end the column or the row early and shift
+  // everything after it — the one way a table can corrupt data JSON cannot.
+  return value
+      .toString()
+      .replaceAll('\t', ' ')
+      .replaceAll('\n', ' ')
+      .replaceAll('\r', ' ');
+}
+
+/// Uniform records as a tab-separated table: the column names once, in a
+/// header, instead of repeated on every row.
+///
+/// Upstream ROADMAP item 176. Pretty-printed JSON repeats every key on every
+/// record, and these blocks are uniform: MODEL TRACK RECORD is 18 rows of the
+/// same 23 keys, of which 66% of the characters are key names. Across the four
+/// uniform blocks a header saves ~20,800 characters a message WITHOUT DROPPING
+/// A SINGLE VALUE, which is why it is preferred to ablation here.
+///
+/// `groupColumn` flattens a map of lists — EXTRACTED PER-MODEL PREDICTIONS is
+/// keyed by lead — into one table with the key as its first column.
+/// `lastColumns` pushes free text right, where a reader is least likely to
+/// lose its place.
+String promptTable(
+  Object? rows, {
+  String? groupColumn,
+  List<String> lastColumns = const [],
+}) {
+  // Rounded like promptJson, so a table and a JSON block cannot disagree
+  // about the same number, and neither can the two languages.
+  final rounded = roundForPrompt(rows);
+
+  final flat = <Map<String, Object?>>[];
+  if (rounded is Map) {
+    for (final e in rounded.entries) {
+      for (final r in (e.value as List? ?? const [])) {
+        flat.add(<String, Object?>{
+          groupColumn!: e.key,
+          ...(r as Map).cast<String, Object?>(),
+        });
+      }
+    }
+  } else if (rounded is List) {
+    for (final r in rounded) {
+      flat.add((r as Map).cast<String, Object?>());
+    }
+  }
+
+  // SUPPLIED AND EMPTY IS NOT THE SAME AS NOT SUPPLIED — ensemble item 12.
+  // There are no columns to build a header from, so the old notation is kept
+  // for exactly this case: it says "supplied, no entries".
+  if (flat.isEmpty) return '[]';
+
+  final columns = <String>[];
+  for (final row in flat) {
+    for (final k in row.keys) {
+      if (!columns.contains(k)) columns.add(k);
+    }
+  }
+  for (final name in lastColumns) {
+    if (columns.remove(name)) columns.add(name);
+  }
+
+  final out = StringBuffer(columns.join('\t'));
+  for (final row in flat) {
+    out.write('\n');
+    out.write(columns.map((c) => _tableCell(row[c])).join('\t'));
+  }
+  return out.toString();
+}
+
 /// The units HOURS AHEAD declares in its heading, since item 174 stopped
 /// sending `hourly_units` — 2,025 characters of map against this one clause.
 ///
@@ -936,8 +1019,8 @@ String buildUserPrompt({
       ? '''
 
 
-GROUND AQI STATIONS (per-station readings; list each by name in the Detailed Discussion):
-${groundAqiReadings == null || (groundAqiReadings is List && groundAqiReadings.isEmpty) ? 'Unavailable — no ground station reported data today.' : promptJson(groundAqiReadings)}
+GROUND AQI STATIONS (per-station readings, ONE ROW PER STATION; list each by name in the Detailed Discussion. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value):
+${groundAqiReadings == null || (groundAqiReadings is List && groundAqiReadings.isEmpty) ? 'Unavailable — no ground station reported data today.' : promptTable(groundAqiReadings)}
 
 GROUND AQI SUMMARY (pre-computed by code — state as given if present):
 ${groundAqiSummary == null ? 'Not applicable — no station reported a numeric AQI right now.' : promptJson(groundAqiSummary)}
@@ -963,8 +1046,8 @@ Today's Date: ${formatDate(today)} | Yesterday: ${formatDate(yesterday)} | Publi
 
 ISSUED: ${issuedLine(issuance)}
 
-CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 7 of the 39 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
-${forwardCalendar == null || forwardCalendar.isEmpty ? 'Unavailable — name no weekday and no date beyond what other blocks give you verbatim.' : promptJson(forwardCalendar)}
+CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 7 of the 39 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
+${forwardCalendar == null || forwardCalendar.isEmpty ? 'Unavailable — name no weekday and no date beyond what other blocks give you verbatim.' : promptTable(forwardCalendar)}
 
 FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
 ${forecastWindowsBlock(forecastWindows)}
@@ -975,8 +1058,8 @@ ${forwardHourly == null ? 'Unavailable this run.' : promptJson(trimmedForwardHou
 TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent, UV index unitless, particulates µg/m³, air-quality indices on the scale their own key names. THE METAR IS NOT IN THESE UNITS: its "wspd" is KNOTS, "visib" statute miles, "altim" hPa, "temp" and "dewp" °C, "wdir" degrees):
 ${promptJson(weatherPayload)}
 
-EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):
-${modelPredictionsContext == null ? 'Unavailable this run.' : promptJson(modelPredictionsContext)}
+EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value; the "lead" column says which call the row is: day0, day3, day7, or secondary_day0 for the second point; a null field means that model does not forecast it, never zero or "no"):
+${modelPredictionsContext == null ? 'Unavailable this run.' : promptTable(modelPredictionsContext, groupColumn: 'lead')}
 
 GUIDANCE RECENCY (pre-computed by code — how old the model data behind everything above is, as a FLOOR: the cycle the slowest fetched model is still on, which faster ones may have moved past):
 ${guidanceRecency == null ? 'Unavailable — this run could not establish which model cycle its guidance came from.' : promptJson(guidanceRecency)}
@@ -1008,8 +1091,8 @@ ${observedSoFar ?? 'Unavailable — the station reported nothing measurable toda
 PRE-COMPUTED VERIFICATION RESULTS (already scored by code — write ABOUT these. EVERY ERROR FIELD IS OBSERVED MINUS FORECAST, so a POSITIVE error means the model came in UNDER what actually happened and a NEGATIVE error means it came in OVER: wind_error_kmh +21.1 is a model whose gusts were too LOW, low_error_c -2.3 is a model whose overnight lows were too WARM. precip_error_mm -7.6 is a model that called 8 mm on a day that saw 0.4, and +5.2 one whose day total came in UNDER the rain that fell. The same convention holds in LONG-RUN REVIEW below. Do not take the convention from any narrative note — the direction lives in these fields and nowhere else. THREE FIELDS HERE ARE NOT ERRORS AND ARE EASY TO MISREAD — ROADMAP item 142, finding 6, which found them arriving with real data and no instruction at all. "convective_correct" is whether that model's THUNDER call verified, true or false; on a day whose convective flag is true it is the most decision-relevant thing in this block, and a model that has been getting it wrong here is one to weigh less on thunder today. "rain_brier" scores the model's own rain PROBABILITY rather than its yes/no call - lower is better, 0 is a confident correct call, 0.25 is what an even hedge scores whatever happens, and above that is confidence in the wrong direction. best_match's rain probability IS ecmwf_ifs025's under a second name - measured identical on every stored row, and the review's data_sufficiency says so - so their rain_brier figures are the same evidence twice: weigh them once, and never count the pair as two models agreeing on a probability. "cloud_error_pct" is in PERCENTAGE POINTS and follows the same observed-minus-forecast convention as the rest. Most stored notes that had it backwards were corrected on 2026-09-10 and say so; the ones that could not be verified mechanically were left alone rather than guessed at):
 ${verificationContext == null ? 'Unavailable — no verification results supplied this run.' : promptJson(verificationContext)}
 
-MODEL TRACK RECORD (already computed rolling stats, per model per lead time):
-${trackRecordContext == null ? 'Unavailable — no track record supplied this run.' : promptJson(trackRecordContext)}
+MODEL TRACK RECORD (already computed rolling stats, ONE ROW PER MODEL PER LEAD TIME. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value — for a count that means the pair has never been scored at that lead, which is NOT the same as a zero. Percentages are percent, each error column is in the unit its name gives, dates are ISO):
+${trackRecordContext == null ? 'Unavailable — no track record supplied this run.' : promptTable(trackRecordContext, lastColumns: const ['skill_profile_summary'])}
 
 
 LONG-RUN REVIEW (computed in code over the whole stored record; error signs are OBSERVED MINUS FORECAST, as above, and each finding's wording already follows that convention — these are the only cross-model long-run claims available to you; if a ranking is absent the record does not support one, so do NOT derive your own from the track record above):

@@ -100,14 +100,57 @@ judgment = {
 #: is one of the things that changes: on 2026-09-23 the daily block went from
 #: a bare "TODAY'S MULTI-MODEL GUIDANCE:" to one carrying its units, and a
 #: marker written with the parenthesis matched neither archive nor rebuild.
-RERENDERABLE = ("HOURS AHEAD", "TODAY'S MULTI-MODEL GUIDANCE")
+RERENDERABLE = (
+    "HOURS AHEAD",
+    "TODAY'S MULTI-MODEL GUIDANCE",
+    # Tabulated by item 176. Added the same day: without them the harness
+    # showed the JSON the archive was written with, which is the exact trap
+    # this mechanism exists to close.
+    "MODEL TRACK RECORD",
+    "EXTRACTED PER-MODEL PREDICTIONS",
+    "CALENDAR",
+    "GROUND AQI STATIONS",
+)
+
+#: Which `build_user_prompt` argument each block's payload is.
+BLOCK_ARGUMENT = {
+    "HOURS AHEAD": "forward_hourly",
+    "TODAY'S MULTI-MODEL GUIDANCE": "today_weather_data",
+    "MODEL TRACK RECORD": "track_record_context",
+    "EXTRACTED PER-MODEL PREDICTIONS": "model_predictions_context",
+    "CALENDAR": "forward_calendar",
+    "GROUND AQI STATIONS": "ground_aqi_readings",
+}
+
+
+def _rendered(text, prefix):
+    """A block as it appears, as (start, end, heading) — whatever its format.
+
+    Blocks are separated by blank lines and neither pretty-printed JSON nor a
+    table contains one, so the body runs from the heading to the next blank
+    line. Format-agnostic on purpose: the FRESH prompt may render a block as a
+    table where the archive had JSON, which is the whole point of item 176,
+    and an extractor that assumed JSON silently found nothing on that side.
+    """
+    lines = text.splitlines()
+    start = next(
+        (i for i, l in enumerate(lines)
+         if l.startswith(prefix) and i + 1 < len(lines) and lines[i + 1].strip()),
+        None,
+    )
+    if start is None:
+        return None
+
+    end = next((i for i in range(start + 1, len(lines)) if not lines[i].strip()), len(lines))
+    return start, end - 1, lines[start]
 
 
 def _block(text, prefix):
     """The heading line and its pretty-printed JSON, as (start, end, heading, payload).
 
-    `_json` indents by two, so a block ends at the first column-0 "}". Nothing
-    else in the user message starts a line that way.
+    For the ARCHIVE side, which is always JSON: it was written before any
+    block was tabulated. `_json` indents by two, so a block ends at the first
+    column-0 closer.
     """
     lines = text.splitlines()
     start = next(
@@ -115,14 +158,15 @@ def _block(text, prefix):
             i for i, l in enumerate(lines)
             # The heading is the occurrence with a payload under it. The same
             # words appear in prose elsewhere in the message.
-            if l.startswith(prefix) and i + 1 < len(lines) and lines[i + 1] == "{"
+            if l.startswith(prefix) and i + 1 < len(lines) and lines[i + 1] in ("{", "[")
         ),
         None,
     )
     if start is None:
         return None
 
-    end = next((i for i in range(start + 2, len(lines)) if lines[i] == "}"), None)
+    closer = "}" if lines[start + 1] == "{" else "]"
+    end = next((i for i in range(start + 2, len(lines)) if lines[i] == closer), None)
     if end is None:
         return None
 
@@ -151,28 +195,25 @@ def _rerendered(archived_text):
     if any(b is None for b in blocks.values()):
         return archived_text, []
 
-    hours, daily = blocks["HOURS AHEAD"], blocks["TODAY'S MULTI-MODEL GUIDANCE"]
+    payloads = {BLOCK_ARGUMENT[p]: b[3] for p, b in blocks.items()}
     fresh = build_user_prompt(
         today=date.today(),
         yesterday=date.today(),
         public_webpage_url="",
         verification_context=None,
-        track_record_context=None,
-        ground_aqi_readings=None,
         ground_aqi_summary=None,
         yesterday_actual=None,
-        today_weather_data=daily[3],
         local_bulletin_source_name="",
         local_bulletin_text="",
-        forward_hourly=hours[3],
         # The archive's own heading says whether the window was narrowed.
-        forward_window_narrowed="REST OF TODAY ONLY" in hours[2],
+        forward_window_narrowed="REST OF TODAY ONLY" in blocks["HOURS AHEAD"][2],
+        **payloads,
     )
 
     out, replaced = archived_text, []
     for prefix in RERENDERABLE:
-        old, new = _block(out, prefix), _block(fresh, prefix)
-        if new is None:
+        old, new = _rendered(out, prefix), _rendered(fresh, prefix)
+        if old is None or new is None:
             continue
 
         lines, nl = out.splitlines(), fresh.splitlines()
