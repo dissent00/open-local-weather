@@ -91,7 +91,7 @@ from openlocalweather.tiles import (
     notable_moves,
     wind_anchors,
 )
-from openlocalweather.llm.provider import provider_identity, resolve_active
+from openlocalweather.llm.provider import provider_identity, resolve_active, served_identity
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
@@ -536,7 +536,7 @@ def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
 
 def _generate_forecast(
     provider, judgment_prompt: str, narrative_prompt: str, user_prompt: str, holder: dict
-) -> tuple[forecast_call.ForecastCall, ResponseMeta]:
+) -> tuple[forecast_call.ForecastCall, ResponseMeta, dict[str, tuple[str, str]]]:
     """The two-call forecast, plus one meta describing both calls.
 
     The call ORDER lives in llm/forecast_call.py, shared with replay. What
@@ -544,17 +544,29 @@ def _generate_forecast(
     call's report has to be taken before the next one overwrites it.
     """
     metas: dict[str, ResponseMeta] = {}
+    # WHO SERVED EACH CALL — item 171. Taken here, per call, because a chain
+    # clears `active_provider` when `generate` returns and the two calls can
+    # be served by different vendors: on 2026-09-23 Gemini took the judgment
+    # call and an OpenRouter model wrote the narrative. A single identity read
+    # after both calls could not have said that, and the one read before this
+    # change said neither — it read the chain's first entry.
+    served: dict[str, tuple[str, str]] = {}
 
     def _snapshot(name: str) -> None:
         metas[name] = _response_meta(holder)
+        served[name] = served_identity(provider)
 
     call = generate_forecast(
         provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
     )
 
-    return call, _combined_meta(
-        metas.get(forecast_call.JUDGMENT, ResponseMeta()),
-        metas.get(forecast_call.NARRATIVE, ResponseMeta()),
+    return (
+        call,
+        _combined_meta(
+            metas.get(forecast_call.JUDGMENT, ResponseMeta()),
+            metas.get(forecast_call.NARRATIVE, ResponseMeta()),
+        ),
+        served,
     )
 
 
@@ -2523,6 +2535,13 @@ def _compose_log_entry(
     narrative_prompt: str,
     user_prompt: str,
     last_response: Any,
+    # WHO SERVED EACH CALL, keyed by `forecast_call.JUDGMENT` / `.NARRATIVE`
+    # — item 171. Passed in rather than read off `deps.llm_provider` here,
+    # because by the time this runs the chain has cleared `active_provider`
+    # and the provider answers with its FIRST entry whoever actually served.
+    # Empty on a path that made no call, where the provider's own idle answer
+    # is the honest one.
+    served: dict[str, tuple[str, str]] | None = None,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
 
@@ -2682,8 +2701,21 @@ def _compose_log_entry(
         ),
         meta=LogEntryMeta(
             generated_at_utc=datetime.now(timezone.utc),
-            llm_provider=type(deps.llm_provider).__name__,
-            llm_model=getattr(deps.llm_provider, "model", "unknown"),
+            # WHO ACTUALLY SERVED, not what the chain would try first —
+            # ROADMAP item 171. These name the JUDGMENT call because that is
+            # the call whose output is scored and published, and `replay.py`
+            # partitions the accuracy record by `llm_model`: filing a scored
+            # forecast under a model that did not make it answers "is this
+            # model better" from the wrong pile. The narrative's server is
+            # recorded separately below, because the two can differ.
+            llm_provider=(served or {}).get(
+                forecast_call.JUDGMENT, (type(deps.llm_provider).__name__, "")
+            )[0],
+            llm_model=(served or {}).get(
+                forecast_call.JUDGMENT,
+                ("", getattr(deps.llm_provider, "model", "unknown")),
+            )[1],
+            narrative_llm_model=(served or {}).get(forecast_call.NARRATIVE, (None, None))[1],
             pipeline_version=deps.pipeline_version,
             system_prompt_sha256=prompt_archive.combined_prompt_sha256(
                 judgment_prompt, narrative_prompt
@@ -3635,7 +3667,7 @@ def _issue_forecast(
         purpose="forecast",
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
-    _call, _call_meta = _generate_forecast(
+    _call, _call_meta, _served = _generate_forecast(
         deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
     )
     _verify_spend()
@@ -3722,6 +3754,7 @@ def _issue_forecast(
         narrative_prompt=narrative_prompt,
         user_prompt=user_prompt,
         last_response=_last_response,
+        served=_served,
     )
 
     published = False

@@ -55,9 +55,30 @@ class FallbackProvider:
         # a stale value would attribute the next caller's request to whoever
         # happened to answer the previous one.
         self.active_provider = None
+        # WHICH CHILD LAST ANSWERED, and deliberately NOT cleared between
+        # calls — item 171. `active_provider` answers "who is spending right
+        # now" and must go stale-proof; this answers "who produced the thing
+        # being recorded", which is asked after the call has returned and the
+        # first attribute is already None. A forecast makes two calls and the
+        # pipeline snapshots this after each, so the two can differ — on
+        # 2026-09-23 Gemini took the judgment call and an OpenRouter model
+        # wrote the narrative.
+        self.last_served = None
         self._before_attempt = None
         self._after_attempt = None
         self._after_response = None
+
+    @property
+    def served_provider(self):
+        """The child a record about the last output should credit.
+
+        `last_served` once anything has answered, and the entry that WOULD be
+        tried first before that — an idle chain has produced nothing to
+        credit, and "what will this deployment use" is the only honest answer
+        to the question at that point. Keeps `_providers` private; the
+        `model` property below reads it the same way and for the same reason.
+        """
+        return self.last_served or self._providers[0]
 
     @property
     def model(self) -> str:
@@ -128,7 +149,16 @@ class FallbackProvider:
             name, model = type(provider).__name__, getattr(provider, "model", "unknown")
             self.active_provider = provider
             try:
-                return provider.generate(system_prompt, user_prompt, response_schema)
+                answer = provider.generate(system_prompt, user_prompt, response_schema)
+                # WHO ANSWERED, KEPT PAST THE `finally` BELOW — item 171.
+                # `active_provider` is cleared the moment this returns, so
+                # anything asking afterwards — and the log entry is written
+                # afterwards — resolves back to this wrapper and reads
+                # `.model`, which is the FIRST link whoever served. That is
+                # how a forecast written end to end by a fallback was filed
+                # under `gemini-3.6-flash`.
+                self.last_served = provider
+                return answer
             except LLMUnavailableError as e:
                 # LOUD, because a silent fallback is the failure `config.py`'s
                 # validator already warns about: a deployment quietly served by

@@ -4636,3 +4636,53 @@ def test_the_uv_index_rolls_to_tomorrow_once_the_horizon_does(tmp_path, monkeypa
     assert uv_band(dusk.uv_index) == "High"
     # and the source is recorded either way, so item 167 can swap it
     assert dusk.uv_index_source == "gfs_seamless"
+
+
+def test_the_entry_names_the_link_that_served_not_the_one_that_failed(tmp_path):
+    """ROADMAP item 171, end to end through a real run.
+
+    `test_fallback.py` pins the resolver; this pins that the ENTRY uses it.
+    The two are not the same assertion, and the gap between them is where the
+    bug lived: `served_identity` was always available in spirit —
+    `provider_identity` resolves the live child — and the record still read
+    `.model` off the wrapper, which is the FIRST entry whoever served.
+
+    The 2026-09-22 15:01Z forecast was written end to end by a fallback after
+    Gemini returned four 503s and was filed under `gemini-3.6-flash`. Since
+    `replay.py` partitions the accuracy record by `meta.llm_model`, that files
+    a scored forecast under a model that did not make it.
+    """
+    from openlocalweather.llm.errors import LLMUnavailableError
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    class Down:
+        model = "gemini-3.6-flash"
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            raise LLMUnavailableError("503")
+
+    served = FakeLLMProvider()
+    served.model = "nex-agi/nex-n2.5-pro:free"
+
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([Down(), served])),
+        today=date(2026, 8, 11),
+        dry_run=False,
+    )
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    assert entry.meta.llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert entry.meta.llm_provider == "FakeLLMProvider"
+    # Both calls fell through to the same link here, so the prose is credited
+    # to it too. The fields differ only when the chain moves between calls.
+    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+
+
+def test_an_unchained_provider_is_named_exactly_as_before(tmp_path):
+    """The ordinary deployment. Item 171 changed where the name comes from,
+    and a run with no chain must be unaffected by that."""
+    issue(make_deps(tmp_path, llm=FakeLLMProvider()), today=date(2026, 8, 11), dry_run=False)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    assert entry.meta.llm_provider == "FakeLLMProvider"
+    assert entry.meta.llm_model == "fake-model"

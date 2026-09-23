@@ -97,6 +97,42 @@ def provider_identity(provider) -> tuple[str, str]:
     return type(live).__name__, getattr(live, "model", "unknown")
 
 
+def resolve_served(provider):
+    """The object that last ANSWERED, through any chain wrappers.
+
+    The after-the-fact twin of `resolve_active`. A wrapper sets `last_served`
+    when a child returns, so this still has an answer once `active_provider`
+    has been cleared — which is the state every caller writing a record is in.
+
+    Falls back to the first entry a chain would try when nothing has served
+    yet, because "what will this deployment use" is the honest answer to an
+    idle question, and to the object itself when it is not a chain.
+    """
+    served = getattr(provider, "served_provider", None)
+    if served is not None and served is not provider:
+        return resolve_served(served)
+
+    return provider
+
+
+def served_identity(provider) -> tuple[str, str]:
+    """Who to CREDIT for the output just produced: (class name, model).
+
+    ROADMAP item 171. `provider_identity` is right during a call and wrong
+    after it: the chain clears `active_provider` in a `finally`, so a record
+    written afterwards resolves back to the wrapper and reads its `.model` —
+    the FIRST link, whoever actually served. The 2026-09-22 15:01Z forecast
+    was written end to end by a fallback and filed under `gemini-3.6-flash`.
+
+    That is not only a wrong label. `replay.py` partitions the accuracy record
+    by `meta.llm_model`, so a misnamed entry files its scored forecast under a
+    model that did not make it, and the question item 27 exists to answer —
+    is this model better — is answered from the wrong pile.
+    """
+    live = resolve_served(provider)
+    return type(live).__name__, getattr(live, "model", "unknown")
+
+
 def resolve_active(provider):
     """The object actually taking the request, through any chain wrappers.
 

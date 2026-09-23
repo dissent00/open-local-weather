@@ -12,7 +12,7 @@ import pytest
 
 from openlocalweather.llm.errors import LLMResponseError, LLMUnavailableError
 from openlocalweather.llm.fallback import FallbackProvider
-from openlocalweather.llm.provider import provider_identity
+from openlocalweather.llm.provider import provider_identity, served_identity
 from openlocalweather.llm.schema import GeminiNarrativeResponse
 
 
@@ -216,3 +216,44 @@ def test_a_real_provider_given_a_bad_request_does_not_report_itself_unavailable(
     with pytest.raises(LLMResponseError, match="unknown model"):
         FallbackProvider([down, spare]).generate("s", "u", GeminiNarrativeResponse)
     assert spare.calls == 0, "a bad request bought a second opinion"
+
+
+def test_the_chain_remembers_which_link_actually_served():
+    """ROADMAP item 171. The published record names the model that answered.
+
+    `provider_identity` resolves through `active_provider` and is right DURING
+    a call. The log entry is written after, when `generate` has cleared it in
+    its `finally`, so anything asking then resolves back to the wrapper and
+    gets `.model` — the FIRST link, whoever actually served.
+
+    That is how the 2026-09-22 15:01Z entry came to name `gemini-3.6-flash`
+    for a forecast written end to end by a fallback after Gemini returned four
+    503s. `meta.llm_model` is what `replay.py` partitions the accuracy record
+    by, so a wrong name does not just misdescribe one run: it files its scored
+    forecast under a model that did not make it.
+    """
+    down = Recorder("gemini-3.6-flash", raises=LLMUnavailableError("503"))
+    served = Recorder("nex-agi/nex-n2.5-pro:free", answer="prose")
+    chain = FallbackProvider([down, served])
+
+    assert chain.generate("s", "u", GeminiNarrativeResponse) == "prose"
+
+    # After the call, not during: this is the moment the log entry is written.
+    assert served_identity(chain) == ("Recorder", "nex-agi/nex-n2.5-pro:free")
+
+
+def test_a_chain_that_never_served_reports_its_first_link():
+    """Before any call there is no served link, and the honest answer to
+    "what will this deployment use" is still the entry tried first."""
+    a = Recorder("gemini-3.6-flash", answer="x")
+    b = Recorder("backup", answer="y")
+
+    assert served_identity(FallbackProvider([a, b])) == ("Recorder", "gemini-3.6-flash")
+
+
+def test_a_bare_provider_is_its_own_served_identity():
+    """A deployment with no chain answers exactly as it did before."""
+    assert served_identity(Recorder("gemini-3.6-flash", answer="x")) == (
+        "Recorder",
+        "gemini-3.6-flash",
+    )

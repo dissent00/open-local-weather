@@ -842,6 +842,18 @@
           "default": null,
           "title": "Narrative Findings"
         },
+        "narrative_llm_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Narrative Llm Model"
+        },
         "nullable_fields": {
           "anyOf": [
             {

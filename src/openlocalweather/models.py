@@ -1285,6 +1285,18 @@ class LogEntryMeta(BaseModel):
     generated_at_utc: datetime
     llm_provider: str
     llm_model: str
+    # WHO WROTE THE PROSE, when that is not who made the scored call —
+    # ROADMAP item 171. A forecast is two calls and a chain can serve them
+    # from different vendors: on 2026-09-23 Gemini took the judgment call and
+    # `nex-agi/nex-n2.5-pro:free` wrote the narrative after four 429s.
+    #
+    # `llm_model` names the JUDGMENT call because that is what gets scored and
+    # what `replay.py` partitions the accuracy record by. This names the other
+    # one, so the record can say who wrote the document a reader actually
+    # read. Equal to `llm_model` on the ordinary run where one vendor served
+    # both, and None on entries written before the field existed — never "",
+    # which would claim an identity those runs never recorded.
+    narrative_llm_model: str | None = None
     pipeline_version: str
     # WHICH system prompt produced this entry — ROADMAP item 70.
     #
