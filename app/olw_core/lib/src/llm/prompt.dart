@@ -253,7 +253,7 @@ You have no way to change them from here. The schema you return does not contain
 
    ONE VALUE PER QUANTITY PER DAY. A single run said "near 34C by midday", then "peak around 15:00 near 35C", against a consensus high of 33.6C - three highs for one day, in one section. the given today_properties.temp_high_c is the day's high; state it once, and let every other mention agree with it or say nothing.
 
-   What the reader is walking into: the next 12-18 hours, weighted by "WHAT MATTERS NOW" in ISSUED. Cover temperature, rain, wind, THE SKY, UV and air quality as they apply to the hours AHEAD, reasoning from HOURS AHEAD rather than reciting the calendar day. THE SKY IS THE MODELS' "cloud_cover" FOR THE HOURS AHEAD, in a reader's words - clear, partly cloudy, overcast - and when the models split two ways on it, say the split in words ("two models overcast, three partly cloudy") rather than an average nobody forecast: measured here the models sit more than an okta apart on every archived day. A real forecast opened its Overview on the sky and then never mentioned it again. Where the horizon says tonight and tomorrow, this section is about tonight and tomorrow morning - not a summary of a day the reader has already lived through.
+   What the reader is walking into: the next 12-18 hours, weighted by "WHAT MATTERS NOW" in ISSUED. Cover temperature, rain, wind, THE SKY, UV and air quality as they apply to the hours AHEAD, reasoning from HOURS AHEAD rather than reciting the calendar day - EXCEPT UV, WHICH COMES FROM \"PEAK UV INDEX\": that block already carries the day's maximum for the day this issuance is about, and the hourly UV arrays are no longer sent, so there is nothing in HOURS AHEAD to reason from. THE SKY IS THE MODELS' "cloud_cover" FOR THE HOURS AHEAD, in a reader's words - clear, partly cloudy, overcast - and when the models split two ways on it, say the split in words ("two models overcast, three partly cloudy") rather than an average nobody forecast: measured here the models sit more than an okta apart on every archived day. A real forecast opened its Overview on the sky and then never mentioned it again. Where the horizon says tonight and tomorrow, this section is about tonight and tomorrow morning - not a summary of a day the reader has already lived through.
 
    OPEN ON WHAT IS STILL AHEAD. A later issuance is read by someone who wants to know what is left of the day, and the first sentence is the one they read. Do not spend it on what is over. LEAVE A SPENT VALUE OUT unless it changes what the reader should DO: "the worst of the heat is behind you" earns its clause because someone can act on it, while "as dusk falls, daytime highs near 31C and solar UV exposure are in the past" - a real opening sentence - is an inventory of three things nobody can use, all of them already on the page in the stat block above the prose. Where a spent value does still matter, it goes in a subordinate clause AFTER what is coming, never ahead of it.
 
@@ -622,6 +622,17 @@ const instabilityGapNotice =
     'measurements and none of them substitutes for CAPE. A reader was assured of a dry '
     'evening on 2026-08-29 by exactly that inference and was rained on.';
 
+/// The units HOURS AHEAD declares in its heading, since item 174 stopped
+/// sending `hourly_units` — 2,025 characters of map against this one clause.
+///
+/// BOTH BRANCHES CARRY IT. The narrowed one did not when this was ported, and
+/// nothing failed: no vector had ever set `forward_window_narrowed`, so the
+/// branch that exists to stop a truncated series reading as a quiet night was
+/// unpinned across the port. It has a case now.
+const forwardHourlyUnits =
+    '. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, '
+    'CAPE J/kg, cloud cover and probabilities percent, directions degrees';
+
 /// The parenthetical after "HOURS AHEAD", which has to state how far the
 /// window actually reaches.
 ///
@@ -632,14 +643,16 @@ const instabilityGapNotice =
 /// severe weather hazards are anticipated". See ROADMAP item 53.
 String _forwardWindowScope(Object? forwardHourly, bool narrowed) {
   const full = 'hour-by-hour multi-model guidance from the current hour '
-      'forward — reason from THIS for near-term timing';
+      'forward — reason from THIS for near-term timing'
+      '$forwardHourlyUnits';
   if (forwardHourly == null || !narrowed) return full;
 
   return 'hour-by-hour multi-model guidance, REST OF TODAY ONLY — the forward '
       'fetch failed and this came from the day-0 fetch, so it ENDS AT 23:00 '
       'local. Reason from it for near-term timing, and do NOT read the end of '
       'the series as a forecast for overnight or tomorrow: say those are '
-      "outside this run's window";
+      "outside this run's window"
+      '$forwardHourlyUnits';
 }
 
 String issuedLine(Object? issuance) {
@@ -693,13 +706,53 @@ String secondaryWindBlock(Object? secondaryWind) {
   return '\n$secondaryWindHeading\n${promptJson(secondaryWind)}\n';
 }
 
+/// Hourly series dropped from HOURS AHEAD before it is sent.
+///
+/// Upstream ROADMAP item 174. The five per-model `uv_index_*` arrays are
+/// 1,605 characters, measured on the 2026-09-23 03:01 payload, and are
+/// superseded by the PEAK UV INDEX block that item 161 built: code takes the
+/// UV index from the DAILY block, for the day the horizon points at. Nothing in code reads the hourly arrays, and a cold
+/// reader confirmed it does not either — their own units are declared as the
+/// literal string "undefined" for three of the five models.
+///
+/// The rule that named them was amended in the same change: Today's Forecast
+/// now points at PEAK UV INDEX for UV rather than at HOURS AHEAD.
+const forwardHourlyDroppedPrefixes = <String>['uv_index'];
+
+/// HOURS AHEAD without the API's noise or the superseded UV series.
+Object? trimmedForwardHourly(Object? forwardHourly) {
+  if (forwardHourly == null) return null;
+
+  final lean = withoutApiNoise(forwardHourly);
+  if (lean is! Map) return lean;
+  final hourly = lean['hourly'];
+  if (hourly is! Map) return lean;
+
+  // REBUILT IN PLACE, not with `hourly` appended. Python's `dict(lean,
+  // hourly=...)` keeps the key where it was, and JSON key order is part of
+  // what the vectors compare. Today's payload happens to end with `hourly`,
+  // so moving it looked identical; a response with any key after it would
+  // have diverged with nothing to catch it.
+  return {
+    for (final e in lean.entries)
+      e.key: e.key != 'hourly'
+          ? e.value
+          : {
+              for (final h in hourly.entries)
+                if (!forwardHourlyDroppedPrefixes
+                    .any((p) => (h.key as String).startsWith(p)))
+                  h.key: h.value,
+            },
+  };
+}
+
 /// Keys Open-Meteo puts on every response that no rule in either prompt reads.
 ///
-/// Upstream ROADMAP item 174. `daily_units` and `hourly_units` alone are 2,210
-/// characters PER FETCHED OBJECT, and the objects repeat: two extended-daily
-/// points, five regional pressure points, the air-quality fetch. Neither
-/// system prompt mentions them, and the units they state are the ones the
-/// prompt's own rules already name.
+/// Upstream ROADMAP item 174. `daily_units` and `hourly_units` repeat on all
+/// eight fetched objects for 5,537 characters, measured on the 2026-09-23
+/// 03:01 payload. The weight is not evenly spread: the two daily objects
+/// carry 2,333 each and the other six 142 to 161, so a per-object figure
+/// describes only the largest two. Neither system prompt mentions them.
 ///
 /// WHAT IS DELIBERATELY NOT HERE: `latitude`, `longitude`, `timezone` and
 /// `elevation` stay. In `regional_pressure` the coordinates are the ONLY thing
@@ -917,9 +970,9 @@ FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and 
 ${forecastWindowsBlock(forecastWindows)}
 
 HOURS AHEAD (${_forwardWindowScope(forwardHourly, forwardWindowNarrowed)}):
-${forwardHourly == null ? 'Unavailable this run.' : promptJson(forwardHourly)}
+${forwardHourly == null ? 'Unavailable this run.' : promptJson(trimmedForwardHourly(forwardHourly))}
 
-TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent):
+TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent, UV index unitless, particulates µg/m³, air-quality indices on the scale their own key names. THE METAR IS NOT IN THESE UNITS: its "wspd" is KNOTS, "visib" statute miles, "altim" hPa, "temp" and "dewp" °C, "wdir" degrees):
 ${promptJson(weatherPayload)}
 
 EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):

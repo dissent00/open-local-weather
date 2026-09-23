@@ -1086,6 +1086,11 @@ void main() {
               ?.map((e) => (e as Map).cast<String, Object?>())
               .toList(),
           forwardHourly: i['forward_hourly'],
+          // DROPPED UNTIL 2026-09-23, and nothing said so: the runner
+          // defaulted it to false, so a case setting it would have been
+          // compared against the wrong branch and passed only by luck.
+          forwardWindowNarrowed:
+              i['forward_window_narrowed'] as bool? ?? false,
           calibratedGustKmh: (i['calibrated_gust_kmh'] as num?)?.toDouble(),
           secondaryWind: i['secondary_wind'],
           reviewContext: i['review_context'],

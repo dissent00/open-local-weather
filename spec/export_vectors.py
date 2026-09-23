@@ -155,6 +155,40 @@ NOT_PHRASE_VECTORS = frozenset({
 })
 
 
+#: `forward_hourly` as the pipeline actually sends it — see the vector case
+#: that uses it. The fixture elsewhere in this file is two series and no
+#: envelope, so without this nothing exercises the HOURS AHEAD trim: not the
+#: units map, not the response envelope, and not the `uv_index_*` series that
+#: item 174 drops because PEAK UV INDEX supersedes them.
+#:
+#: The `"undefined"` unit is not a typo. Open-Meteo declares it that way for
+#: three of the five models, which is part of why the arrays are going.
+_FORWARD_HOURLY_AS_SENT = {
+    "latitude": -0.0586,
+    "longitude": 34.8047,
+    "generationtime_ms": 0.2,
+    "utc_offset_seconds": 10800,
+    "timezone": "Africa/Nairobi",
+    "timezone_abbreviation": "GMT+3",
+    "elevation": 1187.0,
+    "_server_date": "2026-08-11",
+    "hourly_units": {
+        "time": "iso8601",
+        "temperature_2m_gfs_seamless": "\u00b0C",
+        "cape_gfs_seamless": "J/kg",
+        "uv_index_gfs_seamless": "",
+        "uv_index_ecmwf_ifs025": "undefined",
+    },
+    "hourly": {
+        "time": ["2026-08-11T09:00", "2026-08-11T10:00"],
+        "temperature_2m_gfs_seamless": [26.1, 27.4],
+        "cape_gfs_seamless": [420.0, 980.0],
+        "uv_index_gfs_seamless": [6.1, 7.8],
+        "uv_index_ecmwf_ifs025": [5.9, 7.4],
+    },
+}
+
+
 #: `regional_pressure` as Open-Meteo actually returns it — see the vector case
 #: that uses it. Two points rather than production's five; the shape is what
 #: matters, and the coordinates differ so a strip that removed them would make
@@ -2174,6 +2208,27 @@ def export_user_prompt() -> None:
                         # mutations survived without it.
                         regional_pressure=_REGIONAL_PRESSURE_AS_SENT,
                     ),
+                ),
+            ),
+            # ITEM 174. The `forward_hourly` fixture elsewhere is two series
+            # with no envelope, so no case reached the HOURS AHEAD trim —
+            # the same gap `regional_pressure` had, found the same way.
+            case(
+                "HOURS AHEAD loses its units, envelope and the UV series",
+                dict(full, forward_hourly=_FORWARD_HOURLY_AS_SENT),
+            ),
+            # THE NARROWED WINDOW, WHICH NO CASE HAD EVER SET. The branch
+            # exists to stop a series that stops at 23:00 reading as a
+            # forecast of a quiet night — the 2026-08-29 failure, item 53 —
+            # and it was unpinned across the port until 2026-09-23, when the
+            # Dart mirror was found declaring the units on the full branch
+            # and not on this one. Both suites were green.
+            case(
+                "the forward fetch failed — HOURS AHEAD is REST OF TODAY ONLY",
+                dict(
+                    full,
+                    forward_hourly=_FORWARD_HOURLY_AS_SENT,
+                    forward_window_narrowed=True,
                 ),
             ),
             case("a later issuance — differs only by its issuance hour", refresh, verification_already_written=True),

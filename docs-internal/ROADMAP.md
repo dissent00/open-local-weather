@@ -9890,12 +9890,29 @@ not in the session that built it.
 >   `olw_blend` model. Left empty, a reader reports the Extended Outlook as
 >   narrating a call that does not exist, which is an artefact and wastes the
 >   only part of the read that judges that section.
-> - **It WARNS when the archive predates a prompt change.** The archive is the
->   prompt as it was built that day, so a block edited since reproduces in its
->   OLD form, silently, and the reader audits a prompt that no longer exists.
->   There is no general fix — the guidance inputs are not stored, so the user
->   message cannot be rebuilt — so it names the stale blocks and says to splice
->   the current one in or wait for a fresher archive.
+> - **It RE-RENDERS the blocks whose payload the archive still carries, and
+>   warns about the rest.** The archive is the prompt as it was built that
+>   day, so a block edited since reproduces in its OLD form, silently, and the
+>   reader audits a prompt that no longer exists. That cost a run on
+>   2026-09-23: item 174's trims were tested against a message that still
+>   carried everything they remove, and nothing said so — the system prompt
+>   had been rebuilt from current code and the user message had not, so the
+>   pair was internally inconsistent in a way neither half could reveal.
+>
+>   The guidance inputs are not stored, so the message cannot be rebuilt
+>   wholesale. But a block's payload survives verbatim INSIDE it: `_json`
+>   indents by two, so a block runs from its heading to the first column-0
+>   `}`, and what is between them is the object as it was sent. `_rerendered`
+>   parses those back out for HOURS AHEAD and TODAY'S MULTI-MODEL GUIDANCE,
+>   hands them to `build_user_prompt`, and splices that output in. No key list
+>   or heading text is duplicated in the tool on purpose — both come from the
+>   module under test, so neither can drift from it. It prints which blocks it
+>   replaced; "NOTHING" means the markers stopped matching and the run is
+>   measuring the old prompt again.
+>
+>   Match the heading as a bare line PREFIX. Writing the marker with the
+>   parenthesis matched neither side the first time this ran, because the
+>   heading's own text is one of the things item 174 changed.
 >
 > **STEP 2 IS WRITTEN FOR THE JUDGMENT CALL. For the NARRATIVE call the
 > archived `user_prompt` is the WRONG INPUT** — added 2026-09-22 after it
@@ -26056,6 +26073,76 @@ yet how that will play out."*
 
 ---
 
+## 175. The Dart vector runner silently drops arguments · **Recorded 2026-09-23**
+
+Found while fixing one instance of it. `vectors_test.dart` called
+`buildUserPrompt` without `forwardWindowNarrowed`, so the parameter took its
+`false` default and the branch behind it was pinned by nothing — in a suite
+whose entire purpose is to pin the port character for character. Dart named
+arguments make this silent: omitting an optional one is legal and the
+analyser says nothing.
+
+A sweep of every function the runner drives found **26 more**. None is
+producing a divergence today — every silent default was checked against its
+Python counterpart and they agree — so each is an UNREACHABLE branch rather
+than a wrong one. That is the danger: the suite reports green over code it
+never executed.
+
+**The six that matter most** are the siblings of the one already fixed, all on
+`build_user_prompt`: `ground_aqi_last_known`, `instability`, `extended_trend`,
+`anchor_directions`, `wind_shift`, `observed_so_far`. Verified directly — not
+one of the twelve cases carries any of those keys, so six blocks of the user
+message render their "unavailable" branch in every case and their populated
+form is unpinned across the port. CONVECTIVE INSTABILITY and WIND SHIFT are
+among them, and both carry rules the narrative must follow verbatim.
+
+Sharpest of the six: the runner DOES pass `ground_aqi_last_known_absence`,
+which code consults only when `ground_aqi_last_known` is null. So every case
+renders the absence branch, and item 163's three-way absence distinction is
+pinned while the present branch beside it is not.
+
+**Two more worth separating from the rest:**
+
+- **`_observedFrom` builds 8 of `ObservedSoFar`'s 9 fields**, dropping
+  `peakGustKmh`, and is used by the `day_over_day` and `describe_day_rain`
+  cases. The inline construction for `observed_so_far.json` sets all nine.
+  Nothing diverges today because those vectors carry null gusts; a case adding
+  one would be rendered against a null and could pass by luck.
+**One reported finding was wrong, and checking it is the point.** The sweep
+held that a runner comment claiming a `gustCorrections` threshold mutation
+"SURVIVED the vector until this line existed" was misattributed, because
+`minChecks` is unreachable from a case. Tested: setting
+`gustCalibrationMinChecks` from 10 to 1 FAILS the suite. The parameter is
+indeed unreachable, but its default reads that constant, so mutating the
+constant is caught and the comment is accurate. Recording a correction to a
+true comment would have been the expensive mistake here — the same class as
+the four false measurements above, arrived at from the opposite direction.
+
+**Not a defect but worth knowing:** `calls_in_window` grew `provider` and
+`model` for item 170's per-provider caps and the Dart port has neither. No
+divergence — nothing calls it that way — but the app's half of item 170 will
+need them, and the suite would not have said so.
+
+**`day_uv_index` differs in signature, not behaviour.** Python takes `horizon`
+and reduces it to a day index internally; Dart takes `horizonHasToday`, the
+answer. The runner performs the reduction itself with hardcoded literals, so
+the horizon-to-index rule is reimplemented in the test rather than pinned in
+the port. The literals match today and the `REST_OF_TODAY_TO_MIDNIGHT`
+variant resolves identically on both sides; it is unpinned, not wrong.
+
+**What to do.** Not a bulk fix — each case added is a real assertion that has
+to be read. The order that buys most first: the six `build_user_prompt`
+blocks, then `_observedFrom`, then correct the misattributed survivor comment.
+The rest are single-knob defaults whose constants have been verified equal and
+can wait.
+
+**The general shape, which is the part worth keeping.** A test runner that
+omits an argument does not fail — it pins a different function than the one it
+names. Any port pinned by replaying recorded inputs has this failure mode, and
+it is invisible from inside the suite: green, fast, and measuring the wrong
+thing. The only detector found so far is reading the call site against the
+signature, which is what the sweep did.
+
 ## 174. What the prompt could stop sending · **Measured 2026-09-22, nothing changed yet**
 
 The operator asked for the cost lever to be measured before anything was cut.
@@ -26399,6 +26486,219 @@ Recorded rather than chased; each wants its own look:
 - **GFS's daily sustained wind exceeds its own gust on seven of eight days**
   at the secondary point, which is the same fetch defect seen above from a
   second angle.
+
+### Second instalment — HOURS AHEAD loses its units and its UV series
+
+Same two moves as the first, on the block that was 21.9% of the message.
+
+**The API's noise.** `_without_api_noise` now runs over `forward_hourly` too.
+The envelope and `hourly_units` are named by no rule in either prompt; the
+units map alone was 2,025 characters, and it declared one series' unit as the
+literal string `"undefined"`.
+
+**The UV series.** The five per-model `uv_index_*` arrays left HOURS AHEAD
+entirely — `FORWARD_HOURLY_DROPPED_PREFIXES`, matched as a prefix so a
+`uv_index_clear_sky_*` twin would go with them if the fetch ever returned one.
+It does not today: 1,605 characters, measured. They are superseded: item 161
+moved the day's UV
+to `PEAK UV INDEX`, computed by `day_uv_index` from the DAILY block for the
+day the horizon points at, and no rule asks for UV by the hour. Checked
+before removing: `day_uv_index` reads `primary_daily`, and `tiles.py`'s `uv`
+references are `properties["uv_index"]`, the composed entry field. Nothing
+downstream reads the hourly series.
+
+**One rule had to move with the data, and this is the load-bearing part.**
+Today's Forecast said to cover "temperature, rain, wind, THE SKY, UV and air
+quality ... reasoning from HOURS AHEAD rather than reciting the calendar day".
+Dropping the series would have left a rule pointing at data that is no longer
+sent — the precise failure this item is supposed to avoid. The rule now
+excepts UV and names `PEAK UV INDEX` instead, and says why: that block
+already carries the day's maximum for the day this issuance is about.
+
+**The units go in the heading, both blocks.** `_forward_window_scope` states
+them on all three branches. A cold reader on 2026-09-23 got every unit right
+by inference — matching each model's hourly maximum against the daily block,
+which does declare — and said plainly that "the block I read the numbers from
+never says km/h". One clause is cheaper than the map, and cheaper than a
+reader inferring correctly. The daily block's heading got the same treatment
+in the first instalment.
+
+**Measured, end to end, on the 2026-09-23 03:01 archive** re-rendered through
+current code: the user message goes 109,242 → 98,441, **10,801 characters
+off, 9.9%**, or 21,602 per forecast across the two calls, ~5,400 tokens. That
+is the cumulative figure for both instalments and it is measured on a real
+message rather than summed from block sizes.
+
+Six mutations, six bites, both languages. Vector case *"HOURS AHEAD loses its
+units, envelope and the UV series"*; `llm_user_prompt.json` is 11 cases.
+
+**The Dart mirror diverged twice, and reading the diff found what the vectors
+could not.** A literal replace matched one branch and not the other, which
+wraps differently, so Dart declared the units on the full branch and not on
+the narrowed one. The suites stayed green — and the reason is the finding:
+
+- **No vector had ever set `forward_window_narrowed`.** Eleven cases, and not
+  one exercised the branch that exists to stop a series ending at 23:00
+  reading as a forecast of a quiet night. That is item 53's whole point, and
+  it was unpinned in both languages.
+- **`vectors_test.dart` was not passing the flag at all.** The Dart runner
+  omitted `forwardWindowNarrowed`, so it defaulted to false. A case setting it
+  would have been rendered by the wrong branch and compared against Python's
+  right one — which is how the omission surfaced: the new case failed with
+  Dart on "guidance from the" where Python had "guidance, REST OF".
+
+So the guard that was supposed to catch the mirror could not have. Both are
+fixed: case 12 is *"the forward fetch failed — HOURS AHEAD is REST OF TODAY
+ONLY"*, the runner reads the flag, and mutating either the branch or the
+wiring fails the suite.
+
+**Four numbers written as measured were wrong, and reading the diff found
+all four.** Worth naming because "measured" is a load-bearing word in this
+repo and none of these would have failed a test:
+
+- The UV series was written as 1,925 characters. It is **1,605**.
+- The units map was written as 1,921. It is **2,025**.
+- A claim that `uv_index_clear_sky_*` arrays were dropped with the UV series.
+  There are none: the fetch returns five `uv_index_*` and no clear-sky twin.
+  The prefix would catch one if it ever appeared, which is what the comment
+  should have said and now does.
+- Inherited from the first instalment and committed: `daily_units` and
+  `hourly_units` are "2,210 characters PER FETCHED OBJECT ... and the objects
+  repeat", across eight objects. Only the two daily objects are that size
+  (2,333 each today); the five pressure points carry 142 and air quality 161.
+  The true total is **5,537**, so the sentence overstated its own saving by
+  about threefold. Corrected in both languages.
+
+Each was produced by estimating from a block-size table rather than measuring
+the payload, which is the same habit that got the block-size table itself
+wrong twice earlier in this item. The measurement is one command against the
+archive; there is no reason to estimate.
+
+**The general lesson is about argument-dropping runners.** A vector runner
+that silently omits an input does not fail — it pins a different function than
+the one named. Worth a sweep of `vectors_test.dart` against each builder's
+signature; this was found by hand and there may be others.
+
+### A second pass of incidental findings — 2026-09-23, HOURS AHEAD run
+
+None caused by the trims. Listed because a cold reader found them and they
+will not find themselves:
+
+- **Air quality stops before the window it is asked about.** Today's Forecast
+  asks for air quality "as they apply to the hours AHEAD", and FORECAST
+  WINDOWS defines tonight as 17:06 to 06:30 the NEXT day. `air_quality.hourly`
+  runs 00:00 to 23:00 of the current day only, so the last seven and a half
+  hours of the window this issuance is explicitly about carry no air-quality
+  data, model or ground. The reader declined to extrapolate the rising
+  late-evening trend past the end of the array, which is the right call and
+  leaves the question unanswered.
+- **The secondary point's duplication is wider than first thought.** Not only
+  GFS: ECMWF's gusts, sustained wind, precipitation sum AND CAPE are identical
+  between the two points, and ICON's too; only UKMO's differ properly. The
+  visible symptom stays the same — GFS's sustained wind exceeds its own gust
+  on seven of eight days — but the cause looks like several models' secondary
+  series being filled from the primary rather than one field.
+- **`best_match` publishes `rain: false` beside `rain_probability_pct: 100`**
+  at the secondary point. The review explains half of it (best_match's
+  probability is ECMWF's under a second name) but the pairing is not something
+  a reader could be shown.
+- **`data_sufficiency` names `kenya_met` as the least-covered model and then
+  excludes it, in one sentence.** "Day+3: 16 check(s) for the least-covered
+  model" — 16 is kenya_met's own Day+3 count — followed by "kenya_met does not
+  forecast at Day+3 and is not included in the figure above".
+- **A stored `skill_profile_summary` understates the finding it narrates.**
+  UKMO Day+0 says it "slightly under-forecasts cloud cover", where the review
+  for the same pair is a `bias` of "systematically under-forecasts", usable
+  confidence. "Slightly" is the word reserved for `tendency`.
+- **`onset_error_hrs` is null for every model at every lead** in the
+  verification block, while MODEL TRACK RECORD carries non-null
+  `avg_onset_error_hrs_10` for the same Day+0 models.
+- **The evening wind anchor is the one its own block distrusts.** WIND
+  DIRECTION emits "SW" for the evening while stating that measured evening
+  agreement runs 0.48 against 0.95 at midday, and the hourly directions after
+  20:00 scatter across the compass. The anchor probably reflects 18:00-19:00
+  rather than the evening a reader hears.
+- **OBSERVED SO FAR reports "sky 4/8" while the only METAR supplied is
+  CAVOK** with `clouds: []`. Not a contradiction — the summary is built from
+  several reports and only one is sent — but the payload cannot corroborate
+  its own summary.
+
+### The units sweep found a real hazard in the METAR
+
+Declaring the HOURS AHEAD units closed that block, and the same read showed
+the DAILY heading — added in the first instalment — covers neither UV, nor
+air quality, nor any numeric METAR field. One of those is not cosmetic:
+
+**`airport_metar.wspd` is in KNOTS and nothing said so**, in a prompt that
+elsewhere instructs "Knots = km/h ÷ 1.852" for the forecaster's own output.
+Verified field by field against the same report's `rawOb`: `02002KT` beside
+`wspd: 2`, `Q1017` beside `altim: 1017`, `19/17` beside `temp: 19` and
+`dewp: 17`, `020` beside `wdir: 20`, and `visib: "6+"` in statute miles,
+consistent with the report's CAVOK. Today the value is 2 knots and a
+misreading costs nothing. At 20 knots it understates the wind a reader is
+standing in by 45%, and the METAR is the ONLY ground truth for wind in the
+prompt — everything else is model guidance.
+
+The heading now declares all of it: UV index unitless, particulates µg/m³,
+air-quality indices on the scale their own key names, and the METAR's units
+called out as NOT the block's.
+
+**Still undeclared, and judged not worth the characters:** `latitude`,
+`longitude`, `elevation`, and the time zone of the naive timestamps. The
+reader inferred all four correctly and none of them reaches the prose.
+
+### Third pass — the faithful pair, 2026-09-23
+
+The first read of the trimmed prompt where the user message was rendered by
+the code under test rather than copied from the archive.
+
+**Bearing on the change just made:**
+
+- **PEAK UV INDEX says "only one source at this location serves a UV index"
+  while two non-null UV series sit in the daily block.** The rule now sends
+  the forecaster to that block for UV, so its wording is load-bearing in a way
+  it was not before. Either the sentence is stale or the block is picking one
+  source without saying which; worth settling before item 167 touches UV again.
+
+**Refining an earlier finding.** The two-point duplication is selective, not
+wholesale: every `ecmwf_ifs025` series except temperature is byte-identical
+between primary and secondary; `icon_seamless` likewise except temperature and
+`precipitation_probability_max`; `ukmo_seamless` differs on all of them; and
+`gfs_seamless` differs on precipitation, cloud, windspeed and UV but NOT on
+gusts, CAPE or pressure. That pattern — per-model, per-quantity — does not
+look like one missed fetch field. Nothing in the prompt says which quantities
+are point-specific, so the Winam Gulf section is written from blocks whose
+independence cannot be checked from inside the prompt.
+
+**New:**
+
+- **The "tonight" window opens 90 minutes before sunset.** `ISSUED` gives
+  sunset 18:36; FORECAST WINDOWS gives tonight as 17:06 to 06:30, described as
+  "dusk, evening and overnight". Dusk here is a window boundary, not a light
+  condition, and the system prompt's "'Tonight' means the whole stretch from
+  dusk through to dawn" reads as the latter.
+- **The day's low the reader will actually meet is unsayable.** `temp_low_c`
+  is 19.0 and OBSERVED SO FAR already reports 19°C at 06:01, so the calendar
+  day's low is spent. Four of five models put 18.3-18.9°C before dawn
+  tomorrow — inside the stated `tonight` window. "ONE VALUE PER QUANTITY PER
+  DAY" and "THE CALL YOU WERE GIVEN describes the WHOLE calendar day" together
+  forbid naming the colder figure. The rules are each right and their
+  intersection is wrong; this is the calendar-day/forward-window seam again,
+  in the one place it costs a reader something actionable.
+- **`GUIDANCE RECENCY` carries `"source": "observed"` and no rule defines it.**
+  Nothing says what "observed" means for a model cycle or what the alternative
+  values are.
+- **GFS sustained wind exceeds its own gust in the CALL block too** —
+  `wind_kmh` 25.9 against `sustained_wind_kmh` 26.8 — so the defect reaches
+  the scored prediction, not only the guidance arrays.
+
+**What no rule asked for, on this day.** The reader listed every field it was
+never directed to use. Treat as evidence for the next ablation, not as
+permission: a field unused on a dry day may be load-bearing on a wet one. The
+large ones are `secondary_extended_daily` in its entirety, every field of
+`airport_metar`, most of `PRE-COMPUTED VERIFICATION RESULTS`, and the
+`all_time_*` and `avg_*_10` families in MODEL TRACK RECORD — which is the
+15,830-character block already queued as this item's next instalment.
 
 ### The experiment, if one is wanted
 

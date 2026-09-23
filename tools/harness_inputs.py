@@ -1,7 +1,7 @@
 """Build item 77's harness inputs for the NARRATIVE call, faithfully.
 
-Two things this gets right that a hand-assembled pair does not, both learned
-the hard way on 2026-09-22:
+Three things this gets right that a hand-assembled pair does not, the first
+two learned the hard way on 2026-09-22 and the third on 2026-09-23:
 
 1. THE NARRATIVE CALL'S USER MESSAGE IS NOT THE ARCHIVED ONE.
    `build_narrative_user_prompt` APPENDS the judgment call's answer as "THE
@@ -14,15 +14,28 @@ the hard way on 2026-09-22:
    as the `olw_blend` model. Leaving the array empty makes the Extended
    Outlook unjudgeable, which a reader flagged before this was fixed.
 
+3. THE ARCHIVE IS THE PROMPT AS IT WAS BUILT THAT DAY.
+   A block whose CONSTRUCTION changed since reproduces in its old form,
+   silently, while the system prompt beside it is rebuilt from current code —
+   so the pair is internally inconsistent and neither half can say so. The
+   payloads survive inside the blocks, so `_rerendered` parses them back out
+   and runs them through today's `build_user_prompt`. Watch its line of
+   output: "NOTHING" means the markers stopped matching.
+
 Usage: python harness_inputs.py <date> <out_dir>
 """
 import json, sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path.home() / "weather-app"
 sys.path.insert(0, str(ROOT / "src"))
 from openlocalweather.config import load_location_config
-from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
+from openlocalweather.llm.prompt import (
+    build_narrative_prompt,
+    build_narrative_user_prompt,
+    build_user_prompt,
+)
 
 day, out = sys.argv[1], Path(sys.argv[2])
 out.mkdir(parents=True, exist_ok=True)
@@ -81,6 +94,95 @@ judgment = {
     },
     "extended_properties": extended,
 }
+#: Blocks whose payload the archive still carries verbatim, so they can be
+#: re-rendered by TODAY's code instead of reproducing as they were sent.
+#: Matched as a line PREFIX and nothing more, because the heading's own text
+#: is one of the things that changes: on 2026-09-23 the daily block went from
+#: a bare "TODAY'S MULTI-MODEL GUIDANCE:" to one carrying its units, and a
+#: marker written with the parenthesis matched neither archive nor rebuild.
+RERENDERABLE = ("HOURS AHEAD", "TODAY'S MULTI-MODEL GUIDANCE")
+
+
+def _block(text, prefix):
+    """The heading line and its pretty-printed JSON, as (start, end, heading, payload).
+
+    `_json` indents by two, so a block ends at the first column-0 "}". Nothing
+    else in the user message starts a line that way.
+    """
+    lines = text.splitlines()
+    start = next(
+        (
+            i for i, l in enumerate(lines)
+            # The heading is the occurrence with a payload under it. The same
+            # words appear in prose elsewhere in the message.
+            if l.startswith(prefix) and i + 1 < len(lines) and lines[i + 1] == "{"
+        ),
+        None,
+    )
+    if start is None:
+        return None
+
+    end = next((i for i in range(start + 2, len(lines)) if lines[i] == "}"), None)
+    if end is None:
+        return None
+
+    return start, end, lines[start], json.loads("\n".join(lines[start + 1:end + 1]))
+
+
+def _rerendered(archived_text):
+    """The archive's own payloads, rendered by the CURRENT prompt builder.
+
+    WHY THIS EXISTS. The archive stores the finished user message, not the
+    guidance that produced it, so a change to how a block is BUILT — item
+    174 stripped the API's units and envelopes and dropped the UV series —
+    reproduces here in its old form, silently. On 2026-09-23 that cost a
+    harness run: the data change was tested against a prompt that still
+    carried the data, and nothing said so.
+
+    The payloads themselves survive verbatim inside the block, though. So
+    they are parsed back out and handed to `build_user_prompt`, whose output
+    for those two blocks is what today's code would send. No key list is
+    duplicated here on purpose: the transforms and the headings both come
+    from the module under test, so neither can drift from it.
+
+    Returns the spliced text and the names of the blocks it replaced.
+    """
+    blocks = {p: _block(archived_text, p) for p in RERENDERABLE}
+    if any(b is None for b in blocks.values()):
+        return archived_text, []
+
+    hours, daily = blocks["HOURS AHEAD"], blocks["TODAY'S MULTI-MODEL GUIDANCE"]
+    fresh = build_user_prompt(
+        today=date.today(),
+        yesterday=date.today(),
+        public_webpage_url="",
+        verification_context=None,
+        track_record_context=None,
+        ground_aqi_readings=None,
+        ground_aqi_summary=None,
+        yesterday_actual=None,
+        today_weather_data=daily[3],
+        local_bulletin_source_name="",
+        local_bulletin_text="",
+        forward_hourly=hours[3],
+        # The archive's own heading says whether the window was narrowed.
+        forward_window_narrowed="REST OF TODAY ONLY" in hours[2],
+    )
+
+    out, replaced = archived_text, []
+    for prefix in RERENDERABLE:
+        old, new = _block(out, prefix), _block(fresh, prefix)
+        if new is None:
+            continue
+
+        lines, nl = out.splitlines(), fresh.splitlines()
+        out = "\n".join(lines[:old[0]] + nl[new[0]:new[1] + 1] + lines[old[1] + 1:])
+        replaced.append(prefix)
+
+    return out, replaced
+
+
+archived, rerendered = _rerendered(archived)
 user = build_narrative_user_prompt(archived, judgment)
 
 # THE ARCHIVE IS THE PROMPT AS IT WAS BUILT THAT DAY, not as today's code
@@ -105,3 +207,23 @@ if stale:
 print(f"system {len(system):,} chars / {len(system.splitlines())} lines")
 print(f"user   {len(user):,} chars / {len(user.splitlines())} lines")
 print(f"extended_properties reconstructed: {extended}")
+print("re-rendered by current code: " + (", ".join(rerendered) or "NOTHING — check the block markers"))
+
+# WHAT THE DEPLOYMENT SUPPLIES THAT THESE TWO FILES DO NOT. Tell the reader,
+# or it reports each as a missing rule and the finding is an artefact. Four
+# such have now been chased: `hours_old`, a case-sensitive PEAK UV INDEX
+# match, `onset_hour`/`target_date`, and the response schema below.
+print("""
+  TELL THE READER, or it will report these as defects:
+  - THE RESPONSE SCHEMA IS NOT IN THE PROMPT. It is attached to the API call
+    out of band — forced tool use on Anthropic, `response_format.json_schema`
+    elsewhere — from a Pydantic model. "Return ONLY valid JSON adhering
+    strictly to the requested schema" refers to that, not to anything in
+    these files.
+  - THE PEAK WIND FIELDS BELONG TO THE EARLIER CALL. The narrative schema has
+    no `peak_wind_primary_kmh`; rules naming it address the judgment call.
+  - THE CAPE THRESHOLD IS NOT PUBLISHED. `models_above_threshold` is
+    pre-computed; the cut is not stated and is not meant to be re-derived.
+  - CITED ITEMS AND DATED INCIDENTS ARE NOT SUPPLIED. ROADMAP references are
+    provenance for the rule beside them, not documents the reader is missing.
+""")

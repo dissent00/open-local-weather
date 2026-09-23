@@ -312,7 +312,7 @@ You have no way to change them from here. The schema you return does not contain
 
    ONE VALUE PER QUANTITY PER DAY. A single run said "near 34C by midday", then "peak around 15:00 near 35C", against a consensus high of 33.6C - three highs for one day, in one section. the given today_properties.temp_high_c is the day's high; state it once, and let every other mention agree with it or say nothing.
 
-   What the reader is walking into: the next 12-18 hours, weighted by "WHAT MATTERS NOW" in ISSUED. Cover temperature, rain, wind, THE SKY, UV and air quality as they apply to the hours AHEAD, reasoning from HOURS AHEAD rather than reciting the calendar day. THE SKY IS THE MODELS' "cloud_cover" FOR THE HOURS AHEAD, in a reader's words - clear, partly cloudy, overcast - and when the models split two ways on it, say the split in words ("two models overcast, three partly cloudy") rather than an average nobody forecast: measured here the models sit more than an okta apart on every archived day. A real forecast opened its Overview on the sky and then never mentioned it again. Where the horizon says tonight and tomorrow, this section is about tonight and tomorrow morning - not a summary of a day the reader has already lived through.
+   What the reader is walking into: the next 12-18 hours, weighted by "WHAT MATTERS NOW" in ISSUED. Cover temperature, rain, wind, THE SKY, UV and air quality as they apply to the hours AHEAD, reasoning from HOURS AHEAD rather than reciting the calendar day - EXCEPT UV, WHICH COMES FROM "PEAK UV INDEX": that block already carries the day's maximum for the day this issuance is about, and the hourly UV arrays are no longer sent, so there is nothing in HOURS AHEAD to reason from. THE SKY IS THE MODELS' "cloud_cover" FOR THE HOURS AHEAD, in a reader's words - clear, partly cloudy, overcast - and when the models split two ways on it, say the split in words ("two models overcast, three partly cloudy") rather than an average nobody forecast: measured here the models sit more than an okta apart on every archived day. A real forecast opened its Overview on the sky and then never mentioned it again. Where the horizon says tonight and tomorrow, this section is about tonight and tomorrow morning - not a summary of a day the reader has already lived through.
 
    OPEN ON WHAT IS STILL AHEAD. A later issuance is read by someone who wants to know what is left of the day, and the first sentence is the one they read. Do not spend it on what is over. LEAVE A SPENT VALUE OUT unless it changes what the reader should DO: "the worst of the heat is behind you" earns its clause because someone can act on it, while "as dusk falls, daytime highs near 31C and solar UV exposure are in the past" - a real opening sentence - is an inventory of three things nobody can use, all of them already on the page in the stat block above the prose. Where a spent value does still matter, it goes in a subordinate clause AFTER what is coming, never ahead of it.
 
@@ -772,6 +772,15 @@ INSTABILITY_GAP_NOTICE = (
 )
 
 
+#: The units HOURS AHEAD declares in its heading, since item 174 stopped
+#: sending `hourly_units` — 2,025 characters of map, measured on the
+#: 2026-09-23 03:01 payload, against this one clause.
+FORWARD_HOURLY_UNITS = (
+    ". Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, "
+    "CAPE J/kg, cloud cover and probabilities percent, directions degrees"
+)
+
+
 def _forward_window_scope(forward_hourly: Any, narrowed: bool) -> str:
     """The parenthetical after "HOURS AHEAD", which has to state how far the
     window actually reaches.
@@ -781,9 +790,21 @@ def _forward_window_scope(forward_hourly: Any, narrowed: bool) -> str:
     a quiet night rather than as the edge of the data — which is precisely
     how the 2026-08-29 run turned a missing CAPE series into "no thunderstorm
     or severe weather hazards are anticipated".
+
+    IT ALSO STATES THE UNITS, since item 174 stopped sending `hourly_units`.
+    A cold reader on 2026-09-23 reported cape as declared — the system prompt
+    names J/kg — but wind gusts and temperature as INFERRED, cross-checked by
+    matching each model's hourly maximum against the daily block that does
+    declare. It got them right and said plainly that "the block I read the
+    numbers from never says km/h". One clause is cheaper than the 2,025
+    characters of units map it replaces, and cheaper than a reader inferring
+    correctly.
     """
     if forward_hourly is None:
-        return "hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing"
+        return (
+            "hour-by-hour multi-model guidance from the current hour forward — "
+            "reason from THIS for near-term timing" + FORWARD_HOURLY_UNITS
+        )
 
     if narrowed:
         return (
@@ -792,9 +813,13 @@ def _forward_window_scope(forward_hourly: Any, narrowed: bool) -> str:
             "ENDS AT 23:00 local. Reason from it for near-term timing, and do "
             "NOT read the end of the series as a forecast for overnight or "
             "tomorrow: say those are outside this run's window"
+            + FORWARD_HOURLY_UNITS
         )
 
-    return "hour-by-hour multi-model guidance from the current hour forward — reason from THIS for near-term timing"
+    return (
+        "hour-by-hour multi-model guidance from the current hour forward — "
+        "reason from THIS for near-term timing" + FORWARD_HOURLY_UNITS
+    )
 
 
 def _issued_line(issuance: Any) -> str:
@@ -843,11 +868,15 @@ def _forecast_windows_block(windows: Any) -> str:
 
 #: Keys Open-Meteo puts on every response that no rule in either prompt reads.
 #:
-#: ROADMAP item 174. `daily_units` and `hourly_units` alone are 2,210
-#: characters PER FETCHED OBJECT, and the objects repeat: two extended-daily
-#: points, five regional pressure points, the air-quality fetch. Neither
-#: system prompt mentions them, and the units they state are the ones the
-#: prompt's own rules already name — °C, km/h, hPa, mm.
+#: ROADMAP item 174. `daily_units` and `hourly_units` repeat on all eight
+#: fetched objects — two extended-daily points, five regional pressure points,
+#: the air-quality fetch — for 5,537 characters, measured on the 2026-09-23
+#: 03:01 payload. THE WEIGHT IS NOT EVENLY SPREAD: the two daily objects carry
+#: 2,333 each and the other six 142 to 161, so the per-object figure this
+#: comment used to quote described only the largest two and overstated the
+#: whole by about threefold. Neither system prompt mentions them, and the
+#: units they state are the ones the prompt's own rules already name — °C,
+#: km/h, hPa, mm.
 #:
 #: WHAT IS DELIBERATELY NOT HERE: `latitude`, `longitude`, `timezone` and
 #: `elevation` stay. In `regional_pressure` the coordinates are the ONLY thing
@@ -881,6 +910,46 @@ def _without_api_noise(value):
     if isinstance(value, list):
         return [_without_api_noise(v) for v in value]
     return value
+
+
+#: Hourly series dropped from HOURS AHEAD before it is sent.
+#:
+#: ROADMAP item 174. The five per-model `uv_index_*` arrays are 1,605
+#: characters, measured on the 2026-09-23 03:01 payload, and are superseded
+#: by the PEAK UV INDEX block that item 161
+#: built: code takes the UV index from the DAILY block, for the day the
+#: horizon points at, because only one model serves one and at dusk the
+#: answer is tomorrow's. Nothing in code reads the hourly arrays —
+#: `day_uv_index` takes `primary_daily` — and a cold reader confirmed it does
+#: not use them either, reporting on 2026-09-23 that their own units are
+#: declared as the literal string "undefined" for three of the five models
+#: and that it took PEAK UV INDEX as given instead.
+#:
+#: THE RULE THAT NAMED THEM WAS AMENDED IN THE SAME CHANGE. Today's Forecast
+#: lists UV among the things to reason about "from HOURS AHEAD", which would
+#: have pointed at data no longer there — the failure this project calls a
+#: rule policing a block nothing needed, in reverse.
+FORWARD_HOURLY_DROPPED_PREFIXES = ("uv_index",)
+
+
+def _trimmed_forward_hourly(forward_hourly):
+    """HOURS AHEAD without the API's noise or the superseded UV series."""
+    if forward_hourly is None:
+        return None
+
+    lean = _without_api_noise(forward_hourly)
+    hourly = lean.get("hourly") if isinstance(lean, dict) else None
+    if not isinstance(hourly, dict):
+        return lean
+
+    return dict(
+        lean,
+        hourly={
+            name: values
+            for name, values in hourly.items()
+            if not name.startswith(FORWARD_HOURLY_DROPPED_PREFIXES)
+        },
+    )
 
 
 def build_user_prompt(
@@ -1121,6 +1190,15 @@ LOCAL BULLETIN ({local_bulletin_source_name}):
             today_weather_data.get("regional_pressure")
         ),
         "air_quality": _without_api_noise(today_weather_data.get("air_quality")),
+        # KEPT WHOLE, AND ITS UNITS ARE DECLARED IN THE HEADING because they
+        # are not the block's. `wspd` is KNOTS — verified against the same
+        # report's `rawOb`, "02002KT" beside `wspd: 2` — in a prompt that
+        # elsewhere tells the forecaster "Knots = km/h ÷ 1.852" for its own
+        # output. Read as km/h, a 20-knot observation understates the wind a
+        # reader is standing in by 45%. `visib` is statute miles ("6+"
+        # against CAVOK), `altim` hPa (1017 against Q1017), `temp` and `dewp`
+        # °C (19/17), `wdir` degrees (020). A cold reader on 2026-09-23
+        # listed every one of these as undeclared.
         "airport_metar": today_weather_data.get("airport_metar"),
         # Added late, and briefly forgotten here — the pipeline passed it and
         # this rebuild dropped it, so the Synoptic Overview instructions
@@ -1150,9 +1228,9 @@ FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and 
 {_forecast_windows_block(forecast_windows)}
 
 HOURS AHEAD ({_forward_window_scope(forward_hourly, forward_window_narrowed)}):
-{_json(forward_hourly) if forward_hourly is not None else "Unavailable this run."}
+{_json(_trimmed_forward_hourly(forward_hourly)) if forward_hourly is not None else "Unavailable this run."}
 
-TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent):
+TODAY'S MULTI-MODEL GUIDANCE (daily summary out to 7 days, per model. Temperatures °C, wind and gusts km/h, precipitation mm, pressure hPa, CAPE J/kg, cloud cover and probabilities percent, UV index unitless, particulates µg/m³, air-quality indices on the scale their own key names. THE METAR IS NOT IN THESE UNITS: its "wspd" is KNOTS, "visib" statute miles, "altim" hPa, "temp" and "dewp" °C, "wdir" degrees):
 {_json(weather_payload)}
 
 EXTRACTED PER-MODEL PREDICTIONS (pulled from the raw guidance in code — these exact values get scored, so reason from them rather than re-deriving your own from the arrays above; a null field means that model does not forecast it, never zero or "no"):
