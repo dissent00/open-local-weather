@@ -15,6 +15,10 @@
   "air_quality_aqi": "66 (Moderate, CAMS model)",
   "uv_index": null,
   "air_quality_index": null,
+  "uv_index_date": null,
+  "uv_index_source": null,
+  "comparison": {},
+  "tiles": [],
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -540,8 +544,69 @@
       "secondary_scores": {},
       "secondary_verified_at": null,
       "window_opened_local": "2026-09-21T06:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.21159999999999995,
+          "onset_error_hrs": -4.0,
+          "wind_error_kmh": 22.299999999999997,
+          "high_error_c": -0.5,
+          "low_error_c": 0.3000000000000007,
+          "mslp_error_hpa": 1.3999999999999773,
+          "cloud_error_pct": 12.299999999999997,
+          "convective_correct": false,
+          "precip_error_mm": 9.600000000000001
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": true,
+          "rain_brier": 0.0,
+          "onset_error_hrs": 2.0,
+          "wind_error_kmh": 0.6999999999999957,
+          "high_error_c": 1.8000000000000007,
+          "low_error_c": 0.20000000000000284,
+          "mslp_error_hpa": 0.8999999999999773,
+          "cloud_error_pct": 13.699999999999996,
+          "convective_correct": true,
+          "precip_error_mm": -4.199999999999999
+        },
+        "icon_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.004899999999999993,
+          "onset_error_hrs": -2.0,
+          "wind_error_kmh": 5.399999999999999,
+          "high_error_c": 0.7000000000000028,
+          "low_error_c": -1.6999999999999993,
+          "mslp_error_hpa": 0.39999999999997726,
+          "cloud_error_pct": 9.899999999999991,
+          "convective_correct": true,
+          "precip_error_mm": 5.4
+        },
+        "ukmo_seamless": {
+          "rain_correct": true,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 14.799999999999997,
+          "high_error_c": 1.3000000000000007,
+          "low_error_c": 1.9000000000000021,
+          "mslp_error_hpa": -0.5,
+          "cloud_error_pct": 54.49999999999999,
+          "convective_correct": true,
+          "precip_error_mm": 9.700000000000001
+        },
+        "best_match": {
+          "rain_correct": true,
+          "rain_brier": 0.0,
+          "onset_error_hrs": 0.0,
+          "wind_error_kmh": -11.900000000000006,
+          "high_error_c": 0.7000000000000028,
+          "low_error_c": -0.29999999999999716,
+          "mslp_error_hpa": 0.6999999999999318,
+          "cloud_error_pct": 15.599999999999994,
+          "convective_correct": true,
+          "precip_error_mm": -2.1999999999999993
+        }
+      },
+      "window_verified_at": "2026-09-23T03:01:49.553019Z",
       "day_over_day": {
         "yesterday_high_c": 32.5,
         "yesterday_low_c": 18.4,
@@ -556,6 +621,7 @@
         "high_delta_c": -1.2,
         "low_delta_c": 0.6,
         "wind_delta_kmh": 4.1,
+        "cloud_delta_pct": null,
         "high_label": "slightly cooler",
         "wind_label": "similar winds",
         "cloud_label": "similar cloud",
