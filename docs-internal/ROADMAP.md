@@ -26156,7 +26156,8 @@ day — unknown.
 `raw.githubusercontent.com/dissent00/open-local-weather/main/data/prompts/2026-09-24.json`
 (169,138 characters — both of that day's issuances). It reported 169,138
 exactly and the last 80 characters byte-for-byte. Fetch fidelity is not the
-obstacle there.
+obstacle there. **Through its code tool only — the model's own view
+drops the middle; see "What a paid ChatGPT account can see" below.**
 
 What it does NOT prove: ChatGPT counted the file with its code tool, so the
 FETCH is complete, not that the model REASONS over all of it when forecasting.
@@ -26207,6 +26208,28 @@ a smaller forecaster:** `tools/prompt_provider.py probe` writes
 `data/prompt-provider/probe.txt`, 122K characters of real prompt text with a
 checkpoint every ~4K carrying a code word that can only be seen, not counted
 or guessed. The last code word a free account can quote is its ceiling.
+
+**What a paid ChatGPT account can see — the probe, first run, 2026-09-24.**
+The operator ran `probe.txt` on the lowest paid plan (Go), told not to use
+code. It quoted checkpoints 01-04 and 26-30 and the end marker, every word
+correct, and said the view was cut between 04 and 26 without guessing.
+**The web view keeps the HEAD and the TAIL and drops the middle**: the first
+16,220-20,293 characters and the last 16,416-20,500, so ~33-41K of a 122K
+file. Two consequences:
+- **An end marker proves nothing.** The model quoted it exactly with over 80K
+  characters missing from the middle. Checking the last line was the planned
+  fidelity test; the check has to span the file — checkpoints throughout, as
+  the probe has.
+- **Claude and ChatGPT fail differently.** Claude's fetch cuts the tail near
+  120K; ChatGPT's keeps the tail and cuts the middle above ~35K. A package
+  must fit the smaller: on ChatGPT, one location's 80K data message would
+  not arrive whole through the web view on this plan (inferred from the
+  122K run, not run at 80K).
+
+Not known: whether a file under ~33K arrives whole or is cut in proportion,
+which mode (Instant or Thinking) served the run, and anything about Free.
+`probe-30k.txt` — 32,229 characters, a checkpoint every ~1K — answers the
+first and pins both cut points to 1K.
 
 ### OpenClaw (item 4)
 

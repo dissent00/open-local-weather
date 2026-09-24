@@ -23,7 +23,7 @@ model could read them. A code word cannot be counted or guessed, only seen, so
 the last one a model can quote is the last text it holds.
 
 Usage:
-  python tools/prompt_provider.py probe <date> <out_file>
+  python tools/prompt_provider.py probe <date> <out_file> [chars] [every]
 """
 import hashlib
 import json
@@ -59,17 +59,18 @@ def end_marker(text: str, label: str) -> str:
     return f"OLW-DATA-END {label} chars={len(text)} sha256={digest}"
 
 
-def build_probe(source: str, seed: str) -> tuple[str, list[tuple[int, int, str]]]:
-    """Real prompt text cut to PROBE_CHARS, with a checkpoint line after
-    every CHECKPOINT_EVERY characters, placed at the next line break so no
-    data line is split. Returns the text and (number, offset, word) per
-    checkpoint.
+def build_probe(
+    source: str, seed: str, chars: int = PROBE_CHARS, every: int = CHECKPOINT_EVERY
+) -> tuple[str, list[tuple[int, int, str]]]:
+    """Real prompt text cut to `chars`, with a checkpoint line after every
+    `every` characters, placed at the next line break so no data line is
+    split. Returns the text and (number, offset, word) per checkpoint.
     """
     for word in CODE_WORDS:
         if word in source.lower():
             raise SystemExit(f"code word {word!r} occurs in the source text")
 
-    count = PROBE_CHARS // CHECKPOINT_EVERY
+    count = chars // every
     if count > len(CODE_WORDS):
         raise SystemExit("more checkpoints than code words")
 
@@ -81,7 +82,7 @@ def build_probe(source: str, seed: str) -> tuple[str, list[tuple[int, int, str]]
     written = 0
     cut = 0
     for n in range(1, count + 1):
-        target = n * CHECKPOINT_EVERY
+        target = n * every
         end = source.find("\n", target)
         if end == -1:
             raise SystemExit("source text shorter than the probe")
@@ -99,14 +100,20 @@ def build_probe(source: str, seed: str) -> tuple[str, list[tuple[int, int, str]]
     return body + end_marker(body, "probe") + "\n", key
 
 
-def _probe(day: str, out_file: Path) -> None:
+def _probe(day: str, out_file: Path, chars: int, every: int) -> None:
     issuances = json.loads((ROOT / f"data/prompts/{day}.json").read_text(encoding="utf-8"))["issuances"]
 
     # One issuance is ~80K characters since items 174 and 176, short of the
     # probe, so the day's issuances are joined. Repeated blocks are fine: the
     # test is how far a model can see, not what it makes of the content.
     source = "\n".join(i["user_prompt"] for i in issuances)
-    text, key = build_probe(source, seed=day)
+    # Seeded by the file name too, so two probes of one day do not share an
+    # order. They share words, and a position can coincide by chance —
+    # CHECKPOINT 02 is persimmon in both of the first two — so each must be
+    # run in a chat that cannot recall the others. The first probe.txt
+    # (7d68894) was seeded with the bare date and no longer regenerates byte
+    # for byte; the committed file is its own answer key.
+    text, key = build_probe(source, seed=f"{day}/{out_file.name}", chars=chars, every=every)
 
     out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(text, encoding="utf-8")
@@ -118,8 +125,9 @@ def _probe(day: str, out_file: Path) -> None:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) == 3 and argv[0] == "probe":
-        _probe(argv[1], Path(argv[2]))
+    if argv[:1] == ["probe"] and len(argv) in (3, 5):
+        sizes = [int(a) for a in argv[3:]] or [PROBE_CHARS, CHECKPOINT_EVERY]
+        _probe(argv[1], Path(argv[2]), *sizes)
         return 0
 
     print(__doc__)
