@@ -26073,6 +26073,58 @@ yet how that will play out."*
 
 ---
 
+## 180. The free fallback can make the call and cannot write it · **Measured 2026-09-24**
+
+A forced re-issue on the OpenRouter link alone (`llm_provider=openai`,
+`force=true`, 05:50Z) was the first live run of item 178's deadline and retry.
+The mechanics held to the second; the model did not.
+
+| call | 2026-09-23 03:10 | 09-23 15:10 | 09-24 03:10 | 09-24 03:29 | 09-24 05:50 | 09-24 05:56 | 09-24 06:25 |
+|---|---|---|---|---|---|---|---|
+| judgment | | | **624s ok** | | **339s ok** | | |
+| narrative | **1625s ok** | 1803s empty | | 1802s empty | | 1701.5s deadline | 1701.5s deadline |
+
+`nex-agi/nex-n2.5-pro:free`: judgment **2 of 2**, narrative **1 of 5**. The
+judgment is a small structured answer; the narrative is thousands of words,
+and on this free tier the output is what does not finish. The prompt is not
+the cause — this run's was 75,148 characters, the smallest yet, and it failed
+exactly as the 108K ones did.
+
+**Item 178 behaved as specified.** Both narrative attempts were abandoned at
+1701.5s — one read past the ceiling — then retried once and given up; the
+scored call published; the entry named the model that served it and recorded
+`narrative_llm_model: None`, which is the honest answer when nothing wrote
+the prose.
+
+**So on free tiers the chain protects the RECORD and not the READER.** The
+accuracy record gets its scored call on a bad Gemini day; the reader gets a
+placeholder. That is the useful framing for the operator's design question:
+a free fallback here is a judgment-call fallback. Getting prose on a bad day
+needs a model that can finish a long output — a paid mid-tier model, Gemini
+back on `generateContent` (item 179), a different free model measured on the
+NARRATIVE specifically, or a shorter narrative.
+
+### Two operational lessons from the same night
+
+**A manual re-issue needs `force=true`.** The first dispatch (05:41Z) was
+routed to `_refresh_observations_only`: nothing had moved since 03:01, so
+`llm_should_reason` declined the call — by design, and `force` is the
+documented way past it. It refreshed observations and did NOT email: the
+mailer keys an issuance on `meta.refreshed_at`, falling back to
+`generated_at_utc`, and an observations refresh sets neither. The forced run
+set `refreshed_at`, so it did email — the placeholder, since the narrative
+failed.
+
+**The approval gate: a second data point, now a pattern.** The 05:41Z
+dispatch came back `action_required` with no jobs started; the 05:50Z one
+ran at once. The only dispatch gated on 2026-09-22 was also the first after a
+push editing a workflow file. So: THE FIRST DISPATCH AFTER A WORKFLOW-FILE
+EDIT WAITS FOR APPROVAL; later ones do not. Consequence worth writing where
+it will be read: **do not push a change to `.github/workflows/` shortly
+before an unattended cron dispatch** unless someone will approve the first
+run — otherwise the cron's run is the gated one and the day gets no forecast,
+silently. Cause still unconfirmed; the pattern is two for two.
+
 ## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only
