@@ -26139,6 +26139,64 @@ skills audited; CVE-2026-25253, one-click RCE. Its users have been taught to
 distrust skills that run code beside their keys — adoption will be slower
 than the star count suggests, and every contribution is hostile input.
 
+### FIRST: Kenya's Meteorology Act may require a permit to forecast — UNVERIFIED
+
+The Meteorology Act, signed 2026-03-13, creates the Kenya Meteorological
+Service Authority (KMSA). Coverage of the 2024 Bill said forecasting would need
+a permit from the Authority, with fines up to KSh 5M
+(https://eastleighvoice.co.ke/news/63696/). The enacted text could not be read
+(Kenya Law returned 403), so it is NOT known what the final Act says or whether
+it covers a free, labelled, non-official forecast. This project already
+publishes one for Kisumu. **Settle it before any expansion** — ask KMD/KMSA
+directly, which is also the first partnership conversation below.
+
+### Funding and partners (checked 2026-09-24)
+
+**Anthropic.** AI for Science: up to $20K of API credits over 6 months, earth
+sciences in scope, reviewed monthly, ACTIVE; the help page asks for a
+research institution, so a Kenyan university co-applicant settles it
+(https://support.claude.com/en/articles/11199177). At ~$5/location/month that
+is ~650 locations for six months. Gates Foundation partnership ($200M,
+announced 2026-05-14) includes smallholder farming in sub-Saharan Africa, but
+runs through Gates partners with no public application. Claude for Nonprofits
+is seat pricing, no API credits, registered nonprofits only. Claude for Open
+Source is a Max subscription and its thresholds are likely out of reach.
+
+**Other providers.** Google.org's AI for Science challenge CLOSED 2026-05-01;
+Google's nowcasting already covers Kenya — a free baseline to be better than.
+Microsoft nonprofit Azure ($2K/yr) is registered nonprofits only. AWS Activate
+(up to $5K, companies) is the one confirmed cloud-credit route to Claude, via
+Bedrock. OpenAI's researcher programme unverified (pages 403).
+
+**Weather organisations.** KMD (becoming KMSA) issues the Lake Victoria
+Fishing Forecast — last issue on its page dated 2024-11-29 — and its partners
+page invites private collaboration. ICPAC (Nairobi, the WMO regional climate
+centre) runs public 10 km ML rainfall forecasts, SEWAA, with ECMWF, Google and
+KMD, and held a developer hackathon 2026-08-18. WMO Early Warnings for All
+coordinates rather than funds. CREWS East Africa ($7M to 2027) covers Lake
+Victoria warnings but funds governments only. AICCRA (CGIAR, $46M World Bank
+phase approved 2026-03-26) works with KMD. HIGHWAY (Lake Victoria warnings,
+~30% fewer deaths) ENDED 2021.
+
+**Precedent and allies.** TomorrowNow.org — SMS advisories to 6M+ farmers in
+Kenya, Malawi, Zambia; funded by Gates, FCDO and Google.org, which gave $1M in
+Feb 2026 for stations to VALIDATE forecasts. The closest thing to this
+project's scoring idea: an ally for station data and validation. KMFRI with
+ShoShin run AI fish-kill alerts at Dunga Beach, Kisumu, since Feb 2026.
+
+**Digital Public Goods Alliance.** Plausibly qualifies (SDGs 2, 13, 14; OSI
+licences; JSON exports; Ollama as the open LLM alternative). Gaps: a privacy
+policy for the email list (Kenya's Data Protection Act 2019 likely applies),
+do-no-harm documentation. Individuals may apply; 4-8 weeks; recognition, not
+money — but KMD's own site carries a DPG badge.
+
+**First contacts, in order:** (1) KMD/KMSA — the permit question, formal data
+access, and whether they want independent scores of their own lake forecast;
+(2) TomorrowNow — station data near Kisumu, joint validation, an introduction
+to the Gates-Anthropic channel; (3) Anthropic AI for Science with a university
+co-applicant; (4) ICPAC — offer to score SEWAA at Kisumu; (5) DPGA, once the
+privacy policy exists.
+
 ### Is the LLM adding value? The record's answer, 2026-09-24
 
 The operator's objection to making the LLM optional: "the goal was using the
