@@ -2,22 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-17T15:01:38.505934+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 16.695
-    },
-    {
-      "at": "2026-09-17T15:01:55.204954+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 19.627
-    },
-    {
       "at": "2026-09-18T03:01:48.696843+00:00",
       "provider": "GeminiInteractionsProvider",
       "model": "gemini-3.6-flash",
@@ -528,6 +512,110 @@
       "purpose": "forecast",
       "outcome": "deadline",
       "elapsed_s": 1701.503
+    },
+    {
+      "at": "2026-09-24T15:01:38.781181+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.698
+    },
+    {
+      "at": "2026-09-24T15:02:10.481407+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.913
+    },
+    {
+      "at": "2026-09-24T15:03:12.396942+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.039
+    },
+    {
+      "at": "2026-09-24T15:10:13.438098+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.116
+    },
+    {
+      "at": "2026-09-24T15:10:14.558418+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "deadline",
+      "elapsed_s": 1701.606
+    },
+    {
+      "at": "2026-09-24T15:39:06.167082+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 319.993
+    },
+    {
+      "at": "2026-09-24T15:44:26.164658+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.903
+    },
+    {
+      "at": "2026-09-24T15:44:57.069559+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.989
+    },
+    {
+      "at": "2026-09-24T15:45:58.060937+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.14
+    },
+    {
+      "at": "2026-09-24T15:52:59.203103+00:00",
+      "provider": "GeminiInteractionsProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_429",
+      "elapsed_s": 0.847
+    },
+    {
+      "at": "2026-09-24T15:53:00.054858+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "deadline",
+      "elapsed_s": 1701.597
+    },
+    {
+      "at": "2026-09-24T16:21:51.654334+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "error",
+      "elapsed_s": 1591.891
+    },
+    {
+      "at": "2026-09-24T16:49:23.548639+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "deadline",
+      "elapsed_s": 1701.64
     }
   ]
 }
