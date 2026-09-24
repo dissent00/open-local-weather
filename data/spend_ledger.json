@@ -504,6 +504,30 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 1801.788
+    },
+    {
+      "at": "2026-09-24T05:50:58.732257+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 339.311
+    },
+    {
+      "at": "2026-09-24T05:56:38.047831+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "deadline",
+      "elapsed_s": 1701.52
+    },
+    {
+      "at": "2026-09-24T06:25:29.570232+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "deadline",
+      "elapsed_s": 1701.503
     }
   ]
 }
