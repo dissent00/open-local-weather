@@ -9879,6 +9879,14 @@ not in the session that built it.
 >    covering it, and make the reader report the line number of every block
 >    BEFORE it writes anything, so a short read is visible instead of
 >    arriving disguised as a data gap.
+> **PIN THE READER'S MODEL — learned 2026-09-24.** The Agent tool inherits
+> the SESSION's model unless told otherwise, so a "Haiku harness" run
+> launched without `model: "haiku"` runs on whatever the session runs. Every
+> harness run on 2026-09-24 did — the JSON-versus-table pairs (item 176) and
+> the cold reads — so they are valid comparisons of the two prompts and say
+> NOTHING about how Haiku forecasts or what it costs. Pass the model
+> explicitly, and say in the result which one ran.
+>
 > **`tools/harness_inputs.py` BUILDS THE PAIR NOW** — added 2026-09-22, after
 > three runs assembled by hand each got something wrong. It takes a date and
 > an output directory, renders the system prompt with production flags, and
