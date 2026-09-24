@@ -73,6 +73,26 @@ UNAVAILABLE_STATUS_CODES = RETRYABLE_STATUS_CODES | {402}
 # provider capacity recovers, which is not a Gemini trait, and leaving two of
 # the three on a schedule already shown to be too tight would only hide the
 # next occurrence.
+#: How many attempts a PROVIDER FAILURE gets, as opposed to a transport one.
+#:
+#: Two, not MAX_ATTEMPTS, and the arithmetic is the reason. Measured on
+#: `nex-agi/nex-n2.5-pro:free`, the failing call holds the connection for
+#: ~1800s before answering with nothing, so four attempts is two hours of a
+#: scheduled job for one narrative. One retry is worth having — the same model
+#: answered in 624s and 1625s on the days either side, so the second attempt
+#: is the one that was missing — and the third and fourth are a forecast
+#: arriving too late to read.
+#:
+#: NOT A DEADLINE, which is the other half of this and is not built: nothing
+#: here stops a provider holding the connection, it only stops us asking again
+#: forever. See ROADMAP item 178.
+PROVIDER_FAILURE_MAX_ATTEMPTS = 2
+
+#: `finish_reason` values that mean the PROVIDER failed rather than the model
+#: choosing to stop — see the empty-content branch in `generate`. Retryable,
+#: and eligible to fall through to the next link in a chain.
+PROVIDER_FAILURE_FINISH_REASONS = frozenset({"error"})
+
 RETRY_DELAYS_S = (30, 60, 420)
 MAX_ATTEMPTS = len(RETRY_DELAYS_S) + 1
 RETRY_AFTER_MAX_S = max(RETRY_DELAYS_S)  # the longest we impose ourselves
@@ -95,6 +115,33 @@ SCHEMA_PROMPT_TEMPLATE = (
     "\n\nReturn ONLY a JSON object conforming exactly to this JSON Schema. "
     "Do not wrap it in markdown fences or add commentary:\n{schema}"
 )
+
+
+def _provider_failed(resp: requests.Response) -> bool:
+    """Whether a 200 is really the provider reporting its own failure.
+
+    OpenRouter answers HTTP 200 with a null content and
+    `finish_reason: "error"` when the upstream it brokered to gave up — see
+    PROVIDER_FAILURE_FINISH_REASONS for the measurement. Checked inside the
+    retry loop because that is the only place a second attempt can still be
+    made; by the time `generate` parses the body the loop has returned.
+
+    Never raises on a malformed body: anything unparseable here is not a
+    provider failure this can recognise, and the caller's own parsing will
+    produce a better message than a guess made from inside the transport.
+    """
+    if resp.status_code != 200:
+        return False
+
+    try:
+        choices = resp.json().get("choices") or []
+        first = choices[0]
+        return (
+            first.get("message", {}).get("content") is None
+            and first.get("finish_reason") in PROVIDER_FAILURE_FINISH_REASONS
+        )
+    except (ValueError, AttributeError, IndexError, KeyError, TypeError):
+        return False
 
 
 class OpenAICompatProvider:
@@ -184,8 +231,27 @@ class OpenAICompatProvider:
                     self.endpoint, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S
                 )
                 report_outcome(self.after_attempt, http_outcome(resp.status_code), started)
-                if resp.status_code not in RETRYABLE_STATUS_CODES:
+                if resp.status_code not in RETRYABLE_STATUS_CODES and not _provider_failed(resp):
                     return resp
+                if resp.status_code not in RETRYABLE_STATUS_CODES:
+                    # A 200 that carries the provider's own failure. Retried
+                    # HERE rather than raised for the caller, because the
+                    # caller is past the retry loop by the time it parses and
+                    # a second attempt is exactly what this case wants — see
+                    # PROVIDER_FAILURE_FINISH_REASONS.
+                    last_exc = LLMUnavailableError(
+                        f"{self.base_url} answered HTTP 200 with empty content"
+                    )
+                    delay = _retry_delay(attempt)
+                    if attempt >= PROVIDER_FAILURE_MAX_ATTEMPTS:
+                        raise last_exc
+                    print(
+                        f"LLM call failed ({last_exc}); retrying in {delay}s "
+                        f"(attempt {attempt}/{MAX_ATTEMPTS}).",
+                        file=sys.stderr,
+                    )
+                    time.sleep(delay)
+                    continue
                 last_exc = LLMResponseError(f"{self.base_url} returned HTTP {resp.status_code}")
                 delay = _retry_after_seconds(resp) or _retry_delay(attempt)
             # Timeout before RequestException: it is a subclass, and it is the
@@ -291,11 +357,33 @@ class OpenAICompatProvider:
             raise LLMResponseError(f"LLM response had no message content: {e}") from e
 
         if text is None:
+            reason = choices[0].get("finish_reason")
+            # A PROVIDER THAT FAILED IS NOT A MODEL THAT ANSWERED BADLY.
+            #
+            # The no-retry rule below exists because falling back on a schema
+            # failure pays twice to be told the same thing. That is true of
+            # "length" and "content_filter": the model produced what it was
+            # going to produce and a second attempt buys the same answer.
+            #
+            # "error" is the provider reporting its OWN failure, which is what
+            # `LLMUnavailableError` is for. Measured on `nex-agi/nex-n2.5-pro:
+            # free`, 2026-09-23 and 2026-09-24: it held the connection 1802.9s
+            # and 1801.8s — 1.2 seconds apart, a ceiling rather than a
+            # coincidence — then answered HTTP 200 with null content and this
+            # reason. Both times the narrative was abandoned with no second
+            # attempt, while the SAME model answered in 624s and 1625s on the
+            # days either side. The retry that would have worked was never
+            # made, because an empty body was being read as a bad answer.
+            if reason in PROVIDER_FAILURE_FINISH_REASONS:
+                raise LLMUnavailableError(
+                    f"LLM returned empty content (finish_reason={reason!r}) — "
+                    "the provider reporting its own failure."
+                )
+
             # Seen when a model stops on a length/filter finish_reason —
             # surface that reason rather than a bare "None is not JSON".
             raise LLMResponseError(
-                f"LLM returned empty content (finish_reason="
-                f"{choices[0].get('finish_reason')!r})."
+                f"LLM returned empty content (finish_reason={reason!r})."
             )
 
         try:

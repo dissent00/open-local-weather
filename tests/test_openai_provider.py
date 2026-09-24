@@ -3,8 +3,12 @@ import json
 import pytest
 import requests_mock
 
-from openlocalweather.llm.gemini import LLMResponseError
-from openlocalweather.llm.openai_compat import MAX_ATTEMPTS, OpenAICompatProvider
+from openlocalweather.llm.errors import LLMResponseError, LLMUnavailableError
+from openlocalweather.llm.openai_compat import (
+    MAX_ATTEMPTS,
+    PROVIDER_FAILURE_MAX_ATTEMPTS,
+    OpenAICompatProvider,
+)
 from openlocalweather.llm.schema import GeminiForecastResponse
 
 MODEL = "test-model"
@@ -305,3 +309,42 @@ def test_the_retry_after_ceiling_tracks_our_own_longest_wait():
     for mod in (openai_mod, anthropic_mod):
         longest_self_imposed = max(mod.RETRY_DELAYS_S)
         assert mod.RETRY_AFTER_MAX_S == longest_self_imposed, mod.__name__
+
+
+# ---------------------------------------------------------------------------
+# A provider that fails is not a model that answered badly — ROADMAP item 178
+# ---------------------------------------------------------------------------
+
+
+def test_finish_reason_error_is_unavailable_not_a_bad_answer():
+    """An empty body with finish_reason "error" is the PROVIDER failing.
+
+    Measured 2026-09-23 and again 2026-09-24: `nex-agi/nex-n2.5-pro:free` held
+    the connection 1802.9s and 1801.8s — 1.2 seconds apart — then returned
+    HTTP 200 with a null content and this reason. Both times the narrative was
+    abandoned without a second attempt, because empty content raised
+    `LLMResponseError`, which is deliberately neither retried nor fallen back.
+
+    That rule is right for "length" and "content_filter", where a second
+    attempt buys the same answer. It is wrong here: the same model answered
+    successfully at 624s and 1625s on the days either side, so a retry had a
+    real chance and was never taken.
+    """
+    with requests_mock.Mocker() as m:
+        m.post(f"{BASE_URL}/chat/completions", json=envelope(None, finish_reason="error"))
+        with pytest.raises(LLMUnavailableError):
+            provider().generate("sys", "user", GeminiForecastResponse)
+        # TWO, not four. The failing call takes ~1800s, so four attempts is
+        # two hours for one narrative — see PROVIDER_FAILURE_MAX_ATTEMPTS.
+        assert m.call_count == PROVIDER_FAILURE_MAX_ATTEMPTS
+
+
+@pytest.mark.parametrize("reason", ["length", "content_filter"])
+def test_a_model_that_stopped_itself_is_still_not_retried(reason):
+    """The other half of the rule, unchanged. These say the model produced
+    what it was going to produce, and asking again pays twice for it."""
+    with requests_mock.Mocker() as m:
+        m.post(f"{BASE_URL}/chat/completions", json=envelope(None, finish_reason=reason))
+        with pytest.raises(LLMResponseError):
+            provider().generate("sys", "user", GeminiForecastResponse)
+        assert m.call_count == 1, "a self-stopped model must not be retried"

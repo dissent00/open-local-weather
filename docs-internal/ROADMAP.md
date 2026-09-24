@@ -26073,6 +26073,66 @@ yet how that will play out."*
 
 ---
 
+## 178. An empty body is a provider failing, not a model answering badly · **Half shipped 2026-09-24**
+
+Two runs lost their narrative to the same thing, and neither retried.
+
+`nex-agi/nex-n2.5-pro:free` held the connection and then answered HTTP 200
+with `content: null` and `finish_reason: "error"`:
+
+| | elapsed | outcome |
+|---|---:|---|
+| 2026-09-23 15:10 | 1802.949s | empty |
+| 2026-09-24 03:29 | 1801.788s | empty |
+| 2026-09-23 03:10 | 1624.998s | **succeeded** |
+| 2026-09-24 03:10 | 624.307s | **succeeded** |
+
+The two failures are **1.2 seconds apart**, which is a ceiling rather than a
+coincidence: something upstream gives up at 1800s. The same model answered
+successfully at 624s and 1625s on the days either side, so a second attempt
+had a real chance both times and was never made.
+
+**Why it was never made.** Empty content raised `LLMResponseError`, which is
+deliberately neither retried nor fallen back — falling back on a schema
+failure pays twice to be told the same thing. That reasoning fits
+`finish_reason` of `length` or `content_filter`, where the model produced what
+it was going to produce. It does not fit `error`, which is the provider
+reporting its OWN failure, and that is what `LLMUnavailableError` is for.
+
+### Shipped
+
+`PROVIDER_FAILURE_FINISH_REASONS` splits the two. An `error` with a null body
+is now retryable and eligible to fall through a chain; `length` and
+`content_filter` are unchanged and still raise on the first attempt, with a
+test on each so the distinction cannot quietly collapse.
+
+Checked inside the retry loop, not at the parse site, because by the time
+`generate` parses the body the loop has already returned and no further
+attempt can be made.
+
+**Bounded to two attempts, not four** — `PROVIDER_FAILURE_MAX_ATTEMPTS`. The
+failing call takes ~1800s, so the full schedule would be two hours of a
+scheduled job for one narrative. One retry is the attempt that was missing;
+the third and fourth arrive too late to read.
+
+### NOT shipped: there is still no deadline
+
+`REQUEST_TIMEOUT_S = 120` reads like "we give up after two minutes" and does
+not do that. `requests` applies it to the connection and between reads, not to
+the whole exchange, so a provider that trickles or holds the connection runs
+as long as it likes — 1801.8s under a 120s timeout, measured.
+
+Bounding it means aborting mid-flight, which means `stream=True` and reading
+with a deadline, which is a real change to the transport. **And the number is
+an operator decision, not a measurement**: the slowest SUCCESSFUL call was
+1625s, so any deadline under ~27 minutes trades narratives for wall-clock.
+That is a question about what a forecast is worth waiting for, and it should
+be answered before the plumbing is written.
+
+Until then the exposure is bounded by the attempt cap rather than by time:
+worst case is two calls of ~1800s, about an hour, where today it was 30
+minutes and no retry.
+
 ## 177. The rain BOOLEAN is already unioned; the AMOUNT is the gap · **Corrected 2026-09-23**
 
 **This item was recorded wrong earlier the same day and is rewritten here.**
