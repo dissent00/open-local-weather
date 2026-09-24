@@ -26178,6 +26178,36 @@ a budget the prompt-size instrument (item 148) should watch.
 marker line at the end the model must confirm, and the instructions kept in a
 saved prompt or Claude Project rather than in the fetched text.
 
+**Sizes that constrain the package, 2026-09-24.**
+- The rules are the two system prompts, 19,861 + 38,187 = 58,048
+  characters. The current code rebuilds both of that day's archived prompts
+  byte for byte (SHA-256 match on both issuances), so a saved copy can be the
+  exact forecaster the API runs. Only one 723-character block differs
+  between a first and a later issuance.
+- **ChatGPT caps saved instructions at 8,000 characters**, in a custom GPT
+  and in a Project alike. 58K of rules can only reach it as a knowledge file,
+  and GPT knowledge is retrieved in chunks, not guaranteed whole. Claude
+  Projects load knowledge whole until near the context limit.
+- ~5 characters per token, from `meta.input_tokens` in the log: Gemini
+  55,789 for roughly 277K characters across both calls on 09-21 (that day's
+  system prompts estimated, not rebuilt), nex 5.3-5.6 on 09-24. OpenAI's
+  tokenizer is not measured. So rules + data is ~26-28K tokens before output.
+- ChatGPT's pricing page, read in a browser: Instant total context Free 27K,
+  Go and Plus 54K, Pro 128K; input maximum "~12 pages", "~40 pages", "~250
+  pages". Reasoning: Free "Varies", Go and Plus 256K, Pro 400K. Free can USE
+  GPTs, Search and Projects and has GPT-5 Thinking Mini; creating one needs
+  Go ($5 a month) or above.
+
+**So the full package cannot run on free ChatGPT** — the operator's target,
+since that is the account a reader in Kisumu has. The shape that could: the
+operator builds ONE GPT (a paid account creates it) and shares its link; a
+free reader opens it and asks, with nothing to set up. What fits in it is
+not known, because "~12 pages" is not a number. **Measure before designing
+a smaller forecaster:** `tools/prompt_provider.py probe` writes
+`data/prompt-provider/probe.txt`, 122K characters of real prompt text with a
+checkpoint every ~4K carrying a code word that can only be seen, not counted
+or guessed. The last code word a free account can quote is its ceiling.
+
 ### OpenClaw (item 4)
 
 A self-hosted gateway (desktop or server; phones only pair) connecting chat
