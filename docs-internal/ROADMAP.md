@@ -26073,6 +26073,74 @@ yet how that will play out."*
 
 ---
 
+## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
+
+The operator's AI Studio console and our ledger disagree by about 2x, and only
+since the endpoint switch (c0ad635, 2026-09-15):
+
+| UTC-8 day | our ledger (HTTP) | console "Total API Requests" | console "Requests per model" |
+|---|---:|---:|---:|
+| Sep 21 | 9 | ~10 | ~23 |
+| Sep 22 | 13 | ~13 | ~23 |
+| Sep 23 | 12 | ~12 | ~22 |
+
+Our HTTP accounting matches Google's request count. The free-tier limit fires
+on the per-model count, which runs double. Before the switch the two console
+series tracked each other at 2-8 a day, and 15 `generateContent` requests on
+2026-09-14 drew no 429.
+
+**Evidence from our own logs, verified** (run 35681586325, 2026-09-22):
+
+- 03:03:04Z, a 429 reading `limit: 5 requests per minute`, with three of our
+  requests in that minute (03:02:10, 03:02:48, 03:03:03). Exceeding 5 on 3
+  needs about 2 units each.
+- 03:03:41Z, a 429 reading `limit: 20 requests per day` — **followed by HTTP
+  200 at 03:04:41Z.** A counter genuinely at its daily ceiling does not admit
+  the next request, so either units are refunded or the message names the
+  wrong limit.
+
+**That second point overturns a proposal made earlier the same day:** treating
+a "per day" 429 as terminal and demoting the provider until reset. On
+2026-09-22 that would have discarded a success 67 seconds later. The 429 text
+is not a reliable statement of which limit was hit, so no rule may key on it.
+
+**What Google documents** (research pass, sources in the session record):
+nothing on how the Interactions endpoint is metered, whether polls count, or
+whether failed requests count. The Interactions page reportedly advises
+keeping production workloads on `generateContent`, and its supported-models
+table did not list `gemini-3.6-flash` — both reported by the research pass and
+NOT re-checked here. Interactions stores requests by default (`store: true`),
+the one default that differs between the endpoints and the one untested
+candidate multiplier.
+
+**Ruled out:** polling. Production sends no `background`, the submit returns
+already terminal, `_poll_to_terminal` returns without a GET, and the ledger
+holds no poll rows though the hook is wired. Thinking effort: measured at
+4,139 thinking tokens against 4,235 on `generateContent` at "high".
+
+**Side finding:** the API reference documents `generation_config.
+thinking_level` for Interactions, so the `cli.py` comment calling it
+unmeasured is out of date.
+
+### The experiment, three requests, after the quota resets
+
+Between ~08:30Z and 14:00Z, with nothing else calling the key. Read the
+console's "Total API Requests" and "Requests per model" before starting and
+20 minutes after each step (the console lags ~15 minutes):
+
+1. One `generateContent`, tiny prompt. Expect +1 / +1.
+2. One `POST /v1beta/interactions`, `{"model":"gemini-3.6-flash","input":"Reply OK"}`
+   — production's defaults. **+1 total, +2 per-model confirms the multiplier.**
+3. Only if step 2 showed +2: the same with `"store": false`. +1 means storage
+   is the cause; +2 means the endpoint is.
+
+Run by the operator with their own key — this session does not handle keys.
+
+**If confirmed, the cheapest fix in the project is moving back to
+`generateContent`**, which doubles the effective free-tier allowance. Item 80
+adopted Interactions on reliability evidence it called n=1 against n=1, so
+what the switch bought should be re-read before it is traded away.
+
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — deadline at 1700s, to be monitored**
 
 Two runs lost their narrative to the same thing, and neither retried.
@@ -26163,8 +26231,19 @@ broken in the direction that matters. Driven directly, 2026-09-24: a chain
 whose first link's cap raises `SpendCapExceeded` NEVER REACHES the second
 link. `FallbackProvider` catches only `LLMUnavailableError`, and the cap
 raises a plain `RuntimeError`, so once our ledger counts Gemini at 20 every
-run dies at the judgment call with OpenRouter at 3/20. Separate change,
-recorded here because it is the precondition for this item's goal.
+run dies at the judgment call with OpenRouter at 3/20.
+
+**And the pre-flight has the defect item 170 was written to remove.**
+`assert_capacity`, which refuses to START a run, still counts the WHOLE
+ledger against the deployment's 20 — item 170 changed `record_attempt` and
+never mentions the pre-flight. Driven directly: Gemini at 19, OpenRouter at 0
+of its own 20, and the run is refused before it begins — "19 of 20 allowed
+calls already made (this run needs 2)". That is item 170's own sentence about
+the old cap, still true: "it can refuse tomorrow's forecast on the strength
+of yesterday's failures."
+
+Both are bugs against the operator's stated design ("4 providers, 4
+configurable limits"), not open questions. Separate change.
 
 ## 177. The rain BOOLEAN is already unioned; the AMOUNT is the gap · **Corrected 2026-09-23**
 
