@@ -1388,14 +1388,20 @@ def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch
 
     deps = make_deps(tmp_path, llm=RefusingProvider())
     # LocationConfig is a pydantic model, so model_copy rather than replace.
+    # TWO, so a run fits exactly and the burn below is what tips it over.
     deps = replace(
-        deps, location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 1})
+        deps, location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 2})
     )
 
-    # Burn the single allowed call.
+    # Burn one of the two — ON THE CREDENTIAL THE RUN WILL CALL. This used to
+    # burn `provider="x", model="y"` and passed only because the pre-flight
+    # counted the whole ledger. Once it counted per link (ROADMAP item 178) a
+    # row for "x" stopped counting against this run, and at a cap of 1 the run
+    # was refused anyway for needing 2 — so the burn did nothing and the test
+    # would have passed with it deleted. Now it is load-bearing again.
     record_attempt(
-        tmp_path, provider="x", model="y", purpose="test",
-        max_calls=1,
+        tmp_path, provider="RefusingProvider", model="fake-model",
+        purpose="test", max_calls=2,
     )
 
     with pytest.raises(SpendCapExceeded):
@@ -4686,3 +4692,182 @@ def test_an_unchained_provider_is_named_exactly_as_before(tmp_path):
 
     assert entry.meta.llm_provider == "FakeLLMProvider"
     assert entry.meta.llm_model == "fake-model"
+
+
+# ---------------------------------------------------------------------------
+# A chain survives one vendor running out — ROADMAP items 170 and 178
+# ---------------------------------------------------------------------------
+#
+# Through a REAL FallbackProvider, the real cap hook and the real ledger. The
+# item-170 tests proved each link counts against its own budget, through a
+# hand-made chain, and never asked whether a refused link lets the next one
+# serve. It did not: the refusal was a plain SpendCapExceeded, the chain only
+# catches LLMUnavailableError, and the run died with the fallback untouched.
+
+
+def _link(model: str, limit: int | None = None) -> FakeLLMProvider:
+    link = FakeLLMProvider()
+    link.model = model
+    if limit is not None:
+        link.max_calls_per_24h = limit
+    return link
+
+
+def _spent(tmp_path, link: FakeLLMProvider, n: int) -> None:
+    from openlocalweather.spend import record_attempt
+
+    for _ in range(n):
+        record_attempt(
+            tmp_path, provider=type(link).__name__, model=link.model,
+            purpose="forecast", max_calls=10**6,
+        )
+
+
+def test_yesterdays_failures_on_one_vendor_do_not_refuse_todays_run(tmp_path):
+    """The failure item 170 was written to remove, still alive at the
+    pre-flight: "it can refuse tomorrow's forecast on the strength of
+    yesterday's failures."
+
+    A bad day spent 19 of Gemini's 20 on retries. OpenRouter has all 20 of
+    its own. The pre-flight counted the WHOLE ledger — 19 used, 2 needed, 20
+    allowed — and refused the run before either vendor was asked.
+    """
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    gemini = _link("gemini-3.6-flash")
+    openrouter = _link("nex-agi/nex-n2.5-pro:free")
+    _spent(tmp_path, gemini, 19)
+
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    # Gemini's last call took the scored judgment; its refusal on the next
+    # handed the write-up on. Item 171 names each call's server separately.
+    assert entry.meta.llm_model == "gemini-3.6-flash"
+    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert not entry.meta.degradations
+
+
+def test_a_vendor_at_its_own_limit_hands_the_run_to_the_next(tmp_path):
+    """Defect A on its own: a link refused by its OWN ceiling must be skipped,
+    not end the run. Before this, the refusal escaped the chain and the
+    fallback that had calls to spare was never asked."""
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    gemini = _link("gemini-3.6-flash", limit=2)
+    openrouter = _link("nex-agi/nex-n2.5-pro:free")
+    _spent(tmp_path, gemini, 2)
+
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    assert entry.meta.llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert gemini.calls == [], "refused before a request, so never reached"
+
+
+def test_every_vendor_running_out_mid_run_still_publishes_the_scored_call(tmp_path):
+    """The operator's "restart it if we have enough calls", from the side
+    where there are not enough. The budget covered the run at the pre-flight
+    and was gone by the write-up, because a retry spent a call in between.
+    No link can take the narrative, so the narrative degrades — and the
+    judgment, already made and paid for, is published and scored."""
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    class RetriedOnce(FakeLLMProvider):
+        def generate(self, system_prompt, user_prompt, response_schema):
+            if response_schema is GeminiJudgmentResponse and self.before_attempt:
+                self.before_attempt()  # the attempt that drew a 503
+            return super().generate(system_prompt, user_prompt, response_schema)
+
+    gemini = _link("gemini-3.6-flash", limit=2)
+    _spent(tmp_path, gemini, 2)
+    openrouter = RetriedOnce()
+    openrouter.model = "nex-agi/nex-n2.5-pro:free"
+    openrouter.max_calls_per_24h = 2
+
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    assert entry.temp_high_c is not None, "the scored call must survive"
+    assert entry.meta.llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert DEGRADATION_NARRATIVE in {d.code for d in entry.meta.degradations or []}
+
+
+def test_a_chain_with_no_calls_left_anywhere_refuses_to_start(tmp_path):
+    """The loud path, unchanged: when no link can cover the run, it is refused
+    before any vendor is asked — the guard stops the call, not just counts."""
+    from openlocalweather.llm.fallback import FallbackProvider
+    from openlocalweather.spend import SpendCapExceeded
+
+    gemini = _link("gemini-3.6-flash")
+    openrouter = _link("nex-agi/nex-n2.5-pro:free")
+    _spent(tmp_path, gemini, 20)
+    _spent(tmp_path, openrouter, 20)
+
+    with pytest.raises(SpendCapExceeded):
+        issue(
+            make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+            today=date(2026, 8, 11), dry_run=False,
+        )
+    assert gemini.calls == [] and openrouter.calls == []
+
+
+def test_the_pre_flight_holds_each_link_to_its_own_ceiling(tmp_path):
+    """The pre-flight and the hook must agree about a link's allowance, or
+    the pre-flight starts runs the hook then refuses halfway through.
+
+    Gemini's own ceiling is 2, OpenRouter's 1, the deployment's 20. Reading
+    the deployment's number for every link, the pre-flight saw 38 calls left
+    and started a run that had one. That mutation SURVIVED both suites until
+    this test existed: the per-link ceiling reached the hook and nothing
+    checked it reached the pre-flight.
+    """
+    from openlocalweather.llm.fallback import FallbackProvider
+    from openlocalweather.spend import SpendCapExceeded
+
+    gemini = _link("gemini-3.6-flash", limit=2)
+    openrouter = _link("nex-agi/nex-n2.5-pro:free", limit=1)
+    _spent(tmp_path, gemini, 2)
+
+    with pytest.raises(SpendCapExceeded, match="refused before starting"):
+        issue(
+            make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+            today=date(2026, 8, 11), dry_run=False,
+        )
+    assert gemini.calls == [] and openrouter.calls == []
+
+
+def test_a_run_may_be_split_across_links_with_one_call_each(tmp_path):
+    """Why the pre-flight SUMS the links rather than asking for one link that
+    could carry the whole run: a chain splits a run naturally. Each vendor has
+    exactly one call left; Gemini spends its last on the judgment, is refused
+    on the write-up, and OpenRouter spends ITS last on that. A complete
+    forecast, no degradation — and asking for a single link with two left
+    would have refused it before it began.
+    """
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    gemini = _link("gemini-3.6-flash", limit=2)
+    openrouter = _link("nex-agi/nex-n2.5-pro:free", limit=2)
+    _spent(tmp_path, gemini, 1)
+    _spent(tmp_path, openrouter, 1)
+
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    assert entry.meta.llm_model == "gemini-3.6-flash"
+    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert not entry.meta.degradations

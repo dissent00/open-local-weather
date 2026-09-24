@@ -69,6 +69,19 @@ class FallbackProvider:
         self._after_response = None
 
     @property
+    def links(self) -> tuple:
+        """Every child this chain could hand a request to, in order.
+
+        READ-ONLY, and added for one reader — ROADMAP item 178. The spend
+        pre-flight has to know every link's own budget to ask whether the
+        CHAIN can cover a run; counting the whole ledger against one number
+        is how yesterday's Gemini retries came to refuse a run OpenRouter had
+        twenty calls for. A tuple, so a caller cannot reorder or edit the
+        chain through it.
+        """
+        return tuple(self._providers)
+
+    @property
     def served_provider(self):
         """The child a record about the last output should credit.
 

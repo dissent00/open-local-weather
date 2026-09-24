@@ -91,7 +91,12 @@ from openlocalweather.tiles import (
     notable_moves,
     wind_anchors,
 )
-from openlocalweather.llm.provider import provider_identity, resolve_active, served_identity
+from openlocalweather.llm.provider import (
+    chain_links,
+    provider_identity,
+    resolve_active,
+    served_identity,
+)
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
 from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
@@ -570,6 +575,17 @@ def _generate_forecast(
     )
 
 
+def _link_ceiling(link, deployment_default: int) -> int:
+    """One link's own call allowance, or the deployment's when it sets none.
+
+    THE ONLY PLACE THIS IS DECIDED, and that is the point of it being a
+    function — ROADMAP item 178. The per-attempt hook and the pre-flight both
+    ask it; when the hook alone knew the rule, the pre-flight went on counting
+    the whole ledger for two days after item 170 shipped, and nothing noticed.
+    """
+    return getattr(link, "max_calls_per_24h", None) or deployment_default
+
+
 def attach_spend_cap(
     provider, data_dir: Path, *, max_calls: int, purpose: str, calls_needed: int = 1
 ):
@@ -608,7 +624,21 @@ def attach_spend_cap(
     # cannot cover it refuses BEFORE the first call rather than partway
     # through — see assert_capacity, and ROADMAP item 59 step 3 for the
     # half-a-forecast failure that prompted it.
-    assert_capacity(data_dir, max_calls=max_calls, calls_needed=calls_needed)
+    assert_capacity(
+        data_dir,
+        max_calls=max_calls,
+        calls_needed=calls_needed,
+        # PER LINK, the way the hook below enforces it — ROADMAP item 178.
+        # Without this the pre-flight counted the WHOLE ledger against one
+        # number, and a bad day's retries on one vendor refused the next run
+        # before a vendor with its full allowance was asked. Item 170 fixed
+        # the hook and left this. The ceiling comes from the same
+        # `_link_ceiling` so the two checks cannot disagree about a link.
+        links=[
+            (*provider_identity(link), _link_ceiling(link, max_calls))
+            for link in chain_links(provider)
+        ],
+    )
 
     recorded: list[int] = []
     # The row _record opened and _complete is owed. Held here rather than
@@ -636,7 +666,7 @@ def attach_spend_cap(
         # spent the budget its fallback needed — eight Gemini 503 attempts on
         # 2026-09-22 left five of twenty for the next morning, while neither
         # vendor's real quota had been touched and nothing had been billed.
-        limit = getattr(resolve_active(provider), "max_calls_per_24h", None) or max_calls
+        limit = _link_ceiling(resolve_active(provider), max_calls)
         used = record_attempt(
             data_dir,
             provider=name,

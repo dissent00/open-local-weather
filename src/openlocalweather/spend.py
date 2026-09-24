@@ -45,6 +45,8 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from openlocalweather.llm.errors import LLMUnavailableError
+
 # Deliberately above the honest worst case rather than at it.
 #
 # RECOUNTED FOR THE SPLIT, ROADMAP item 59 step 3. A forecast is a judgment
@@ -110,6 +112,39 @@ class SpendCapExceeded(RuntimeError):
     too low only by noticing missing forecasts days later — the same
     "tolerance without vigilance" failure this project has already been bitten
     by, where the system survives a problem and never mentions it.
+    """
+
+
+class ProviderCapExceeded(SpendCapExceeded, LLMUnavailableError):
+    """ONE LINK'S own allowance is spent — ROADMAP item 178, finishing 170.
+
+    Both at once, and each base is doing a job. As a SpendCapExceeded it is
+    still the cap, still loud, and still caught by everything that catches a
+    cap. As an LLMUnavailableError it tells a FallbackProvider what is true:
+    this link cannot serve, the next one might.
+
+    Before this it was only the first, and that was defect enough to undo
+    item 170's purpose. The chain catches LLMUnavailableError and nothing
+    else, so a vendor refused by its own ceiling ended the run with the
+    fallback's calls untouched — driven 2026-09-24: Gemini at its limit,
+    OpenRouter at 0 of 20, run aborted, OpenRouter never asked.
+
+    What the second base changes downstream, all of it wanted:
+    - Every link capped on the JUDGMENT call: the chain re-raises the last
+      refusal, still a SpendCapExceeded, and the run fails — loud, as before,
+      now reaching the CLI's "Critical Error" line instead of a traceback.
+    - Every link capped on the NARRATIVE call: `forecast_call` catches it as
+      the provider's own failure and publishes the scored call without prose.
+      Aborting there would throw away a judgment already made and paid for;
+      the "must fail loudly rather than quietly produce no forecast" rule in
+      pipeline.py is about the case where there is no forecast, and here
+      there is one, with a degradation notice saying why.
+
+    Never retried: every provider calls the hook OUTSIDE its try, so the
+    refusal leaves `generate` at once. Checked in all four.
+
+    NOT raised by `assert_capacity`. That is the whole run being refused
+    before it starts, which is not a link that can be skipped.
     """
 
 
@@ -275,6 +310,7 @@ def assert_capacity(
     *,
     max_calls: int = DEFAULT_MAX_LLM_CALLS_PER_24H,
     calls_needed: int = 1,
+    links: list[tuple[str, str, int]] | None = None,
     now: datetime | None = None,
 ) -> None:
     """Raises if the work about to start does not FIT, WITHOUT recording anything.
@@ -299,6 +335,24 @@ def assert_capacity(
     """
     now = now or datetime.now(timezone.utc)
     records = read_ledger(data_dir)
+
+    # PER LINK when the caller can say what its links are — ROADMAP item 178.
+    # `links` is (provider, model, ceiling) for every link a chain could hand
+    # a request to, with the ceiling `record_attempt` will enforce. The run
+    # fits if the links TOGETHER have the calls it needs, because a chain can
+    # split a run across them: the judgment on one vendor, the write-up on the
+    # next.
+    #
+    # Counting the whole ledger against one number instead is the defect item
+    # 170 was written to remove, and it survived here after 170 fixed the hook
+    # — driven 2026-09-24: Gemini at 19 of 20, OpenRouter at 0 of its own 20,
+    # run refused before either was asked.
+    if links is not None:
+        _assert_links_can_cover(records, now, links, calls_needed)
+        return
+
+    # WHOLE LEDGER, for a caller that cannot name its links. The conservative
+    # direction: it can only refuse a run the per-link count would allow.
     used = calls_in_window(records, now)
     if used + calls_needed > max_calls:
         oldest_in_window = min(
@@ -314,6 +368,46 @@ def assert_capacity(
         )
 
 
+def _assert_links_can_cover(
+    records: list[SpendRecord],
+    now: datetime,
+    links: list[tuple[str, str, int]],
+    calls_needed: int,
+) -> None:
+    """Raises unless the chain's links, together, have `calls_needed` left.
+
+    Each link counts only its own rows, matched on (provider, model) exactly
+    as `record_attempt` counts them. Two links naming the same credential —
+    two OpenRouter keys on one model, which config allows — share ONE count,
+    so they are counted once: adding their allowances would promise calls
+    the ledger cannot tell apart. The HIGHER ceiling is the one that counts,
+    because it is what the hook allows — each link refuses at its own
+    ceiling, so calls continue until the shared count reaches the larger.
+    """
+    standing: dict[tuple[str, str], tuple[int, int]] = {}
+    for provider, model, ceiling in links:
+        used = calls_in_window(records, now, provider=provider, model=model)
+        if (provider, model) in standing:
+            ceiling = max(ceiling, standing[(provider, model)][1])
+        standing[(provider, model)] = (used, ceiling)
+
+    left = sum(max(0, ceiling - used) for used, ceiling in standing.values())
+    if left >= calls_needed:
+        return
+
+    each = ", ".join(
+        f"{provider} ({model}) {used} of {ceiling}"
+        for (provider, model), (used, ceiling) in standing.items()
+    )
+    needed = "" if calls_needed == 1 else f" and this run needs {calls_needed}"
+    raise SpendCapExceeded(
+        f"LLM call refused before starting: the chain has {left} call(s) left "
+        f"across its links{needed} — {each} in the last 24 hours. A link with "
+        f"its own max_calls_per_24h is held to that; the rest to "
+        f"max_llm_calls_per_24h in config/location.yaml."
+    )
+
+
 def record_attempt(
     data_dir: str | Path,
     *,
@@ -323,7 +417,8 @@ def record_attempt(
     max_calls: int = DEFAULT_MAX_LLM_CALLS_PER_24H,
     now: datetime | None = None,
 ) -> int:
-    """Reserves one call, or raises [SpendCapExceeded].
+    """Reserves one call, or raises [ProviderCapExceeded] — a SpendCapExceeded
+    that a fallback chain can step past, since the ceiling is this link's own.
 
     Call this IMMEDIATELY BEFORE making a request, never after. The write
     happens first precisely so that a process killed mid-call still leaves
@@ -347,7 +442,7 @@ def record_attempt(
             default=now,
         )
         frees_at = oldest_in_window + WINDOW
-        raise SpendCapExceeded(
+        raise ProviderCapExceeded(
             f"LLM call refused: {provider} ({model}) has made {used} of its "
             f"{max_calls} allowed calls in the last 24 hours. The oldest of those ages out at "
             f"{frees_at.isoformat()}. This is a hard cap, not a rate limit — "

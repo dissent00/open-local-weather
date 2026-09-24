@@ -215,3 +215,46 @@ def test_the_live_config_can_carry_one(tmp_path):
     cfg = load_location_config(str(path))
     entry = next(e for e in cfg.llm_providers if not isinstance(e, str))
     assert entry.max_calls_per_24h == 50
+
+
+def test_two_links_on_one_credential_share_one_allowance(tmp_path):
+    """ROADMAP item 178. The pre-flight sums the links' remaining calls, and
+    two links naming the same (provider, model) are ONE budget, the same way
+    `record_attempt` counts them. Adding both would promise the account calls
+    it does not have: here one call is left, and counting it twice would
+    start a run that needs two."""
+    from datetime import datetime, timezone
+
+    from openlocalweather.spend import SpendCapExceeded, assert_capacity, record_attempt
+
+    now = datetime(2026, 9, 25, 3, 1, tzinfo=timezone.utc)
+    for _ in range(19):
+        record_attempt(tmp_path, provider="P", model="m", purpose="forecast",
+                       max_calls=10**6, now=now)
+
+    with pytest.raises(SpendCapExceeded, match="1 call"):
+        assert_capacity(
+            tmp_path, max_calls=20, calls_needed=2, now=now,
+            links=[("P", "m", 20), ("P", "m", 20)],
+        )
+
+
+@pytest.mark.parametrize("ceilings", [(5, 20), (20, 5)])
+def test_a_shared_credential_is_held_to_the_higher_ceiling(tmp_path, ceilings):
+    """What the hook allows, in either order. Each link refuses at its own
+    ceiling against the SHARED count, so the chain keeps calling until that
+    count reaches the larger of the two. First-wins and last-wins each get
+    one of these orderings wrong."""
+    from datetime import datetime, timezone
+
+    from openlocalweather.spend import assert_capacity, record_attempt
+
+    now = datetime(2026, 9, 25, 3, 1, tzinfo=timezone.utc)
+    for _ in range(4):
+        record_attempt(tmp_path, provider="P", model="m", purpose="forecast",
+                       max_calls=10**6, now=now)
+
+    assert_capacity(  # 4 used of 20: plenty, whichever link is listed first
+        tmp_path, max_calls=20, calls_needed=2, now=now,
+        links=[("P", "m", ceilings[0]), ("P", "m", ceilings[1])],
+    )

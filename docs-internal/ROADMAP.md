@@ -26141,7 +26141,7 @@ Run by the operator with their own key — this session does not handle keys.
 adopted Interactions on reliability evidence it called n=1 against n=1, so
 what the switch bought should be re-read before it is traded away.
 
-## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — deadline at 1700s, to be monitored**
+## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
 Two runs lost their narrative to the same thing, and neither retried.
 
@@ -26223,27 +26223,67 @@ and the suite's own autouse fixture does the same thing. The server now paces
 itself with `threading.Event().wait`, which nothing patches. A result of zero
 elapsed for a trickle is the tell.
 
-### Still open: "kill a slow one and restart it if we have enough calls"
+### "Restart it if we have enough calls" — both halves of "enough" fixed, 2026-09-24
 
-The operator's stated goal. The deadline is the "kill"; the retry is the
-"restart"; "if we have enough calls" is the spend cap — and that part is
-broken in the direction that matters. Driven directly, 2026-09-24: a chain
-whose first link's cap raises `SpendCapExceeded` NEVER REACHES the second
-link. `FallbackProvider` catches only `LLMUnavailableError`, and the cap
-raises a plain `RuntimeError`, so once our ledger counts Gemini at 20 every
-run dies at the judgment call with OpenRouter at 3/20.
+The operator's goal for this item. The deadline is the "kill", the retry the
+"restart", and "if we have enough calls" is the spend cap — which was broken
+in two places, both against item 170's own stated design ("4 providers, 4
+configurable limits"), and both driven before they were fixed.
 
-**And the pre-flight has the defect item 170 was written to remove.**
-`assert_capacity`, which refuses to START a run, still counts the WHOLE
-ledger against the deployment's 20 — item 170 changed `record_attempt` and
-never mentions the pre-flight. Driven directly: Gemini at 19, OpenRouter at 0
-of its own 20, and the run is refused before it begins — "19 of 20 allowed
-calls already made (this run needs 2)". That is item 170's own sentence about
-the old cap, still true: "it can refuse tomorrow's forecast on the strength
-of yesterday's failures."
+**A. A link refused by its own ceiling ended the run.** `record_attempt`
+raised a plain `SpendCapExceeded`; `FallbackProvider` catches only
+`LLMUnavailableError`; so a vendor at its limit aborted the run with the
+fallback's calls untouched — Gemini at 20, OpenRouter at 3 of 20, OpenRouter
+never asked. The item-170 tests missed it because they drove a hand-made
+`_Chain` and asked only whether budgets were separate, never whether a
+refused link lets the next one serve.
 
-Both are bugs against the operator's stated design ("4 providers, 4
-configurable limits"), not open questions. Separate change.
+Now `ProviderCapExceeded(SpendCapExceeded, LLMUnavailableError)`. Still the
+cap and still loud to anything catching one; also true to the chain, which
+steps past it. Every link capped on the judgment call: the run fails, now at
+the CLI's "Critical Error" line rather than a traceback. Every link capped on
+the NARRATIVE: the scored call publishes without prose, because aborting would
+discard a judgment already made and paid for. Never retried — all four
+providers call the hook outside their `try`, checked.
+
+**B. The pre-flight still counted the whole ledger.** Item 170 changed the
+hook and never mentioned `assert_capacity`, which refuses to START a run: it
+went on counting every vendor against one number, so Gemini at 19 of 20 and
+OpenRouter at 0 of 20 was "19 of 20 used, this run needs 2 — refused." Item
+170's own sentence about the old cap, still true two days after it shipped.
+
+Now the pre-flight is given every link as (provider, model, ceiling) and asks
+whether the links TOGETHER cover the run — summed, because a chain splits a
+run naturally, the judgment on one vendor's last call and the write-up on the
+next's. One helper, `_link_ceiling`, decides a link's allowance for both the
+pre-flight and the hook, so they cannot disagree again. A shared credential —
+two OpenRouter keys on one model, which config allows — is one count, held to
+the HIGHER of its ceilings, since that is what the hook lets through.
+
+**Run on the real ledger through the real builder**, dummy keys, no network:
+the pre-flight reads production's class names exactly as `record_attempt`
+writes them — per-link 12 + 3 = 15, the whole ledger, no row lost to a name
+mismatch — and both upcoming runs start.
+
+**Seven mutations, seven bites, three of them earned.** Two survived the first
+pass: the pre-flight ignoring a link's OWN ceiling, and summing replaced by
+"best single link" — each a behaviour a comment claimed and no test pinned.
+The third "survivor" removed a `continue` that turned out not to be the
+mechanism at all (a dict keyed by credential dedupes on its own); the real
+decision it hid was whose ceiling wins, and first-wins was wrong.
+
+**A pre-existing test had gone hollow.** `test_the_cap_refuses_a_run_and_the_
+llm_is_never_called` burned the budget under `provider="x"` and passed only
+because the pre-flight counted every row. Per link, that row stopped counting,
+the run was refused anyway for needing 2 at a cap of 1, and the burn did
+nothing — the test would have passed with it deleted. It now burns the
+credential the run calls, at a cap where the burn is what tips it; removing
+the burn fails it. A green test after a semantic change is not evidence the
+test still tests anything.
+
+**The app has neither defect**, and not by luck: its `callsInWindow` has no
+provider or model, so its cap is one budget across every link and there is
+nothing to fall through to. What it lacks is item 170 itself — see item 175.
 
 ## 177. The rain BOOLEAN is already unioned; the AMOUNT is the gap · **Corrected 2026-09-23**
 

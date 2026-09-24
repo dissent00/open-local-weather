@@ -97,6 +97,19 @@ def provider_identity(provider) -> tuple[str, str]:
     return type(live).__name__, getattr(live, "model", "unknown")
 
 
+def chain_links(provider) -> tuple:
+    """Every provider that could serve a request, through any chain wrappers.
+
+    A bare provider is its own only link. Recursive, like `resolve_active`,
+    because a chain may hold a chain.
+    """
+    links = getattr(provider, "links", None)
+    if links is None:
+        return (provider,)
+
+    return tuple(leaf for link in links for leaf in chain_links(link))
+
+
 def resolve_served(provider):
     """The object that last ANSWERED, through any chain wrappers.
 
