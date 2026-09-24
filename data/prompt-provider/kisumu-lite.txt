@@ -1,0 +1,288 @@
+
+Today's Date: 2026-09-24 | Yesterday: 2026-09-23 | Public Webpage: https://dissent00.github.io/open-local-weather/
+
+ISSUED: It is 08:50. Sunrise was at 06:29, sunset is at 18:36. Part of day: morning. Sunrise 06:29, sunset 18:36. WHAT MATTERS NOW: today, then tonight (dusk, evening and overnight through to dawn).
+
+CALENDAR (pre-computed by code — every day this forecast can speak about, with its date and its day name. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value. USE THESE PAIRINGS AS GIVEN AND DERIVE NO OTHERS. Naming a weekday for a date, or a date for a weekday, is arithmetic, and you must not do it: measured across this project's published record, 7 of the 39 weekday/date pairings its forecasts have asserted were false, each off by a single day, and a reader has no way to catch that. If a day you want to write about is not in this list, name it by date alone or not at all):
+lead_time_days	date	day_name
+0	2026-09-24	Thursday
+1	2026-09-25	Friday
+2	2026-09-26	Saturday
+3	2026-09-27	Sunday
+4	2026-09-28	Monday
+5	2026-09-29	Tuesday
+6	2026-09-30	Wednesday
+7	2026-10-01	Thursday
+
+FORECAST WINDOWS (pre-computed by code — the periods this issuance covers and the clock hours each one means. THESE BOUNDS ARE THE SUBJECT OF THIS FORECAST. A period named here is still ahead of the reader: the first window starts at the issuance itself, and they are contiguous and do not overlap, so rain named in one is not the rain named in the next. Use these names as given and do not attach different hours to them — "today" is not the calendar day when most of it has gone, and a day named by weekday is named that way because the relative word would be ambiguous at this hour):
+- today (08:50-17:06)
+- tonight (dusk, evening and overnight through to dawn) (17:06 to 06:29 next day)
+
+HOURS AHEAD (hour-by-hour guidance per model, from the issuance hour forward and INTO TOMORROW — read the date on each column, never the hour alone. ONE ROW PER SERIES, TAB-SEPARATED: the first row is the local time of each column, every later row is one variable for one model, named variable_model. "-" means no value. Temperature °C, precipitation mm, probability %, gusts km/h, CAPE J/kg, cloud cover %):
+time	2026-09-24T08:00	2026-09-24T09:00	2026-09-24T10:00	2026-09-24T11:00	2026-09-24T12:00	2026-09-24T13:00	2026-09-24T14:00	2026-09-24T15:00	2026-09-24T16:00	2026-09-24T17:00	2026-09-24T18:00	2026-09-24T19:00	2026-09-24T20:00	2026-09-24T21:00	2026-09-24T22:00	2026-09-24T23:00	2026-09-25T00:00	2026-09-25T01:00	2026-09-25T02:00	2026-09-25T03:00	2026-09-25T04:00	2026-09-25T05:00	2026-09-25T06:00	2026-09-25T07:00	2026-09-25T08:00	2026-09-25T09:00	2026-09-25T10:00	2026-09-25T11:00	2026-09-25T12:00	2026-09-25T13:00
+temperature_2m_gfs_seamless	22.5	25.1	27.6	29.3	30.0	30.6	30.4	29.7	22.3	19.6	19.1	19.5	19.4	20.0	19.9	20.0	20.3	20.4	19.8	20.4	19.9	19.6	19.5	19.8	23.0	26.6	29.6	31.6	31.5	31.5
+temperature_2m_ecmwf_ifs025	22.0	24.3	25.9	27.1	27.9	28.0	27.6	27.2	27.0	26.6	26.0	24.7	23.1	21.7	20.8	20.2	19.8	19.5	19.4	19.4	19.4	19.4	20.0	21.5	23.6	25.6	27.3	28.9	30.1	31.0
+temperature_2m_icon_seamless	22.4	23.6	24.8	26.0	27.0	27.7	28.4	28.5	28.3	27.8	27.0	26.4	25.9	24.8	24.1	23.3	23.2	23.0	22.9	22.8	22.7	22.4	21.9	21.8	22.5	23.6	25.2	26.9	28.5	29.1
+temperature_2m_ukmo_seamless	20.4	22.2	24.1	25.8	27.5	29.1	30.0	30.1	30.0	28.4	25.9	23.1	22.0	21.7	21.7	21.7	21.2	20.3	19.5	19.6	19.0	18.8	18.5	19.2	20.5	23.5	25.4	27.0	28.6	29.9
+temperature_2m_best_match	20.6	23.3	25.5	26.8	27.7	28.8	29.5	29.3	28.0	27.6	26.8	25.6	24.4	22.9	21.7	20.4	19.7	19.7	19.3	19.3	19.4	19.1	19.0	19.1	21.9	24.9	27.1	28.9	30.0	31.1
+precipitation_probability_gfs_seamless	2	3	5	9	13	16	20	29	48	72	87	88	81	71	56	38	23	13	5	0	0	0	0	0	0	0	0	0	0	0
+precipitation_probability_ecmwf_ifs025	0	0	0	0	4	16	31	43	48	49	45	32	13	0	0	0	0	1	1	2	3	4	4	3	1	0	0	0	6	22
+precipitation_probability_icon_seamless	3	0	3	13	15	25	35	38	15	8	5	10	23	30	50	53	38	18	20	20	18	18	10	3	0	0	0	0	3	0
+=== CHECKPOINT 01/6 · after 4,074 characters · code word: cobalt ===
+precipitation_probability_ukmo_seamless	0	0	0	0	0	0	0	6	6	0	6	6	22	22	44	50	28	22	17	17	6	0	0	6	0	0	0	0	0	17
+precipitation_probability_best_match	0	0	0	0	4	16	31	43	48	49	45	32	13	0	0	0	0	1	1	2	3	4	4	3	1	0	0	0	6	22
+precipitation_gfs_seamless	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	1.1	1.2	2.3	0.1	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+precipitation_ecmwf_ifs025	0.0	0.0	0.0	0.0	0.0	0.2	0.2	0.2	0.1	0.1	0.1	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.1
+precipitation_icon_seamless	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	1.2	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+precipitation_ukmo_seamless	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.1	0.8	0.7	0.2	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+precipitation_best_match	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+wind_gusts_10m_gfs_seamless	7.2	7.6	6.1	5.8	9.0	12.6	9.7	9.7	29.5	26.6	8.3	8.6	9.4	9.4	14.0	11.2	11.9	10.1	12.2	7.9	6.1	5.8	9.0	8.6	8.6	7.6	10.1	9.0	6.1	6.1
+wind_gusts_10m_ecmwf_ifs025	10.4	11.9	16.2	21.6	25.2	25.9	24.8	24.1	25.6	27.4	27.0	22.0	14.4	8.6	6.5	6.5	6.5	6.5	6.5	6.5	6.1	5.4	5.8	7.2	9.7	12.6	16.2	19.8	22.3	22.0
+wind_gusts_10m_icon_seamless	7.2	5.8	9.7	12.6	18.7	25.2	31.0	36.0	36.4	33.5	28.8	20.5	17.3	13.7	9.7	10.1	10.4	9.7	9.0	9.0	5.8	7.2	9.7	8.6	12.6	16.2	16.2	14.4	12.6	22.0
+wind_gusts_10m_ukmo_seamless	3.2	9.0	13.0	16.2	20.2	25.6	26.3	23.0	21.6	26.6	14.4	9.0	6.5	7.2	8.6	8.6	8.3	8.6	8.3	9.0	9.0	9.0	8.3	9.0	6.8	7.6	15.5	19.4	21.6	25.2
+wind_gusts_10m_best_match	11.9	16.2	20.2	23.0	25.6	25.9	28.4	27.7	39.2	40.3	35.6	27.4	17.6	12.6	12.2	13.0	13.3	15.8	15.8	13.3	13.3	13.3	10.8	9.4	11.5	16.6	21.2	24.5	31.0	31.7
+cape_gfs_seamless	70.0	180.0	330.0	490.0	660.0	830.0	950.0	980.0	50.0	240.0	0.0	10.0	20.0	30.0	30.0	20.0	30.0	30.0	20.0	20.0	10.0	10.0	0.0	0.0	40.0	100.0	160.0	200.0	330.0	550.0
+cape_ecmwf_ifs025	-20.0	120.0	540.0	1090.0	1450.0	1420.0	1210.0	1060.0	1110.0	1220.0	1290.0	1270.0	1200.0	1120.0	1020.0	910.0	880.0	1000.0	1190.0	1350.0	1420.0	1450.0	1520.0	1670.0	1860.0	1980.0	1990.0	1940.0	1850.0	1700.0
+cape_icon_seamless	440.0	530.0	680.0	710.0	750.0	690.0	480.0	1160.0	1350.0	1530.0	1590.0	1620.0	1700.0	1560.0	1620.0	1530.0	1390.0	1340.0	1290.0	1170.0	1120.0	1150.0	1060.0	1070.0	1090.0	720.0	450.0	640.0	630.0	610.0
+cape_ukmo_seamless	140.0	970.0	1590.0	2100.0	2180.0	2220.0	1980.0	1790.0	1780.0	2220.0	2620.0	2570.0	2580.0	2160.0	1820.0	2100.0	2020.0	1350.0	810.0	780.0	280.0	140.0	70.0	100.0	670.0	1700.0	1820.0	1840.0	1640.0	1860.0
+cape_best_match	10.0	320.0	420.0	410.0	640.0	860.0	660.0	360.0	1550.0	1490.0	1560.0	1500.0	1690.0	1650.0	1730.0	1220.0	840.0	1360.0	1520.0	1630.0	1790.0	1730.0	1550.0	1410.0	1160.0	970.0	1020.0	1520.0	1840.0	1380.0
+cloud_cover_gfs_seamless	24	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	100	93	64	88	27	16	53
+cloud_cover_ecmwf_ifs025	88	99	100	97	95	97	99	100	97	93	90	89	90	90	88	86	85	88	92	87	63	31	13	24	50	65	56	37	23	18
+cloud_cover_icon_seamless	100	100	53	32	16	33	27	100	100	100	100	100	100	100	100	100	100	100	77	100	100	100	100	100	100	93	100	100	100	100
+cloud_cover_ukmo_seamless	94	92	86	78	59	8	63	67	88	100	100	100	91	81	86	97	89	61	81	94	100	100	100	100	88	36	45	59	2	13
+cloud_cover_best_match	91	99	100	100	99	100	100	100	96	92	89	68	61	71	85	84	71	85	94	98	97	91	16	17	40	33	10	27	32	20
+
+DAILY GUIDANCE (per model, for the location itself, the first 4 days of CALENDAR. ONE ROW PER SERIES, TAB-SEPARATED: the first row is the date of each column, every later row is one variable for one model. "-" means no value. Temperature °C, precipitation mm, probability %, gusts km/h, CAPE J/kg, cloud cover %):
+time	2026-09-24	2026-09-25	2026-09-26	2026-09-27
+temperature_2m_max_gfs_seamless	30.6	31.7	32.9	33.1
+temperature_2m_max_ecmwf_ifs025	28.0	31.4	31.8	31.7
+=== CHECKPOINT 02/6 · after 8,074 characters · code word: trebuchet ===
+temperature_2m_max_icon_seamless	28.5	31.1	29.4	30.9
+temperature_2m_max_ukmo_seamless	30.1	31.2	31.2	32.2
+temperature_2m_max_best_match	29.5	32.2	33.0	32.2
+temperature_2m_min_gfs_seamless	19.1	19.5	18.8	18.7
+temperature_2m_min_ecmwf_ifs025	17.4	19.4	19.5	19.8
+temperature_2m_min_icon_seamless	21.6	21.8	21.8	21.6
+temperature_2m_min_ukmo_seamless	17.7	18.5	18.0	18.1
+temperature_2m_min_best_match	17.9	19.0	19.4	20.4
+precipitation_sum_gfs_seamless	4.9	2.6	1.8	0.6
+precipitation_sum_ecmwf_ifs025	0.8	2.4	0.1	0.2
+precipitation_sum_icon_seamless	8.2	6.3	5.7	1.3
+precipitation_sum_ukmo_seamless	0.9	1.3	1.3	0.0
+precipitation_sum_best_match	0.0	2.2	0.2	0.0
+precipitation_probability_max_gfs_seamless	88	68	52	42
+precipitation_probability_max_ecmwf_ifs025	49	82	43	44
+precipitation_probability_max_icon_seamless	80	45	54	55
+precipitation_probability_max_ukmo_seamless	50	33	39	17
+precipitation_probability_max_best_match	49	82	43	44
+windgusts_10m_max_gfs_seamless	29.5	37.8	17.3	22.3
+windgusts_10m_max_ecmwf_ifs025	27.4	24.5	25.9	31.7
+windgusts_10m_max_icon_seamless	36.4	30.2	27.4	27.4
+windgusts_10m_max_ukmo_seamless	26.6	25.2	22.0	24.5
+windgusts_10m_max_best_match	40.3	33.5	30.2	40.7
+cape_max_gfs_seamless	980.0	1050.0	1400.0	1210.0
+cape_max_ecmwf_ifs025	1450.0	1990.0	1650.0	1670.0
+cape_max_icon_seamless	1700.0	2410.0	2560.0	2720.0
+cape_max_ukmo_seamless	2620.0	4150.0	4100.0	8180.0
+cape_max_best_match	1730.0	2550.0	3630.0	2250.0
+cloud_cover_mean_gfs_seamless	93	89	59	55
+cloud_cover_mean_ecmwf_ifs025	79	53	60	48
+cloud_cover_mean_icon_seamless	86	99	94	75
+cloud_cover_mean_ukmo_seamless	84	45	18	37
+cloud_cover_mean_best_match	76	55	61	50
+
+EXTRACTED PER-MODEL PREDICTIONS (pre-computed by code: each model's own call, and these exact values are scored. ONE ROW PER MODEL PER CALL, TAB-SEPARATED, "-" means no value. The "lead" column says which call: day0, day3, day7, or secondary_day0 for the second point. A model missing from a lead does not forecast that far. wind_kmh is the GUST, sustained_wind_kmh the sustained wind; never mix them):
+lead	model	target_date	rain	onset	precip_mm	rain_probability_pct	wind_kmh	sustained_wind_kmh	high_c	low_c	cloud_cover_pct	peak_cape_jkg	wind_direction_deg	mslp_trend
+day0	gfs_seamless	-	true	16:00	4.9	88	29.5	18.1	30.6	19.1	92.6	980.0	113.0	-0.1
+day0	ecmwf_ifs025	-	true	-	0.9	49	27.4	9.7	28.0	17.4	78.4	1450.0	254.0	-1.4
+day0	icon_seamless	-	true	00:00	8.2	80	36.4	21.1	28.5	21.6	85.8	1700.0	260.0	-0.9
+day0	ukmo_seamless	-	true	23:00	0.9	50	26.6	14.8	30.1	17.7	83.7	2620.0	242.0	0.0
+day0	best_match	-	false	-	0.0	49	40.3	19.7	29.5	17.9	75.7	1730.0	249.0	-1.5
+day0	kenya_met	-	true	-	-	-	-	-	29.0	20.0	-	-	-	-
+day3	gfs_seamless	-	true	-	0.6	42	22.3	24.5	33.1	18.7	55.0	1210.0	-	-0.5
+day3	ecmwf_ifs025	-	false	-	0.2	44	31.7	16.9	31.7	19.8	48.0	1670.0	-	-0.2
+day3	icon_seamless	-	true	-	1.3	55	27.4	16.4	30.9	21.6	75.0	2720.0	-	-0.8
+day3	ukmo_seamless	-	false	-	0.0	17	24.5	8.3	32.2	18.1	37.0	8180.0	-	-0.5
+day3	best_match	-	false	-	0.0	44	40.7	17.8	32.2	20.4	50.0	2250.0	-	-0.1
+day7	gfs_seamless	-	false	-	0.2	19	11.9	12.6	33.9	18.7	76.0	640.0	-	0.9
+day7	ecmwf_ifs025	-	true	-	1.8	50	33.5	11.5	30.3	20.4	37.0	1780.0	-	-0.1
+day7	icon_seamless	-	-	-	-	-	-	-	-	-	-	-	-	-
+day7	ukmo_seamless	-	-	-	-	7	-	-	-	-	-	-	-	-
+day7	best_match	-	false	-	0.2	50	45.0	18.5	29.9	19.8	30.0	2180.0	-	0.0
+secondary_day0	gfs_seamless	-	true	17:00	1.7	88	29.5	27.9	29.3	20.5	93.0	980.0	245.0	-0.1
+secondary_day0	ecmwf_ifs025	-	true	-	0.9	49	27.4	9.7	28.3	17.8	78.4	1450.0	254.0	-1.4
+secondary_day0	icon_seamless	-	true	00:00	8.2	63	36.4	21.1	28.9	22.0	85.8	1700.0	260.0	-0.9
+secondary_day0	ukmo_seamless	-	false	-	0.1	22	35.6	21.2	30.2	18.8	71.5	3750.0	251.0	0.0
+secondary_day0	best_match	-	false	-	0.0	49	33.5	17.6	27.2	19.8	85.5	2620.0	238.0	-1.2
+
+GUIDANCE RECENCY (pre-computed by code — how old the model data behind everything above is, as a FLOOR: the cycle the slowest fetched model is still on, which faster ones may have moved past):
+{
+  "models_last_aligned_at": "2026-09-23T18:00:00+00:00",
+=== CHECKPOINT 03/6 · after 12,169 characters · code word: kazoo ===
+  "hours_old": 11.8,
+  "source": "observed",
+  "newer_than_previous_issuance": false
+}
+
+CONVECTIVE INSTABILITY (pre-computed by code from the hours ahead — peak CAPE per model, and whether any model crosses the threshold that supports thunderstorms):
+{
+  "peak_cape_jkg": 2620.0,
+  "peak_model": "ukmo_seamless",
+  "peak_hour": "18:00",
+  "convective": true,
+  "models_above_threshold": [
+    "best_match",
+    "ecmwf_ifs025",
+    "icon_seamless",
+    "ukmo_seamless"
+  ],
+  "peak_cape_by_model": {
+    "gfs_seamless": 980.0,
+    "ecmwf_ifs025": 1990.0,
+    "icon_seamless": 1700.0,
+    "ukmo_seamless": 2620.0,
+    "best_match": 1840.0
+  },
+  "onset_at": "2026-09-24T10:00",
+  "peak_at": "2026-09-24T18:00",
+  "timing": "thunder possible from the morning, peaking this evening"
+}
+
+DAY-OVER-DAY COMPARISON (pre-computed by code from yesterday's OBSERVED conditions against today's model consensus. THE COMPARISON ITSELF IS NOT HERE AND IS NOT YOURS TO WRITE: the reader is already shown it beside the numbers it concerns, so a sentence about it here would be the second telling. These booleans are context for what you do write, not an instruction to compare — and the observed values below are not raw material for one. "observed_from" names WHERE each observed value was taken, and it is there because they are not the same place: "era5_archive" is a reanalysis grid CELL about 9 km across, "metar_station" is one airport. A cell mean of half a millimetre on a convective day is consistent with fifteen millimetres over one village and nothing over the rest. SO "yesterday_rain": true BESIDE A PHRASE CALLING YESTERDAY LARGELY DRY IS NOT A CONTRADICTION AND MUST NOT BE REPORTED AS ONE — measured here, the station and the cell disagreed on 4 of 14 days, three of them the station seeing rain the cell missed. Two instruments, two places, both right. Do not try to reconcile them and do not pick one; the composed sentence has already made the call, and where it matters the disagreement is itself worth a line in the Detailed Discussion.):
+{
+  "yesterday_rain": true,
+  "yesterday_thunder": true,
+  "today_rain_expected": true,
+  "observed_from": {
+    "yesterday_rain": "era5_archive",
+    "yesterday_thunder": "metar_station"
+  }
+}
+
+NEXT THREE DAYS (pre-computed by code — one finished phrase, use it VERBATIM or not at all):
+warming through Sunday, with showers possible Friday and Saturday, dry Sunday, and thunderstorms likely each day
+
+WIND DIRECTION (pre-computed by code — the rose point the models share AT EACH ANCHOR HOUR, or null for that anchor. A bearing cannot be averaged, so each is a vector consensus gated on agreement, and the agreement is NOT the same at every hour: measured here it runs 0.95 at midday and 0.48 in the evening. Name a bearing only at an anchor that has one, and only as THAT MOMENT'S — never carry it across the day. Where an anchor is null, say nothing about direction for that part of the day.):
+{
+  "early": "NNE",
+  "midday": "SW",
+  "evening": "W"
+}
+
+WIND SHIFT (pre-computed by code — one finished clause, use it VERBATIM or not at all):
+north-northeasterly overnight, turning southwest by midday and west into the evening
+
+SECONDARY POINT WIND (pre-computed by code from that point's OWN hourly guidance, which is no longer in this message: the models' mean sustained wind and gust at three anchors through the day, with the direction only where they agree, and the day's consensus peak gust. This is the wind on the water. Use "timeline" VERBATIM in that point's section, and start "peak_wind_secondary_kmh" from "consensus_gust_kmh"):
+{
+  "timeline": "overnight at 4 km/h (2 kt) gusting 7 km/h (4 kt), then southwesterly by midday at 9 km/h (5 kt) gusting 20 km/h (11 kt), then westerly into the evening at 16 km/h (9 kt) gusting 25 km/h (14 kt)",
+  "consensus_gust_kmh": 32.5
+}
+
+PEAK UV INDEX (pre-computed by code — the day's maximum for THE DAY THIS ISSUANCE IS ABOUT, which is today until the horizon drops today at dusk and tomorrow after that. "date" says which; name that day the way CALENDAR names it, never with a relative word you have worked out yourself. NOT A CONSENSUS AND NO SPREAD TO REPORT: only one source at this location serves a UV index, and "source" names it. State the number as given, band it with the WHO words if you band it at all, and do not recompute it from the hourly or daily arrays.):
+=== CHECKPOINT 04/6 · after 16,608 characters · code word: vermilion ===
+{
+  "index": 9.1,
+  "date": "2026-09-24",
+  "source": "gfs_seamless"
+}
+
+CALIBRATED PEAK GUST (pre-computed by code: the models' Day+0 consensus gust with each model's OWN measured bias added back, from the record's own measured "actual minus predicted" at Day+0. MODEL TRACK RECORD shows you that figure for the models it lists; the consensus behind this number also includes internal yardsticks whose rows are deliberately withheld from you, so do not try to reconstruct it from what is in front of you. START YOUR "peak_wind_primary_kmh" FROM THIS NUMBER, not from the raw per-model gusts in EXTRACTED PER-MODEL PREDICTIONS. Those are the uncorrected forecasts and they are in your context because they are what gets SCORED, not because they are the best estimate. This is not a judgement call being taken from you: the track record sitting in this same prompt says in words that every model under-forecasts peak wind, and the per-model corrections behind this number are measured from that same record at this same place. A published-gust shortfall of about 12 km/h was also measured over 32 days, but that measurement compared a gust published for the SECONDARY point against observations at this one, so treat its direction as informative and its size as not yet established for this field. You may still depart from it, and a departure is exactly what a forecaster is for; say so in the Forecaster Confidence Notes and say which way and why. What you may not do is quietly average the raw model gusts back in, which is the behaviour this block exists to end):
+39.4 km/h
+
+OBSERVED SO FAR TODAY (pre-computed by code from the station's own reports — MEASURED, not forecast, and the only block here that describes hours the reader has already lived. Use it VERBATIM or not at all. IT IS NOT A FORECAST AND MUST NOT BE WEIGHED AGAINST ONE: where it and the call disagree, the observation happened and the forecast did not, so say what was measured and do not reconcile them. A NEGATIVE IN IT IS A MEASUREMENT — "no rain" means the station reported and saw none, which is worth telling a reader at midday; a dimension that is simply absent was not measured and you may say nothing about it. This is the one place you may write in the PAST TENSE about today, and the clause it earns is short: a reader who was rained on at 15:00 and is told the day was dry stops believing the rest):
+As of 08:50, reports through 08:00: no rain; no thunder; high so far 23°C / 73°F; low so far 20°C / 68°F; peak sustained 11 km/h; sky 7/8.
+
+GROUND AQI STATIONS (per-station readings, ONE ROW PER STATION; list each by name in the Detailed Discussion. TAB-SEPARATED: the first row names the columns, and every row after it is one entry with its values in that same column order. EVERY ROW CARRIES EVERY COLUMN, and "-" means no value):
+name	station_id	aqi	pm25	pm10	measured_at	hours_old	stale
+Kisumu Airport	A418534	53	53.0	15.0	2026-09-24 03:00:00+00:00	2.8	false
+Ochieng' Avenue, Kisumu Central	A418300	84	84.0	18.0	2026-09-24 00:00:00+00:00	5.8	true
+Dunga Beach	A418504	-	79.0	37.0	2026-09-23 22:00:00+00:00	7.8	true
+
+GROUND AQI SUMMARY (pre-computed by code — state as given if present):
+{
+  "aqi_min": 53,
+  "aqi_max": 53,
+  "highest_station_name": "Kisumu Airport",
+  "stations_with_aqi": 1,
+  "stations_stale": 1,
+  "stations_total": 3
+}
+
+GROUND AQI LAST KNOWN (pre-computed by code — the most recent reading any station actually took, with its age; state as given):
+{
+  "station_name": "Kisumu Airport",
+  "aqi": 53,
+  "measured_at": "2026-09-24T03:00:00+00:00",
+  "hours_old": 2.8,
+  "stale": false,
+  "stations_reporting": 1
+=== CHECKPOINT 05/6 · after 20,299 characters · code word: zeppelin ===
+}
+
+LOCAL BULLETIN (Kenya Meteorological Department (KMD)):
+Kenya Meteorological Department (KMD) — forecast for Kisumu
+Valid for 2026-09-24.
+Max 29.0C / Min 20.0C.
+Tonight: Light showers expected over few places
+Morning: Sunny intervals
+Afternoon: Sunny intervals, chance of light showers over few places.
+National outlook mentions this area:
+  - Rainfall is also expected in some parts of Kericho, Kisii, Kisumu, Bomet, Nakuru, Busia, Siaya, Migori, Nyamira,
+
+MODEL TRACK RECORD (pre-computed by code: each model's recent and long-run rain hit rate and mean errors, ONE ROW PER MODEL PER LEAD TIME, TAB-SEPARATED, "-" means no value. Error columns are OBSERVED MINUS FORECAST: positive means the model came in too LOW):
+model	lead_time_days	rolling_10_rain_pct	rolling_30_rain_pct	rain_pct_trend	all_time_checks	all_time_rain_pct	avg_wind_error_kmh_10	avg_temp_high_error_c_10	avg_temp_low_error_c_10
+gfs_seamless	0	80.0	70.0	stable	44	65.9	12.8	-0.3	0.0
+gfs_seamless	3	80.0	70.0	stable	41	73.2	11.6	-0.8	-0.3
+gfs_seamless	7	70.0	63.3	stable	37	67.6	14.4	0.5	-0.2
+ecmwf_ifs025	0	100.0	86.7	stable	44	81.8	8.5	1.1	0.2
+ecmwf_ifs025	3	100.0	80.0	improving	41	82.9	8.1	0.9	0.2
+ecmwf_ifs025	7	90.0	76.7	stable	37	78.4	11.3	4.3	-1.1
+icon_seamless	0	100.0	90.0	stable	44	84.1	8.7	0.9	-2.3
+icon_seamless	3	80.0	76.7	stable	41	73.2	12.3	1.6	-2.8
+icon_seamless	7	-	-	-	0	-	-	-	-
+ukmo_seamless	0	70.0	73.3	stable	44	68.2	13.9	0.8	1.2
+ukmo_seamless	3	70.0	73.3	stable	41	70.7	14.7	0.3	1.4
+ukmo_seamless	7	-	-	-	0	-	-	-	-
+best_match	0	70.0	80.0	stable	44	81.8	0.4	0.2	0.0
+best_match	3	70.0	70.0	stable	41	78.0	3.7	-0.3	-0.2
+best_match	7	90.0	70.0	improving	37	73.0	-0.8	3.1	-1.1
+kenya_met	0	70.0	73.3	stable	34	70.6	-	1.5	-1.0
+kenya_met	3	60.0	75.0	declining	16	75.0	-	-2.7	0.9
+kenya_met	7	-	-	-	0	-	-	-	-
+
+LONG-RUN REVIEW (computed in code over the whole stored record: the ESTABLISHED findings only. These are the only model rankings and biases you may use; do not derive your own from the track record):
+kind	checks	claim
+ranking	44	At Day+0, icon_seamless is the strongest rain caller here and gfs_seamless the weakest.
+tendency	44	At Day+0, gfs_seamless slightly over-forecasts daytime highs here.
+bias	44	At Day+0, gfs_seamless systematically under-forecasts peak wind here.
+tendency	44	At Day+0, ecmwf_ifs025 slightly over-forecasts overnight lows here.
+bias	44	At Day+0, ecmwf_ifs025 systematically under-forecasts peak wind here.
+bias	44	At Day+0, icon_seamless systematically over-forecasts overnight lows here.
+bias	44	At Day+0, icon_seamless systematically under-forecasts peak wind here.
+tendency	44	At Day+0, ukmo_seamless slightly under-forecasts daytime highs here.
+bias	44	At Day+0, ukmo_seamless systematically under-forecasts overnight lows here.
+bias	44	At Day+0, ukmo_seamless systematically under-forecasts peak wind here.
+tendency	44	At Day+0, best_match slightly under-forecasts peak wind here.
+tendency	34	At Day+0, kenya_met slightly under-forecasts daytime highs here.
+bias	41	At Day+3, gfs_seamless systematically over-forecasts daytime highs here.
+bias	41	At Day+3, gfs_seamless systematically under-forecasts peak wind here.
+tendency	41	At Day+3, ecmwf_ifs025 slightly over-forecasts daytime highs here.
+tendency	41	At Day+3, ecmwf_ifs025 slightly over-forecasts overnight lows here.
+tendency	41	At Day+3, ecmwf_ifs025 slightly under-forecasts peak wind here.
+bias	41	At Day+3, icon_seamless systematically over-forecasts overnight lows here.
+bias	41	At Day+3, icon_seamless systematically under-forecasts peak wind here.
+bias	41	At Day+3, ukmo_seamless systematically under-forecasts overnight lows here.
+bias	41	At Day+3, ukmo_seamless systematically under-forecasts peak wind here.
+tendency	41	At Day+3, best_match slightly over-forecasts daytime highs here.
+tendency	41	At Day+3, best_match slightly over-forecasts overnight lows here.
+ranking	37	At Day+7, no model is meaningfully better than the others here yet.
+bias	37	At Day+7, gfs_seamless systematically over-forecasts daytime highs here.
+=== CHECKPOINT 06/6 · after 24,389 characters · code word: okapi ===
+bias	37	At Day+7, gfs_seamless systematically under-forecasts peak wind here.
+bias	37	At Day+7, ecmwf_ifs025 systematically under-forecasts daytime highs here.
+bias	37	At Day+7, ecmwf_ifs025 systematically over-forecasts overnight lows here.
+tendency	37	At Day+7, ecmwf_ifs025 slightly under-forecasts peak wind here.
+tendency	37	At Day+7, best_match slightly under-forecasts daytime highs here.
+bias	37	At Day+7, best_match systematically over-forecasts overnight lows here.
+
+OLW-DATA-END lite chars=24935 sha256=f7f192530c1a

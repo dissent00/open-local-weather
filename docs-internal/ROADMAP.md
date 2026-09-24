@@ -26248,6 +26248,81 @@ blocks it did not touch, and it would need item 176's reading test before it
 reached the API forecaster. It does not reach 30K alone: the full data still
 needs two fetches on ChatGPT, or content has to go.
 
+### The small forecaster — built and backtested, 2026-09-24
+
+**The operator's choices:** route B, one small package for every plan
+because it is the only one that can reach Free; a short reader-first reply;
+FORECAST FIRST with the scored block at the end (easier on a phone, and it
+gives up the in-conversation form of item 59's protection); backtested by
+Haiku workers in-session, not on an API key.
+
+**What exists.** `tools/prompt_provider.py lite <date> <out> [index]`
+renders from an archived issuance: pre-computed blocks verbatim; HOURS AHEAD
+tabulated to six variables per model; the daily guidance to seven variables
+over four days; EXTRACTED re-rendered through production `_table` when an old
+archive carries it as JSON; the track record cut to ten columns; the review
+to its ESTABLISHED findings; yesterday's verification and historical notes
+dropped; a checkpoint every 4K; refused over 30K. 20,475-25,477 characters
+on the ten days rendered, from 80-143K. Instructions:
+`data/prompt-provider/gpt-instructions.txt`, 5,551 characters, refused over
+8,000. `score <dir>` checks each reply's code words and scores its call
+through the pipeline's own `_blend_prediction` and `score_prediction`,
+beside the full forecaster's and every model's call from the same first
+issuance.
+
+**Backtest: 09-15 to 09-23 first issuances, Haiku pinned, the first run of
+each day.**
+The worker Read the file as the fetch, in one call. Every worker quoted every
+code word; every call validated as `GeminiJudgmentResponse`.
+
+| Day+0, 9 days | rain | Brier | high °C | low °C | gust km/h |
+|---|---|---|---|---|---|
+| olw_lite (Haiku, small) | 8/9 | 0.098 | 0.6 | 0.5 | 4.9 |
+| olw_blend (full, mostly Gemini) | 8/9 | 0.086 | 0.6 | 0.3 | 4.9 |
+| ecmwf_ifs025 | 9/9 | 0.073 | 1.1 | 0.4 | 7.4 |
+| best_match | 6/9 | 0.073 | 0.4 | 0.4 | 5.5 |
+
+Day+3, 6 days: small 6/6 Brier 0.020, full 6/6 0.046, ECMWF 6/6 0.013.
+Day+7, 2 days: both 2/2. Errors are mean absolute.
+
+**What it does NOT show.** 8 of the 9 days were wet, so calling rain every
+day also scores 8/9: the hit rate carries no information here. Nine days of
+Brier is noise. Model and package are confounded — Haiku on the small file
+against mostly Gemini on the full one. And one run a day is not a forecaster:
+**09-19 re-run on identical input called rain 60%, then dry 30%, then rain
+65%.** The run-to-run spread is as large as any difference being measured.
+Read as: the small package does not visibly break the forecast. Not as: it
+is as good.
+
+**What reading the replies found, and what held.** First pass: a prose
+percentage differing from the block (24 against 25); a Day+7 rain call at
+34%; an unrequested "As of 06:01" line with °F on three days; jargon on two;
+prose contradicting the call on two ("Largely dry" under rain at 60%). The
+instructions were tightened and the three affected days re-run: all three
+clean on every mechanical check. A third run of 09-18 then broke three of
+the same rules again — jargon, rain at 34%, a thunder label on a dry call.
+**Instructions do not hold Haiku reliably; the server has to check a
+submission** (probability against call at every lead, the code words)
+rather than trust it.
+
+**A finding for the FULL prompt, not changed here.** The judgment prompt
+defines `rain` as "whether measurable rain falls at the location", but the
+scorer counts station thunder or precipitation as wet
+(`DailyActual.observed_convection`, item 177). Two re-runs wrote "thunder
+possible" and called dry on days that verified wet. The small prompt now says
+what the scorer counts; the full prompt's sentence is the operator's call,
+because it changes the forecaster the record scores.
+
+**Cost of the harness.** 59-73K subagent tokens per worker, of which the
+file and instructions are ~6K at ~5 characters a token (an estimate): the
+rest is the Agent harness itself. Fourteen runs today.
+
+**Not done or not verified.** No reply from a real ChatGPT account yet, on
+any plan. `data/prompt-provider/kisumu-lite.txt` is rendered once, from the
+2026-09-24 06:53Z issuance; nothing refreshes it — the pipeline is not wired,
+per the operator's "tool only". No submission path exists. No test pins the
+tool.
+
 ### OpenClaw (item 4)
 
 A self-hosted gateway (desktop or server; phones only pair) connecting chat
