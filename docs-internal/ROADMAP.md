@@ -26139,16 +26139,53 @@ skills audited; CVE-2026-25253, one-click RCE. Its users have been taught to
 distrust skills that run code beside their keys — adoption will be slower
 than the star count suggests, and every contribution is hostile input.
 
-### FIRST: Kenya's Meteorology Act may require a permit to forecast — UNVERIFIED
+### FIRST: Kenya's Meteorology Act — read from the enacted text, 2026-09-24
 
-The Meteorology Act, signed 2026-03-13, creates the Kenya Meteorological
-Service Authority (KMSA). Coverage of the 2024 Bill said forecasting would need
-a permit from the Authority, with fines up to KSh 5M
-(https://eastleighvoice.co.ke/news/63696/). The enacted text could not be read
-(Kenya Law returned 403), so it is NOT known what the final Act says or whether
-it covers a free, labelled, non-official forecast. This project already
-publishes one for Kisumu. **Settle it before any expansion** — ask KMD/KMSA
-directly, which is also the first partnership conversation below.
+Meteorology Act, No. 7 of 2026; assented and gazetted 2026-03-13, **commenced
+2026-03-27 — in force.** Read in full at
+https://new.kenyalaw.org/akn/ke/act/2026/7/eng@2026-03-27 (automated fetchers
+get 403; a browser reads it). NOT legal advice — a reading of the text.
+
+**The prohibition is real, and broader than the news reported.**
+- s.10: "Any person who intends to undertake meteorological observations,
+  weather forecasting activities or weather modification activities shall
+  apply to the Authority for a permit as provided in the Regulations."
+- s.11(1): "No person shall engage in any meteorological observations,
+  weather forecasting activities or weather modification activities unless
+  that person obtains a permit from the Authority."
+- s.11(2): fine up to KSh 5,000,000, **or imprisonment up to five years**, or
+  both.
+- s.2: "forecasting" means "predicting the future state or conditions of the
+  atmosphere at a given time". No narrower definition of "weather forecasting
+  activities"; no research, personal or non-commercial exemption found.
+
+**But s.3 limits who the Act applies to**, "except where implied or
+expressly specified": (a) weather observers and (b) meteorological service
+providers — both defined as persons MANDATED to do the work; (c) private
+weather service providers — defined as REGISTERED by the Authority; (d) the
+Directorate; (e) meteorological training and research institutions; and (f)
+anyone using meteorological information "for commercial purposes", defined in
+s.3(2) as "information acquired from the Authority for the purpose of
+generating income".
+
+**A free, unregistered, non-commercial project fits none of (a)-(f) on its
+face.** Whether s.11's "No person" is the "expressly specified" exception that
+reaches everyone regardless of s.3 is THE question, and the text does not
+settle it. Two further facts cut both ways:
+- The Act anticipates registered private forecasters — the model is
+  licensing, not a ban.
+- This project ingests KMD's bulletin, which is "information acquired from the
+  Authority"; the day it generates income — a paid tier, even donations — it
+  arguably enters (f).
+
+**Also unresolved:** s.10 routes permits through Regulations. None were
+linked from the Act's page. If none have been made, there may be no way to
+apply yet while s.11 is already in force.
+
+**Action:** ask KMSA directly whether a free, labelled, non-official forecast
+needs a permit or registration, and what the process is — and a Kenyan lawyer
+on the s.3/s.11 interplay before any expansion, a central server, or any
+revenue. Asking also opens the partnership conversation their site invites.
 
 ### Funding and partners (checked 2026-09-24)
 
