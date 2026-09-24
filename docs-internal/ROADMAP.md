@@ -26231,6 +26231,23 @@ which mode (Instant or Thinking) served the run, and anything about Free.
 `probe-30k.txt` — 32,229 characters, a checkpoint every ~1K — answers the
 first and pins both cut points to 1K.
 
+**Second run — a 32K file arrives WHOLE.** Same Go account, `probe-30k.txt`:
+all 30 code words correct, in order, and the end marker exact. So the view
+passes at least 32,229 characters intact and cuts the middle somewhere
+between that and the ~33-41K it kept of the 122K file. **Budget: 30K
+characters per fetched file on ChatGPT**, with checkpoints through it. The
+mode (Instant or Thinking) was not reported for either run.
+
+**The data message is half whitespace in its two biggest blocks.** `_json`
+renders with `indent=2`, one array value per line. Measured on the
+2026-09-24 03:59 archive, re-rendered with each run of parallel arrays as a
+tab-separated row per series and everything else compact JSON: HOURS AHEAD
+18,628 -> 8,196, TODAY'S MULTI-MODEL GUIDANCE 25,488 -> 11,696, the message
+80,184 -> 55,960, **no value dropped**. That is item 176's method on the
+blocks it did not touch, and it would need item 176's reading test before it
+reached the API forecaster. It does not reach 30K alone: the full data still
+needs two fetches on ChatGPT, or content has to go.
+
 ### OpenClaw (item 4)
 
 A self-hosted gateway (desktop or server; phones only pair) connecting chat
