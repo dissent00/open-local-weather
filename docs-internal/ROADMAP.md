@@ -26144,10 +26144,19 @@ failure. (4) Nothing returns to the record unless the output ends with a
 compact block the user can submit. (5) Free-tier limits at ~35K tokens twice a
 day — unknown.
 
-**First test, two minutes, operator:** ask Claude to fetch
+**First test — PASSED on ChatGPT, 2026-09-24.** The operator had ChatGPT fetch
 `raw.githubusercontent.com/dissent00/open-local-weather/main/data/prompts/2026-09-24.json`
-and report its total length and last 80 characters. ~120K and ending `}`
-means the fetch is faithful; anything else means the data must be split.
+(169,138 characters — both of that day's issuances). It reported 169,138
+exactly and the last 80 characters byte-for-byte. Fetch fidelity is not the
+obstacle there.
+
+What it does NOT prove: ChatGPT counted the file with its code tool, so the
+FETCH is complete, not that the model REASONS over all of it when forecasting.
+**Next test:** a real forecast from a published plain-text prompt, checked
+against values that appear only late in the data. Claude's fetch is untested.
+**Next build:** one plain-text prompt per location, data only at the URL, a
+marker line at the end the model must confirm, and the instructions kept in a
+saved prompt or Claude Project rather than in the fetched text.
 
 ### OpenClaw (item 4)
 
