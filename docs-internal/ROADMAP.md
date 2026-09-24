@@ -26153,7 +26153,19 @@ obstacle there.
 What it does NOT prove: ChatGPT counted the file with its code tool, so the
 FETCH is complete, not that the model REASONS over all of it when forecasting.
 **Next test:** a real forecast from a published plain-text prompt, checked
-against values that appear only late in the data. Claude's fetch is untested.
+against values that appear only late in the data.
+
+**Claude chat — TRUNCATED, and that sets the size budget.** Its web fetch cut
+the same file at the same place twice, even retried with a higher limit, and
+it declined to invent a length — the right behaviour. The cut came just past
+character 119,699, in the SECOND issuance's `secondary_extended_daily` block:
+a hard ceiling of roughly 120K characters for this content. One location's
+data message is 75-80K after items 174 and 176 (108K before them), so it fits;
+data plus both system prompts (~58K more) would not. **So the instructions
+MUST live in the saved Project, and only the data is fetched** — the split
+first proposed for injection-safety is also what makes it fit. Keep each
+published data file under ~100K characters to leave margin, and treat that as
+a budget the prompt-size instrument (item 148) should watch.
 **Next build:** one plain-text prompt per location, data only at the URL, a
 marker line at the end the model must confirm, and the instructions kept in a
 saved prompt or Claude Project rather than in the fetched text.
