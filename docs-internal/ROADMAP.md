@@ -26073,6 +26073,196 @@ yet how that will play out."*
 
 ---
 
+## 182. The crossroads, researched · **2026-09-24 — terms, automation, OpenClaw; funding below**
+
+The operator's question: the free tiers are failing more often (items 178-180),
+and monthly LLM costs are a hard sell for the people this is for. What are
+the routes? Four research passes, each against primary sources, recorded so
+the decision does not have to be re-researched.
+
+### Terms (fetched 2026-09-24)
+
+- **Pro subscription powering a public service: RISKY.** Consumer Terms §3
+  (eff. 2025-10-08) bans scripted access except via API key or where Anthropic
+  explicitly permits it; Claude Code's scheduling features are such
+  permission. But https://code.claude.com/docs/en/legal-and-compliance says
+  Pro/Max limits assume ordinary individual use, that developers building
+  products or services SHOULD use API keys, and that Anthropic may enforce
+  without notice. A public forecast service is a product.
+- **Anthropic API: PERMITTED** (Commercial Terms §A.1, eff. 2025-06-17), with
+  obligations: an AI-use disclosure on outputs shown to consumers (Usage
+  Policy, eff. 2025-09-15), and telling users not to rely on factual claims
+  unchecked (§D.3). The Usage Policy lists "automatically generate content
+  and publish it for external consumption" as a HIGH-RISK use case; whether
+  its human-review requirement covers a weather forecast is unclear — ask
+  Anthropic in writing. "Weather" and "emergency" do not appear in it.
+- **Users supplying their own Gemini key — the app's current model: UNCLEAR,
+  leaning risky.** Gemini API Additional Terms (eff. 2026-03-23): the API is
+  for developers, not consumer use; free-tier prompts and outputs may be used
+  by Google and read by human reviewers; users must be 18+ and the app not
+  likely used by minors; apps serving EEA/UK/Swiss users must use the paid
+  tier. No clause addresses user-supplied keys directly.
+- **Kenya is a supported region for both.**
+- **AI-use disclosure: already present on all three surfaces, checked.** The
+  page: "Experimental, AI-assisted forecast — not an official government
+  product. Do not rely on this for life-safety decisions", pointing to Kenya
+  Met. The email (mailer line ~492) carries the same. The app, onboarding and
+  Today screen: "The forecast discussion is written by an AI model." That
+  covers the Usage Policy's disclosure and §D.3's do-not-rely notice. A
+  CONTRIBUTED forecast from the crowdsourced server must carry it too.
+
+### Claude's own automation (item 5)
+
+The operator's instinct was right and an earlier dismissal here was wrong.
+Claude Code cloud routines (`/schedule`) run on Anthropic's servers without
+the user's machine, are on Pro, fetch URLs, and deliver by git push or
+connectors — so "fetch the prompt, produce the forecast, push it" is possible
+unattended. Research preview, with an undisclosed daily run cap. Desktop
+scheduled tasks need the app open. The GitHub Action needs an API key. The
+terms above make the Pro-subscription version risky for a public service; the
+same shape on an API key is the clean one.
+
+### OpenClaw (item 4)
+
+A self-hosted gateway (desktop or server; phones only pair) connecting chat
+apps to an agent, BYO keys across 50+ providers including local models. MIT,
+now under an OpenAI-sponsored foundation. ~390K GitHub stars; the bundled
+weather skill has ~170K downloads (other usage figures unverified).
+
+**Fits mechanically:** a ClawHub skill (SKILL.md plus scripts) and a cron
+automation with a "Command" payload, which runs a shell command WITHOUT a
+model turn — so it can run the Python pipeline and POST the result.
+
+**Security is poor:** sandboxing off by default; ClawHavoc (Feb 2026), 1,184
+malicious skills delivering an infostealer; Snyk found flaws in 36.8% of
+skills audited; CVE-2026-25253, one-click RCE. Its users have been taught to
+distrust skills that run code beside their keys — adoption will be slower
+than the star count suggests, and every contribution is hostile input.
+
+### Is the LLM adding value? The record's answer, 2026-09-24
+
+The operator's objection to making the LLM optional: "the goal was using the
+LLM to learn and improve — otherwise we're just another aggregator." The
+record already scores the LLM's own call (`olw_blend`) beside every model and
+two baselines, so the question has data:
+
+| Day+0 | rain, all-time (checks) | rain, last 10 | high err °C | wind err km/h |
+|---|---|---|---|---|
+| icon_seamless | 84% (44) | 100% | 0.88 | 8.7 |
+| ecmwf_ifs025 | 82% (44) | 100% | 1.12 | 8.5 |
+| best_match | 82% (44) | 70% | 0.21 | 0.4 |
+| **olw_blend (the LLM)** | **78% (27)** | **90%** | 0.61 | **−2.9** |
+| kenya_met | 71% (34) | 70% | 1.46 | — |
+| ukmo_seamless | 68% (44) | 70% | 0.79 | 13.9 |
+| persistence | 68% (44) | 50% | −0.08 | −1.9 |
+| gfs_seamless | 66% (44) | 80% | −0.31 | 12.8 |
+| climatology | 34% (44) | 10% | 0.19 | −2.6 |
+
+**On the headline rain call, the LLM does not beat the best models** — ICON
+and ECMWF are ahead all-time and over the last ten. It beats GFS, UKMO, Kenya
+Met and persistence. It is clearly best on WIND, but that is the code's
+calibrated gust (item 126), which the prompt tells it to start from. Highs:
+mid-pack.
+
+Not conclusive: 27 checks against 44, over different days all-time; a hit
+rate is blunt, and Brier scores on the same days would be the fair test. But
+it reframes the question. **The learning this project does lives in the
+RECORD — code that scores every model and establishes which to trust where.
+The LLM consumes it; on this evidence it is not yet turning it into a better
+rain call than simply trusting the best-scoring model.** That is exactly what
+the scoring was built to reveal, and it argues for item 173's experiment
+rather than against it: a code blend weighted by the record, scored beside the
+LLM on the same days, is the test of what the LLM is contributing.
+
+**What central learning would add** (operator's proposal): model skill per
+location is sample-starved — findings wait weeks for enough checks at one
+lead. The inputs are public — model guidance and ERA5/METAR observations — so
+a central server can score any location WITHOUT client uploads, and pool
+nearby locations into regional findings ("GFS under-forecasts gusts across the
+Lake Victoria basin") far faster than any one location reaches significance.
+Clients receive the findings as prompt blocks. What only clients can supply
+centrally: their LLM's scored call, and observations from people on the
+ground — which is the one source that could close item 177's amount gap.
+
+### What this means for the crowdsourced server (item 3)
+
+**The numbers can be verified; the prose cannot.** Guidance is public, so the
+server refetches it for the contributed location and rejects any scored call
+outside the models' own spread — a 45°C high in Kisumu against models at
+28-31 never lands. The narrative is where spam, trolling and injected text
+live: it needs a report button, moderation, and rate limits per contributor.
+A contributor's scored record then does double duty as reputation — one that
+forecasts badly is down-weighted automatically, which is this project's
+record doing the moderation it was built for.
+
+## 181. The spend cap bounds CALLS, not money · **Audited 2026-09-24 — design needed before paid models are recommended**
+
+The operator's framing: "a real liability risk if we accidentally ran 1000
+forecasts." Audited both spenders — the pipeline (operator's keys) and the app
+(users' keys). The count is sound; what it counts is the problem.
+
+### What holds, checked
+
+- Every request, retries included, passes the cap hook before it is sent —
+  pipeline and app. All four Python providers call the hook outside their
+  `try`; `tests/test_spend_coverage.py` scans `src/` AND `tools/` for any
+  `.generate(` that bypasses it.
+- The row is written BEFORE the request, so a crash over-counts — the safe
+  direction. A corrupt ledger raises rather than reading as empty, in both.
+- Forecast runs cannot overlap: `concurrency: daily-forecast`, queued.
+- A runaway cron is bounded by the per-link caps, and before that by
+  `llm_should_reason`, which declines the call when nothing has moved.
+- The app's cap is a slider clamped to 1–50.
+
+### What does not
+
+1. **NO OUTPUT CEILING on Gemini or any OpenAI-compatible model** — Python
+   and Dart alike. Only the Anthropic provider sends `max_tokens` (8192).
+   `LLM_MAX_TOKENS` is wired for the `anthropic` kind only (cli.py). So a
+   call's cost is bounded by nothing we set: `nex-n2.5-pro:free` produced
+   ~95K output tokens in one narrative on 2026-09-23. Through OpenRouter the
+   same key reaches frontier-priced models; at that length, 20 calls a day is
+   hundreds of dollars a day and entirely within the cap. **This is the
+   liability.** A call cap is a spend cap only when every call has a ceiling.
+2. **No total ceiling.** Since items 170 and 178 the budget is per link, so
+   the deployment's total is the SUM of its links — four at the default is 80
+   calls a day — and nothing bounds that sum. Right for free tiers, where each
+   account has its own quota; wrong as the only guard on paid ones.
+3. **The app's ledger can lose rows.** `SharedPreferencesSpendStore.append`
+   loads from its isolate's cache, adds a row and writes the whole list back.
+   The alarm runs a forecast in a background isolate
+   (`alarm_scheduler.dart`, `vm:entry-point`); the UI reloads its cache on
+   resume (`reloadPreferenceCache`, wired through `AppState`). An app left in
+   the foreground while the alarm fires holds a stale cache, and its next
+   append ERASES the background run's rows — the cap under-counts. No
+   single-flight guard between foreground and background runs was found:
+   `RunMarker` is saved and cleared, never checked before starting.
+   Structural, not yet driven on a device. Bounded by run frequency — an
+   overrun of perhaps 2x, not 1000x — but it is the safety mechanism.
+   `docs/STORAGE.md`'s phase 5 (sqflite) removes the per-isolate cache.
+4. **The health check and model probe do not commit the ledger**, so their
+   calls vanish after each run and the forecast cap never sees them. Low
+   volume (weekly, and manual), but uncapped across repeated dispatches.
+
+### The design this needs before paid models are recommended
+
+- **A ceiling on every call, every provider.** `max_tokens` /
+  `maxOutputTokens` / `max_completion_tokens`, per kind, sized from the
+  record: Gemini narratives run ~1-3K output plus ~2.5-5K thinking, so 16K
+  leaves room. Reasoning models are the hard case — a 16K ceiling would have
+  truncated nex's one successful narrative — so the ceiling and the choice of
+  model have to be decided together.
+- **A money cap, not only a call cap.** Record `usage` tokens per call in the
+  ledger (the providers already parse them into `ResponseMeta`), keep a price
+  table per model, and refuse a call when the projected worst case — tokens
+  in, plus the ceiling out — would cross a monthly or daily dollar limit. An
+  UNKNOWN model must be priced as expensive, never as free.
+- **An optional deployment-wide total** above the per-link caps.
+- **The app's ledger moved off SharedPreferences** (phase 5), and a
+  single-flight guard between foreground and background runs.
+- **Health check and probe spend committed**, or counted against a separate
+  budget that is.
+
 ## 180. The free fallback can make the call and cannot write it · **Measured 2026-09-24**
 
 A forced re-issue on the OpenRouter link alone (`llm_provider=openai`,
