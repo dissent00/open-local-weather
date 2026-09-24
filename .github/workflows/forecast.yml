@@ -76,6 +76,10 @@ on:
         description: "Re-issue even if a forecast went out in the last hour. Forces the NARRATIVE only -- the day's scored predictions are written once and cannot be reached from here. Leave false for routine automated dispatch (e.g. ops/trigger_workflow.sh)."
         type: boolean
         default: false
+      llm_provider:
+        description: "ONE RUN ONLY: use just this provider kind (gemini, gemini-interactions, anthropic, openai) instead of the configured chain. Leave empty for the chain. Unlike the LLM_PROVIDER repo variable, nothing persists after the run."
+        type: string
+        default: ""
 
 # Least-privilege default; the `run` job overrides to `write` for the step
 # that actually needs it.
@@ -178,7 +182,13 @@ jobs:
           # the "Provider credentials" step above passes every provider-shaped
           # variable and secret, whatever prefix a chain entry names. Only the
           # ones that do NOT fit that shape stay below.
-          LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+          # THE DISPATCH INPUT FIRST, then the repo variable — 2026-09-24. The
+          # variable is standing config: set for a one-off and not unset, it
+          # quietly changes every later run too, which is exactly what a
+          # one-off must not do. First used to send a morning re-issue to the
+          # fallback alone while Gemini's quota was spent, without taking
+          # Gemini away from the 15:01 run on fresh quota.
+          LLM_PROVIDER: ${{ github.event.inputs.llm_provider || vars.LLM_PROVIDER }}
           # --- Gemini: BOTH APIs, one key ---
           # `gemini` (generateContent) and `gemini-interactions` (the
           # Interactions API) are the same vendor and the same model reached
