@@ -26122,6 +26122,33 @@ scheduled tasks need the app open. The GitHub Action needs an API key. The
 terms above make the Pro-subscription version risky for a public service; the
 same shape on an API key is the clean one.
 
+### The prompt-provider model (the operator's item 5, clarified 2026-09-24)
+
+Not the operator running Claude — the operator PUBLISHING the prompt at a URL
+per location, and each Claude user (or ChatGPT, Gemini — any model that can
+fetch) running it in their own account for their own forecast. The operator
+uses no LLM at all, so #1's Pro-subscription risk does not arise; each user's
+own use is ordinary individual use. It is also the natural front half of the
+crowdsourced server: the server does fetch, pre-compute, prompt and scoring;
+a client needs only an LLM, whether a Claude user, the app on a BYO key, or an
+OpenClaw user.
+
+**What could break it, in order:** (1) FETCH FIDELITY — ~120K characters; a
+chat app's fetch may truncate or summarise silently. End the data with a
+marker line and require the model to confirm it. (2) Instructions inside
+fetched content are treated as data by design, so keep the INSTRUCTIONS in
+something the user saves once (a Claude Project's instructions, a saved
+prompt) and fetch only the DATA. (3) One conversation doing judgment then
+narrative — losing item 59's protection of the scored call from narrative
+failure. (4) Nothing returns to the record unless the output ends with a
+compact block the user can submit. (5) Free-tier limits at ~35K tokens twice a
+day — unknown.
+
+**First test, two minutes, operator:** ask Claude to fetch
+`raw.githubusercontent.com/dissent00/open-local-weather/main/data/prompts/2026-09-24.json`
+and report its total length and last 80 characters. ~120K and ending `}`
+means the fetch is faithful; anything else means the data must be split.
+
 ### OpenClaw (item 4)
 
 A self-hosted gateway (desktop or server; phones only pair) connecting chat
