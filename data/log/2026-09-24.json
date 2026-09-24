@@ -768,14 +768,14 @@
   ],
   "observed_so_far": {
     "precipitation": false,
-    "high_c": 22.0,
-    "low_c": 21.0,
+    "high_c": 23.0,
+    "low_c": 20.0,
     "peak_wind_kmh": 11.11,
     "peak_gust_kmh": null,
-    "cloud_oktas": 7.0,
+    "cloud_oktas": 6.7,
     "thunder": false,
     "precipitation_onset": null,
-    "reported_through": "05:00"
+    "reported_through": "08:00"
   },
   "model_predictions": null,
   "verification": {
@@ -884,7 +884,7 @@
     "refreshed_at": null,
     "trigger_source": "workflow_dispatch",
     "issued_local_time": "06:01",
-    "observations_local_time": "06:01",
+    "observations_local_time": "08:48",
     "degradations": [
       {
         "code": "narrative_unavailable",
