@@ -171,6 +171,11 @@ def test_a_real_provider_whose_retries_are_spent_reports_itself_unavailable(monk
         def json(self):
             return {"error": {"message": "over capacity"}}
 
+        # The provider STREAMS its response since item 178, to bound the
+        # whole exchange, so a stand-in has to be readable that way too.
+        def iter_content(self, chunk_size=None):
+            yield self.text.encode()
+
     monkeypatch.setattr(
         requests, "post", lambda *a, **k: (sent.append(k.get("json")), Busy())[1]
     )
@@ -205,6 +210,11 @@ def test_a_real_provider_given_a_bad_request_does_not_report_itself_unavailable(
 
         def json(self):
             return {"error": {"message": "unknown model"}}
+
+        # The provider STREAMS its response since item 178, to bound the
+        # whole exchange, so a stand-in has to be readable that way too.
+        def iter_content(self, chunk_size=None):
+            yield self.text.encode()
 
     monkeypatch.setattr(requests, "post", lambda *a, **k: BadRequest())
 

@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 import requests_mock
@@ -348,3 +349,104 @@ def test_a_model_that_stopped_itself_is_still_not_retried(reason):
         with pytest.raises(LLMResponseError):
             provider().generate("sys", "user", GeminiForecastResponse)
         assert m.call_count == 1, "a self-stopped model must not be retried"
+
+
+def test_a_call_that_outlives_the_deadline_is_abandoned_and_retried_once(monkeypatch):
+    """ROADMAP item 178's second half. REQUEST_TIMEOUT_S is 120 and a call
+    still ran 1801.8s under it: `requests` applies it BETWEEN reads, so a
+    provider that keeps the connection alive can hold it indefinitely.
+    RESPONSE_DEADLINE_S bounds the whole exchange, and overrunning it is the
+    provider failing — retried once, like an empty body, then given up."""
+    import openlocalweather.llm.openai_compat as mod
+
+    monkeypatch.setattr(mod, "RESPONSE_DEADLINE_S", -1)  # every read is late
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=valid_envelope())
+        with pytest.raises(LLMUnavailableError):
+            provider().generate("sys", "user", GeminiForecastResponse)
+        assert m.call_count == PROVIDER_FAILURE_MAX_ATTEMPTS
+
+
+def test_the_deadline_is_recorded_as_its_own_outcome(monkeypatch):
+    """So the ceiling can be MONITORED rather than guessed at again. The
+    operator set 1700s on four samples, 2026-09-24, to be revisited: a
+    distinct outcome in the ledger is how anyone will know how often it bites,
+    and which calls it cost. Folding it into "timeout" would hide it among
+    read timeouts, which are a different failure."""
+    import openlocalweather.llm.openai_compat as mod
+
+    monkeypatch.setattr(mod, "RESPONSE_DEADLINE_S", -1)
+    seen: list[str] = []
+    p = provider()
+    p.after_attempt = lambda outcome, elapsed: seen.append(outcome)
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=valid_envelope())
+        with pytest.raises(LLMUnavailableError):
+            p.generate("sys", "user", GeminiForecastResponse)
+
+    assert seen == ["deadline"] * PROVIDER_FAILURE_MAX_ATTEMPTS
+
+
+def test_the_deadline_is_enforced_on_a_real_socket_not_only_detected(monkeypatch):
+    """A REAL SOCKET, because the mocks cannot see this. `requests_mock`
+    hands the body over at once, so every test above passes whether the
+    deadline aborts mid-stream or only notices once the body is complete.
+
+    Measured 2026-09-24 against a local server sending headers at once and
+    then a byte a second: with `chunk_size=65536` a 4s deadline did not abort
+    until the whole body arrived at 10s. The overrun was DETECTED and never
+    ENFORCED, which on production numbers is the difference between giving up
+    at 1700s and waiting out the provider's own ~1800s. Scaled down here to
+    run in about a second.
+    """
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    import openlocalweather.llm.openai_compat as mod
+
+    trickle_s = 3.0
+
+    class Trickle(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            body = json.dumps(valid_envelope()).encode()
+            pad = int(trickle_s / 0.1)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(pad + len(body)))
+            self.end_headers()
+            try:
+                for _ in range(pad):
+                    self.wfile.write(b" ")
+                    self.wfile.flush()
+                    # NOT time.sleep: this file's autouse fixture patches it,
+                    # and `time` is one module, so the server would stop
+                    # trickling and the test would pass by delivering the
+                    # whole body before the deadline could matter.
+                    threading.Event().wait(0.1)
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # the client hung up on us: the behaviour under test
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Trickle)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        monkeypatch.setattr(mod, "RESPONSE_DEADLINE_S", 0.4)
+        monkeypatch.setattr(mod, "REQUEST_TIMEOUT_S", 2)
+        monkeypatch.setattr(mod, "_retry_delay", lambda attempt: 0)
+
+        rows: list[tuple[str, float]] = []
+        p = provider(base_url=f"http://127.0.0.1:{server.server_port}/v1")
+        p.after_attempt = lambda outcome, elapsed: rows.append((outcome, elapsed))
+        with pytest.raises(LLMUnavailableError):
+            p.generate("sys", "user", GeminiForecastResponse)
+    finally:
+        server.shutdown()
+
+    assert [outcome for outcome, _ in rows] == ["deadline"] * PROVIDER_FAILURE_MAX_ATTEMPTS
+    # Aborted near the deadline, not after the 3s body: enforced, not detected.
+    assert all(elapsed < 1.5 for _, elapsed in rows), rows

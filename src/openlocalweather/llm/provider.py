@@ -189,6 +189,14 @@ do not infer the split from the word alone."""
 OUTCOME_ERROR = "error"
 """Any other transport failure — refused, DNS, connection reset."""
 
+OUTCOME_DEADLINE = "deadline"
+"""OUR total-duration ceiling expired while the provider was still sending —
+ROADMAP item 178. Separate from OUTCOME_TIMEOUT on purpose: that one means no
+bytes arrived for the read timeout; this means bytes kept arriving and the
+answer did not. A 120s read timeout let a call run 1801.8s, so the two are
+different failures, and the operator set this ceiling on four samples with
+the instruction to monitor it — which needs it countable on its own."""
+
 
 def http_outcome(status_code: int) -> str:
     """The server answered, with this status."""

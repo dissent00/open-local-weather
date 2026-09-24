@@ -26073,7 +26073,7 @@ yet how that will play out."*
 
 ---
 
-## 178. An empty body is a provider failing, not a model answering badly · **Half shipped 2026-09-24**
+## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — deadline at 1700s, to be monitored**
 
 Two runs lost their narrative to the same thing, and neither retried.
 
@@ -26115,23 +26115,56 @@ failing call takes ~1800s, so the full schedule would be two hours of a
 scheduled job for one narrative. One retry is the attempt that was missing;
 the third and fourth arrive too late to read.
 
-### NOT shipped: there is still no deadline
+### The deadline — shipped the same day, at the operator's 1700s
 
 `REQUEST_TIMEOUT_S = 120` reads like "we give up after two minutes" and does
-not do that. `requests` applies it to the connection and between reads, not to
-the whole exchange, so a provider that trickles or holds the connection runs
-as long as it likes — 1801.8s under a 120s timeout, measured.
+not do that. `requests` applies it to the connection and between reads, never
+to the whole exchange, so a provider that keeps bytes flowing holds the
+connection as long as it likes — 1801.8s under a 120s timeout, measured.
 
-Bounding it means aborting mid-flight, which means `stream=True` and reading
-with a deadline, which is a real change to the transport. **And the number is
-an operator decision, not a measurement**: the slowest SUCCESSFUL call was
-1625s, so any deadline under ~27 minutes trades narratives for wall-clock.
-That is a question about what a forecast is worth waiting for, and it should
-be answered before the plumbing is written.
+`RESPONSE_DEADLINE_S = 1700` bounds request-to-last-byte. **The number is the
+operator's, set on four samples and explicitly to be monitored**: both
+observed successes (624s, 1625s) survive it with 75s to spare, and it gets out
+ahead of the ~1800s upstream ceiling so the failure is ours and can be retried.
+Overrunning it is a provider failure, retried once under
+`PROVIDER_FAILURE_MAX_ATTEMPTS`, and lands in the ledger as its own outcome,
+`deadline` — separate from `timeout` because a read timeout means bytes
+STOPPED and this means they kept coming without an answer.
 
-Until then the exposure is bounded by the attempt cap rather than by time:
-worst case is two calls of ~1800s, about an hour, where today it was 30
-minutes and no retry.
+**How to monitor it.** Two numbers in the spend ledger: how often `deadline`
+fires, and the `elapsed_s` of successful OpenAICompat rows. A success above
+~1650s means 1700 is too tight. A run of `deadline` rows followed by empty
+retries means it is doing its job on a provider that cannot finish.
+
+**The unit tests could not see the part that mattered.** Driven against a
+real local server sending headers at once and then a byte a second, the first
+version — `iter_content(chunk_size=65536)` — did not abort at a 4s deadline.
+It blocked until the whole body arrived at 10s, because a 64 KB read on a
+Content-Length or close-delimited body waits for 64 KB or EOF. The overrun was
+DETECTED, never ENFORCED; on production numbers that is the difference between
+giving up at 1700s and waiting out the provider's 1800s anyway. Every
+`requests_mock` test passed on that version, because the mock hands the body
+over at once. Reading one byte at a time returns as soon as a byte exists under
+every framing, costs 70 ms on 20 KB and 210 ms on 60 KB, and is now pinned by a
+real-socket test that runs in a second. Reverting to 64 KB reads fails it.
+
+**Two harness traps on the way, both the same one.** Patching `time.sleep` to
+skip backoff also stopped the TEST SERVER sleeping, because `time` is one
+module — the first real-socket run reported a 10s trickle finishing in 0.0s,
+and the suite's own autouse fixture does the same thing. The server now paces
+itself with `threading.Event().wait`, which nothing patches. A result of zero
+elapsed for a trickle is the tell.
+
+### Still open: "kill a slow one and restart it if we have enough calls"
+
+The operator's stated goal. The deadline is the "kill"; the retry is the
+"restart"; "if we have enough calls" is the spend cap — and that part is
+broken in the direction that matters. Driven directly, 2026-09-24: a chain
+whose first link's cap raises `SpendCapExceeded` NEVER REACHES the second
+link. `FallbackProvider` catches only `LLMUnavailableError`, and the cap
+raises a plain `RuntimeError`, so once our ledger counts Gemini at 20 every
+run dies at the judgment call with OpenRouter at 3/20. Separate change,
+recorded here because it is the precondition for this item's goal.
 
 ## 177. The rain BOOLEAN is already unioned; the AMOUNT is the gap · **Corrected 2026-09-23**
 

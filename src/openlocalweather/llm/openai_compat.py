@@ -43,6 +43,7 @@ from pydantic import BaseModel, ValidationError
 from openlocalweather.llm.errors import LLMUnavailableError, LLMResponseError
 from openlocalweather.llm.provider import (
     OUTCOME_ERROR,
+    OUTCOME_DEADLINE,
     OUTCOME_TIMEOUT,
     AfterAttempt,
     AfterResponse,
@@ -55,6 +56,24 @@ from openlocalweather.llm.schema import to_strict_json_schema
 T = TypeVar("T", bound=BaseModel)
 
 REQUEST_TIMEOUT_S = 120  # generous: some hosted models are slow to first token
+
+#: Wall-clock ceiling for ONE attempt, request to last byte — ROADMAP item 178.
+#:
+#: REQUEST_TIMEOUT_S above is NOT this, and reading it as a two-minute limit is
+#: the mistake this exists to correct. `requests` applies a timeout to the
+#: connection and BETWEEN reads, never to the whole exchange, so a provider
+#: that keeps bytes flowing can hold the connection as long as it likes:
+#: `nex-agi/nex-n2.5-pro:free` ran 1802.9s and 1801.8s under it and answered
+#: with an empty body both times.
+#:
+#: 1700 IS THE OPERATOR'S NUMBER, set 2026-09-24 on four samples and to be
+#: monitored, not a measured optimum. The reasoning: the two failures landed
+#: 1.2s apart at ~1800s, a ceiling upstream; the slowest SUCCESS was 1625s.
+#: 1700 keeps both observed successes with 75s to spare and gets out ahead of
+#: the ceiling, so the failure is ours and can be retried. Watch the ledger's
+#: "deadline" outcome and the elapsed of successful rows — if a success ever
+#: lands above ~1650s, this is too tight.
+RESPONSE_DEADLINE_S = 1700
 
 # Same transient-failure handling as GeminiProvider (see gemini.py's
 # comment for the incident that motivated it). Deliberately duplicated
@@ -83,9 +102,10 @@ UNAVAILABLE_STATUS_CODES = RETRYABLE_STATUS_CODES | {402}
 #: is the one that was missing — and the third and fourth are a forecast
 #: arriving too late to read.
 #:
-#: NOT A DEADLINE, which is the other half of this and is not built: nothing
-#: here stops a provider holding the connection, it only stops us asking again
-#: forever. See ROADMAP item 178.
+#: Shared by the two provider failures: an empty body, and a call that
+#: outlives RESPONSE_DEADLINE_S. Counted by overall attempt number, so a
+#: provider failure on any attempt after the first ends the call — worst case
+#: two deadlines, about an hour. See ROADMAP item 178.
 PROVIDER_FAILURE_MAX_ATTEMPTS = 2
 
 #: `finish_reason` values that mean the PROVIDER failed rather than the model
@@ -142,6 +162,45 @@ def _provider_failed(resp: requests.Response) -> bool:
         )
     except (ValueError, AttributeError, IndexError, KeyError, TypeError):
         return False
+
+
+class _DeadlineExceeded(Exception):
+    """RESPONSE_DEADLINE_S ran out mid-body. Internal to the retry loop."""
+
+
+def _read_body_within(resp: requests.Response, deadline: float) -> None:
+    """Reads a streamed body into `resp`, giving up at `deadline`.
+
+    ONE BYTE AT A TIME, and that is measured rather than careless. Driven
+    against a real socket that sent headers at once and then one byte a
+    second, `chunk_size=65536` did not abort at a 4s deadline: it blocked
+    until the WHOLE body arrived at 10s, because a read of 64 KB on a
+    Content-Length or close-delimited body waits for 64 KB or EOF. The clock
+    was checked once, at the end — the overrun was detected, never enforced.
+    One byte returns as soon as one byte exists, under every framing. It costs
+    70 ms on a 20 KB body and 210 ms on 60 KB, measured, against calls that
+    take ten to thirty minutes.
+
+    So the real ceiling is the deadline plus at most one read timeout: the
+    socket can still block that long if it goes silent entirely, and then the
+    read timeout fires instead.
+
+    SETS `_content` ON THE RESPONSE, which is private to `requests`. It is what
+    `Response.content` itself does after reading, and it is what lets every
+    caller downstream keep using `.json()`, `.text` and `.status_code` exactly
+    as before — the alternative was changing the return type of the retry loop
+    and every reader of it, for a change that is about time, not shape.
+    """
+    chunks: list[bytes] = []
+    for chunk in resp.iter_content(chunk_size=1):
+        if time.monotonic() > deadline:
+            resp.close()
+            raise _DeadlineExceeded()
+        if chunk:
+            chunks.append(chunk)
+
+    resp._content = b"".join(chunks)
+    resp._content_consumed = True
 
 
 class OpenAICompatProvider:
@@ -227,9 +286,19 @@ class OpenAICompatProvider:
                 self.before_attempt()
             started = time.monotonic()
             try:
+                # STREAMED so the whole exchange can be bounded — see
+                # RESPONSE_DEADLINE_S. The outcome is reported only once the
+                # body is in, so `elapsed_s` keeps meaning what it meant before
+                # streaming: request to last byte, which is the number the
+                # deadline has to be monitored against.
                 resp = requests.post(
-                    self.endpoint, headers=headers, json=payload, timeout=REQUEST_TIMEOUT_S
+                    self.endpoint,
+                    headers=headers,
+                    json=payload,
+                    timeout=REQUEST_TIMEOUT_S,
+                    stream=True,
                 )
+                _read_body_within(resp, started + RESPONSE_DEADLINE_S)
                 report_outcome(self.after_attempt, http_outcome(resp.status_code), started)
                 if resp.status_code not in RETRYABLE_STATUS_CODES and not _provider_failed(resp):
                     return resp
@@ -254,6 +323,19 @@ class OpenAICompatProvider:
                     continue
                 last_exc = LLMResponseError(f"{self.base_url} returned HTTP {resp.status_code}")
                 delay = _retry_after_seconds(resp) or _retry_delay(attempt)
+            except _DeadlineExceeded:
+                # The provider was still sending when our ceiling ran out. Same
+                # class as an empty body — the provider failing, retried once
+                # and then given up — for the same arithmetic: each attempt can
+                # cost RESPONSE_DEADLINE_S, so the full schedule is hours.
+                report_outcome(self.after_attempt, OUTCOME_DEADLINE, started)
+                last_exc = LLMUnavailableError(
+                    f"{self.base_url} was still answering after "
+                    f"{RESPONSE_DEADLINE_S}s; abandoned"
+                )
+                if attempt >= PROVIDER_FAILURE_MAX_ATTEMPTS:
+                    raise last_exc
+                delay = _retry_delay(attempt)
             # Timeout before RequestException: it is a subclass, and it is the
             # one this measurement exists to separate from the rest.
             except requests.Timeout as e:
