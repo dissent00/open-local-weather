@@ -26611,6 +26611,29 @@ before an unattended cron dispatch** unless someone will approve the first
 run — otherwise the cron's run is the gated one and the day gets no forecast,
 silently. Cause still unconfirmed; the pattern is two for two.
 
+### 2026-09-25: the fallback makes the scored call only — shipped
+
+The operator's decision, from the counts above: the fallback made the scored
+call 2 of 2 times and the narrative 1 of 5, and each narrative it failed
+spent up to two 1700s deadlines. `llm_fallback_calls: scored_call` in
+`location.yaml` keeps the whole chain for the judgment and gives the
+narrative the first link alone; `both_calls`, the default, is the old
+behaviour for any other deployment.
+
+**Where it lives.** In the pipeline's before-attempt hook, installed between
+the two calls and removed after them — the per-link ceiling's route (item
+170), because the provider classes are shared with the app and this is one
+deployment's policy. A refused link raises an `LLMUnavailableError` subclass
+BEFORE the cap records anything, so the ledger never counts a request that
+was not sent, and with no link left the issuance degrades as a failed
+narrative always has. Five tests drive the real `FallbackProvider`; one
+drives a whole issuance in both modes. Four mutations, four bites.
+
+**What it gives up:** the one narrative the fallback did write, 2026-09-23,
+would now have published without its write-up. **Not yet run live** —
+15:01Z on 09-25 is the first issuance under it, and also the first on
+`generateContent` (item 179).
+
 ## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only

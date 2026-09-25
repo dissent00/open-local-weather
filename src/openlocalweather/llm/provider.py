@@ -14,6 +14,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol, TypeVar
 
 from pydantic import BaseModel
@@ -69,6 +70,22 @@ DEFAULT_ENV_PREFIXES = {
 # it is the one with a free tier, and this project exists for people who will
 # not be holding a paid API key.
 DEFAULT_LLM_PROVIDER = "gemini"
+
+
+class FallbackCalls(StrEnum):
+    """Which of a forecast's two calls the links after the first may serve.
+
+    ROADMAP item 180, 2026-09-25. The free fallback made the scored call 2 of
+    2 times and the narrative 1 of 5, and each narrative it failed cost up to
+    two 1700s deadlines before the issuance degraded anyway.
+    """
+
+    # What every chain did until 2026-09-25: both calls walk the whole chain.
+    BOTH_CALLS = "both_calls"
+
+    # The chain serves the judgment; the narrative gets the first link alone.
+    SCORED_CALL = "scored_call"
+
 
 T = TypeVar("T", bound=BaseModel)
 

@@ -397,6 +397,8 @@ def test_the_live_config_is_what_we_think_it_is():
     # this configuration without an account that bills. A paid id landing
     # here should be a deliberate decision, not a drift.
     assert all(m.endswith(":free") for m in live.llm_fallback_models)
+    # The fallback serves the scored call only — operator, 2026-09-25.
+    assert live.llm_fallback_calls == "scored_call"
 
 
 # ---------------------------------------------------------------------------

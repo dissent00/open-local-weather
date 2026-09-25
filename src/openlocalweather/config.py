@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 from openlocalweather.reasoning import LLMRefreshPolicy
-from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS
+from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS, FallbackCalls
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
 from openlocalweather.models import DeviationBands
 from pydantic import BaseModel, Field, field_validator
@@ -255,6 +255,10 @@ class LocationConfig(BaseModel):
     # stays in the environment because it is paired with `LLM_API_KEY` in the
     # per-service setup; this is the deployment's own editorial choice.
     llm_fallback_models: list[str] = []
+
+    # WHICH CALLS the chain's later links may serve — see FallbackCalls. The
+    # default is the behaviour every deployment had before 2026-09-25.
+    llm_fallback_calls: FallbackCalls = FallbackCalls.BOTH_CALLS
 
     @field_validator("llm_providers")
     @classmethod

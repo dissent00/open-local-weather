@@ -3413,6 +3413,34 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     assert blend[0].high_c is not None
 
 
+@pytest.mark.parametrize("policy, fallback_calls", [("scored_call", 1), ("both_calls", 2)])
+def test_the_configured_fallback_policy_reaches_the_run(tmp_path, policy, fallback_calls):
+    """`llm_fallback_calls` read by a real issuance, not only stored —
+    ROADMAP item 180. With the primary down for both calls, the fallback is
+    sent the judgment alone under `scored_call`, and the day publishes
+    scored and degraded; under `both_calls` it is sent both, as before."""
+    import dataclasses
+
+    from openlocalweather.llm.errors import LLMUnavailableError
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    primary = FakeLLMProvider()
+    primary.fail_judgment = LLMUnavailableError("503")
+    primary.fail_narrative = LLMUnavailableError("503")
+    fallback = FakeLLMProvider()
+    deps = dataclasses.replace(
+        make_deps(tmp_path, llm=FallbackProvider([primary, fallback])),
+        location=LOCATION.model_copy(update={"llm_fallback_calls": policy}),
+    )
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert len(fallback.calls) == fallback_calls
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    degraded = "narrative_unavailable" in {d.code for d in entry.meta.degradations or []}
+    assert degraded == (policy == "scored_call")
+
+
 def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
     """The degradation above is deliberately ONE-SIDED.
 

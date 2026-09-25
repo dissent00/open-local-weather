@@ -238,6 +238,14 @@ location:
     - "dots-studio/dots-3-note-preview:free"
     - "nex-agi/nex-n2.5-pro:free"
 
+  # THE FALLBACK MAKES THE SCORED CALL AND NOTHING ELSE — operator's decision
+  # 2026-09-25, ROADMAP item 180. It made the scored call 2 of 2 times and
+  # wrote the narrative 1 of 5, and each narrative it failed spent up to two
+  # 1700s deadlines before the issuance degraded anyway. So the narrative is
+  # Gemini's alone, and a Gemini failure there publishes the scored forecast
+  # without its write-up at once rather than an hour later.
+  llm_fallback_calls: scored_call
+
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   # The national CAP warning feed — ROADMAP item 2. Verified live
   # 2026-09-03; its newest alert was four months old, which is why

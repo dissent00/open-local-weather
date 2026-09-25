@@ -183,7 +183,8 @@ from openlocalweather.spend import (
     record_poll,
 )
 from openlocalweather.synoptic import summarize_synoptic
-from openlocalweather.llm.provider import LLMProvider, ResponseMeta
+from openlocalweather.llm.errors import LLMUnavailableError
+from openlocalweather.llm.provider import FallbackCalls, LLMProvider, ResponseMeta
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     GeminiJudgmentResponse,
@@ -539,14 +540,61 @@ def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
     ]
 
 
+class NarrativeFallbackRefused(LLMUnavailableError):
+    """A later chain link asked to write the narrative under `scored_call`.
+
+    An LLMUnavailableError so the chain treats it as what it is — this link
+    may not serve this call — and moves on; with no link left the narrative
+    degrades exactly as a failed one does.
+    """
+
+
+def _narrative_on_primary_only(provider, cap) -> bool:
+    """Gates every attempt of the NARRATIVE so only the first link may spend.
+
+    In the hook rather than the chain, for the reason the per-link ceiling is
+    (item 170): the provider classes are shared with the app, and this is one
+    deployment's policy. The gate runs BEFORE the cap's own hook, so a request
+    that is never sent never becomes a ledger row. Returns whether it was
+    installed; a lone provider has no later link to refuse.
+    """
+    links = chain_links(provider)
+    if len(links) < 2:
+        return False
+
+    primary = links[0]
+
+    def _gate() -> None:
+        if resolve_active(provider) is not primary:
+            raise NarrativeFallbackRefused(
+                f"not asked for the narrative: llm_fallback_calls is "
+                f"{FallbackCalls.SCORED_CALL.value}"
+            )
+        if cap is not None:
+            cap()
+
+    provider.before_attempt = _gate
+    return True
+
+
 def _generate_forecast(
-    provider, judgment_prompt: str, narrative_prompt: str, user_prompt: str, holder: dict
+    provider,
+    judgment_prompt: str,
+    narrative_prompt: str,
+    user_prompt: str,
+    holder: dict,
+    *,
+    fallback_calls: FallbackCalls = FallbackCalls.BOTH_CALLS,
 ) -> tuple[forecast_call.ForecastCall, ResponseMeta, dict[str, tuple[str, str]]]:
     """The two-call forecast, plus one meta describing both calls.
 
     The call ORDER lives in llm/forecast_call.py, shared with replay. What
     this adds is the snapshot: `holder` holds only the LAST response, so each
     call's report has to be taken before the next one overwrites it.
+
+    Under `scored_call` the snapshot after the judgment is also where the
+    narrative's gate goes in: `on_call` fires after one call returns and
+    before the next begins, which is exactly the seam between them.
     """
     metas: dict[str, ResponseMeta] = {}
     # WHO SERVED EACH CALL — item 171. Taken here, per call, because a chain
@@ -556,14 +604,22 @@ def _generate_forecast(
     # after both calls could not have said that, and the one read before this
     # change said neither — it read the chain's first entry.
     served: dict[str, tuple[str, str]] = {}
+    cap = getattr(provider, "before_attempt", None)
+    gated = {"on": False}
 
     def _snapshot(name: str) -> None:
         metas[name] = _response_meta(holder)
         served[name] = served_identity(provider)
+        if name == forecast_call.JUDGMENT and fallback_calls == FallbackCalls.SCORED_CALL:
+            gated["on"] = _narrative_on_primary_only(provider, cap)
 
-    call = generate_forecast(
-        provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
-    )
+    try:
+        call = generate_forecast(
+            provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
+        )
+    finally:
+        if gated["on"]:
+            provider.before_attempt = cap
 
     return (
         call,
@@ -3698,7 +3754,12 @@ def _issue_forecast(
         calls_needed=LLM_CALLS_PER_FORECAST,
     )
     _call, _call_meta, _served = _generate_forecast(
-        deps.llm_provider, judgment_prompt, narrative_prompt, user_prompt, _last_response
+        deps.llm_provider,
+        judgment_prompt,
+        narrative_prompt,
+        user_prompt,
+        _last_response,
+        fallback_calls=deps.location.llm_fallback_calls,
     )
     _verify_spend()
     llm_response = _call.response
