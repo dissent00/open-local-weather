@@ -26731,6 +26731,36 @@ the endpoint was the multiplier. Retries were left at four; the narrative
 call still retries Gemini after the judgment call exhausted it — both are
 worth revisiting once the count is known.
 
+### Per run, not per request — what one call versus two would have saved
+
+From the ledger, the Gemini outcome of every run on Interactions (09-18 to
+09-25; the 09-20 15:01Z run has no rows):
+
+| Gemini succeeded… | runs | one call | two calls (today) |
+|---|---:|---|---|
+| on both calls | 6 | complete | complete |
+| on the first call only | 3 — 09-18 15Z, 09-23 03Z, 09-25 03Z | **complete** | scored, no write-up |
+| on neither | 5 — 09-21/22/23/24 15Z, 09-24 03Z | **nothing** | scored via OpenRouter, write-up missing |
+
+**The second call is refused right after a success.** In all three 03:01Z
+runs where the first call got a 200, the narrative call seconds later drew
+429s: 09-22 recovered on its third attempt, 09-23 and 09-25 never did.
+
+**What it cannot separate.** Before the switch (08-28 to 09-14, generateContent)
+4 of ~18 15:01Z runs failed outright; on Interactions Gemini never answered in
+at least 5 of 10. Endpoint or a busier Gemini in late September — the revert
+is the test for both. Thirteen runs, and the three single-success runs decide
+the comparison.
+
+**Budget per run today:** two calls x four attempts = 8 requests. At the ~2x
+this item first estimated that is ~16 of 20 on Interactions (~24 at the ~3x
+above), so a failed 15:01Z run leaves the next 03:01Z run nothing; on
+generateContent at 1:1 it is 8. **Order agreed with the operator
+2026-09-25:** watch generateContent for two or three days; then the
+code-only changes (per-run budget, spacing the second call, OpenRouter on one
+call only, a same-evening write-up repair) if still needed; a single call
+last, and only with its own measurement, because it is a prompt change.
+
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
 Two runs lost their narrative to the same thing, and neither retried.
