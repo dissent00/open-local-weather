@@ -380,7 +380,7 @@ def test_the_live_config_is_what_we_think_it_is():
     live = load_location_config("config/location.yaml")
     # THE ORDER IS THE CHANGE — ROADMAP item 81, 2026-09-21. Gemini answers
     # when it can and the gateway takes what it sheds.
-    assert live.llm_providers == ["gemini-interactions", "openai"]
+    assert live.llm_providers == ["gemini", "openai"]
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at
     # the gateway, on the day the primary was already down.

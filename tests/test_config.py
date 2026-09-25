@@ -223,9 +223,9 @@ def test_a_mapping_entry_loads_beside_a_bare_string(tmp_path):
 
     src = (Path("config/location.yaml")).read_text()
     src = src.replace(
-        "  llm_providers:\n    - gemini-interactions\n",
+        "  llm_providers:\n    - gemini\n",
         "  llm_providers:\n"
-        "    - gemini-interactions\n"
+        "    - gemini\n"
         "    - kind: openai\n"
         "      name: openrouter\n"
         "      env_prefix: OPENROUTER\n"
@@ -239,7 +239,7 @@ def test_a_mapping_entry_loads_beside_a_bare_string(tmp_path):
     cfg = load_location_config(str(path))
     first, second = cfg.llm_providers[0], cfg.llm_providers[1]
 
-    assert first == "gemini-interactions"
+    assert first == "gemini"
     assert isinstance(second, LLMProviderEntry)
     assert (second.kind, second.name, second.env_prefix) == (
         "openai", "openrouter", "OPENROUTER",

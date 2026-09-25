@@ -26721,6 +26721,16 @@ per model" for 09-24 would show whether 15:01-15:10Z's four 503s added ~12.
 The three-request experiment above is now the cheapest test in the project,
 and its expected result is +3, not +2.
 
+**Reverted to `generateContent` the same morning, the operator's decision.**
+Their console showed per-model requests jumping from ~4 to 20 on the UTC-8
+day of 09-14 — the day that holds the first Interactions probes (05:15-07:32Z
+on 09-15) and the production switch (`beefb1a`, 07:14Z). The switch bought
+nothing measurable against 503s, and the app never used it. The revert is
+the experiment: if "Requests per model" tracks the ledger 1:1 from 09-25,
+the endpoint was the multiplier. Retries were left at four; the narrative
+call still retries Gemini after the judgment call exhausted it — both are
+worth revisiting once the count is known.
+
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
 Two runs lost their narrative to the same thing, and neither retried.

@@ -164,16 +164,18 @@ location:
   # have to be migrated to express one; loading a second entry prints a
   # warning saying it is ignored.
   #
-  # `gemini-interactions` set 2026-09-15, replacing `gemini`. Same vendor,
-  # same model, different API: `POST /v1beta/interactions` instead of
-  # `generateContent`. Measured the same day at production prompt size — HTTP
-  # 200 in 19.982s, one request, no polling. It is being tried against a week
-  # of 503s on `generateContent`, and it changes TWO things, because
-  # `thinkingLevel: "high"` has no measured equivalent on this API and is not
-  # sent. `thought_tokens` in each log entry is what makes that second change
-  # visible. Revert by putting `gemini` back.
+  # `gemini` (generateContent) AGAIN since 2026-09-25, after ten days on
+  # `gemini-interactions` — ROADMAP item 179. The switch was made to escape
+  # 503s and did not: 29 of 35 Interactions requests in the 15:01Z slot were
+  # 503s. It did change the bill. From the switch on, every UTC-8 quota day
+  # with a failing evening reached Google's "20 requests per day" after 6 or
+  # 7 of our requests — about three units each, if nothing else used the
+  # key — so one bad 15:01Z run spent the day and the next 03:01Z run got
+  # 429s. This revert is also the test:
+  # if the console's "Requests per model" now tracks our ledger 1:1, the
+  # endpoint was the multiplier.
   llm_providers:
-    - gemini-interactions
+    - gemini
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
     # replacement: Gemini answers when it can, and this takes the calls it
     # sheds. Measured over 2026-08-28 to 09-21, the 15:01 slot failed on
