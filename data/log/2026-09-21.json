@@ -665,7 +665,7 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -700,6 +700,7 @@
     "generated_at_utc": "2026-09-21T03:03:36.877293Z",
     "llm_provider": "GeminiInteractionsProvider",
     "llm_model": "gemini-3.6-flash",
+    "narrative_llm_model": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "7e83a3040850ac68f70da9c69bf5a13c3596f90258f4dfb1519a02a720077ff9",
     "finish_reason": "completed",
