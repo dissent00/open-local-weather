@@ -26679,6 +26679,48 @@ Run by the operator with their own key — this session does not handle keys.
 adopted Interactions on reliability evidence it called n=1 against n=1, so
 what the switch bought should be re-read before it is traded away.
 
+### 2026-09-25: the "per day" 429 arrives after 6 or 7 of our requests, every time
+
+The 03:01Z run on 09-25 drew `limit: 20 requests per day` on its first
+attempt; the operator asked how, when nowhere near 20 had been sent. Counted
+from the ledger per UTC-8 quota day (resets 08:00Z, measured 09-15), the
+Gemini requests before the first 429:
+
+| quota day | before first 429 | of which 503 | total that day |
+|---|---:|---:|---:|
+| 09-18 | 7 | 6 | 10 |
+| 09-21 | 6 | 5 | 9 |
+| 09-22 | 7 | 7 | 13 |
+| 09-23 | 6 | 6 | 12 |
+| 09-24 | 7 | 7 | 8 |
+
+Days that stayed mostly 200 (09-17, 09-19, 09-20: 3-5 requests) never drew
+one. **If nothing else calls this key, one request costs about THREE units of
+the 20, not two** — the table above this section is capped by the limit
+itself, which is why it read ~2x. Failed 503s appear to count like
+successes: 09-22 to 09-24 reached the limit on 503s alone.
+
+**It cascades, and the slot decides it.** By run slot, since the ledger began
+(09-18): 15:01Z
+(08:01 Pacific, the US morning) 29 of 35 Gemini requests were 503s; 03:01Z
+11 were 200 and 12 were 429. The evening run meets peak demand, spends the
+day's ~6-7 requests on four failed attempts per call, and the next morning's
+run falls in the same quota day — 03:01Z is 19:01 Pacific — and gets 429s
+until 08:00Z. The 09-24 15:01Z run made eight Gemini requests and got
+nothing from any of them.
+
+**The budget in `gemini.py` assumes one unit per attempt.** Its guard derives
+the worst case as issuances x calls x MAX_ATTEMPTS = 16 against an RPD of 20.
+At ~3 units that is ~48. "Delay is free and attempts are not" holds, three
+times over.
+
+**Not verified:** that nothing else used the key on those days (the app, AI
+Studio, the experiment above if it was run), and which of the Interactions
+endpoint or the 503s carries the multiplier. The console's hourly "Requests
+per model" for 09-24 would show whether 15:01-15:10Z's four 503s added ~12.
+The three-request experiment above is now the cheapest test in the project,
+and its expected result is +3, not +2.
+
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
 Two runs lost their narrative to the same thing, and neither retried.
