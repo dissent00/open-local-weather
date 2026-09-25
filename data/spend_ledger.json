@@ -2,70 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-18T15:01:39.376917+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 7.328
-    },
-    {
-      "at": "2026-09-18T15:02:16.708250+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 54.107
-    },
-    {
-      "at": "2026-09-18T15:04:10.818099+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 31.168
-    },
-    {
-      "at": "2026-09-18T15:11:41.988215+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 37.95
-    },
-    {
-      "at": "2026-09-18T15:12:19.942571+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.832
-    },
-    {
-      "at": "2026-09-18T15:12:51.775994+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 53.28
-    },
-    {
-      "at": "2026-09-18T15:14:45.058292+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 12.843
-    },
-    {
-      "at": "2026-09-18T15:21:57.903268+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.324
-    },
-    {
       "at": "2026-09-19T03:01:49.591325+00:00",
       "provider": "GeminiInteractionsProvider",
       "model": "gemini-3.6-flash",
@@ -664,6 +600,78 @@
       "purpose": "forecast",
       "outcome": "deadline",
       "elapsed_s": 1701.528
+    },
+    {
+      "at": "2026-09-25T15:05:00.374780+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.214
+    },
+    {
+      "at": "2026-09-25T15:05:31.592431+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.591
+    },
+    {
+      "at": "2026-09-25T15:06:32.186708+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.528
+    },
+    {
+      "at": "2026-09-25T15:13:32.718104+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.3
+    },
+    {
+      "at": "2026-09-25T15:13:33.023865+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 161.935
+    },
+    {
+      "at": "2026-09-25T15:16:14.964302+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.429
+    },
+    {
+      "at": "2026-09-25T15:16:45.396214+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 3.578
+    },
+    {
+      "at": "2026-09-25T15:17:48.978087+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.423
+    },
+    {
+      "at": "2026-09-25T15:24:49.404574+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.524
     }
   ]
 }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kisumu, Kenya Weather — 2026-09-25</title>
-<meta name="description" content="Evening Thunderstorms. High 31°C / 88°F high, 20°C / 68°F low.">
+<meta name="description" content="Late Afternoon Showers &amp; Thunderstorms. High 31°C / 87°F high, 20°C / 68°F low.">
 <link rel="stylesheet" href="https://dissent00.github.io/open-local-weather/assets/style.css">
 </head>
 <body>
@@ -25,14 +25,14 @@
   <div class="banner run-degraded">
     <p><strong>This forecast was built on less than usual.</strong></p>
     <ul>
-<li>The nearest airport weather report was not available, so this forecast had no live local observation to check the models against.</li><li>The wider pressure picture did not arrive, so this forecast describes the local pattern without the regional one around it.</li><li>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</li>    </ul>
+<li>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</li>    </ul>
     <p class="summary">The technical detail is in <a href="#run-notes">Notes on this forecast</a>, at the end.</p>
   </div>
 
   <p class="banner">This is an archived forecast for 2026-09-25. <a href="https://dissent00.github.io/open-local-weather/">See today's forecast</a>.</p>
 
   <h1>Kisumu, Kenya</h1>
-  <p class="meta">Forecast for 2026-09-25 &middot; multi-model synthesis via nex-agi/nex-n2.5-pro:free &middot; Updated 18:01</p>
+  <p class="meta">Forecast for 2026-09-25 &middot; multi-model synthesis via nex-agi/nex-n2.5-pro:free &middot; Issued 06:01</p>
 
   <div class="stat-grid">
     <div class="stat">
@@ -41,17 +41,17 @@
     </div>
     <div class="stat">
       <span class="label">Rain</span>
-      <span class="value">Evening Thunderstorms</span>
-      <span class="value">Evening Thunderstorms</span>
+      <span class="value">Late Afternoon Showers &amp; Thunderstorms</span>
+      <span class="value">Late Afternoon to Evening</span>
     </div>
     <div class="stat">
       <span class="label">Wind gust (km/h)</span>
-      <span class="value">38</span>
+      <span class="value">35</span>
     </div>
     <div class="stat">
       <span class="label">UV / AQI</span>
-      <span class="value">9.5 / 76</span>
-      <span class="modifier">Very high / Moderate</span>
+      <span class="value">8.15 (Very high)</span>
+      <span class="value">76 (Moderate)</span>
     </div>
     <div class="stat">
       <span class="label">Sun</span>
@@ -70,25 +70,23 @@
 
   <h2 id="run-notes">Notes on this forecast</h2>
   <ul class="archive-list">
-    <li><strong>The nearest airport weather report was not available, so this forecast had no live local observation to check the models against.</strong><span class="summary">No current METAR from HKKI this run. fetch_metar returns None on every failure path, so the cause — network, upstream outage, or a station that stopped reporting — is not distinguished here.</span></li>
-    <li><strong>The wider pressure picture did not arrive, so this forecast describes the local pattern without the regional one around it.</strong><span class="summary">The synoptic-scale pressure ring did not arrive (Request to https://api.open-meteo.com/v1/forecast failed: HTTPSConnectionPool(host=&#39;api.open-meteo.com&#39;, port=443): Read timed out. (read timeout=30)). The narrative&#39;s large-scale paragraph falls back to local gradients, which cannot locate a system&#39;s direction.</span></li>
-    <li><strong>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</strong><span class="summary">The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: not asked for the narrative: llm_fallback_calls is scored_call</span></li>
+    <li><strong>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</strong><span class="summary">The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: https://openrouter.ai/api/v1 was still answering after 1700s; abandoned</span></li>
   </ul>
 
   <h2>Ground AQI Stations</h2>
-  <p class="meta">Range across 3 currently-fresh reporting stations: AQI 60&ndash;127, highest at <strong>Kisumu Airport</strong>.</p>
+  <p class="meta">No station has a sufficiently current composite AQI reading right now — see individual readings below.</p>
   <ul class="archive-list">
     <li>
       <strong>Kisumu Airport</strong>
-&mdash; AQI 127<span class="summary">PM2.5 127.0</span><span class="summary">PM10 15.0</span>      <span class="summary">measured -7.8h ago</span>
+&mdash; AQI 45<span class="summary">PM2.5 45.0</span><span class="summary">PM10 15.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
     </li>
     <li>
       <strong>Ochieng&#39; Avenue, Kisumu Central</strong>
-&mdash; AQI 65<span class="summary">PM2.5 65.0</span><span class="summary">PM10 18.0</span>      <span class="summary">measured -7.8h ago</span>
+&mdash; AQI 94<span class="summary">PM2.5 94.0</span><span class="summary">PM10 18.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
     </li>
     <li>
       <strong>Dunga Beach</strong>
-&mdash; AQI 60<span class="summary">PM2.5 60.0</span><span class="summary">PM10 37.0</span>      <span class="summary">measured -7.8h ago</span>
+&mdash; AQI 40<span class="summary">PM2.5 40.0</span><span class="summary">PM10 37.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
     </li>
   </ul>
 </main>

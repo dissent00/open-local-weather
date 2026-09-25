@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kisumu, Kenya Weather — 2026-09-25</title>
-<meta name="description" content="Late Afternoon Showers &amp; Thunderstorms. High 31°C / 87°F high, 20°C / 68°F low.">
+<meta name="description" content="Evening Thunderstorms. High 31°C / 88°F high, 20°C / 68°F low.">
 <link rel="stylesheet" href="https://dissent00.github.io/open-local-weather/assets/style.css">
 </head>
 <body>
@@ -25,13 +25,13 @@
   <div class="banner run-degraded">
     <p><strong>This forecast was built on less than usual.</strong></p>
     <ul>
-<li>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</li>    </ul>
+<li>The nearest airport weather report was not available, so this forecast had no live local observation to check the models against.</li><li>The wider pressure picture did not arrive, so this forecast describes the local pattern without the regional one around it.</li><li>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</li>    </ul>
     <p class="summary">The technical detail is in <a href="#run-notes">Notes on this forecast</a>, at the end.</p>
   </div>
 
 
   <h1>Kisumu, Kenya</h1>
-  <p class="meta">Forecast for 2026-09-25 &middot; multi-model synthesis via gemini-3.6-flash</p>
+  <p class="meta">Forecast for 2026-09-25 &middot; multi-model synthesis via nex-agi/nex-n2.5-pro:free &middot; Updated 18:01</p>
 
   <div class="stat-grid">
     <div class="stat">
@@ -40,22 +40,16 @@
     </div>
     <div class="stat">
       <span class="label">Rain</span>
-      <span class="value">Late Afternoon Showers &amp; Thunderstorms</span>
-      <span class="value">Late Afternoon to Evening</span>
+      <span class="value">Evening Thunderstorms</span>
+      <span class="value">Evening Thunderstorms</span>
     </div>
     <div class="stat">
-      <span class="label">Wind (km/h)</span>
-      <span class="value">early NNE 5G12</span>
-      <span class="value">midday SW 8G19</span>
-    </div>
-    <div class="stat">
-      <span class="label">Cloud</span>
-      <span class="value">early Mostly cloudy</span>
-      <span class="value">midday Mostly cloudy</span>
+      <span class="label">Wind gust (km/h)</span>
+      <span class="value">38</span>
     </div>
     <div class="stat">
       <span class="label">UV / AQI</span>
-      <span class="value">8.15 / 76</span>
+      <span class="value">9.5 / 76</span>
       <span class="modifier">Very high / Moderate</span>
     </div>
     <div class="stat">
@@ -70,28 +64,30 @@
 <p>There is no discussion, no extended outlook and no hazard section for this issuance. Check a later one.</p>
 
   <h2 id="observed">Observed so far today</h2>
-  <p class="meta">As of 06:01, reports through 03:00: no rain; no thunder; high so far 20°C / 68°F; low so far 20°C / 68°F; peak sustained 13 km/h; sky 7/8.</p>
+  <p class="meta">As of 18:01, reports through 17:00: rain from 07:00; no thunder; high so far 29°C / 84°F; low so far 20°C / 68°F; peak sustained 19 km/h; sky 6/8.</p>
   <p class="summary">Measured at HKKI, not forecast. Rainfall totals are not reported: the station records that rain fell, never how much.</p>
 
   <h2 id="run-notes">Notes on this forecast</h2>
   <ul class="archive-list">
-    <li><strong>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</strong><span class="summary">The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: https://openrouter.ai/api/v1 was still answering after 1700s; abandoned</span></li>
+    <li><strong>The nearest airport weather report was not available, so this forecast had no live local observation to check the models against.</strong><span class="summary">No current METAR from HKKI this run. fetch_metar returns None on every failure path, so the cause — network, upstream outage, or a station that stopped reporting — is not distinguished here.</span></li>
+    <li><strong>The wider pressure picture did not arrive, so this forecast describes the local pattern without the regional one around it.</strong><span class="summary">The synoptic-scale pressure ring did not arrive (Request to https://api.open-meteo.com/v1/forecast failed: HTTPSConnectionPool(host=&#39;api.open-meteo.com&#39;, port=443): Read timed out. (read timeout=30)). The narrative&#39;s large-scale paragraph falls back to local gradients, which cannot locate a system&#39;s direction.</span></li>
+    <li><strong>Today&#39;s figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.</strong><span class="summary">The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: not asked for the narrative: llm_fallback_calls is scored_call</span></li>
   </ul>
 
   <h2>Ground AQI Stations</h2>
-  <p class="meta">No station has a sufficiently current composite AQI reading right now — see individual readings below.</p>
+  <p class="meta">Range across 3 currently-fresh reporting stations: AQI 60&ndash;127, highest at <strong>Kisumu Airport</strong>.</p>
   <ul class="archive-list">
     <li>
       <strong>Kisumu Airport</strong>
-&mdash; AQI 45<span class="summary">PM2.5 45.0</span><span class="summary">PM10 15.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
+&mdash; AQI 127<span class="summary">PM2.5 127.0</span><span class="summary">PM10 15.0</span>      <span class="summary">measured -7.8h ago</span>
     </li>
     <li>
       <strong>Ochieng&#39; Avenue, Kisumu Central</strong>
-&mdash; AQI 94<span class="summary">PM2.5 94.0</span><span class="summary">PM10 18.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
+&mdash; AQI 65<span class="summary">PM2.5 65.0</span><span class="summary">PM10 18.0</span>      <span class="summary">measured -7.8h ago</span>
     </li>
     <li>
       <strong>Dunga Beach</strong>
-&mdash; AQI 40<span class="summary">PM2.5 40.0</span><span class="summary">PM10 37.0</span>      <span class="summary">stale &mdash; measured 4.2h ago</span>
+&mdash; AQI 60<span class="summary">PM2.5 60.0</span><span class="summary">PM10 37.0</span>      <span class="summary">measured -7.8h ago</span>
     </li>
   </ul>
 </main>
