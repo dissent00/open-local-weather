@@ -1514,7 +1514,7 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },

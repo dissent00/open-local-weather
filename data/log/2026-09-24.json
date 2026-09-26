@@ -669,11 +669,133 @@
           "mslp_trend": -1.1999999999999318
         }
       ],
-      "secondary_scores": {},
-      "secondary_verified_at": null,
+      "secondary_scores": {
+        "gfs_seamless": {
+          "rain_correct": false,
+          "rain_brier": 1.0,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 4.0,
+          "high_error_c": -2.3999999999999986,
+          "low_error_c": 0.3000000000000007,
+          "mslp_error_hpa": -0.4999999999998863,
+          "cloud_error_pct": -5.5,
+          "convective_correct": null,
+          "precip_error_mm": -13.7
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": false,
+          "rain_brier": 0.6889,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 6.100000000000001,
+          "high_error_c": -0.8000000000000007,
+          "low_error_c": 2.0,
+          "mslp_error_hpa": 0.8000000000000682,
+          "cloud_error_pct": 10.099999999999994,
+          "convective_correct": null,
+          "precip_error_mm": -0.9
+        },
+        "icon_seamless": {
+          "rain_correct": false,
+          "rain_brier": 0.12249999999999998,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 1.8000000000000007,
+          "high_error_c": -0.5,
+          "low_error_c": -2.599999999999998,
+          "mslp_error_hpa": 0.7000000000000455,
+          "cloud_error_pct": -1.5,
+          "convective_correct": null,
+          "precip_error_mm": -10.3
+        },
+        "ukmo_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.07840000000000001,
+          "onset_error_hrs": null,
+          "wind_error_kmh": -2.1000000000000014,
+          "high_error_c": -2.6999999999999993,
+          "low_error_c": 1.0,
+          "mslp_error_hpa": -0.599999999999909,
+          "cloud_error_pct": 17.0,
+          "convective_correct": null,
+          "precip_error_mm": -0.1
+        },
+        "best_match": {
+          "rain_correct": true,
+          "rain_brier": 0.6889,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 0.0,
+          "high_error_c": 0.3000000000000007,
+          "low_error_c": 0.0,
+          "mslp_error_hpa": 0.6000000000000227,
+          "cloud_error_pct": 3.0,
+          "convective_correct": null,
+          "precip_error_mm": 0.0
+        }
+      },
+      "secondary_verified_at": "2026-09-26T03:01:35.061214Z",
       "window_opened_local": "2026-09-24T06:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.0,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 7.200000000000003,
+          "high_error_c": -0.8999999999999986,
+          "low_error_c": -0.6000000000000014,
+          "mslp_error_hpa": 0.40000000000009095,
+          "cloud_error_pct": 4.099999999999994,
+          "convective_correct": true,
+          "precip_error_mm": -50.4
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": true,
+          "rain_brier": 0.028900000000000012,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 9.300000000000004,
+          "high_error_c": 2.0,
+          "low_error_c": 0.1999999999999993,
+          "mslp_error_hpa": 0.3000000000000682,
+          "cloud_error_pct": 6.5,
+          "convective_correct": false,
+          "precip_error_mm": -0.5
+        },
+        "icon_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.3844,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 5.0000000000000036,
+          "high_error_c": 2.3999999999999986,
+          "low_error_c": -4.300000000000001,
+          "mslp_error_hpa": 0.0,
+          "cloud_error_pct": 2.799999999999997,
+          "convective_correct": false,
+          "precip_error_mm": -6.6
+        },
+        "ukmo_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.5184,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 10.100000000000001,
+          "high_error_c": -0.10000000000000142,
+          "low_error_c": 0.0,
+          "mslp_error_hpa": -0.6000000000000227,
+          "cloud_error_pct": 8.799999999999997,
+          "convective_correct": false,
+          "precip_error_mm": -1.4
+        },
+        "best_match": {
+          "rain_correct": false,
+          "rain_brier": 0.028900000000000012,
+          "onset_error_hrs": null,
+          "wind_error_kmh": -3.5999999999999943,
+          "high_error_c": 0.5,
+          "low_error_c": -0.1999999999999993,
+          "mslp_error_hpa": 0.39999999999997726,
+          "cloud_error_pct": 4.200000000000003,
+          "convective_correct": false,
+          "precip_error_mm": 0.4
+        }
+      },
+      "window_verified_at": "2026-09-26T03:01:35.060255Z",
       "day_over_day": {
         "yesterday_high_c": 29.5,
         "yesterday_low_c": 20.4,
@@ -1260,8 +1382,69 @@
       "secondary_scores": {},
       "secondary_verified_at": null,
       "window_opened_local": "2026-09-24T08:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.0144,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 7.200000000000003,
+          "high_error_c": -0.6000000000000014,
+          "low_error_c": 0.8999999999999986,
+          "mslp_error_hpa": -1.1999999999999318,
+          "cloud_error_pct": -3.5,
+          "convective_correct": true,
+          "precip_error_mm": -4.3
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": true,
+          "rain_brier": 0.2601,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 9.300000000000004,
+          "high_error_c": 2.0,
+          "low_error_c": 0.6000000000000014,
+          "mslp_error_hpa": -0.09999999999990905,
+          "cloud_error_pct": 10.799999999999997,
+          "convective_correct": false,
+          "precip_error_mm": -0.5
+        },
+        "icon_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.22089999999999999,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 0.30000000000000426,
+          "high_error_c": 1.5,
+          "low_error_c": -1.8000000000000007,
+          "mslp_error_hpa": -0.8999999999999773,
+          "cloud_error_pct": 8.399999999999991,
+          "convective_correct": false,
+          "precip_error_mm": -0.7999999999999999
+        },
+        "ukmo_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.25,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 10.100000000000001,
+          "high_error_c": -0.10000000000000142,
+          "low_error_c": 1.5,
+          "mslp_error_hpa": -1.3999999999999773,
+          "cloud_error_pct": 9.299999999999997,
+          "convective_correct": false,
+          "precip_error_mm": -1.4
+        },
+        "best_match": {
+          "rain_correct": false,
+          "rain_brier": 0.2601,
+          "onset_error_hrs": null,
+          "wind_error_kmh": -3.5999999999999943,
+          "high_error_c": 0.5,
+          "low_error_c": 1.0,
+          "mslp_error_hpa": -0.10000000000002274,
+          "cloud_error_pct": 9.799999999999997,
+          "convective_correct": false,
+          "precip_error_mm": 0.4
+        }
+      },
+      "window_verified_at": "2026-09-26T03:01:35.060753Z",
       "day_over_day": {
         "yesterday_high_c": 29.5,
         "yesterday_low_c": 20.4,
@@ -1864,8 +2047,69 @@
       "secondary_scores": {},
       "secondary_verified_at": null,
       "window_opened_local": "2026-09-24T18:00:00",
-      "window_scores": {},
-      "window_verified_at": null,
+      "window_scores": {
+        "gfs_seamless": {
+          "rain_correct": false,
+          "rain_brier": 0.05289999999999999,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 17.6,
+          "high_error_c": -1.6999999999999993,
+          "low_error_c": -0.10000000000000142,
+          "mslp_error_hpa": 2.2000000000000455,
+          "cloud_error_pct": 10.299999999999997,
+          "convective_correct": true,
+          "precip_error_mm": 3.8000000000000003
+        },
+        "ecmwf_ifs025": {
+          "rain_correct": true,
+          "rain_brier": 0.019600000000000003,
+          "onset_error_hrs": -1.0,
+          "wind_error_kmh": 14.400000000000002,
+          "high_error_c": -1.4000000000000021,
+          "low_error_c": 0.6000000000000014,
+          "mslp_error_hpa": 1.2000000000000455,
+          "cloud_error_pct": 13.5,
+          "convective_correct": false,
+          "precip_error_mm": 2.0
+        },
+        "icon_seamless": {
+          "rain_correct": true,
+          "rain_brier": 0.22089999999999999,
+          "onset_error_hrs": -6.0,
+          "wind_error_kmh": 12.600000000000001,
+          "high_error_c": -1.1000000000000014,
+          "low_error_c": -1.8999999999999986,
+          "mslp_error_hpa": 2.300000000000068,
+          "cloud_error_pct": -5.900000000000006,
+          "convective_correct": false,
+          "precip_error_mm": 3.1
+        },
+        "ukmo_seamless": {
+          "rain_correct": false,
+          "rain_brier": 0.6889,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 14.400000000000002,
+          "high_error_c": -0.6000000000000014,
+          "low_error_c": 1.3000000000000007,
+          "mslp_error_hpa": 0.8000000000000682,
+          "cloud_error_pct": 3.799999999999997,
+          "convective_correct": false,
+          "precip_error_mm": 4.2
+        },
+        "best_match": {
+          "rain_correct": true,
+          "rain_brier": 0.019600000000000003,
+          "onset_error_hrs": -2.0,
+          "wind_error_kmh": 4.300000000000004,
+          "high_error_c": -1.1999999999999993,
+          "low_error_c": 0.8999999999999986,
+          "mslp_error_hpa": 0.8000000000000682,
+          "cloud_error_pct": 15.5,
+          "convective_correct": false,
+          "precip_error_mm": 3.5
+        }
+      },
+      "window_verified_at": "2026-09-26T03:01:35.061178Z",
       "day_over_day": null
     }
   ],

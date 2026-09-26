@@ -15,6 +15,10 @@
   "air_quality_aqi": "53",
   "uv_index": null,
   "air_quality_index": null,
+  "uv_index_date": null,
+  "uv_index_source": null,
+  "comparison": {},
+  "tiles": [],
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -617,6 +621,7 @@
         "high_delta_c": 0.3,
         "low_delta_c": 0.2,
         "wind_delta_kmh": -0.2,
+        "cloud_delta_pct": null,
         "high_label": "about the same",
         "wind_label": "similar winds",
         "cloud_label": "clearer",
@@ -1201,7 +1206,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1279,6 +1284,7 @@
     "generated_at_utc": "2026-09-18T03:03:15.980499Z",
     "llm_provider": "GeminiInteractionsProvider",
     "llm_model": "gemini-3.6-flash",
+    "narrative_llm_model": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "64ae6bb91288e8ebc53b49c5240718ab9caef2417ef2357d797c23d189dbb5ba",
     "finish_reason": "completed",
