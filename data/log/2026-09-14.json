@@ -15,6 +15,10 @@
   "air_quality_aqi": "117 (Unhealthy for Sensitive Groups)",
   "uv_index": null,
   "air_quality_index": null,
+  "uv_index_date": null,
+  "uv_index_source": null,
+  "comparison": {},
+  "tiles": [],
   "ground_aqi": [
     {
       "name": "Kisumu Airport",
@@ -191,6 +195,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 100,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 28.115999999999996,
+            "low_c": 18.824,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day3": [
@@ -321,6 +341,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 100,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day7": [
@@ -443,6 +479,22 @@
             "onset": null,
             "precip_mm": null,
             "rain_probability_pct": 60,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 59,
             "wind_kmh": null,
             "sustained_wind_kmh": null,
             "high_c": null,
@@ -592,6 +644,7 @@
     "generated_at_utc": "2026-09-14T03:52:14.332320Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
+    "narrative_llm_model": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "c054d632393b0ba547ce5fecc6b56af76605c58b43f9ace7483c2cc75c88dad6",
     "finish_reason": "STOP",

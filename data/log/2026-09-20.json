@@ -195,6 +195,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 0,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 31.722,
+            "low_c": 18.419999999999998,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day3": [
@@ -325,6 +341,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 75,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day7": [
@@ -447,6 +479,22 @@
             "onset": null,
             "precip_mm": null,
             "rain_probability_pct": 25,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 57,
             "wind_kmh": null,
             "sustained_wind_kmh": null,
             "high_c": null,

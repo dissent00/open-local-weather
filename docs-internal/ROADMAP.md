@@ -26040,7 +26040,7 @@ a second vendor.
 
 ---
 
-## 173. Make the LLM optional, and find out whether it earns its place · **Stage 1 built 2026-09-26 — the code blend, backtested; stage 2 is the operator's call**
+## 173. Make the LLM optional, and find out whether it earns its place · **Stage 2 shipped 2026-09-26 — `olw_code_blend` scored live, backfilled, hidden, in olw_core**
 
 From the operator's question about cost and reliability: *"the app loses its
 appeal if you sometimes have to hit refresh 5 times in the course of an hour
@@ -26156,6 +26156,32 @@ cannot anchor on it, published, then Python → vectors → Dart → re-pin. Or
 wait for more days, which costs nothing since it backfills exactly. Point 1
 (code numbers as the app's forecast when the LLM fails) is a separate
 decision.
+
+### Stage 2 — shipped 2026-09-26
+
+The operator chose to build it now rather than wait. `olw_code_blend` is in
+`scored_models` and in `HIDDEN_FROM_THE_FORECASTER`, which every prompt
+filter now reads — the extracted-predictions block had its own hand-written
+set. Built at the storage step beside `_blend_prediction`, not where the
+baselines join `day0_predictions`, because the day-over-day consensus, the
+extended trend and the calibrated gust all average that list.
+
+- **Live:** every issuance stores it at each lead it can call.
+- **Backfilled:** `olw backfill-code-blend` added it to row 0 of 37 days
+  (Day+0 37, Day+3 34, Day+7 30); 08-11..08-20 had no model at 10 checks.
+  All 37 entries compared equal to their previous content once the new rows
+  are removed; the line count is re-serialisation.
+- **Scored:** the published review reads `scored_models`, so the accuracy
+  page shows it from the next publish. `track_record.json` gains its rows at
+  the next FIRST issuance (09-27 03:01Z), since later issuances verify nothing.
+- **Guarded:** a twelve-day pipeline test stores it, scores it, then asserts
+  it absent from both prompts on a fresh run and a same-day re-issue.
+  Removing it from the hidden set, or unwiring it, fails that test.
+- **olw_core:** `code_blend.dart`, held by `code_blend.json` (11 cases; three
+  land exactly on .5). 20,000 generated cases agree between Python and Dart.
+
+Not done here: the Ensemble app's runner (its re-pin is the next step) and
+item 173 point 1.
 
 ---
 

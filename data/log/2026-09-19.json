@@ -195,6 +195,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 55,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 29.75,
+            "low_c": 18.586000000000002,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day3": [
@@ -325,6 +341,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 100,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day7": [
@@ -447,6 +479,22 @@
             "onset": null,
             "precip_mm": null,
             "rain_probability_pct": 25,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 57,
             "wind_kmh": null,
             "sustained_wind_kmh": null,
             "high_c": null,
@@ -1316,6 +1364,7 @@
     "generated_at_utc": "2026-09-19T03:02:30.095073Z",
     "llm_provider": "GeminiInteractionsProvider",
     "llm_model": "gemini-3.6-flash",
+    "narrative_llm_model": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "bc90620234f60c12ec7d654926dfe3d4e13d4de25e834dd38f0a21293f4e0a99",
     "finish_reason": "completed",

@@ -308,6 +308,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 81,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 29.78,
+            "low_c": 19.154,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day3": [
@@ -438,6 +454,22 @@
             "peak_cape_jkg": null,
             "wind_direction_deg": null,
             "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 71,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
           }
         ],
         "day7": [
@@ -560,6 +592,22 @@
             "onset": null,
             "precip_mm": null,
             "rain_probability_pct": 35,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 67,
             "wind_kmh": null,
             "sustained_wind_kmh": null,
             "high_c": null,
