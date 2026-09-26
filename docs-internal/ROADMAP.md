@@ -26263,6 +26263,9 @@ read 25.8 against the models' 25.7, and the gust was handed both yardsticks.
 windier" instead of "windier", because its forty calm fixture days fed
 climatology and dragged the consensus toward them.
 
+Ensemble is re-pinned to `1d06972` (ensemble `42bebaf`), with `flutter test`
+and `flutter analyze` green. The app was not launched on a device.
+
 **Not checked.** Item 126's out-of-sample validation was not re-run over the
 models alone. The rain phrase was compared on its inputs, not composed end to
 end. The replay reads today's actuals cache, so any revision since each run
