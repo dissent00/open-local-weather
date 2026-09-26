@@ -4336,7 +4336,12 @@ daily. Whatever that field is, it is not a live reading.
 | 2026-08-26 | 63.0 | 15.0 | 18.0 | 37.0 |
 
 Neither field reaches the narrative today, so nothing published is currently
-wrong. But `data/log/*.json` is committed, and item 24 proposes publishing it
+wrong. **Still true of the narrative, 2026-09-26, but both columns now reach
+the FORECASTER** in the GROUND AQI STATIONS table, and PM10 is still frozen
+at 15 / 18 / 37 on every one of 34-36 readings per station since 2026-09-04.
+On 09-26 the airport's PM2.5 sub-index of 158 sat beside a PM10 of 15 — a pair
+that reads as physically impossible to anyone who takes the labels at face
+value. But `data/log/*.json` is committed, and item 24 proposes publishing it
 as a feed for other apps — at which point a field labelled `pm25` carrying an
 AQI sub-index becomes someone else's bug.
 
@@ -26663,6 +26668,12 @@ the app shares are untouched. Seven unit tests on the real `FallbackProvider`
 and the run-level test in both modes; four mutations (skip removed, cause
 dropped, a SERVING link skipped, hooks not restored), four bites.
 
+**Watch the fallback's calibration.** Its one scored call under this rule,
+09-25 15:01Z, said rain at **100%** — the most expensive bet a Brier score
+offers, and one the judgment prompt tells the forecaster not to make. It
+verified (Brier 0.0). The record names the model (item 171), so its calls
+can be read apart from Gemini's once there are enough of them.
+
 ## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only
@@ -26827,6 +26838,18 @@ What it leaves: a bad 15:01Z run still spends 8 of 20 — two calls x four
 attempts, all 503s on 09-25 — so the next morning keeps 12, and on 09-26 it
 needed 3. The 15:01Z 503s did NOT go away with the endpoint: 8 of 8 on
 09-25. They belong to the slot, not the API.
+
+**Two side effects of the revert, noted 2026-09-26, neither acted on.**
+- **Our cap counts per provider CLASS; Google's quota is per MODEL.** The
+  revert restarted our count at "1/20 for GeminiProvider" while Google's
+  count for `gemini-3.6-flash` already held that day's seven Interactions
+  requests. Harmless once the window rolled, but any future endpoint change
+  under-counts the same way; keying the Gemini cap on the model would close
+  it. The operator chose not to do this now.
+- **Thinking tokens roughly doubled:** 10,163 for the 09-26 03:01Z forecast
+  against 3,555-5,025 on Interactions, because `generateContent` sends
+  `thinkingLevel: "high"` again. One data point; the judgment took 13s and
+  the narrative 54s.
 
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
