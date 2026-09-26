@@ -3418,7 +3418,9 @@ def test_the_configured_fallback_policy_reaches_the_run(tmp_path, policy, fallba
     """`llm_fallback_calls` read by a real issuance, not only stored —
     ROADMAP item 180. With the primary down for both calls, the fallback is
     sent the judgment alone under `scored_call`, and the day publishes
-    scored and degraded; under `both_calls` it is sent both, as before."""
+    scored and degraded; under `both_calls` it is sent both, as before.
+    Either way the primary, having failed the scored call, is not asked for
+    the narrative, and a degraded day's record names that failure."""
     import dataclasses
 
     from openlocalweather.llm.errors import LLMUnavailableError
@@ -3436,9 +3438,12 @@ def test_the_configured_fallback_policy_reaches_the_run(tmp_path, policy, fallba
     issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert len(fallback.calls) == fallback_calls
+    assert len(primary.calls) == 1
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    degraded = "narrative_unavailable" in {d.code for d in entry.meta.degradations or []}
-    assert degraded == (policy == "scored_call")
+    degraded = [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    assert bool(degraded) == (policy == "scored_call")
+    if degraded:
+        assert "(fake-model) failed the scored call" in degraded[0].detail
 
 
 def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):

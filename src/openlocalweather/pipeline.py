@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -95,6 +96,7 @@ from openlocalweather.llm.provider import (
     chain_links,
     provider_identity,
     resolve_active,
+    resolve_served,
     served_identity,
 )
 from openlocalweather.phrasing import phrase_defect
@@ -540,41 +542,125 @@ def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
     ]
 
 
-class NarrativeFallbackRefused(LLMUnavailableError):
-    """A later chain link asked to write the narrative under `scored_call`.
+class NarrativeLinkRefused(LLMUnavailableError):
+    """A chain link the narrative may not use this run — ROADMAP item 180.
 
-    An LLMUnavailableError so the chain treats it as what it is — this link
-    may not serve this call — and moves on; with no link left the narrative
-    degrades exactly as a failed one does.
+    Raised from the before-attempt hook, before any request or ledger row, as
+    an LLMUnavailableError so the chain moves on exactly as it would past a
+    link that failed; with no link left the narrative degrades. Its message
+    carries what happened to the links before it, because the chain records
+    the LAST link's error and this is usually the last one — on 2026-09-25
+    the record said only that the fallback was not asked, and the four
+    Gemini 503s that caused it were on stderr alone.
     """
 
 
-def _narrative_on_primary_only(provider, cap) -> bool:
-    """Gates every attempt of the NARRATIVE so only the first link may spend.
+def _link_name(link) -> str:
+    return f"{type(link).__name__} ({getattr(link, 'model', 'unknown')})"
 
-    In the hook rather than the chain, for the reason the per-link ceiling is
-    (item 170): the provider classes are shared with the app, and this is one
-    deployment's policy. The gate runs BEFORE the cap's own hook, so a request
-    that is never sent never becomes a ledger row. Returns whether it was
-    installed; a lone provider has no later link to refuse.
+
+def _attempt_summary(outcomes: list[str]) -> str:
+    """The attempts one link made in one call, in the ledger's own words."""
+    if not outcomes:
+        return "no request completed"
+
+    return ", ".join(
+        f"{outcome} x{count}" if count > 1 else outcome
+        for outcome, count in Counter(outcomes).items()
+    )
+
+
+class _NarrativeRouting:
+    """Which chain links the narrative may use, decided when the judgment
+    returns. Two rules, both ROADMAP item 180:
+
+    - A link that FAILED the scored call is not retried for the narrative.
+      The chain only moves past a link that failed, so every link before the
+      one that served the judgment failed it. Measured 2026-09-25 15:01Z:
+      Gemini's four 503s on the scored call were followed three minutes later
+      by four more on the narrative — 8 of that day's 11 requests, and 8.5
+      minutes. A link that STRUGGLED and served is still asked: on 2026-09-25
+      03:01Z the scored call succeeded on its third attempt.
+    - Under `scored_call`, no link after the first is asked at all.
+
+    In the hooks rather than the chain, for the reason the per-link ceiling
+    is (item 170): the provider classes are shared with the app, and this is
+    one deployment's policy. Installed only on a chain; a lone provider that
+    failed the judgment has already ended the run.
     """
-    links = chain_links(provider)
-    if len(links) < 2:
-        return False
 
-    primary = links[0]
+    def __init__(self, provider, fallback_calls: FallbackCalls):
+        self._provider = provider
+        self._fallback_calls = fallback_calls
+        self._links = chain_links(provider)
+        self._cap = getattr(provider, "before_attempt", None)
+        self._report = getattr(provider, "after_attempt", None)
+        # Per link, keyed by identity: the outcomes of the CURRENT call, and
+        # why a link may not serve the narrative.
+        self._outcomes: dict[int, list[str]] = {}
+        self._refused: dict[int, str] = {}
+        self.active = len(self._links) > 1
 
-    def _gate() -> None:
-        if resolve_active(provider) is not primary:
-            raise NarrativeFallbackRefused(
-                f"not asked for the narrative: llm_fallback_calls is "
-                f"{FallbackCalls.SCORED_CALL.value}"
+    def install(self) -> None:
+        if self.active:
+            self._provider.after_attempt = self._observe
+
+    def restore(self) -> None:
+        if self.active:
+            self._provider.before_attempt = self._cap
+            self._provider.after_attempt = self._report
+
+    def judgment_returned(self) -> None:
+        if not self.active:
+            return
+
+        served = resolve_served(self._provider)
+        failed = self._links[: self._links.index(served)] if served in self._links else ()
+        for link in failed:
+            self._refused[id(link)] = (
+                f"{_link_name(link)} failed the scored call this run "
+                f"({_attempt_summary(self._outcomes.get(id(link), []))})"
             )
-        if cap is not None:
-            cap()
 
-    provider.before_attempt = _gate
-    return True
+        if self._fallback_calls == FallbackCalls.SCORED_CALL:
+            for link in self._links[1:]:
+                self._refused.setdefault(
+                    id(link),
+                    f"{_link_name(link)} not asked for the narrative "
+                    f"(llm_fallback_calls: {FallbackCalls.SCORED_CALL.value})",
+                )
+
+        # The narrative's attempts are its own; the judgment's are spent.
+        self._outcomes = {}
+        if self._refused:
+            self._provider.before_attempt = self._gate
+
+    def _observe(self, outcome: str, elapsed_s: float) -> None:
+        link = resolve_active(self._provider)
+        self._outcomes.setdefault(id(link), []).append(outcome)
+        if self._report is not None:
+            self._report(outcome, elapsed_s)
+
+    def _gate(self) -> None:
+        link = resolve_active(self._provider)
+        reason = self._refused.get(id(link))
+        if reason is None:
+            if self._cap is not None:
+                self._cap()
+            return
+
+        earlier = [self._account(prior) for prior in self._links[: self._links.index(link)]]
+        raise NarrativeLinkRefused(
+            reason + (f"; before it, {'; '.join(earlier)}" if earlier else "")
+        )
+
+    def _account(self, link) -> str:
+        """What happened to one earlier link during the narrative."""
+        if id(link) in self._refused:
+            return self._refused[id(link)]
+
+        outcomes = _attempt_summary(self._outcomes.get(id(link), []))
+        return f"{_link_name(link)} failed the narrative ({outcomes})"
 
 
 def _generate_forecast(
@@ -592,8 +678,8 @@ def _generate_forecast(
     this adds is the snapshot: `holder` holds only the LAST response, so each
     call's report has to be taken before the next one overwrites it.
 
-    Under `scored_call` the snapshot after the judgment is also where the
-    narrative's gate goes in: `on_call` fires after one call returns and
+    The snapshot after the judgment is also where `_NarrativeRouting`
+    decides the narrative's links: `on_call` fires after one call returns and
     before the next begins, which is exactly the seam between them.
     """
     metas: dict[str, ResponseMeta] = {}
@@ -604,22 +690,21 @@ def _generate_forecast(
     # after both calls could not have said that, and the one read before this
     # change said neither — it read the chain's first entry.
     served: dict[str, tuple[str, str]] = {}
-    cap = getattr(provider, "before_attempt", None)
-    gated = {"on": False}
+    routing = _NarrativeRouting(provider, fallback_calls)
 
     def _snapshot(name: str) -> None:
         metas[name] = _response_meta(holder)
         served[name] = served_identity(provider)
-        if name == forecast_call.JUDGMENT and fallback_calls == FallbackCalls.SCORED_CALL:
-            gated["on"] = _narrative_on_primary_only(provider, cap)
+        if name == forecast_call.JUDGMENT:
+            routing.judgment_returned()
 
+    routing.install()
     try:
         call = generate_forecast(
             provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
         )
     finally:
-        if gated["on"]:
-            provider.before_attempt = cap
+        routing.restore()
 
     return (
         call,

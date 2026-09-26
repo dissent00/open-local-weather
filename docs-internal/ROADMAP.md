@@ -26643,6 +26643,26 @@ llm_fallback_calls is scored_call". The chain re-raises the LAST link's
 error, which is now the refusal, so the real cause — four Gemini 503s — is
 only on stderr. The record should name the primary's failure.
 
+**Fixed 2026-09-26, with a second rule the operator asked for alongside it.**
+- **The record names the cause.** A refused link's message now carries what
+  happened to every link before it in that call, from the outcomes the
+  after-attempt hook already reports — the stored degradation for 09-25's
+  evening would read "OpenAICompatProvider (nex-agi/nex-n2.5-pro:free) not
+  asked for the narrative (llm_fallback_calls: scored_call); before it,
+  GeminiProvider (gemini-3.6-flash) failed the scored call this run
+  (http_503 x4)".
+- **A link that FAILED the scored call is not retried for the narrative.**
+  The chain only moves past a link that failed, so every link before the one
+  that served the judgment failed it. On 09-25 15:01Z that is four requests
+  and 8.5 minutes saved: the run would have spent 4 of the day's 11, not 8.
+  A link that STRUGGLED and served is still asked — 09-25 03:01Z's scored
+  call succeeded on its third attempt, and that retry is kept.
+
+Both in `pipeline._NarrativeRouting`, in the hooks, so the provider classes
+the app shares are untouched. Seven unit tests on the real `FallbackProvider`
+and the run-level test in both modes; four mutations (skip removed, cause
+dropped, a SERVING link skipped, hooks not restored), four bites.
+
 ## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only
