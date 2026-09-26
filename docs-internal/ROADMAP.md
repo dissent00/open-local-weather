@@ -26328,6 +26328,14 @@ any plan. `data/prompt-provider/kisumu-lite.txt` is rendered once, from the
 per the operator's "tool only". No submission path exists. No test pins the
 tool.
 
+**The real-account test is ON HOLD until 2026-11-01.** The operator cancelled
+their ChatGPT subscription and will test as a FREE user once it expires. Free
+can USE GPTs but not CREATE them (pricing page, 2026-09-24), so the shared-GPT
+path — the reader's actual path — needs the GPT created before expiry; whether
+a GPT survives its creator's downgrade is unknown. Free does have Projects, so
+the instructions can go there instead, and both probes (`probe.txt`,
+`probe-30k.txt`) need no GPT at all.
+
 ### OpenClaw (item 4)
 
 A self-hosted gateway (desktop or server; phones only pair) connecting chat
