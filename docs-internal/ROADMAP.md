@@ -26040,7 +26040,7 @@ a second vendor.
 
 ---
 
-## 173. Make the LLM optional, and find out whether it earns its place · **To explore, raised 2026-09-22**
+## 173. Make the LLM optional, and find out whether it earns its place · **Stage 1 built 2026-09-26 — the code blend, backtested; stage 2 is the operator's call**
 
 From the operator's question about cost and reliability: *"the app loses its
 appeal if you sometimes have to hit refresh 5 times in the course of an hour
@@ -26083,6 +26083,79 @@ narrative could degrade to code-rendered text instead of losing the forecast
 
 NOT STARTED, and deliberately not designed here. The operator: *"I'm not sure
 yet how that will play out."*
+
+### Stage 1 — the code blend, backtested, 2026-09-26
+
+Point 2 only: does the LLM beat arithmetic? Designed with the operator
+2026-09-26 and built as a backtest, not a record change.
+
+**What it is.** `src/openlocalweather/code_blend.py`, pure, in the shape of
+`baselines.py`. Inputs are the models the forecaster sees minus `best_match`
+(its rain probability is ECMWF's; `KNOWN_DUPLICATES`). Rain is a vote weighted
+by `max(0, rolling-30 hit% − 50)` at that lead, 10 checks minimum
+(`TREND_MIN_CHECKS_LONG`); the probability is the weighted share of wet
+votes; a tie breaks dry. Day+0 high and low are each model's value plus its
+rolling-10 signed error, averaged over corrected models only —
+`calibration.py`'s rule for the gust, deliberately not a second method. The
+weights are the figures MODEL TRACK RECORD shows the forecaster, and were
+chosen on principle before the backtest: three schemes were tried once in
+scratch, and picking the best of them on 29 days would fit noise.
+
+**Nothing is lost by not wiring it in yet.** It is a deterministic function
+of stored predictions and actuals, so any past day rebuilds exactly — unlike
+an LLM call, which is gone if never made (item 72's problem).
+
+`python tools/code_blend.py backtest` scores it beside `olw_blend`,
+`follow_leader` (the input with the best rolling-30 hit rate that morning —
+item 182's "simply trusting the best-scoring model") and every model, on the
+days `olw_blend` was scored, first issuance each day. Brier only over days
+`olw_blend` gave a probability.
+
+| Day+0, 29 days | rain | Brier (22 days) | \|high\| °C | \|low\| °C |
+|---|---|---|---|---|
+| olw_blend (LLM) | 23/29 79% | 0.149 | 0.60 | 0.40 |
+| olw_code_blend | 26/29 90% | 0.129 | 0.74 | 0.62 |
+| follow_leader | 26/29 90% | 0.188 (21) | — | — |
+| ecmwf_ifs025 | 25/29 86% | 0.085 | 0.97 | 0.53 |
+| icon_seamless | 26/29 90% | 0.244 | 0.98 | 2.43 |
+| best_match | 22/29 76% | 0.085 | 0.45 | 0.43 |
+
+| rain | Day+3, 17 days | Brier | Day+7, 12 days | Brier |
+|---|---|---|---|---|
+| olw_blend (LLM) | 14/17 | 0.110 | 11/12 | 0.147 |
+| olw_code_blend | 13/17 | 0.113 | 11/12 | 0.086 |
+| ecmwf_ifs025 | 15/17 | 0.065 | 12/12 | 0.094 |
+
+Head to head, LLM against code: Day+0, 3 disagreements, code right on all 3
+(09-08, 09-09, 09-18 — the LLM said dry at 30-45%, the day scored wet), sign test
+p=0.25; Brier lower for the code on 17 of 22 days, p=0.02. Day+3, one
+disagreement, LLM right. Day+7, two, one each.
+
+**Reading.**
+- Rain: on these days the LLM beats the arithmetic at no lead, and the one
+  result clear of noise — Day+0 Brier — favours the code.
+- Neither blend beats ECMWF's own served probability on Brier at Day+0 or
+  Day+3. Not tuned, for the reason above.
+- Temperatures go the other way: the LLM beats the corrected mean on both.
+  It also reads the station's overnight observations, which the code does
+  not; whether that explains the low is NOT checked.
+- The convective hypothesis above is untestable yet: two of the three Day+0
+  disagreements predate stored CAPE (09-11), the third was "possible".
+
+**How faithful the rebuild is.** Rebuilt rolling-30 hit rates equal what the
+LLM read on 09-24..26 (45 of 45 figures). On 09-04..09-23, 91 of 300 differ,
+mostly by one check. Traced for 09-04: 84f0a09 (item 97, 09-09) re-derived
+stored Day+0 rain calls and flipped 09-03's ECMWF call after that run read
+it — the 09-04 code on the 09-04 files reproduces the prompt exactly, and
+the 09-04 actuals give the same figure as today's. The later mismatches are
+NOT traced. Both sides are scored by today's scorer on today's record.
+
+**Stage 2 — the operator's call.** Make `olw_code_blend` a scored yardstick:
+live each run, backfilled like the baselines, hidden from the forecaster so it
+cannot anchor on it, published, then Python → vectors → Dart → re-pin. Or
+wait for more days, which costs nothing since it backfills exactly. Point 1
+(code numbers as the app's forecast when the LLM fails) is a separate
+decision.
 
 ---
 
