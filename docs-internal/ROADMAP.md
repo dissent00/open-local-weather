@@ -26634,6 +26634,15 @@ would now have published without its write-up. **Not yet run live** —
 15:01Z on 09-25 is the first issuance under it, and also the first on
 `generateContent` (item 179).
 
+**First live run, 2026-09-25 15:01Z — worked, with one defect.** Gemini
+503'd four times on each call; the fallback made the scored call in 162s;
+the narrative was refused at 15:24:49 and the run ended at 15:24:55 instead
+of the previous evening's 17:17. **The defect:** the stored degradation says
+the narrative failed because it was "not asked for the narrative:
+llm_fallback_calls is scored_call". The chain re-raises the LAST link's
+error, which is now the refusal, so the real cause — four Gemini 503s — is
+only on stderr. The record should name the primary's failure.
+
 ## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only
@@ -26783,6 +26792,21 @@ generateContent at 1:1 it is 8. **Order agreed with the operator
 code-only changes (per-run budget, spacing the second call, OpenRouter on one
 call only, a same-evening write-up repair) if still needed; a single call
 last, and only with its own measurement, because it is a prompt change.
+
+### CONFIRMED 2026-09-26: generateContent counts 1:1, Interactions did not
+
+The operator's console for the UTC-8 day of 09-25, the first full day back on
+`generateContent`: **11 API requests, 11 requests per model.** The ledger
+holds exactly 11 Gemini requests in that window — eight 503s at 15:05-15:24Z
+and three at 03:01-03:02Z on 09-26. The day before, on Interactions: 15 API
+requests, **26 per model**, against 15 in the ledger. So the endpoint was the
+multiplier (~1.7x over that day), and **a failed 503 counts exactly like a
+success** on both. No 429 has been drawn since the revert.
+
+What it leaves: a bad 15:01Z run still spends 8 of 20 — two calls x four
+attempts, all 503s on 09-25 — so the next morning keeps 12, and on 09-26 it
+needed 3. The 15:01Z 503s did NOT go away with the endpoint: 8 of 8 on
+09-25. They belong to the slot, not the API.
 
 ## 178. An empty body is a provider failing, not a model answering badly · **Shipped 2026-09-24 — retry, 1700s deadline (monitor it), and the cap now lets a chain fall through**
 
