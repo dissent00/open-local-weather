@@ -25,14 +25,14 @@
   <p class="meta">How well each forecast model has actually performed <em>here</em>, scored against observed conditions. Every figure on this page is recomputed from the raw committed record on each run &mdash; nothing is carried forward, so anything here can be re-derived from <a href="https://github.com/dissent00/open-local-weather">the repository</a>.</p>
 
   <h2>How much data is behind this</h2>
-  <p class="sufficiency">Reviewed 47 day(s) of stored forecasts (2026-08-11 to 2026-09-25), of which 46 have observations to score against. Day+0: 29 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+0 is uneven: kenya_met, olw_blend have fewer than the 46 check(s) the other models have, so any comparison at this lead time is not like-for-like.) Day+3: 16 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+3 is uneven: kenya_met, olw_blend have fewer than the 43 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (kenya_met does not forecast at Day+3 and is not included in the figure above.) Day+7: 12 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+7 is uneven: olw_blend has fewer than the 39 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (icon_seamless, kenya_met, ukmo_seamless do not forecast at Day+7 and are not included in the figure above.) best_match&#39;s rain probability is ecmwf_ifs025&#39;s under a second name (measured identical on every stored row; re-checked weekly), so its Brier figures repeat ecmwf_ifs025&#39;s — weigh them once.</p>
+  <p class="sufficiency">Reviewed 47 day(s) of stored forecasts (2026-08-11 to 2026-09-25), of which 46 have observations to score against. Day+0: 29 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+0 is uneven: kenya_met, olw_blend, olw_code_blend have fewer than the 46 check(s) the other models have, so any comparison at this lead time is not like-for-like.) Day+3: 16 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+3 is uneven: kenya_met, olw_blend, olw_code_blend have fewer than the 43 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (kenya_met does not forecast at Day+3 and is not included in the figure above.) Day+7: 12 check(s) for the least-covered model — enough to compare models, though differences smaller than about 15 points remain noise. (Coverage at Day+7 is uneven: olw_blend, olw_code_blend have fewer than the 39 check(s) the other models have, so any comparison at this lead time is not like-for-like.) (icon_seamless, kenya_met, ukmo_seamless do not forecast at Day+7 and are not included in the figure above.) best_match&#39;s rain probability is ecmwf_ifs025&#39;s under a second name (measured identical on every stored row; re-checked weekly), so its Brier figures repeat ecmwf_ifs025&#39;s — weigh them once.</p>
 
   <h2>What the record supports</h2>
   <ul class="findings">
     <li>
-      <span class="claim">At Day+0, icon_seamless is the strongest rain caller here and gfs_seamless the weakest.</span>
-      <span class="evidence">icon_seamless 39/46 (85%) vs gfs_seamless 31/46 (67%); a 17-point gap, above the 15-point noise floor.</span>
-      <span class="confidence confidence-established">established &middot; 46 checks</span>
+      <span class="claim">At Day+0, olw_code_blend is the strongest rain caller here and gfs_seamless the weakest.</span>
+      <span class="evidence">olw_code_blend 32/36 (89%) vs gfs_seamless 31/46 (67%); a 21-point gap, above the 15-point noise floor.</span>
+      <span class="confidence confidence-established">established &middot; 36 checks</span>
     </li>
     <li>
       <span class="claim">At Day+0, gfs_seamless slightly over-forecasts daytime highs here.</span>
@@ -115,13 +115,13 @@
       <span class="confidence confidence-established">established &middot; 36 checks</span>
     </li>
     <li>
-      <span class="claim">At Day+0, icon_seamless, ecmwf_ifs025 beat the best trivial baseline.</span>
-      <span class="evidence">persistence 31/46 (67%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: icon_seamless 85%, ecmwf_ifs025 83%.</span>
-      <span class="confidence confidence-established">established &middot; 46 checks</span>
+      <span class="claim">At Day+0, olw_code_blend, icon_seamless, ecmwf_ifs025 beat the best trivial baseline.</span>
+      <span class="evidence">persistence 31/46 (67%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: olw_code_blend 89%, icon_seamless 85%, ecmwf_ifs025 83%.</span>
+      <span class="confidence confidence-established">established &middot; 36 checks</span>
     </li>
     <li>
       <span class="claim">At Day+3, no model is meaningfully better than the others here yet.</span>
-      <span class="evidence">Best-to-worst spread is only 13 points across 7 models with enough checks to compare, within the 15-point noise floor.</span>
+      <span class="evidence">Best-to-worst spread is only 13 points across 8 models with enough checks to compare, within the 15-point noise floor.</span>
       <span class="confidence confidence-usable">usable &middot; 16 checks</span>
     </li>
     <li>
@@ -185,8 +185,8 @@
       <span class="confidence confidence-usable">usable &middot; 16 checks</span>
     </li>
     <li>
-      <span class="claim">At Day+3, olw_blend, ecmwf_ifs025, kenya_met, icon_seamless, best_match, gfs_seamless, ukmo_seamless beat the best trivial baseline.</span>
-      <span class="evidence">persistence 23/43 (53%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: olw_blend 82%, ecmwf_ifs025 81%, kenya_met 75%, icon_seamless 74%, best_match 74%, gfs_seamless 70%, ukmo_seamless 70%.</span>
+      <span class="claim">At Day+3, olw_blend, ecmwf_ifs025, olw_code_blend, kenya_met, icon_seamless, best_match, gfs_seamless, ukmo_seamless beat the best trivial baseline.</span>
+      <span class="evidence">persistence 23/43 (53%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: olw_blend 82%, ecmwf_ifs025 81%, olw_code_blend 77%, kenya_met 75%, icon_seamless 74%, best_match 74%, gfs_seamless 70%, ukmo_seamless 70%.</span>
       <span class="confidence confidence-usable">usable &middot; 16 checks</span>
     </li>
     <li>
@@ -230,8 +230,8 @@
       <span class="confidence confidence-established">established &middot; 39 checks</span>
     </li>
     <li>
-      <span class="claim">At Day+7, olw_blend, ecmwf_ifs025, best_match, gfs_seamless beat the best trivial baseline.</span>
-      <span class="evidence">persistence 15/39 (38%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: olw_blend 92%, ecmwf_ifs025 79%, best_match 74%, gfs_seamless 64%.</span>
+      <span class="claim">At Day+7, olw_blend, ecmwf_ifs025, best_match, olw_code_blend, gfs_seamless beat the best trivial baseline.</span>
+      <span class="evidence">persistence 15/39 (38%), the best of 2 trivial baseline(s); a model has to clear it by more than the 15-point noise floor to count. Clearing it: olw_blend 92%, ecmwf_ifs025 79%, best_match 74%, olw_code_blend 68%, gfs_seamless 64%.</span>
       <span class="confidence confidence-usable">usable &middot; 12 checks</span>
     </li>
   </ul>
@@ -309,6 +309,17 @@
         <td>&mdash;</td>
         <td>-0.2 h</td>
         <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
+        <td>olw_code_blend</td>
+        <td>32/36</td>
+        <td>89%</td>
+        <td>+0.1&deg;C</td>
+        <td>+0.0&deg;C</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-established">established</span></td>
       </tr>
       <tr>
         <td>persistence</td>
@@ -418,6 +429,17 @@
         <td><span class="confidence confidence-usable">usable</span></td>
       </tr>
       <tr>
+        <td>olw_code_blend</td>
+        <td>23/30</td>
+        <td>77%</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-established">established</span></td>
+      </tr>
+      <tr>
         <td>persistence</td>
         <td>23/43</td>
         <td>53%</td>
@@ -517,6 +539,17 @@
         <td>olw_blend</td>
         <td>11/12</td>
         <td>92%</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+        <td><span class="confidence confidence-usable">usable</span></td>
+      </tr>
+      <tr>
+        <td>olw_code_blend</td>
+        <td>15/22</td>
+        <td>68%</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
         <td>&mdash;</td>
