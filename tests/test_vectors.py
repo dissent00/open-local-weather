@@ -763,6 +763,65 @@ def test_vectors_gust_calibration():
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_code_blend():
+    """ROADMAP item 173 — the record-weighted code blend."""
+    from openlocalweather.code_blend import (
+        code_blend_prediction,
+        code_blend_predictions,
+        rain_weights,
+        temperature_corrections,
+    )
+    from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+    from openlocalweather.verify.scoring import RollingWindowResult
+
+    def window(w):
+        return RollingWindowResult(
+            checks_found=w["checks_found"], rain_pct=w.get("rain_pct"), onset_err=None,
+            wind_err=None, high_err=w.get("high_err"), low_err=w.get("low_err"), mslp_err=None,
+        )
+
+    def preds(raw):
+        return [ModelPrediction.model_validate(p) for p in raw]
+
+    for case in load("code_blend.json")["cases"]:
+        i = case["input"]
+        if "long_windows" in i:
+            weights = rain_weights({m: window(w) for m, w in i["long_windows"].items()})
+            short = i["short_windows"]
+            highs, lows = (
+                temperature_corrections({m: window(w) for m, w in short.items()})
+                if short is not None else ({}, {})
+            )
+            got = {
+                "weights": weights,
+                "high_corrections": highs,
+                "low_corrections": lows,
+                "blend": as_json(code_blend_prediction(preds(i["predictions"]), weights, highs, lows)),
+            }
+        else:
+            logs = {
+                date.fromisoformat(d): DailyLogEntry(
+                    date=date.fromisoformat(d), rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+                    temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+                    narrative_markdown="n",
+                    model_predictions=ModelPredictionsByLead(
+                        day0=preds(by_lead.get("0", [])),
+                        day3=preds(by_lead.get("3", [])),
+                        day7=preds(by_lead.get("7", [])),
+                    ),
+                    meta=LogEntryMeta(generated_at_utc=datetime(2026, 9, 20, tzinfo=timezone.utc),
+                                      llm_provider="t", llm_model="t", pipeline_version="0"),
+                )
+                for d, by_lead in i["predictions"].items()
+            }
+            actuals = {date.fromisoformat(d): DailyActual.model_validate(a) for d, a in i["actuals"].items()}
+            issued = date.fromisoformat(i["issued"])
+            blend = code_blend_predictions(logs[issued].model_predictions, issued, logs.get, actuals, i["inputs"])
+            got = {str(k): as_json(blend.for_lead(k)) for k in (0, 3, 7)}
+
+        assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_extended_trend():
     """ROADMAP item 61 — the Overview's closing clause.
 
@@ -1199,6 +1258,7 @@ def test_every_vector_file_is_exercised():
         "llm_should_reason.json",
         "comparison_subject.json",
         "gust_calibration.json",
+        "code_blend.json",
         "prompt_rounding.json",
         "cell_key.json",
         "convective_timing.json",

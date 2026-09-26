@@ -26,12 +26,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from openlocalweather.code_blend import (  # noqa: E402
-    CODE_BLEND_MODEL_ID,
     RAIN_WEIGHT_MIN_CHECKS,
     blend_inputs,
-    code_blend_prediction,
-    rain_weights,
-    temperature_corrections,
+    code_blend_predictions,
     windows_as_of,
 )
 from openlocalweather.config import load_location_config  # noqa: E402
@@ -39,9 +36,9 @@ from openlocalweather.defaults import (  # noqa: E402
     BASELINE_MODEL_IDS,
     BEST_MATCH_MODEL_ID,
     BLEND_MODEL_ID,
+    CODE_BLEND_MODEL_ID,
     LEAD_TIMES_DAYS,
     ROLLING_WINDOW_LONG,
-    ROLLING_WINDOW_SHORT,
 )
 from openlocalweather.instability import convective_tier  # noqa: E402
 from openlocalweather.models import ModelPrediction  # noqa: E402
@@ -119,14 +116,15 @@ def _backtest() -> int:
             if llm is None or llm.rain is None:
                 continue
 
+            # Recomputed rather than read back, so a day stored before the
+            # backfill scores exactly like one stored after it.
+            blend = code_blend_predictions(
+                scored_predictions(look(issued)), issued, look, actuals, inputs
+            ).for_lead(lead)
             long = windows_as_of(inputs, lead, ROLLING_WINDOW_LONG, issued, look, actuals)
-            highs, lows = {}, {}
-            if lead == 0:
-                short = windows_as_of(inputs, 0, ROLLING_WINDOW_SHORT, issued, look, actuals)
-                highs, lows = temperature_corrections(short)
 
             rows = dict(by_model)
-            rows[CODE_BLEND_MODEL_ID] = code_blend_prediction(stored, rain_weights(long), highs, lows)
+            rows[CODE_BLEND_MODEL_ID] = blend[0] if blend else None
             rows[LEADER_ID] = _leader(by_model, long)
             # Forecast side only, so the split cannot lean on the outcome.
             # Day+0 alone carries CAPE, stored from 2026-09-11; best_match is

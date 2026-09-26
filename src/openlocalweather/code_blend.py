@@ -22,12 +22,16 @@ NEVER THE DAY IT FORECASTS. `windows_as_of` reads only targets strictly
 before the issuance, for the reason baselines.py gives: a blend that could
 peek would not look broken, it would make the LLM look worse than it is.
 
-NOT YET IN THE RECORD. Stage 1 is an offline backtest (tools/code_blend.py).
-Nothing is lost by waiting: this is a deterministic function of stored
-predictions and actuals, so any day can be rebuilt exactly — unlike an LLM
-call, which is gone if it was never made. The one difference a rebuild cannot
-undo is that Open-Meteo revises recent actuals, so a weight rebuilt today may
-differ slightly from what a live run would have computed that morning.
+IN THE RECORD FROM STAGE 2 (2026-09-26): every issuance stores it beside the
+LLM's own call, and `backfill-code-blend` put it into row 0 of the days
+before. Scored and published like any model, and withheld from the
+forecaster — defaults.models_visible_to_the_forecaster says why.
+
+A BACKFILLED DAY IS WHAT TODAY'S RECORD SAYS, not what that morning's did.
+The stored record has been re-derived since some of those mornings: item 97
+(84f0a09) flipped stored Day+0 rain calls on 09-09, and on 09-04..09-23, 91
+of 300 rolling-30 figures rebuilt here differ from what the forecaster read,
+mostly by one check. From 09-24 they match. See ROADMAP item 173.
 """
 
 from __future__ import annotations
@@ -37,22 +41,21 @@ from datetime import date
 
 from openlocalweather.defaults import (
     BEST_MATCH_MODEL_ID,
+    CODE_BLEND_MODEL_ID,
+    LEAD_TIMES_DAYS,
+    ROLLING_WINDOW_LONG,
     ROLLING_WINDOW_SHORT,
     TREND_MIN_CHECKS_LONG,
     models_visible_to_the_forecaster,
 )
 from openlocalweather.dates import add_days
-from openlocalweather.models import DailyActual, ModelPrediction
+from openlocalweather.models import DailyActual, ModelPrediction, ModelPredictionsByLead
 from openlocalweather.verify.scoring import (
     LogLookup,
     RollingWindowResult,
     mean,
     rescore_rolling_window,
 )
-
-# Named like the models because it would sit in the same ledger, under the
-# same scoring code — see baselines.py.
-CODE_BLEND_MODEL_ID = "olw_code_blend"
 
 # How many checks a rolling-30 hit rate needs before it carries a vote. THE
 # EXISTING TEN, not a second threshold: TREND_MIN_CHECKS_LONG is where this
@@ -209,3 +212,33 @@ def _corrected_mean(
             if getattr(p, field) is not None and p.model in corrections
         ]
     )
+
+
+def code_blend_predictions(
+    predictions: ModelPredictionsByLead,
+    issued: date,
+    log_lookup: LogLookup,
+    actuals: Mapping[date, DailyActual],
+    inputs: list[str],
+) -> ModelPredictionsByLead:
+    """The code blend for one issuance, at every lead it can call.
+
+    THE ONE PLACE the pieces are put together, so the live run, the backfill
+    and the backtest cannot build it three ways. A lead where it declines is
+    an empty list, never a guessed row. Temperatures at Day+0 only: that is
+    where the LLM's call commits to them.
+    """
+    blends: dict[int, list[ModelPrediction]] = {}
+
+    for lead in LEAD_TIMES_DAYS:
+        long = windows_as_of(inputs, lead, ROLLING_WINDOW_LONG, issued, log_lookup, actuals)
+        highs: dict[str, float] = {}
+        lows: dict[str, float] = {}
+        if lead == 0:
+            short = windows_as_of(inputs, 0, ROLLING_WINDOW_SHORT, issued, log_lookup, actuals)
+            highs, lows = temperature_corrections(short)
+
+        blend = code_blend_prediction(predictions.for_lead(lead), rain_weights(long), highs, lows)
+        blends[lead] = [blend] if blend is not None else []
+
+    return ModelPredictionsByLead(day0=blends[0], day3=blends[3], day7=blends[7])

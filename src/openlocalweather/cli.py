@@ -106,7 +106,8 @@ from openlocalweather.store.actuals_cache import (
     write_actuals_cache,
 )
 from openlocalweather import replay
-from openlocalweather.backfill import backfill_entry_baselines
+from openlocalweather.backfill import backfill_entry_baselines, backfill_entry_code_blend
+from openlocalweather.code_blend import blend_inputs
 from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
 from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
@@ -1590,6 +1591,48 @@ def _run_backfill_baselines(args) -> int:
     return 0
 
 
+def _run_backfill_code_blend(args) -> int:
+    """Add the code blend to row 0 of days already stored — ROADMAP 173.
+
+    backfill-baselines' habits: the per-day plan is printed either way,
+    `--dry-run` stops before writing, and scoring is left to the next forecast
+    run or `rebuild-record`. Entries are processed in any order safely: the
+    blend reads only its inputs' rows, never another day's code blend.
+    """
+    data_dir = Path(args.data_dir)
+    actuals = as_date_dict(read_actuals_cache(data_dir).primary)
+    inputs = blend_inputs(load_location_config(args.config).local_bulletin_model_id)
+    look = make_log_lookup(data_dir)
+
+    changed, left = [], []
+    for d in sorted(list_log_dates(data_dir)):
+        entry = read_log_entry(data_dir, d)
+        if entry is None:
+            continue
+
+        updated = backfill_entry_code_blend(entry, look, actuals, inputs)
+        if updated is None:
+            left.append(d)
+            continue
+
+        changed.append(d)
+        if not args.dry_run:
+            write_log_entry(data_dir, updated)
+
+    verb = "would add" if args.dry_run else "added"
+    print(f"{verb} the code blend to {len(changed)} day(s).")
+    for d in changed:
+        print(f"  {d}")
+    if left:
+        # Already carrying it, or no model yet had the checks to vote.
+        print(f"{len(left)} day(s) left alone: {', '.join(str(d) for d in left)}")
+
+    if args.dry_run:
+        print("\nDry run — nothing was written. Re-run without --dry-run to apply.")
+
+    return 0
+
+
 def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> list:
     """Every scorable window on every entry, rescored; returns the entries
     that changed. Prints the per-model rain verdicts that moved, so a rescore
@@ -1857,6 +1900,16 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Print the plan without writing anything."
     )
 
+    code_blend = sub.add_parser(
+        "backfill-code-blend",
+        help="Add the code blend (item 173) to days stored before it existed.",
+    )
+    code_blend.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    code_blend.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    code_blend.add_argument(
+        "--dry-run", action="store_true", help="Print the plan without writing anything."
+    )
+
     div = sub.add_parser(
         "divergence",
         help="Where the station and the reanalysis disagree, and by how much.",
@@ -1938,6 +1991,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "backfill-baselines":
         return _run_backfill_baselines(args)
+
+    if args.command == "backfill-code-blend":
+        return _run_backfill_code_blend(args)
 
     if args.command == "check-health":
         return _run_check_health(args)

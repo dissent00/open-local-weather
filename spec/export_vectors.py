@@ -5967,6 +5967,167 @@ def export_extended_blend_predictions() -> None:
     )
 
 
+def export_code_blend() -> None:
+    """The record-weighted code blend — ROADMAP item 173.
+
+    Two kinds of case. PURE cases pin the weights, the corrections and the
+    blend from given windows: the coin-flip and short-record exclusions (a
+    model must be ABSENT, not zero-weighted), the dry tie, the sign of the
+    temperature correction, and three probabilities that land EXACTLY on .5
+    — 12.5, 37.5, 62.5 — where Python's half-to-even and Dart's `.round()`
+    part company. COMPOSER cases run a stored record through windows_as_of,
+    so the as-of walk and the Day+0-only temperatures are pinned too.
+    """
+    from openlocalweather.code_blend import (
+        code_blend_prediction,
+        code_blend_predictions,
+        rain_weights,
+        temperature_corrections,
+    )
+    from openlocalweather.models import DailyLogEntry, LogEntryMeta, ModelPredictionsByLead
+    from openlocalweather.verify.scoring import RollingWindowResult
+
+    def window(checks, rain_pct=None, high_err=None, low_err=None):
+        return RollingWindowResult(
+            checks_found=checks, rain_pct=rain_pct, onset_err=None, wind_err=None,
+            high_err=high_err, low_err=low_err, mslp_err=None,
+        )
+
+    def pred(model, rain, high=None, low=None, prob=None):
+        return ModelPrediction(model=model, rain=rain, high_c=high, low_c=low, rain_probability_pct=prob)
+
+    def pure(name, long, short, predictions):
+        weights = rain_weights(long)
+        highs, lows = temperature_corrections(short) if short is not None else ({}, {})
+        return {
+            "name": name,
+            "input": {
+                "long_windows": {m: {"checks_found": w.checks_found, "rain_pct": w.rain_pct} for m, w in long.items()},
+                "short_windows": None if short is None else {
+                    m: {"checks_found": w.checks_found, "high_err": w.high_err, "low_err": w.low_err}
+                    for m, w in short.items()
+                },
+                "predictions": [dump(p) for p in predictions],
+            },
+            "expected": {
+                "weights": weights,
+                "high_corrections": highs,
+                "low_corrections": lows,
+                "blend": dump(code_blend_prediction(predictions, weights, highs, lows)),
+            },
+        }
+
+    issued = date(2026, 9, 20)
+    models = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"]
+
+    def record(days):
+        """`days` stored days before `issued`, with skill that differs by model."""
+        predictions, actuals = {}, {}
+        for i in range(1, days + 1):
+            d = issued - timedelta(days=i)
+            wet = i % 3 != 0
+            actuals[d] = DailyActual(rain=wet, high_c=28.0 + (i % 3) * 0.3, low_c=18.0 + (i % 2) * 0.4)
+            predictions[d] = {
+                "0": [
+                    pred("gfs_seamless", wet if i % 4 else not wet, high=27.0 + (i % 2) * 0.5, low=18.5),
+                    pred("ecmwf_ifs025", wet, high=29.0, low=17.2),
+                    pred("icon_seamless", wet if i % 2 else not wet, high=26.5, low=19.1),
+                ],
+                "3": [
+                    pred("gfs_seamless", not wet if i % 5 == 0 else wet),
+                    pred("ecmwf_ifs025", wet if i % 3 else not wet),
+                ],
+            }
+        predictions[issued] = {
+            "0": [
+                pred("gfs_seamless", True, high=30.1, low=18.8, prob=70),
+                pred("ecmwf_ifs025", False, high=29.4, low=17.9, prob=20),
+                pred("icon_seamless", True, high=28.0, low=19.6, prob=55),
+                # The LLM's own row sits in the stored set and must not vote.
+                pred("olw_blend", True, high=35.0, low=10.0, prob=99),
+            ],
+            "3": [pred("gfs_seamless", False), pred("ecmwf_ifs025", True)],
+            "7": [pred("ecmwf_ifs025", True)],
+        }
+        return predictions, actuals
+
+    def entry(d, by_lead):
+        return DailyLogEntry(
+            date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0,
+            temp_high_low_display="26/18", mslp_trend_24h="", synoptic_pattern="",
+            narrative_markdown="n",
+            model_predictions=ModelPredictionsByLead(
+                day0=by_lead.get("0", []), day3=by_lead.get("3", []), day7=by_lead.get("7", [])
+            ),
+            meta=LogEntryMeta(generated_at_utc=datetime(2026, 9, 20, tzinfo=timezone.utc),
+                              llm_provider="t", llm_model="t", pipeline_version="0"),
+        )
+
+    def composer(name, days):
+        predictions, actuals = record(days)
+        logs = {d: entry(d, by_lead) for d, by_lead in predictions.items()}
+        got = code_blend_predictions(logs[issued].model_predictions, issued, logs.get, actuals, models)
+        return {
+            "name": name,
+            "input": {
+                "issued": _iso(issued),
+                "inputs": models,
+                "predictions": {
+                    _iso(d): {k: [dump(p) for p in v] for k, v in by_lead.items()}
+                    for d, by_lead in sorted(predictions.items())
+                },
+                "actuals": {_iso(d): a.model_dump() for d, a in sorted(actuals.items())},
+            },
+            "expected": {str(k): [dump(p) for p in got.for_lead(k)] for k in (0, 3, 7)},
+        }
+
+    write(
+        "code_blend.json",
+        "code_blend_prediction",
+        "The record-weighted code blend: each model's rain vote weighted by its "
+        "rolling-30 hit rate above 50 (absent below the check threshold or at a "
+        "coin flip), the probability the weighted wet share rounded half-to-even, "
+        "a tie dry, and Day+0 high/low as the mean of models corrected by their "
+        "rolling-10 actual-minus-predicted error, which is ADDED.",
+        [
+            pure("the weighted majority decides, and its share is the probability",
+                 {"ecmwf_ifs025": window(30, 80.0), "gfs_seamless": window(30, 70.0)}, None,
+                 [pred("ecmwf_ifs025", True), pred("gfs_seamless", False)]),
+            pure("a tie breaks dry",
+                 {"ecmwf_ifs025": window(30, 80.0), "gfs_seamless": window(30, 70.0), "icon_seamless": window(30, 60.0)},
+                 None, [pred("ecmwf_ifs025", True), pred("gfs_seamless", False), pred("icon_seamless", False)]),
+            pure("a coin flip, a worse model and a short record get no vote",
+                 {"ecmwf_ifs025": window(30, 90.0), "gfs_seamless": window(30, 50.0),
+                  "ukmo_seamless": window(30, 40.0), "kenya_met": window(9, 100.0), "icon_seamless": window(0)},
+                 None, [pred("ecmwf_ifs025", False), pred("gfs_seamless", True), pred("ukmo_seamless", True),
+                        pred("kenya_met", True), pred("icon_seamless", True)]),
+            pure("no vote is no call", {"gfs_seamless": window(30, 50.0)}, None, [pred("gfs_seamless", True)]),
+            pure("a model with no rain call does not vote",
+                 {"gfs_seamless": window(30, 70.0), "ecmwf_ifs025": window(30, 80.0)}, None,
+                 [pred("gfs_seamless", None), pred("ecmwf_ifs025", True)]),
+            pure("12.5 rounds half to even: 12",
+                 {"ecmwf_ifs025": window(30, 55.0), "gfs_seamless": window(30, 85.0)}, None,
+                 [pred("ecmwf_ifs025", True), pred("gfs_seamless", False)]),
+            pure("37.5 rounds half to even: 38",
+                 {"ecmwf_ifs025": window(30, 65.0), "gfs_seamless": window(30, 75.0)}, None,
+                 [pred("ecmwf_ifs025", True), pred("gfs_seamless", False)]),
+            pure("62.5 rounds half to even: 62",
+                 {"ecmwf_ifs025": window(30, 75.0), "gfs_seamless": window(30, 65.0)}, None,
+                 [pred("ecmwf_ifs025", True), pred("gfs_seamless", False)]),
+            pure("the temperature correction is ADDED, and only corrected models count",
+                 {"ecmwf_ifs025": window(30, 80.0), "gfs_seamless": window(30, 70.0)},
+                 {"ecmwf_ifs025": window(10, high_err=1.3, low_err=-0.45),
+                  "gfs_seamless": window(9, high_err=-2.0, low_err=2.0),
+                  "icon_seamless": window(10, high_err=None, low_err=0.35)},
+                 [pred("ecmwf_ifs025", True, high=30.0, low=19.0),
+                  pred("gfs_seamless", True, high=40.0, low=10.0),
+                  pred("icon_seamless", True, high=31.0, low=18.25)]),
+            composer("fourteen days: Day+0 with temperatures, Day+3 rain only, Day+7 declined", 14),
+            composer("a thin record declines at every lead", 5),
+        ],
+    )
+
+
 def export_cycle() -> None:
     def at(y, m, d, h, minute=0, second=0):
         return datetime(y, m, d, h, minute, second, tzinfo=timezone.utc)
@@ -6325,6 +6486,7 @@ def main() -> None:
     export_round_hours()
     export_blend_prediction()
     export_extended_blend_predictions()
+    export_code_blend()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

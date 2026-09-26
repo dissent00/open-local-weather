@@ -68,6 +68,13 @@ void main() {
         expect(visible, isNot(contains(id)));
       }
     });
+
+    test('the code blend is scored and withheld (upstream item 173)', () {
+      expect(scoredModels(), contains(codeBlendModelId));
+      expect(modelsVisibleToTheForecaster(), isNot(contains(codeBlendModelId)));
+      expect(blendInputs(), isNot(contains(bestMatchModelId)));
+      expect(blendInputs(), isNot(contains(blendModelId)));
+    });
   });
 
   group('lightning is its own variable', () {

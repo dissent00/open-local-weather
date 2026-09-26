@@ -78,6 +78,7 @@ from openlocalweather.instability import (
 )
 from openlocalweather.wind import consensus_direction, describe_wind_shift, describe_wind_timeline
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
+from openlocalweather.code_blend import blend_inputs, code_blend_predictions
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -139,8 +140,8 @@ from openlocalweather.defaults import (
     BEST_MATCH_MODEL_ID,
     WINDOW_VERIFY_LOOKBACK_DAYS,
     ACTUALS_BATCH_LOOKBACK_DAYS,
-    BASELINE_MODEL_IDS,
     BLEND_MODEL_ID,
+    HIDDEN_FROM_THE_FORECASTER,
     MODELS,
     PROMPT_GROWTH_TRAILING_RUNS,
     PROMPT_GROWTH_WARN_PCT,
@@ -2496,11 +2497,11 @@ def _model_predictions_prompt_payload(
     secondary_day0: list[ModelPrediction] | None = None,
 ) -> dict:
     """The extracted predictions as the forecaster is allowed to see them —
-    its own blend and the two baselines removed, at every lead.
+    its own blend, the code blend and the two baselines removed, at every lead.
 
-    All three are stored, scored and published as peer models, and withheld
+    All four are stored, scored and published as peer models, and withheld
     from the prompt permanently: see models_visible_to_the_forecaster for the
-    blend's reasoning and the baselines' adjacent one. This is the third block
+    blend's reasoning and the others'. This is the third block
     they can leak through, after the track record and the review findings, and
     the only one carrying predictions rather than scores.
 
@@ -2510,7 +2511,7 @@ def _model_predictions_prompt_payload(
     built before the prompt rather than after it, so the filter cannot be
     Day+0 only.
     """
-    hidden = {BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
+    hidden = HIDDEN_FROM_THE_FORECASTER
     return {
         "day0": [p.model_dump() for p in day0 if p.model not in hidden],
         "day3": [p.model_dump() for p in day3 if p.model not in hidden],
@@ -3877,6 +3878,18 @@ def _issue_forecast(
 
     # --- Step 7: build today's log entry ---
     tp = llm_response.today_properties
+    # ROADMAP item 173. Built HERE, beside the LLM's own call, and not where
+    # the baselines join `day0_predictions`: every consumer after that point —
+    # the day-over-day consensus, the extended trend, the calibrated gust —
+    # averages the list, and a blend of the models must not be averaged back
+    # in with them. From THIS issuance's extraction, like everything it stores.
+    code_blend = code_blend_predictions(
+        ModelPredictionsByLead(day0=day0_predictions, day3=day3_predictions, day7=day7_predictions),
+        today,
+        log_lookup,
+        actuals_primary,
+        blend_inputs(location.local_bulletin_model_id),
+    )
     log_entry = _compose_log_entry(
         deps,
         guidance,
@@ -3908,11 +3921,12 @@ def _issue_forecast(
             # than of the extraction. Stamping here keeps the vectors and
             # their Dart mirror untouched by a change that is about the
             # record's shape.
-            day0=_targeting([*day0_predictions, _blend_prediction(tp)], today, 0),
+            day0=_targeting([*day0_predictions, _blend_prediction(tp), *code_blend.day0], today, 0),
             day3=_targeting(
                 [
                     *day3_predictions,
                     *_extended_blend_predictions(llm_response.extended_properties, 3),
+                    *code_blend.day3,
                 ],
                 today,
                 3,
@@ -3921,6 +3935,7 @@ def _issue_forecast(
                 [
                     *day7_predictions,
                     *_extended_blend_predictions(llm_response.extended_properties, 7),
+                    *code_blend.day7,
                 ],
                 today,
                 7,

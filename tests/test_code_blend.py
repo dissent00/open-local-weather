@@ -2,15 +2,16 @@
 
 from datetime import date, datetime, timedelta
 
+from openlocalweather.backfill import backfill_entry_code_blend
 from openlocalweather.code_blend import (
-    CODE_BLEND_MODEL_ID,
     blend_inputs,
     code_blend_prediction,
+    code_blend_predictions,
     rain_weights,
     temperature_corrections,
     windows_as_of,
 )
-from openlocalweather.defaults import BLEND_MODEL_ID
+from openlocalweather.defaults import BLEND_MODEL_ID, CODE_BLEND_MODEL_ID
 from openlocalweather.models import (
     DailyActual,
     DailyLogEntry,
@@ -18,7 +19,7 @@ from openlocalweather.models import (
     ModelPrediction,
     ModelPredictionsByLead,
 )
-from openlocalweather.verify.scoring import RollingWindowResult
+from openlocalweather.verify.scoring import RollingWindowResult, scored_predictions
 
 
 def window(rain_pct=80.0, checks=30, high_err=None, low_err=None) -> RollingWindowResult:
@@ -184,3 +185,49 @@ def test_the_record_as_of_an_issuance_cannot_see_its_day():
 
     after = windows_as_of(["gfs_seamless"], 0, 30, issued, log.get, actuals)["gfs_seamless"]
     assert after == before
+
+
+def _record(issued: date, days: int = 12):
+    """`days` verified days before `issued`, every model right every time."""
+    dates = [issued + timedelta(days=i) for i in range(-days, 1)]
+    log = {d: _entry(d, rain=True) for d in dates}
+    actuals = {d: DailyActual(rain=True, high_c=28.0, low_c=18.0) for d in dates[:-1]}
+    return log, actuals
+
+
+def test_the_composer_calls_day0_with_temperatures_and_declines_without_a_record():
+    issued = date(2026, 9, 20)
+    log, actuals = _record(issued)
+
+    blend = code_blend_predictions(scored_predictions(log[issued]), issued, log.get, actuals, ["gfs_seamless"])
+
+    assert [p.model for p in blend.day0] == [CODE_BLEND_MODEL_ID]
+    assert blend.day0[0].rain is True
+    # 27.0 forecast, 28.0 observed on every day: +1.0 added back.
+    assert blend.day0[0].high_c == 28.0
+    # No stored Day+3 or Day+7 prediction to blend.
+    assert blend.day3 == []
+    assert blend.day7 == []
+
+
+def test_the_backfill_adds_to_row_0_once():
+    issued = date(2026, 9, 20)
+    log, actuals = _record(issued)
+
+    filled = backfill_entry_code_blend(log[issued], log.get, actuals, ["gfs_seamless"])
+
+    assert filled is not None
+    assert CODE_BLEND_MODEL_ID in {p.model for p in scored_predictions(filled).day0}
+    # The models' own rows are untouched.
+    assert [p for p in scored_predictions(filled).day0 if p.model != CODE_BLEND_MODEL_ID] == list(
+        scored_predictions(log[issued]).day0
+    )
+    # Idempotent: a second pass has nothing to add.
+    assert backfill_entry_code_blend(filled, log.get, actuals, ["gfs_seamless"]) is None
+
+
+def test_the_backfill_leaves_a_day_with_no_record_alone():
+    issued = date(2026, 9, 20)
+    log, actuals = _record(issued, days=9)
+
+    assert backfill_entry_code_blend(log[issued], log.get, actuals, ["gfs_seamless"]) is None

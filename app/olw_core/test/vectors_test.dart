@@ -1392,6 +1392,81 @@ void main() {
             c['name'] as String);
       }
     });
+
+    test('code_blend', () {
+      // Upstream item 173. Weight and correction maps are compared on their
+      // KEY SETS as well, as gust_calibration's are: absence is the contract
+      // for a model short of the threshold or at a coin flip.
+      RollingWindowResult window(Map<String, Object?> w) => RollingWindowResult(
+            checksFound: w['checks_found'] as int,
+            rainPct: (w['rain_pct'] as num?)?.toDouble(),
+            onsetErr: null,
+            windErr: null,
+            highErr: (w['high_err'] as num?)?.toDouble(),
+            lowErr: (w['low_err'] as num?)?.toDouble(),
+            mslpErr: null,
+          );
+      List<ModelPrediction> preds(List raw) => [
+            for (final p in raw) ModelPrediction.fromJson((p as Map).cast<String, Object?>())
+          ];
+      Map<String, RollingWindowResult> windows(Map raw) => {
+            for (final e in raw.entries)
+              e.key as String: window((e.value as Map).cast<String, Object?>())
+          };
+
+      for (final c in casesOf('code_blend.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final name = c['name'] as String;
+        final expected = c['expected'] as Map<String, Object?>;
+
+        if (i.containsKey('long_windows')) {
+          final weights = rainWeights(windows(i['long_windows'] as Map));
+          final short = i['short_windows'] as Map?;
+          final (highs, lows) = short == null
+              ? (<String, double>{}, <String, double>{})
+              : temperatureCorrections(windows(short));
+          for (final (got, key) in [
+            (weights, 'weights'),
+            (highs, 'high_corrections'),
+            (lows, 'low_corrections'),
+          ]) {
+            expectMatches(got, expected[key], '$name: $key');
+            expect(got.length, (expected[key] as Map).length,
+                reason: 'vector case "$name" gained a $key entry it should not have');
+          }
+          expectMatches(
+              codeBlendPrediction(preds(i['predictions'] as List), weights, highs, lows)
+                  ?.toJson(),
+              expected['blend'],
+              name);
+          continue;
+        }
+
+        final stored = (i['predictions'] as Map).cast<String, Object?>();
+        final actuals = (i['actuals'] as Map).cast<String, Object?>();
+        List<ModelPrediction>? predictionsFor(DateTime rowDate, int lead) {
+          final raw = (stored[formatDate(rowDate)] as Map?)?['$lead'] as List?;
+          return raw == null ? null : preds(raw);
+        }
+
+        final issued = DateTime.parse(i['issued'] as String);
+        final got = codeBlendPredictions(
+          issuedPredictions: (lead) => predictionsFor(issued, lead) ?? const [],
+          issued: issued,
+          predictionsFor: predictionsFor,
+          actualFor: (d) {
+            final raw = actuals[formatDate(d)] as Map?;
+            return raw == null ? null : DailyActual.fromJson(raw.cast<String, Object?>());
+          },
+          inputs: (i['inputs'] as List).cast<String>(),
+        );
+        for (final lead in leadTimesDays) {
+          final want = expected['$lead'] as List;
+          expect(got[lead]!.length, want.length, reason: '$name: Day+$lead');
+          expectMatches([for (final p in got[lead]!) p.toJson()], want, '$name: Day+$lead');
+        }
+      }
+    });
   });
 
   group('day character', () {
@@ -1962,6 +2037,7 @@ void main() {
       'llm_should_reason.json',
       'comparison_subject.json',
       'gust_calibration.json',
+      'code_blend.json',
       'prompt_rounding.json',
       'describe_day_over_day.json',
       'glossary.json',

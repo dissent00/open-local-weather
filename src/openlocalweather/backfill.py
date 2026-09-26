@@ -33,8 +33,10 @@ from openlocalweather.baselines import (
     climatology_prediction,
     persistence_prediction,
 )
+from openlocalweather.code_blend import code_blend_predictions
+from openlocalweather.defaults import CODE_BLEND_MODEL_ID, LEAD_TIMES_DAYS
 from openlocalweather.models import DailyActual, DailyLogEntry
-from openlocalweather.verify.scoring import resolve_prediction_rows
+from openlocalweather.verify.scoring import LogLookup, resolve_prediction_rows
 
 _BASELINE_IDS = {PERSISTENCE_MODEL_ID, CLIMATOLOGY_MODEL_ID}
 
@@ -93,6 +95,54 @@ def backfill_entry_baselines(
                                 "day0": [*predictions.day0, *at_day0],
                                 "day3": [*predictions.day3, *beyond],
                                 "day7": [*predictions.day7, *beyond],
+                            }
+                        )
+                    }
+                ),
+                *rows[1:],
+            ],
+        }
+    )
+
+
+def backfill_entry_code_blend(
+    entry: DailyLogEntry,
+    log_lookup: LogLookup,
+    actuals: Mapping[date, DailyActual],
+    inputs: list[str],
+) -> DailyLogEntry | None:
+    """`entry` with the code blend added to row 0, or None when there is
+    nothing to add — ROADMAP item 173.
+
+    The baselines' rules exactly: row 0 only, nothing else touched, None
+    rather than an unchanged copy, and idempotent. Not hindsight for the
+    reason the baselines are not: code_blend.windows_as_of reads nothing
+    from the entry's own date on. What it reads is today's record of the
+    days before — see code_blend.py on how that can differ from the morning's.
+    """
+    rows = resolve_prediction_rows(entry)
+    if not rows:
+        return None
+
+    predictions = rows[0].predictions
+    if any(p.model == CODE_BLEND_MODEL_ID for lead in LEAD_TIMES_DAYS for p in predictions.for_lead(lead)):
+        return None
+
+    blend = code_blend_predictions(predictions, entry.date, log_lookup, actuals, inputs)
+    if not (blend.day0 or blend.day3 or blend.day7):
+        return None
+
+    return entry.model_copy(
+        update={
+            "model_predictions": None,
+            "prediction_rows": [
+                rows[0].model_copy(
+                    update={
+                        "predictions": predictions.model_copy(
+                            update={
+                                "day0": [*predictions.day0, *blend.day0],
+                                "day3": [*predictions.day3, *blend.day3],
+                                "day7": [*predictions.day7, *blend.day7],
                             }
                         )
                     }

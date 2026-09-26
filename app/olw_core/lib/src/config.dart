@@ -91,9 +91,21 @@ const List<(String, String, String)> knownDuplicates = [
 /// asserts the two lists agree.
 const List<String> baselineModelIds = ['persistence', 'climatology'];
 
+/// The record turned into a forecast by arithmetic — upstream ROADMAP item
+/// 173, see code_blend.dart. Mirrors `CODE_BLEND_MODEL_ID`.
+const String codeBlendModelId = 'olw_code_blend';
+
+/// Scored, stored and published, and never shown to the forecaster. Mirrors
+/// `HIDDEN_FROM_THE_FORECASTER`: ONE SET, read by every filter.
+const Set<String> hiddenFromTheForecaster = {
+  blendModelId,
+  codeBlendModelId,
+  ...baselineModelIds,
+};
+
 /// Every model with a tracked skill record: the numerical models, the met
-/// service where one is configured, our own blended call, and the two trivial
-/// baselines.
+/// service where one is configured, our own blended call, the code blend, and
+/// the two trivial baselines.
 ///
 /// THE BASELINES WERE MISSING HERE UNTIL 2026-09-05, and Python's
 /// `scored_models` had carried them since item 57 shipped server-side. The
@@ -105,6 +117,7 @@ const List<String> baselineModelIds = ['persistence', 'climatology'];
 List<String> scoredModels({String localBulletinModelId = ''}) => [
       ...defaultModels,
       blendModelId,
+      codeBlendModelId,
       ...baselineModelIds,
       if (localBulletinModelId.isNotEmpty) localBulletinModelId,
     ];
@@ -137,10 +150,13 @@ List<String> scoredModels({String localBulletinModelId = ''}) => [
 /// The divergence went unnoticed because nothing on the app side CALLED this
 /// function; `ensemble` item 12 is the first caller, and it builds the
 /// prompt's long-run review over this list.
+///
+/// THE CODE BLEND IS WITHHELD SO IT STAYS A MEASUREMENT (item 173): shown its
+/// calls or record, the forecaster would anchor on them, and the comparison
+/// would measure copying rather than what the LLM adds.
 List<String> modelsVisibleToTheForecaster({String localBulletinModelId = ''}) {
-  final hidden = {blendModelId, ...baselineModelIds};
   return scoredModels(localBulletinModelId: localBulletinModelId)
-      .where((m) => !hidden.contains(m))
+      .where((m) => !hiddenFromTheForecaster.contains(m))
       .toList();
 }
 

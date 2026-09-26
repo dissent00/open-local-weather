@@ -33,6 +33,7 @@ export 'src/glossary.dart';
 export 'src/instability.dart';
 export 'src/models.dart';
 export 'src/calibration.dart';
+export 'src/code_blend.dart';
 export 'src/cell.dart';
 export 'src/comparison.dart';
 export 'src/scales.dart';

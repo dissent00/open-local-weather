@@ -5,7 +5,7 @@ import pytest
 from openlocalweather.config import LocationConfig, Point, RegionPoint, SecondaryPoint, WaqiStation
 from openlocalweather import dates as dates_module
 from openlocalweather.dates import now_in_tz
-from openlocalweather.defaults import BASELINE_MODEL_IDS, MODELS, BLEND_MODEL_ID
+from openlocalweather.defaults import BASELINE_MODEL_IDS, CODE_BLEND_MODEL_ID, MODELS, BLEND_MODEL_ID
 from openlocalweather.claims import CLAIM_DISPLAY_TOO_LONG
 from openlocalweather.disagreement import DISAGREEMENT_RAIN_WHILE_DRY
 from openlocalweather.llm.gemini import LLMResponseError
@@ -43,6 +43,7 @@ from openlocalweather.solar import SunTimes, sun_times as real_sun_times
 from openlocalweather.pipeline import PipelineDeps
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
+from openlocalweather.store import track_record as track_record_store
 from openlocalweather.verify.scoring import scored_predictions
 
 LOCATION = LocationConfig(
@@ -3061,6 +3062,55 @@ def test_the_verification_block_hides_the_blend_and_the_baselines_too(tmp_path):
     for hidden in (BLEND_MODEL_ID, *BASELINE_MODEL_IDS):
         assert hidden not in user_prompt, f"the forecaster can see {hidden}'s scores"
         assert hidden not in system_prompt
+
+
+def test_the_code_blend_is_stored_scored_and_never_shown(tmp_path, monkeypatch):
+    """ROADMAP item 173, stage 2. The code blend votes only once its inputs
+    have RAIN_WEIGHT_MIN_CHECKS verified days, so a two-day run would store
+    none and every "not in the prompt" below would pass against nothing —
+    the failure the blend's own rule suffered for weeks. Twelve days, then
+    the blend is shown to exist on disk and in the record before its
+    absence from the prompt means anything."""
+    from dataclasses import replace
+
+    # The fixture's range fetch returns one day, which empties the actuals
+    # cache on the Monday batch; twelve days always include a Monday.
+    def _whole_range(lat, lon, start, end, tz):
+        hours = [archive_fixture(start + timedelta(days=i))["hourly"] for i in range((end - start).days + 1)]
+        return {"hourly": {k: [v for h in hours for v in h[k]] for k in hours[0]}}
+
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", _whole_range)
+
+    def deps(llm=None):
+        # Two calls a day for twelve days is over the default cap of 20.
+        return replace(make_deps(tmp_path, llm=llm), location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 100}))
+
+    days = [date(2026, 8, 11) + timedelta(days=i) for i in range(12)]
+    for d in days[:-1]:
+        issue(deps(), today=d, dry_run=False)
+
+    stored = log_store.read_log_entry(tmp_path, days[-2])
+    blend = [p for p in scored_predictions(stored).day0 if p.model == CODE_BLEND_MODEL_ID]
+    assert len(blend) == 1, "the code blend was not stored in row 0"
+    assert blend[0].rain is False
+    assert blend[0].rain_probability_pct == 0
+
+    llm = FakeLLMProvider()
+    issue(deps(llm), today=days[-1], dry_run=False)
+
+    record = track_record_store.read_track_record(tmp_path)
+    scored = [e for e in record.entries if e.model == CODE_BLEND_MODEL_ID and e.lead_time_days == 0]
+    assert scored and scored[0].all_time_checks >= 1, "the code blend was never scored"
+
+    system_prompt, user_prompt = llm.calls[-1]
+    assert '"per_model_scores"' in user_prompt
+    assert CODE_BLEND_MODEL_ID not in user_prompt
+    assert CODE_BLEND_MODEL_ID not in system_prompt
+
+    # The same-day re-issue reads the STORED row, which now carries it.
+    again = FakeLLMProvider()
+    issue(deps(again), today=days[-1], dry_run=False)
+    assert CODE_BLEND_MODEL_ID not in again.calls[-1][1]
 
 
 

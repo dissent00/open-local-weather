@@ -66,22 +66,33 @@ KNOWN_DUPLICATES: list[tuple[str, str, str]] = [
 # tests/test_baselines.py asserts the two lists agree.
 BASELINE_MODEL_IDS = ("persistence", "climatology")
 
+# The record turned into a forecast by arithmetic — ROADMAP item 173, see
+# code_blend.py. Here rather than there for the reason BASELINE_MODEL_IDS is.
+CODE_BLEND_MODEL_ID = "olw_code_blend"
+
+# Scored, stored and published, and never shown to the forecaster — see
+# models_visible_to_the_forecaster. ONE SET, read by every filter, because a
+# hand-written copy in each block is how a hidden model leaked before.
+HIDDEN_FROM_THE_FORECASTER = frozenset(
+    {BLEND_MODEL_ID, CODE_BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
+)
+
 
 def scored_models(local_bulletin_model_id: str = "") -> list[str]:
     """Every model with a tracked skill record: the numerical models, the met
-    service where one is configured, our own blended call, and the two
-    trivial baselines.
+    service where one is configured, our own blended call, the code blend,
+    and the two trivial baselines.
 
     Kept a function rather than a second constant because whether a local
     met service participates is per-location config, not a global fact.
     """
-    models = [*MODELS, BLEND_MODEL_ID, *BASELINE_MODEL_IDS]
+    models = [*MODELS, BLEND_MODEL_ID, CODE_BLEND_MODEL_ID, *BASELINE_MODEL_IDS]
     return [*models, local_bulletin_model_id] if local_bulletin_model_id else models
 
 
 def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[str]:
-    """[scored_models] minus our own blend and the baselines — what the LLM
-    is shown.
+    """[scored_models] minus our own blend, the code blend and the
+    baselines — what the LLM is shown.
 
     THE BLEND IS SCORED, STORED AND PUBLISHED. It is withheld from the
     forecaster's own context, and this is a deliberate standing rule rather
@@ -115,9 +126,18 @@ def models_visible_to_the_forecaster(local_bulletin_model_id: str = "") -> list[
     Telling the forecaster what the baselines score is a genuinely different
     feature — "here is the bar" rather than "here is another opinion" — and it
     is a prompt change, so it waits on item 27's harness.
+
+    THE CODE BLEND IS WITHHELD SO IT STAYS A MEASUREMENT. It exists to say
+    whether the LLM beats arithmetic on the same inputs (item 173). Shown its
+    calls or its record, the forecaster would anchor on them, and the
+    comparison would then measure how closely it copies the code rather than
+    what it adds.
     """
-    hidden = {BLEND_MODEL_ID, *BASELINE_MODEL_IDS}
-    return [m for m in scored_models(local_bulletin_model_id) if m not in hidden]
+    return [
+        m
+        for m in scored_models(local_bulletin_model_id)
+        if m not in HIDDEN_FROM_THE_FORECASTER
+    ]
 
 
 # Prose the forecaster used for a hidden model back when it could see one.
