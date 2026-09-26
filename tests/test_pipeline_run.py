@@ -44,7 +44,7 @@ from openlocalweather.pipeline import PipelineDeps
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
 from openlocalweather.store import track_record as track_record_store
-from openlocalweather.verify.scoring import scored_predictions
+from openlocalweather.verify.scoring import mean, scored_predictions
 
 LOCATION = LocationConfig(
     region_name="Test Region",
@@ -3994,6 +3994,95 @@ def test_the_stored_comparison_carries_both_gusts(tmp_path, monkeypatch):
     assert hasattr(stored, "today_calibrated_peak_wind_kmh")
 
 
+def _models_and_yardsticks(row):
+    """The row's Day+0 as the run held it before storage — the models alone,
+    and the models with persistence and climatology joined. The two blends
+    are added at storage and belong to neither."""
+    live = [p for p in row.predictions.day0 if p.model not in {BLEND_MODEL_ID, CODE_BLEND_MODEL_ID}]
+    models = [p for p in live if p.model not in BASELINE_MODEL_IDS]
+    assert {p.model for p in live} - {p.model for p in models} == set(BASELINE_MODEL_IDS), (
+        "the fixture must produce both yardsticks, or nothing here is tested"
+    )
+    return models, live
+
+
+def test_the_day_over_day_consensus_is_the_models_alone(tmp_path, monkeypatch):
+    """Persistence IS yesterday's observation, so averaging it into "today"
+    pulls a comparison against yesterday toward no change by construction —
+    item 104 recorded that 2026-09-13 and held the fix until the gust bias it
+    was masking had its own correction, which item 126 shipped.
+
+    Through the stored row rather than the function, because the defect was
+    never in `compute_day_over_day`: it was which list the pipeline handed it.
+    """
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+    models, with_yardsticks = _models_and_yardsticks(row)
+
+    for field, stored in (
+        ("high_c", row.day_over_day.today_consensus_high_c),
+        ("wind_kmh", row.day_over_day.today_consensus_peak_wind_kmh),
+    ):
+        expected = round(mean([getattr(p, field) for p in models]), 1)
+        assert round(mean([getattr(p, field) for p in with_yardsticks]), 1) != expected, (
+            f"the fixture cannot tell the two lists apart on {field}"
+        )
+        assert stored == expected, f"{field}: the yardsticks are in the consensus"
+
+
+def test_no_other_averaging_consumer_is_handed_a_yardstick(tmp_path, monkeypatch):
+    """The other three consumers of the Day+0 mean. The extended trend
+    measures days 1-3 of the MODELS against today, so a today with the
+    yardsticks in compares two different populations: persistence is an
+    observed gust and the models under-forecast theirs, which leaned the
+    replayed trend toward "calmer" on 30 of 36 archived prompts. The
+    calibrated gust and the sustained gap are each documented as a consensus
+    of the models.
+    """
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: (
+            {d: StationWeather(thunder=False, precipitation=False) for d in (start, end)},
+            {d: StationReadings(high_c=31.8, low_c=19.4, peak_wind_kmh=24.0) for d in (start, end)},
+        ),
+    )
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+
+    seen = {}
+
+    def spy(name, real):
+        def wrapper(*args, **kwargs):
+            seen[name] = (args, kwargs)
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(pipeline, name, wrapper)
+
+    spy("describe_extended_trend", pipeline.describe_extended_trend)
+    spy("calibrated_gust_consensus", pipeline.calibrated_gust_consensus)
+    spy("sustained_wind_gap", pipeline.sustained_wind_gap)
+
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert set(seen) == {"describe_extended_trend", "calibrated_gust_consensus", "sustained_wind_gap"}
+
+    for name, position in (("calibrated_gust_consensus", 0), ("sustained_wind_gap", 1)):
+        handed = {p.model for p in seen[name][0][position]}
+        assert not handed & set(BASELINE_MODEL_IDS), f"{name} was handed {handed}"
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+    models, with_yardsticks = _models_and_yardsticks(row)
+    trend = seen["describe_extended_trend"][1]
+    for kwarg, field in (("today_high_c", "high_c"), ("today_wind_kmh", "wind_kmh")):
+        expected = mean([getattr(p, field) for p in models])
+        assert mean([getattr(p, field) for p in with_yardsticks]) != expected
+        assert trend[kwarg] == expected, f"{kwarg}: the yardsticks are in today's side"
+
+
 def test_every_forecast_run_files_under_one_purpose(tmp_path):
     """ROADMAP item 137, the operator's decision 2026-09-16: every run is a
     fresh forecast, so the ledger uses one label for all of them.
@@ -4560,8 +4649,10 @@ def test_the_comparison_modifiers_reach_the_day_record(tmp_path, monkeypatch):
 
     # WITH ONE, exactly the dimension that moved. Forty days whose own
     # day-to-day moves are small put the gates at 3.0 °C, 2.0 km/h and 4.0
-    # points; the run's deltas are -0.2 °C and +14.4 km/h, so the wind clears
-    # its gate by sevenfold and the temperature does not come close.
+    # points; the run's deltas are -0.3 °C and +20.2 km/h, so the wind clears
+    # its gate tenfold and the temperature does not come close. They were
+    # -0.2 and +14.4 while climatology, averaged over a record that is mostly
+    # these forty calm days, sat in the consensus — see `day0_models`.
     cache = actuals_cache_store.read_actuals_cache(deps.data_dir)
     for i in range(40):
         day = date(2026, 6, 1) + timedelta(days=i)
@@ -4578,7 +4669,7 @@ def test_the_comparison_modifiers_reach_the_day_record(tmp_path, monkeypatch):
     issue(deps, today=date(2026, 8, 11))
     stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
 
-    assert stored.comparison == {"wind": "windier"}, stored.comparison
+    assert stored.comparison == {"wind": "much windier"}, stored.comparison
 
 
 def test_the_entry_carries_its_composed_tiles(tmp_path, monkeypatch):

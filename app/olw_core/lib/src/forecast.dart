@@ -507,9 +507,11 @@ Future<ForecastRun> generateForecast({
   // one finished phrase to use verbatim.
   //
   // Mirrors pipeline.py's call exactly, including which predictions feed
-  // todayHighC: the models as extracted, with no baselines. Python appends
-  // those AFTER this call, and a mean that included climatology would band a
-  // different trend from the one the site publishes.
+  // todayHighC: the models as extracted, with no baselines. Python reads
+  // `day0_models` for the same reason, and a mean that included climatology
+  // would band a different trend from the one the site publishes. From
+  // 2026-09-13 to 09-26 Python's did include them and this comment was
+  // false — see upstream ROADMAP item 183.
   final extendedDays = [
     for (final n in extendedSpanLeads) extractDayNPredictionsFromDaily(daily, n, models),
   ];
@@ -608,13 +610,9 @@ Future<ForecastRun> generateForecast({
                 degradations),
           }
         : yesterdayActual,
-    // Applied to THIS run's extraction, above. The Python pipeline calibrates
-    // over its Day+0 list WITH the persistence and climatology yardsticks in
-    // it; here they are added by the caller after the run, so this consensus
-    // is over the real models alone. Their corrections are small (+0.58 and
-    // +2.58 on the server's record) and the two numbers are close rather than
-    // equal — a prompt-facing figure, scored by nothing, and stated so the
-    // difference is not mistaken for a port bug.
+    // Applied to THIS run's extraction, above: the models alone, as in the
+    // Python pipeline's `day0_models`. The yardsticks are added by the caller
+    // after the run, for scoring.
     calibratedGustKmh: calibratedGustConsensus(day0, gustBias),
     todayWeatherData: {
       // Not sent — upstream item 73's first cut; see llm/prompt.dart. The

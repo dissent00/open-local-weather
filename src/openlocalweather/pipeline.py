@@ -1314,9 +1314,9 @@ def _locked_blocks(
     that wants these blocks now gets all of them or none.
 
     `day0_predictions` is the one input the callers must supply rather than
-    read off `guidance`: the first run of a day extracts them fresh, and a
-    later one reuses what the first stored, because those are the numbers the
-    record scores.
+    read off `guidance`: this issuance's extraction, the MODELS ALONE. The
+    yardsticks are scored beside them and never averaged into today — see
+    `day0_models` in `_issue_forecast`.
     """
     issued_hour = _issued_hour(guidance.issuance)
 
@@ -3519,6 +3519,22 @@ def _issue_forecast(
         )
         if p is not None
     ]
+
+    # THE MODELS ALONE, kept before the yardsticks join, and the list every
+    # consumer that AVERAGES Day+0 reads: the day-over-day consensus, the
+    # extended trend's today, the calibrated gust and the sustained gap. The
+    # yardsticks join `day0_predictions` to be scored and stored, not to vote.
+    #
+    # Persistence IS yesterday's observation, so in a "today against
+    # yesterday" mean it pulls every comparison toward no change; item 104
+    # recorded that and held the fix until the gust bias it was masking had
+    # its own correction (item 126). The extended trend was models-only when
+    # item 61 wrote it and gained the yardsticks when item 104 moved it into
+    # `_locked_blocks`, after this line. Replayed 2026-09-26 over the archive:
+    # today's wind rose 2.9 km/h against model-only days 1-3, leaning the trend
+    # toward "calmer" on 30 of 36 prompts against 20 without. The app never
+    # mixed them — its runner adds the yardsticks at storage.
+    day0_models = day0_predictions
     day0_predictions = [*day0_predictions, *baselines]
 
     # Onset is dropped beyond Day+0 because the real models have none there —
@@ -3597,11 +3613,11 @@ def _issue_forecast(
     # forecaster is handed and the number the comparison bands from are one
     # number and cannot drift.
     gust_bias = gust_corrections(track_record_entries)
-    calibrated_wind_kmh = calibrated_gust_consensus(day0_predictions, gust_bias)
+    calibrated_wind_kmh = calibrated_gust_consensus(day0_models, gust_bias)
 
     day_over_day = compute_day_over_day(
         actuals_primary.get(yesterday),
-        day0_predictions,
+        day0_models,
         today_convective=(
             guidance.instability.convective if guidance.instability is not None else None
         ),
@@ -3639,7 +3655,7 @@ def _issue_forecast(
     # footnote and cannot reach the spending decision.
     information_moved = _information_moved(
         guidance, existing_entry, observed_so_far, deviation_bands(deps.location),
-        day0_predictions=day0_predictions,
+        day0_predictions=day0_models,
     )
 
     # --- Step 5b: does this run earn an LLM call? ---
@@ -3784,7 +3800,7 @@ def _issue_forecast(
         guidance,
         existing_entry,
         today,
-        day0_predictions=day0_predictions,
+        day0_predictions=day0_models,
         observed_so_far=observed_so_far,
         overnight_low_divergence=information_moved.low_divergence,
         observation_footnotes=(
@@ -3879,10 +3895,10 @@ def _issue_forecast(
     # --- Step 7: build today's log entry ---
     tp = llm_response.today_properties
     # ROADMAP item 173. Built HERE, beside the LLM's own call, and not where
-    # the baselines join `day0_predictions`: every consumer after that point —
-    # the day-over-day consensus, the extended trend, the calibrated gust —
-    # averages the list, and a blend of the models must not be averaged back
-    # in with them. From THIS issuance's extraction, like everything it stores.
+    # the baselines join `day0_predictions`: the day-over-day consensus, the
+    # extended trend and the calibrated gust average `day0_models`, and a
+    # blend of the models must not be averaged back in with them. From THIS
+    # issuance's extraction, like everything it stores.
     code_blend = code_blend_predictions(
         ModelPredictionsByLead(day0=day0_predictions, day3=day3_predictions, day7=day7_predictions),
         today,

@@ -15209,6 +15209,10 @@ accidentally compensating for the models' under-forecast. Two defects were
 cancelling, and either one removed alone leaves the other exposed. They have
 to move together or not at all.
 
+> **The second half moved 2026-09-26, item 183.** Item 126 had already
+> corrected the gust; with it in place the mean wind delta is +0.64 km/h with
+> the yardsticks and without them, so removing them exposes nothing.
+
 ### The original plan, left standing for the reasoning it got right
 
 
@@ -18915,6 +18919,9 @@ over a Day+0 list that already has the persistence and climatology yardsticks
 in it; the app adds those after the run, so its consensus is over the real
 models alone. Their corrections are small (+0.58 and +2.58) and the two
 numbers are close rather than equal.
+
+> **Closed 2026-09-26, item 183:** Python now calibrates over the models
+> alone too.
 
 Ensemble re-pinned at `158419a` (`d103b57`).
 
@@ -26185,6 +26192,81 @@ extended trend and the calibrated gust all average that list.
   its real runner in tests, not launched on a device.
 
 Not done: item 173 point 1.
+
+---
+
+## 183. The yardsticks were voting in today's consensus · **SHIPPED 2026-09-26**
+
+`persistence` and `climatology` join `day0_predictions` to be scored and
+stored (item 57). Four consumers after that line average the list: the
+day-over-day consensus, the extended trend's today, the calibrated gust, and
+the sustained gap. Days 1-3 and the evening subject's tomorrow were models
+only, so both comparisons set a mixed today against model-only other days.
+
+**How each got there.**
+
+- Day-over-day: a known defect. Item 104 recorded it 2026-09-13 and held it
+  until the gust bias it was masking was corrected. Item 126 corrected that
+  bias the next day, and the yardsticks were never revisited.
+- Extended trend: a regression. Item 61 (`5864d9f`) computed it before the
+  append. `296e845` moved it into `_locked_blocks`, which runs after the
+  append, and left no note. olw_core's `forecast.dart` went on saying Python
+  used the models alone.
+- Gust: included knowingly, said so in the prompt and in item 126.
+- Sustained gap: its docstring says "the models' Day+0 sustained consensus".
+  In practice it was never affected, because no stored yardstick row carries
+  a sustained wind.
+
+**Measured** by replaying the stored Day+0 rows, `data/actuals_cache`, and
+the `track_record.json` committed with each day's forecast. To check the
+replay first, it was run with the yardsticks in: it reproduced all 13 stored
+comparisons on every field and label (cloud was not stored before 09-23),
+all 5 stored tile maps, and the trend words of all 30 archived phrases.
+
+| Day-over-day, 36 days, 08-21..09-26 | changed without yardsticks |
+|---|---|
+| tile modifier | **3 of 36** (3 of the 15 with a gate), all temperature: 09-15 nothing → 2° warmer, 09-22 nothing → 2° cooler, 09-17 2° → 3° cooler |
+| tile wind, tile cloud | 0 |
+| `today_rain_expected` (prompt) | 1 (09-07) |
+| stored labels | high 3, wind 2, cloud 0 |
+| rain band / onset (stored only) | 2 real / 5. Three more band changes on 08-21..23 are an artefact: the models stored no precipitation then |
+
+The mean |delta| was being compressed: high 0.90 → 1.06 °C, wind 3.69 →
+4.32 km/h. **The mean wind delta is +0.64 km/h both ways**, which is item
+104's condition met.
+
+Extended trend, 36 archived prompts:
+
+- **2 phrases change.** 09-13 18:02: "much the same" → "warming". 09-15
+  06:12: "cooling and becoming calmer through Friday" → "cooling". The 09-15
+  phrase was published, and the observed gust rose from 34.2 to 41.4 km/h by
+  Friday.
+- **It leaned calmer.** The yardsticks raised today's wind by 2.90 km/h,
+  because persistence is an observed gust and the models under-forecast
+  theirs. Day+3 minus today averaged −3.19 km/h with them and −0.29 without;
+  30 of 36 prompts leaned calmer against 20. Temperature had no lean.
+- The calibrated gust moves by 0 on average, 0.66 km/h typically, and
+  between −3.2 and +2.2 km/h at the extremes.
+
+**The fix.** `day0_models` is kept before the append, and the four consumers
+read it. Storage, the code blend and the predictions payload keep the full
+list; the payload already filters out hidden models itself. The prompt's
+"also includes internal yardsticks" clause is gone on both sides, which is
+the only change in `llm_user_prompt.json` (12 cases). olw_core had no code to
+change: the app has always averaged the models alone, adds the yardsticks at
+storage, and never calls `computeDayOverDay`. Two of its comments are
+corrected.
+
+Two pipeline tests were watched failing before the fix: the stored consensus
+read 25.8 against the models' 25.7, and the gust was handed both yardsticks.
+`test_the_comparison_modifiers_reach_the_day_record` now expects "much
+windier" instead of "windier", because its forty calm fixture days fed
+climatology and dragged the consensus toward them.
+
+**Not checked.** Item 126's out-of-sample validation was not re-run over the
+models alone. The rain phrase was compared on its inputs, not composed end to
+end. The replay reads today's actuals cache, so any revision since each run
+is invisible to it. No archived server issuance falls after sunset.
 
 ---
 
