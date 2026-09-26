@@ -26180,8 +26180,11 @@ extended trend and the calibrated gust all average that list.
 - **olw_core:** `code_blend.dart`, held by `code_blend.json` (11 cases; three
   land exactly on .5). 20,000 generated cases agree between Python and Dart.
 
-Not done here: the Ensemble app's runner (its re-pin is the next step) and
-item 173 point 1.
+- **Ensemble app:** re-pinned to 467fc26; `ForecastRunner` stores it from
+  the device's own record (ensemble bdd17aa). The app was driven through
+  its real runner in tests, not launched on a device.
+
+Not done: item 173 point 1.
 
 ---
 
