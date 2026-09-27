@@ -26218,7 +26218,8 @@ only, so both comparisons set a mixed today against model-only other days.
   a sustained wind.
 
 **Measured** by replaying the stored Day+0 rows, `data/actuals_cache`, and
-the `track_record.json` committed with each day's forecast. To check the
+the `track_record.json` committed with each day's forecast —
+`tools/yardstick_replay.py comparison` and `trend`. To check the
 replay first, it was run with the yardsticks in: it reproduced all 13 stored
 comparisons on every field and label (cloud was not stored before 09-23),
 all 5 stored tile maps, and the trend words of all 30 archived phrases.
@@ -26266,10 +26267,47 @@ climatology and dragged the consensus toward them.
 Ensemble is re-pinned to `1d06972` (ensemble `42bebaf`), with `flutter test`
 and `flutter analyze` green. The app was not launched on a device.
 
-**Not checked.** Item 126's out-of-sample validation was not re-run over the
-models alone. The rain phrase was compared on its inputs, not composed end to
-end. The replay reads today's actuals cache, so any revision since each run
-is invisible to it. No archived server issuance falls after sunset.
+**Not checked.** The rain phrase was compared on its inputs, not composed end
+to end. The replay reads today's actuals cache, so any revision since each
+run is invisible to it. No archived server issuance falls after sunset.
+
+### Item 126's validation, re-run 2026-09-26
+
+**It reproduces only over the models alone.** Re-run with item 126's method
+(each member's bias taken from its last N errors strictly before the day),
+the models-only version gives the same day counts, raw errors and days
+improved at N = 5, 10 and 20, and corrected errors within 0.02 km/h at N =
+5 and 10 (3.36 against 3.23 at 20). So the models-only consensus is what was
+validated, and until this item the pipeline shipped a different one.
+`tools/yardstick_replay.py gust --through 2026-09-13` reproduces that; without
+`--through` it prints the tables below. Item 126's own script was not kept,
+which is why the method had to be rebuilt from its table.
+
+**Over the whole record it makes no difference.** The as-shipped path takes
+its corrections from each day's committed `track_record.json` and runs them
+through `calibrated_gust_consensus`. Over 36 days, 08-21..09-25, it scores
+4.22 km/h mean absolute error both ways; the difference is −0.01 ± 0.17
+(1 SE). The difference reverses between periods:
+
+| period | days | MAE models only / with yardsticks | difference ± 1 SE | models only closer |
+|---|---|---|---|---|
+| to 09-13 | 24 | 3.67 / 4.05 | −0.38 ± 0.15 | 10, against 3; 11 ties, where the yardsticks had no correction yet |
+| 09-14 on | 12 | 5.32 / 4.57 | **+0.75 ± 0.32** | 3 of 12 |
+
+The recent gap is shrinkage, not a better gust. The yardsticks damp the
+day-to-day swing (spread 2.6 against 3.1 km/h) while the observed spread has
+narrowed from 5.7 to 3.5. One day carries 3.2 km/h of it: on 09-14 persistence
+brought in 09-13's 55.1 km/h gust. **Kept: models only — the operator's
+decision, 2026-09-27.** It is what was validated, the app has always done
+it, and the whole-record difference is zero. Revisit if the recent sign
+holds; a deliberate shrink toward climatology would need its own validation,
+not the yardsticks as accidental members.
+
+**A separate finding: since 09-14 the calibrated gust runs 2.1 km/h high**
+either way (+2.11 models only, +2.00 with yardsticks; +0.31 before). This is
+item 126's open question — whether a rolling-10 correction stays stable —
+answered for now as "it overshoots". Twelve days is not enough to size
+anything against.
 
 ---
 
