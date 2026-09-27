@@ -822,8 +822,10 @@ def attach_spend_cap(
         print(f"LLM call {used}/{limit} for {name} in the last 24h")
 
     def _complete(outcome: str, elapsed_s: float) -> None:
+        # Read off the live link while the call is still in flight — item 184.
         complete_attempt(
-            data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s
+            data_dir, at=pending["at"], outcome=outcome, elapsed_s=elapsed_s,
+            served_model=getattr(resolve_active(provider), "response_model", None),
         )
 
     # HOW THE CALL ENDED, kept for the log entry rather than the ledger —

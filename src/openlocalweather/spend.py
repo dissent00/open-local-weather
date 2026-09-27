@@ -176,6 +176,13 @@ class SpendRecord:
     outcome: str | None = None
     elapsed_s: float | None = None
 
+    # THE MODEL THAT ANSWERED, when it is not `model` — ROADMAP item 184. A
+    # gateway given a `models` list may serve any entry: on 2026-09-26 at
+    # 15:10Z OpenRouter served dots-3-note to a row that said nex-n2.5-pro.
+    # `model` stays what was asked for, because the cap counts by it. Absent
+    # means served as asked, or the provider did not say.
+    served_model: str | None = None
+
     def to_json(self) -> dict:
         d = {
             "at": self.at.isoformat(),
@@ -191,6 +198,8 @@ class SpendRecord:
             d["outcome"] = self.outcome
         if self.elapsed_s is not None:
             d["elapsed_s"] = self.elapsed_s
+        if self.served_model is not None:
+            d["served_model"] = self.served_model
         return d
 
     @staticmethod
@@ -202,6 +211,7 @@ class SpendRecord:
             purpose=d.get("purpose", ""),
             outcome=d.get("outcome"),
             elapsed_s=d.get("elapsed_s"),
+            served_model=d.get("served_model"),
         )
 
 
@@ -505,8 +515,12 @@ def complete_attempt(
     at: datetime | None,
     outcome: str,
     elapsed_s: float,
+    served_model: str | None = None,
 ) -> None:
     """Fills in what the attempt recorded at [at] actually did.
+
+    [served_model] is the model the provider says answered. Stored only when
+    it differs from the row's `model` — see `SpendRecord.served_model`.
 
     The second of the two writes. It exists because every latency question
     this project has asked was answered by subtracting something unmeasured
@@ -562,5 +576,6 @@ def complete_attempt(
         records[index],
         outcome=outcome,
         elapsed_s=round(elapsed_s, ELAPSED_PRECISION),
+        served_model=served_model if served_model != records[index].model else None,
     )
     _write_ledger(data_dir, records)

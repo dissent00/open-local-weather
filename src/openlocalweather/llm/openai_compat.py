@@ -137,6 +137,40 @@ SCHEMA_PROMPT_TEMPLATE = (
 )
 
 
+def _reported_model(resp: requests.Response, offered: list[str]) -> str | None:
+    """The model the gateway says answered, named as this deployment named it
+    — ROADMAP item 184.
+
+    OpenRouter serves any entry of a `models` list and returns the one it used
+    in the body's `model` ("requests are priced using the model that was
+    ultimately used", its fallback guide). Matched against what was offered,
+    first exactly and then without a `:variant` suffix, because whether it
+    echoes `:free` has not been observed here and `replay.py` partitions the
+    record by this name: two spellings would be two piles. A name matching
+    nothing offered is kept as reported, since it is still what answered.
+
+    None when the body is not JSON or names no model. Never raises, like
+    `_provider_failed`.
+    """
+    try:
+        body = resp.json()
+    except ValueError:
+        return None
+
+    reported = body.get("model") if isinstance(body, dict) else None
+    if not isinstance(reported, str) or not reported:
+        return None
+
+    for name in offered:
+        if reported == name:
+            return name
+    for name in offered:
+        if reported == name.split(":", 1)[0]:
+            return name
+
+    return reported
+
+
 def _provider_failed(resp: requests.Response) -> bool:
     """Whether a 200 is really the provider reporting its own failure.
 
@@ -265,6 +299,12 @@ class OpenAICompatProvider:
         # did and how long it took. See AfterAttempt in provider.py.
         self.after_attempt = after_attempt
         self.after_response = after_response
+        # What the gateway says answered the CURRENT attempt, set before its
+        # outcome is reported so the ledger hook can read it, and cleared at
+        # the start of each attempt so one that gets no response — a timeout,
+        # a reset connection — cannot inherit the previous attempt's. Read by
+        # `served_identity` once generate() returns. See `_reported_model`.
+        self.response_model: str | None = None
 
     @property
     def endpoint(self) -> str:
@@ -284,6 +324,7 @@ class OpenAICompatProvider:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             if self.before_attempt is not None:
                 self.before_attempt()
+            self.response_model = None
             started = time.monotonic()
             try:
                 # STREAMED so the whole exchange can be bounded — see
@@ -299,6 +340,7 @@ class OpenAICompatProvider:
                     stream=True,
                 )
                 _read_body_within(resp, started + RESPONSE_DEADLINE_S)
+                self.response_model = _reported_model(resp, [self.model, *self.fallback_models])
                 report_outcome(self.after_attempt, http_outcome(resp.status_code), started)
                 if resp.status_code not in RETRYABLE_STATUS_CODES and not _provider_failed(resp):
                     return resp

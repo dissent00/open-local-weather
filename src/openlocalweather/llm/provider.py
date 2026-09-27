@@ -158,9 +158,15 @@ def served_identity(provider) -> tuple[str, str]:
     by `meta.llm_model`, so a misnamed entry files its scored forecast under a
     model that did not make it, and the question item 27 exists to answer —
     is this model better — is answered from the wrong pile.
+
+    ONE LINK CAN SERVE SEVERAL MODELS — item 184. A gateway given a `models`
+    list reports which it used as `response_model`, and that wins over the
+    `.model` the link asked for: on 2026-09-26 OpenRouter served dots-3-note
+    to a call filed under nex-n2.5-pro.
     """
     live = resolve_served(provider)
-    return type(live).__name__, getattr(live, "model", "unknown")
+    reported = getattr(live, "response_model", None)
+    return type(live).__name__, reported or getattr(live, "model", "unknown")
 
 
 def resolve_active(provider):

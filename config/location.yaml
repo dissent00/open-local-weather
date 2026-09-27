@@ -219,8 +219,10 @@ location:
   # and the constraint is not about the amount.
   #
   # THE FIRST LINK IS `LLM_MODEL`, not this list. The request carries
-  # `models: [LLM_MODEL, *these]`, so these are the SECOND and THIRD tries
-  # and naming the primary here again would just send it twice.
+  # `models: [LLM_MODEL, *these]`, so this is the SECOND try and naming the
+  # primary here again sends it twice. It did: `LLM_MODEL` became
+  # nex-n2.5-pro while nex stayed below, and the gateway was sent
+  # [nex, dots-3-note, nex] until ROADMAP item 184 removed it here.
   #
   # Both carry `structured_outputs` AND `response_format` on OpenRouter's own
   # model list, checked 2026-09-22. That pairing is the filter that matters:
@@ -236,7 +238,6 @@ location:
   # `response_format` at all, which is the field this project actually sends.
   llm_fallback_models:
     - "dots-studio/dots-3-note-preview:free"
-    - "nex-agi/nex-n2.5-pro:free"
 
   # THE FALLBACK MAKES THE SCORED CALL AND NOTHING ELSE — operator's decision
   # 2026-09-25, ROADMAP item 180. It made the scored call 2 of 2 times and

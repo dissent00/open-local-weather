@@ -26195,6 +26195,51 @@ Not done: item 173 point 1.
 
 ---
 
+## 184. OpenRouter served one model and the record named another · **SHIPPED 2026-09-27**
+
+The operator's OpenRouter console for 09-26 shows one call, served by
+`dots-3-note-preview`. The ledger row (15:10:31Z, HTTP 200, 89.2 s) and the
+entry's `meta.llm_model` both say `nex-agi/nex-n2.5-pro:free`. The count
+matched; the name did not.
+
+**Two causes.**
+
+- The request sends `models: [LLM_MODEL, *llm_fallback_models]`, and
+  OpenRouter serves the first it can. Rate limits and downtime both move it
+  on, per its fallback guide, which also says it reports and bills the model
+  "ultimately used" in the response's `model` field. The adapter never read
+  that field, and item 171's `served_identity` found the right LINK and then
+  read the model the link ASKED for.
+- `LLM_MODEL` had become nex while nex stayed in `llm_fallback_models`, so
+  the list was [nex, dots-3-note, nex].
+
+**Fix.** `OpenAICompatProvider.response_model` holds what the gateway
+reported for the current attempt. It is cleared at the start of each attempt
+and set before the outcome is reported. The name is matched against the
+models offered, first exactly and then without a `:variant` suffix, because
+whether OpenRouter echoes `:free` has not been observed and `replay.py`
+partitions by this name. `served_identity` prefers it, so `meta.llm_model`
+and `narrative_llm_model` name the model that answered. The ledger row gains
+`served_model` when it differs from `model`. `model` keeps the asked-for name
+because the cap counts by it. nex is out of `llm_fallback_models`.
+
+Eight tests watched failing first. Removing any one of the five pieces fails
+at least one of them. The first version of the reset test survived its own
+mutation, because a 503 has a body and overwrote the value anyway; it now
+uses a connection error.
+
+**No Dart change.** olw_core's `openai_compat.dart` ignores the field too,
+but the app never sets `fallbackModels`, so it never sends a list and cannot
+be served another model. A field nothing reads would be inert.
+
+**Not done.** The 09-26 entry still names nex. Correcting a stored entry is
+the operator's call. Which model served earlier OpenRouter calls (09-25
+15:13Z and before) is on the console, not in our record. The first real
+`response_model` value, and so the spelling OpenRouter uses, arrives with
+the next call that reaches OpenRouter.
+
+---
+
 ## 183. The yardsticks were voting in today's consensus · **SHIPPED 2026-09-26**
 
 `persistence` and `climatology` join `day0_predictions` to be scored and
@@ -27071,6 +27116,14 @@ What it leaves: a bad 15:01Z run still spends 8 of 20 — two calls x four
 attempts, all 503s on 09-25 — so the next morning keeps 12, and on 09-26 it
 needed 3. The 15:01Z 503s did NOT go away with the endpoint: 8 of 8 on
 09-25. They belong to the slot, not the API.
+
+**Again for the UTC-8 day of 09-26, operator's console 2026-09-27: 9 API
+requests, 9 per model.** The ledger holds 9 in that window: four 503s at
+15:01-15:10Z (the judgment; the narrative no longer retries a link that failed
+the scored call, so 4 rather than 8) and five at 03:01-03:10Z on 09-27 (a 200,
+three 503s, a 200). Only a Pacific day gives 9 — a UTC or Nairobi day holds 7
+— so the console's day is Pacific. The 03:01Z slot drew three 503s on the
+narrative, so "the slot, not the API" now holds for 15:01Z only in degree.
 
 **Two side effects of the revert, noted 2026-09-26, neither acted on.**
 - **Our cap counts per provider CLASS; Google's quota is per MODEL.** The

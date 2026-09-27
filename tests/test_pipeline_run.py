@@ -4858,6 +4858,45 @@ def test_the_entry_names_the_link_that_served_not_the_one_that_failed(tmp_path):
     assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
 
 
+def test_the_entry_and_the_ledger_name_the_model_the_gateway_served(tmp_path):
+    """ROADMAP item 184, end to end through the real spend hooks.
+
+    One link can serve several models: OpenRouter walks a `models` list and
+    reports which it used. On 2026-09-26 at 15:10Z it served dots-3-note, and
+    the entry and the ledger both said nex-n2.5-pro — item 171's resolver
+    finds the right LINK and then reads the model that link ASKED for.
+
+    The stub stands in for the adapter's contract: it sets `response_model`
+    before reporting each attempt, exactly where the real one does.
+    """
+    asked, served = "nex-agi/nex-n2.5-pro:free", "dots-studio/dots-3-note-preview:free"
+
+    class Routed(FakeLLMProvider):
+        model = asked
+        after_attempt = None
+        response_model = None
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            result = super().generate(system_prompt, user_prompt, response_schema)
+            self.response_model = served
+            if self.after_attempt is not None:
+                self.after_attempt("http_200", 1.0)
+            return result
+
+    issue(make_deps(tmp_path, llm=Routed()), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_model == served
+    assert entry.meta.narrative_llm_model == served
+
+    from openlocalweather.spend import read_ledger
+
+    rows = read_ledger(tmp_path)
+    assert rows, "the stub never reached the ledger"
+    # The asked-for name stays: the cap counts by it.
+    assert {(r.model, r.served_model) for r in rows} == {(asked, served)}
+
+
 def test_an_unchained_provider_is_named_exactly_as_before(tmp_path):
     """The ordinary deployment. Item 171 changed where the name comes from,
     and a run with no chain must be unaffected by that."""

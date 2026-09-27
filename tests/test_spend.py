@@ -287,6 +287,38 @@ def test_it_completes_only_the_row_it_was_given(tmp_path):
     assert outcomes == [None, "http_503", None]
 
 
+def test_a_gateway_that_served_another_model_says_so_on_the_row(tmp_path):
+    """ROADMAP item 184. On 2026-09-26 OpenRouter's console showed the 15:10Z
+    call served by dots-3-note while this row said nex-n2.5-pro: the row names
+    what was ASKED for, and a `models` list lets the gateway answer with
+    another. The asked-for name stays, because the cap counts by it."""
+    _attempt(tmp_path, NOW, max_calls=3)
+    at = read_ledger(tmp_path)[0].at
+
+    complete_attempt(
+        tmp_path, at=at, outcome="http_200", elapsed_s=89.2,
+        served_model="dots-studio/dots-3-note-preview:free",
+    )
+
+    row = read_ledger(tmp_path)[0]
+    assert row.model == "gemini-3.6-flash"
+    assert row.served_model == "dots-studio/dots-3-note-preview:free"
+
+
+def test_a_row_served_as_asked_carries_no_served_model(tmp_path):
+    """Absent means served as asked, or not reported — the same absent-not-
+    null rule as `outcome`, so ordinary rows gain no field."""
+    _attempt(tmp_path, NOW, max_calls=3)
+    at = read_ledger(tmp_path)[0].at
+
+    complete_attempt(
+        tmp_path, at=at, outcome="http_200", elapsed_s=1.0, served_model="gemini-3.6-flash"
+    )
+
+    assert read_ledger(tmp_path)[0].served_model is None
+    assert "served_model" not in read_ledger(tmp_path)[0].to_json()
+
+
 def test_an_incomplete_row_is_the_signal_that_the_process_died(tmp_path):
     """No outcome means the second write never happened.
 

@@ -166,6 +166,74 @@ def test_strips_markdown_code_fence_around_json():
 
 
 # ---------------------------------------------------------------------------
+# Which model the gateway says answered — ROADMAP item 184
+# ---------------------------------------------------------------------------
+#
+# A `models` list lets OpenRouter serve any entry, and it names the one it
+# used in the response's `model` field. On 2026-09-26 it served dots-3-note
+# while this project recorded nex-n2.5-pro, the model it asked for.
+
+SECOND = "dots-studio/dots-3-note-preview:free"
+
+
+def _served_as(reported, fallback_models=(SECOND,)):
+    body = valid_envelope()
+    if reported is not None:
+        body["model"] = reported
+    p = provider(fallback_models=list(fallback_models))
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=body)
+        p.generate("system", "user", GeminiForecastResponse)
+    return p
+
+
+def test_the_model_the_gateway_reports_is_the_one_credited():
+    from openlocalweather.llm.provider import served_identity
+
+    assert served_identity(_served_as(SECOND)) == ("OpenAICompatProvider", SECOND)
+
+
+def test_a_reported_name_without_its_variant_is_named_as_offered():
+    """Whether OpenRouter echoes `:free` has not been observed here. Either
+    spelling must file under the name the config uses, or `replay.py`, which
+    partitions by `meta.llm_model`, splits one model into two piles."""
+    assert _served_as("dots-studio/dots-3-note-preview").response_model == SECOND
+
+
+def test_a_model_nobody_offered_is_recorded_as_reported():
+    assert _served_as("vendor/unlisted").response_model == "vendor/unlisted"
+
+
+def test_no_reported_model_credits_the_one_asked_for():
+    from openlocalweather.llm.provider import served_identity
+
+    p = _served_as(None)
+    assert p.response_model is None
+    assert served_identity(p) == ("OpenAICompatProvider", MODEL)
+
+
+def test_each_attempt_reports_its_own_model_to_the_ledger_hook():
+    """The hook reads the model when the outcome is reported. An attempt that
+    never got a response names none, and must not inherit the previous
+    attempt's — a 503 cannot show this, because its body is parsed too."""
+    import requests
+
+    body = valid_envelope()
+    body["model"] = SECOND
+    p = provider(fallback_models=[SECOND])
+    seen = []
+    p.after_attempt = lambda outcome, elapsed: seen.append((outcome, p.response_model))
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, [{"status_code": 200, "json": body}])
+        p.generate("system", "user", GeminiForecastResponse)
+        m.post(URL, [{"exc": requests.ConnectionError}, {"status_code": 200, "json": body}])
+        p.generate("system", "user", GeminiForecastResponse)
+
+    assert seen == [("http_200", SECOND), ("error", None), ("http_200", SECOND)]
+
+
+# ---------------------------------------------------------------------------
 # Failure paths — every one must raise, never return a partial forecast
 # ---------------------------------------------------------------------------
 
