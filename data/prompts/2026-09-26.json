@@ -12,7 +12,7 @@
     },
     {
       "issued_at": "2026-09-26T15:12:00.474258+00:00",
-      "llm_model": "nex-agi/nex-n2.5-pro:free",
+      "llm_model": "dots-studio/dots-3-note-preview:free",
       "system_prompt_sha256": "aaed19a3b9d3037b09eec025e0551907deed2aed09ca452b5fedd989c70558c8",
       "judgment_prompt_sha256": "cc8db45665e44fc70dc72776d77d750c3b66c598f58d1683d9f131140cc630a2",
       "narrative_prompt_sha256": "f2fc0b99e5bb29863819b7ac7a1de831dcaf200b96dab631f043927db9e75fb5",

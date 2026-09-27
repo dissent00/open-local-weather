@@ -26232,11 +26232,43 @@ uses a connection error.
 but the app never sets `fallbackModels`, so it never sends a list and cannot
 be served another model. A field nothing reads would be inert.
 
-**Not done.** The 09-26 entry still names nex. Correcting a stored entry is
-the operator's call. Which model served earlier OpenRouter calls (09-25
-15:13Z and before) is on the console, not in our record. The first real
+**The 09-26 entry was corrected 2026-09-27, the operator's decision.**
+`meta.llm_model`, the prompt archive's copy of it for the 15:12Z issuance,
+and the header of `docs/archive/2026-09-26.html` now name dots-3-note, on
+the evidence of OpenRouter's console. The degradation text still says
+"OpenAICompatProvider (nex-agi/nex-n2.5-pro:free) not asked for the
+narrative", which names the LINK and is true. The ledger row keeps `model`
+as asked, with no `served_model`, because it was written before the field
+existed.
+
+**Not done.** Which model served earlier OpenRouter calls (09-25 15:13Z and
+before) is on the console, not in our record. The first real
 `response_model` value, and so the spelling OpenRouter uses, arrives with
 the next call that reaches OpenRouter.
+
+---
+
+## 185. An earlier issuance's page credits the later issuance's model · **Open, 2026-09-27**
+
+Found while correcting item 184. `_entry_as_morning_view` rebuilds the day's
+first issuance for its "-morning" page from the stored `IssuanceSnapshot`,
+and overrides `meta`'s time and degradations with the snapshot's. It keeps
+`meta.llm_model`, which is the LATEST run's, because the snapshot has no
+model to override it with.
+
+So a day whose later run fell back credits the fallback on the morning page
+too. The prompt archive records who served each issuance:
+
+| page | says | the issuance was served by |
+|---|---|---|
+| 2026-09-25-morning | nex-n2.5-pro | gemini-3.6-flash (04:09Z) |
+| 2026-09-26-morning | nex-n2.5-pro | gemini-3.6-flash (03:03Z) |
+| 2026-09-24-morning | nex-n2.5-pro | nex-n2.5-pro, as recorded (03:59Z) |
+
+The fix is the snapshot carrying the model and the view using it. The same
+code comment already names this class: an archived page that reports what
+the evening run did "is the same class of lie the snapshot exists to
+prevent". Not fixed and the pages not corrected — the operator's call.
 
 ---
 
