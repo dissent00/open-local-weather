@@ -1476,7 +1476,8 @@
       "guidance_initialised_at": "2026-09-25T18:00:00Z",
       "guidance_age_hours": 9.022172184166667,
       "guidance_source": "observed",
-      "degradations": []
+      "degradations": [],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": null,

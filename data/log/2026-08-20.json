@@ -367,7 +367,8 @@
     "guidance_initialised_at": null,
     "guidance_age_hours": null,
     "guidance_source": null,
-    "degradations": null
+    "degradations": null,
+    "llm_model": "gemini-3.6-flash"
   },
   "guidance_initialised_at": null,
   "guidance_age_hours": null,

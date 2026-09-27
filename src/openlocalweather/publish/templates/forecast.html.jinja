@@ -42,7 +42,7 @@
   {% endif %}
 
   <h1>{{ location.primary_place_name }}</h1>
-  <p class="meta">Forecast for {{ entry.date.isoformat() }} &middot; multi-model synthesis via {{ entry.meta.llm_model }}{% if issuance_label %} &middot; {{ issuance_label }}{% endif %}</p>
+  <p class="meta">Forecast for {{ entry.date.isoformat() }}{% if entry.meta.llm_model %} &middot; multi-model synthesis via {{ entry.meta.llm_model }}{% endif %}{% if issuance_label %} &middot; {{ issuance_label }}{% endif %}</p>
 
   {# Deliberately a SINGLE forecast per page — no stacking of morning and
      evening content together. That was tried and reverted: it buried

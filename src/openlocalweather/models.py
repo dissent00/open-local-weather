@@ -1554,6 +1554,13 @@ class IssuanceSnapshot(BaseModel):
     # answer, not the evening's.
     degradations: list[RunDegradation] | None = None
 
+    # THE MODEL THAT MADE THIS ISSUANCE — ROADMAP item 185. Its page read
+    # `meta.llm_model`, which is the LATEST run's, so a day whose evening run
+    # fell back credited the fallback for the morning too: the 09-25 and 09-26
+    # morning pages named nex-n2.5-pro for forecasts Gemini made. None means
+    # the snapshot never recorded one, and the page then names no model.
+    llm_model: str | None = None
+
 
 class LocalBulletinRecord(BaseModel):
     """The local met service's own bulletin, stored verbatim as fetched.
@@ -1904,6 +1911,7 @@ class DailyLogEntry(BaseModel):
             guidance_age_hours=self.guidance_age_hours,
             guidance_source=self.guidance_source,
             degradations=self.meta.degradations,
+            llm_model=self.meta.llm_model,
         )
 
     def issuance_log(self) -> list[IssuanceSnapshot]:

@@ -209,6 +209,45 @@ def test_render_forecast_page_morning_view_shows_only_morning_content():
     assert "Updated" not in html
 
 
+def _fell_back_in_the_evening(morning_model):
+    """09-26's shape: Gemini made the morning forecast, and the evening run
+    fell back to OpenRouter, which served dots-3-note."""
+    entry = _refreshed_entry()
+    return entry.model_copy(
+        update={
+            "morning_issuance": entry.morning_issuance.model_copy(update={"llm_model": morning_model}),
+            "meta": entry.meta.model_copy(update={"llm_model": "dots-studio/dots-3-note-preview:free"}),
+        }
+    )
+
+
+def test_the_morning_page_credits_the_model_that_made_the_morning_forecast():
+    """ROADMAP item 185. The view took `meta` from the entry, which is the
+    LATEST run's, so the 09-25 and 09-26 morning pages credited nex-n2.5-pro
+    for forecasts Gemini made."""
+    entry = _fell_back_in_the_evening("gemini-3.6-flash")
+    nav = build_nav_links("https://example.com", "owner/repo")
+
+    morning = render_forecast_page(_entry_as_morning_view(entry), LOCATION, nav, is_latest=False)
+    evening = render_forecast_page(entry, LOCATION, nav, is_latest=True)
+
+    assert "synthesis via gemini-3.6-flash" in morning
+    assert "dots-3-note" not in morning
+    assert "synthesis via dots-studio/dots-3-note-preview:free" in evening
+
+
+def test_a_snapshot_that_recorded_no_model_credits_none():
+    """Absence is absence: a snapshot taken before item 185 has no model, and
+    borrowing the latest run's is the error this fixes."""
+    entry = _fell_back_in_the_evening(None)
+    nav = build_nav_links("https://example.com", "owner/repo")
+
+    morning = render_forecast_page(_entry_as_morning_view(entry), LOCATION, nav, is_latest=False)
+
+    assert "dots-3-note" not in morning
+    assert "synthesis via" not in morning
+
+
 def test_render_forecast_page_archived_banner_only_when_not_latest():
     entry = make_entry(date(2026, 8, 11))
     nav = build_nav_links("https://example.com", "owner/repo")

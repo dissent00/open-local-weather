@@ -1345,7 +1345,8 @@
           "summary": "The nearest airport's readings for today were not available, so this forecast could not be checked against what has already been measured locally.",
           "detail": "HKKI answered with rows this run could not read for 2026-09-19."
         }
-      ]
+      ],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": null,

@@ -4897,6 +4897,23 @@ def test_the_entry_and_the_ledger_name_the_model_the_gateway_served(tmp_path):
     assert {(r.model, r.served_model) for r in rows} == {(asked, served)}
 
 
+def test_a_later_run_keeps_the_earlier_issuances_model(tmp_path):
+    """ROADMAP item 185, through two real issuances. The snapshot a later
+    run takes must carry the model that made the earlier forecast, or the
+    earlier issuance's page credits the later run's."""
+    morning = FakeLLMProvider()
+    morning.model = "gemini-3.6-flash"
+    evening = FakeLLMProvider()
+    evening.model = "dots-studio/dots-3-note-preview:free"
+
+    issue(make_deps(tmp_path, llm=morning), today=date(2026, 8, 11), dry_run=False)
+    issue(make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_model == "dots-studio/dots-3-note-preview:free"
+    assert [s.llm_model for s in entry.earlier_issuances] == ["gemini-3.6-flash"]
+
+
 def test_an_unchained_provider_is_named_exactly_as_before(tmp_path):
     """The ordinary deployment. Item 171 changed where the name comes from,
     and a run with no chain must be unaffected by that."""

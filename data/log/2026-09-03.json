@@ -557,7 +557,8 @@
       "guidance_initialised_at": "2026-09-02T18:00:00Z",
       "guidance_age_hours": 9.0226140575,
       "guidance_source": "observed",
-      "degradations": []
+      "degradations": [],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": {
@@ -605,7 +606,8 @@
     "guidance_initialised_at": "2026-09-02T18:00:00Z",
     "guidance_age_hours": 9.0226140575,
     "guidance_source": "observed",
-    "degradations": []
+    "degradations": [],
+    "llm_model": "gemini-3.6-flash"
   },
   "guidance_initialised_at": "2026-09-03T06:00:00Z",
   "guidance_age_hours": 9.027750835277779,

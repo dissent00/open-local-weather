@@ -563,7 +563,8 @@
           "summary": "Part of tonight's data did not arrive. This forecast covers the rest of today only — where it says nothing about later tonight, that is missing information, not a quiet night.",
           "detail": "The forward hourly window did not arrive, so the hours-ahead guidance and the convective outlook were trimmed from the day-0 fetch instead, which stops at 23:00 local. New model guidance is usually in by about 11:00 local; a forecast made after that would normally have the full window."
         }
-      ]
+      ],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": {
@@ -617,7 +618,8 @@
         "summary": "Part of tonight's data did not arrive. This forecast covers the rest of today only — where it says nothing about later tonight, that is missing information, not a quiet night.",
         "detail": "The forward hourly window did not arrive, so the hours-ahead guidance and the convective outlook were trimmed from the day-0 fetch instead, which stops at 23:00 local. New model guidance is usually in by about 11:00 local; a forecast made after that would normally have the full window."
       }
-    ]
+    ],
+    "llm_model": "gemini-3.6-flash"
   },
   "guidance_initialised_at": "2026-09-01T06:00:00Z",
   "guidance_age_hours": 9.26638986888889,

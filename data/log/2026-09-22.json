@@ -1632,7 +1632,8 @@
           "summary": "The nearest airport's archive did not answer, so this forecast used the reports stored by earlier runs today, through 05:00.",
           "detail": "The archive gave no usable answer for HKKI on 2026-09-22: HTTP 503 after 3 attempts; first line: 'ERROR: server over capacity, please try later'"
         }
-      ]
+      ],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": null,

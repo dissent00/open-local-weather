@@ -157,6 +157,9 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
                     "generated_at_utc": m.generated_at_utc,
                     "refreshed_at": None,
                     "degradations": m.degradations,
+                    # Same for the model — item 185. Empty, not the current
+                    # run's, when the snapshot never recorded one.
+                    "llm_model": m.llm_model or "",
                 }
             ),
         }

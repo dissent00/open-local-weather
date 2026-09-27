@@ -573,7 +573,8 @@
       "guidance_initialised_at": "2026-08-28T12:00:00Z",
       "guidance_age_hours": 12.027316578888888,
       "guidance_source": "observed",
-      "degradations": null
+      "degradations": null,
+      "llm_model": "gemini-3.6-flash"
     },
     {
       "rain_expected": "Dry / No Rain",
@@ -620,7 +621,8 @@
       "guidance_initialised_at": "2026-08-28T18:00:00Z",
       "guidance_age_hours": 9.028734183888888,
       "guidance_source": "observed",
-      "degradations": null
+      "degradations": null,
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": {
@@ -668,7 +670,8 @@
     "guidance_initialised_at": "2026-08-28T12:00:00Z",
     "guidance_age_hours": 12.027316578888888,
     "guidance_source": "observed",
-    "degradations": null
+    "degradations": null,
+    "llm_model": "gemini-3.6-flash"
   },
   "guidance_initialised_at": "2026-08-29T06:00:00Z",
   "guidance_age_hours": 9.022881236944444,

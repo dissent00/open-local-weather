@@ -26248,7 +26248,7 @@ the next call that reaches OpenRouter.
 
 ---
 
-## 185. An earlier issuance's page credits the later issuance's model · **Open, 2026-09-27**
+## 185. An earlier issuance's page credits the later issuance's model · **SHIPPED 2026-09-27**
 
 Found while correcting item 184. `_entry_as_morning_view` rebuilds the day's
 first issuance for its "-morning" page from the stored `IssuanceSnapshot`,
@@ -26265,10 +26265,36 @@ too. The prompt archive records who served each issuance:
 | 2026-09-26-morning | nex-n2.5-pro | gemini-3.6-flash (03:03Z) |
 | 2026-09-24-morning | nex-n2.5-pro | nex-n2.5-pro, as recorded (03:59Z) |
 
-The fix is the snapshot carrying the model and the view using it. The same
-code comment already names this class: an archived page that reports what
-the evening run did "is the same class of lie the snapshot exists to
-prevent". Not fixed and the pages not corrected — the operator's call.
+The same code comment already names this class: an archived page that
+reports what the evening run did "is the same class of lie the snapshot
+exists to prevent".
+
+**Fixed on the operator's decision.** `IssuanceSnapshot.llm_model` is copied
+from `meta.llm_model` when a later run takes the snapshot, and the view uses
+it. A snapshot without one renders no "synthesis via" clause at all rather
+than borrowing the latest run's; the template gained the guard.
+`spec/day_entry.schema.json` gains the optional field. Three tests were
+watched failing first, and removing any one of the four pieces fails at
+least one.
+
+**Backfilled, all 38 snapshots** (50 stored copies: the 12 days from 08-28 to
+09-13 hold their first issuance in both `morning_issuance` and
+`earlier_issuances`),
+by `tools/backfill_snapshot_models.py`. Its source is the entry as that
+issuance's own run committed it: the git commit whose `refreshed_at or
+generated_at_utc` equals the snapshot's time, and its `meta.llm_model`. The
+prompt archive covers 14 of the 38, from 09-05, and agreed on all 14. None
+was skipped. The diff is the new key and a comma on the line before it.
+
+**Pages.** Checked every `-morning` page against its snapshot's model: 34
+matched, and 09-25 and 09-26 were wrong. Both headers now name
+gemini-3.6-flash, which is what the fixed code renders for them.
+
+**Not checked, and one more of the same.** A day's middle issuances have no
+page, so only first issuances were compared. The 09-22 EVENING entry still
+names gemini-3.6-flash although item 171 records nemotron serving it; that
+is item 171's own misattribution, never corrected in the record, and not
+touched here.
 
 ---
 

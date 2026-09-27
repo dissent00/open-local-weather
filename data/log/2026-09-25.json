@@ -1600,7 +1600,8 @@
           "summary": "Today's figures are here, but the write-up that normally explains them could not be produced this time. The numbers are the same ones this forecast is scored on.",
           "detail": "The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: https://openrouter.ai/api/v1 was still answering after 1700s; abandoned"
         }
-      ]
+      ],
+      "llm_model": "gemini-3.6-flash"
     }
   ],
   "morning_issuance": null,
