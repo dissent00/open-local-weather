@@ -12213,7 +12213,7 @@ sources filling one column), item 77 (the harness), item 74.
 
 ---
 
-## 87. The prompt bans four variables and then hands three of them over · **Cloud parsed 2026-09-09 and scored 2026-09-10; dew point and visibility remain out**
+## 87. The prompt bans four variables and then hands three of them over · **CLOSED 2026-09-28 — cloud parsed, stored, scored and on the tiles; dew point and visibility stay out**
 
 Found 2026-09-08 by a cold worker model, which reported visibility and cloud
 base in a forecast, suppressed dew point, and flagged the inconsistency
@@ -12506,6 +12506,16 @@ cross-check pattern a satellite product would later follow), item 83 (which
 needs a sky label), item 67 (why a stale point observation does not belong in
 a forecast section), item 73, item 77 (the harness that found it), item 58
 (brier_checks, the same sample-size lesson one field earlier).
+
+### Closed 2026-09-28, the operator's decision
+
+Each variable got its decision. Cloud became an observed variable: parsed
+from the METAR, stored twice (station oktas and reanalysis percent),
+scored per model, and named on the tiles at three anchors (item 159). Dew
+point and visibility stay out for the reason written on 09-09: one airport
+at one moment, which the forecaster may reason from but not print. Fog, if
+it is ever wanted, is item 84's register. Cloud's remaining questions live
+in item 123.
 
 ---
 
@@ -18503,7 +18513,7 @@ is why that sentence is here.
 Related: items 121 (which raised it), 104 (C7 and C9, and the write-once rule
 this must respect), 102, 100.
 
-## 123. The Overview reports how the sky CHANGED, so a persistently cloudy day is never mentioned · **LARGELY ANSWERED by item 159 step 2 — read the 2026-09-22 note at the end before building anything** · **Planned — raised 2026-09-14**
+## 123. The Overview reports how the sky CHANGED, so a persistently cloudy day is never mentioned · **LARGELY ANSWERED by item 159 step 2; the calibration plan measured and dropped 2026-09-28 — read the notes at the end of this item and at item 132's end**
 
 Operator, on the 2026-09-14 forecast:
 
@@ -18655,6 +18665,40 @@ field is a different question and is not blocked by it.
 
 Related: items 121 (the observed block, which already carries the solid half),
 83 and 65 (the comparison and the cloud data), 87, 100.
+
+### 2026-09-28: the calibration plan measured, and dropped
+
+The recorded design was to correct each model's cloud by its measured bias,
+as `calibration.py` corrects the gust, and to gate a sky claim on the
+corrected spread. The finding fired: every model has 10 Day+0 cloud checks.
+Measured out of sample against the reanalysis, each day corrected only from
+the days before it:
+
+| window | days | mean abs error, plain mean → corrected | difference ± 1 SE | corrected closer | sky word right, plain / corrected |
+|---|---|---|---|---|---|
+| 5 | 13 | 8.6 → 8.7 | +0.1 ± 1.6 | 7/13 | 10/13 / 10/13 |
+| 10 | 8 | 9.2 → 12.2 | +2.9 ± 1.2 | 2/8 | 7/8 / 6/8 |
+
+Correction halves the spread between models (median 48 → 25 points), but
+the consensus it gates is no more accurate. The biases also move: GFS was
+−34 at four checks on 09-14 and is −6 at ten; UKMO went from +14 to +30.
+**Dropped, the operator's decision; revisit at 30 checks.** The plain mean
+stays. Item 158 step 3's pointer to this plan is superseded.
+
+**A "cloudy again" clause would speak nearly every day.** Spoken when
+yesterday's observed sky and today's forecast share a band, it would have
+spoken on 15 of 18 days and been right on 11 of those. That is the daily
+sentence item 159 retired.
+
+**Whether the write-up contradicts the tile cannot be measured yet,**
+because the record keeps the tile's sky only from the day's latest run.
+An 18:01 run replaces `cloud_anchors` and `wind_anchors` with empty lists,
+and the morning's snapshot does not keep them. Git still has them: 09-27's
+06:01 commit holds Mostly cloudy, Partly cloudy, Mostly cloudy, and its
+18:01 commit holds none. Of the days since the tiles began, only 09-23 has
+both a write-up and a stored tile. Its write-up used "sunny" beside a tile
+reading Mostly cloudy, Mostly cloudy, Overcast. That is one day, not a
+finding.
 
 ## 124. A feed is the delivery path that needs no credentials · **Planned — raised 2026-09-14**
 
@@ -24471,6 +24515,10 @@ check, and gate the label on the CALIBRATED spread. On 09-18 (GFS and
 ICON at 98, the other three at 51–57; "clearer than yesterday" from a
 91% yesterday) that spread collapses if the biases hold. Not sized from
 four checks (item 100).
+
+> **Dropped 2026-09-28 after measurement, item 123:** corrected cloud was no
+> more accurate out of sample (8.6 → 8.7 points, and 9.2 → 12.2 with the
+> 10-day window). Revisit at 30 checks.
 
 ### Step 4 SHIPPED 2026-09-18 — the duplicate written down, marked, said once, and re-measured weekly
 
