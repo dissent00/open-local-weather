@@ -1633,7 +1633,39 @@
           "detail": "The archive gave no usable answer for HKKI on 2026-09-22: HTTP 503 after 3 attempts; first line: 'ERROR: server over capacity, please try later'"
         }
       ],
-      "llm_model": "gemini-3.6-flash"
+      "llm_model": "gemini-3.6-flash",
+      "cloud_anchors": [
+        {
+          "cover": "Overcast",
+          "when": "early"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "midday"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "evening"
+        }
+      ],
+      "wind_anchors": [
+        {
+          "gust_kmh": 5.3,
+          "sustained_kmh": 3.6,
+          "when": "early"
+        },
+        {
+          "direction": "SW",
+          "gust_kmh": 17.7,
+          "sustained_kmh": 8.0,
+          "when": "midday"
+        },
+        {
+          "gust_kmh": 16.9,
+          "sustained_kmh": 7.1,
+          "when": "evening"
+        }
+      ]
     }
   ],
   "morning_issuance": null,

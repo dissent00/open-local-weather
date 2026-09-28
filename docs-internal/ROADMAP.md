@@ -69,10 +69,10 @@ write-up asked.
    forecast back, or back to direct plus gateway if submits are refused
    like direct calls, because each refusal then costs about 2 units instead
    of 1.
-2. **Items 87 and 123 are unblocked.** `cloud_checks_in_window_10` is 10 for
-   all five models on 09-28, the count they were waiting for. Read 123's
-   2026-09-22 note first: the tiles answered most of it, and what remains is
-   the write-up's half.
+2. **Items 87 and 123, worked the same day.** 87 is closed. The cloud
+   calibration plan was measured and dropped (no gain out of sample; revisit
+   at 30 checks). 123's write-up half waits on data: snapshots now keep each
+   run's tile, and the write-up is measured against it around 10-12.
 3. **The 09-22 evening entry** still credits gemini-3.6-flash for OpenRouter
    calls at 15:20Z and 15:31Z. It waits on the operator's OpenRouter
    activity for which model served them; our record holds only the one
@@ -18700,6 +18700,33 @@ both a write-up and a stored tile. Its write-up used "sunny" beside a tile
 reading Mostly cloudy, Mostly cloudy, Overcast. That is one day, not a
 finding.
 
+### 2026-09-28: each run's tile is kept, and the question waits on data
+
+**The operator's decision:** no "cloudy again" clause, and measure the
+write-up against the tile before deciding whether the write-up should be
+handed the tile's words, as item 160 did for wind.
+
+**The prerequisite shipped.** `IssuanceSnapshot` keeps `cloud_anchors` and
+`wind_anchors`, copied when a later run takes it, so an 18:01 run no longer
+erases the morning tile. An archived morning page shows its own sky and wind
+where its snapshot has them. None means the snapshot predates this, and the
+page still shows none rather than borrowing the latest run's. The pipeline
+test that held snapshots to carrying no anchors was guarding against a
+different mistake: anchors living on the snapshot INSTEAD of the entry. It
+now points at the new test, and its entry-level assertions stand.
+
+**Backfilled** by `tools/backfill_snapshots.py` from each run's own commit:
+six morning snapshots since the tiles began (09-22, both 09-24 issuances,
+09-25, 09-26, 09-27), with none skipped. Snapshots from before the tiles stay
+None. The six morning pages already published were not re-rendered: they
+show no tile, which is a gap rather than an error.
+
+**Measure around 2026-10-12**, after about two weeks of issuances that keep
+both a write-up and a tile. Count how often the write-up names a sky
+different from its own tile's words. If that is more than rare, give the
+write-up the tile's words. The 09-23 case, "sunny" beside an all-cloudy
+tile, is the kind to count.
+
 ## 124. A feed is the delivery path that needs no credentials · **Planned — raised 2026-09-14**
 
 Raised while answering whether GitHub can mail a subscriber list. It cannot —
@@ -26475,7 +26502,7 @@ least one.
 **Backfilled, all 38 snapshots** (50 stored copies: the 12 days from 08-28 to
 09-13 hold their first issuance in both `morning_issuance` and
 `earlier_issuances`),
-by `tools/backfill_snapshot_models.py`. Its source is the entry as that
+by `tools/backfill_snapshots.py` (renamed 2026-09-28, item 123). Its source is the entry as that
 issuance's own run committed it: the git commit whose `refreshed_at or
 generated_at_utc` equals the snapshot's time, and its `meta.llm_model`. The
 prompt archive covers 14 of the 38, from 09-05, and agreed on all 14. None

@@ -2251,7 +2251,41 @@
           "detail": "The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: LLM returned empty content (finish_reason='error')."
         }
       ],
-      "llm_model": "nex-agi/nex-n2.5-pro:free"
+      "llm_model": "nex-agi/nex-n2.5-pro:free",
+      "cloud_anchors": [
+        {
+          "cover": "Mostly cloudy",
+          "when": "early"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "midday"
+        },
+        {
+          "cover": "Overcast",
+          "when": "evening"
+        }
+      ],
+      "wind_anchors": [
+        {
+          "direction": "NNE",
+          "gust_kmh": 6.4,
+          "sustained_kmh": 3.5,
+          "when": "early"
+        },
+        {
+          "direction": "SW",
+          "gust_kmh": 20.0,
+          "sustained_kmh": 9.4,
+          "when": "midday"
+        },
+        {
+          "direction": "W",
+          "gust_kmh": 21.4,
+          "sustained_kmh": 10.8,
+          "when": "evening"
+        }
+      ]
     },
     {
       "rain_expected": "Afternoon & Evening Thunderstorms",
@@ -2305,7 +2339,41 @@
           "detail": "The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: https://openrouter.ai/api/v1 was still answering after 1700s; abandoned"
         }
       ],
-      "llm_model": "nex-agi/nex-n2.5-pro:free"
+      "llm_model": "nex-agi/nex-n2.5-pro:free",
+      "cloud_anchors": [
+        {
+          "cover": "Mostly cloudy",
+          "when": "early"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "midday"
+        },
+        {
+          "cover": "Overcast",
+          "when": "evening"
+        }
+      ],
+      "wind_anchors": [
+        {
+          "direction": "NNE",
+          "gust_kmh": 6.4,
+          "sustained_kmh": 3.5,
+          "when": "early"
+        },
+        {
+          "direction": "SW",
+          "gust_kmh": 19.7,
+          "sustained_kmh": 9.1,
+          "when": "midday"
+        },
+        {
+          "direction": "W",
+          "gust_kmh": 22.8,
+          "sustained_kmh": 11.7,
+          "when": "evening"
+        }
+      ]
     }
   ],
   "morning_issuance": null,

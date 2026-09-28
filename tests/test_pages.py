@@ -248,6 +248,44 @@ def test_a_snapshot_that_recorded_no_model_credits_none():
     assert "synthesis via" not in morning
 
 
+def _with_tiles(morning_cloud, morning_wind):
+    """The evening has no anchor left ahead, as on 09-27; the morning's own
+    tile words ride on its snapshot, or are None where it predates them."""
+    entry = _refreshed_entry()
+    return entry.model_copy(
+        update={
+            "cloud_anchors": [{"when": "evening", "cover": "Mostly clear"}],
+            "wind_anchors": [],
+            "morning_issuance": entry.morning_issuance.model_copy(
+                update={"cloud_anchors": morning_cloud, "wind_anchors": morning_wind}
+            ),
+        }
+    )
+
+
+def test_the_morning_page_shows_its_own_tile_words():
+    """ROADMAP item 123. The morning page cleared its sky and wind because
+    its snapshot had none to give; now it keeps them and shows its own."""
+    cloud = [{"when": "early", "cover": "Overcast"}, {"when": "midday", "cover": "Mostly cloudy"}]
+    wind = [{"when": "midday", "direction": "SSW", "sustained_kmh": 8.8, "gust_kmh": 20.1}]
+    view = _entry_as_morning_view(_with_tiles(cloud, wind))
+
+    assert view.cloud_anchors == cloud
+    assert view.wind_anchors == wind
+    html = render_forecast_page(view, LOCATION, build_nav_links("https://example.com", "owner/repo"), is_latest=False)
+    assert "Overcast" in html
+    assert "Mostly clear" not in html
+
+
+def test_a_snapshot_without_tile_words_borrows_none():
+    """Absence is absence, as for the model: a snapshot taken before these
+    were kept shows no sky rather than the latest run's."""
+    view = _entry_as_morning_view(_with_tiles(None, None))
+
+    assert view.cloud_anchors == []
+    assert view.wind_anchors == []
+
+
 def test_render_forecast_page_archived_banner_only_when_not_latest():
     entry = make_entry(date(2026, 8, 11))
     nav = build_nav_links("https://example.com", "owner/repo")

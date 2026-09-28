@@ -510,6 +510,24 @@
           "default": null,
           "title": "Air Quality Aqi"
         },
+        "cloud_anchors": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cloud Anchors"
+        },
         "degradations": {
           "anyOf": [
             {
@@ -685,6 +703,22 @@
           ],
           "default": null,
           "title": "Whatsapp Summary"
+        },
+        "wind_anchors": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wind Anchors"
         }
       },
       "required": [

@@ -4740,9 +4740,12 @@ def test_the_tiles_anchors_survive_the_entry_that_is_written(tmp_path, monkeypat
         {"when": "evening", "direction": "S", "sustained_kmh": 18.0, "gust_kmh": 28.8},
     ]
 
-    # and a snapshot of an EARLIER issuance must not carry them at all
-    assert "cloud_anchors" not in IssuanceSnapshot.model_fields
-    assert "wind_anchors" not in IssuanceSnapshot.model_fields
+    # A snapshot of an EARLIER issuance used to be held to carrying none of
+    # them, so they could never again live there INSTEAD of on the entry.
+    # Since item 123 (2026-09-28) it keeps its own copy as WELL, and what the
+    # old guard protected is the pair of assertions above: the entry's own
+    # fields, read back off disk. The snapshot's copy is pinned by
+    # test_a_later_run_keeps_the_earlier_issuances_tile_words.
 
 
 def test_the_index_halves_are_on_the_day_record(tmp_path, monkeypatch):
@@ -5088,6 +5091,26 @@ def test_a_later_run_keeps_the_earlier_issuances_model(tmp_path):
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.meta.llm_model == "dots-studio/dots-3-note-preview:free"
     assert [s.llm_model for s in entry.earlier_issuances] == ["gemini-3.6-flash"]
+
+
+def test_a_later_run_keeps_the_earlier_issuances_tile_words(tmp_path, monkeypatch):
+    """ROADMAP item 123. The tile's sky and wind at the three anchors were
+    kept only for the day's LATEST run: an 18:01 run, with every anchor
+    behind it, replaced them with empty lists, and the morning's snapshot
+    did not keep them. So nothing could say what the morning tile told a
+    reader, or whether its write-up agreed with it."""
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 1))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    morning = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert morning.cloud_anchors and morning.wind_anchors, "the fixture's morning has no tile to keep"
+
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 18, 1))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+
+    snapshot = entry.earlier_issuances[0]
+    assert snapshot.cloud_anchors == morning.cloud_anchors
+    assert snapshot.wind_anchors == morning.wind_anchors
 
 
 def test_an_unchained_provider_is_named_exactly_as_before(tmp_path):

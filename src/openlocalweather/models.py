@@ -1561,6 +1561,15 @@ class IssuanceSnapshot(BaseModel):
     # the snapshot never recorded one, and the page then names no model.
     llm_model: str | None = None
 
+    # THE TILE'S SKY AND WIND AT THE THREE ANCHORS — ROADMAP item 123. Kept
+    # only for the day's LATEST run until 2026-09-28: an 18:01 run, with every
+    # anchor behind it, replaced them with empty lists, so what the morning
+    # tile told a reader was nowhere in the record, and whether its write-up
+    # agreed could not be measured. None means the snapshot predates them;
+    # [] means the run had no anchor ahead.
+    cloud_anchors: list[dict[str, str]] | None = None
+    wind_anchors: list[dict[str, object]] | None = None
+
 
 class LocalBulletinRecord(BaseModel):
     """The local met service's own bulletin, stored verbatim as fetched.
@@ -1912,6 +1921,8 @@ class DailyLogEntry(BaseModel):
             guidance_source=self.guidance_source,
             degradations=self.meta.degradations,
             llm_model=self.meta.llm_model,
+            cloud_anchors=self.cloud_anchors,
+            wind_anchors=self.wind_anchors,
         )
 
     def issuance_log(self) -> list[IssuanceSnapshot]:

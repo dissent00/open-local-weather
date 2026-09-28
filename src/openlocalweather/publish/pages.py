@@ -131,16 +131,17 @@ def _entry_as_morning_view(entry: DailyLogEntry) -> DailyLogEntry:
             "synoptic_pattern": m.synoptic_pattern,
             "uv_index_max": m.uv_index_max,
             "air_quality_aqi": m.air_quality_aqi,
-            # CLEARED, NOT COPIED: an IssuanceSnapshot does not carry these,
-            # so this page has no record of them and must not borrow the
-            # CURRENT run's. Leaving them alone would hand a page labelled
-            # "Morning" the evening run's sky, its wind and the halves of its
-            # UV and AQI, sitting beside that morning's own display strings.
-            # ROADMAP item 159 steps 2-4 put all four on the day record
-            # deliberately, because the tiles always show the current run —
-            # which is exactly why an archived page cannot have them.
-            "cloud_anchors": [],
-            "wind_anchors": [],
+            # CLEARED, NOT COPIED, where the snapshot has no record: this page
+            # must not borrow the CURRENT run's. Leaving them alone would hand
+            # a page labelled "Morning" the evening run's sky, its wind and the
+            # halves of its UV and AQI, beside that morning's own display
+            # strings. ROADMAP item 159 steps 2-4 put all four on the day
+            # record deliberately, because the tiles always show the current
+            # run. The sky and wind are snapshotted since item 123
+            # (2026-09-28), so a morning page shows its own; a snapshot that
+            # never recorded them, and the UV and AQI halves, still show none.
+            "cloud_anchors": m.cloud_anchors if m.cloud_anchors is not None else [],
+            "wind_anchors": m.wind_anchors if m.wind_anchors is not None else [],
             "uv_index": None,
             "air_quality_index": None,
             "ground_aqi": m.ground_aqi,

@@ -1660,7 +1660,40 @@
       "guidance_age_hours": 9.022172184166667,
       "guidance_source": "observed",
       "degradations": [],
-      "llm_model": "gemini-3.6-flash"
+      "llm_model": "gemini-3.6-flash",
+      "cloud_anchors": [
+        {
+          "cover": "Mostly cloudy",
+          "when": "early"
+        },
+        {
+          "cover": "Mostly clear",
+          "when": "midday"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "evening"
+        }
+      ],
+      "wind_anchors": [
+        {
+          "direction": "NNE",
+          "gust_kmh": 7.8,
+          "sustained_kmh": 4.3,
+          "when": "early"
+        },
+        {
+          "direction": "SSW",
+          "gust_kmh": 19.6,
+          "sustained_kmh": 8.0,
+          "when": "midday"
+        },
+        {
+          "gust_kmh": 17.7,
+          "sustained_kmh": 8.8,
+          "when": "evening"
+        }
+      ]
     }
   ],
   "morning_issuance": null,

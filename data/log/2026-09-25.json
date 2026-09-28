@@ -1601,7 +1601,40 @@
           "detail": "The rendering call failed after its retries while the judgment call had already succeeded, so the scored prediction was published without a narrative: https://openrouter.ai/api/v1 was still answering after 1700s; abandoned"
         }
       ],
-      "llm_model": "gemini-3.6-flash"
+      "llm_model": "gemini-3.6-flash",
+      "cloud_anchors": [
+        {
+          "cover": "Mostly cloudy",
+          "when": "early"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "midday"
+        },
+        {
+          "cover": "Mostly cloudy",
+          "when": "evening"
+        }
+      ],
+      "wind_anchors": [
+        {
+          "direction": "NNE",
+          "gust_kmh": 11.6,
+          "sustained_kmh": 5.3,
+          "when": "early"
+        },
+        {
+          "direction": "SW",
+          "gust_kmh": 19.2,
+          "sustained_kmh": 8.3,
+          "when": "midday"
+        },
+        {
+          "gust_kmh": 17.5,
+          "sustained_kmh": 8.5,
+          "when": "evening"
+        }
+      ]
     }
   ],
   "morning_issuance": null,
