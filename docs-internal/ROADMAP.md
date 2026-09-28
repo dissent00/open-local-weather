@@ -26595,6 +26595,40 @@ sentence was written with it, not before it.
 **Not checked:** whether the daily mean's word is right at leads beyond
 Day+0, and any production-chain model.
 
+### 2026-09-28: the SKY BY DAY word measured beyond today
+
+`tools/sky_lead_skill.py` runs the shipped `sky_by_day` on every archived
+issuance since 09-18, the first with daily cloud, and scores it against the
+reanalysis daily mean. There are ten target days, 09-18 to 09-27. First
+issuances:
+
+| lead | n | word right | within a band | bias, forecast minus observed |
+|---|---|---|---|---|
+| 0 | 9 | 7 | 9 | -3.9 |
+| 1-3 | 21 | 13 | 21 | -18 to -21 |
+| 4-6 | 12 | 10 | 12 | -13 to -24 |
+| 7 | 2 | 0 | 0 | -53 |
+
+**Beyond today the words run clear.** All 12 misses at leads 1-7 are on the
+clear side: ten Partly cloudy on a Mostly cloudy day, and two Mostly clear
+at lead 7. **A constant does better on this sample:** eight of the ten days
+were Mostly cloudy, so "always Mostly cloudy" scores 8/10, in-sample,
+against 13/21 at leads 1-3.
+
+**By model, first issuances:** ECMWF and best_match sit within 4 points at
+lead 0 and at -19 to -28 beyond it. UKMO is -33 at lead 0 and -45 to -53
+beyond. GFS drifts to -11 at leads 4-7. ICON stays within +8. So the mean
+is right at lead 0 by cancellation, as item 158 step 3 found, and beyond it
+the cancellation fails.
+
+**The block did not create this.** Before it, the rule told the writer to
+take the same daily means by eye; the block makes the word consistent, and
+this measures what it says.
+
+**Not decided, and why:** ten target days in one regime. A per-model,
+per-lead correction sized from them is item 100's trap, and item 123 found
+correction no help at Day+0. Re-run the tool at about 30 target days.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
