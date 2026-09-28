@@ -919,6 +919,15 @@ def test_the_sky_is_the_tiles_words_and_never_a_split_between_models():
     assert "two-way split said in words" not in narrative
 
 
+def test_the_extended_outlook_is_told_to_say_the_sky():
+    """Item 187's harness run: a rule saying only where the sky came from
+    was followed by three of three Haiku write-ups leaving it out."""
+    outlook = _section(build_narrative_prompt(KISUMU), "Extended Outlook")
+
+    assert "SAY THE SKY BEYOND TODAY" in outlook
+    assert "never as a split between models" in outlook
+
+
 def test_the_write_up_does_not_narrate_a_weighting_it_did_not_do():
     """Item 187 finding 2: 14 of 15 Confidence Notes narrated one as fact.
 

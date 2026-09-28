@@ -26519,6 +26519,25 @@ were ranges, converted correctly). So it is Haiku's error, not production's.
 **Not checked:** Gemini or any production-chain model; any day but one; the
 18:01 path, which gets no sky block.
 
+### 2026-09-28: the Extended Outlook is told to say the sky
+
+The operator's call, on the lead above. The rule said only where the sky
+came from; it now opens "SAY THE SKY BEYOND TODAY, covering days 1-3 and
+days 4-7", and names the five words.
+
+**Re-run, same message, three more blind Haiku runs:** the sky is in the
+Extended Outlook in 3 of 3, against 0 of 3 before. Against the models'
+daily means (days 1-3 Mostly cloudy, Partly cloudy, Mostly cloudy; day 4
+Mostly cloudy, days 5-7 Partly cloudy), one run named every day right, one
+summarised days 1-3 as mostly cloudy, and one called Wednesday mostly
+cloudy. None split by model. Today's Forecast kept the tile's words in 3 of
+3. One of three still narrated a weighting: "weighted by strong convective
+signals".
+
+**Not checked:** as above. The writer still averages five models by eye for
+each day; a code-computed word per day, as the tile does for today, would
+remove that, and is not built.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
