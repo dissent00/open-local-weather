@@ -12,7 +12,7 @@
     },
     {
       "issued_at": "2026-09-22T15:35:47.103468+00:00",
-      "llm_model": "gemini-3.6-flash",
+      "llm_model": "nvidia/nemotron-3-super-120b-a12b:free",
       "system_prompt_sha256": "7c4134faba0077780df84856233cba7fffe8fa91db13de01167ff9992b38a79e",
       "judgment_prompt_sha256": "cc8db45665e44fc70dc72776d77d750c3b66c598f58d1683d9f131140cc630a2",
       "narrative_prompt_sha256": "6bc737ddd343e310f139fcd3653b0b6e82361d931599ba37cf50e61f11bfcd87",

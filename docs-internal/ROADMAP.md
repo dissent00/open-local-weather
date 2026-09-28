@@ -34,8 +34,8 @@ the ledger 1:1 twice, 503s included.
 instead of the one that served (171). The model OpenRouter was asked for
 instead of the one it served (184). The latest run's model on an earlier
 issuance's page (185). Each is now read from the source that knows, and the
-stored entries and pages were corrected; the 09-22 evening entry still waits
-on the console.
+stored entries and pages were corrected, 09-22's evening from the
+operator's OpenRouter activity.
 
 **Item 183: the yardsticks stopped voting.** Persistence and climatology had
 been averaged into today's day-over-day consensus, the extended trend's
@@ -73,13 +73,9 @@ write-up asked.
    calibration plan was measured and dropped (no gain out of sample; revisit
    at 30 checks). 123's write-up half waits on data: snapshots now keep each
    run's tile, and the write-up is measured against it around 10-12.
-3. **The 09-22 evening entry** still credits gemini-3.6-flash for OpenRouter
-   calls at 15:20Z and 15:31Z. It waits on the operator's OpenRouter
-   activity for which model served them; our record holds only the one
-   asked for.
-4. **Item 167**, a local agency's UV, is unchanged since the operator raised
+3. **Item 167**, a local agency's UV, is unchanged since the operator raised
    it.
-5. **Item 173 point 1**, the code's numbers as the app's forecast when the
+4. **Item 173 point 1**, the code's numbers as the app's forecast when the
    LLM fails, is the operator's decision.
 
 Lower, and why: item 174 (the full user message goes to both calls, about
@@ -26513,10 +26509,9 @@ matched, and 09-25 and 09-26 were wrong. Both headers now name
 gemini-3.6-flash, which is what the fixed code renders for them.
 
 **Not checked, and one more of the same.** A day's middle issuances have no
-page, so only first issuances were compared. The 09-22 EVENING entry still
-names gemini-3.6-flash although item 171 records nemotron serving it; that
-is item 171's own misattribution, never corrected in the record, and not
-touched here.
+page, so only first issuances were compared. The 09-22 EVENING entry named
+gemini-3.6-flash although item 171 records nemotron serving it; corrected on
+2026-09-28 from the operator's OpenRouter activity, see item 171.
 
 ---
 
@@ -28670,6 +28665,25 @@ rather than against its neighbourhood.
 **No Dart change.** `FallbackProvider` there has the same `providers.first`
 property, but the app records no model name in any entry, so there is nothing
 to misname.
+
+### The 2026-09-22 entry corrected, 2026-09-28
+
+The code fix never reached the record: the 09-22 evening entry kept
+`FallbackProvider` and `gemini-3.6-flash`. Our ledger names the model ASKED
+for (item 184), so it could not settle what served. The operator's
+OpenRouter activity for 09-22 counts six answered requests: Nemotron 3 Super
+3, Nex-N2.5-Pro 1, Dots3-Note Preview 1, Nex-N2.5-Mini 1. Two model-probe
+runs that day account for four. The 16:08Z run made one nemotron, one
+dots-3-note and one nex-pro request. The 17:01Z run made one nex-mini request,
+and its qwen requests were all 429s, which the activity does not list. That
+leaves exactly two nemotron requests, the forecast's scored call at 15:20Z
+and its write-up at 15:31Z. The entry now reads `OpenAICompatProvider` and
+nemotron for both calls (`narrative_llm_model` was null, because that field
+did not exist yet). The prompt archive's 15:35Z issuance and the page header
+say nemotron too. The morning, served by Gemini, is unchanged.
+
+Probe requests never reach the committed ledger, as item 181 noted, so a
+console total can exceed the ledger by exactly that much.
 
 ---
 

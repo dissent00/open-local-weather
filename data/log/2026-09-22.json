@@ -1682,9 +1682,9 @@
   },
   "meta": {
     "generated_at_utc": "2026-09-22T03:05:07.893418Z",
-    "llm_provider": "FallbackProvider",
-    "llm_model": "gemini-3.6-flash",
-    "narrative_llm_model": null,
+    "llm_provider": "OpenAICompatProvider",
+    "llm_model": "nvidia/nemotron-3-super-120b-a12b:free",
+    "narrative_llm_model": "nvidia/nemotron-3-super-120b-a12b:free",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "7c4134faba0077780df84856233cba7fffe8fa91db13de01167ff9992b38a79e",
     "finish_reason": "stop",
