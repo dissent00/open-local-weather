@@ -15,6 +15,7 @@
 /// regenerated — never by editing the vectors to match Dart.
 library;
 
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
@@ -54,12 +55,100 @@ ObservedSoFar? _observedFrom(Object? raw) {
   );
 }
 
-Map<String, Object?> loadVectors(String name) {
-  final file = File('${vectorsDir.path}/$name');
-  if (!file.existsSync()) {
-    fail('vector file not found: ${file.path} (run `python spec/export_vectors.py`)');
+/// Each file decoded once, so the reads of every test that uses it add up —
+/// `verification.json` is read by two, and neither passes every key alone.
+final _loaded = <String, Map<String, Object?>>{};
+
+Map<String, Object?> loadVectors(String name) => _loaded.putIfAbsent(name, () {
+      final file = File('${vectorsDir.path}/$name');
+      if (!file.existsSync()) {
+        fail('vector file not found: ${file.path} (run `python spec/export_vectors.py`)');
+      }
+      final vectors = jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
+      for (final c in vectors['cases'] as List? ?? const []) {
+        if (c is Map && c['input'] is Map) {
+          c['input'] = _ReadTracked((c['input'] as Map).cast<String, Object?>());
+        }
+      }
+      return vectors;
+    });
+
+/// A case's input that remembers which keys its runner read — upstream
+/// ROADMAP item 175.
+///
+/// A RUNNER THAT OMITS AN ARGUMENT DOES NOT FAIL. The port takes its own
+/// default and the case pins a different function than the one it names;
+/// Dart named parameters make that legal and the analyser says nothing.
+/// `_everyInputWasRead` fails for a key a case carries that no test ever
+/// read — the half of the class a case can reveal. Its first run found four
+/// files with such keys.
+///
+/// NOT THE OTHER HALF: a parameter that no case sets at all. That is how the
+/// seven `buildUserPrompt` arguments went unpinned, and this would not have
+/// caught them. See upstream ROADMAP item 175.
+///
+/// Read-only, so a runner that edits a shared vector fails loudly instead of
+/// changing what the next test sees.
+class _ReadTracked extends MapBase<String, Object?> {
+  _ReadTracked(this._source);
+
+  final Map<String, Object?> _source;
+  final Set<String> read = {};
+
+  @override
+  Object? operator [](Object? key) {
+    if (key is String) {
+      read.add(key);
+    }
+    return _source[key];
   }
-  return jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
+
+  @override
+  Iterable<String> get keys => _source.keys;
+
+  @override
+  void operator []=(String key, Object? value) =>
+      throw UnsupportedError('a vector input is read-only');
+
+  @override
+  void clear() => throw UnsupportedError('a vector input is read-only');
+
+  @override
+  Object? remove(Object? key) => throw UnsupportedError('a vector input is read-only');
+}
+
+/// Keys a case carries that its runner leaves unread ON PURPOSE, each with
+/// the reason. Anything else unread is the defect `_ReadTracked` exists for.
+const _unreadByDesign = <String, Set<String>>{
+  // Not a `build_user_prompt` argument: it says which SYSTEM prompt the case
+  // pairs with, and `replay.py` pops it before the rest become arguments.
+  'llm_user_prompt.json': {'verification_already_written'},
+};
+
+/// Run once, after every test: judged across the whole run, because a file
+/// may be read by more than one test. Running a `--name` subset can flag a
+/// key that only a deselected test reads; the full file is the verdict.
+void _everyInputWasRead() {
+  final missed = <String>[];
+  _loaded.forEach((file, vectors) {
+    for (final c in vectors['cases'] as List? ?? const []) {
+      final input = c is Map ? c['input'] : null;
+      if (input is! _ReadTracked) {
+        continue;
+      }
+      final unread = input.keys.toSet()
+        ..removeAll(input.read)
+        ..removeAll(_unreadByDesign[file] ?? const <String>{});
+      if (unread.isNotEmpty) {
+        missed.add('$file, case "${(c as Map)['name']}": ${unread.join(', ')}');
+      }
+    }
+  });
+  expect(missed, isEmpty,
+      reason: 'a vector case carries inputs its runner never passed, so the '
+          'port was compared on its own defaults (upstream item 175). If '
+          'another test failed, fix that first: a loop that stopped at a '
+          'failing case never read the cases after it.');
 }
 
 List<Map<String, Object?>> casesOf(String name) =>
@@ -122,6 +211,8 @@ void expectMatches(Object? actual, Object? expected, String caseName,
 }
 
 void main() {
+  tearDownAll(_everyInputWasRead);
+
   group('dates', () {
     test('prediction_row_date_for_target', () {
       for (final c in casesOf('dates.json')) {
@@ -346,6 +437,9 @@ void main() {
         final reading =
             GroundAqiReading.fromJson(i['reading'] as Map<String, Object?>);
         final now = DateTime.parse(i['now'] as String);
+        // A constant on both sides, recorded by the case: the port's has to
+        // be the one Python used, or the borderline cases pass by luck.
+        expect((i['stale_threshold_hours'] as num).toDouble(), staleThresholdHours);
         expectMatches(
           {'hours_old': hoursOld(reading, now), 'is_stale': isStale(reading, now)},
           c['expected'],
@@ -418,13 +512,17 @@ void main() {
     // checks: these maps are sent verbatim to real provider APIs, so an
     // extra or missing key is a wire-level difference, not a cosmetic one.
     test('gemini responseSchema dialect matches Python exactly', () {
-      final expected = casesOf('llm_schema_gemini.json').single['expected'];
-      expect(geminiForecastSchema(), equals(expected));
+      final c = casesOf('llm_schema_gemini.json').single;
+      // Which Python class the case was generated from — it has to be the
+      // one this function ports, or the comparison is against another schema.
+      expect((c['input'] as Map)['model'], 'GeminiForecastResponse');
+      expect(geminiForecastSchema(), equals(c['expected']));
     });
 
     test('strict JSON Schema dialect matches Python exactly', () {
-      final expected = casesOf('llm_schema_strict.json').single['expected'];
-      expect(strictForecastSchema(), equals(expected));
+      final c = casesOf('llm_schema_strict.json').single;
+      expect((c['input'] as Map)['model'], 'GeminiForecastResponse');
+      expect(strictForecastSchema(), equals(c['expected']));
     });
 
     // The two halves of the split — upstream ROADMAP item 59 step 3. These
@@ -436,6 +534,11 @@ void main() {
         for (final c in casesOf('llm_schema_split.json'))
           c['name'] as String: c['expected']
       };
+      final models = {
+        for (final c in casesOf('llm_schema_split.json'))
+          c['name'] as String: (c['input'] as Map)['model']
+      };
+      expect(models, {'judgment': 'GeminiJudgmentResponse', 'narrative': 'GeminiNarrativeResponse'});
       expect(geminiJudgmentSchema(), equals(cases['judgment']));
       expect(geminiNarrativeSchema(), equals(cases['narrative']));
 
@@ -823,10 +926,13 @@ void main() {
         final want = c['expected'] as Map<String, Object?>;
         final reason = 'case "${c['name']}"';
 
-        expect(callsInWindow(records, now), equals(want['calls_in_window']),
+        final window = Duration(hours: (i['window_hours'] as num).toInt());
+        final keep = Duration(days: (i['keep_days'] as num).toInt());
+        expect(callsInWindow(records, now, window: window), equals(want['calls_in_window']),
             reason: reason);
 
-        final kept = prune(records, now).map((r) => r.at.toIso8601String()).toList();
+        final kept =
+            prune(records, now, keep: keep).map((r) => r.at.toIso8601String()).toList();
         final wantKept = (want['kept_after_prune'] as List)
             .map((e) => DateTime.parse((e as Map)['at'] as String).toIso8601String())
             .toList();

@@ -27625,7 +27625,7 @@ separated by blank lines and neither JSON nor a table contains one, so the
 fresh side now reads heading-to-blank-line and is format-agnostic. The archive
 side still parses JSON, which is all it will ever hold.
 
-## 175. The Dart vector runner silently drops arguments · **Steps 1-2 done 2026-09-28; 20 single-knob defaults remain**
+## 175. The Dart vector runner silently drops arguments · **Steps 1-2 and a detector done 2026-09-28; 20 single-knob defaults remain**
 
 Found while fixing one instance of it. `vectors_test.dart` called
 `buildUserPrompt` without `forwardWindowNarrowed`, so the parameter took its
@@ -27722,8 +27722,43 @@ read one is not pinned against a null.
 "survivor comment" accurate.
 
 **Not done.** The other twenty single-knob defaults, whose constants were
-verified equal. There is still no detector for the class. A cheap one would
-be a runner that fails when a case carries an input key it never read.
+verified equal.
+
+### A detector, built 2026-09-28
+
+`vectors_test.dart` now wraps every case's input in a read-only map that
+records which keys the runner read. After all tests, a `tearDownAll` fails
+for any key that no test read. It judges across the whole run because
+`verification.json` is read by two tests. Keys left unread on purpose sit
+in `_unreadByDesign`, each with its reason.
+
+**Its first run found four files beyond the one that prompted it.** Each
+key is now read into something that can fail:
+
+- `spend.json`: `window_hours` and `keep_days` were never passed. Dart's
+  `callsInWindow` and `prune` take them, and now get the case's values.
+- `aqi_staleness.json`: `stale_threshold_hours` is a constant on both
+  sides. The runner now asserts Dart's `staleThresholdHours` equals the one
+  Python recorded.
+- `llm_schema_gemini`, `_strict`, `_split`: `model` names the Python class a
+  schema came from. The runner now asserts it is the class the Dart
+  function ports.
+- `llm_user_prompt.json`: `verification_already_written` is the one
+  exemption. It selects the paired system prompt and is not an argument.
+
+**Proven where the output check is blind.** Dropping the spend `window`
+again is caught only by the guard, because Dart's default equals the case's
+24 hours and every expected value still matches. Dropping `windShift` again
+is caught too.
+
+**What it does not catch.** A parameter that no case sets at all, which is
+how all seven `buildUserPrompt` drops arose. That check would belong on the
+Python side: every parameter of a vectored function appears in some case,
+or is listed with a reason. `run_row.json` has its own loader in
+`run_record_test.dart` and sits outside the guard. A `--name` subset can
+flag a key that only a deselected test reads, and a loop that stops on a
+failing case leaves the later cases unread; the message says to fix any
+earlier failure first.
 
 ## 174. What the prompt could stop sending · **Measured 2026-09-22, nothing changed yet**
 
