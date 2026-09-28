@@ -19,13 +19,15 @@ two learned the hard way on 2026-09-22 and the third on 2026-09-23:
    silently, while the system prompt beside it is rebuilt from current code —
    so the pair is internally inconsistent and neither half can say so. The
    payloads survive inside the blocks, so `_rerendered` parses them back out
-   and runs them through today's `build_user_prompt`. Watch its line of
-   output: "NOTHING" means the markers stopped matching.
+   and runs them through today's `build_user_prompt`. Watch its lines of
+   output: they say which blocks changed, which were left as archived, and
+   "NOTHING" means no block carried a payload to parse.
 
-Usage: python harness_inputs.py <date> <out_dir>
+Usage: python harness_inputs.py <date> <out_dir> [issuance index, default -1]
 """
 import json, sys
 from datetime import date
+from itertools import product
 from pathlib import Path
 
 ROOT = Path.home() / "weather-app"
@@ -36,18 +38,60 @@ from openlocalweather.llm.prompt import (
     build_narrative_user_prompt,
     build_user_prompt,
 )
+from openlocalweather.store.prompt_archive import prompt_sha256
+
+FLAGS = (
+    "verification_already_written",
+    "ground_stations_configured",
+    "local_bulletin_configured",
+    "extended_outlook_available",
+)
 
 day, out = sys.argv[1], Path(sys.argv[2])
 out.mkdir(parents=True, exist_ok=True)
 entry = json.loads((ROOT / f"data/log/{day}.json").read_text())
-archived = json.loads((ROOT / f"data/prompts/{day}.json").read_text())["issuances"][-1]["user_prompt"]
+issuances = json.loads((ROOT / f"data/prompts/{day}.json").read_text())["issuances"]
+# range() normalises -1 and refuses an index past the end; % would wrap it.
+index = range(len(issuances))[int(sys.argv[3]) if len(sys.argv) > 3 else -1]
+issuance = issuances[index]
+archived = issuance["user_prompt"]
 
 cfg = load_location_config(str(ROOT / "config/location.yaml"))
-system = build_narrative_prompt(
-    cfg, verification_already_written=True, ground_stations_configured=True,
-    local_bulletin_configured=True, extended_outlook_available=True)
+# THE FLAGS PRODUCTION USED, FOUND BY HASH — item 77 step 3. This hardcoded
+# `verification_already_written=True` until 2026-09-28, which is wrong for a
+# day's first issuance: pipeline passes `not first_issuance`, and that day
+# only False reproduced the archived hash, built at f4fc9b9. The sixteen
+# combinations hash differently at f4fc9b9 and at 19679d7, so a match
+# is unique.
+flags = next(
+    (
+        f for f in (dict(zip(FLAGS, v)) for v in product((False, True), repeat=len(FLAGS)))
+        if prompt_sha256(build_narrative_prompt(cfg, **f)) == issuance.get("narrative_prompt_sha256")
+    ),
+    None,
+)
+flags_matched = flags is not None
+if not flags_matched:
+    # The prompt changed since this archive, which is the usual case when
+    # testing an edit. Assume pipeline's rule and a fully configured day.
+    flags = dict(zip(FLAGS, (index > 0, True, True, True)))
+system = build_narrative_prompt(cfg, **flags)
 
-rows = (entry.get("prediction_rows") or [{}])[0].get("predictions") or {}
+# THE CALL BLOCK IS THE CHOSEN ISSUANCE'S. Each issuance has its own
+# prediction row, matched by issue time. Until 2026-09-28 this read the FIRST
+# row beside the LAST message, so on a re-issued day the onset, rain chance
+# and extended call were the first issuance's under the last one's message.
+# The entry's top level is the day's last issuance; earlier ones are
+# snapshots beside it.
+row = next(
+    (r for r in entry.get("prediction_rows") or [] if r["issued_at"][:16] == issuance["issued_at"][:16]),
+    {},
+)
+snapshots = [*(entry.get("earlier_issuances") or [s for s in [entry.get("morning_issuance")] if s]), entry]
+snapshot_found = len(snapshots) == len(issuances)
+called = snapshots[index] if snapshot_found else entry
+
+rows = row.get("predictions") or {}
 extended = []
 for lead, key in ((3, "day3"), (7, "day7")):
     blend = next((r for r in rows.get(key, []) if r.get("model") == "olw_blend"), None)
@@ -58,7 +102,7 @@ for lead, key in ((3, "day3"), (7, "day7")):
             "rain_probability_pct": blend.get("rain_probability_pct"),
         })
 
-_day0_rows = (entry.get("prediction_rows") or [{}])[0].get("predictions", {}).get("day0", [])
+_day0_rows = rows.get("day0", [])
 _blend_day0 = next(
     (r for r in _day0_rows if r.get("model") == "olw_blend"), None
 )
@@ -66,8 +110,8 @@ _blend_day0 = next(
 judgment = {
     "today_properties": {
         "rain": True,
-        "rain_expected": entry["rain_expected"],
-        "onset_window": entry["onset_window"],
+        "rain_expected": called["rain_expected"],
+        "onset_window": called["onset_window"],
         # FROM THE BLEND ROW, because the entry does not carry it at top
         # level — `pipeline` maps the judgment's `onset_hour` onto the
         # `olw_blend` prediction as `onset` and reads it back from there.
@@ -80,17 +124,19 @@ judgment = {
         "rain_probability_pct": (
             _blend_day0.get("rain_probability_pct") if _blend_day0 else None
         ),
-        "peak_wind_primary_kmh": entry["peak_wind_primary_kmh"],
-        "peak_wind_secondary_kmh": entry["peak_wind_secondary_kmh"],
-        "temp_high_c": entry["temp_high_c"],
-        "temp_low_c": entry["temp_low_c"],
-        "mslp_trend_24h": entry["mslp_trend_24h"],
-        "synoptic_pattern": entry["synoptic_pattern"],
+        "peak_wind_primary_kmh": called["peak_wind_primary_kmh"],
+        "peak_wind_secondary_kmh": called["peak_wind_secondary_kmh"],
+        "temp_high_c": called["temp_high_c"],
+        "temp_low_c": called["temp_low_c"],
+        "mslp_trend_24h": called["mslp_trend_24h"],
+        "synoptic_pattern": called["synoptic_pattern"],
         # NO `uv_index_max` — it left `today_properties` with item 161 on
         # 2026-09-22. Code takes the UV index from the daily block for the day
         # the horizon points at, so reconstructing it here would hand the
         # reader a field the schema no longer has.
-        "air_quality_aqi": entry.get("air_quality_index"),
+        # A snapshot keeps only the display string, so an earlier issuance
+        # gets the day's last index.
+        "air_quality_aqi": called.get("air_quality_index", entry.get("air_quality_index")),
     },
     "extended_properties": extended,
 }
@@ -148,9 +194,9 @@ def _rendered(text, prefix):
 def _block(text, prefix):
     """The heading line and its pretty-printed JSON, as (start, end, heading, payload).
 
-    For the ARCHIVE side, which is always JSON: it was written before any
-    block was tabulated. `_json` indents by two, so a block ends at the first
-    column-0 closer.
+    For the ARCHIVE side. None for a table: a block is JSON there only if it
+    was written before item 176 tabulated it. `_json` indents by two, so a
+    block ends at the first column-0 closer.
     """
     lines = text.splitlines()
     start = next(
@@ -189,13 +235,24 @@ def _rerendered(archived_text):
     duplicated here on purpose: the transforms and the headings both come
     from the module under test, so neither can drift from it.
 
-    Returns the spliced text and the names of the blocks it replaced.
+    PER BLOCK, NOT ALL-OR-NOTHING. Item 176 tabulated four of these and a
+    table has no payload to parse back. Until 2026-09-28 one table returned
+    the archive untouched, so every archive written after item 176
+    re-rendered NOTHING, HOURS AHEAD and the daily block included. A table
+    left as archived loses nothing yet: no change to `prompt.py` since
+    43d3d03, which tabulated them, touches `_table` or those four blocks. A
+    later one would not show here without a table parser.
+
+    Returns the spliced text, the blocks it replaced, and those of them whose
+    text changed — which is what says the archive predates a change.
     """
     blocks = {p: _block(archived_text, p) for p in RERENDERABLE}
-    if any(b is None for b in blocks.values()):
-        return archived_text, []
+    parsed = {p: b for p, b in blocks.items() if b is not None}
+    if not parsed:
+        return archived_text, [], []
 
-    payloads = {BLOCK_ARGUMENT[p]: b[3] for p, b in blocks.items()}
+    payloads = {arg: None for arg in BLOCK_ARGUMENT.values()}
+    payloads |= {BLOCK_ARGUMENT[p]: b[3] for p, b in parsed.items()}
     fresh = build_user_prompt(
         today=date.today(),
         yesterday=date.today(),
@@ -206,24 +263,31 @@ def _rerendered(archived_text):
         local_bulletin_source_name="",
         local_bulletin_text="",
         # The archive's own heading says whether the window was narrowed.
-        forward_window_narrowed="REST OF TODAY ONLY" in blocks["HOURS AHEAD"][2],
+        forward_window_narrowed="REST OF TODAY ONLY" in (blocks["HOURS AHEAD"] or ("",) * 3)[2],
         **payloads,
     )
 
-    out, replaced = archived_text, []
-    for prefix in RERENDERABLE:
+    out, replaced, changed = archived_text, [], []
+    # Only the parsed blocks: the others were built from None above.
+    for prefix in parsed:
         old, new = _rendered(out, prefix), _rendered(fresh, prefix)
         if old is None or new is None:
             continue
 
-        lines, nl = out.splitlines(), fresh.splitlines()
-        out = "\n".join(lines[:old[0]] + nl[new[0]:new[1] + 1] + lines[old[1] + 1:])
+        # keepends: a "\n".join dropped the archive's final newline, so the
+        # message lost a blank line production puts before THE FORECASTER'S CALL.
+        lines, nl = out.splitlines(keepends=True), fresh.splitlines(keepends=True)
+        if lines[old[0]:old[1] + 1] != nl[new[0]:new[1] + 1]:
+            changed.append(prefix)
+        out = "".join(lines[:old[0]] + nl[new[0]:new[1] + 1] + lines[old[1] + 1:])
         replaced.append(prefix)
 
-    return out, replaced
+    return out, replaced, changed
 
 
-archived, rerendered = _rerendered(archived)
+as_sent = archived
+archived, rerendered, changed = _rerendered(archived)
+kept = [p for p in RERENDERABLE if p not in rerendered]
 user = build_narrative_user_prompt(archived, judgment)
 
 # THE ARCHIVE IS THE PROMPT AS IT WAS BUILT THAT DAY, not as today's code
@@ -248,7 +312,19 @@ if stale:
 print(f"system {len(system):,} chars / {len(system.splitlines())} lines")
 print(f"user   {len(user):,} chars / {len(user.splitlines())} lines")
 print(f"extended_properties reconstructed: {extended}")
-print("re-rendered by current code: " + (", ".join(rerendered) or "NOTHING — check the block markers"))
+print(f"issuance {index} of {len(issuances)}, issued {issuance['issued_at'][:16]}Z"
+      + ("" if row else " — NO PREDICTION ROW for it: onset and extended call are empty")
+      + ("" if snapshot_found else " — no snapshot for it: the call block is the day's last issuance"))
+print("narrative flags " + ("REPRODUCE the archived hash: " if flags_matched else
+      "match NOTHING — the prompt changed since this archive. Assumed: ")
+      + ", ".join(f"{k}={v}" for k, v in flags.items()))
+print("re-rendered by current code: " + (", ".join(rerendered) or "NOTHING — no block carried a payload"))
+if rerendered:
+    print("  the archive " + (f"PREDATES a change to how these are built: {', '.join(changed)}" if changed else
+          "does NOT predate a change to how these are built: each re-rendered as it was"))
+if kept:
+    print("  left as archived: " + ", ".join(
+        f"{p} ({'table' if _rendered(as_sent, p) else 'NOT FOUND — absent that day, or the marker drifted'})" for p in kept))
 
 # WHAT THE DEPLOYMENT SUPPLIES THAT THESE TWO FILES DO NOT. Tell the reader,
 # or it reports each as a missing rule and the finding is an artefact. Four

@@ -10001,6 +10001,33 @@ not in the session that built it.
 >   parenthesis matched neither side the first time this ran, because the
 >   heading's own text is one of the things item 174 changed.
 >
+>   **Two silent defects, fixed 2026-09-28** — found running item 187's
+>   harness:
+>
+>   - **The flags were guessed.** It hardcoded
+>     `verification_already_written=True`; a day's first issuance is built
+>     with False, so every 03:01 pair carried a system prompt production never
+>     sent. It now does step 3 itself: it hashes all sixteen combinations
+>     against the archive's `narrative_prompt_sha256` and prints the match.
+>     When none matches, because the prompt changed since, which is the usual
+>     case when testing an edit, it says so and names the flags it assumed. A
+>     third argument picks the issuance (default -1), and the call block
+>     follows it. It had read the first issuance's prediction row beside the
+>     last one's message.
+>   - **Re-rendering was all-or-nothing.** Item 176 tabulated four of the six
+>     blocks and a table has no payload to parse, so every archive written
+>     since re-rendered NOTHING. It now works per block and says whether any
+>     re-rendered block changed, which is what says the archive predates a
+>     construction change. Tables are left as archived and named. That loses
+>     nothing yet: no commit since 43d3d03 touches `_table` or those blocks.
+>     A later one would need a table parser. The splice also stopped dropping
+>     the blank line before THE FORECASTER'S CALL.
+>
+>   Checked by hash: 09-28 at f4fc9b9, and 09-22's two issuances at the code
+>   that built them (864f8b5, a78adb4), each reproduce the archived hash with
+>   every block re-rendering unchanged. The old tool at f4fc9b9 got
+>   `f2fc0b99…` against `568d75cd…` and re-rendered NOTHING.
+>
 > **STEP 2 IS WRITTEN FOR THE JUDGMENT CALL. For the NARRATIVE call the
 > archived `user_prompt` is the WRONG INPUT** — added 2026-09-22 after it
 > wasted a whole read. `build_narrative_user_prompt` APPENDS the judgment
@@ -26472,10 +26499,11 @@ passed-empty case an empty map, which is what an 18:01 run passes.
 
 **Setup.** The call block is `tools/harness_inputs.py`'s. The narrative
 system prompt was built with `verification_already_written=False`, the only
-setting that reproduces the archived hash; the tool hardcodes `True`, which
-is wrong for a first issuance. The new arm's message is the archive with SKY
-AT EACH ANCHOR spliced in from the run's own stored tile (Overcast, Mostly
-cloudy, Mostly cloudy). The old arm is the archive as sent, beside f4fc9b9's
+setting that reproduces the archived hash; the tool hardcoded `True`, which
+is wrong for a first issuance (fixed since; item 77). The new arm's message
+is the archive with SKY AT EACH ANCHOR spliced in from the run's own stored
+tile (Overcast, Mostly cloudy, Mostly cloudy). The old arm is the archive
+as sent, beside f4fc9b9's
 system prompt, hash-matched. Two system lines over 2,000 characters were
 wrapped in both arms. Workers were pinned to Haiku, told nothing about the
 change, and all six located every block. Production's 03:01 run published
