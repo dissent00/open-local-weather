@@ -45,6 +45,10 @@ ObservedSoFar? _observedFrom(Object? raw) {
     highC: (o['high_c'] as num?)?.toDouble(),
     lowC: (o['low_c'] as num?)?.toDouble(),
     peakWindKmh: (o['peak_wind_kmh'] as num?)?.toDouble(),
+    // Dropped until upstream item 175. Nothing this helper feeds reads a
+    // gust today; built anyway, or a function that starts to would be pinned
+    // against a null and could pass by luck.
+    peakGustKmh: (o['peak_gust_kmh'] as num?)?.toDouble(),
     cloudOktas: (o['cloud_oktas'] as num?)?.toDouble(),
     reportedThrough: o['reported_through'] as String?,
   );
@@ -1072,6 +1076,15 @@ void main() {
           trackRecordContext: i['track_record_context'],
           groundAqiReadings: i['ground_aqi_readings'],
           groundAqiSummary: i['ground_aqi_summary'],
+          // These six were DROPPED until upstream item 175, and every case
+          // rendered their "Unavailable" branch; the "every locked block
+          // populated" case is what reaches the other one.
+          groundAqiLastKnown: i['ground_aqi_last_known'],
+          instability: i['instability'],
+          extendedTrend: i['extended_trend'] as String?,
+          anchorDirections: (i['anchor_directions'] as Map?)?.cast<String, String?>(),
+          windShift: i['wind_shift'] as String?,
+          observedSoFar: i['observed_so_far'] as String?,
           groundAqiLastKnownAbsence: i['ground_aqi_last_known_absence'] as String?,
           peakUvIndex: i['peak_uv_index'],
           yesterdayActual: i['yesterday_actual'],

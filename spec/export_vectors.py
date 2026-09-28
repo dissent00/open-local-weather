@@ -2172,6 +2172,47 @@ def export_user_prompt() -> None:
         "guidance_recency": None,
     }
 
+    # ROADMAP item 175. The six blocks the Dart runner never passed, in
+    # production's shapes from the 2026-09-27 03:01Z prompt. Until this, every
+    # case rendered their "Unavailable" branch, so the POPULATED form of each
+    # was pinned by nothing across the port. Two values are chosen to be where
+    # the languages could part: a null inside a JSON block (an anchor the
+    # models do not agree on) and a non-round float among the CAPE values.
+    locked_blocks = {
+        "ground_aqi_last_known": {
+            "station_name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 147,
+            "measured_at": "2026-09-27T00:00:00+00:00",
+            "hours_old": 3.0,
+            "stale": False,
+            "stations_reporting": 3,
+        },
+        "instability": {
+            "peak_cape_jkg": 4330.0,
+            "peak_model": "ukmo_seamless",
+            "peak_hour": "19:00",
+            "convective": True,
+            "models_above_threshold": ["best_match", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless"],
+            "peak_cape_by_model": {
+                "gfs_seamless": 410.0,
+                "ecmwf_ifs025": 2260.0,
+                "icon_seamless": 2112.5,
+                "ukmo_seamless": 4330.0,
+                "best_match": 4040.0,
+            },
+            "onset_at": "2026-09-27T09:00",
+            "peak_at": "2026-09-27T19:00",
+            "timing": "thunder possible from the morning, peaking this evening",
+        },
+        "extended_trend": "temperatures and winds much the same through Wednesday, with showers "
+                          "possible Tuesday, dry Wednesday, and thunderstorms likely each day",
+        "anchor_directions": {"early": "NNE", "midday": "SSW", "evening": None},
+        "wind_shift": "north-northeasterly overnight, turning south-southwest by midday and "
+                      "west-northwest into the evening",
+        "observed_so_far": "As of 06:01, reports through 00:00: no rain; no thunder; high so far "
+                           "23°C / 73°F; low so far 23°C / 73°F; peak sustained 6 km/h; sky 4/8.",
+    }
+
     def case(name, kwargs, *, verification_already_written=False):
         """`verification_already_written` rides on the INPUT but is not a
         `build_user_prompt` argument.
@@ -2202,6 +2243,20 @@ def export_user_prompt() -> None:
         "rather than reported unavailable. The last case covers the overnight-low footnote, which is absent on every ordinary morning and would otherwise be pinned by nothing.",
         [
             case("fully populated", full),
+            # Item 175: the same run with every locked block populated. A
+            # separate case rather than more keys on `full`, because `full` is
+            # where the AQI block's ABSENCE message is pinned, and a present
+            # reading would take that branch away from it.
+            case("every locked block populated", dict(full, **locked_blocks)),
+            # Item 175, found reading the port: Python renders these three
+            # phrases on TRUTHINESS, Dart used `??`, so an EMPTY string was
+            # "Unavailable" in one and a blank line in the other. No composer
+            # returns "" today; this pins that the answer is the same if one
+            # ever does.
+            case(
+                "locked phrases passed empty — each renders unavailable",
+                dict(full, extended_trend="", wind_shift="", observed_so_far=""),
+            ),
             # ITEM 174. Every case here carries CLEAN fetched objects, so none
             # of them reaches the strip that removes Open-Meteo's units maps
             # and response envelopes — the change shipped with both languages

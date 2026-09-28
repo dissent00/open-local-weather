@@ -27625,7 +27625,7 @@ separated by blank lines and neither JSON nor a table contains one, so the
 fresh side now reads heading-to-blank-line and is format-agnostic. The archive
 side still parses JSON, which is all it will ever hold.
 
-## 175. The Dart vector runner silently drops arguments · **Recorded 2026-09-23**
+## 175. The Dart vector runner silently drops arguments · **Steps 1-2 done 2026-09-28; 20 single-knob defaults remain**
 
 Found while fixing one instance of it. `vectors_test.dart` called
 `buildUserPrompt` without `forwardWindowNarrowed`, so the parameter took its
@@ -27694,6 +27694,36 @@ names. Any port pinned by replaying recorded inputs has this failure mode, and
 it is invisible from inside the suite: green, fast, and measuring the wrong
 thing. The only detector found so far is reading the call site against the
 signature, which is what the sweep did.
+
+### The first two steps, done 2026-09-28
+
+**The six `build_user_prompt` blocks are pinned.** A new case, "every locked
+block populated", sets all six in production's shapes from the 2026-09-27
+03:01Z prompt, and the runner now passes them. It is a separate case, not
+more keys on "fully populated", because that case is where the AQI block's
+absence message is pinned, and a present reading would take that branch
+away. Two values are chosen to be where the languages could part: a null
+inside a JSON block and a non-round CAPE float. The Dart port agreed on
+first run. Blanking any one of three of the blocks in `prompt.dart` then
+fails the suite.
+
+**Reading the port against Python found a divergence that no case
+reached.** `extended_trend`, `wind_shift` and `observed_so_far` render on
+TRUTHINESS in Python and with `??` in Dart, so an EMPTY string was
+"Unavailable" in one and a blank line in the other. No composer returns ""
+today. A second case passes all three empty; it failed on Dart and passes
+since the port was changed to test emptiness as Python does.
+
+**`_observedFrom` builds `peakGustKmh`.** Nothing it feeds reads a gust today,
+so no test can see this change. It is there so a function that starts to
+read one is not pinned against a null.
+
+**The third listed step was moot.** This item's own later check found the
+"survivor comment" accurate.
+
+**Not done.** The other twenty single-knob defaults, whose constants were
+verified equal. There is still no detector for the class. A cheap one would
+be a runner that fails when a case carries an input key it never read.
 
 ## 174. What the prompt could stop sending · **Measured 2026-09-22, nothing changed yet**
 
