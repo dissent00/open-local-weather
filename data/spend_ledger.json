@@ -2,30 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-21T03:01:59.599396+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 6.576
-    },
-    {
-      "at": "2026-09-21T03:02:36.176861+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 28.321
-    },
-    {
-      "at": "2026-09-21T03:03:04.501250+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 32.373
-    },
-    {
       "at": "2026-09-21T15:01:56.608906+00:00",
       "provider": "GeminiInteractionsProvider",
       "model": "gemini-3.6-flash",
@@ -784,6 +760,47 @@
       "purpose": "forecast",
       "outcome": "http_503",
       "elapsed_s": 5.913
+    },
+    {
+      "at": "2026-09-28T03:01:46.097844+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 2.302
+    },
+    {
+      "at": "2026-09-28T03:02:18.403438+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 2.702
+    },
+    {
+      "at": "2026-09-28T03:03:21.108505+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 3.204
+    },
+    {
+      "at": "2026-09-28T03:10:24.316422+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 2.227
+    },
+    {
+      "at": "2026-09-28T03:10:26.549821+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 157.06,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }
