@@ -15,6 +15,83 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-09-28
+
+The 2026-09-22 block below is kept for its reasoning. Its first pick is
+resolved: none of the last 60 workflow runs waited for approval. Its second
+was measured in item 172. Its third is unblocked, below.
+
+### What closed, 2026-09-22 to 09-28
+
+**The provider week.** Item 170 gave each chain link its own ceiling, and
+178 made an empty body a provider failure with a 1700 s deadline. Item 180
+limited the free fallback to the scored call. Item 179 found the
+Interactions endpoint counting about 1.7 model calls per request; the
+forecast went back to `generateContent`, and the console has since matched
+the ledger 1:1 twice, 503s included.
+
+**Three times the record named the wrong model.** The chain's first link
+instead of the one that served (171). The model OpenRouter was asked for
+instead of the one it served (184). The latest run's model on an earlier
+issuance's page (185). Each is now read from the source that knows, and the
+stored entries and pages were corrected; the 09-22 evening entry still waits
+on the console.
+
+**Item 183: the yardsticks stopped voting.** Persistence and climatology had
+been averaged into today's day-over-day consensus, the extended trend's
+today and the calibrated gust. Replayed over the archive, they changed 3
+tile modifiers in 36 days and leaned the trend toward "calmer" on 30 of 36
+prompts. Item 126's gust validation reproduces only over the models alone;
+since 09-14 the calibrated gust runs about 2 km/h high either way.
+
+**Item 173, stages 1-2: the code blend is scored** live, backfilled and
+hidden from the forecaster, in olw_core.
+
+**Item 175: both halves of a silent test gap are guarded.** The Dart runner
+now fails for a case input it never reads, and `test_vectors.py` fails for
+a parameter no case sets. The first found four more files; the second
+would have named the six prompt blocks that went unpinned. One real
+divergence came out of it (empty phrases), fixed in the port.
+
+**Item 186: the queue trial began 2026-09-28.** Gemini is tried directly
+once, then queued through the Interactions API, then OpenRouter. It answers
+a failure pattern that had reached 6 of 7 15:01Z scored calls and every
+write-up asked.
+
+### What is next, and why
+
+1. **READ ITEM 186'S TRIAL around 10-01, after about six runs.** Three
+   questions, all answerable from the record. Does a queued submit get an
+   `http_200` while direct calls are refused? Does the queue serve, so
+   `meta.llm_provider` reads `GeminiInteractionsProvider`? And per Pacific
+   day, does the console count polls as model calls? The answers decide
+   the next step: two-step publish if write-ups arrive but hold the scored
+   forecast back, or back to direct plus gateway if submits are refused
+   like direct calls, because each refusal then costs about 2 units instead
+   of 1.
+2. **Items 87 and 123 are unblocked.** `cloud_checks_in_window_10` is 10 for
+   all five models on 09-28, the count they were waiting for. Read 123's
+   2026-09-22 note first: the tiles answered most of it, and what remains is
+   the write-up's half.
+3. **The 09-22 evening entry** still credits gemini-3.6-flash for OpenRouter
+   calls at 15:20Z and 15:31Z. It waits on the operator's OpenRouter
+   activity for which model served them; our record holds only the one
+   asked for.
+4. **Item 167**, a local agency's UV, is unchanged since the operator raised
+   it.
+5. **Item 173 point 1**, the code's numbers as the app's forecast when the
+   LLM fails, is the operator's decision.
+
+Lower, and why: item 174 (the full user message goes to both calls, about
+52,000 of 66,000 input tokens) matters for money rather than for 503s.
+Items 181 and 182 matter only before a paid model is recommended. Item 155
+is an audit. Items 164 and 165 are tidy-ups, and item 175's ten unset
+defaults are listed debt in `test_vectors.py`. The app's owed table gains
+nothing from this week; if the queue trial works, whether the app should
+queue is the row to add then.
+
+---
+
 ## Working order, as of 2026-09-22
 
 The 2026-09-17 block below is kept for its reasoning. Its figures are five
@@ -27080,7 +27157,7 @@ offers, and one the judgment prompt tells the forecaster not to make. It
 verified (Brier 0.0). The record names the model (item 171), so its calls
 can be read apart from Gemini's once there are enough of them.
 
-## 179. The Interactions endpoint appears to cost two quota units per request · **PLAUSIBLE, not confirmed — experiment written, 2026-09-24**
+## 179. The Interactions endpoint appears to cost two quota units per request · **CONFIRMED 2026-09-26 — about 1.7x on Interactions, 1:1 on `generateContent`, 503s counted like successes**
 
 The operator's AI Studio console and our ledger disagree by about 2x, and only
 since the endpoint switch (c0ad635, 2026-09-15):
