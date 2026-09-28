@@ -662,6 +662,12 @@ Future<ForecastRun> generateForecast({
     // `consensusDirection` over each model's DAILY mean bearing: one point for
     // the whole day, null on 18 of 19 archived issuances, beside a tile
     // printing "midday SW". The day has two bearings here.
+    // The sky follows — upstream item 187 finding 1.
+    anchorSkies: {
+      for (final a in cloudAnchors(hourly, models,
+          issuedHour: issuedHourOf(resolvedIssuance)))
+        a['when']!: a['cover']!,
+    },
     anchorDirections: {
       for (final a in windAnchors(hourly, models,
           issuedHour: issuedHourOf(resolvedIssuance)))

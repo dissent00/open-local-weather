@@ -2206,6 +2206,7 @@ def export_user_prompt() -> None:
         },
         "extended_trend": "temperatures and winds much the same through Wednesday, with showers "
                           "possible Tuesday, dry Wednesday, and thunderstorms likely each day",
+        "anchor_skies": {"early": "Mostly clear", "midday": "Partly cloudy", "evening": "Mostly cloudy"},
         "anchor_directions": {"early": "NNE", "midday": "SSW", "evening": None},
         "wind_shift": "north-northeasterly overnight, turning south-southwest by midday and "
                       "west-northwest into the evening",
@@ -2255,7 +2256,7 @@ def export_user_prompt() -> None:
             # ever does.
             case(
                 "locked phrases passed empty — each renders unavailable",
-                dict(full, extended_trend="", wind_shift="", observed_so_far=""),
+                dict(full, extended_trend="", wind_shift="", observed_so_far="", anchor_skies={}),
             ),
             # ITEM 174. Every case here carries CLEAN fetched objects, so none
             # of them reaches the strip that removes Open-Meteo's units maps

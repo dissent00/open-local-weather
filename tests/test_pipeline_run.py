@@ -3453,6 +3453,8 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     # The prose says what happened instead of pretending to be a forecast.
     assert entry.narrative_markdown, "an empty narrative reads as a missing section"
     assert "could not be written" in entry.narrative_markdown.lower()
+    # Not under the Overview heading, retired on 09-22 — item 187 finding 3.
+    assert not entry.narrative_markdown.startswith("## Overview"), entry.narrative_markdown
 
     # AND THE DAY IS SCORED. This is the whole justification for degrading
     # rather than aborting: the blend's row is in the record beside the
@@ -4911,6 +4913,49 @@ def test_the_direction_block_reaches_the_prompt_with_its_anchors(tmp_path, monke
     block = llm.user_prompts.split("WIND DIRECTION")[1].split("\n\n")[0]
 
     assert '"midday": "SW"' in block, block
+
+
+def test_the_sky_block_carries_the_tiles_words_from_the_whole_day(tmp_path, monkeypatch):
+    """The write-up is handed the sky tile's own words — item 187 finding 1.
+
+    The two blocks differ in cloud so the words say which one was read: 95%
+    is Overcast and lives only in the whole-day block, 10% is Mostly clear
+    and lives only in the forward window, the mistake item 160 made twice.
+    """
+    today_block = _hourly_with_directions(
+        [f"2026-08-11T{h:02d}:00" for h in (0, 3, 6, 12, 18, 21)], 225.0
+    )
+    for model in MODELS:
+        today_block["hourly"][f"cloud_cover_{model}"] = [95.0] * 6
+    forward_block = _hourly_with_directions(
+        [f"2026-08-11T{h:02d}:00" for h in (6, 12, 18)]
+        + [f"2026-08-12T{h:02d}:00" for h in (0, 3, 6)],
+        225.0,
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: today_block
+    )
+    monkeypatch.setattr(
+        open_meteo, "fetch_forecast_hourly_forward", lambda *a, **k: forward_block
+    )
+    monkeypatch.setattr(
+        pipeline.metar_fetch,
+        "observed_station_data",
+        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
+    )
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 1))
+    llm = FakeLLMProvider()
+    deps = make_deps(tmp_path, llm=llm)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    block = llm.user_prompts.split("SKY AT EACH ANCHOR")[1].split("\n\n")[0]
+    tile = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11)).cloud_anchors
+
+    assert tile, "the fixture should give the tile a sky"
+    for anchor in tile:
+        assert f'"{anchor["when"]}": "{anchor["cover"]}"' in block, block
+    assert "Overcast" in block, block
+    assert "Mostly clear" not in block, block
 
 
 def test_the_prompt_says_which_ground_aqi_absence_it_found(tmp_path, monkeypatch):

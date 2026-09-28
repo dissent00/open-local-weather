@@ -891,6 +891,62 @@ def test_the_direction_block_speaks_per_anchor_not_per_day():
     assert '"variable"' in system and '"shifting"' in system
 
 
+def test_the_sky_is_the_tiles_words_and_never_a_split_between_models():
+    """Item 187 finding 1.
+
+    The rule it replaces asked for a two-way split "said in words", on a
+    premise item 158 step 3 had already overturned: the spread is largely
+    each model's standing bias. The 09-27 06:01 write-up then reported
+    "ECMWF and GFS maintaining mostly overcast skies while UKMO forecasts
+    clearer periods" beside its own review note that UKMO under-forecasts
+    cloud, on a day the reanalysis recorded 93.5%.
+    """
+    prompt = _minimal_user_prompt(
+        anchor_skies={"early": "Mostly cloudy", "midday": "Partly cloudy", "evening": "Overcast"},
+    )
+    block = prompt.split("SKY AT EACH ANCHOR")[1].split("\n\n")[0]
+    assert '"midday": "Partly cloudy"' in block, block
+
+    # every anchor behind the reader: the block says so rather than vanishing
+    empty = _minimal_user_prompt(anchor_skies={}).split("SKY AT EACH ANCHOR")[1].split("\n\n")[0]
+    assert "Unavailable" in empty, empty
+
+    narrative = build_narrative_prompt(KISUMU)
+    today = _section(narrative, "Today's Forecast")
+    assert "SKY AT EACH ANCHOR" in today
+    assert "NEVER A SPLIT BETWEEN MODELS" in today
+    assert "say the split in words" not in narrative
+    assert "two-way split said in words" not in narrative
+
+
+def test_the_write_up_does_not_narrate_a_weighting_it_did_not_do():
+    """Item 187 finding 2: 14 of 15 Confidence Notes narrated one as fact.
+
+    The weighting is the scored call's, and the write-up sees its numbers
+    and not its reasoning. On 09-23 it wrote, in the first person, "I
+    trusted the standing bias and retained the corrected 41.4 km/h".
+    """
+    narrative = build_narrative_prompt(KISUMU)
+
+    assert "influenced your model weighting" not in narrative
+    assert "State explicitly in the Forecaster Confidence Notes when you're doing this" not in narrative
+    assert "say which you believed" not in narrative
+    assert "NEVER HOW THE CALL WEIGHED THEM" in narrative
+
+    # the paragraphs that stay
+    assert "NAME A MODEL THAT SITS ON THE WRONG SIDE OF ITS OWN RECORD" in narrative
+    assert "NAME THE LOCAL MET SERVICE EVERY TIME" in narrative
+
+
+def test_no_rule_names_a_block_the_prompt_no_longer_carries():
+    """Item 187 finding 3: the labels left with item 83, and the composed
+    comparison with item 159 step 5."""
+    system = build_system_prompt(KISUMU)
+
+    assert "day-over-day labels" not in system
+    assert "arrives composed" not in system
+
+
 def _aqi_reading(**over):
     """A station reading in the shape the archive holds."""
     base = {"name": "Kisumu Airport", "station_id": "A418534", "aqi": None,
@@ -972,7 +1028,8 @@ def test_narrative_instructions_are_in_the_narrative_prompt():
     narrative = build_narrative_prompt(KISUMU)
 
     MOVED = (
-        "State explicitly in the Forecaster Confidence Notes when you're doing this",
+        # Reworded by item 187: the conflict is disclosed, a weighting is not.
+        "name the conflict and say which side the call's figure sits on",
         'Reflect the substance of "data_sufficiency" in the Forecaster Confidence Notes',
         "do not describe yourself as a model in the narrative",
     )

@@ -1429,6 +1429,16 @@ def _locked_blocks(
         #
         # Reading `wind_anchors` rather than re-deriving is the point: the
         # prompt and the tile now cannot disagree about what is known.
+        #
+        # THE SKY FOLLOWS, item 187 finding 1: the write-up reported each
+        # model's cloud bias as a split in the weather, beside a tile that
+        # published the mean's word.
+        "anchor_skies": {
+            str(a["when"]): a["cover"]
+            for a in cloud_anchors(
+                guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+            )
+        },
         "anchor_directions": {
             str(a["when"]): a.get("direction")
             for a in wind_anchors(

@@ -217,6 +217,7 @@ void main() {
             'temperature_2m_$m': List<double>.filled(hours.length, 24.0),
             'pressure_msl_$m': List<double>.filled(hours.length, 1012.0),
             'wind_direction_10m_$m': bearings,
+            'cloud_cover_$m': List<double>.filled(hours.length, 95.0),
           },
         }
       };
@@ -991,6 +992,10 @@ void main() {
     expect(llm.seenUserPrompt,
         isNot(contains('omit any claim about the wind turning')),
         reason: 'the wind shift was not wired into this path');
+
+    // Upstream item 187: the sky tile's words.
+    expect(llm.seenUserPrompt, contains('"midday": "Overcast"'),
+        reason: 'the sky block was not wired into this path');
 
     expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
     expect(llm.seenUserPrompt, isNot(contains('omit the extended clause')),

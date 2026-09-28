@@ -1188,6 +1188,7 @@ void main() {
           groundAqiLastKnown: i['ground_aqi_last_known'],
           instability: i['instability'],
           extendedTrend: i['extended_trend'] as String?,
+          anchorSkies: (i['anchor_skies'] as Map?)?.cast<String, String>(),
           anchorDirections: (i['anchor_directions'] as Map?)?.cast<String, String?>(),
           windShift: i['wind_shift'] as String?,
           observedSoFar: i['observed_so_far'] as String?,

@@ -71,8 +71,9 @@ write-up asked.
    of 1.
 2. **Items 87 and 123, worked the same day.** 87 is closed. The cloud
    calibration plan was measured and dropped (no gain out of sample; revisit
-   at 30 checks). 123's write-up half waits on data: snapshots now keep each
-   run's tile, and the write-up is measured against it around 10-12.
+   at 30 checks). Item 187 now hands the write-up the tile's sky words;
+   around 10-12, count how often a write-up still names another sky, and
+   re-check 187's thunder-first question on the same write-ups.
 3. **Item 167**, a local agency's UV, is unchanged since the operator raised
    it.
 4. **Item 173 point 1**, the code's numbers as the app's forecast when the
@@ -18723,6 +18724,12 @@ different from its own tile's words. If that is more than rare, give the
 write-up the tile's words. The 09-23 case, "sunny" beside an all-cloudy
 tile, is the kind to count.
 
+### 2026-09-28: the write-up is handed the tile's words, by item 187
+
+Decided on item 187's review evidence rather than on this measurement. The
+10-12 count still runs, as a check of that change: how often a write-up
+since it names a sky other than its own tile's.
+
 ## 124. A feed is the delivery path that needs no credentials · **Planned — raised 2026-09-14**
 
 Raised while answering whether GitHub can mail a subscriber list. It cannot —
@@ -26343,7 +26350,7 @@ Not done: item 173 point 1.
 
 ---
 
-## 187. Whole-prompt review, 2026-09-28 · **Findings recorded; fixes wait on the operator**
+## 187. Whole-prompt review, 2026-09-28 · **Findings 1-3 fixed 2026-09-28; 4 declined; 5 re-checked around 10-12**
 
 The standing practice (item 48): read both system prompts and the user
 prompt end to end, and ground each criticism in a real write-up. The last
@@ -26427,6 +26434,39 @@ no-pipeline-words rule landed (09-19, 09-21) and not since. Prompt size is
 item 174's, and its "Why I was wrong" section stands. The judgment prompt's
 prose instructions are item 162's settled decision. Nemotron's malformed
 09-22 write-up is item 170's.
+
+### 2026-09-28: the operator's decisions, and what shipped
+
+**Findings 1-3 fixed**, in both prompts and the port, in one change.
+
+- **The sky.** A new user-prompt block, SKY AT EACH ANCHOR, carries the sky
+  tile's words from the same `cloud_anchors` call: item 160's pattern for
+  wind. Today's Forecast uses those words and never a split between models.
+  The Extended Outlook takes the models' daily means together, the same
+  way. An 18:01 run gets no block, because every anchor is behind it and
+  the tile is empty too; the rule then says to take HOURS AHEAD's cloud
+  together, in the same five words. That half is text only. Nothing
+  computes a word for tonight.
+- **The weighting.** The write-up names a conflict between the recent
+  checks and the longer record and says which side the call's figure sits
+  on, never how the call weighed the models. "Say which you believed", in
+  the wrong-side-of-record paragraph, became the same. Item 162's test
+  pinned the old sentence and now pins the new one; 162's intent, that the
+  conflict is disclosed from `rain_pct_trend`, stands.
+- **Stale lines.** Rule 1 no longer lists the day-over-day labels. The
+  grammar rule's "arrives composed" clause is gone. The placeholder's
+  heading is "## Write-up unavailable".
+
+**Declined:** finding 4, the rule 5 carve-out. **Waiting:** finding 5,
+thunder first, re-checked with item 123's measurement around 10-12.
+
+**Tests.** Four Python tests and one added assertion, each watched failing
+before the fix. The Dart wiring check was written after the code, so it was
+proved by removing the wiring; the Python pipeline test was also run with
+the block fed the forward window. Both failed. The every-block vector case carries sky words, and the
+passed-empty case an empty map, which is what an 18:01 run passes.
+
+**Not checked:** no real model has read the new text yet.
 
 ---
 

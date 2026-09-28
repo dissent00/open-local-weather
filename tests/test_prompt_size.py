@@ -34,6 +34,8 @@ FULLY_POPULATED_HEADERS = [
     "CONVECTIVE INSTABILITY",
     "DAY-OVER-DAY COMPARISON",
     "NEXT THREE DAYS",
+    # Item 187: the sky tile's words.
+    "SKY AT EACH ANCHOR",
     "WIND DIRECTION",
     "WIND SHIFT",
     # Item 161: the UV the forecaster is no longer asked to supply.

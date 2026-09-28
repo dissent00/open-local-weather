@@ -10,7 +10,7 @@ import 'schema.dart';
 /// section — the page keeps its stat tiles and simply looks short, which
 /// reads as a forecast that had nothing to say rather than one whose
 /// write-up failed. Mirrors Python's NARRATIVE_UNAVAILABLE_MARKDOWN.
-const String narrativeUnavailableMarkdown = '''## Overview
+const String narrativeUnavailableMarkdown = '''## Write-up unavailable
 
 The forecast below could not be written up this issuance: the model call that turns the day's figures into prose did not complete. The figures themselves were produced normally and are shown as usual — they are the same numbers this forecast is scored on.
 

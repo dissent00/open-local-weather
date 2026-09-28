@@ -32,7 +32,7 @@ NARRATIVE = "narrative"
 # failed. The numbers above it are real and were decided normally; this says
 # exactly that, and nothing it cannot support.
 NARRATIVE_UNAVAILABLE_MARKDOWN = (
-    "## Overview\n\n"
+    "## Write-up unavailable\n\n"
     "The forecast below could not be written up this issuance: the "
     "model call that turns the day's figures into prose did not complete. "
     "The figures themselves were produced normally and are shown as usual — "
