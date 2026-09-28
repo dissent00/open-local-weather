@@ -26343,6 +26343,93 @@ Not done: item 173 point 1.
 
 ---
 
+## 187. Whole-prompt review, 2026-09-28 · **Findings recorded; fixes wait on the operator**
+
+The standing practice (item 48): read both system prompts and the user
+prompt end to end, and ground each criticism in a real write-up. The last
+such pass was item 142, on 09-16; 35 commits have changed `prompt.py` since.
+The prompts read were today's 03:01Z: generated from the code with the live
+config and matched to the archived hashes. The judgment prompt is 19,861
+characters, the write-up prompt 38,187, the user prompt 79,605. The write-ups
+are the 15 real ones from 09-15 to 09-27; the other nine issuances published
+the failure placeholder.
+
+### 1. The sky instruction reports a model's bias as a split in the weather
+
+Today's Forecast and the Extended Outlook are told to describe the sky from
+each model's cloud and, where the models split, to "say the split in words
+... rather than an average nobody forecast". The premise, "the models sit
+more than an okta apart on every archived day", was written on 09-18, the
+same day item 158 step 3 found that the spread is PER-MODEL BIAS rather than
+disagreement. Item 123 measured on 09-28 that the plain mean's sky word
+matches the reanalysis on 10 of 13 days. The tile publishes that mean's word.
+
+**In the record:** the 09-27 06:01 Today's Forecast says "Cloud cover will
+feature a split among models, with ECMWF and GFS maintaining mostly overcast
+skies while UKMO forecasts clearer periods". The same write-up's review
+notes say "UKMO systematically under-forecasts cloud cover". The reanalysis
+recorded 93.5%. The 09-22 evening and 09-23 write-ups do the same. The rule
+also puts model names into the section the no-pipeline-words rule keeps them
+out of, and it is the likeliest route to the write-up-against-tile
+disagreement item 123 set out to measure.
+
+### 2. The write-up is asked to explain a weighting it did not do
+
+The Confidence Notes ask the write-up to "say how the track record ...
+influenced your model weighting today". Since item 59 step 3 split the
+forecast into two calls, the weighting is the judgment call's, and the
+write-up sees its numbers but not its reasoning. The same prompt says "THE
+CALL HAS ALREADY BEEN MADE, AND IT IS NOT YOURS TO REVISIT". **14 of the 15
+Confidence Notes narrate a weighting as fact:** "Model weighting for today
+heavily favours ECMWF and Best Match" (09-16), and in the first person on
+09-23, "I trusted the standing bias and retained the corrected 41.4 km/h".
+That is a reconstruction presented as a record, which rule 6 forbids.
+
+### 3. Stale statements
+
+- Rule 1 in both prompts lists "the day-over-day labels" as a pre-computed
+  block. The labels left the prompt with item 83; only three booleans
+  remain.
+- The write-up's grammar rule says "the comparison now arrives composed".
+  Since item 159 step 5 it does not arrive at all.
+- Code, not prompt: the failure placeholder a degraded issuance publishes
+  opens with "## Overview" (`llm/forecast_call.py`). That heading was
+  retired on 09-22, and the placeholder was published on 9 of the last 24
+  issuances.
+
+### 4. Rule 5 against the blocks that say "say nothing"
+
+Rule 5, which outranks everything, says a gap must be named rather than
+passed over in silence, and workflow step 4 says every block must appear or
+be noted as unavailable. Several blocks say the opposite when empty: WIND
+DIRECTION for a null anchor, PEAK UV, OBSERVED SO FAR, and the gust rule for
+a null gust. **No harm observed:** none of the 15 write-ups announced a block
+unavailable; they follow the blocks. It is a conflict in the text, and a
+carve-out in rule 5 would resolve it.
+
+### 5. A question rather than a defect: what opens a thundery day
+
+All 15 write-ups were written on days with the convective flag true. Before
+09-22 an Overview preceded Today's Forecast, and 10 of 11 of those Today's
+Forecasts opened by restating the high, as a formula ("Temperatures reaching
+a daytime high of ..."). Since the Overview was retired, Today's Forecast is
+the first thing read. Of the four write-ups since, two open on the high, a
+figure the first tile already shows, and reach the thunder 149 and 166
+characters later. The prompt says thunder goes in this section "because it
+is the first one a reader meets", but not first within it. Four write-ups
+is a small sample.
+
+### Checked and fine, or already owned elsewhere
+
+The opening rule holds: no write-up opens on a time or the sun. One high per
+day holds. "Calibrated" reached Today's Forecast twice after the
+no-pipeline-words rule landed (09-19, 09-21) and not since. Prompt size is
+item 174's, and its "Why I was wrong" section stands. The judgment prompt's
+prose instructions are item 162's settled decision. Nemotron's malformed
+09-22 write-up is item 170's.
+
+---
+
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
 
 **Why.** Since the switch back to `generateContent` on 09-25, every run has
