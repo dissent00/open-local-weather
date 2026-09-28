@@ -96,6 +96,7 @@ from openlocalweather.tiles import (
 )
 from openlocalweather.llm.provider import (
     chain_links,
+    http_outcome,
     provider_identity,
     resolve_active,
     resolve_served,
@@ -572,6 +573,26 @@ def _attempt_summary(outcomes: list[str]) -> str:
     )
 
 
+# The one outcome that means the service took the request. Spec-derived.
+HTTP_OK = 200
+
+
+def _refused_by_the_service(link, outcomes: list[str]) -> bool:
+    """Whether a link that failed the scored call failed it at the SERVICE.
+
+    ROADMAP item 186. Item 180 bars such a link from the write-up because
+    Gemini's four 503s on 2026-09-25 were followed by four more on it. That
+    holds for a refusal -- any attempt that did not come back HTTP 200 -- and
+    for a queued job the service itself gave up on. It does not hold for a
+    link our own ceiling refused, which sent nothing, nor for a queued job
+    accepted and unfinished at the end of the scored call's wait: on
+    2026-09-28 15:01Z both were barred, and the write-up the queue waits an
+    hour for was never asked.
+    """
+    accepted = http_outcome(HTTP_OK)
+    return any(o != accepted for o in outcomes) or bool(getattr(link, "service_gave_up", False))
+
+
 def _same_vendor(link, first) -> bool:
     """Both links declare a vendor and it is the same one — item 186."""
     family = getattr(link, "credential_family", None)
@@ -582,7 +603,8 @@ class _NarrativeRouting:
     """Which chain links the narrative may use, decided when the judgment
     returns. Two rules, both ROADMAP item 180:
 
-    - A link that FAILED the scored call is not retried for the narrative.
+    - A link that FAILED the scored call is not retried for the narrative,
+      when the service refused it -- see `_refused_by_the_service`.
       The chain only moves past a link that failed, so every link before the
       one that served the judgment failed it. Measured 2026-09-25 15:01Z:
       Gemini's four 503s on the scored call were followed three minutes later
@@ -639,9 +661,13 @@ class _NarrativeRouting:
         served = resolve_served(self._provider)
         failed = self._links[: self._links.index(served)] if served in self._links else ()
         for link in failed:
+            outcomes = self._outcomes.get(id(link), [])
+            if not _refused_by_the_service(link, outcomes):
+                continue
+
             self._refused[id(link)] = (
                 f"{_link_name(link)} failed the scored call this run "
-                f"({_attempt_summary(self._outcomes.get(id(link), []))})"
+                f"({_attempt_summary(outcomes)})"
             )
 
         if self._fallback_calls == FallbackCalls.SCORED_CALL:
@@ -891,12 +917,19 @@ def attach_spend_cap(
     # row of the three. Attaching it at the single seam is what stops that
     # being rediscovered per caller.
     if hasattr(provider, "on_poll"):
-        provider.on_poll = lambda: record_poll(
-            data_dir,
-            provider=provider_identity(provider)[0],
-            model=provider_identity(provider)[1],
-            purpose=purpose,
-        )
+        def _poll():
+            at = record_poll(
+                data_dir,
+                provider=provider_identity(provider)[0],
+                model=provider_identity(provider)[1],
+                purpose=purpose,
+            )
+            # What the poll got back, into its own row — item 186.
+            return lambda outcome, elapsed_s: complete_attempt(
+                data_dir, at=at, outcome=outcome, elapsed_s=elapsed_s
+            )
+
+        provider.on_poll = _poll
 
     def _verify_recorded() -> None:
         """Complain if the provider went and called a model without saying so.

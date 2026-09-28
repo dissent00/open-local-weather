@@ -26732,6 +26732,40 @@ that and says what the poll was being served:
 v1_ChdUNEc2YXB2cEhlYXcxTWtQNWZ5NXNBRRIXVDRHNmFwdnBIZWF3MU1rUDVmeTVzQUU --yes`
 (needs `GEMINI_API_KEY`; one request).
 
+**The fetch, run by the operator the same day:** HTTP 404, `not_found`, and
+HTTP 401 `UNAUTHENTICATED` without a key. The job cannot be read back, so
+whether it finished is lost. Both errors came back as JSON, so the request
+the poll makes is well formed; the empty bodies the two polls got are what
+overload responses have looked like here. Whether the operator's key is the
+production key's project is not established.
+
+**Fixed 2026-09-28, both the operator's choices:**
+
+- **Each poll's outcome is recorded.** The poll hook may return a callback,
+  and the pipeline's fills the poll's ledger row through `complete_attempt`,
+  so a poll row now says `http_503` or `http_200` like a submit. A poll that
+  cannot be read logs its status and up to 300 characters of body; a job
+  that times out says when its last status is the submit's.
+- **Only the service's refusal bars a link from the write-up.**
+  `_refused_by_the_service`: any attempt that did not come back HTTP 200, or
+  a queued job the service failed, cancelled or budget-stopped
+  (`service_gave_up`). A link our own ceiling refused, or a queued job still
+  running when the scored wait ran out, is asked, and the queue then waits
+  its hour. Item 180's 503 case still bars.
+
+Tests watched failing first: two provider, one ledger seam, one routing. An
+end-to-end test in the 15:01Z shape (direct refused, queue accepted, two
+empty 503 polls, gateway serves, queue writes up) drives the real providers
+and ledger with HTTP faked; it fails with the old provider (poll outcomes
+all None) and with the old rule (no write-up), reproducing the day. The
+pipeline stub now reports a failure's outcome before raising, as real
+providers do, or the rule could not see it.
+
+**Not checked:** that Google accepts a second submit on a bad day, that a
+503 poll is overload rather than something else, and the unit cost: a bad
+day now spends one more submit and up to four more polls, inside the queue
+link's ceiling of 6.
+
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,
 routing and ledger with only HTTP faked. Removing any one of the nine pieces

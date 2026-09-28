@@ -103,6 +103,9 @@ POLL_DELAYS_S = (15, 15, 30, 60, 60)
 # response error a job failed in an overload would end the run. Item 186.
 SERVICE_GAVE_UP_STATUSES = frozenset({"failed", "cancelled", "budget_exceeded"})
 
+# The one status a poll's answer is read from. Spec-derived.
+HTTP_OK = 200
+
 # The step that carries the answer. `thought` steps hold an opaque signature
 # and no readable content; `user_input` is the prompt coming back.
 STEP_MODEL_OUTPUT = "model_output"
@@ -159,7 +162,7 @@ class GeminiInteractionsProvider:
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
         after_response: AfterResponse | None = None,
-        on_poll: Callable[[], None] | None = None,
+        on_poll: Callable[[], AfterAttempt | None] | None = None,
         background: bool = False,
     ):
         if not api_key:
@@ -176,7 +179,16 @@ class GeminiInteractionsProvider:
         # a caller that tracks spend needs to see them; they are not retries, so
         # they must never consume MAX_ATTEMPTS. A separate hook keeps those two
         # facts from being conflated by whoever wires this up.
+        #
+        # It MAY RETURN a callback taking the poll's outcome and duration, the
+        # shape `after_attempt` has — item 186. On 2026-09-28 15:01Z two poll
+        # rows were written with no outcome, so the ledger could not say what
+        # Google answered the one question the queue trial asks of it.
         self.on_poll = on_poll
+        # Whether the last job ended in a state where the SERVICE gave up on
+        # it, as distinct from one still running when the wait ran out — item
+        # 186. The pipeline bars the first from the write-up and not the second.
+        self.service_gave_up = False
         # DEFAULT FALSE, MEASURED 2026-09-15 — and this is the whole reason
         # the queue question went away.
         #
@@ -238,6 +250,7 @@ class GeminiInteractionsProvider:
         if self.background:
             payload["background"] = True
 
+        self.service_gave_up = False
         interaction = self._submit_with_retry(payload)
         interaction_id = interaction.get("id")
         if not interaction_id:
@@ -248,6 +261,7 @@ class GeminiInteractionsProvider:
         final = self._poll_to_terminal(interaction_id, interaction)
         status = final.get("status")
         if status in SERVICE_GAVE_UP_STATUSES:
+            self.service_gave_up = True
             raise LLMUnavailableError(
                 f"Interaction finished as {status!r}: the service gave up on the job."
             )
@@ -378,30 +392,57 @@ class GeminiInteractionsProvider:
         if submitted.get("status") in TERMINAL_STATUSES:
             return submitted
 
-        last = submitted
+        last, read = submitted, False
         for delay in self.poll_delays_s:
             time.sleep(delay)
-            if self.on_poll is not None:
-                self.on_poll()
+            done = self.on_poll() if self.on_poll is not None else None
+            started = time.monotonic()
+            # A FAILED POLL IS NOT A FAILED JOB. The work may well be running;
+            # only the question about it failed, so every branch below keeps
+            # asking rather than abandoning a generation already paid for.
             try:
                 resp = requests.get(
                     INTERACTION_URL.format(id=interaction_id),
                     params={"key": self.api_key},
                     timeout=REQUEST_TIMEOUT_S,
                 )
-                last = resp.json()
-            except (requests.RequestException, ValueError) as e:
-                # A FAILED POLL IS NOT A FAILED JOB. The work may well be
-                # running; only the question about it failed, so this keeps
-                # asking rather than abandoning a generation already paid for.
+            except requests.Timeout as e:
+                report_outcome(done, OUTCOME_TIMEOUT, started)
+                print(f"Interaction poll timed out ({e}); still waiting.", file=sys.stderr)
+                continue
+            except requests.RequestException as e:
+                report_outcome(done, OUTCOME_ERROR, started)
                 print(f"Interaction poll failed ({e}); still waiting.", file=sys.stderr)
                 continue
+
+            report_outcome(done, http_outcome(resp.status_code), started)
+            try:
+                body = resp.json()
+            except ValueError:
+                body = None
+
+            # THE STATUS AND THE BODY, not the parse error — item 186. On
+            # 2026-09-28 15:01Z both polls logged only "Expecting value: line
+            # 1 column 1 (char 0)", which says the body was empty or not JSON
+            # and nothing about why.
+            if resp.status_code != HTTP_OK or not isinstance(body, dict):
+                detail = (resp.text or "").strip()[:300]
+                print(
+                    f"Interaction poll HTTP {resp.status_code}: {detail or 'empty body'}; "
+                    "still waiting.",
+                    file=sys.stderr,
+                )
+                continue
+
+            last, read = body, True
             if last.get("status") in TERMINAL_STATUSES:
                 return last
 
         raise LLMUnavailableError(
             f"Interaction {interaction_id} did not reach a terminal state within "
-            f"{sum(self.poll_delays_s)}s (last status {last.get('status')!r})."
+            f"{sum(self.poll_delays_s)}s (last status {last.get('status')!r}"
+            + ("" if read else ", the submit's: no poll was read")
+            + ")."
         )
 
 

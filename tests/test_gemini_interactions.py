@@ -117,6 +117,49 @@ def test_polls_are_reported_separately_from_attempts(monkeypatch):
     assert len(polls) == 2, "both polls reported, neither counted as an attempt"
 
 
+def test_a_poll_reports_its_status_and_says_what_came_back(monkeypatch, capsys):
+    """Item 186, 2026-09-28 15:01Z: both polls failed to parse and the record
+    kept only "Expecting value: line 1 column 1 (char 0)" -- no status, no
+    body, and two ledger rows with no outcome. Nothing could say what Google
+    had answered."""
+    monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", lambda s: None)
+    outcomes = []
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json={"id": "v1_abc", "status": "in_progress"})
+        m.get(INTERACTION_URL.format(id="v1_abc"), [
+            {"status_code": 503, "text": ""},
+            {"json": completed()},
+        ])
+        got = provider(
+            on_poll=lambda: lambda outcome, elapsed_s: outcomes.append(outcome)
+        ).generate("sys", "user", Answer)
+
+    assert got.verdict == "dry"
+    assert outcomes == ["http_503", "http_200"]
+    err = capsys.readouterr().err
+    assert "HTTP 503" in err and "empty body" in err, err
+
+
+def test_the_provider_says_whether_the_service_gave_up_on_its_job(monkeypatch):
+    """Item 186: a job Google failed bars the link from the write-up, and a
+    job that was merely slow does not -- so the provider has to say which."""
+    from openlocalweather.llm.errors import LLMUnavailableError
+
+    monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", lambda s: None)
+    gave_up, slow = provider(), provider()
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json={"id": "v1_abc", "status": "in_progress"})
+        m.get(INTERACTION_URL.format(id="v1_abc"), json={"id": "v1_abc", "status": "failed"})
+        with pytest.raises(LLMUnavailableError):
+            gave_up.generate("sys", "user", Answer)
+        m.get(INTERACTION_URL.format(id="v1_abc"), json={"id": "v1_abc", "status": "in_progress"})
+        with pytest.raises(LLMUnavailableError):
+            slow.generate("sys", "user", Answer)
+
+    assert gave_up.service_gave_up is True
+    assert slow.service_gave_up is False
+
+
 def test_a_failed_poll_does_not_abandon_a_paid_generation(monkeypatch):
     """The work may well be running; only the question about it failed."""
     monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", lambda s: None)

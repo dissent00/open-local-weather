@@ -36,10 +36,11 @@ NARRATIVE = GeminiNarrativeResponse(yesterday_verification="", today_narrative="
 class _Link:
     """Fails the schemas in `fails`, and records every request it SENT."""
 
-    def __init__(self, model: str, *, fails=(), attempts: int = 1):
+    def __init__(self, model: str, *, fails=(), attempts: int = 1, family=None):
         self.model = model
         self.fails = set(fails)
         self.attempts = attempts
+        self.credential_family = family
         self.sent: list[str] = []
         self.before_attempt = None
         self.after_attempt = None
@@ -150,6 +151,69 @@ def test_a_refused_link_never_reaches_the_cap_and_the_hooks_come_back():
     assert completed == ["http_503"] * 4 + ["http_200"]
     for link in (gemini, openrouter):
         assert link.before_attempt is cap and link.after_attempt is done
+
+
+class _QueueLink(_Link):
+    """Accepts the scored job and never finishes it in time -- or, with
+    `gave_up`, has it failed by the service. Writes the narrative."""
+
+    def __init__(self, model: str, *, gave_up: bool = False):
+        super().__init__(model, family="gemini")
+        self.gave_up = gave_up
+        self.service_gave_up = False
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        name = response_schema.__name__
+        self._attempt(name, "http_200")
+        if response_schema is GeminiJudgmentResponse:
+            self.service_gave_up = self.gave_up
+            raise LLMUnavailableError(f"{self.model} did not reach a terminal state")
+        return NARRATIVE
+
+
+class _OurCeilingRefuses(_Link):
+    """Refused by this deployment's own ceiling: past the routing gate, then
+    no request completed -- so no outcome is ever reported."""
+
+    def __init__(self, model: str):
+        super().__init__(model, family="gemini")
+        self.reached: list[str] = []
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        if self.before_attempt is not None:
+            self.before_attempt()
+        self.reached.append(response_schema.__name__)
+        raise LLMUnavailableError(f"{self.model} has made 11 of its 8 allowed calls")
+
+
+def test_a_link_google_did_not_refuse_is_still_asked_for_the_write_up():
+    """Item 186, 2026-09-28 15:01Z. The direct link was refused by OUR ceiling
+    (no request completed) and the queued job was accepted and still running
+    at +16 min; item 180's rule barred both, so the write-up the queue waits
+    an hour for was never asked. Only Google's refusal bars a link."""
+    direct = _OurCeilingRefuses("gemini-3.6-flash")
+    queue = _QueueLink("gemini-3.6-flash")
+    openrouter = _Link("nex-agi/nex-n2.5-pro:free")
+    chain = FallbackProvider([direct, queue, openrouter])
+
+    call, _, served = _run(chain, "scored_call")
+
+    assert served["judgment"][1] == "nex-agi/nex-n2.5-pro:free"
+    assert direct.reached == [J, N], "a link our own ceiling refused is asked again"
+    assert queue.sent == [J, N], "a slow queued job does not bar the write-up"
+    assert openrouter.sent == [J]
+    assert call.narrative_error is None
+
+
+def test_a_job_the_service_gave_up_on_bars_the_write_up():
+    queue = _QueueLink("gemini-3.6-flash", gave_up=True)
+    openrouter = _Link("nex-agi/nex-n2.5-pro:free")
+    chain = FallbackProvider([queue, openrouter])
+
+    call, _, _ = _run(chain, "scored_call")
+
+    assert queue.sent == [J]
+    assert "failed the scored call" in call.narrative_error
 
 
 def test_a_single_provider_is_untouched():

@@ -202,6 +202,12 @@ class FakeLLMProvider:
     # degraded-write-up path. None means answer normally.
     fail_judgment: Exception | None = None
     fail_narrative: Exception | None = None
+    # How a failure ENDED, reported before it is raised as a real provider
+    # does. Item 186's rule reads it: only a link the service refused is kept
+    # off the write-up, and a failure reported as nothing reads as a request
+    # that never completed.
+    after_attempt = None
+    fail_outcome = "http_503"
 
     @property
     def system_prompts(self) -> str:
@@ -224,10 +230,15 @@ class FakeLLMProvider:
         if self.before_attempt is not None:
             self.before_attempt()
         self.calls.append((system_prompt, user_prompt))
-        if self.fail_judgment is not None and response_schema is GeminiJudgmentResponse:
-            raise self.fail_judgment
-        if self.fail_narrative is not None and response_schema is GeminiNarrativeResponse:
-            raise self.fail_narrative
+        failure = (
+            self.fail_judgment if response_schema is GeminiJudgmentResponse
+            else self.fail_narrative if response_schema is GeminiNarrativeResponse
+            else None
+        )
+        if failure is not None:
+            if self.after_attempt is not None:
+                self.after_attempt(self.fail_outcome, 0.1)
+            raise failure
         if self.after_response is not None:
             self.after_response(
                 ResponseMeta(
@@ -3522,7 +3533,9 @@ def _queue_chain(tmp_path, *, queue_fails_judgment=False):
 
     queue = Queue()
     if queue_fails_judgment:
+        # Accepted, and not finished inside the scored call's wait.
         queue.fail_judgment = LLMUnavailableError("still queued")
+        queue.fail_outcome = "http_200"
     gateway = FakeLLMProvider()
     gateway.credential_family = "openai"
 
@@ -3664,14 +3677,96 @@ def test_the_queue_chain_end_to_end_through_the_real_providers(tmp_path, monkeyp
     assert sum(r.purpose.endswith("-poll") for r in rows) == 5, "every poll on the record"
 
 
+def test_the_15_01z_shape_end_to_end_through_the_real_providers(tmp_path, monkeypatch):
+    """ROADMAP item 186, 2026-09-28 15:01Z, with nothing faked but HTTP. The
+    direct link is refused; the queue accepts the scored job and both polls
+    come back empty-bodied 503s; the gateway serves the scored call. Then the
+    queue, slow rather than refused, is asked for the write-up and serves it,
+    and every poll row says what it got back."""
+    import dataclasses
+    import json
+    import re
+
+    import requests_mock
+
+    import openlocalweather.llm.gemini_interactions as gi
+    from openlocalweather.cli import _build_llm_provider
+    from openlocalweather.spend import read_ledger
+
+    for name, value in {
+        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
+        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    chain = _build_llm_provider(providers=[
+        {"kind": "gemini", "max_attempts": 1},
+        {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
+         "max_attempts": 1, "poll_delays_s": [480, 480],
+         "write_up_poll_delays_s": [480, 480, 840, 1800]},
+        "openai",
+    ])
+
+    answer = FakeLLMProvider().response.model_dump()
+    judgment = json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json"))
+    write_up = json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json"))
+    slept = []
+    monkeypatch.setattr(gi.time, "sleep", slept.append)
+    # The module's network guard replaces these two. requests_mock intercepts
+    # beneath them and refuses any address not registered, so the guard holds.
+    monkeypatch.setattr(requests, "post", requests.api.post)
+    monkeypatch.setattr(requests, "get", requests.api.get)
+
+    with requests_mock.Mocker() as m:
+        m.post(re.compile("generateContent"), status_code=503,
+               json={"error": {"code": 503, "message": "high demand"}})
+        m.post(gi.INTERACTIONS_URL, [
+            {"json": {"id": "job-scored", "status": "in_progress"}},
+            {"json": {"id": "job-write-up", "status": "in_progress"}},
+        ])
+        m.get(gi.INTERACTION_URL.format(id="job-scored"), status_code=503, text="")
+        m.get(gi.INTERACTION_URL.format(id="job-write-up"), [
+            {"json": {"id": "job-write-up", "status": "in_progress"}},
+            {"json": {"id": "job-write-up", "status": "completed",
+                      "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
+                      "steps": [{"type": "model_output",
+                                 "content": [{"type": "text", "text": write_up}]}]}},
+        ])
+        m.post("https://openrouter.ai/api/v1/chat/completions", json={
+            "model": "dots-studio/dots-3-note-preview:free",
+            "choices": [{"message": {"role": "assistant", "content": judgment},
+                         "finish_reason": "stop"}],
+        })
+
+        deps = dataclasses.replace(
+            make_deps(tmp_path, llm=chain),
+            location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
+        )
+        issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_provider == "OpenAICompatProvider"
+    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
+    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    assert slept == [480, 480, 480, 480]
+
+    polls = [r.outcome for r in read_ledger(tmp_path) if r.purpose.endswith("-poll")]
+    assert polls == ["http_503", "http_503", "http_200", "http_200"]
+
+
 def test_the_gateway_still_takes_the_scored_call_when_the_queue_cannot(tmp_path):
+    """And the queue, slow rather than refused, still writes the write-up.
+    Until item 186's fix on 2026-09-28 it was barred, and that day's 15:01Z
+    write-up was never asked."""
     deps, direct, queue, gateway = _queue_chain(tmp_path, queue_fails_judgment=True)
 
     issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert len(gateway.calls) == 1, "the gateway served the scored call only"
+    assert len(queue.calls) == 2, "the slow queue was asked for the write-up"
+    assert queue.schedules[-1] == (480, 480, 840, 1800), "on the write-up's own schedule"
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
 
 
 def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):

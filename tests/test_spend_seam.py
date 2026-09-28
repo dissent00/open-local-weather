@@ -489,6 +489,29 @@ def test_polls_are_recorded_and_marked_as_polls(tmp_path):
     assert purposes == ["forecast", "forecast-poll", "forecast-poll"]
 
 
+def test_a_poll_row_carries_what_the_poll_got_back(tmp_path):
+    """Item 186, 2026-09-28 15:01Z: two poll rows with no outcome, so the
+    ledger could not say what Google answered the one question the trial
+    asks of it."""
+    from openlocalweather.pipeline import attach_spend_cap
+
+    class _Reporting(_PollingProvider):
+        def generate(self, system_prompt, user_prompt, response_schema):
+            self.before_attempt()
+            self.after_attempt("http_200", 1.0)
+            self.on_poll()("http_503", 0.4)
+            return "answer"
+
+    provider = _Reporting(polls=1)
+    attach_spend_cap(provider, tmp_path, max_calls=20, purpose="forecast")
+
+    provider.generate("sys", "user", None)
+
+    submit, poll = read_ledger(tmp_path)
+    assert (submit.purpose, submit.outcome) == ("forecast", "http_200")
+    assert (poll.purpose, poll.outcome) == ("forecast-poll", "http_503")
+
+
 def test_a_poll_is_never_refused_even_with_the_window_full(tmp_path):
     """THE FAILURE THIS PREVENTS is abandoning work already paid for.
 

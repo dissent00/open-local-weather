@@ -472,8 +472,11 @@ def record_poll(
     provider: str,
     model: str,
     purpose: str,
-) -> None:
+) -> datetime:
     """Records a status poll. VISIBLE IN THE LEDGER, AND NEVER REFUSES ONE.
+
+    Returns the row's `at`, so [complete_attempt] can fill in what the poll
+    got back — item 186.
 
     A background submit is one request plus N polls, and item 80 left the
     accounting open: "counting polls as spend would be wrong while counting
@@ -507,6 +510,7 @@ def record_poll(
         SpendRecord(at=now, provider=provider, model=model, purpose=f"{purpose}-poll")
     )
     _write_ledger(data_dir, records)
+    return now
 
 
 def complete_attempt(
