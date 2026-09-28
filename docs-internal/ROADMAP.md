@@ -73,7 +73,9 @@ write-up asked.
    calibration plan was measured and dropped (no gain out of sample; revisit
    at 30 checks). Item 187 now hands the write-up the tile's sky words;
    around 10-12, count how often a write-up still names another sky, and
-   re-check 187's thunder-first question on the same write-ups.
+   re-check 187's thunder-first question on the same write-ups. Around
+   10-20, re-run `tools/sky_lead_skill.py`: SKY BY DAY runs a band clear
+   beyond today on ten days, and the operator chose to wait for 30.
 3. **Item 167**, a local agency's UV, is unchanged since the operator raised
    it.
 4. **Item 173 point 1**, the code's numbers as the app's forecast when the
@@ -26629,6 +26631,9 @@ this measures what it says.
 per-lead correction sized from them is item 100's trap, and item 123 found
 correction no help at Day+0. Re-run the tool at about 30 target days.
 
+**Operator's decision, 2026-09-28: wait for 30 target days**, around
+10-20, and decide then. Nothing is corrected until that re-run.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
@@ -26693,6 +26698,39 @@ count as model calls: model calls ≈ direct + 2 × submits if they do not,
 **What it cannot know yet.** Whether submits are accepted during an
 overload. Whether an accepted job finishes inside the waits or fails later.
 Whether polls count.
+
+### 2026-09-28 15:01Z: the first run under the trial published no write-up
+
+The scored call was served by the gateway (dots-3-note, 121 s) and the
+write-up was the placeholder. Three separate causes, read from the run's log
+and the ledger:
+
+1. **The direct link was refused by our own ceiling**, not by Google: "has
+   made 11 of its 8 allowed calls in the last 24 hours. The oldest of those
+   ages out at 2026-09-28T15:02:05", thirty seconds after the attempt. All
+   eleven were made under the OLD policy (four attempts per call) by the
+   09-27 15:01Z and 09-28 03:01Z runs, before this config landed at 05:18Z.
+   At one attempt per call a day spends at most four direct calls, so this
+   cannot recur; it was the changeover.
+2. **Both polls failed to read the job.** The submit was accepted (HTTP 200,
+   0.9 s); at +8 and +16 min the log says "Interaction poll failed (Expecting
+   value: line 1 column 1 (char 0)); still waiting": the body was empty or
+   not JSON. The run then gave up with "last status 'in_progress'", which is
+   the SUBMIT's status: no poll was ever read. These are the first polls in
+   production; Interactions ran synchronously from 09-15 to 09-25. The code
+   prints only the parse error, and the ledger's poll rows carry no outcome,
+   so the record cannot say what HTTP status came back.
+3. **The write-up was never attempted.** Both Gemini links had "failed the
+   scored call", and item 180's rule does not ask such a link for the
+   narrative; the gateway is `scored_call` only. So the +30/+60 write-up
+   wait the design promises never runs on the day it exists for: a queued
+   scored job that is merely slow bars the queue from the write-up.
+
+**Not known:** whether the job ever finished. One GET of its id answers
+that and says what the poll was being served:
+`python tools/probe_background_submit.py --fetch
+v1_ChdUNEc2YXB2cEhlYXcxTWtQNWZ5NXNBRRIXVDRHNmFwdnBIZWF3MU1rUDVmeTVzQUU --yes`
+(needs `GEMINI_API_KEY`; one request).
 
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,
