@@ -925,7 +925,18 @@ def test_the_extended_outlook_is_told_to_say_the_sky():
     outlook = _section(build_narrative_prompt(KISUMU), "Extended Outlook")
 
     assert "SAY THE SKY BEYOND TODAY" in outlook
-    assert "never as a split between models" in outlook
+    assert "never a split between models" in outlook
+    # and the words arrive made, so the writer does not average by eye
+    assert '"SKY BY DAY"' in outlook
+    # and are not merged across days whose words differ, which a harness run did
+    assert "only where EVERY day in the run carries the same word" in outlook
+
+    rows = [{"lead_time_days": 1, "date": "2026-08-12", "day_name": "Wednesday", "sky": "Partly cloudy"}]
+    block = _minimal_user_prompt(sky_by_day=rows).split("SKY BY DAY (")[1].split("\n\n")[0]
+    assert "2026-08-12\tWednesday\tPartly cloudy" in block, block
+
+    empty = _minimal_user_prompt(sky_by_day=[]).split("SKY BY DAY (")[1].split("\n\n")[0]
+    assert "Unavailable" in empty, empty
 
 
 def test_the_write_up_does_not_narrate_a_weighting_it_did_not_do():

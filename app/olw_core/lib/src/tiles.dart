@@ -15,6 +15,8 @@
 library;
 
 import 'comparison.dart';
+import 'dates.dart' show forwardCalendar;
+import 'extract.dart' show extractDayNPredictionsFromDaily;
 import 'rounding.dart';
 import 'models.dart' show formatIndexAndBand;
 import 'scales.dart';
@@ -189,6 +191,37 @@ List<Map<String, String>> cloudAnchors(
   }
 
   if (out.isEmpty || hours.every((h) => h <= issuedHour)) return const [];
+  return out;
+}
+
+/// The sky word for each day beyond today, as a table's rows — upstream item
+/// 187. Mirrors Python's `sky_by_day`; see it for why.
+///
+/// PAIRED BY DATE, NOT BY POSITION: each row publishes a calendar day name
+/// beside its word. TODAY IS LEFT OUT, being `cloudAnchors`'. `mean`, not
+/// `reduce`, for the reason `cloudAnchors` gives.
+List<Map<String, Object?>> skyByDay(
+  Map<String, Object?> daily,
+  List<String> models, {
+  required DateTime today,
+}) {
+  final block = daily['daily'];
+  final times = block is Map ? (block['time'] as List? ?? const []) : const [];
+  final out = <Map<String, Object?>>[];
+
+  for (final row in forwardCalendar(today)) {
+    final index = times.indexOf(row['date']);
+    if (row['lead_time_days'] == 0 || index < 0) continue;
+
+    final covers = [
+      for (final p in extractDayNPredictionsFromDaily(daily, index, models))
+        if (p.cloudCoverPct != null) p.cloudCoverPct,
+    ];
+    if (covers.isEmpty) continue;
+
+    out.add({...row, 'sky': skyWord(mean(covers))});
+  }
+
   return out;
 }
 

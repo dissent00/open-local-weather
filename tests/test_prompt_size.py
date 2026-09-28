@@ -36,6 +36,7 @@ FULLY_POPULATED_HEADERS = [
     "NEXT THREE DAYS",
     # Item 187: the sky tile's words.
     "SKY AT EACH ANCHOR",
+    "SKY BY DAY",
     "WIND DIRECTION",
     "WIND SHIFT",
     # Item 161: the UV the forecaster is no longer asked to supply.

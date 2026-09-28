@@ -4958,6 +4958,27 @@ def test_the_sky_block_carries_the_tiles_words_from_the_whole_day(tmp_path, monk
     assert "Mostly clear" not in block, block
 
 
+def test_the_sky_by_day_block_reaches_the_prompt(monkeypatch, tmp_path):
+    """Item 187: the Extended Outlook's words, composed and CARRIED.
+
+    The fixture's daily block has no dates, and the real feed always does;
+    this one gives them, and a different cloud each day so the words say
+    which day they came from.
+    """
+    daily = daily_fixture()
+    daily["daily"]["time"] = [f"2026-08-{d}" for d in range(11, 19)]
+    for model in MODELS:
+        daily["daily"][f"cloud_cover_mean_{model}"] = [50, 3, 97, 50, 50, 50, 50, 50]
+    monkeypatch.setattr(open_meteo, "fetch_forecast_daily_extended", lambda *a, **k: daily)
+    llm = FakeLLMProvider()
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    block = llm.user_prompts.split("SKY BY DAY (")[1].split("\n\n")[0]
+
+    assert "2026-08-12\tWednesday\tClear" in block, block
+    assert "2026-08-13\tThursday\tOvercast" in block, block
+
+
 def test_the_prompt_says_which_ground_aqi_absence_it_found(tmp_path, monkeypatch):
     """The reason reaches the prompt — ROADMAP item 163.
 

@@ -849,6 +849,18 @@ def test_vectors_cloud_anchors():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_sky_by_day():
+    """ROADMAP item 187 — a sky word per day beyond today, paired by date."""
+    from datetime import date
+
+    from openlocalweather.tiles import sky_by_day
+
+    for case in load("sky_by_day.json")["cases"]:
+        i = case["input"]
+        got = sky_by_day(i["daily_multi_model"], i["models"], today=date.fromisoformat(i["today"]))
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_wind_anchors():
     """ROADMAP item 159 step 3 — the wind at the same anchors as the sky."""
     from openlocalweather.tiles import wind_anchors
@@ -1225,6 +1237,7 @@ def test_every_vector_file_is_exercised():
         "phrase_defect.json",
         "overlong_display_values.json",
         "cloud_anchors.json",
+        "sky_by_day.json",
         "wind_anchors.json",
         "uv_band.json",
         "aqi_band.json",
@@ -1468,7 +1481,7 @@ NOT_KEYWORD_CALLS = frozenset({
     "cloud_anchors.json", "code_blend.json", "coverage.json",
     "dates_add_days.json", "glossary.json", "gust_calibration.json",
     "llm_schema_split.json", "llm_should_reason.json", "llm_system_prompt.json",
-    "prompt_rounding.json", "spend.json", "verification.json",
+    "prompt_rounding.json", "sky_by_day.json", "spend.json", "verification.json",
     "weekday_name.json", "weekly_review.json", "wind_anchors.json",
     "wind_describe_shift.json", "wind_timeline.json",
 })

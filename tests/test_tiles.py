@@ -253,6 +253,67 @@ LIGHT_THEN_FRESH = ([9.0] * 12 + [22.0] * 12, [15.0] * 12 + [52.0] * 12)
 NE_THEN_SW = [30.0] * 12 + [225.0] * 12
 
 
+def week_block(start: str, covers: list) -> dict:
+    """A daily block from `start`, one entry per day; an entry is a number
+    every model shares, or a dict giving named models their own."""
+    from datetime import date, timedelta
+    from openlocalweather.defaults import MODELS
+
+    first = date.fromisoformat(start)
+    fields: dict = {"time": [(first + timedelta(days=i)).isoformat() for i in range(len(covers))]}
+    for model in MODELS:
+        fields[f"cloud_cover_mean_{model}"] = [
+            c.get(model) if isinstance(c, dict) else c for c in covers
+        ]
+    return {"daily": fields}
+
+
+def test_each_day_beyond_today_gets_a_word_and_its_calendar_name():
+    """Item 187: the Extended Outlook's sky, made in code as today's is."""
+    from datetime import date
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import sky_by_day
+
+    daily = week_block("2026-09-28", [74, 77, 46, 81, 66, 53, 54, 47])
+    rows = sky_by_day(daily, MODELS, today=date(2026, 9, 28))
+
+    assert rows[0] == {
+        "lead_time_days": 1, "date": "2026-09-29", "day_name": "Tuesday", "sky": "Mostly cloudy",
+    }
+    assert [r["sky"] for r in rows] == [
+        "Mostly cloudy", "Partly cloudy", "Mostly cloudy", "Mostly cloudy",
+        "Partly cloudy", "Partly cloudy", "Partly cloudy",
+    ]
+
+
+def test_the_days_are_paired_by_date_not_by_position():
+    """A block starting a day early must not shift every word onto the next
+    weekday: each row publishes a day name beside its word."""
+    from datetime import date
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import sky_by_day
+
+    daily = week_block("2026-09-27", [0, 100, 0, 100, 0, 100, 0, 100])
+    rows = sky_by_day(daily, MODELS, today=date(2026, 9, 28))
+
+    assert rows[0]["date"] == "2026-09-29"
+    assert rows[0]["sky"] == "Clear", rows[0]
+
+
+def test_a_day_no_model_covers_is_left_out_and_a_missing_model_is_skipped():
+    from datetime import date
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import sky_by_day
+
+    # 95 from four is Overcast; counting the fifth as 0 would make it 76
+    everyone_but_one = {m: 95.0 for m in MODELS[1:]}
+    daily = week_block("2026-09-28", [50, None, everyone_but_one])
+    rows = sky_by_day(daily, MODELS, today=date(2026, 9, 28))
+
+    assert [(r["date"], r["sky"]) for r in rows] == [("2026-09-30", "Overcast")]
+    assert sky_by_day({}, MODELS, today=date(2026, 9, 28)) == []
+
+
 def test_the_wind_anchors_are_values_in_time_order():
     from openlocalweather.defaults import MODELS
     from openlocalweather.tiles import wind_anchors

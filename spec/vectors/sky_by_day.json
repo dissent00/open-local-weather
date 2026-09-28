@@ -1,0 +1,503 @@
+{
+  "vector_format_version": 1,
+  "function": "sky_by_day",
+  "description": "ROADMAP item 187. The sky word for each day beyond today, from the models' mean daily cloud_cover_mean through sky_word, with CALENDAR's day name. Paired by the block's own dates, not by position; today is left out, being the anchors'.",
+  "cases": [
+    {
+      "name": "the 2026-09-28 run's week",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-28",
+              "2026-09-29",
+              "2026-09-30",
+              "2026-10-01",
+              "2026-10-02",
+              "2026-10-03",
+              "2026-10-04",
+              "2026-10-05"
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              74,
+              77,
+              46,
+              81,
+              66,
+              53,
+              54,
+              47
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              74,
+              77,
+              46,
+              81,
+              66,
+              53,
+              54,
+              47
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              74,
+              77,
+              46,
+              81,
+              66,
+              53,
+              54,
+              47
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              74,
+              77,
+              46,
+              81,
+              66,
+              53,
+              54,
+              47
+            ],
+            "cloud_cover_mean_best_match": [
+              74,
+              77,
+              46,
+              81,
+              66,
+              53,
+              54,
+              47
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 1,
+          "date": "2026-09-29",
+          "day_name": "Tuesday",
+          "sky": "Mostly cloudy"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-09-30",
+          "day_name": "Wednesday",
+          "sky": "Partly cloudy"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-10-01",
+          "day_name": "Thursday",
+          "sky": "Mostly cloudy"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2026-10-02",
+          "day_name": "Friday",
+          "sky": "Mostly cloudy"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2026-10-03",
+          "day_name": "Saturday",
+          "sky": "Partly cloudy"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2026-10-04",
+          "day_name": "Sunday",
+          "sky": "Partly cloudy"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2026-10-05",
+          "day_name": "Monday",
+          "sky": "Partly cloudy"
+        }
+      ]
+    },
+    {
+      "name": "a block starting a day early is paired by date",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-27",
+              "2026-09-28",
+              "2026-09-29",
+              "2026-09-30",
+              "2026-10-01",
+              "2026-10-02",
+              "2026-10-03",
+              "2026-10-04",
+              "2026-10-05"
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0
+            ],
+            "cloud_cover_mean_best_match": [
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0,
+              100,
+              0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 1,
+          "date": "2026-09-29",
+          "day_name": "Tuesday",
+          "sky": "Clear"
+        },
+        {
+          "lead_time_days": 2,
+          "date": "2026-09-30",
+          "day_name": "Wednesday",
+          "sky": "Overcast"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-10-01",
+          "day_name": "Thursday",
+          "sky": "Clear"
+        },
+        {
+          "lead_time_days": 4,
+          "date": "2026-10-02",
+          "day_name": "Friday",
+          "sky": "Overcast"
+        },
+        {
+          "lead_time_days": 5,
+          "date": "2026-10-03",
+          "day_name": "Saturday",
+          "sky": "Clear"
+        },
+        {
+          "lead_time_days": 6,
+          "date": "2026-10-04",
+          "day_name": "Sunday",
+          "sky": "Overcast"
+        },
+        {
+          "lead_time_days": 7,
+          "date": "2026-10-05",
+          "day_name": "Monday",
+          "sky": "Clear"
+        }
+      ]
+    },
+    {
+      "name": "a day no model covers is left out",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-28",
+              "2026-09-29",
+              "2026-09-30",
+              "2026-10-01"
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              50,
+              null,
+              50,
+              50
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              50,
+              null,
+              50,
+              50
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              50,
+              null,
+              50,
+              50
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              50,
+              null,
+              50,
+              50
+            ],
+            "cloud_cover_mean_best_match": [
+              50,
+              null,
+              50,
+              50
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 2,
+          "date": "2026-09-30",
+          "day_name": "Wednesday",
+          "sky": "Partly cloudy"
+        },
+        {
+          "lead_time_days": 3,
+          "date": "2026-10-01",
+          "day_name": "Thursday",
+          "sky": "Partly cloudy"
+        }
+      ]
+    },
+    {
+      "name": "a missing model is skipped, not counted as clear",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-28",
+              "2026-09-29"
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              50,
+              95.0
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              50,
+              95.0
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              50,
+              95.0
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              50,
+              null
+            ],
+            "cloud_cover_mean_best_match": [
+              50,
+              95.0
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 1,
+          "date": "2026-09-29",
+          "day_name": "Tuesday",
+          "sky": "Overcast"
+        }
+      ]
+    },
+    {
+      "name": "the summation method decides the word at a band edge",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "time": [
+              "2026-09-28",
+              "2026-09-29"
+            ],
+            "cloud_cover_mean_gfs_seamless": [
+              50,
+              5.8
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              50,
+              6.0
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              50,
+              6.1
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              50,
+              6.4
+            ],
+            "cloud_cover_mean_best_match": [
+              50,
+              6.95
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": [
+        {
+          "lead_time_days": 1,
+          "date": "2026-09-29",
+          "day_name": "Tuesday",
+          "sky": "Mostly clear"
+        }
+      ]
+    },
+    {
+      "name": "no daily block is empty",
+      "input": {
+        "daily_multi_model": {},
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": []
+    },
+    {
+      "name": "a block without dates is empty, not guessed",
+      "input": {
+        "daily_multi_model": {
+          "daily": {
+            "cloud_cover_mean_gfs_seamless": [
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50
+            ],
+            "cloud_cover_mean_ecmwf_ifs025": [
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50
+            ],
+            "cloud_cover_mean_icon_seamless": [
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50
+            ],
+            "cloud_cover_mean_ukmo_seamless": [
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50
+            ],
+            "cloud_cover_mean_best_match": [
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          }
+        },
+        "models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless",
+          "best_match"
+        ],
+        "today": "2026-09-28"
+      },
+      "expected": []
+    }
+  ]
+}

@@ -1189,6 +1189,7 @@ void main() {
           instability: i['instability'],
           extendedTrend: i['extended_trend'] as String?,
           anchorSkies: (i['anchor_skies'] as Map?)?.cast<String, String>(),
+          skyByDay: (i['sky_by_day'] as List?)?.map((r) => (r as Map).cast<String, Object?>()).toList(),
           anchorDirections: (i['anchor_directions'] as Map?)?.cast<String, String?>(),
           windShift: i['wind_shift'] as String?,
           observedSoFar: i['observed_so_far'] as String?,
@@ -1281,6 +1282,20 @@ void main() {
             e.key as String: (e.value as num).toDouble(),
         };
         expectMatches(comparisonModifiers(deltas, notable), c['expected'], c['name'] as String);
+      }
+    });
+
+    test('sky_by_day', () {
+      // Upstream item 187. Paired by the block's own dates, not by position;
+      // today is left out, being the anchors'.
+      for (final c in loadVectors('sky_by_day.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final got = skyByDay(
+          (i['daily_multi_model'] as Map).cast<String, Object?>(),
+          (i['models'] as List).cast<String>(),
+          today: DateTime.parse(i['today'] as String),
+        );
+        expectMatches(got, c['expected'], c['name'] as String);
       }
     });
 
@@ -2170,6 +2185,7 @@ void main() {
       'false_weekday_claims.json',
       'overlong_display_values.json',
       'cloud_anchors.json',
+      'sky_by_day.json',
       'wind_anchors.json',
       'uv_band.json',
       'aqi_band.json',

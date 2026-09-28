@@ -47,6 +47,7 @@ Map<String, Object?> _dailyBody(List<String> models) => {
           'temperature_2m_max_$m': List<double>.filled(8, 28.0),
           'temperature_2m_min_$m': List<double>.filled(8, 18.0),
           'pressure_msl_mean_$m': List<double>.filled(8, 1012.0),
+          'cloud_cover_mean_$m': List<double>.filled(8, 95.0),
         },
       }
     };
@@ -996,6 +997,8 @@ void main() {
     // Upstream item 187: the sky tile's words.
     expect(llm.seenUserPrompt, contains('"midday": "Overcast"'),
         reason: 'the sky block was not wired into this path');
+    expect(llm.seenUserPrompt, contains('2026-08-20\tThursday\tOvercast'),
+        reason: 'the sky by day was not wired into this path');
 
     expect(llm.seenUserPrompt, contains('NEXT THREE DAYS'));
     expect(llm.seenUserPrompt, isNot(contains('omit the extended clause')),

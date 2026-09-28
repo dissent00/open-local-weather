@@ -105,6 +105,7 @@ absent values are `null`, never omitted keys.
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
 | `cloud_anchors.json` | `cloud_anchors` | 7 |
+| `sky_by_day.json` | `sky_by_day` | 7 |
 | `wind_anchors.json` | `wind_anchors` | 9 |
 | `uv_band.json` | `uv_band` | 11 |
 | `aqi_band.json` | `aqi_band` | 13 |

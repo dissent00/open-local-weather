@@ -467,6 +467,54 @@ def export_cloud_anchors() -> None:
     )
 
 
+def export_sky_by_day() -> None:
+    """ROADMAP item 187 — the sky word for each day beyond today.
+
+    PAIRED BY DATE, so the case starting the block a day early is the one a
+    positional port fails. The band-edge case is `cloud_anchors`' summation
+    case, for the same reason: the mean's summation decides the word.
+    """
+    from datetime import date, timedelta
+
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import sky_by_day
+
+    def week(start, covers):
+        # a day's entry is a number every model shares, or a tuple giving
+        # model `i` its own
+        first = date.fromisoformat(start)
+        d = {"time": [(first + timedelta(days=i)).isoformat() for i in range(len(covers))]}
+        for i, model in enumerate(MODELS):
+            d[f"cloud_cover_mean_{model}"] = [c[i] if isinstance(c, tuple) else c for c in covers]
+        return {"daily": d}
+
+    today = "2026-09-28"
+    # 95 from four is Overcast; counting the fifth as 0 would make it 76
+    one_missing = (95.0, 95.0, 95.0, None, 95.0)
+    cases = [
+        ("the 2026-09-28 run's week", week(today, [74, 77, 46, 81, 66, 53, 54, 47])),
+        ("a block starting a day early is paired by date",
+         week("2026-09-27", [0, 100, 0, 100, 0, 100, 0, 100, 0])),
+        ("a day no model covers is left out", week(today, [50, None, 50, 50])),
+        ("a missing model is skipped, not counted as clear", week(today, [50, one_missing])),
+        ("the summation method decides the word at a band edge",
+         week(today, [50, (5.8, 6.0, 6.1, 6.4, 6.95)])),
+        ("no daily block is empty", {}),
+        ("a block without dates is empty, not guessed",
+         {"daily": {f"cloud_cover_mean_{m}": [50] * 8 for m in MODELS}}),
+    ]
+    write(
+        "sky_by_day.json",
+        "sky_by_day",
+        "ROADMAP item 187. The sky word for each day beyond today, from the "
+        "models' mean daily cloud_cover_mean through sky_word, with CALENDAR's "
+        "day name. Paired by the block's own dates, not by position; today is "
+        "left out, being the anchors'.",
+        [{"name": n, "input": {"daily_multi_model": d, "models": list(MODELS), "today": today},
+          "expected": sky_by_day(d, MODELS, today=date.fromisoformat(today))} for n, d in cases],
+    )
+
+
 def export_wind_anchors() -> None:
     """ROADMAP item 159 step 3 -- the wind at each anchor hour.
 
@@ -2207,6 +2255,10 @@ def export_user_prompt() -> None:
         "extended_trend": "temperatures and winds much the same through Wednesday, with showers "
                           "possible Tuesday, dry Wednesday, and thunderstorms likely each day",
         "anchor_skies": {"early": "Mostly clear", "midday": "Partly cloudy", "evening": "Mostly cloudy"},
+        "sky_by_day": [
+            {"lead_time_days": 1, "date": "2026-08-20", "day_name": "Thursday", "sky": "Mostly cloudy"},
+            {"lead_time_days": 2, "date": "2026-08-21", "day_name": "Friday", "sky": "Partly cloudy"},
+        ],
         "anchor_directions": {"early": "NNE", "midday": "SSW", "evening": None},
         "wind_shift": "north-northeasterly overnight, turning south-southwest by midday and "
                       "west-northwest into the evening",
@@ -2256,7 +2308,7 @@ def export_user_prompt() -> None:
             # ever does.
             case(
                 "locked phrases passed empty — each renders unavailable",
-                dict(full, extended_trend="", wind_shift="", observed_so_far="", anchor_skies={}),
+                dict(full, extended_trend="", wind_shift="", observed_so_far="", anchor_skies={}, sky_by_day=[]),
             ),
             # ITEM 174. Every case here carries CLEAN fetched objects, so none
             # of them reaches the strip that removes Open-Meteo's units maps
@@ -6496,6 +6548,7 @@ def main() -> None:
     export_overlong_display_values()
     export_tile_comparison()
     export_cloud_anchors()
+    export_sky_by_day()
     export_wind_anchors()
     export_scales()
     export_compose_tiles()

@@ -16,6 +16,8 @@ joining to do and can simply be absent.
 
 from __future__ import annotations
 
+from datetime import date
+
 from openlocalweather.comparison import _band_label
 from openlocalweather.defaults import (
     CLOUD_CHANGE_BANDS_PCT,
@@ -227,6 +229,43 @@ def cloud_anchors(
 
     if not out or all(hour <= issued_hour for hour in hours):
         return []
+
+    return out
+
+
+def sky_by_day(daily: dict, models: list[str], *, today: date) -> list[dict]:
+    """The sky word for each day beyond today, as a table's rows.
+
+    ROADMAP item 187. The Extended Outlook was told to average five models'
+    daily cloud by eye, and a harness run called a partly cloudy day mostly
+    cloudy doing it. The word now arrives made, by the tile's own `sky_word`
+    over the models' mean, as today's does. UNMEASURED BEYOND DAY+0: the
+    mean's word matched the reanalysis on 10 of 13 days at Day+0 (item 123)
+    and has not been checked at a longer lead.
+
+    PAIRED BY DATE, NOT BY POSITION. Each row publishes a CALENDAR day name
+    beside its word, so a block starting a day early would put every word
+    under the wrong weekday; the block's own "time" says which day is which.
+
+    TODAY IS LEFT OUT: `cloud_anchors` gives today's sky at three hours, and
+    a daily word beside them would be a second sky for the same day.
+    """
+    from openlocalweather.dates import forward_calendar
+    from openlocalweather.extract import extract_day_n_predictions_from_daily
+
+    times = ((daily or {}).get("daily") or {}).get("time") or []
+    out: list[dict] = []
+
+    for row in forward_calendar(today):
+        if row["lead_time_days"] == 0 or row["date"] not in times:
+            continue
+
+        predictions = extract_day_n_predictions_from_daily(daily, times.index(row["date"]), models)
+        covers = [p.cloud_cover_pct for p in predictions if p.cloud_cover_pct is not None]
+        if not covers:
+            continue
+
+        out.append({**row, "sky": sky_word(sum(covers) / len(covers))})
 
     return out
 

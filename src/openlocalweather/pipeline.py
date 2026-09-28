@@ -91,6 +91,7 @@ from openlocalweather.tiles import (
     comparison_modifiers,
     compose_tiles,
     notable_moves,
+    sky_by_day,
     wind_anchors,
 )
 from openlocalweather.llm.provider import (
@@ -1439,6 +1440,9 @@ def _locked_blocks(
                 guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
             )
         },
+        # And each day beyond today, so the Extended Outlook stops averaging
+        # five models' daily cloud by eye.
+        "sky_by_day": sky_by_day(guidance.primary_daily, MODELS, today=today),
         "anchor_directions": {
             str(a["when"]): a.get("direction")
             for a in wind_anchors(

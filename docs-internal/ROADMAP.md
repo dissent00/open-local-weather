@@ -26538,6 +26538,35 @@ signals".
 each day; a code-computed word per day, as the tile does for today, would
 remove that, and is not built.
 
+### 2026-09-28: the extended sky words are computed in code
+
+**The operator approved the design:** a SKY BY DAY block for days 1-7, the
+models' mean daily `cloud_cover_mean` through the tile's `sky_word`, with
+`forward_calendar`'s day names; prompt only. `tiles.sky_by_day` and
+`skyByDay` pair each day by the block's own dates, not by position, because
+each row publishes a weekday. Today is left out, being the anchors'. The
+vector file `sky_by_day.json` has 7 cases, including a block starting a day
+early and the summation band edge. 5,000 random weeks (17,247 day rows)
+through both languages: 0 differences. Made positional, the composer failed
+both its unit test and its vector test.
+
+**Harness, same 03:01 message**, the block computed from that run's own
+guidance (Tue Mostly cloudy, Wed Partly cloudy, Thu-Fri Mostly cloudy,
+Sat-Mon Partly cloudy), three blind Haiku runs per wording:
+
+| | every day right | the rest |
+|---|---|---|
+| by eye, no block | 1 of 3 | days 1-3 summarised as mostly cloudy; Wednesday called mostly cloudy |
+| block; "days that share a word can be said together" | 1 of 3 | "mostly cloudy Tuesday to Thursday" over a partly cloudy Wednesday; "mostly to partly cloudy", and days 4-7 left out |
+| block; "only where EVERY day in the run carries the same word" | 2 of 3 | "Friday through Sunday remain mostly cloudy to partly cloudy" |
+
+The first wording invited the merge it was meant to allow. No run split the
+sky by model or narrated a weighting. The test pinning the tightened
+sentence was written with it, not before it.
+
+**Not checked:** whether the daily mean's word is right at leads beyond
+Day+0, and any production-chain model.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**

@@ -668,6 +668,8 @@ Future<ForecastRun> generateForecast({
           issuedHour: issuedHourOf(resolvedIssuance)))
         a['when']!: a['cover']!,
     },
+    // And each day beyond today — upstream item 187.
+    skyByDay: skyByDay(daily, models, today: today),
     anchorDirections: {
       for (final a in windAnchors(hourly, models,
           issuedHour: issuedHourOf(resolvedIssuance)))
