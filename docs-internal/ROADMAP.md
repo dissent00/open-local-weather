@@ -26468,6 +26468,57 @@ passed-empty case an empty map, which is what an 18:01 run passes.
 
 **Not checked:** no real model has read the new text yet.
 
+### Harness run 2026-09-28: the 03:01 message through Haiku, blind, three runs per prompt
+
+**Setup.** The call block is `tools/harness_inputs.py`'s. The narrative
+system prompt was built with `verification_already_written=False`, the only
+setting that reproduces the archived hash; the tool hardcodes `True`, which
+is wrong for a first issuance. The new arm's message is the archive with SKY
+AT EACH ANCHOR spliced in from the run's own stored tile (Overcast, Mostly
+cloudy, Mostly cloudy). The old arm is the archive as sent, beside f4fc9b9's
+system prompt, hash-matched. Two system lines over 2,000 characters were
+wrapped in both arms. Workers were pinned to Haiku, told nothing about the
+change, and all six located every block. Production's 03:01 run published
+the placeholder, so there is no real write-up to compare.
+
+**The day tests the rule.** At midday best_match, ECMWF and ICON sit at
+95-100% cloud; GFS is at 11% and UKMO at 23%.
+
+| | new (3) | old (3) |
+|---|---|---|
+| Today's sky in the tile's words | 3 | 0 |
+| sky split by model name | 0 | 1 |
+| a sky word the tile contradicts | 2 stray phrases | 1 |
+| sky left out of Today's Forecast | 0 | 1 |
+| Extended Outlook mentions the sky | 0 | 2 |
+| Confidence Notes narrate a weighting as fact | 1, and 1 borderline | 2, and 1 borderline |
+| names Kenya Met's declining rain trend | 0 | 0 |
+
+The old arm's split was also MISATTRIBUTED: "GFS and best-match staying
+mostly overcast while ECMWF, ICON, and UKMO each show significant clearing
+by noon", when GFS and UKMO were the clear ones. The new arm's stray words
+were "Clear to overcast through sunrise", with every model at 95-100%, and
+"the brief clear window midday". Weighting, new: "GFS ... was not weighted
+into today's forecast"; old: "the weighting reflects that recent
+performance conflict, pulling more heavily toward the models that got
+yesterday right", and "our higher early cloud cover".
+
+**Reading.** The sky change does what it was built for on this day. The
+weighting change reduced narration without ending it, at n=3, inside the
+noise item 130 measured. Neither arm named the one real conflict:
+kenya_met's Day+0 `rain_pct_trend` is declining (-23.3). **A lead, not a
+finding:** all three new runs dropped the sky from the Extended Outlook,
+against one of three old. The shorter sentence may cue it more weakly.
+Watch it in production.
+
+**Also found, and not this change's:** 2 of 6 runs, one per arm, wrote
+31.5 C as 50.7 F. The prompt asks the writer to convert. Swept over every
+published write-up: 0 wrong in 326 C/F pairs (the 20 a pattern flagged
+were ranges, converted correctly). So it is Haiku's error, not production's.
+
+**Not checked:** Gemini or any production-chain model; any day but one; the
+18:01 path, which gets no sky block.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
