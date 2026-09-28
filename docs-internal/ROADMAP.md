@@ -27625,7 +27625,7 @@ separated by blank lines and neither JSON nor a table contains one, so the
 fresh side now reads heading-to-blank-line and is format-agnostic. The archive
 side still parses JSON, which is all it will ever hold.
 
-## 175. The Dart vector runner silently drops arguments · **Steps 1-2 and a detector done 2026-09-28; 20 single-knob defaults remain**
+## 175. The Dart vector runner silently drops arguments · **Detectors for both halves built 2026-09-28; 10 unset defaults listed as debt**
 
 Found while fixing one instance of it. `vectors_test.dart` called
 `buildUserPrompt` without `forwardWindowNarrowed`, so the parameter took its
@@ -27752,13 +27752,44 @@ again is caught only by the guard, because Dart's default equals the case's
 is caught too.
 
 **What it does not catch.** A parameter that no case sets at all, which is
-how all seven `buildUserPrompt` drops arose. That check would belong on the
-Python side: every parameter of a vectored function appears in some case,
-or is listed with a reason. `run_row.json` has its own loader in
-`run_record_test.dart` and sits outside the guard. A `--name` subset can
-flag a key that only a deselected test reads, and a loop that stops on a
-failing case leaves the later cases unread; the message says to fix any
-earlier failure first.
+how all seven `buildUserPrompt` drops arose. `run_row.json` has its own
+loader in `run_record_test.dart` and sits outside the guard. A `--name`
+subset can flag a key that only a deselected test reads, and a loop that
+stops on a failing case leaves the later cases unread; the message says to
+fix any earlier failure first.
+
+### The other half, built 2026-09-28
+
+`tests/test_vectors.py::test_every_parameter_of_a_vectored_function_is_set_by_some_case`
+covers parameters that no case sets. For each vector file whose cases are keyword
+calls to one package function, found by the file's `function` name and
+matched on its signature, every parameter must be set by some case or be
+exempted with a reason. 59 of the 79 files qualify. The other 20 name two
+functions or build their inputs into objects, and are listed in
+`NOT_KEYWORD_CALLS`, so a new file of that kind is a decision rather than a
+silent skip.
+
+**Two exemptions have reasons.** `compute_day_over_day`'s `onset_word_for` is
+a function, which JSON cannot carry. `describe_day_over_day`'s
+`subject_prefix` is reached through `day_over_day.json`'s five evening
+cases. **Ten parameters are listed as debt** in `UNSET_NOT_YET_PINNED`,
+each with a constant default: `day_uv_index` sources,
+`forward_hours` hours_ahead, `forward_calendar` days,
+`observation_disagreements` bands, onset_margin_min and temp_margin_c,
+`overlong_display_values` limit, and `notable_moves` minimum_pairs and
+percentile. Setting one in a case fails the test until its entry is
+removed, so the list can only shrink.
+
+The ten and the "twenty single-knob defaults" above are different counts.
+The twenty came from the Dart sweep of runner call sites, across files this
+check cannot resolve to one function. The ten are parameters of the 59
+keyword-call functions that no case sets.
+
+**Proven.** A new optional parameter on `build_user_prompt` fails the test,
+naming it. So does an unlisted file that is not a keyword call, and an
+exemption for a parameter that a case sets. With the two item-175 cases
+removed from the vectors, it names exactly the six blocks that went
+unpinned, so it would have caught the original defect.
 
 ## 174. What the prompt could stop sending · **Measured 2026-09-22, nothing changed yet**
 

@@ -1447,3 +1447,115 @@ def test_vectors_prompt_rounding():
     for case in load("prompt_rounding.json")["cases"]:
         got = _round_for_prompt(case["input"]["payload"])
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
+
+
+# ---------------------------------------------------------------------------
+# Every parameter is set by some case — ROADMAP item 175, the other half
+# ---------------------------------------------------------------------------
+#
+# The Dart runner fails for a key a case carries that no test reads. It cannot
+# see a parameter that NO case sets: both languages then take their own
+# default and nothing compares them. That is how seven `build_user_prompt`
+# arguments went unpinned. This fails when a vectored function has a
+# parameter no case sets and nobody has said why.
+
+# Vector files that are not one function called with its case's input as
+# keywords: they name two functions or a constant, or their case keys are not
+# the function's parameter names (renamed, or built into objects before the
+# call). Listed so a new file of this kind is a decision, not a skip.
+NOT_KEYWORD_CALLS = frozenset({
+    "aqi_staleness.json", "baselines.json", "blend_prediction.json",
+    "cloud_anchors.json", "code_blend.json", "coverage.json",
+    "dates_add_days.json", "glossary.json", "gust_calibration.json",
+    "llm_schema_split.json", "llm_should_reason.json", "llm_system_prompt.json",
+    "prompt_rounding.json", "spend.json", "verification.json",
+    "weekday_name.json", "weekly_review.json", "wind_anchors.json",
+    "wind_describe_shift.json", "wind_timeline.json",
+})
+
+# Input keys that are not arguments — the same exemption the Dart guard has.
+INPUT_KEYS_NOT_ARGUMENTS = {
+    "llm_user_prompt.json": {"verification_already_written"},
+}
+
+# Parameters no case sets, for a reason that makes that correct.
+UNSET_BY_DESIGN = {
+    "day_over_day.json": {"onset_word_for": "a function; a JSON case cannot carry one"},
+    "describe_day_over_day.json": {
+        "subject_prefix": "reached through day_over_day.json's five evening cases, "
+                          "whose composed sentence carries it",
+    },
+}
+
+# Parameters no case sets YET, each with a constant default. Debt, listed so
+# it can only shrink: a parameter added to a vectored function without a case
+# fails below instead of joining it.
+UNSET_NOT_YET_PINNED = {
+    "day_uv_index.json": {"sources"},
+    "daypart_forward_hours.json": {"hours_ahead"},
+    "forward_calendar.json": {"days"},
+    "observation_disagreements.json": {"bands", "onset_margin_min", "temp_margin_c"},
+    "overlong_display_values.json": {"limit"},
+    "tile_notable_moves.json": {"minimum_pairs", "percentile"},
+}
+
+
+def _package_callables() -> dict[str, set]:
+    import importlib
+    import pkgutil
+
+    import openlocalweather
+
+    found: dict[str, set] = {}
+    for info in pkgutil.walk_packages(openlocalweather.__path__, "openlocalweather."):
+        module = importlib.import_module(info.name)
+        for name, value in vars(module).items():
+            if callable(value) and getattr(value, "__module__", None) == module.__name__:
+                found.setdefault(name, set()).add(value)
+    return found
+
+
+def _keyword_parameters(fn) -> set[str]:
+    import inspect
+
+    variadic = (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+    return {n for n, p in inspect.signature(fn).parameters.items() if p.kind not in variadic}
+
+
+def test_every_parameter_of_a_vectored_function_is_set_by_some_case():
+    callables = _package_callables()
+    unclassified, unset, stale = [], [], []
+
+    for path in sorted(VECTORS_DIR.glob("*.json")):
+        vectors = json.loads(path.read_text())
+        inputs = [c.get("input") for c in vectors.get("cases", [])]
+        keys = set().union(*(set(i) for i in inputs if isinstance(i, dict))) - INPUT_KEYS_NOT_ARGUMENTS.get(path.name, set())
+
+        # The file's function, if its cases are keyword calls to exactly one.
+        matches = [
+            fn for fn in callables.get(vectors.get("function", "").strip(), ())
+            if all(isinstance(i, dict) for i in inputs) and keys <= _keyword_parameters(fn)
+        ]
+        if len(matches) > 1:
+            unclassified.append(f"{path.name}: its function name is ambiguous")
+            continue
+        if not matches:
+            if path.name not in NOT_KEYWORD_CALLS:
+                unclassified.append(f"{path.name}: not a keyword call and not in NOT_KEYWORD_CALLS")
+            continue
+        if path.name in NOT_KEYWORD_CALLS:
+            stale.append(f"{path.name} is a keyword call; take it off NOT_KEYWORD_CALLS")
+
+        exempt = set(UNSET_BY_DESIGN.get(path.name, {})) | UNSET_NOT_YET_PINNED.get(path.name, set())
+        missing = _keyword_parameters(matches[0]) - keys - exempt
+        if missing:
+            unset.append(f"{path.name}: {', '.join(sorted(missing))}")
+        for name in sorted(exempt & keys):
+            stale.append(f"{path.name}: {name} is set by a case now; drop its exemption")
+
+    assert not unclassified, unclassified
+    assert not unset, (
+        f"parameters no vector case sets, so both languages run on their own "
+        f"defaults (item 175): {unset}"
+    )
+    assert not stale, stale
