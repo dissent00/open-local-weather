@@ -161,6 +161,21 @@ def test_retries_exhausted_raises():
     assert m.call_count == gemini_mod.MAX_ATTEMPTS
 
 
+def test_a_link_can_be_limited_to_one_attempt():
+    """ROADMAP item 186. First in a chain whose next link is Gemini's queue, a
+    refused direct call hands over at once: each further attempt is a request
+    against the day's 20, spent where the queue is the better bet."""
+    from openlocalweather.llm.errors import LLMUnavailableError
+
+    with requests_mock.Mocker() as m:
+        m.post(URL, status_code=503, json={"error": {"code": 503, "message": "high demand"}})
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        provider.max_attempts = 1
+        with pytest.raises(LLMUnavailableError, match="after 1 attempt"):
+            provider.generate("s", "u", GeminiForecastResponse)
+    assert m.call_count == 1
+
+
 def test_non_retryable_error_fails_fast_without_retrying():
     # identically on retry — burning quota and time for nothing.
     import openlocalweather.llm.gemini as gemini_mod

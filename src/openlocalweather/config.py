@@ -17,9 +17,10 @@ from pathlib import Path
 import yaml
 from openlocalweather.reasoning import LLMRefreshPolicy
 from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS, FallbackCalls
+from openlocalweather.llm.gemini import MAX_ATTEMPTS as GEMINI_MAX_ATTEMPTS
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
 from openlocalweather.models import DeviationBands
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Point(BaseModel):
@@ -104,6 +105,11 @@ class AcknowledgedGap(BaseModel):
         )
 
 
+# The kinds that share Gemini's retry schedule, and the one that can queue.
+GEMINI_KINDS = frozenset({"gemini", "gemini-interactions"})
+QUEUE_KIND = "gemini-interactions"
+
+
 class LLMProviderEntry(BaseModel):
     """One link in the fallback chain that names its own credentials.
 
@@ -149,6 +155,17 @@ class LLMProviderEntry(BaseModel):
     # the next morning while neither vendor's real quota had been touched.
     max_calls_per_24h: int | None = None
 
+    # THE QUEUE LINK — ROADMAP item 186. Gemini refused the scored call in 6
+    # of the 7 15:01Z runs from 09-21 to 09-27, and the write-up every time it
+    # was asked. The chain tries Gemini directly once (`max_attempts: 1`), then
+    # a `background` submit to the Interactions endpoint, polled late on the
+    # link's own schedule, then the gateway. `write_up_poll_delays_s` is the
+    # write-up's longer wait: nothing replaces a write-up Gemini never sends.
+    max_attempts: int | None = None
+    background: bool = False
+    poll_delays_s: list[int] | None = None
+    write_up_poll_delays_s: list[int] | None = None
+
     @field_validator("kind")
     @classmethod
     def _known_kind(cls, v: str) -> str:
@@ -159,6 +176,36 @@ class LLMProviderEntry(BaseModel):
                 f"{', '.join(VALID_LLM_PROVIDERS)}."
             )
         return kind
+
+    @model_validator(mode="after")
+    def _queue_settings_do_something(self) -> LLMProviderEntry:
+        """Each queue setting refused where it would be silently ignored — a
+        run that looks configured and behaves otherwise."""
+        if self.max_attempts is not None:
+            if self.kind not in GEMINI_KINDS:
+                raise ValueError(
+                    f"max_attempts is for {', '.join(sorted(GEMINI_KINDS))}; "
+                    f"{self.kind!r} retries on its own schedule."
+                )
+            if not 1 <= self.max_attempts <= GEMINI_MAX_ATTEMPTS:
+                raise ValueError(
+                    f"max_attempts must be 1..{GEMINI_MAX_ATTEMPTS}, the length of "
+                    f"Gemini's retry schedule; got {self.max_attempts}."
+                )
+
+        schedules = {"poll_delays_s": self.poll_delays_s, "write_up_poll_delays_s": self.write_up_poll_delays_s}
+        if (self.background or any(v is not None for v in schedules.values())) and self.kind != QUEUE_KIND:
+            raise ValueError(f"background and poll schedules are for {QUEUE_KIND!r} only.")
+
+        for name, delays in schedules.items():
+            if delays is None:
+                continue
+            if not self.background:
+                raise ValueError(f"{name} needs background: true; without it no poll is sent.")
+            if not delays or any(d <= 0 for d in delays):
+                raise ValueError(f"{name} must be a non-empty list of positive poll delays in seconds.")
+
+        return self
 
 
 class LocationConfig(BaseModel):

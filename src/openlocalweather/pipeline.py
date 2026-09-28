@@ -571,6 +571,12 @@ def _attempt_summary(outcomes: list[str]) -> str:
     )
 
 
+def _same_vendor(link, first) -> bool:
+    """Both links declare a vendor and it is the same one — item 186."""
+    family = getattr(link, "credential_family", None)
+    return family is not None and family == getattr(first, "credential_family", None)
+
+
 class _NarrativeRouting:
     """Which chain links the narrative may use, decided when the judgment
     returns. Two rules, both ROADMAP item 180:
@@ -582,7 +588,16 @@ class _NarrativeRouting:
       by four more on the narrative — 8 of that day's 11 requests, and 8.5
       minutes. A link that STRUGGLED and served is still asked: on 2026-09-25
       03:01Z the scored call succeeded on its third attempt.
-    - Under `scored_call`, no link after the first is asked at all.
+    - Under `scored_call`, no link of ANOTHER VENDOR than the first is asked.
+      Keyed on vendor since item 186: the rule exists because the gateway
+      wrote a usable write-up 1 time in 5, and Gemini's queue link is the
+      first link's vendor reached another way. By position it could never
+      write one. A link that does not declare `credential_family` counts as
+      another vendor, which is what the rule meant before.
+
+    And one schedule change, item 186: a link with `write_up_poll_delays_s`
+    polls on it for the write-up, which nothing replaces if Gemini never
+    sends it, and gets its own schedule back when the run is done.
 
     In the hooks rather than the chain, for the reason the per-link ceiling
     is (item 170): the provider classes are shared with the app, and this is
@@ -600,6 +615,8 @@ class _NarrativeRouting:
         # why a link may not serve the narrative.
         self._outcomes: dict[int, list[str]] = {}
         self._refused: dict[int, str] = {}
+        # Each switched link's own poll schedule, put back by restore().
+        self._schedules: dict[int, tuple] = {}
         self.active = len(self._links) > 1
 
     def install(self) -> None:
@@ -610,6 +627,9 @@ class _NarrativeRouting:
         if self.active:
             self._provider.before_attempt = self._cap
             self._provider.after_attempt = self._report
+        for link in self._links:
+            if id(link) in self._schedules:
+                link.poll_delays_s = self._schedules.pop(id(link))
 
     def judgment_returned(self) -> None:
         if not self.active:
@@ -625,11 +645,19 @@ class _NarrativeRouting:
 
         if self._fallback_calls == FallbackCalls.SCORED_CALL:
             for link in self._links[1:]:
+                if _same_vendor(link, self._links[0]):
+                    continue
                 self._refused.setdefault(
                     id(link),
                     f"{_link_name(link)} not asked for the narrative "
                     f"(llm_fallback_calls: {FallbackCalls.SCORED_CALL.value})",
                 )
+
+        for link in self._links:
+            write_up = getattr(link, "write_up_poll_delays_s", None)
+            if write_up is not None:
+                self._schedules[id(link)] = link.poll_delays_s
+                link.poll_delays_s = write_up
 
         # The narrative's attempts are its own; the judgment's are spent.
         self._outcomes = {}

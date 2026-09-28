@@ -213,7 +213,8 @@ def test_the_live_config_can_carry_one(tmp_path):
     path.write_text(src)
 
     cfg = load_location_config(str(path))
-    entry = next(e for e in cfg.llm_providers if not isinstance(e, str))
+    # By name: the live list holds other mapping entries since item 186.
+    entry = next(e for e in cfg.llm_providers if not isinstance(e, str) and e.name == "openrouter")
     assert entry.max_calls_per_24h == 50
 
 

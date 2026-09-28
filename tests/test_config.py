@@ -221,20 +221,18 @@ def test_a_mapping_entry_loads_beside_a_bare_string(tmp_path):
     """
     from openlocalweather.config import LLMProviderEntry, load_location_config
 
-    src = (Path("config/location.yaml")).read_text()
-    src = src.replace(
-        "  llm_providers:\n    - gemini\n",
-        "  llm_providers:\n"
-        "    - gemini\n"
-        "    - kind: openai\n"
-        "      name: openrouter\n"
-        "      env_prefix: OPENROUTER\n"
-        "      fallback_models:\n"
-        "        - a:free\n",
-        1,
-    )
+    # Set on the PARSED live config rather than by editing its text: the live
+    # list stopped starting with a bare "- gemini" at item 186, and a text
+    # replace that matches nothing silently tests the live file instead.
+    import yaml
+
+    data = yaml.safe_load(Path("config/location.yaml").read_text())
+    data["location"]["llm_providers"] = [
+        "gemini",
+        {"kind": "openai", "name": "openrouter", "env_prefix": "OPENROUTER", "fallback_models": ["a:free"]},
+    ]
     path = tmp_path / "location.yaml"
-    path.write_text(src)
+    path.write_text(yaml.safe_dump(data))
 
     cfg = load_location_config(str(path))
     first, second = cfg.llm_providers[0], cfg.llm_providers[1]
@@ -256,3 +254,46 @@ def test_a_mapping_entry_with_an_unknown_kind_is_rejected_at_load():
 
     with pytest.raises(ValidationError, match="unknown llm_providers kind"):
         LLMProviderEntry(kind="opeanai")
+
+
+# ---------------------------------------------------------------------------
+# The queue link — ROADMAP item 186
+# ---------------------------------------------------------------------------
+
+
+def test_a_queue_link_is_accepted():
+    from openlocalweather.config import LLMProviderEntry
+
+    entry = LLMProviderEntry(
+        kind="gemini-interactions", name="gemini-queue", background=True, max_attempts=1,
+        poll_delays_s=[480, 480], write_up_poll_delays_s=[480, 480, 840, 1800],
+    )
+    assert entry.poll_delays_s == [480, 480]
+    assert entry.write_up_poll_delays_s == [480, 480, 840, 1800]
+
+
+@pytest.mark.parametrize("fields, why", [
+    # A schedule nothing would use: without `background` the endpoint answers
+    # directly and no poll is ever sent.
+    ({"kind": "gemini-interactions", "poll_delays_s": [480]}, "background"),
+    ({"kind": "gemini-interactions", "write_up_poll_delays_s": [480]}, "background"),
+    # Only the Interactions endpoint queues.
+    ({"kind": "gemini", "background": True}, "gemini-interactions"),
+    ({"kind": "openai", "poll_delays_s": [480]}, "gemini-interactions"),
+    # Gemini's schedule is four attempts long; more would outrun its delays and
+    # the budget guard that assumes them. OpenRouter retries on its own terms.
+    ({"kind": "gemini", "max_attempts": 0}, "max_attempts"),
+    ({"kind": "gemini", "max_attempts": 5}, "max_attempts"),
+    ({"kind": "openai", "max_attempts": 1}, "max_attempts"),
+    ({"kind": "gemini-interactions", "background": True, "poll_delays_s": []}, "poll"),
+    ({"kind": "gemini-interactions", "background": True, "poll_delays_s": [0]}, "poll"),
+])
+def test_a_queue_setting_that_would_do_nothing_is_rejected(fields, why):
+    """A setting that is silently ignored makes a run look configured and
+    behave otherwise, so each is refused at load, naming the field."""
+    from pydantic import ValidationError
+
+    from openlocalweather.config import LLMProviderEntry
+
+    with pytest.raises(ValidationError, match=why):
+        LLMProviderEntry(**fields)

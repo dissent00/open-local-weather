@@ -3496,6 +3496,182 @@ def test_the_configured_fallback_policy_reaches_the_run(tmp_path, policy, fallba
         assert "(fake-model) failed the scored call" in degraded[0].detail
 
 
+def _queue_chain(tmp_path, *, queue_fails_judgment=False):
+    """ROADMAP item 186's chain: Gemini direct, Gemini's queue, the gateway.
+    The direct link refuses both calls, as at 15:01Z on most days since 09-21."""
+    import dataclasses
+
+    from openlocalweather.llm.errors import LLMUnavailableError
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    direct = FakeLLMProvider()
+    direct.fail_judgment = LLMUnavailableError("503")
+    direct.fail_narrative = LLMUnavailableError("503")
+    direct.credential_family = "gemini"
+
+    class Queue(FakeLLMProvider):
+        credential_family = "gemini"
+        poll_delays_s = (480, 480)
+        write_up_poll_delays_s = (480, 480, 840, 1800)
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            self.schedules = [*getattr(self, "schedules", []), self.poll_delays_s]
+            return super().generate(system_prompt, user_prompt, response_schema)
+
+    queue = Queue()
+    if queue_fails_judgment:
+        queue.fail_judgment = LLMUnavailableError("still queued")
+    gateway = FakeLLMProvider()
+    gateway.credential_family = "openai"
+
+    deps = dataclasses.replace(
+        make_deps(tmp_path, llm=FallbackProvider([direct, queue, gateway])),
+        location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
+    )
+    return deps, direct, queue, gateway
+
+
+def test_the_queue_may_write_what_the_gateway_may_not(tmp_path):
+    """`scored_call` keeps the GATEWAY off the write-up — it wrote a usable
+    one 1 time in 5 (item 180). Gemini's queue is the same vendor as the
+    first link reached another way, so the rule is keyed on vendor, not on
+    position, or the queue could never write one. Item 186."""
+    deps, direct, queue, gateway = _queue_chain(tmp_path)
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert len(direct.calls) == 1, "a link that failed the scored call is not asked again"
+    assert len(queue.calls) == 2, "the queue served the scored call and the write-up"
+    assert gateway.calls == []
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+
+
+def test_the_write_up_waits_on_the_queue_links_longer_schedule(tmp_path):
+    """Nothing replaces a write-up Gemini never sends, so it waits longer than
+    the scored call, which has the gateway behind it. The link's own schedule
+    comes back afterwards: a chain object outlives one run in the app."""
+    deps, direct, queue, gateway = _queue_chain(tmp_path)
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert queue.schedules == [(480, 480), (480, 480, 840, 1800)]
+    assert queue.poll_delays_s == (480, 480)
+
+
+def test_the_queue_chain_end_to_end_through_the_real_providers(tmp_path, monkeypatch):
+    """ROADMAP item 186 with nothing faked but HTTP: the chain built by cli.py
+    from config entries, the real providers, the real routing and the real
+    spend ledger. Gemini refuses direct calls; the queue accepts both jobs and
+    finishes them after a few polls, as the design hopes an overload does."""
+    import dataclasses
+    import json
+
+    import requests
+
+    import openlocalweather.llm.gemini_interactions as gi
+    from openlocalweather.cli import _build_llm_provider
+    from openlocalweather.llm.provider import chain_links
+    from openlocalweather.spend import read_ledger
+
+    for name, value in {
+        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
+        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    chain = _build_llm_provider(providers=[
+        {"kind": "gemini", "max_attempts": 1},
+        {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
+         "max_attempts": 1, "poll_delays_s": [480, 480],
+         "write_up_poll_delays_s": [480, 480, 840, 1800]},
+        "openai",
+    ])
+    queue = chain_links(chain)[1]
+
+    answer = FakeLLMProvider().response.model_dump()
+    texts = {
+        "job-scored": json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json")),
+        "job-write-up": json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json")),
+    }
+    # How many polls each job needs before it is done.
+    polls_until_done = {"job-scored": 2, "job-write-up": 3}
+    polled = {job: 0 for job in texts}
+    submitted = []
+    sent = []
+
+    class Reply:
+        def __init__(self, status_code, body):
+            self.status_code, self._body = status_code, body
+            self.text = json.dumps(body)
+
+        def json(self):
+            return self._body
+
+    def post(url, **kwargs):
+        sent.append(url)
+        if "generateContent" in url:
+            return Reply(503, {"error": {"code": 503, "message": "high demand"}})
+        if url == gi.INTERACTIONS_URL:
+            job = ("job-scored", "job-write-up")[len(submitted)]
+            submitted.append(job)
+            return Reply(200, {"id": job, "status": "queued"})
+        raise AssertionError(f"the gateway was asked: {url}")
+
+    def get(url, **kwargs):
+        job = url.rsplit("/", 1)[1]
+        polled[job] += 1
+        if polled[job] < polls_until_done[job]:
+            return Reply(200, {"id": job, "status": "queued"})
+        return Reply(200, {"id": job, "status": "completed",
+                           "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
+                           "steps": [{"type": "model_output", "content": [{"type": "text", "text": texts[job]}]}]})
+
+    slept = []
+    monkeypatch.setattr(requests, "post", post)
+    monkeypatch.setattr(requests, "get", get)
+    # One `time` module serves both providers; the direct link makes one
+    # attempt and never sleeps, so every recorded sleep is a poll delay.
+    monkeypatch.setattr(gi.time, "sleep", slept.append)
+
+    deps = dataclasses.replace(
+        make_deps(tmp_path, llm=chain),
+        location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
+    )
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_provider == "GeminiInteractionsProvider"
+    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
+    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+
+    # One direct attempt, on the scored call only: having failed it, the
+    # direct link is not asked for the write-up.
+    assert sum("generateContent" in u for u in sent) == 1
+    assert submitted == ["job-scored", "job-write-up"]
+    # Each call on its own schedule, and the link's own restored afterwards.
+    assert slept == [480, 480, 480, 480, 840]
+    assert queue.poll_delays_s == (480, 480)
+
+    rows = read_ledger(tmp_path)
+    assert [(r.provider, r.outcome) for r in rows if not r.purpose.endswith("-poll")] == [
+        ("GeminiProvider", "http_503"),
+        ("GeminiInteractionsProvider", "http_200"),
+        ("GeminiInteractionsProvider", "http_200"),
+    ]
+    assert sum(r.purpose.endswith("-poll") for r in rows) == 5, "every poll on the record"
+
+
+def test_the_gateway_still_takes_the_scored_call_when_the_queue_cannot(tmp_path):
+    deps, direct, queue, gateway = _queue_chain(tmp_path, queue_fails_judgment=True)
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert len(gateway.calls) == 1, "the gateway served the scored call only"
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+
+
 def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
     """The degradation above is deliberately ONE-SIDED.
 

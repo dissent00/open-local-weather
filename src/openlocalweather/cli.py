@@ -235,6 +235,12 @@ class _ProviderEntry:
     # fallback needed.
     max_calls_per_24h: int | None = None
 
+    # The queue link's policy — ROADMAP item 186, see LLMProviderEntry.
+    max_attempts: int | None = None
+    background: bool = False
+    poll_delays_s: tuple[int, ...] | None = None
+    write_up_poll_delays_s: tuple[int, ...] | None = None
+
     def env(self, suffix: str, default: str = "") -> str:
         return _env(f"{self.env_prefix}_{suffix}", default)
 
@@ -288,10 +294,34 @@ def _resolve_provider_entries(
                 # shape the field was written for.
                 fallback_models=tuple(own or ()),
                 max_calls_per_24h=entry.get("max_calls_per_24h"),
+                max_attempts=entry.get("max_attempts"),
+                background=bool(entry.get("background")),
+                poll_delays_s=_delays(entry.get("poll_delays_s")),
+                write_up_poll_delays_s=_delays(entry.get("write_up_poll_delays_s")),
             )
         )
 
     return resolved
+
+
+def _delays(raw) -> tuple[int, ...] | None:
+    return tuple(int(d) for d in raw) if raw is not None else None
+
+
+def _mark_queue_policy(link, entry: _ProviderEntry) -> None:
+    """The queue link's policy, set on the built link the way its ceiling is
+    — ROADMAP item 186. `credential_family` goes on every link: it is how the
+    write-up rule tells Gemini's queue (same vendor as the first link) from
+    the gateway, which `scored_call` keeps off the write-up."""
+    link.credential_family = CREDENTIAL_FAMILIES.get(entry.kind, entry.kind)
+    if entry.max_attempts is not None:
+        link.max_attempts = entry.max_attempts
+    if entry.background:
+        link.background = True
+    if entry.poll_delays_s is not None:
+        link.poll_delays_s = entry.poll_delays_s
+    if entry.write_up_poll_delays_s is not None:
+        link.write_up_poll_delays_s = entry.write_up_poll_delays_s
 
 
 def _reject_colliding_entries(entries: list[_ProviderEntry]) -> None:
@@ -412,6 +442,7 @@ def _build_llm_provider(
             # ceiling is a deployment's concern rather than a provider's.
             if entry.max_calls_per_24h is not None:
                 link.max_calls_per_24h = entry.max_calls_per_24h
+            _mark_queue_policy(link, entry)
             built.append(link)
         except SystemExit as e:
             # A SINGLE NAME KEEPS ITS OLD BEHAVIOUR EXACTLY: the message that

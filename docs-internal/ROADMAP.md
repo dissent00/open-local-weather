@@ -26195,6 +26195,76 @@ Not done: item 173 point 1.
 
 ---
 
+## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
+
+**Why.** Since the switch back to `generateContent` on 09-25, every run has
+published a scored forecast, but 4 of the 6 had no write-up. Counted from
+every version of the spend ledger, over the two-call period (09-12 to 09-28),
+Gemini only; the gateway's rescues are not counted:
+
+| slot | period | scored call | write-up, when Gemini was asked |
+|---|---|---|---|
+| 15:01Z | 09-12..09-20, 5 runs | 5/5 | 4/5 |
+| 15:01Z | 09-21..09-27, 7 runs | **1/7** | **0/3** |
+| 03:01Z | 09-13..09-20, 8 runs | 8/8 | 7/8 |
+| 03:01Z | 09-21..09-28, 8 runs | 6/8 | 4/7 |
+
+Retries do not rescue it. Of 24 Gemini calls since 09-21, 15 failed all four
+attempts. The recoveries came within 0.5-1.6 minutes, mostly on 429 days, or
+at about 9 minutes on the fourth attempt, twice on 09-27. Nothing past 9
+minutes has ever been observed, because every run stops there.
+
+**The operator skipped the paired probe** (`tools/probe_background_submit.py`,
+never run during an overload) and chose to try queuing in production.
+
+**The design.** The chain is Gemini direct, then Gemini queued, then the
+gateway (`config/location.yaml`).
+
+- **Direct, `max_attempts: 1`.** A refusal hands over at once, instead of
+  spending three more of the day's 20.
+- **Queued: the Interactions API with `background`**, one submit and no retry
+  of a refused one. A refused submit costs about 2 units on the console
+  (item 179), and the trial's premise is that a submit is accepted when a
+  generation is not.
+- **Polls start late.** The scored call is polled at +8 and +16 min and then
+  handed to the gateway. The write-up is polled at +8, +16, +30 and +60 min,
+  because nothing replaces it. Both waits are the operator's.
+- **The run publishes once**, so a slow write-up holds the scored forecast
+  too, up to about 07:20 / 19:20 local. The mailer sends any issuance it
+  has not sent, every 30 minutes, so the email is later, not lost.
+  Publishing in two steps would lift
+  that. It is not built: it needs the write-up prompts saved by the run, and
+  `tools/rerender_narrative.py` rebuilds from the day's FIRST issuance and
+  cannot restore verification notes.
+- **`scored_call` is keyed on vendor**, not position. The gateway still may
+  not write a write-up; the queue, being the first link's vendor, may. A link
+  that fails a job (`failed`, `cancelled`, `budget_exceeded`) raises
+  unavailability, so the chain falls through rather than the run ending.
+- **Budget.** Ceilings of 8 direct and 6 queued (at about 2 units each) keep
+  a bad day inside Google's 20. Worst run: 2 direct + 2 submits, about 6
+  units, plus up to 6 polls.
+- **Unchanged:** the queued link sends no thinking level, as when it ran from
+  09-15 to 09-25, so it thinks less than the direct call. The field is
+  untested on this endpoint, and a rejection would break the link.
+
+**How to read the trial.** The ledger records each direct attempt, each
+submit (an `http_200` means accepted) and each poll (purpose `-poll`). The
+entry's `meta.llm_provider` is `GeminiInteractionsProvider` when the queue
+served. Per Pacific day, the console against the ledger settles whether polls
+count as model calls: model calls ≈ direct + 2 × submits if they do not,
++ polls if they do.
+
+**What it cannot know yet.** Whether submits are accepted during an
+overload. Whether an accepted job finishes inside the waits or fails later.
+Whether polls count.
+
+**Built and tested.** Ten new test functions were watched failing before the
+code existed. One end-to-end test, written after, drives the real providers,
+routing and ledger with only HTTP faked. Removing any one of the nine pieces
+fails at least one test.
+
+---
+
 ## 184. OpenRouter served one model and the record named another · **SHIPPED 2026-09-27**
 
 The operator's OpenRouter console for 09-26 shows one call, served by

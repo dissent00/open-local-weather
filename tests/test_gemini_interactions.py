@@ -306,3 +306,83 @@ def test_an_empty_retryable_body_says_so_rather_than_nothing():
         m.post(INTERACTIONS_URL, status_code=503, text="")
         with pytest.raises(LLMResponseError, match="empty body"):
             provider().generate("sys", "user", Answer)
+
+
+# ---------------------------------------------------------------------------
+# The queue link — ROADMAP item 186
+# ---------------------------------------------------------------------------
+#
+# Second in the chain, after one direct attempt: a background submit, then
+# polls on the link's own schedule. The first poll is late on purpose — this
+# link is reached only when Gemini is refusing, and a job queued in an
+# overload is not done in 15 seconds.
+
+
+def queue_link(poll_delays_s=(480, 480)):
+    p = provider(background=True)
+    p.max_attempts = 1
+    p.poll_delays_s = poll_delays_s
+    return p
+
+
+def test_a_refused_submit_is_not_retried():
+    """The trial's premise is that a submit is accepted when a generation is
+    not. A refused one costs about two units on this endpoint, so it hands
+    over rather than spending more."""
+    from openlocalweather.llm.errors import LLMUnavailableError
+
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, status_code=503, text="overloaded")
+        with pytest.raises(LLMUnavailableError):
+            queue_link().generate("sys", "user", Answer)
+
+    assert m.call_count == 1
+
+
+def test_the_link_polls_on_its_own_schedule(monkeypatch):
+    slept = []
+    monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", slept.append)
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json={"id": "v1_abc", "status": "queued"})
+        m.get(INTERACTION_URL.format(id="v1_abc"), [
+            {"json": {"id": "v1_abc", "status": "in_progress"}},
+            {"json": completed()},
+        ])
+        got = queue_link().generate("sys", "user", Answer)
+
+    assert got.verdict == "dry"
+    assert slept == [480, 480]
+
+
+def test_a_job_still_queued_at_the_deadline_hands_over(monkeypatch):
+    """Unavailable, so the chain moves on to the next link rather than
+    ending the run."""
+    from openlocalweather.llm.errors import LLMUnavailableError
+
+    monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", lambda s: None)
+    polls = []
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json={"id": "v1_abc", "status": "queued"})
+        m.get(INTERACTION_URL.format(id="v1_abc"), json={"id": "v1_abc", "status": "queued"})
+        link = queue_link()
+        link.on_poll = lambda: polls.append(1)
+        with pytest.raises(LLMUnavailableError, match="terminal state"):
+            link.generate("sys", "user", Answer)
+
+    assert len(polls) == 2
+
+
+@pytest.mark.parametrize("status", ["failed", "cancelled", "budget_exceeded"])
+def test_a_job_the_service_gave_up_on_is_unavailable(monkeypatch, status):
+    """The service failing the job is the service being unavailable, as a 503
+    is. Raised as a plain response error it would END the run, because the
+    chain only falls through on unavailability. `incomplete` stays a bad
+    answer — see the stop-reason test above."""
+    from openlocalweather.llm.errors import LLMUnavailableError
+
+    monkeypatch.setattr("openlocalweather.llm.gemini_interactions.time.sleep", lambda s: None)
+    with requests_mock.Mocker() as m:
+        m.post(INTERACTIONS_URL, json={"id": "v1_abc", "status": "queued"})
+        m.get(INTERACTION_URL.format(id="v1_abc"), json=completed(status=status))
+        with pytest.raises(LLMUnavailableError, match=status):
+            queue_link().generate("sys", "user", Answer)

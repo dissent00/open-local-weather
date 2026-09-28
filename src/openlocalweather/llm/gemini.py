@@ -159,6 +159,13 @@ FINISH_REASON_COMPLETE = "STOP"
 
 
 class GeminiProvider:
+    # HOW MANY REQUESTS ONE CALL MAY SEND — ROADMAP item 186. The whole
+    # schedule by default. A chain whose next link is Gemini's queue sets it
+    # to 1 (cli.py, from location.yaml), because each further attempt spends
+    # one of the day's 20 where the queue is the better bet. Never above
+    # MAX_ATTEMPTS: config refuses it, and the budget guard assumes it.
+    max_attempts = MAX_ATTEMPTS
+
     def __init__(
         self,
         api_key: str,
@@ -202,7 +209,7 @@ class GeminiProvider:
         just wastes time and quota, since they'll fail identically.
         """
         last_exc: Exception | None = None
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        for attempt in range(1, self.max_attempts + 1):
             if self.before_attempt is not None:
                 self.before_attempt()
             started = time.monotonic()
@@ -223,17 +230,17 @@ class GeminiProvider:
                 report_outcome(self.after_attempt, OUTCOME_ERROR, started)
                 last_exc = e
 
-            if attempt < MAX_ATTEMPTS:
+            if attempt < self.max_attempts:
                 delay = RETRY_DELAYS_S[attempt - 1]
                 print(
                     f"Gemini call failed ({last_exc}); retrying in {delay}s "
-                    f"(attempt {attempt}/{MAX_ATTEMPTS}).",
+                    f"(attempt {attempt}/{self.max_attempts}).",
                     file=sys.stderr,
                 )
                 time.sleep(delay)
 
         raise LLMUnavailableError(
-            f"Gemini request failed after {MAX_ATTEMPTS} attempts: {last_exc}"
+            f"Gemini request failed after {self.max_attempts} attempts: {last_exc}"
         ) from last_exc
 
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:

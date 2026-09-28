@@ -379,8 +379,19 @@ def test_the_live_config_is_what_we_think_it_is():
 
     live = load_location_config("config/location.yaml")
     # THE ORDER IS THE CHANGE — ROADMAP item 81, 2026-09-21. Gemini answers
-    # when it can and the gateway takes what it sheds.
-    assert live.llm_providers == ["gemini", "openai"]
+    # when it can and the gateway takes what it sheds. Item 186, 2026-09-28:
+    # Gemini direct once, then Gemini's queue, then the gateway.
+    direct, queue, gateway = live.llm_providers
+    assert (direct.kind, direct.max_attempts) == ("gemini", 1)
+    assert (queue.kind, queue.background, queue.max_attempts) == ("gemini-interactions", True, 1)
+    # The operator's waits: about 20 minutes for the scored call, which has
+    # the gateway behind it, and 60 for the write-up, which has nothing.
+    assert queue.poll_delays_s == [480, 480]
+    assert queue.write_up_poll_delays_s == [480, 480, 840, 1800]
+    # The two Gemini ceilings together inside Google's 20: 8 direct at 1
+    # unit, 6 queued at about 2 (item 179).
+    assert direct.max_calls_per_24h + 2 * queue.max_calls_per_24h <= 20
+    assert gateway == "openai"
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at
     # the gateway, on the day the primary was already down.
@@ -416,6 +427,40 @@ def test_a_list_of_providers_builds_a_chain(monkeypatch):
     provider = _build_llm_provider(providers=["gemini", "openai"])
     assert isinstance(provider, FallbackProvider)
     assert provider.model == "gemini-3.6-flash"
+
+
+def test_a_queue_chain_carries_each_links_policy(monkeypatch):
+    """ROADMAP item 186. Direct Gemini once, then Gemini's queue, then the
+    gateway. The policy rides on each link as attributes, like
+    `max_calls_per_24h`, because it is the deployment's and not the
+    provider's; `credential_family` is what lets the write-up rule tell the
+    queue (same vendor) from the gateway."""
+    from openlocalweather.llm.fallback import FallbackProvider
+    from openlocalweather.llm.provider import chain_links
+
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-key")
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setenv("LLM_MODEL", "nex-agi/nex-n2.5-pro:free")
+
+    provider = _build_llm_provider(providers=[
+        {"kind": "gemini", "max_attempts": 1},
+        {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
+         "max_attempts": 1, "max_calls_per_24h": 6,
+         "poll_delays_s": [480, 480], "write_up_poll_delays_s": [480, 480, 840, 1800]},
+        "openai",
+    ])
+
+    assert isinstance(provider, FallbackProvider)
+    direct, queue, gateway = chain_links(provider)
+    assert type(direct).__name__ == "GeminiProvider" and direct.max_attempts == 1
+    assert type(queue).__name__ == "GeminiInteractionsProvider"
+    assert queue.background is True
+    assert queue.max_attempts == 1
+    assert queue.max_calls_per_24h == 6
+    assert queue.poll_delays_s == (480, 480)
+    assert queue.write_up_poll_delays_s == (480, 480, 840, 1800)
+    assert [link.credential_family for link in (direct, queue, gateway)] == ["gemini", "gemini", "openai"]
 
 
 def test_a_provider_whose_key_is_absent_is_dropped_loudly(monkeypatch, capsys):

@@ -97,6 +97,12 @@ TERMINAL_STATUSES = frozenset(
 # for the normal case.
 POLL_DELAYS_S = (15, 15, 30, 60, 60)
 
+# The terminal states in which the SERVICE gave up on the job, as distinct
+# from the model answering badly (`incomplete`). Raised as unavailability,
+# like a 503, because the chain falls through on nothing else — as a plain
+# response error a job failed in an overload would end the run. Item 186.
+SERVICE_GAVE_UP_STATUSES = frozenset({"failed", "cancelled", "budget_exceeded"})
+
 # The step that carries the answer. `thought` steps hold an opaque signature
 # and no readable content; `user_input` is the prompt coming back.
 STEP_MODEL_OUTPUT = "model_output"
@@ -139,6 +145,13 @@ def _error_message(resp: requests.Response, body) -> str | None:
     return f"Interactions error ({code}): {detail or '(no message)'} — body: {resp.text[:600]}"
 
 class GeminiInteractionsProvider:
+    # PER-LINK POLICY, set by cli.py from location.yaml — ROADMAP item 186.
+    # As a queue link reached only after a direct refusal, it submits once
+    # and polls late: a job queued in an overload is not done in 15 seconds,
+    # and whether a poll counts against the day's 20 is still unmeasured.
+    max_attempts = MAX_ATTEMPTS
+    poll_delays_s: tuple[int, ...] = POLL_DELAYS_S
+
     def __init__(
         self,
         api_key: str,
@@ -234,6 +247,10 @@ class GeminiInteractionsProvider:
 
         final = self._poll_to_terminal(interaction_id, interaction)
         status = final.get("status")
+        if status in SERVICE_GAVE_UP_STATUSES:
+            raise LLMUnavailableError(
+                f"Interaction finished as {status!r}: the service gave up on the job."
+            )
 
         # CHECKED BEFORE THE CONTENT IS READ, for the reason gemini.py records
         # at length: on 2026-09-10 a 15,930-character UV index was published,
@@ -288,7 +305,7 @@ class GeminiInteractionsProvider:
         `generateContent` — the argument is about how provider capacity
         recovers, which is not a property of one endpoint."""
         last_exc: Exception | None = None
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        for attempt in range(1, self.max_attempts + 1):
             if self.before_attempt is not None:
                 self.before_attempt()
             started = time.monotonic()
@@ -338,17 +355,17 @@ class GeminiInteractionsProvider:
                 report_outcome(self.after_attempt, OUTCOME_ERROR, started)
                 last_exc = e
 
-            if attempt < MAX_ATTEMPTS:
+            if attempt < self.max_attempts:
                 delay = RETRY_DELAYS_S[attempt - 1]
                 print(
                     f"Interactions submit failed ({last_exc}); retrying in {delay}s "
-                    f"(attempt {attempt}/{MAX_ATTEMPTS}).",
+                    f"(attempt {attempt}/{self.max_attempts}).",
                     file=sys.stderr,
                 )
                 time.sleep(delay)
 
         raise LLMUnavailableError(
-            f"Interactions submit failed after {MAX_ATTEMPTS} attempts: {last_exc}"
+            f"Interactions submit failed after {self.max_attempts} attempts: {last_exc}"
         )
 
     def _poll_to_terminal(self, interaction_id: str, submitted: dict) -> dict:
@@ -362,7 +379,7 @@ class GeminiInteractionsProvider:
             return submitted
 
         last = submitted
-        for delay in POLL_DELAYS_S:
+        for delay in self.poll_delays_s:
             time.sleep(delay)
             if self.on_poll is not None:
                 self.on_poll()
@@ -384,7 +401,7 @@ class GeminiInteractionsProvider:
 
         raise LLMUnavailableError(
             f"Interaction {interaction_id} did not reach a terminal state within "
-            f"{sum(POLL_DELAYS_S)}s (last status {last.get('status')!r})."
+            f"{sum(self.poll_delays_s)}s (last status {last.get('status')!r})."
         )
 
 
