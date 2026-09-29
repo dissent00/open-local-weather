@@ -21073,6 +21073,38 @@ the window's high than today's calendar high, now 3 of 10.
 the temperature modifier is silent when the window's high is not today's.
 Built toward the switch.
 
+### Stage 3, the build order (2026-09-29)
+
+Built additive and read by nothing published, until the last step flips
+every consumer in one commit, so no reader ever sees two bases.
+
+a. **The per-period record.** For each model and lead, periods newest
+   first, bounded by a date so the code blend and a backfill cannot see
+   past their issuance: Day+0 from window scores, Day+3 and Day+7 from
+   `calendar_scores_by_period`. Track-record entries from
+   `summarize_periods`: rolling 10 and 30, trend, all-time, all over
+   periods. Brier reaches the track record here.
+b. **A window claim from every Day+0 source.** The baselines' is their
+   Day+0 claim (persistence repeats yesterday; climatology is the base rate
+   before the issuance). The code blend votes the models' window claims,
+   weighted by (a). Kenya Met: the operator's question below. The
+   forecaster's from the switch date.
+c. **The review on periods.**
+d. **The gust calibration** from window-basis errors, gated on wind checks.
+e. **The next-24-hours call**, per its design above. Harness run first.
+   Python, vectors, Dart, re-pin.
+f. **The switch.** `track_record.json`, MODEL TRACK RECORD, PRE-COMPUTED
+   VERIFICATION RESULTS (the latest scored period), the review, the
+   calibration, the code blend, coverage (every row), and the accuracy
+   page showing the basis beside the frozen calendar history. The record
+   re-derives on any run that scored something, not only a day's first.
+
+**Kenya Met's claim is already a window.** `kenya_kmd_daily.py` records
+that the daily bulletin "is issued around 3pm for 9pm-to-9pm the following
+day"; today it is scored against the calendar day, 21 of its 24 hours.
+**Answered, 2026-09-29:** Kenya Met is scored on its own 21:00-21:00, the
+24 hours the bulletin claims, in the period of the day a run fetched it.
+
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
 
