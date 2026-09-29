@@ -3293,6 +3293,58 @@ def export_spend() -> None:
     )
 
 
+def export_period_summary() -> None:
+    """ROADMAP item 139 — rolling stats that count each period once.
+
+    The case that matters is the invariance: copies of a forecast within a
+    period move nothing, and a busy period weighs what a quiet one does. The
+    one-in-three case pins the rain percentage's order, 100 * sum / n, which
+    is also what keeps one forecast a period equal to the per-check figures.
+    """
+    from dataclasses import asdict
+
+    from openlocalweather.models import VerificationScore
+    from openlocalweather.verify.scoring import summarize_periods
+
+    def s(rain, **fields):
+        return VerificationScore(rain_correct=rain, **fields)
+
+    cases = [
+        ("one forecast a period gives the per-check figures",
+         [[s(True, high_error_c=1.0, cloud_error_pct=10.0)], [s(False, high_error_c=-0.5)],
+          [s(False, high_error_c=2.0, cloud_error_pct=30.0)]], None),
+        ("copies of a forecast move nothing",
+         [[s(True, high_error_c=1.0)] * 5, [s(False, high_error_c=3.0)] * 3], None),
+        ("a busy period weighs what a quiet one does",
+         [[s(True, high_error_c=0.0), s(True, high_error_c=0.0), s(False, high_error_c=3.0)],
+          [s(False, high_error_c=1.0)]], None),
+        ("the window keeps the newest periods and skips empty ones",
+         [[s(True, high_error_c=1.0)], [], [s(False, high_error_c=5.0)], [s(False, high_error_c=9.0)]], 2),
+        ("brier and cloud are averaged per period, absent ones skipped",
+         [[s(True, rain_brier=0.04, cloud_error_pct=12.5), s(False, rain_brier=None, cloud_error_pct=None)],
+          [s(False, rain_brier=0.81)], [s(True, cloud_error_pct=-7.25)]], None),
+        ("the rain percentage's order at one in three",
+         [[s(True)], [s(False)], [s(False)]], None),
+        ("no periods at all", [], None),
+        ("a summation-sensitive mix",
+         [[s(True, high_error_c=0.1, wind_error_kmh=0.2), s(True, high_error_c=0.2, wind_error_kmh=0.1),
+           s(False, high_error_c=0.3, wind_error_kmh=0.7)], [s(True, high_error_c=0.7, precip_error_mm=0.3)]],
+         None),
+    ]
+    write(
+        "period_summary.json",
+        "summarize_periods",
+        "ROADMAP item 139. Rolling stats over periods, each period's scores "
+        "averaged first so run count cannot move a figure; newest period first, "
+        "empty ones skipped, window_size keeps the newest.",
+        [{"name": n,
+          "input": {"periods": [[x.model_dump(mode="json") for x in p] for p in periods],
+                    "window_size": w},
+          "expected": asdict(summarize_periods(periods, w))}
+         for n, periods, w in cases],
+    )
+
+
 def export_verification() -> None:
     """The full verification pass — the credibility of the whole project.
 
@@ -6568,6 +6620,7 @@ def main() -> None:
     export_coverage()
     export_spend()
     export_verification()
+    export_period_summary()
     export_observation_disagreements()
     export_notable_disagreements()
     export_notable_disagreement_notes()

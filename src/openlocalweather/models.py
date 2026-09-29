@@ -907,13 +907,12 @@ class IssuancePredictions(BaseModel):
     # same models over the window that actually begins when the issuance does,
     # so a 06:00 row and a 22:00 row make the same KIND of claim.
     #
-    # STORED AND NOT YET SCORED, deliberately. `verify.scoring` still names
-    # row 0's `predictions` as the set tomorrow scores, and nothing reads this
-    # field. It accumulates first so that switching the record over is a
-    # decision taken against measured days rather than against the reframe's
-    # argument — ROADMAP item 100 is why that sentence is here. What it is NOT
-    # is a second opinion to average with Day+0: it is the replacement, parked
-    # until there is enough of it to replace anything.
+    # SCORED SINCE 2026-09-17, PUBLISHED NOWHERE YET. `verify_closed_windows`
+    # scores every row's window once its hours have passed, and the analysis
+    # verbs read the scores; the published record still names row 0's
+    # `predictions`. Item 139 makes this the record's Day+0, each period (the
+    # date issued) counted once, switching every consumer on one date. It is
+    # NOT a second opinion to average with the calendar Day+0: it replaces it.
     #
     # EMPTY MEANS THE WINDOW COULD NOT BE FILLED, never a quiet forecast. A
     # run whose two-day fetch failed holds only today, which at 18:00 is six

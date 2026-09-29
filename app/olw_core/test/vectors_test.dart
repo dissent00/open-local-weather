@@ -1285,6 +1285,35 @@ void main() {
       }
     });
 
+    test('period_summary', () {
+      // Upstream item 139: each period counts once, to the bit.
+      for (final c in loadVectors('period_summary.json')['cases'] as List) {
+        final i = (c as Map)['input'] as Map;
+        final periods = [
+          for (final p in i['periods'] as List)
+            [
+              for (final s in p as List)
+                VerificationScore.fromJson((s as Map).cast<String, Object?>()),
+            ],
+        ];
+        final r = summarizePeriods(periods, windowSize: i['window_size'] as int?);
+        expectMatches({
+          'checks_found': r.checksFound,
+          'rain_pct': r.rainPct,
+          'rain_brier': r.rainBrier,
+          'brier_checks': r.brierChecks,
+          'onset_err': r.onsetErr,
+          'wind_err': r.windErr,
+          'high_err': r.highErr,
+          'low_err': r.lowErr,
+          'mslp_err': r.mslpErr,
+          'cloud_err': r.cloudErr,
+          'cloud_checks': r.cloudChecks,
+          'precip_err': r.precipErr,
+        }, c['expected'], c['name'] as String, exact: true);
+      }
+    });
+
     test('sky_by_day', () {
       // Upstream item 187. Paired by the block's own dates, not by position;
       // today is left out, being the anchors'.
@@ -2186,6 +2215,7 @@ void main() {
       'overlong_display_values.json',
       'cloud_anchors.json',
       'sky_by_day.json',
+      'period_summary.json',
       'wind_anchors.json',
       'uv_band.json',
       'aqi_band.json',

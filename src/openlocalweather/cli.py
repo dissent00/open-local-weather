@@ -17,14 +17,19 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import requests
 from pathlib import Path
 
 from openlocalweather import __version__
 from openlocalweather.config import LocationConfig, load_location_config
-from openlocalweather.verify.scoring import scored_predictions, verify_closed_windows
+from openlocalweather.verify.scoring import (
+    scored_predictions,
+    summarize_periods,
+    verify_closed_windows,
+    window_scores_by_period,
+)
 from openlocalweather.coverage import (
     OBSERVED_FIELDS,
     actionable,
@@ -41,6 +46,7 @@ from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
     PROMPT_GROWTH_TRAILING_RUNS,
     REVIEW_MIN_CHECKS_FOR_COMPARISON,
+    ROLLING_WINDOW_SHORT,
     scored_models,
 )
 from openlocalweather.dates import add_days, format_date, today_in_tz
@@ -885,6 +891,57 @@ def _run_window_vs_day(args: argparse.Namespace) -> int:
     print("Errors are observed minus forecast. The two sides are scored against")
     print("DIFFERENT observations on purpose: the calendar claim against the calendar")
     print("day, the window claim against the 24 hours it actually covered.")
+    return 0
+
+
+def _run_window_record(args: argparse.Namespace) -> int:
+    """Day+0 on the window basis, each period counted once, beside the
+    published calendar figures — ROADMAP item 139, stage 1.
+
+    READ-ONLY. Nothing published moves until stage 3 switches every consumer
+    at once; this is where the new series is read against the record first.
+    Only the models whose forecasts carry a window appear.
+    """
+    location = load_location_config(args.config)
+    lookup = make_log_lookup(args.data_dir)
+    dates = list_log_dates(args.data_dir)
+    record = read_track_record(args.data_dir)
+
+    def _cell(a, b, fmt):
+        left = fmt.format(a) if a is not None else "-"
+        right = fmt.format(b) if b is not None else "-"
+        return f"{left} / {right}"
+
+    spans: list[tuple[date, date]] = []
+    print(f"{'model':16} {'periods':>7} {'forecasts':>9} {'rain% last 10':>15} "
+          f"{'rain% all':>13} {'high err last 10':>17} {'cloud err last 10':>18}")
+    for model in scored_models(location.local_bulletin_model_id):
+        dated = window_scores_by_period(lookup, dates, model)
+        periods = [scores for _, scores in dated]
+        if not periods:
+            continue
+
+        spans.append((dated[-1][0], dated[0][0]))
+        recent = summarize_periods(periods, window_size=ROLLING_WINDOW_SHORT)
+        overall = summarize_periods(periods)
+        calendar = record.get(model, 0)
+        print(
+            f"{model:16} {len(periods):>7} {sum(len(p) for p in periods):>9} "
+            f"{_cell(recent.rain_pct, calendar and calendar.rolling_10_rain_pct, '{:.0f}'):>15} "
+            f"{_cell(overall.rain_pct, calendar and calendar.all_time_rain_pct, '{:.0f}'):>13} "
+            f"{_cell(recent.high_err, calendar and calendar.avg_temp_high_error_c_10, '{:+.1f}'):>17} "
+            f"{_cell(recent.cloud_err, calendar and calendar.avg_cloud_error_pct_10, '{:+.1f}'):>18}"
+        )
+
+    print()
+    print("Each cell is window / calendar. The window side counts each period (the")
+    print("date a forecast was issued) once, averaging its forecasts; the calendar")
+    print("side is the published track record, the day's first forecast only.")
+    if spans:
+        first, last = min(a for a, _ in spans), max(b for _, b in spans)
+        print(f"THE SPANS DIFFER: the window series runs {first} to {last}; the")
+        print("calendar all-time covers the whole record, and its last 10 end about a")
+        print("day later, since a window is scored only once all its hours have passed.")
     return 0
 
 
@@ -2023,6 +2080,13 @@ def main(argv: list[str] | None = None) -> int:
     psz.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
     psz.add_argument("--last", type=int, default=10, help="How many issuances to list (default 10)")
 
+    wrec = sub.add_parser(
+        "window-record",
+        help="Day+0 on the window basis, each period once, beside the published figures — ROADMAP item 139.",
+    )
+    wrec.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    wrec.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+
     evl = sub.add_parser(
         "early-vs-late",
         help="Is a later issuance better informed? The day's first window against its last.",
@@ -2048,6 +2112,8 @@ def main(argv: list[str] | None = None) -> int:
         return _run_forecast(args)
     if args.command == "window-vs-day":
         return _run_window_vs_day(args)
+    if args.command == "window-record":
+        return _run_window_record(args)
     if args.command == "early-vs-late":
         return _run_early_vs_late(args)
     if args.command == "prompt-size":

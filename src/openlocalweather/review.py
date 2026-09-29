@@ -831,11 +831,11 @@ def compare_window_to_calendar(
 def _scored_window_for(entry, model: str) -> VerificationScore | None:
     """This day's scored window for one model, or None.
 
-    ROW 0 ONLY, deliberately. A day can hold several issuances and therefore
-    several windows, and averaging them would weight busy days more heavily —
-    the same trap contract item 4 records about scoring every row. Row 0 is
-    the issuance the calendar series is also drawn from, so pairing them
-    compares like with like.
+    ROW 0 ONLY, because row 0 is the issuance the calendar series is drawn
+    from, so pairing them compares like with like. Not because averaging a
+    day's windows would weight busy days: averaging within a day is what keeps
+    them from it, and counting every row separately is what would — see
+    `summarize_periods`, ROADMAP item 139.
     """
     for row in entry.prediction_rows[:1]:
         if row.window_verified_at is not None and model in row.window_scores:

@@ -56,9 +56,9 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: design approved 2026-09-29; stage 1 next.** The per-period
-   aggregation with invariance vectors, read by the analysis verbs only,
-   then the blend's window claim, then the switch. See the item's design.
+2. **Item 139: stage 1 shipped 2026-09-29; stage 2 next.** The blend's
+   window claim (settle which night its low means), scoring on any run, and
+   every forecast's Day+3/Day+7. Then the switch. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20678,7 +20678,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Design approved 2026-09-29; stage 1 next**
+## 139. The window is scored and nobody reads it · **Design approved 2026-09-29; stage 1 SHIPPED 2026-09-29, stage 2 next**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20938,6 +20938,34 @@ run per period. Python first, then vectors, Dart, and the re-pin.
 scored on its own call, once its low is checked; the models' series starts
 09-15, the blend's when it gets a window claim; the results block becomes
 the latest scored period's. Stage 1 next.
+
+### 2026-09-29: the design reviewed, and stage 1 built
+
+**The review changed two things.** The pure aggregation is ported to Dart
+in stage 1, not stage 5: a vector file the Dart runner does not exercise
+fails its suite, and shared logic ports in the same change. And stage 1 is
+Day+0 only, since only Day+0 has per-forecast scores stored; scoring every
+forecast's Day+3 and Day+7 moves to stage 2. It also found
+`_scored_window_for`'s reasoning backwards (averaging within a day is what
+stops busy days weighing more) and two comments saying the window is
+scored by nothing; all three corrected.
+
+**Built.** `summarize_periods` takes one list of scores per period, newest
+first, averages each period, then summarises across periods;
+`window_scores_by_period` groups every scored window by the date issued.
+The rain percentage is 100 * sum / n, the old order, so one forecast a
+period gives exactly the per-check figures (100 * (sum / n) differs in the
+last bit at 1 of 3). Dart `summarizePeriods`, the vector file
+`period_summary.json` (8 cases: invariance, a busy period, truncation,
+Brier and cloud gaps, the order, a summation-sensitive mix), exact to the
+bit; 3,000 random period sets through both: 0 differences. `olw
+window-record` shows the window basis beside the published figures.
+
+**Read on the record** (13 periods, 23 forecasts, 09-15 to 09-27), window /
+calendar, rain right over the last 10: GFS 72/80, ECMWF 75/80, ICON 80/70,
+UKMO 77/70, best_match 68/70; highs within 0.3 C. The spans differ (the
+calendar's last 10 end a day later and its all-time starts in August), so
+this is a first look, not a comparison. Nothing published has changed.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.

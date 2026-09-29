@@ -849,6 +849,20 @@ def test_vectors_cloud_anchors():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_period_summary():
+    """ROADMAP item 139 — each period counts once."""
+    from dataclasses import asdict
+
+    from openlocalweather.models import VerificationScore
+    from openlocalweather.verify.scoring import summarize_periods
+
+    for case in load("period_summary.json")["cases"]:
+        i = case["input"]
+        periods = [[VerificationScore.model_validate(x) for x in p] for p in i["periods"]]
+        got = asdict(summarize_periods(periods, i["window_size"]))
+        assert got == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_sky_by_day():
     """ROADMAP item 187 — a sky word per day beyond today, paired by date."""
     from datetime import date
@@ -1238,6 +1252,7 @@ def test_every_vector_file_is_exercised():
         "overlong_display_values.json",
         "cloud_anchors.json",
         "sky_by_day.json",
+        "period_summary.json",
         "wind_anchors.json",
         "uv_band.json",
         "aqi_band.json",

@@ -3568,17 +3568,17 @@ def _issue_forecast(
     day0_predictions = extract_day0_predictions_from_hourly(primary_hourly, MODELS)
 
     # The same models over the window that starts when this issuance does —
-    # ROADMAP item 104, contract item 2. Stored beside Day+0 and scored by
-    # nothing yet; see IssuancePredictions.window_predictions for why it
-    # accumulates before it replaces anything.
+    # ROADMAP item 104, contract item 2. Stored beside Day+0 and scored on its
+    # own window, but not yet published; see
+    # IssuancePredictions.window_predictions and ROADMAP item 139.
     #
     # FED FROM `forward_hourly`, WHICH IS THE TWO-DAY FETCH. That series is
     # the one `fetch_forecast_hourly_forward` keeps deliberately away from
     # scoring — "widening that fetch to two days would silently score 48 hours
     # as today". Crossing that fence is the whole of the reframe, so it is
-    # crossed HERE, once, into a field nothing scores, rather than by widening
-    # the fetch that Day+0 still reads. `primary_hourly` is untouched and
-    # Day+0 above cannot be reached from this line.
+    # crossed HERE, once, into a field only the window scorer reads, rather
+    # than by widening the fetch that Day+0 still reads. `primary_hourly` is
+    # untouched and Day+0 above cannot be reached from this line.
     window_predictions = (
         extract_window_predictions(
             guidance.forward_hourly, MODELS, issued_local=guidance.issued_at_local

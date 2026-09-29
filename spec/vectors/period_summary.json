@@ -1,0 +1,567 @@
+{
+  "vector_format_version": 1,
+  "function": "summarize_periods",
+  "description": "ROADMAP item 139. Rolling stats over periods, each period's scores averaged first so run count cannot move a figure; newest period first, empty ones skipped, window_size keeps the newest.",
+  "cases": [
+    {
+      "name": "one forecast a period gives the per-check figures",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": 10.0,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": -0.5,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 2.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": 30.0,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 3,
+        "rain_pct": 33.333333333333336,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": 0.8333333333333334,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": 20.0,
+        "cloud_checks": 2,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "copies of a forecast move nothing",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 3.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 3.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 3.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 2,
+        "rain_pct": 50.0,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": 2.0,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "a busy period weighs what a quiet one does",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 0.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 0.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 3.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 2,
+        "rain_pct": 33.33333333333333,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": 1.0,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "the window keeps the newest periods and skips empty ones",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 1.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 5.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 9.0,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": 2
+      },
+      "expected": {
+        "checks_found": 2,
+        "rain_pct": 50.0,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": 3.0,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "brier and cloud are averaged per period, absent ones skipped",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": 0.04,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": 12.5,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": 0.81,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": -7.25,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 3,
+        "rain_pct": 50.0,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": null,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": 0.42500000000000004,
+        "brier_checks": 2,
+        "cloud_err": 2.625,
+        "cloud_checks": 2,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "the rain percentage's order at one in three",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 3,
+        "rain_pct": 33.333333333333336,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": null,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "no periods at all",
+      "input": {
+        "periods": [],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 0,
+        "rain_pct": null,
+        "onset_err": null,
+        "wind_err": null,
+        "high_err": null,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null
+      }
+    },
+    {
+      "name": "a summation-sensitive mix",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 0.2,
+              "high_error_c": 0.1,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 0.1,
+              "high_error_c": 0.2,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 0.7,
+              "high_error_c": 0.3,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": 0.7,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": 0.3
+            }
+          ]
+        ],
+        "window_size": null
+      },
+      "expected": {
+        "checks_found": 2,
+        "rain_pct": 83.33333333333333,
+        "onset_err": null,
+        "wind_err": 0.3333333333333333,
+        "high_err": 0.44999999999999996,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": 0.3
+      }
+    }
+  ]
+}

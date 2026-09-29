@@ -5,6 +5,7 @@ import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
 import 'scoring.dart';
+import 'sums.dart' show compensatedSum;
 
 /// Re-deriving every accuracy figure from the raw record.
 ///
@@ -132,6 +133,46 @@ RollingWindowResult rescoreRollingWindow({
     cloudErr: mean([for (final s in scores) s.cloudErrorPct]),
     cloudChecks: scores.where((s) => s.cloudErrorPct != null).length,
     precipErr: mean([for (final s in scores) s.precipErrorMm]),
+  );
+}
+
+/// Rolling stats that count each PERIOD once — upstream item 139. Mirrors
+/// Python's `summarize_periods`: one list of scores per period, newest first;
+/// each period is averaged first, so run count cannot move a figure. The rain
+/// percentage is `100 * sum / n`, the order [rescoreRollingWindow] uses, so
+/// one forecast a period gives exactly the per-check figures.
+RollingWindowResult summarizePeriods(
+  List<List<VerificationScore>> periods, {
+  int? windowSize,
+}) {
+  var used = [for (final p in periods) if (p.isNotEmpty) p];
+  if (windowSize != null && used.length > windowSize) {
+    used = used.sublist(0, windowSize);
+  }
+
+  List<double?> perPeriod(double? Function(VerificationScore) field) =>
+      [for (final p in used) mean([for (final s in p) field(s)])];
+
+  final rain = [
+    for (final p in used) mean([for (final s in p) s.rainCorrect ? 1.0 : 0.0])!,
+  ];
+  final briers = [
+    for (final p in used) meanBrier([for (final s in p) s.rainBrier]),
+  ];
+  final clouds = perPeriod((s) => s.cloudErrorPct);
+  return RollingWindowResult(
+    checksFound: used.length,
+    rainPct: rain.isEmpty ? null : 100 * compensatedSum(rain) / rain.length,
+    rainBrier: meanBrier(briers),
+    brierChecks: briers.where((b) => b != null).length,
+    onsetErr: mean(perPeriod((s) => s.onsetErrorHrs)),
+    windErr: mean(perPeriod((s) => s.windErrorKmh)),
+    highErr: mean(perPeriod((s) => s.highErrorC)),
+    lowErr: mean(perPeriod((s) => s.lowErrorC)),
+    mslpErr: mean(perPeriod((s) => s.mslpErrorHpa)),
+    cloudErr: mean(clouds),
+    cloudChecks: clouds.where((c) => c != null).length,
+    precipErr: mean(perPeriod((s) => s.precipErrorMm)),
   );
 }
 

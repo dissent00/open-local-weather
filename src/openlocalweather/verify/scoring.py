@@ -465,6 +465,73 @@ def rescore_rolling_window(
 
 
 
+def summarize_periods(
+    periods: list[list[VerificationScore]], window_size: int | None = None
+) -> RollingWindowResult:
+    """Rolling stats that count each PERIOD once — ROADMAP item 139.
+
+    `periods` is one list of scores per period (the local date the forecasts
+    were issued), newest first; empty ones are skipped and `window_size`, when
+    given, keeps the newest that many. Each period's scores are averaged
+    first, so a day with a hundred forecasts weighs what a day with one does,
+    and duplicating a forecast cannot move a figure.
+
+    ONE FORECAST A PERIOD GIVES EXACTLY THE PER-CHECK FIGURES, which is why the
+    rain percentage is 100 * sum / n in the order `rescore_rolling_window`
+    uses: 100 * (sum / n) differs in the last bit at 1 of 3.
+    """
+    used = [p for p in periods if p]
+    if window_size is not None:
+        used = used[:window_size]
+
+    def per_period(field: str) -> list[float | None]:
+        return [mean([getattr(s, field) for s in p]) for p in used]
+
+    rain = [mean([1.0 if s.rain_correct else 0.0 for s in p]) for p in used]
+    briers = [mean_brier([s.rain_brier for s in p]) for p in used]
+    clouds = per_period("cloud_error_pct")
+    return RollingWindowResult(
+        checks_found=len(used),
+        rain_pct=(100 * sum(rain) / len(rain)) if rain else None,
+        rain_brier=mean_brier(briers),
+        brier_checks=sum(1 for b in briers if b is not None),
+        onset_err=mean(per_period("onset_error_hrs")),
+        wind_err=mean(per_period("wind_error_kmh")),
+        high_err=mean(per_period("high_error_c")),
+        low_err=mean(per_period("low_error_c")),
+        mslp_err=mean(per_period("mslp_error_hpa")),
+        cloud_err=mean(clouds),
+        cloud_checks=sum(1 for c in clouds if c is not None),
+        precip_err=mean(per_period("precip_error_mm")),
+    )
+
+
+def window_scores_by_period(
+    log_lookup: LogLookup, log_dates: list[date], model: str
+) -> list[tuple[date, list[VerificationScore]]]:
+    """Every scored window for one model, grouped by the date its forecast
+    was issued, newest period first — ROADMAP item 139.
+
+    EVERY ROW, not row 0: each forecast is a claim a reader may have acted on.
+    A date with no scored window for the model is no period at all.
+    """
+    periods: list[tuple[date, list[VerificationScore]]] = []
+    for day in sorted(log_dates, reverse=True):
+        entry = log_lookup(day)
+        if entry is None:
+            continue
+
+        scores = [
+            row.window_scores[model]
+            for row in entry.prediction_rows
+            if row.window_verified_at is not None and model in row.window_scores
+        ]
+        if scores:
+            periods.append((day, scores))
+
+    return periods
+
+
 def collect_scores(
     model: str,
     lead_time_days: int,
