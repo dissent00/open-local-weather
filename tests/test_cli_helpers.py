@@ -241,6 +241,9 @@ def test_forecast_verb_passes_force_through(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+from openlocalweather.cli import _build_llm_provider as _REAL_BUILD  # noqa: E402
+
+
 def _health_argv(data_dir):
     from openlocalweather import cli
 
@@ -281,6 +284,41 @@ def _stub_the_other_health_checks(monkeypatch):
         text = "<rss><channel><item><pubDate>Mon, 04 May 2026 09:00:00 +0000</pubDate></item></channel></rss>"
 
     monkeypatch.setattr(cli.requests, "get", lambda *args, **kwargs: QuietFeed())
+
+
+def test_the_health_check_polls_the_queue_on_its_own_schedule(monkeypatch, tmp_path):
+    """2026-09-29: the weekly check built the forecast's chain and, with
+    Gemini refusing, waited on the queue at +8 and +16 min. Nobody reads the
+    check the moment it runs, so it polls late on its own schedule, and the
+    forecast's is untouched."""
+    from openlocalweather import cli
+    from openlocalweather.health_check import ModelDeprecationCheck
+    from openlocalweather.llm.provider import chain_links
+
+    from openlocalweather.fetch import model_run as model_run_fetch
+
+    _stub_the_other_health_checks(monkeypatch)
+    monkeypatch.setattr(model_run_fetch, "fetch_settled_run", _observed_at(0))
+    monkeypatch.setattr(cli, "_build_llm_provider", _REAL_BUILD)
+    for name, value in {
+        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
+        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
+    }.items():
+        monkeypatch.setenv(name, value)
+    seen = []
+
+    def check(llm, model_name):
+        seen.extend((type(link).__name__, link.poll_delays_s) for link in chain_links(llm)
+                    if hasattr(link, "poll_delays_s"))
+        return ModelDeprecationCheck(deprecated_or_scheduled=False, notes="Not listed.")
+
+    monkeypatch.setattr(cli, "check_model_deprecation", check)
+    try:
+        cli.main(_health_argv(tmp_path))
+    except SystemExit:
+        pass
+
+    assert seen == [("GeminiInteractionsProvider", (1800, 1800))], seen
 
 
 def _observed_at(offset_hours):
@@ -388,6 +426,9 @@ def test_the_live_config_is_what_we_think_it_is():
     # the gateway behind it, and 60 for the write-up, which has nothing.
     assert queue.poll_delays_s == [480, 480]
     assert queue.write_up_poll_delays_s == [480, 480, 840, 1800]
+    # The weekly check has no reader waiting, so it asks late: +30 and +60
+    # min. The operator's call, 2026-09-29.
+    assert queue.health_check_poll_delays_s == [1800, 1800]
     # The two Gemini ceilings together inside Google's 20: 8 direct at 1
     # unit, 6 queued at about 2 (item 179).
     assert direct.max_calls_per_24h + 2 * queue.max_calls_per_24h <= 20
@@ -447,7 +488,8 @@ def test_a_queue_chain_carries_each_links_policy(monkeypatch):
         {"kind": "gemini", "max_attempts": 1},
         {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
          "max_attempts": 1, "max_calls_per_24h": 6,
-         "poll_delays_s": [480, 480], "write_up_poll_delays_s": [480, 480, 840, 1800]},
+         "poll_delays_s": [480, 480], "write_up_poll_delays_s": [480, 480, 840, 1800],
+         "health_check_poll_delays_s": [1800, 1800]},
         "openai",
     ])
 
@@ -460,6 +502,7 @@ def test_a_queue_chain_carries_each_links_policy(monkeypatch):
     assert queue.max_calls_per_24h == 6
     assert queue.poll_delays_s == (480, 480)
     assert queue.write_up_poll_delays_s == (480, 480, 840, 1800)
+    assert queue.health_check_poll_delays_s == (1800, 1800)
     assert [link.credential_family for link in (direct, queue, gateway)] == ["gemini", "gemini", "openai"]
 
 

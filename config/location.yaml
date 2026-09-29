@@ -199,6 +199,12 @@ location:
       max_calls_per_24h: 6
       poll_delays_s: [480, 480]
       write_up_poll_delays_s: [480, 480, 840, 1800]
+      # The weekly health check's deprecation read: no reader waits on it, so
+      # the first poll is at +30 min and the last at +60, the write-up's own
+      # longest wait. How long a job stays readable is unknown: one fetched
+      # later on 2026-09-28 came back HTTP 404, so waiting longer risks
+      # polling for nothing.
+      health_check_poll_delays_s: [1800, 1800]
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
     # replacement: Gemini answers when it can, and this takes the calls it
     # sheds. Measured over 2026-08-28 to 09-21, the 15:01 slot failed on

@@ -26882,6 +26882,16 @@ rows in that window are 2 direct calls, 2 submits and 3 polls: 2 + 2 x 2 =
 keyless attempt is the likeliest extra, unconfirmed. One day; read again at
 10-01.
 
+### 2026-09-29: the health check polls the queue on its own schedule
+
+The weekly check's deprecation read builds the forecast's chain, so since
+this trial it too falls to the queue when Gemini refuses, and polled at +8
+and +16 min. Nobody reads it the moment it runs. The operator's call: keep
+the queue and poll late. `health_check_poll_delays_s: [1800, 1800]` on the
+queue entry, applied only by `check-health`; the forecast's schedules are
+untouched. How long a job stays readable is not known; one fetched later on
+09-28 was a 404, which is why the wait stops at 60 min.
+
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,
 routing and ledger with only HTTP faked. Removing any one of the nine pieces

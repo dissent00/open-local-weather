@@ -81,6 +81,7 @@ from openlocalweather.llm.provider import (
     DEFAULT_ENV_PREFIXES,
     DEFAULT_LLM_PROVIDER,
     VALID_LLM_PROVIDERS,
+    chain_links,
 )
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
@@ -240,6 +241,7 @@ class _ProviderEntry:
     background: bool = False
     poll_delays_s: tuple[int, ...] | None = None
     write_up_poll_delays_s: tuple[int, ...] | None = None
+    health_check_poll_delays_s: tuple[int, ...] | None = None
 
     def env(self, suffix: str, default: str = "") -> str:
         return _env(f"{self.env_prefix}_{suffix}", default)
@@ -298,6 +300,7 @@ def _resolve_provider_entries(
                 background=bool(entry.get("background")),
                 poll_delays_s=_delays(entry.get("poll_delays_s")),
                 write_up_poll_delays_s=_delays(entry.get("write_up_poll_delays_s")),
+                health_check_poll_delays_s=_delays(entry.get("health_check_poll_delays_s")),
             )
         )
 
@@ -322,6 +325,8 @@ def _mark_queue_policy(link, entry: _ProviderEntry) -> None:
         link.poll_delays_s = entry.poll_delays_s
     if entry.write_up_poll_delays_s is not None:
         link.write_up_poll_delays_s = entry.write_up_poll_delays_s
+    if entry.health_check_poll_delays_s is not None:
+        link.health_check_poll_delays_s = entry.health_check_poll_delays_s
 
 
 def _reject_colliding_entries(entries: list[_ProviderEntry]) -> None:
@@ -1062,6 +1067,14 @@ def _run_check_health(args: argparse.Namespace) -> int:
         providers=location.llm_providers,
         fallback_models=location.llm_fallback_models,
     )
+    # THE QUEUE ON THE CHECK'S OWN SCHEDULE — 2026-09-29. Built from the
+    # forecast's chain, it polled the queue at +8 and +16 min, the wait a
+    # reader needs. Nobody reads this check the moment it runs.
+    for link in chain_links(llm):
+        schedule = getattr(link, "health_check_poll_delays_s", None)
+        if schedule is not None:
+            link.poll_delays_s = schedule
+
     # Counted like any other call, through the SAME function the pipeline
     # and the replay use. This had its own near-copy until 2026-09-10, which
     # silently omitted the fail-closed check and the shout when a provider

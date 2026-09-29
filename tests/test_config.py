@@ -267,9 +267,11 @@ def test_a_queue_link_is_accepted():
     entry = LLMProviderEntry(
         kind="gemini-interactions", name="gemini-queue", background=True, max_attempts=1,
         poll_delays_s=[480, 480], write_up_poll_delays_s=[480, 480, 840, 1800],
+        health_check_poll_delays_s=[1800, 1800],
     )
     assert entry.poll_delays_s == [480, 480]
     assert entry.write_up_poll_delays_s == [480, 480, 840, 1800]
+    assert entry.health_check_poll_delays_s == [1800, 1800]
 
 
 @pytest.mark.parametrize("fields, why", [
@@ -277,6 +279,7 @@ def test_a_queue_link_is_accepted():
     # directly and no poll is ever sent.
     ({"kind": "gemini-interactions", "poll_delays_s": [480]}, "background"),
     ({"kind": "gemini-interactions", "write_up_poll_delays_s": [480]}, "background"),
+    ({"kind": "gemini-interactions", "health_check_poll_delays_s": [1800]}, "background"),
     # Only the Interactions endpoint queues.
     ({"kind": "gemini", "background": True}, "gemini-interactions"),
     ({"kind": "openai", "poll_delays_s": [480]}, "gemini-interactions"),

@@ -161,10 +161,13 @@ class LLMProviderEntry(BaseModel):
     # a `background` submit to the Interactions endpoint, polled late on the
     # link's own schedule, then the gateway. `write_up_poll_delays_s` is the
     # write-up's longer wait: nothing replaces a write-up Gemini never sends.
+    # `health_check_poll_delays_s` is the weekly check's: no reader is waiting
+    # on it, so it asks late and seldom (2026-09-29).
     max_attempts: int | None = None
     background: bool = False
     poll_delays_s: list[int] | None = None
     write_up_poll_delays_s: list[int] | None = None
+    health_check_poll_delays_s: list[int] | None = None
 
     @field_validator("kind")
     @classmethod
@@ -193,7 +196,11 @@ class LLMProviderEntry(BaseModel):
                     f"Gemini's retry schedule; got {self.max_attempts}."
                 )
 
-        schedules = {"poll_delays_s": self.poll_delays_s, "write_up_poll_delays_s": self.write_up_poll_delays_s}
+        schedules = {
+            "poll_delays_s": self.poll_delays_s,
+            "write_up_poll_delays_s": self.write_up_poll_delays_s,
+            "health_check_poll_delays_s": self.health_check_poll_delays_s,
+        }
         if (self.background or any(v is not None for v in schedules.values())) and self.kind != QUEUE_KIND:
             raise ValueError(f"background and poll schedules are for {QUEUE_KIND!r} only.")
 
