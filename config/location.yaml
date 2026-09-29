@@ -185,20 +185,20 @@ location:
       max_calls_per_24h: 8
     # GEMINI QUEUED — the same key and model through the Interactions API with
     # `background`. One submit (about 2 units on the console, item 179), then
-    # polls late: +8 and +16 min for the scored call, which has the gateway
-    # behind it; +8, +16, +30 and +60 min for the write-up, which has nothing.
+    # polls late and few: once at +16 min for the scored call, which has the
+    # gateway behind it; +30 and +60 min for the write-up, which has nothing.
     # The run publishes once, so a slow write-up holds the scored forecast
-    # too: about 07:20 / 19:20 local at worst. Whether polls count as model
-    # calls is unmeasured; the ledger records them apart ("-poll") for the
-    # console to settle. The two Gemini ceilings, 8 direct + 6 queued at ~2
-    # units, keep a bad day inside Google's 20.
+    # too: about 07:20 / 19:20 local at worst. Polls are API calls but not
+    # model calls on the console (Pacific 09-28), and API calls may be capped
+    # at 20 too, so each is spent sparingly (the operator's call, 2026-09-29).
+    # The ceilings count every ledger row, polls included.
     - kind: gemini-interactions
       name: gemini-queue
       background: true
       max_attempts: 1
       max_calls_per_24h: 6
-      poll_delays_s: [480, 480]
-      write_up_poll_delays_s: [480, 480, 840, 1800]
+      poll_delays_s: [960]
+      write_up_poll_delays_s: [1800, 1800]
       # The weekly health check's deprecation read: no reader waits on it, so
       # the first poll is at +30 min and the last at +60, the write-up's own
       # longest wait. How long a job stays readable is unknown: one fetched

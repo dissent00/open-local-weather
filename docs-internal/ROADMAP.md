@@ -26892,6 +26892,28 @@ queue entry, applied only by `check-health`; the forecast's schedules are
 untouched. How long a job stays readable is not known; one fetched later on
 09-28 was a 404, which is why the wait stops at 60 min.
 
+### 2026-09-29: polls are refused in an overload too, and are now fewer
+
+**The approved health check (run 36520559610) showed what a poll gets in an
+overload.** Direct Gemini 503 at 05:12Z; the queue accepted a submit; both
+polls, at +8 and +16 min, logged `Interaction poll HTTP 503: event: error`,
+an event-stream body and not JSON. That is what the 09-28 15:01Z polls'
+"Expecting value" was, most likely. The gateway then read the page. So far
+the queue has served once under a direct refusal (09-29 03:01Z write-up) and
+twice its polls were refused, outcome unknown.
+
+**Polls are API calls, and the operator believes API calls are capped at 20
+too**, so they stay counted against the link's ceiling. The schedule is
+thinned instead, the operator's call: the scored call polls once, at +16
+min, and the write-up at +30 and +60. A bad run (direct refused for both
+calls, the queue serving both) now spends 2 direct + 2 submits + 3 polls = 7
+API calls and 6 model units, down from 10 API calls.
+
+**Open, the operator's:** the ceilings. The queue's 6 counts polls, so one
+bad run's 5 rows plus the morning's leave the next run refused. And whether
+the 15:01Z slot should go to the queue first: direct served its scored call
+1 of 7 times from 09-21 to 09-27, against 6 of 8 at 03:01Z.
+
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,
 routing and ledger with only HTTP faked. Removing any one of the nine pieces

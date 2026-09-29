@@ -422,10 +422,11 @@ def test_the_live_config_is_what_we_think_it_is():
     direct, queue, gateway = live.llm_providers
     assert (direct.kind, direct.max_attempts) == ("gemini", 1)
     assert (queue.kind, queue.background, queue.max_attempts) == ("gemini-interactions", True, 1)
-    # The operator's waits: about 20 minutes for the scored call, which has
-    # the gateway behind it, and 60 for the write-up, which has nothing.
-    assert queue.poll_delays_s == [480, 480]
-    assert queue.write_up_poll_delays_s == [480, 480, 840, 1800]
+    # The operator's waits: 16 minutes for the scored call, which has the
+    # gateway behind it, and 60 for the write-up, which has nothing. Polled
+    # once and twice (2026-09-29): polls count as API calls on the console.
+    assert queue.poll_delays_s == [960]
+    assert queue.write_up_poll_delays_s == [1800, 1800]
     # The weekly check has no reader waiting, so it asks late: +30 and +60
     # min. The operator's call, 2026-09-29.
     assert queue.health_check_poll_delays_s == [1800, 1800]
