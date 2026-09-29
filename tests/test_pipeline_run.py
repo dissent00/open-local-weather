@@ -836,6 +836,45 @@ def test_the_met_service_is_scored_on_the_window_its_fetcher_names(tmp_path, mon
     assert scores["gfs_seamless"].rain_correct is True, "its own window was dry"
 
 
+def test_the_window_pass_fetches_the_evening_before_its_oldest_entry(tmp_path, monkeypatch):
+    """A bulletin's window opens at 21:00 the evening before its date, so
+    the oldest entry in the lookback needs the day before it fetched."""
+    from datetime import timedelta
+    from openlocalweather.defaults import WINDOW_VERIFY_LOOKBACK_DAYS
+    from openlocalweather.models import ModelPrediction
+
+    def archive_for(lat, lon, start, end, tz):
+        hours = int((end - start).days + 1) * 24
+        times = [(datetime(start.year, start.month, start.day) + timedelta(hours=i)).strftime("%Y-%m-%dT%H:00") for i in range(hours)]
+        return {"hourly": {
+            "time": times, "temperature_2m": [20.0] * hours, "precipitation": [0.0] * hours,
+            "cloud_cover": [50.0] * hours, "wind_gusts_10m": [20.0] * hours, "pressure_msl": [1010.0] * hours,
+        }}
+
+    class Bulletin:
+        def fetch(self):
+            return ""
+
+        def validity_window_opens(self, valid_for):
+            return datetime.combine(valid_for - timedelta(days=1), datetime.min.time()) + timedelta(hours=21)
+
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", archive_for)
+    deps = make_deps(tmp_path)
+    deps.bulletin_fetcher = Bulletin()
+    deps.location = deps.location.model_copy(update={"local_bulletin_model_id": "kenya_met"})
+    today = date(2026, 8, 20)
+    oldest = today - timedelta(days=WINDOW_VERIFY_LOOKBACK_DAYS + 1)
+    entry = _entry_with_window(oldest, scored=False)
+    entry.prediction_rows[0].predictions.day0.append(
+        ModelPrediction(model="kenya_met", rain=False, target_date=oldest)
+    )
+    log_store.write_log_entry(tmp_path, entry)
+
+    pipeline._verify_recent_windows(deps, today)
+
+    assert "kenya_met" in log_store.read_log_entry(tmp_path, oldest).prediction_rows[0].window_scores
+
+
 def test_llm_receives_system_and_user_prompt(tmp_path):
     llm = FakeLLMProvider()
     deps = make_deps(tmp_path, llm=llm)

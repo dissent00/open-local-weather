@@ -104,7 +104,12 @@ from openlocalweather.llm.provider import (
 )
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
-from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions, window_is_scorable
+from openlocalweather.verify.scoring import (
+    WINDOW_OPENS_DAYS_BEFORE_ENTRY,
+    resolve_prediction_rows,
+    scored_predictions,
+    window_is_scorable,
+)
 from openlocalweather.daypart import (
     TODAY,
     convective_timing,
@@ -3191,7 +3196,8 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     if due:
         try:
             archive = open_meteo.fetch_archive_range(
-                location.primary_point.lat, location.primary_point.lon, start, end, location.timezone
+                location.primary_point.lat, location.primary_point.lon,
+                add_days(start, -WINDOW_OPENS_DAYS_BEFORE_ENTRY), end, location.timezone,
             )
         except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
             print(f"Window verification skipped ({e}); a later run will score them.", file=sys.stderr)

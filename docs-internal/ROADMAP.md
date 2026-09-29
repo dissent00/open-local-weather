@@ -56,10 +56,10 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: stage 2 two thirds built.** Scoring on any run and every
-   forecast's Day+3/Day+7 are in. The forecaster's call becomes a
-   next-24-hours claim; design approved 2026-09-29, built toward the
-   switch (stage 3), with which it lands. See the item.
+2. **Item 139: stage 3, steps a and b built.** The period record and a
+   window claim from every Day+0 source exist, read by nothing published.
+   Next: (c) the review on periods, then the calibration, the
+   next-24-hours call, and the switch. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20679,7 +20679,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built; the next-24-hours design approved, builds toward the switch**
+## 139. The window is scored and nobody reads it · **Stages 1-2 SHIPPED 2026-09-29; stage 3 (the switch) in progress, steps a-b built**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -21108,6 +21108,18 @@ b. **A window claim from every Day+0 source.** The baselines' is their
    window in its lookback whenever it fetches for a due one (no extra
    request), rewrites a row only when its scores moved, and never rechecks
    without the station's reports, which would strip evidence.
+
+   **Reviewed 2026-09-29, at the operator's request, before (c).** One
+   defect: a bulletin's window opens the evening before its entry's date,
+   and both the window pass and `rebuild-record` fetched the archive from
+   the oldest entry, so that entry's Kenya Met claim could not be scored,
+   and in the live pass a recheck would then have deleted its stored
+   score. It had cost 09-15's. Fixed: both fetch a day earlier
+   (`WINDOW_OPENS_DAYS_BEFORE_ENTRY`), a score whose window cannot be
+   observed now is kept, and 09-15 was rescored (Kenya Met called rain; its
+   window was dry). `olw window-record` now says the met service's window
+   is its bulletin's. Nothing in the session's work assumes a morning or
+   evening run; "first run" appears only where it is being removed.
 c. **The review on periods.** Counts become periods and means go
    through each period first, as in (a). One mechanism to settle first:
    the thunder cells (storm days, storms called) read `actuals[d].thunder`,
@@ -21126,7 +21138,10 @@ f. **The switch.** `track_record.json`, MODEL TRACK RECORD, PRE-COMPUTED
    calibration, the code blend, coverage (every row), and the accuracy
    page showing the basis beside the frozen calendar history. The record
    re-derives on any run that scored something, not only a day's first.
-   Brier reaches the track record.
+   Brier reaches the track record. The first period record is derived
+   with an EMPTY prior: `derive_period_track_record` keeps the prior's
+   all-time figures when it finds fewer checks, and the calendar record's
+   Day+0 (49 checks against 13 periods) would trip it on every Day+0 row.
 
 **Kenya Met's claim is already a window.** `kenya_kmd_daily.py` records
 that the daily bulletin "is issued around 3pm for 9pm-to-9pm the following

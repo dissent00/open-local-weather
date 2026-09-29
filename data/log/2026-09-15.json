@@ -708,9 +708,21 @@
           "cloud_error_pct": null,
           "convective_correct": null,
           "precip_error_mm": -0.9926829268292684
+        },
+        "kenya_met": {
+          "rain_correct": false,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": null,
+          "high_error_c": 0.3000000000000007,
+          "low_error_c": 1.8999999999999986,
+          "mslp_error_hpa": null,
+          "cloud_error_pct": null,
+          "convective_correct": null,
+          "precip_error_mm": null
         }
       },
-      "window_verified_at": "2026-09-29T11:14:39.870071Z",
+      "window_verified_at": "2026-09-29T11:37:52.679034Z",
       "day_over_day": {
         "yesterday_high_c": 29.1,
         "yesterday_low_c": 17.9,

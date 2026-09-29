@@ -25,6 +25,7 @@ from pathlib import Path
 from openlocalweather import __version__
 from openlocalweather.config import LocationConfig, load_location_config
 from openlocalweather.verify.scoring import (
+    WINDOW_OPENS_DAYS_BEFORE_ENTRY,
     calendar_scores_by_period,
     scored_predictions,
     summarize_periods,
@@ -944,6 +945,9 @@ def _run_window_record(args: argparse.Namespace) -> int:
         print(f"THE SPANS DIFFER: the window series runs {first} to {last}; the")
         print("calendar all-time covers the whole record, and its last 10 end about a")
         print("day later, since a window is scored only once all its hours have passed.")
+    if location.local_bulletin_model_id:
+        print(f"{location.local_bulletin_model_id}'s window is its bulletin's own 24 hours, not the")
+        print("run's; each run that stored the bulletin counts as a forecast.")
 
     # DAY+3 AND DAY+7 STAY CALENDAR CLAIMS; what changes is that every forecast
     # is scored, not the day's first, each period still counted once.
@@ -1838,7 +1842,7 @@ def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> 
     try:
         archive = open_meteo.fetch_archive_range(
             location.primary_point.lat, location.primary_point.lon,
-            min(log_dates), add_days(today, -1), location.timezone,
+            add_days(min(log_dates), -WINDOW_OPENS_DAYS_BEFORE_ENTRY), add_days(today, -1), location.timezone,
         )
     except Exception as e:  # noqa: BLE001
         print(f"\nWindows not rescored: archive unavailable ({e}).", file=sys.stderr)

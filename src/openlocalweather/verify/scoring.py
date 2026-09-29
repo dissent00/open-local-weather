@@ -39,6 +39,12 @@ from openlocalweather.models import (
 # implementation used in production.
 LogLookup = Callable[[date], DailyLogEntry | None]
 
+# How far before its entry's date a claim's window can open: a bulletin's
+# 21:00-21:00 opens the evening before the date it is valid for. An archive
+# fetched for a span of entries starts this much earlier, or the oldest
+# entry's bulletin cannot be scored (item 139; it cost 09-15's).
+WINDOW_OPENS_DAYS_BEFORE_ENTRY = 1
+
 
 def resolve_prediction_rows(entry: DailyLogEntry) -> list[IssuancePredictions]:
     """This entry's predictions, one row per issuance, oldest first.
@@ -134,7 +140,14 @@ def verify_closed_windows(
                 continue
 
             seen = _observe_window(archive_hourly, opened, station_reports, timezone_name)
-            score = _score_on_window(claim, seen, opened) if seen is not None else None
+            if seen is None:
+                # Unobservable in this archive is not unobserved: a stored
+                # score stands.
+                if model in row.window_scores:
+                    scores[model] = row.window_scores[model]
+                continue
+
+            score = _score_on_window(claim, seen, opened)
             if score is not None:
                 scores[model] = score
 

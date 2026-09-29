@@ -777,6 +777,26 @@ def test_a_bulletin_is_scored_on_the_24_hours_it_claims():
     assert row.window_scores["gfs_seamless"].high_error_c == pytest.approx(63.0 - 40.0)
 
 
+def test_a_recheck_that_cannot_see_a_bulletins_window_keeps_its_score():
+    """An archive fetched from the entry's own date misses the evening
+    before, where a bulletin's window opens. Unobservable now is not
+    unobserved: the stored score stands."""
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    opens = {"kenya_met": lambda valid_for: datetime(2026, 8, valid_for.day - 1, 21, 0)}
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+    verify_closed_windows(entry, _archive_from_the_10th(rain_at=22), today=date(2026, 8, 13), own_windows=opens)
+    kept = row.window_scores["kenya_met"]
+
+    from_the_11th = _archive_from_the_10th(rain_at=22)
+    from_the_11th["hourly"] = {k: v[24:] for k, v in from_the_11th["hourly"].items()}
+    verify_closed_windows(entry, from_the_11th, today=date(2026, 8, 13), own_windows=opens, force=True)
+
+    assert row.window_scores["kenya_met"] == kept
+
+
 def test_a_bulletin_with_no_window_of_its_own_is_not_scored_on_a_windows_basis():
     from openlocalweather.verify.scoring import verify_closed_windows
 
