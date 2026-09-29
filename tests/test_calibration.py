@@ -102,3 +102,44 @@ def test_a_model_with_no_gust_is_skipped_rather_than_counted():
     ]
 
     assert calibrated_gust_consensus(predictions, corrections) == 30.0
+
+
+# --- Item 139 stage 3d: the correction from the window record ---------------
+
+
+def _periods(winds):
+    """One forecast a period, newest first; None is a period with no wind."""
+    from openlocalweather.models import VerificationScore
+
+    return [[VerificationScore(rain_correct=True, wind_error_kmh=w)] for w in winds]
+
+
+def test_the_window_record_counts_the_periods_that_carried_a_wind_error():
+    from openlocalweather.verify.scoring import summarize_periods
+
+    got = summarize_periods(_periods([10.0, None, 14.0]))
+
+    assert got.checks_found == 3
+    assert got.wind_checks == 2
+    assert got.wind_err == 12.0
+
+
+def test_the_window_correction_is_the_records_own_wind_error_added_back():
+    from openlocalweather.calibration import window_gust_corrections
+    from openlocalweather.verify.scoring import summarize_periods
+
+    windows = {"gfs": summarize_periods(_periods([18.0] * 10), 10)}
+
+    assert window_gust_corrections(windows) == {"gfs": 18.0}
+
+
+def test_ten_periods_with_three_wind_errors_earn_no_correction():
+    """The calendar gate counts any scored check, so a bias from three wind
+    errors could pass as ten. The window gate counts the wind errors."""
+    from openlocalweather.calibration import window_gust_corrections
+    from openlocalweather.verify.scoring import summarize_periods
+
+    windows = {"gfs": summarize_periods(_periods([18.0, 17.0, 16.0] + [None] * 7), 10)}
+
+    assert windows["gfs"].checks_found == 10
+    assert window_gust_corrections(windows) == {}

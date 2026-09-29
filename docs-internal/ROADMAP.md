@@ -56,10 +56,10 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: stage 3, steps a-c built.** The period record, a window
-   claim from every Day+0 source and the period review exist, read by
-   nothing published. Next: (d) the calibration, (e) the next-24-hours
-   call, (f) the switch. See the item. Then item 188, local met services on
+2. **Item 139: stage 3, steps a-d built.** The period record, a window
+   claim from every Day+0 source, the period review and the window gust
+   correction exist, read by nothing published. Next: (e) the
+   next-24-hours call, (f) the switch. See the item. Then item 188, local met services on
    their own terms (operator-approved 2026-09-29).
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
@@ -20680,7 +20680,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Stages 1-2 SHIPPED 2026-09-29; stage 3 (the switch) in progress, steps a-c built**
+## 139. The window is scored and nobody reads it · **Stages 1-2 SHIPPED 2026-09-29; stage 3 (the switch) in progress, steps a-d built**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -21144,6 +21144,13 @@ c. **The review on periods.** Counts become periods and means go
    run's window, "icon_seamless 10.5/13 (81%) vs kenya_met 6/13 (46%)".
    Each is scored on what it claimed; the hours differ.
 d. **The gust calibration** from window-basis errors, gated on wind checks.
+   **Built 2026-09-29:** `RollingWindowResult.wind_checks` in both languages
+   (`period_summary.json` gains a case), and `window_gust_corrections`
+   applies a model's window wind error only when every period in its
+   window carried one. On the record all five models qualify, 10 of 10,
+   and the corrections run 1.2-1.9 km/h above the calendar's (gfs +15.1
+   against +13.2). Not measured out of sample on this basis: three test
+   days so far. The calendar calibration the page uses is untouched.
 e. **The next-24-hours call**, per its design above. Harness run first.
    Python, vectors, Dart, re-pin.
 f. **The switch.** `track_record.json`, MODEL TRACK RECORD, PRE-COMPUTED

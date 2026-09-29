@@ -64,7 +64,8 @@
         "brier_checks": 0,
         "cloud_err": 20.0,
         "cloud_checks": 2,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -186,7 +187,8 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -260,7 +262,8 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -325,7 +328,8 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -401,7 +405,8 @@
         "brier_checks": 2,
         "cloud_err": 2.625,
         "cloud_checks": 2,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -465,7 +470,8 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
       }
     },
     {
@@ -486,7 +492,99 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": null
+        "precip_err": null,
+        "wind_checks": 0
+      }
+    },
+    {
+      "name": "wind is counted where a period carried one, inside the window",
+      "input": {
+        "periods": [
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 10.0,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            },
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": false,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": null,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 14.0,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ],
+          [
+            {
+              "rain_correct": true,
+              "rain_brier": null,
+              "onset_error_hrs": null,
+              "wind_error_kmh": 99.0,
+              "high_error_c": null,
+              "low_error_c": null,
+              "mslp_error_hpa": null,
+              "cloud_error_pct": null,
+              "convective_correct": null,
+              "precip_error_mm": null
+            }
+          ]
+        ],
+        "window_size": 3
+      },
+      "expected": {
+        "checks_found": 3,
+        "rain_pct": 66.66666666666667,
+        "onset_err": null,
+        "wind_err": 12.0,
+        "high_err": null,
+        "low_err": null,
+        "mslp_err": null,
+        "rain_brier": null,
+        "brier_checks": 0,
+        "cloud_err": null,
+        "cloud_checks": 0,
+        "precip_err": null,
+        "wind_checks": 2
       }
     },
     {
@@ -560,7 +658,8 @@
         "brier_checks": 0,
         "cloud_err": null,
         "cloud_checks": 0,
-        "precip_err": 0.3
+        "precip_err": 0.3,
+        "wind_checks": 1
       }
     }
   ]

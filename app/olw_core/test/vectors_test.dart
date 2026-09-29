@@ -1310,6 +1310,7 @@ void main() {
           'cloud_err': r.cloudErr,
           'cloud_checks': r.cloudChecks,
           'precip_err': r.precipErr,
+          'wind_checks': r.windChecks,
         }, c['expected'], c['name'] as String, exact: true);
       }
     });

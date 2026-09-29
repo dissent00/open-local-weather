@@ -492,6 +492,10 @@ class RollingWindowResult:
     cloud_checks: int = 0
     # Item 157. Signed mean of the amount error over the window's checks.
     precip_err: float | None = None
+    # The checks behind `wind_err`, for `cloud_checks`' reason: the gust
+    # calibration applies that mean, and a window of ten checks with three
+    # wind errors is a bias from three (item 139, stage 3d).
+    wind_checks: int = 0
 
 
 def rescore_rolling_window(
@@ -541,6 +545,7 @@ def rescore_rolling_window(
         cloud_err=mean([s.cloud_error_pct for s in scores]),
         cloud_checks=sum(1 for s in scores if s.cloud_error_pct is not None),
         precip_err=mean([s.precip_error_mm for s in scores]),
+        wind_checks=sum(1 for s in scores if s.wind_error_kmh is not None),
     )
 
 
@@ -570,19 +575,21 @@ def summarize_periods(
     rain = [mean([1.0 if s.rain_correct else 0.0 for s in p]) for p in used]
     briers = [mean_brier([s.rain_brier for s in p]) for p in used]
     clouds = per_period("cloud_error_pct")
+    winds = per_period("wind_error_kmh")
     return RollingWindowResult(
         checks_found=len(used),
         rain_pct=(100 * sum(rain) / len(rain)) if rain else None,
         rain_brier=mean_brier(briers),
         brier_checks=sum(1 for b in briers if b is not None),
         onset_err=mean(per_period("onset_error_hrs")),
-        wind_err=mean(per_period("wind_error_kmh")),
+        wind_err=mean(winds),
         high_err=mean(per_period("high_error_c")),
         low_err=mean(per_period("low_error_c")),
         mslp_err=mean(per_period("mslp_error_hpa")),
         cloud_err=mean(clouds),
         cloud_checks=sum(1 for c in clouds if c is not None),
         precip_err=mean(per_period("precip_error_mm")),
+        wind_checks=sum(1 for w in winds if w is not None),
     )
 
 

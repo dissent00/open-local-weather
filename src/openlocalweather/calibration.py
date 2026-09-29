@@ -57,9 +57,11 @@ a SEPARATE consensus and never a modified ModelPrediction.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from openlocalweather.defaults import GUST_CALIBRATION_MIN_CHECKS
 from openlocalweather.models import ModelPrediction
-from openlocalweather.verify.scoring import mean
+from openlocalweather.verify.scoring import RollingWindowResult, mean
 
 # The lead time the correction is defined for. Day+0 only, because that is
 # where it has been validated and because the bias is not assumed to be the
@@ -135,3 +137,25 @@ def calibrated_gust_consensus(
     ]
 
     return mean(adjusted)
+
+
+def window_gust_corrections(
+    windows: Mapping[str, RollingWindowResult],
+    *,
+    min_checks: int = GUST_CALIBRATION_MIN_CHECKS,
+) -> dict[str, float]:
+    """Per-model km/h to ADD, from each model's rolling window — ROADMAP item
+    139, stage 3d. `gust_corrections`' rule and sign, read from the window
+    record, and gated on the checks that carried a wind error rather than
+    on every scored check, which would let a mean of three stand for ten.
+
+    NOT YET MEASURED OUT OF SAMPLE on this basis. The table above is the
+    calendar's, and its test takes each day's correction from the ten
+    before it; on 2026-09-29 the window record had 13 periods, so three
+    days to test.
+    """
+    return {
+        model: window.wind_err
+        for model, window in windows.items()
+        if window.wind_err is not None and window.wind_checks >= min_checks
+    }

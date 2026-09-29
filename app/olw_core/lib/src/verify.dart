@@ -44,6 +44,7 @@ class RollingWindowResult {
     this.cloudErr,
     this.cloudChecks = 0,
     this.precipErr,
+    this.windChecks = 0,
   });
 
   /// How many of the window actually had data. Load-bearing for cold-start
@@ -78,6 +79,10 @@ class RollingWindowResult {
   /// more sharply: cloudCoverPct started being stored on 2026-09-09, so for
   /// weeks a window holds thirty scored days and a handful with cloud.
   final int cloudChecks;
+
+  /// The checks behind [windErr], for [cloudChecks]' reason: the gust
+  /// calibration applies that mean — upstream item 139, stage 3d.
+  final int windChecks;
 }
 
 /// Walks backward from [yesterday] collecting up to [windowSize] scoreable
@@ -133,6 +138,7 @@ RollingWindowResult rescoreRollingWindow({
     cloudErr: mean([for (final s in scores) s.cloudErrorPct]),
     cloudChecks: scores.where((s) => s.cloudErrorPct != null).length,
     precipErr: mean([for (final s in scores) s.precipErrorMm]),
+    windChecks: scores.where((s) => s.windErrorKmh != null).length,
   );
 }
 
@@ -160,19 +166,21 @@ RollingWindowResult summarizePeriods(
     for (final p in used) meanBrier([for (final s in p) s.rainBrier]),
   ];
   final clouds = perPeriod((s) => s.cloudErrorPct);
+  final winds = perPeriod((s) => s.windErrorKmh);
   return RollingWindowResult(
     checksFound: used.length,
     rainPct: rain.isEmpty ? null : 100 * compensatedSum(rain) / rain.length,
     rainBrier: meanBrier(briers),
     brierChecks: briers.where((b) => b != null).length,
     onsetErr: mean(perPeriod((s) => s.onsetErrorHrs)),
-    windErr: mean(perPeriod((s) => s.windErrorKmh)),
+    windErr: mean(winds),
     highErr: mean(perPeriod((s) => s.highErrorC)),
     lowErr: mean(perPeriod((s) => s.lowErrorC)),
     mslpErr: mean(perPeriod((s) => s.mslpErrorHpa)),
     cloudErr: mean(clouds),
     cloudChecks: clouds.where((c) => c != null).length,
     precipErr: mean(perPeriod((s) => s.precipErrorMm)),
+    windChecks: winds.where((w) => w != null).length,
   );
 }
 
