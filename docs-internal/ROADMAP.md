@@ -27382,6 +27382,24 @@ code existed. One end-to-end test, written after, drives the real providers,
 routing and ledger with only HTTP faked. Removing any one of the nine pieces
 fails at least one test.
 
+### 2026-09-29 15:01Z: every poll refused, the write-up lost
+
+Direct 503 at 15:01:43. The queue accepted the scored call; its one poll,
++16 min, got HTTP 503 `event: error` ("high demand"), and the gateway served
+the call (`dots-3-note-preview`, 108 s). The write-up went to the queue at
+15:19:34; both polls, +30 and +60 min, got the same 503, and the gateway
+does not write (item 180), so the page published without a write-up at
+16:19Z. Gemini API calls: 1 direct, 2 submits, 3 polls.
+
+**The queue so far: 1 of 5 jobs read.** Served: the 09-29 03:01Z write-up,
+at its first poll. Every poll refused: 09-28 15:01Z scored, the 09-29
+05:12Z health check, and both of 09-29 15:01Z's jobs. Direct at 15:01Z
+served 1 of 7 scored calls 09-21 to 09-27 and none on 09-28 or 09-29.
+
+**Unknown, and it decides the setup:** whether a job completes while its
+polls are refused. The two job IDs are in the run log (36586947628); one
+GET each, after the fact, says `completed` or not.
+
 ---
 
 ## 184. OpenRouter served one model and the record named another · **SHIPPED 2026-09-27**

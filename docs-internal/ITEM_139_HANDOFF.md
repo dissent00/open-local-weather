@@ -111,6 +111,12 @@ and stage 5 (the app scores windows).
   own window and `window_observed` all run. Check the rows it rewrites.
 - `olw window-record` shows the window record beside the published one.
 
+- **`issued_at` is stamped at composition, not at guidance.** The 09-29
+  15:01Z row reads `issued_at` 16:19Z after a 78-minute queue wait, while
+  its window opened 18:00 local from the guidance fetched at 15:01Z. Step e
+  must anchor the forecaster's window on the guidance's opening, as the
+  models' is; stage 4's hours-between-forecasts must choose which instant.
+
 ## Traps met this session
 
 - zsh does not split an unquoted variable: a mutation loop passed
