@@ -643,13 +643,11 @@ def test_weekly_batch_day_triggers_full_archive_refetch(tmp_path, monkeypatch):
     deps = make_deps(tmp_path)
     issue(deps, today=monday, dry_run=False)
 
-    # TWO range calls since ROADMAP item 104's contract item 2, and they are
-    # different jobs: one is the weekly full re-fetch into the actuals cache,
-    # the other is `_verify_recent_windows`, which needs two days at once
-    # because a window straddles midnight and which never writes the cache.
-    # Counted rather than loosened — if the cache path started re-fetching
-    # twice this would be three.
-    assert calls["range"] == 2
+    # ONE range call: the weekly full re-fetch into the actuals cache. The
+    # window pass, `_verify_recent_windows`, asks only when a stored window is
+    # due (item 139 stage 2), and this record holds none. Counted rather than
+    # loosened — if the cache path started re-fetching twice this would be two.
+    assert calls["range"] == 1
     assert calls["single"] == 0
 
 
@@ -672,11 +670,73 @@ def test_non_weekly_day_uses_single_day_upsert(tmp_path, monkeypatch):
     issue(deps, today=tuesday, dry_run=False)
 
     # The CACHE path is the single-day upsert, which is what this test is
-    # about. The one range call is `_verify_recent_windows` — contract item 2
-    # — which never touches the cache; two would mean the cache had started
-    # doing a full re-fetch on an ordinary day.
-    assert calls["range"] == 1
+    # about. No range call: the window pass asks only when a stored window is
+    # due (item 139 stage 2) and this record holds none; one would mean the
+    # cache had started doing a full re-fetch on an ordinary day.
+    assert calls["range"] == 0
     assert calls["single"] == 1
+
+
+def _entry_with_window(d: date, *, scored: bool):
+    """A stored forecast whose 24-hour window opened at 06:00 on `d`."""
+    from openlocalweather.models import (
+        IssuancePredictions,
+        LogEntryMeta,
+        ModelPrediction,
+        ModelPredictionsByLead,
+    )
+
+    stamp = datetime(d.year, d.month, d.day, 3, 0, tzinfo=timezone.utc)
+    return DailyLogEntry(
+        date=d, rain_expected="x", temp_high_c=26.0, temp_low_c=18.0, temp_high_low_display="26/18",
+        mslp_trend_24h="", synoptic_pattern="", narrative_markdown="n",
+        meta=LogEntryMeta(generated_at_utc=stamp, llm_provider="t", llm_model="t", pipeline_version="0"),
+        prediction_rows=[IssuancePredictions(
+            issued_at=stamp,
+            predictions=ModelPredictionsByLead(day0=[ModelPrediction(model="gfs_seamless", rain=False)]),
+            window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=30.0)],
+            window_opened_local=datetime(d.year, d.month, d.day, 6, 0),
+            window_verified_at=stamp if scored else None,
+        )],
+    )
+
+
+def test_the_window_pass_runs_on_every_run_not_only_the_first(tmp_path, monkeypatch):
+    """Item 139 stage 2. "The day's first run" is a schedule idea: a first run
+    that is a dry run, or that fails before this step, left the day's due
+    windows unscored until tomorrow."""
+    seen = []
+    monkeypatch.setattr(pipeline, "_verify_recent_windows", lambda deps, today: seen.append(today) or [])
+    deps = make_deps(tmp_path)
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    assert seen == [date(2026, 8, 11)] * 2
+
+
+def test_the_window_pass_asks_the_archive_only_when_a_window_is_due(tmp_path, monkeypatch):
+    """Running on every run must not cost a request on every run: a hundred
+    runs a day ask about once, when a window's hours have all passed."""
+    calls = []
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: calls.append(1) or {"hourly": {}})
+    deps = make_deps(tmp_path)
+    today = date(2026, 8, 11)
+
+    pipeline._verify_recent_windows(deps, today)
+    assert calls == [], "nothing stored, nothing due"
+
+    log_store.write_log_entry(tmp_path, _entry_with_window(date(2026, 8, 9), scored=False))
+    pipeline._verify_recent_windows(deps, today)
+    assert calls == [1], "a finished window is due"
+
+    log_store.write_log_entry(tmp_path, _entry_with_window(date(2026, 8, 9), scored=True))
+    pipeline._verify_recent_windows(deps, today)
+    assert calls == [1], "a scored window is not due again"
+
+    log_store.write_log_entry(tmp_path, _entry_with_window(date(2026, 8, 10), scored=False))
+    pipeline._verify_recent_windows(deps, today)
+    assert calls == [1], "a window ending today has not finished"
 
 
 def test_llm_receives_system_and_user_prompt(tmp_path):

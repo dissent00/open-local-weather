@@ -104,7 +104,7 @@ from openlocalweather.llm.provider import (
 )
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.verify.scoring import mean as _mean_of
-from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions
+from openlocalweather.verify.scoring import resolve_prediction_rows, scored_predictions, window_is_scorable
 from openlocalweather.daypart import (
     TODAY,
     convective_timing,
@@ -3162,20 +3162,38 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     location = deps.location
     start = add_days(today, -(WINDOW_VERIFY_LOOKBACK_DAYS + 1))
     end = add_days(today, -1)
+    entries = [
+        entry
+        for d in log_store.list_log_dates(deps.data_dir)
+        if start <= d <= end and (entry := log_store.read_log_entry(deps.data_dir, d)) is not None
+    ]
 
-    try:
-        archive = open_meteo.fetch_archive_range(
-            location.primary_point.lat, location.primary_point.lon, start, end, location.timezone
-        )
-    except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
-        print(f"Window verification skipped ({e}); a later run will score them.", file=sys.stderr)
-        return []
+    # ASKED ONLY WHEN A WINDOW IS DUE — item 139 stage 2. The pass runs on
+    # every run, and windows fall due at a date boundary, so on most runs
+    # there is nothing to fetch for.
+    due = any(
+        row.window_verified_at is None
+        and row.window_predictions
+        and row.window_opened_local is not None
+        and window_is_scorable(row.window_opened_local, today=today)
+        for entry in entries
+        for row in entry.prediction_rows
+    )
+    archive = station_reports = None
+    if due:
+        try:
+            archive = open_meteo.fetch_archive_range(
+                location.primary_point.lat, location.primary_point.lon, start, end, location.timezone
+            )
+        except Exception as e:  # noqa: BLE001 - never fatal; the forecast stands
+            print(f"Window verification skipped ({e}); a later run will score them.", file=sys.stderr)
 
     # The airport over the same span, once, so each window is scored against
     # the evidence the calendar day already gets — ROADMAP item 139. Best
     # effort like the archive: no station, or a fetch that failed, scores the
     # window against the reanalysis alone, which is what happened before.
-    station_reports = _station_reports(location, start, end, deps.data_dir)
+    if archive is not None:
+        station_reports = _station_reports(location, start, end, deps.data_dir)
 
     # THE SECONDARY POINT'S ACTUALS, FROM THE CACHE — ROADMAP item 6. This
     # does not contradict the paragraph above: what that forbids is widening
@@ -3189,13 +3207,8 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     )
 
     changed: list[date] = []
-    for d in log_store.list_log_dates(deps.data_dir):
-        if not (start <= d <= end):
-            continue
-        entry = log_store.read_log_entry(deps.data_dir, d)
-        if entry is None:
-            continue
-        scored_window = verify_closed_windows(
+    for entry in entries:
+        scored_window = archive is not None and verify_closed_windows(
             entry, archive, today=today,
             station_reports=station_reports, timezone_name=location.timezone,
         )
@@ -3209,7 +3222,7 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
         )
         if scored_window or scored_secondary:
             log_store.write_log_entry(deps.data_dir, entry)
-            changed.append(d)
+            changed.append(entry.date)
 
     return changed
 
@@ -3517,14 +3530,15 @@ def _issue_forecast(
     log_dates_for_retention = log_store.list_log_dates(deps.data_dir)
     if first_issuance:
         _run_actuals_refresh(deps, cache, today, yesterday, log_dates_for_retention)
-        # Contract item 2. Separate from the refresh above and from the daily
-        # verification below: this one is keyed on each ISSUANCE's own 24
-        # hours rather than on a calendar day, so it re-reads recent entries
-        # and scores whatever has become observable. First issuance only, for
-        # the same reason the rest of verification is — the archive does not
-        # change during a day.
-        if not dry_run:
-            _verify_recent_windows(deps, today)
+    # Contract item 2. Separate from the refresh above and from the daily
+    # verification below: this one is keyed on each ISSUANCE's own 24 hours
+    # rather than on a calendar day, so it re-reads recent entries and scores
+    # whatever has become observable. ON EVERY RUN since item 139 stage 2: "the
+    # day's first run" is a schedule idea, and a first run that was a dry run
+    # or failed before here left the due windows for tomorrow. It asks the
+    # archive only when a window is due, so extra runs cost nothing.
+    if not dry_run:
+        _verify_recent_windows(deps, today)
     actuals_primary = actuals_cache_store.as_date_dict(cache.primary)
 
     # --- Step 3: deterministic verification + rolling stats ---

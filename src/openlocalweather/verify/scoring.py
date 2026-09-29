@@ -532,6 +532,42 @@ def window_scores_by_period(
     return periods
 
 
+def calendar_scores_by_period(
+    log_lookup: LogLookup,
+    log_dates: list[date],
+    actuals: dict[date, DailyActual],
+    model: str,
+    lead_time_days: int,
+) -> list[tuple[date, list[VerificationScore]]]:
+    """Every forecast's claim at a calendar lead, scored against its target
+    day and grouped by the date issued, newest first — ROADMAP item 139.
+
+    Day+3 and Day+7 name a day, so they stay calendar claims; what changes is
+    that EVERY row is scored, not row 0. Recomputed from the stored
+    predictions and the actuals, like every other long-run figure here.
+    """
+    periods: list[tuple[date, list[VerificationScore]]] = []
+    for day in sorted(log_dates, reverse=True):
+        entry = log_lookup(day)
+        actual = actuals.get(add_days(day, lead_time_days))
+        if entry is None or actual is None:
+            continue
+
+        scores = []
+        # Through resolve_prediction_rows, so a legacy entry's single set counts.
+        for row in resolve_prediction_rows(entry):
+            predicted = next(
+                (p for p in row.predictions.for_lead(lead_time_days) if p.model == model), None
+            )
+            score = score_prediction(predicted, actual, lead_time_days)
+            if score is not None:
+                scores.append(score)
+        if scores:
+            periods.append((day, scores))
+
+    return periods
+
+
 def collect_scores(
     model: str,
     lead_time_days: int,

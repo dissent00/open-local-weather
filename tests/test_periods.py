@@ -89,3 +89,29 @@ def test_every_scored_window_of_a_day_is_in_its_period_newest_period_first():
 
     assert [d for d, _ in got] == [day2, day1], "newest first; a day with nothing scored is no period"
     assert [s.rain_correct for s in got[0][1]] == [True, False], "every scored row of the day, not row 0"
+
+
+def test_every_forecasts_day_n_claim_is_scored_in_its_period():
+    """Day+3 and Day+7 name a day, so they stay calendar claims; but EVERY
+    forecast's is scored, not row 0's, grouped by the date it was issued."""
+    from openlocalweather.models import DailyActual, ModelPrediction, ModelPredictionsByLead
+    from openlocalweather.verify.scoring import calendar_scores_by_period
+
+    def row(high):
+        return IssuancePredictions(
+            issued_at=datetime(2026, 9, 20, 3, 1, tzinfo=timezone.utc),
+            predictions=ModelPredictionsByLead(day3=[ModelPrediction(model="gfs", rain=False, high_c=high)]),
+        )
+
+    issued, later = date(2026, 9, 20), date(2026, 9, 21)
+    entries = {
+        issued: DailyLogEntry.model_construct(date=issued, prediction_rows=[row(30.0), row(28.0)]),
+        later: DailyLogEntry.model_construct(date=later, prediction_rows=[row(31.0)]),
+    }
+    # 09-23 observed; 09-24, the later forecast's target, not yet.
+    actuals = {date(2026, 9, 23): DailyActual(rain=False, high_c=29.0)}
+
+    got = calendar_scores_by_period(entries.get, [issued, later], actuals, "gfs", 3)
+
+    assert [d for d, _ in got] == [issued], "a target not yet observed is no score"
+    assert [s.high_error_c for s in got[0][1]] == [-1.0, 1.0], "both of the day's forecasts"

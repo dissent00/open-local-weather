@@ -25,6 +25,7 @@ from pathlib import Path
 from openlocalweather import __version__
 from openlocalweather.config import LocationConfig, load_location_config
 from openlocalweather.verify.scoring import (
+    calendar_scores_by_period,
     scored_predictions,
     summarize_periods,
     verify_closed_windows,
@@ -942,6 +943,28 @@ def _run_window_record(args: argparse.Namespace) -> int:
         print(f"THE SPANS DIFFER: the window series runs {first} to {last}; the")
         print("calendar all-time covers the whole record, and its last 10 end about a")
         print("day later, since a window is scored only once all its hours have passed.")
+
+    # DAY+3 AND DAY+7 STAY CALENDAR CLAIMS; what changes is that every forecast
+    # is scored, not the day's first, each period still counted once.
+    actuals = as_date_dict(read_actuals_cache(args.data_dir).primary)
+    print()
+    print(f"{'model':16} {'lead':>4} {'periods':>7} {'forecasts':>9} {'rain% last 10':>15} {'high err last 10':>17}")
+    for lead in (3, 7):
+        for model in scored_models(location.local_bulletin_model_id):
+            periods = [s for _, s in calendar_scores_by_period(lookup, dates, actuals, model, lead)]
+            if not periods:
+                continue
+
+            recent = summarize_periods(periods, window_size=ROLLING_WINDOW_SHORT)
+            calendar = record.get(model, lead)
+            print(
+                f"{model:16} {lead:>4} {len(periods):>7} {sum(len(p) for p in periods):>9} "
+                f"{_cell(recent.rain_pct, calendar and calendar.rolling_10_rain_pct, '{:.0f}'):>15} "
+                f"{_cell(recent.high_err, calendar and calendar.avg_temp_high_error_c_10, '{:+.1f}'):>17}"
+            )
+    print()
+    print("Each cell is every forecast, each period once / the published record, the")
+    print("day's first forecast only. Both are scored against the named day.")
     return 0
 
 

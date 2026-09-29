@@ -56,9 +56,10 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: stage 1 shipped 2026-09-29; stage 2 next.** The blend's
-   window claim (settle which night its low means), scoring on any run, and
-   every forecast's Day+3/Day+7. Then the switch. See the item.
+2. **Item 139: stage 2 two thirds built.** Scoring on any run and every
+   forecast's Day+3/Day+7 are in. The forecaster's call becomes a
+   next-24-hours claim, the operator's decision; its design comes next and
+   lands with the switch. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20678,7 +20679,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Design approved 2026-09-29; stage 1 SHIPPED 2026-09-29, stage 2 next**
+## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built, the blend's claim waits on a design**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20966,6 +20967,34 @@ calendar, rain right over the last 10: GFS 72/80, ECMWF 75/80, ICON 80/70,
 UKMO 77/70, best_match 68/70; highs within 0.3 C. The spans differ (the
 calendar's last 10 end a day later and its all-time starts in August), so
 this is a first look, not a comparison. Nothing published has changed.
+
+### 2026-09-29: stage 2, and the blend's claim is not a window claim
+
+**The design's premise was wrong for the high.** It said the forecaster is
+already asked about the hours ahead. Measured on the record: before noon the
+calendar high and the window high are the same number, but after noon the
+forecaster's high sat nearer TODAY's calendar high on 7 of 10 issuances
+(09-16 18:04 called 31.0 against a calendar 30.6 and a window 28.7). So at a
+late issuance it calls a high already past, and scoring that on its window
+would mark a right call wrong. The low could not be told apart here: the two
+nights run 18.5-20 C and differ by under half a degree.
+
+**The operator's decision:** the forecaster's call means the NEXT 24 HOURS.
+Design next, and it lands with the switch (stage 3), not before: once the
+call means the window, the calendar series would score it against the wrong
+quantity until the switch.
+
+**Built, and independent of that:**
+- **Windows are scored on any run.** `_verify_recent_windows` runs on every
+  run that is not a dry run, and asks the archive only when some stored
+  window is due; on most runs nothing is, so extra runs cost no request. A
+  first run that was a dry run, or failed first, used to leave the due
+  windows for tomorrow. If the fetch fails the secondary point is still
+  scored from its cache.
+- **Every forecast's Day+3 and Day+7** are scored against the named day and
+  grouped by the date issued (`calendar_scores_by_period`), legacy entries
+  included; `olw window-record` shows them beside the published first-forecast
+  figures. They differ little: rain within 5-10 points, highs within 0.3 C.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
