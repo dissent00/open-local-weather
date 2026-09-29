@@ -59,7 +59,8 @@ not read, which the 09-21 health check had already flagged as recurring.
 2. **Item 139: stage 3, steps a-d built.** The period record, a window
    claim from every Day+0 source, the period review and the window gust
    correction exist, read by nothing published. Next: (e) the
-   next-24-hours call, (f) the switch. See the item. Then item 188, local met services on
+   next-24-hours call, (f) the switch. See the item, and the working
+   state in `docs-internal/ITEM_139_HANDOFF.md`. Then item 188, local met services on
    their own terms (operator-approved 2026-09-29).
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
