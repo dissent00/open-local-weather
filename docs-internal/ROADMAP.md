@@ -21108,7 +21108,16 @@ b. **A window claim from every Day+0 source.** The baselines' is their
    window in its lookback whenever it fetches for a due one (no extra
    request), rewrites a row only when its scores moved, and never rechecks
    without the station's reports, which would strip evidence.
-c. **The review on periods.**
+c. **The review on periods.** Counts become periods and means go
+   through each period first, as in (a). One mechanism to settle first:
+   the thunder cells (storm days, storms called) read `actuals[d].thunder`,
+   the calendar day's observation, and a scored window keeps its scores
+   but not the weather they were scored against. Either store each
+   window's observation on its row (the other side of every score, so a
+   score can be audited; one field in `day_entry.schema.json`), or derive
+   thunder from `convective_correct` and the claim's CAPE (exact, but
+   indirect, and blank for a source with no CAPE). Storing is the
+   recommendation.
 d. **The gust calibration** from window-basis errors, gated on wind checks.
 e. **The next-24-hours call**, per its design above. Harness run first.
    Python, vectors, Dart, re-pin.
