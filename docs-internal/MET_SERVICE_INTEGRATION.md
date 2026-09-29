@@ -63,6 +63,14 @@ actually covers that target date. A service that issues at 3pm means a
 morning run will often find yesterday's bulletin still newest — scoring it
 as today's forecast credits or blames them for a different day's weather.
 
+**The hours matter as much as the date** (ROADMAP item 188, 2026-09-29).
+Since item 139 every forecast is scored on the hours it claims, and a met
+service's hours are its own: KMD's run 21:00 to 21:00, and many services use
+12-hour day and night periods. Parse the hours each claim covers, when it
+was issued and the area it describes from the bulletin, and store them with
+the claim. A met service is ranked only against sources that claimed the
+same hours.
+
 ### 4. Store the extract, not the document
 
 The full daily PDF is ~8,700 characters, of which a handful of lines concern

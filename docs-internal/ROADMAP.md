@@ -59,7 +59,8 @@ not read, which the 09-21 health check had already flagged as recurring.
 2. **Item 139: stage 3, steps a-c built.** The period record, a window
    claim from every Day+0 source and the period review exist, read by
    nothing published. Next: (d) the calibration, (e) the next-24-hours
-   call, (f) the switch. See the item.
+   call, (f) the switch. See the item. Then item 188, local met services on
+   their own terms (operator-approved 2026-09-29).
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -21148,8 +21149,10 @@ e. **The next-24-hours call**, per its design above. Harness run first.
 f. **The switch.** `track_record.json`, MODEL TRACK RECORD, PRE-COMPUTED
    VERIFICATION RESULTS (the latest scored period), the review, the
    calibration, the code blend, coverage (every row), and the accuracy
-   page showing the basis beside the frozen calendar history. The record
-   re-derives on any run that scored something, not only a day's first.
+   page showing the basis beside the frozen calendar history. The met
+   service leaves the models' ranking for its own section (item 188, point
+   2). The record re-derives on any run that scored something, not only a
+   day's first.
    Brier reaches the track record. The first period record is derived
    with an EMPTY prior: `derive_period_track_record` keeps the prior's
    all-time figures when it finds fewer checks, and the calendar record's
@@ -26840,6 +26843,59 @@ extended trend and the calibrated gust all average that list.
   its real runner in tests, not launched on a device.
 
 Not done: item 173 point 1.
+
+---
+
+## 188. A local met service is not a global model · **Designed and approved 2026-09-29; after item 139's switch**
+
+Raised by the operator on 2026-09-29, from item 139's review: the Day+0
+ranking set Kenya Met, scored on its own 21:00-21:00, beside models scored
+on each run's window, "icon_seamless 10.5/13 (81%) vs kenya_met 6/13
+(46%)". Every fork has a met service, and none will look like the models.
+
+**How a met service differs, where it matters for scoring:**
+- **Hours.** Each sets its own periods: KMD 21:00-21:00; many use 12-hour
+  day and night periods (the US National Weather Service's "Today" and
+  "Tonight"). None is a run's 24 hours from its issue hour.
+- **Issue time.** Fixed by the service (KMD about 15:00); a run only finds
+  the newest bulletin.
+- **Place.** An area, a county here. "Rain in few places" can be right for
+  the county and wrong at the airport.
+- **Fields.** Sparse and worded: rain categories and max/min, rarely wind,
+  onset, a probability or an amount.
+- **Not archived.** A bulletin a run does not store is gone (see
+  MET_SERVICE_INTEGRATION.md, section 5).
+
+**The operator's decision, all four:**
+1. **A stored claim says what it covers.** The fetcher reads, from the
+   bulletin itself, the hours each claim covers, when it was issued and the
+   area, and they are stored with it; the scorer scores those hours. Today
+   Kenya Met's opening is derived at scoring time from a rule in the fetcher
+   (`validity_window_opens`); if KMD changed its convention, that rule would
+   mis-score old claims. The VALIDITY line is already parsed for its date.
+2. **Its own section, not the league table.** Only sources that claimed the
+   same hours are ranked against each other or blended. The met service
+   keeps its own record, shown beside the models' and not ranked with them;
+   the forecaster still reads its bulletin and its record. The window code
+   blend already leaves it out. **Lands with item 139's switch (step f).**
+3. **A like-for-like comparison where the schedule allows.** When a run
+   happens while a bulletin's hours are still ahead (for KMD, from about
+   15:00 to 21:00), each model's claim over exactly those hours is taken
+   from that run's guidance and stored beside the bulletin, so the record
+   can say whether the met service beats the models on the same hours from
+   about the same moment. A deployment that never runs in that gap gets no
+   comparison. Today that chance is discarded: an 18:00 run finds
+   tomorrow's bulletin and drops it, since only one valid for today is
+   accepted.
+4. **Say what it cannot do.** An area forecast verified at one point is
+   handicapped on patchy rain. The area term is recorded for KMD; the page
+   says so. Verifying against several points in the area is possible later.
+
+**Order:** 2 with the switch; then 1, since it changes how Kenya Met is
+scored; then 3; 4 with the page. MET_SERVICE_INTEGRATION.md gains the
+hours, the issue time and the area as things a fetcher must parse.
+
+Related: items 21, 139, 11.
 
 ---
 
