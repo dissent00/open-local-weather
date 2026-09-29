@@ -59,6 +59,9 @@ class RunRecord {
               windowOpenedLocal == null ? null : _naiveStamp(windowOpenedLocal),
           'window_scores': <String, Object?>{},
           'window_verified_at': null,
+          // Upstream item 139: the weather the window was scored against,
+          // written by the server's pass beside the scores.
+          'window_observed': null,
           'day_over_day': null,
         };
 

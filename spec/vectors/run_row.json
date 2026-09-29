@@ -1157,6 +1157,7 @@
           }
         },
         "window_verified_at": "2026-09-18T03:01:46.981131Z",
+        "window_observed": null,
         "day_over_day": {
           "yesterday_high_c": 31.3,
           "yesterday_low_c": 18.9,
@@ -1197,7 +1198,7 @@
       }
     },
     {
-      "name": "a row with window scores and a verified-at stamp",
+      "name": "a row with window scores, a verified-at stamp and the weather it was scored against",
       "input": {
         "issued_at": "2026-09-16T03:03:18.229475Z",
         "predictions": {
@@ -1721,6 +1722,28 @@
           }
         },
         "window_verified_at": "2026-09-18T03:05:12Z",
+        "window_observed": {
+          "rain": true,
+          "high_c": 29.4,
+          "low_c": 18.1,
+          "peak_wind_kmh": null,
+          "sustained_wind_kmh": null,
+          "mslp_trend": null,
+          "onset_hour": "16:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
         "day_over_day": {
           "yesterday_high_c": 31.3,
           "yesterday_low_c": 18.9,
@@ -2282,6 +2305,28 @@
           }
         },
         "window_verified_at": "2026-09-18T03:05:12Z",
+        "window_observed": {
+          "rain": true,
+          "high_c": 29.4,
+          "low_c": 18.1,
+          "peak_wind_kmh": null,
+          "sustained_wind_kmh": null,
+          "mslp_trend": null,
+          "onset_hour": "16:00",
+          "precip_mm": null,
+          "thunder": true,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
         "day_over_day": {
           "yesterday_high_c": 31.3,
           "yesterday_low_c": 18.9,

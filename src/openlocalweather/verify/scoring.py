@@ -151,10 +151,11 @@ def verify_closed_windows(
             if score is not None:
                 scores[model] = score
 
-        if row.window_verified_at is not None and scores == row.window_scores:
+        if row.window_verified_at is not None and (scores, observed) == (row.window_scores, row.window_observed):
             continue
 
         row.window_scores = scores
+        row.window_observed = observed
         row.window_verified_at = datetime.now(timezone.utc)
         changed = True
 
@@ -597,21 +598,36 @@ def window_scores_by_period(
     `as_of` keeps only windows scorable on that date, so a forecast issued
     then, or a backfill of one, reads the record as it stood.
     """
-    periods: list[tuple[date, list[VerificationScore]]] = []
+    return [
+        (day, [score for score, _ in pairs])
+        for day, pairs in window_observations_by_period(log_lookup, log_dates, model, as_of)
+    ]
+
+
+def window_observations_by_period(
+    log_lookup: LogLookup, log_dates: list[date], model: str, as_of: date | None = None
+) -> list[tuple[date, list[tuple[VerificationScore, DailyActual | None]]]]:
+    """`window_scores_by_period`, each score beside the weather it was
+    scored against — item 139, stage 3c. None where the score was measured
+    on hours of the source's own, since the row's observation is of the
+    row's window, and where the row predates the stored observation."""
+    periods: list[tuple[date, list[tuple[VerificationScore, DailyActual | None]]]] = []
     for day in sorted(log_dates, reverse=True):
         entry = log_lookup(day)
         if entry is None:
             continue
 
-        scores = [
-            row.window_scores[model]
-            for row in entry.prediction_rows
-            if row.window_verified_at is not None
-            and model in row.window_scores
-            and (as_of is None or window_is_scorable(row.window_opened_local, today=as_of))
-        ]
-        if scores:
-            periods.append((day, scores))
+        pairs = []
+        for row in entry.prediction_rows:
+            if row.window_verified_at is None or model not in row.window_scores:
+                continue
+            if as_of is not None and not window_is_scorable(row.window_opened_local, today=as_of):
+                continue
+
+            on_this_window = any(p.model == model for p in row.window_predictions)
+            pairs.append((row.window_scores[model], row.window_observed if on_this_window else None))
+        if pairs:
+            periods.append((day, pairs))
 
     return periods
 

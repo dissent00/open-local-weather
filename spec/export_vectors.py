@@ -1740,7 +1740,7 @@ def export_run_row() -> None:
     record: the record is re-saved by every verification pass that touches
     it, and each additive field would have repeated this. The copy was taken
     from data/log/2026-09-16.json as committed at 62e2b18, window scored."""
-    from openlocalweather.models import IssuancePredictions, VerificationScore
+    from openlocalweather.models import DailyActual, IssuancePredictions, VerificationScore
 
     committed = json.loads((SPEC_DIR / "fixtures" / "run_row_2026-09-16.json").read_text())
     row = IssuancePredictions.model_validate(committed)
@@ -1751,6 +1751,8 @@ def export_run_row() -> None:
                 "ukmo_seamless": VerificationScore(rain_correct=False, rain_brier=0.49),
             },
             "window_verified_at": datetime(2026, 9, 18, 3, 5, 12, tzinfo=timezone.utc),
+            # Item 139 stage 3c: the weather the scores were measured against.
+            "window_observed": DailyActual(rain=True, high_c=29.4, low_c=18.1, thunder=True, onset_hour="16:00"),
         }
     )
     cases = [
@@ -1760,7 +1762,7 @@ def export_run_row() -> None:
             "expected": row.model_dump(mode="json"),
         },
         {
-            "name": "a row with window scores and a verified-at stamp",
+            "name": "a row with window scores, a verified-at stamp and the weather it was scored against",
             "input": scored.model_dump(mode="json"),
             "expected": scored.model_dump(mode="json"),
         },

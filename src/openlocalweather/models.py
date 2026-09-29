@@ -985,6 +985,15 @@ class IssuancePredictions(BaseModel):
     # for why it is the calendar rather than the 24-hour clock.
     window_verified_at: datetime | None = None
 
+    # THE WEATHER THE WINDOW WAS SCORED AGAINST — item 139, stage 3c: the
+    # reanalysis over the window's hours, the station's thunder and rain
+    # stamped on. The review's storm counts read its thunder, and a score
+    # with nothing beside it cannot be audited. The row's own window only: a
+    # source scored on hours of its own (the met service's 21:00-21:00) has
+    # no observation here. None on a row scored before 2026-09-29 until a
+    # recheck fills it.
+    window_observed: DailyActual | None = None
+
     # WHAT THE OVERVIEW WAS HANDED — ROADMAP item 127.
     #
     # Computed every run since item 23 and, until now, thrown away: the only

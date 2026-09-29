@@ -797,6 +797,45 @@ def test_a_recheck_that_cannot_see_a_bulletins_window_keeps_its_score():
     assert row.window_scores["kenya_met"] == kept
 
 
+def test_a_scored_window_keeps_the_weather_it_was_scored_against():
+    """Item 139 stage 3c. The review's thunder cells need each window's
+    thunder, and a score with no observation beside it cannot be audited.
+    A row scored before the field existed gains it on a recheck."""
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+    verify_closed_windows(entry, _archive_from_the_10th(rain_at=36), today=date(2026, 8, 13))
+
+    assert row.window_observed.rain is True
+    assert row.window_observed.high_c == 63.0
+
+    row.window_observed = None
+    assert verify_closed_windows(entry, _archive_from_the_10th(rain_at=36), today=date(2026, 8, 13), force=True) is True
+    assert row.window_observed is not None
+
+
+def test_only_a_claim_on_the_rows_own_window_is_paired_with_its_weather():
+    """Kenya Met is scored on its bulletin's 21:00-21:00, so the row's
+    observation is not the weather its score was measured against."""
+    from openlocalweather.verify.scoring import verify_closed_windows, window_observations_by_period
+
+    opens = {"kenya_met": lambda valid_for: datetime(2026, 8, valid_for.day - 1, 21, 0)}
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+    verify_closed_windows(entry, _archive_from_the_10th(rain_at=22), today=date(2026, 8, 13), own_windows=opens)
+    lookup = {date(2026, 8, 11): entry}.get
+
+    [(_, gfs)] = window_observations_by_period(lookup, [date(2026, 8, 11)], "gfs_seamless")
+    [(_, kmd)] = window_observations_by_period(lookup, [date(2026, 8, 11)], "kenya_met")
+
+    assert gfs[0][1] is row.window_observed
+    assert kmd[0][0] == row.window_scores["kenya_met"]
+    assert kmd[0][1] is None
+
+
 def test_a_bulletin_with_no_window_of_its_own_is_not_scored_on_a_windows_basis():
     from openlocalweather.verify.scoring import verify_closed_windows
 
