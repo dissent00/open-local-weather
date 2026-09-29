@@ -1998,7 +1998,9 @@ class TrackRecordEntry(BaseModel):
     rain_pct_trend: str | None = None  # "improving" | "declining" | "stable" | None
     rain_pct_trend_delta: float | None = None  # rolling_10_rain_pct - rolling_30_rain_pct
     all_time_checks: int = 0
-    all_time_correct: int = 0
+    # A float on the period basis (item 139): each period's share of right
+    # rain calls, summed. The calendar basis writes whole numbers.
+    all_time_correct: int | float = 0
     all_time_rain_pct: float | None = None
     # How far back the all-time re-derivation actually reached. Recorded so
     # coverage is auditable from the committed record rather than assumed:

@@ -115,3 +115,106 @@ def test_every_forecasts_day_n_claim_is_scored_in_its_period():
 
     assert [d for d, _ in got] == [issued], "a target not yet observed is no score"
     assert [s.high_error_c for s in got[0][1]] == [-1.0, 1.0], "both of the day's forecasts"
+
+
+# --- Stage 3a: the track record over periods ------------------------------
+
+
+def _row(window: dict[str, VerificationScore] | None = None, day3_high: float | None = None):
+    """One forecast: its scored window, and a Day+3 high for gfs."""
+    from openlocalweather.models import ModelPrediction, ModelPredictionsByLead
+
+    stamp = datetime(2026, 9, 28, 3, 1, tzinfo=timezone.utc)
+    return IssuancePredictions(
+        issued_at=stamp,
+        window_scores=window or {},
+        window_verified_at=stamp if window is not None else None,
+        predictions=ModelPredictionsByLead(
+            day3=[ModelPrediction(model="gfs", rain=False, high_c=day3_high)] if day3_high is not None else [],
+        ),
+    )
+
+
+def _period_record(entries, actuals=None, prior=None):
+    from openlocalweather.models import TrackRecord
+    from openlocalweather.verify.pipeline import derive_period_track_record
+
+    return derive_period_track_record(
+        log_lookup=entries.get,
+        log_dates=sorted(entries),
+        actuals_primary=actuals or {},
+        prior_track_record=prior or TrackRecord(generated_at_utc=datetime(2026, 9, 28, tzinfo=timezone.utc), entries=[]),
+        today=date(2026, 9, 29),
+        models=["gfs"],
+    )
+
+
+def _gfs(record, lead):
+    return next(e for e in record.entries if e.model == "gfs" and e.lead_time_days == lead)
+
+
+def test_the_day0_record_is_the_windows_counted_each_period_once():
+    d1, d2 = date(2026, 9, 20), date(2026, 9, 21)
+    entries = {
+        d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[_row({"gfs": _score(True, 1.0)})]),
+        d2: DailyLogEntry.model_construct(date=d2, prediction_rows=[
+            _row({"gfs": _score(True, 0.0)}), _row({"gfs": _score(False, 2.0)}),
+        ]),
+    }
+
+    got = _gfs(_period_record(entries), 0)
+
+    assert got.checks_in_window_10 == 2
+    assert got.all_time_checks == 2
+    assert got.rolling_10_rain_pct == pytest.approx(100 * (1 + 0.5) / 2)
+    assert got.avg_temp_high_error_c_10 == pytest.approx((1.0 + 1.0) / 2)
+    assert got.all_time_correct == pytest.approx(1.5), "the sum of each period's share"
+    assert got.all_time_earliest_target_date == d1
+    assert got.last_verified_target_date == d2
+
+
+def test_the_day3_record_scores_every_forecasts_claim_against_its_named_day():
+    from openlocalweather.models import DailyActual
+
+    d1 = date(2026, 9, 20)
+    entries = {d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[_row(day3_high=30.0), _row(day3_high=28.0)])}
+    actuals = {date(2026, 9, 23): DailyActual(rain=False, high_c=29.0)}
+
+    got = _gfs(_period_record(entries, actuals), 3)
+
+    assert got.all_time_checks == 1
+    assert got.avg_temp_high_error_c_10 == pytest.approx(0.0), "-1 and +1, one period"
+    assert got.all_time_earliest_target_date == date(2026, 9, 23)
+    assert got.avg_onset_error_hrs_10 is None, "onset is Day+0's alone"
+
+
+def test_more_forecasts_in_a_period_move_no_figure_of_the_record():
+    d1, d2 = date(2026, 9, 20), date(2026, 9, 21)
+
+    def entries(copies):
+        return {
+            d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[_row({"gfs": _score(True, 1.0, 20.0, 0.1)})] * copies),
+            d2: DailyLogEntry.model_construct(date=d2, prediction_rows=[_row({"gfs": _score(False, -2.0, None, 0.6)})] * copies),
+        }
+
+    one = _gfs(_period_record(entries(1)), 0).model_dump(exclude={"last_updated"})
+    many = _gfs(_period_record(entries(7)), 0).model_dump(exclude={"last_updated"})
+
+    assert many == one
+
+
+def test_the_written_summary_is_carried_and_a_shrinking_all_time_is_refused():
+    from openlocalweather.models import TrackRecord, TrackRecordEntry
+
+    d1 = date(2026, 9, 20)
+    entries = {d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[_row({"gfs": _score(True)})])}
+    prior = TrackRecord(generated_at_utc=datetime(2026, 9, 28, tzinfo=timezone.utc), entries=[TrackRecordEntry(
+        model="gfs", lead_time_days=0, skill_profile_summary="At Day+0, runs warm.", notes="n",
+        all_time_checks=5, all_time_correct=4, all_time_rain_pct=80.0,
+    )])
+
+    got = _gfs(_period_record(entries, prior=prior), 0)
+
+    assert got.skill_profile_summary == "At Day+0, runs warm."
+    assert got.notes == "n"
+    assert (got.all_time_checks, got.all_time_correct, got.all_time_rain_pct) == (5, 4, 80.0)

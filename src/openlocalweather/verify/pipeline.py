@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 import sys
 from datetime import timedelta, date, datetime, timezone
 
-from openlocalweather.dates import prediction_row_date_for_target
+from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.defaults import (
     LEAD_TIMES_DAYS,
     MODELS,
@@ -36,11 +36,15 @@ from openlocalweather.defaults import (
 from openlocalweather.models import DailyActual, TrackRecord, TrackRecordEntry, VerificationScore
 from openlocalweather.verify.scoring import (
     LogLookup,
+    calendar_scores_by_period,
     compute_rain_pct_trend,
+    mean,
     predictions_by_model,
     rescore_all_time,
     rescore_rolling_window,
     score_prediction,
+    summarize_periods,
+    window_scores_by_period,
 )
 
 
@@ -243,3 +247,102 @@ def run_deterministic_verification_and_scoring(
         updated_track_record=updated_track_record,
         newly_verified=newly_verified,
     )
+
+
+def derive_period_track_record(
+    log_lookup: LogLookup,
+    log_dates: list[date],
+    actuals_primary: dict[date, DailyActual],
+    prior_track_record: TrackRecord,
+    today: date,
+    models: list[str] = MODELS,
+    lead_times_days: list[int] = LEAD_TIMES_DAYS,
+    window_short: int = ROLLING_WINDOW_SHORT,
+    window_long: int = ROLLING_WINDOW_LONG,
+) -> TrackRecord:
+    """The track record over PERIODS — ROADMAP item 139, stage 3a.
+
+    Every forecast is scored and each period (the local date issued) counts
+    once, so running more forecasts cannot move a figure. Day+0 is each
+    forecast's own 24-hour window; Day+3 and Day+7 name a day, so they are
+    every forecast's calendar claim. Fields as the calendar builder above
+    fills them, and `checks` count periods.
+
+    READ BY NOTHING PUBLISHED until the switch, stage 3f.
+    """
+    entries_by_key: dict[tuple[str, int], TrackRecordEntry] = {
+        (e.model, e.lead_time_days): e.model_copy(deep=True) for e in prior_track_record.entries
+    }
+    earliest = min(log_dates) if log_dates else today
+    horizon_by_model = derive_forecast_horizons(log_lookup, earliest, today)
+
+    for k in lead_times_days:
+        for model in models:
+            dated = (
+                window_scores_by_period(log_lookup, log_dates, model)
+                if k == 0
+                else calendar_scores_by_period(log_lookup, log_dates, actuals_primary, model, k)
+            )
+            periods = [scores for _, scores in dated]
+            short = summarize_periods(periods, window_short)
+            long = summarize_periods(periods, window_long)
+            all_time = summarize_periods(periods)
+
+            key = (model, k)
+            track_entry = entries_by_key.get(key) or TrackRecordEntry(model=model, lead_time_days=k)
+
+            # The calendar builder's safety rail, for its reason: fewer
+            # periods than last time means stored scores went missing.
+            if all_time.checks_found < track_entry.all_time_checks:
+                print(
+                    f"WARNING: the period record for {model} lead+{k} found "
+                    f"{all_time.checks_found} periods but {track_entry.all_time_checks} were "
+                    "recorded previously. Keeping the previous all-time figures.",
+                    file=sys.stderr,
+                )
+            else:
+                track_entry.all_time_checks = all_time.checks_found
+                # Each period's share of right rain calls, summed: a whole
+                # number only while every period holds one forecast.
+                track_entry.all_time_correct = sum(
+                    mean([1.0 if s.rain_correct else 0.0 for s in scores]) for scores in periods
+                )
+                track_entry.all_time_rain_pct = all_time.rain_pct
+                track_entry.all_time_earliest_target_date = (
+                    add_days(dated[-1][0], k) if dated else None
+                )
+
+            track_entry.rolling_10_rain_pct = short.rain_pct
+            track_entry.rolling_30_rain_pct = long.rain_pct
+            track_entry.rain_pct_trend, track_entry.rain_pct_trend_delta = compute_rain_pct_trend(
+                rolling_10_rain_pct=short.rain_pct,
+                rolling_30_rain_pct=long.rain_pct,
+                checks_in_window_10=short.checks_found,
+                checks_in_window_30=long.checks_found,
+                min_checks_short=TREND_MIN_CHECKS_SHORT,
+                min_checks_long=TREND_MIN_CHECKS_LONG,
+                threshold_pct=TREND_THRESHOLD_PCT,
+            )
+            track_entry.avg_onset_error_hrs_10 = short.onset_err if k == 0 else None
+            track_entry.avg_wind_error_kmh_10 = short.wind_err
+            track_entry.avg_temp_high_error_c_10 = short.high_err
+            track_entry.avg_temp_low_error_c_10 = short.low_err
+            track_entry.avg_mslp_trend_error_hpa_10 = short.mslp_err
+            track_entry.avg_precip_error_mm_10 = short.precip_err
+            track_entry.avg_cloud_error_pct_10 = short.cloud_err if k == 0 else None
+            track_entry.cloud_checks_in_window_10 = short.cloud_checks if k == 0 else 0
+            track_entry.checks_in_window_10 = short.checks_found
+            track_entry.forecast_horizon_days = horizon_by_model.get(model)
+            track_entry.last_updated = today
+            if dated:
+                track_entry.last_verified_target_date = add_days(dated[0][0], k)
+
+            entries_by_key[key] = track_entry
+
+    model_order = {m: i for i, m in enumerate(models)}
+    ordered_entries = sorted(
+        entries_by_key.values(),
+        key=lambda e: (model_order.get(e.model, len(models)), e.lead_time_days),
+    )
+
+    return TrackRecord(generated_at_utc=datetime.now(timezone.utc), entries=ordered_entries)

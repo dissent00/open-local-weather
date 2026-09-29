@@ -21083,7 +21083,10 @@ a. **The per-period record.** For each model and lead, periods newest
    past their issuance: Day+0 from window scores, Day+3 and Day+7 from
    `calendar_scores_by_period`. Track-record entries from
    `summarize_periods`: rolling 10 and 30, trend, all-time, all over
-   periods. Brier reaches the track record here.
+   periods. **Built 2026-09-29** (`derive_period_track_record`); on the
+   record, Day+0 has 13 periods per model (09-15 to 09-27) and Day+3/+7 the
+   calendar's counts. Brier moved to (f): a new track-record field reaches
+   the prompt the moment it exists.
 b. **A window claim from every Day+0 source.** The baselines' is their
    Day+0 claim (persistence repeats yesterday; climatology is the base rate
    before the issuance). The code blend votes the models' window claims,
@@ -21098,6 +21101,7 @@ f. **The switch.** `track_record.json`, MODEL TRACK RECORD, PRE-COMPUTED
    calibration, the code blend, coverage (every row), and the accuracy
    page showing the basis beside the frozen calendar history. The record
    re-derives on any run that scored something, not only a day's first.
+   Brier reaches the track record.
 
 **Kenya Met's claim is already a window.** `kenya_kmd_daily.py` records
 that the daily bulletin "is issued around 3pm for 9pm-to-9pm the following
