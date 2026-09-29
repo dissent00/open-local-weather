@@ -799,9 +799,9 @@
     "observations_local_time": "06:01",
     "degradations": [
       {
-        "code": "station_readings_unavailable",
-        "summary": "The nearest airport's readings for today were not available, so this forecast could not be checked against what has already been measured locally.",
-        "detail": "HKKI answered with rows this run could not read for 2026-09-20."
+        "code": "station_today_not_archived",
+        "summary": "No report from the nearest airport was available for today yet, so this forecast could not be checked against what has already been measured locally.",
+        "detail": "The archive held nothing for HKKI on 2026-09-20 at this run. HKKI had filed from 2026-09-19 23:00 UTC; the archive had not caught up. Corrected 2026-09-29: recorded at the time as rows the run could not read."
       }
     ]
   }
