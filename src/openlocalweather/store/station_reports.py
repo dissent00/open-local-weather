@@ -85,6 +85,13 @@ def read_rows(data_dir: str | Path, icao: str, start_utc: date, end_utc: date) -
     return rows or None
 
 
+def last_report_at(data_dir: str | Path, icao: str, day_utc: date, days_back: int = 2) -> str | None:
+    """The newest stored report's time, "YYYY-MM-DD HH:MM" UTC, from the
+    `days_back` UTC days up to `day_utc`. None when none is stored."""
+    rows = read_rows(data_dir, icao, day_utc - timedelta(days=days_back), day_utc)
+    return rows[-1][1] if rows else None
+
+
 def _key(row: Sequence[str]) -> tuple[str, str]:
     return (row[0], row[1])
 

@@ -48,7 +48,7 @@ from openlocalweather.cycle import AlignedCycle, aligned_cycle_at
 from openlocalweather.defaults import PROMPT_GROWTH_WARN_PCT
 from openlocalweather.fetch.model_run import RUN_SETTLE_MINUTES, ModelRun
 from openlocalweather.llm.provider import LLMProvider
-from openlocalweather.models import RunDegradation
+from openlocalweather.models import DEGRADATION_STATION_TODAY_NOT_ARCHIVED, RunDegradation
 
 DEPRECATIONS_PAGE_URL = "https://ai.google.dev/gemini-api/docs/deprecations"
 REQUEST_TIMEOUT_S = 30
@@ -250,6 +250,12 @@ DEGRADATION_LOOKBACK_ISSUANCES = 20
 # that.
 DEGRADATION_REPEAT_THRESHOLD = 2
 
+# Codes recorded as states of the world rather than failing sources, so they
+# are listed and never counted toward a repeat. A morning archive with
+# nothing for today yet is one; the weekly check went red on it on
+# 2026-09-21. The operator's choice, 2026-09-29.
+DEGRADATION_NOT_A_FAILURE = frozenset({DEGRADATION_STATION_TODAY_NOT_ARCHIVED})
+
 
 class DegradationStatus(Enum):
     """Four outcomes. CLEAN and NOT_CHECKED are separated for the same reason
@@ -390,7 +396,10 @@ def check_recent_degradations(
             ),
         )
 
-    repeated = sorted(c for c, n in counts.items() if n >= repeat_threshold)
+    repeated = sorted(
+        c for c, n in counts.items()
+        if n >= repeat_threshold and c not in DEGRADATION_NOT_A_FAILURE
+    )
     summary = ", ".join(f"{code} ×{counts[code]}" for code in sorted(counts))
 
     if repeated:
@@ -406,9 +415,9 @@ def check_recent_degradations(
     return DegradationCheck(
         status=DegradationStatus.ISOLATED,
         message=(
-            f"one-off gaps in the last {len(recorded)} recorded issuance(s): {summary}"
-            f"{unread}. Recorded and shown on the affected forecast; not failing the check "
-            "on a single occurrence."
+            f"gaps in the last {len(recorded)} recorded issuance(s), no failing source "
+            f"seen twice: {summary}{unread}. Recorded and shown on the affected forecast; "
+            "not failing the check."
         ),
     )
 

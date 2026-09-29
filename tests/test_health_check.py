@@ -223,6 +223,24 @@ def test_the_same_gap_twice_is_a_pattern_and_fails():
     assert "hours_ahead_narrowed" in result.message
 
 
+def test_a_day_not_yet_archived_is_listed_but_is_not_an_alarm():
+    """2026-09-21 and 09-28: the weekly check went red on mornings whose
+    archive held nothing for the day yet -- a quiet station or a lagging
+    archive, not a failing source. The operator's choice, 2026-09-29:
+    recorded, listed, and not counted."""
+    from openlocalweather.models import DEGRADATION_STATION_TODAY_NOT_ARCHIVED
+
+    quiet = [[_deg(DEGRADATION_STATION_TODAY_NOT_ARCHIVED)]] * 4
+    result = check_recent_degradations(quiet)
+    assert result.status is not DegradationStatus.REPEATED
+    assert DEGRADATION_STATION_TODAY_NOT_ARCHIVED in result.message
+
+    # and a real failure beside it still is one
+    result = check_recent_degradations(quiet + [[_deg("station_readings_unavailable")]] * 2)
+    assert result.status is DegradationStatus.REPEATED
+    assert "station_readings_unavailable recurred" in result.message
+
+
 def test_two_different_gaps_once_each_is_not_a_pattern():
     """Two unrelated one-off failures are two one-off failures. Counting them
     together would fire on exactly the noise this is meant to see past."""

@@ -1068,6 +1068,14 @@ DEGRADATION_STATION_READINGS = "station_readings_unavailable"
 # far those reports reach, because the alternative, the observation alone,
 # would present five o'clock as the day.
 DEGRADATION_STATION_STORED = "station_readings_stored"
+# The archive answered and held nothing for today yet: the station had not
+# filed, or the archive had not caught up. Four 06:01 runs between 09-19 and
+# 09-29 met it, each recorded as unreadable rows. On 09-29 HKKI was silent from
+# 16:30Z to 03:30Z; on the other three it had filed at 23:00Z and 00:00Z and
+# the archive lagged. Item 151 calls this a legitimate morning lag. Kept on the
+# record, left out of the health check's recurrence alarm (the operator's
+# choice, 2026-09-29).
+DEGRADATION_STATION_TODAY_NOT_ARCHIVED = "station_today_not_archived"
 DEGRADATION_SYNOPTIC = "synoptic_unavailable"
 # ROADMAP items 51 and 79. The seven-day outlook failing used to abort the
 # whole run: on 2026-09-09 `forecast_days=8` read-timed out three times and

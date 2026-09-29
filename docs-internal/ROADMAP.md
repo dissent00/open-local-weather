@@ -48,14 +48,14 @@ not read, which the 09-21 health check had already flagged as recurring.
 
 ### What is next, and why
 
-1. **The weekly health check has not passed since 09-14.** The 09-21 run
-   exited 1; its log carries warnings, among them station readings
-   unavailable across recent issuances and a job without the gateway's
-   `LLM_BASE_URL` and `LLM_MODEL`. The 09-28 run stopped at
-   `action_required` with no job started: the approval gate the 09-22 block
-   below records, back. It matters beyond itself, because item 2's October
-   gate is announced only by this check. Find what exits 1; the approval
-   setting is GitHub's, not the repo's, so it is the operator's to check.
+1. **The weekly health check has not passed since 09-14.** 09-21 exited 1
+   on one warning: station readings unavailable, recurring. That was a
+   mislabelled morning lag, fixed 2026-09-29 (item 151). It stays red on
+   `narrative_unavailable` x9, which is real and item 186's. The 09-28 run
+   and a 09-29 dispatch stopped at `action_required` with no job started:
+   the approval gate, back; the reason is shown only on the run page, so it
+   is the operator's to read. Item 2's October gate is announced only by
+   this check.
 2. **Item 139's reporting decision is overdue.** It waited for ten paired
    days, which arrived 09-26. Read them and bring the operator the choice.
 3. **Read item 186's trial around 10-01.** Polls are answered; two questions
@@ -23503,6 +23503,37 @@ fetch sees the whole day. Whether that is the same silent failure as the
 absent `observed_so_far`, or a second one, is for the instrumentation to
 say; it is recorded here so the next reading of that instrument has the
 comparison.
+
+### 2026-09-29: the lag exit was unreachable, and the health check went red on it
+
+**Step 1's two empty exits were never both reachable.** With the store
+behind the fetch, the archive answers with neighbouring days' rows, and
+`_weather_from_reports` returned None when none covered the day, so
+`observed_station_data` returned both None, its "said nothing at all". The
+pipeline then recorded "answered with rows this run could not read" and the
+"none covering today" branch never ran. The pipeline test gave it `({}, {})`,
+which the real fetch never produced. Four 06:01 runs were recorded this way:
+09-19, 09-20, 09-28 and 09-29.
+
+**They were two different things.** On 09-19, 09-20 and 09-28 HKKI had filed
+from 23:00Z and the archive had not caught up by 03:02Z. On 09-29 HKKI filed
+nothing from 16:30Z to 03:30Z, and at 04:15Z the archive still lacked the
+03:30Z report. A run cannot tell these apart, and the record now does not
+claim to.
+
+**HKKI's hours, June to September:** on 29 of 120 nights it went quiet for
+over 3 hours, usually from 18:00-21:00Z, and came back at 00:00Z on 13 of
+them and around 03:00Z on 8; 8 came back after 03:01Z.
+
+**Fixed, the operator's choices:** the fetch returns `{}` for rows that miss
+the day. Before local noon that exit is `station_today_not_archived`, with
+the last stored report's time and no claimed cause; the health check lists it
+and never counts it toward a repeat. From noon it stays
+`station_readings_unavailable`, because by an 18:01 run a silent day is a
+failure (`STATION_LAG_ACCEPTED_BEFORE_HOUR`, not sized from a measurement).
+The four entries were corrected to the new code, marked as corrected. The
+health check still goes red, on `narrative_unavailable` x9, which is real and
+item 186's.
 
 ---
 

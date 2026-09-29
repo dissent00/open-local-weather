@@ -4420,31 +4420,71 @@ def test_a_station_that_returns_nothing_is_recorded_not_swallowed(monkeypatch, t
 
     location = load_location_config("config/location.yaml")
 
-    # (what the fetch returns, why it is a gap)
+    from openlocalweather.models import DEGRADATION_STATION_TODAY_NOT_ARCHIVED
+
+    # (what the fetch returns, the code it is recorded under). The second is
+    # the archive answering with nothing from today yet, 2026-09-29: a quiet
+    # station or a lagging archive, not a failing source.
     cases = {
-        "the station had no rows at all": (None, None),
-        "rows, but none covering today": ({}, {}),
+        "the station had no rows at all": ((None, None), DEGRADATION_STATION_READINGS),
+        "rows, but none covering today": (({}, {}), DEGRADATION_STATION_TODAY_NOT_ARCHIVED),
     }
-    for name, payload in cases.items():
+    for name, (payload, code) in cases.items():
         monkeypatch.setattr(
             metar_fetch, "observed_station_data", lambda *a, **k: payload
         )
-        observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path)
+        observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path, issued_hour=6)
 
         assert observed is None, name
         assert gap is not None, f"{name}: returned None and said nothing"
-        assert gap.code == DEGRADATION_STATION_READINGS, name
+        assert gap.code == code, name
         assert gap.detail, f"{name}: no detail, so the two exits stay indistinguishable"
 
     # And the two exits must not produce the SAME detail, or the record still
     # cannot say which happened — which is the whole defect.
     details = set()
-    for payload in cases.values():
+    for payload, _code in cases.values():
         monkeypatch.setattr(
             metar_fetch, "observed_station_data", lambda *a, **k: payload
         )
-        details.add(_observed_so_far(location, date(2026, 8, 11), tmp_path)[1].detail)
+        details.add(_observed_so_far(location, date(2026, 8, 11), tmp_path, issued_hour=6)[1].detail)
     assert len(details) == 2, f"both exits report the same thing: {details}"
+
+
+def test_a_day_not_yet_archived_says_when_the_station_last_reported(monkeypatch, tmp_path):
+    """2026-09-29 03:01Z: HKKI filed nothing between 16:30Z and 03:30Z, and the
+    record said it had answered "with rows this run could not read". What a
+    reader of the record needs is when the station last reported, and not a
+    cause the run cannot know: on three other mornings the station had filed
+    and the archive lagged."""
+    from openlocalweather.config import load_location_config
+    from openlocalweather.fetch import metar as metar_fetch
+    from openlocalweather.models import DEGRADATION_STATION_TODAY_NOT_ARCHIVED
+    from openlocalweather.pipeline import _observed_so_far
+    from openlocalweather.store import station_reports
+
+    location = load_location_config("config/location.yaml")
+    station_reports.merge_rows(tmp_path, location.metar_station_icao, [
+        [location.metar_station_icao, "2026-09-28 16:30",
+         "HKKI 281630Z 10010KT 9999 FEW026CB SCT090 26/15 Q1016", "78.80", "10.00"],
+    ])
+    monkeypatch.setattr(metar_fetch, "observed_station_data", lambda *a, **k: ({}, None))
+
+    observed, gap = _observed_so_far(location, date(2026, 9, 29), tmp_path, issued_hour=6)
+
+    assert observed is None
+    assert gap.code == DEGRADATION_STATION_TODAY_NOT_ARCHIVED
+    assert "2026-09-28 16:30" in gap.detail, gap.detail
+    assert "could not read" not in gap.detail
+    assert "has filed nothing" not in gap.detail, "the run cannot know the station was silent"
+
+    # FROM NOON IT IS A FAILURE, the operator's choice: a day with nothing
+    # archived by an evening run is a station or archive silent all day.
+    from openlocalweather.models import DEGRADATION_STATION_READINGS
+
+    _, gap = _observed_so_far(location, date(2026, 9, 29), tmp_path, issued_hour=18)
+    assert gap.code == DEGRADATION_STATION_READINGS
+    assert "2026-09-28 16:30" in gap.detail, gap.detail
 
 
 def test_a_failed_archive_request_records_what_the_server_said(monkeypatch, tmp_path):
@@ -4463,7 +4503,7 @@ def test_a_failed_archive_request_records_what_the_server_said(monkeypatch, tmp_
         raise metar_fetch.ArchiveUnavailable("HTTP 503; first line: '<html>'")
 
     monkeypatch.setattr(metar_fetch, "observed_station_data", unavailable)
-    observed, gap = _observed_so_far(location, date(2026, 9, 17), tmp_path)
+    observed, gap = _observed_so_far(location, date(2026, 9, 17), tmp_path, issued_hour=6)
 
     assert observed is None
     assert gap.code == DEGRADATION_STATION_READINGS
@@ -4494,7 +4534,7 @@ def test_a_fallback_to_stored_reports_is_used_and_declared(monkeypatch, tmp_path
         )
 
     monkeypatch.setattr(metar_fetch, "observed_station_data", from_the_store)
-    observed, gap = _observed_so_far(location, today, tmp_path)
+    observed, gap = _observed_so_far(location, today, tmp_path, issued_hour=18)
 
     assert observed is not None and observed.high_c == 21.0
     assert observed.reported_through == "05:45"
@@ -4537,7 +4577,7 @@ def test_no_station_configured_is_not_a_degradation(tmp_path):
     location = load_location_config("config/location.yaml").model_copy(
         update={"metar_station_icao": ""}
     )
-    observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path)
+    observed, gap = _observed_so_far(location, date(2026, 8, 11), tmp_path, issued_hour=6)
     assert observed is None and gap is None
 
 

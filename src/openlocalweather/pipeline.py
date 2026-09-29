@@ -230,6 +230,7 @@ from openlocalweather.models import (
     summary_contradicts_its_row,
     DEGRADATION_HOURS_AHEAD_NARROWED,
     DEGRADATION_METAR,
+    DEGRADATION_STATION_TODAY_NOT_ARCHIVED,
     DEGRADATION_STATION_READINGS,
     DEGRADATION_STATION_STORED,
     DEGRADATION_SYNOPTIC,
@@ -253,6 +254,7 @@ from openlocalweather.models import (
 )
 from openlocalweather.store import actuals_cache as actuals_cache_store
 from openlocalweather.store import log_store
+from openlocalweather.store import station_reports
 from openlocalweather.store import track_record as track_record_store
 from openlocalweather.verify.pipeline import run_deterministic_verification_and_scoring
 
@@ -2339,8 +2341,15 @@ def _overnight_low_is_settled(guidance: ForwardGuidance) -> bool | None:
     return now_local >= sunrise
 
 
+# Before this local hour an archive holding nothing for today is a morning
+# lag or a quiet night, item 151's legitimate case; from it on, the station or
+# the archive has been silent for half a day and it counts as a failure. The
+# operator's choice, 2026-09-29; not sized from a measurement.
+STATION_LAG_ACCEPTED_BEFORE_HOUR = 12
+
+
 def _observed_so_far(
-    location: LocationConfig, today: date, data_dir: Path
+    location: LocationConfig, today: date, data_dir: Path, *, issued_hour: int
 ) -> tuple[ObservedSoFar | None, RunDegradation | None]:
     """What the station has already reported today, and why not when it has not.
 
@@ -2417,12 +2426,41 @@ def _observed_so_far(
 
     seen = weather.get(today) if weather else None
     measured = readings.get(today) if readings else None
-    if seen is None and measured is None:
+    if seen is None and measured is None and fallback:
         print(f"Station {icao} returned rows, none covering {today}.", file=sys.stderr)
         return None, gap(
             f"{icao} returned rows but none covering {today} itself — the "
             "archive had not reached today's date at the moment of this run."
-            + (f" The rows were the stored ones: {fallback[0]}" if fallback else "")
+            f" The rows were the stored ones: {fallback[0]}"
+        )
+
+    # THE ARCHIVE ANSWERED AND HELD NOTHING FOR TODAY YET — the station had
+    # not filed, or the archive had not caught up; this run cannot tell which,
+    # so the record does not say. Its own code, not a failing source. Until
+    # 2026-09-29 this was recorded as rows "this run could not read".
+    if seen is None and measured is None:
+        # A day either side of the local date: the store is keyed by UTC day,
+        # and west of UTC an evening run's reports sit in tomorrow's file.
+        last = station_reports.last_report_at(data_dir, icao, today + timedelta(days=1), days_back=3)
+        reach = f"its last report is {last} UTC." if last else "no earlier report is stored."
+        print(f"The archive holds nothing for {icao} on {today} yet (last report {last}).", file=sys.stderr)
+        if issued_hour >= STATION_LAG_ACCEPTED_BEFORE_HOUR:
+            return None, gap(
+                f"The archive holds nothing for {icao} on {today} at a "
+                f"{issued_hour:02d}:00 run; {reach}"
+            )
+
+        return None, RunDegradation(
+            code=DEGRADATION_STATION_TODAY_NOT_ARCHIVED,
+            summary=(
+                "No report from the nearest airport was available for today yet, so "
+                "this forecast could not be checked against what has already been "
+                "measured locally."
+            ),
+            detail=(
+                f"The archive holds nothing for {icao} on {today} yet; {reach} The "
+                "station may not have filed, or the archive may not have caught up."
+            ),
         )
 
     observed = ObservedSoFar(
@@ -3676,7 +3714,9 @@ def _issue_forecast(
     # 121 puts it IN the prompt, shared with the record below so the two
     # cannot describe different observations, and now also the BASELINE an
     # evening comparison measures tomorrow against — see observed_baseline.
-    observed_so_far, observed_gap = _observed_so_far(location, today, deps.data_dir)
+    observed_so_far, observed_gap = _observed_so_far(
+        location, today, deps.data_dir, issued_hour=_issued_hour(guidance.issuance)
+    )
     if observed_gap is not None:
         # Appended to the guidance's own list because that is what reaches
         # `meta.degradations` — see ROADMAP item 151. The station is read

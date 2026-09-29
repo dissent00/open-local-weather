@@ -884,7 +884,9 @@ def observed_station_data(
             continue
         reports.append((observed_at.replace(tzinfo=timezone.utc), row[2]))
 
-    weather = _weather_from_reports(reports, start, end, timezone_name)
+    # {} and not None when rows came back for none of these days: both None
+    # is "said nothing at all", and an archive answering with other days did not.
+    weather = _weather_from_reports(reports, start, end, timezone_name) or {}
     # THE WHOLE ROW, report text included — 2026-09-21. It used to be reshaped
     # to drop the report, which is the one field the gust and the bearing come
     # out of.

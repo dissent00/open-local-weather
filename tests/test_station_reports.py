@@ -143,6 +143,27 @@ def test_observed_station_data_reads_the_union_of_every_fetch(tmp_path):
     assert store.read_rows(tmp_path, "HKKI", date(2026, 9, 17), date(2026, 9, 17)) == [ROW_A, ROW_B]
 
 
+def test_rows_that_stop_before_the_day_are_not_a_silent_station(tmp_path):
+    """2026-09-29 03:01Z: HKKI's last report was 16:30Z the evening before,
+    so the archive answered with the previous day's rows only. The fetch
+    returned both None, its "said nothing at all" answer, and four morning
+    runs since 09-19 recorded "rows this run could not read". Item 151 meant
+    this case to be told apart as a lag."""
+    import requests_mock
+
+    from openlocalweather.fetch.metar import METAR_ARCHIVE_URL, observed_station_data
+
+    last_night = ["HKKI", "2026-09-28 16:30", "HKKI 281630Z 10010KT 9999 FEW026CB SCT090 26/15 Q1016", "78.80", "10.00"]
+    with requests_mock.Mocker() as m:
+        m.get(METAR_ARCHIVE_URL, text=_archive_csv(last_night))
+        weather, readings = observed_station_data(
+            "HKKI", date(2026, 9, 29), date(2026, 9, 29), "Africa/Nairobi", data_dir=tmp_path
+        )
+
+    assert (weather, readings) != (None, None), "the station did answer"
+    assert not weather and not readings, "and said nothing about 09-29"
+
+
 def test_station_reports_come_through_the_same_store(tmp_path):
     import requests_mock
 
