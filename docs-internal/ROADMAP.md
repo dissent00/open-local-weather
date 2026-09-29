@@ -20678,7 +20678,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Decided 2026-09-29: score every forecast's window, count each 24 hours once; the build waits on a design**
+## 139. The window is scored and nobody reads it · **Decided 2026-09-29; design written 2026-09-29, waiting on the operator's four answers**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20848,6 +20848,91 @@ the fix.
 **Next: a design, before any build** — what a "24-hour period" is when
 forecasts start at arbitrary times, where the scores live, what
 `track_record.json` and the pages show, and what `olw_core` owes.
+
+### Design, 2026-09-29
+
+**What exists, read from the code** (a survey, spot-checked):
+- Every forecast row already carries a window: `window_opened_local` (issue
+  time floored to the hour), 24 h long, `window_predictions`, and once
+  scored `window_scores` and `window_verified_at` (`IssuancePredictions`).
+  `verify_closed_windows` scores every row of an entry, once its last hour
+  lies on a finished day, with the full `VerificationScore`.
+- Three limits. Windows are extracted for the five Open-Meteo models only,
+  so the blend, the code blend, the baselines and the met service have no
+  window claim. Window scoring runs only on a day's first run, looking back
+  8 days. The calendar series scores row 0 only, at Day+0, +3 and +7.
+- Only `olw window-vs-day` and `olw early-vs-late` read `window_scores`.
+  Everything published or put in a prompt reads the calendar series: the
+  track record, PRE-COMPUTED VERIFICATION RESULTS, the LONG-RUN REVIEW and
+  its sufficiency, the calibrated gust, the code blend, coverage, and the
+  accuracy page. The Dart core scores no windows at all, and the app keeps
+  the earliest run per local day.
+
+**Terms.** A *forecast* is one run's prediction row. Its *window* is the 24
+hours from `window_opened_local`. A *period* is the local date the forecast
+was issued on, the date the record already files it under. A forecast issued
+at 23:00 counts in that date's period although most of its window is the
+next day: the period is a bucket for counting, and each forecast is still
+scored on its own 24 hours.
+
+**Scoring.**
+1. Every forecast's window is scored, blend included. The blend's window
+   claim is the forecast's own call: the forecaster is already asked about
+   the hours ahead, not the calendar day (items 118, 161). One field needs
+   checking before that holds, the low: which night a call's low means.
+2. Scoring runs on any run that finds a newly scorable window, not on a
+   "first" run, which is a schedule idea. It fetches the archive only when a
+   window is due, so 100 runs a day cost about one archive request a day.
+3. Day+3 and Day+7 score every forecast's claim for its target date, as
+   calendar days, since those leads are claims about a named day.
+
+**Counting each period once.** For each model and lead, a period's score is
+the mean of its forecasts' scores: rain right as a fraction, errors and
+Brier averaged. Rolling 10 and 30, all-time, trends and check counts are
+then taken over periods, not forecasts. The property the tests pin: adding
+forecasts to a period, or duplicating one, cannot move any published figure
+unless their scores differ; a period with one forecast weighs what a period
+with a hundred does.
+
+**The re-run figure.** For periods with two or more scored forecasts: mean
+scores by hours since the period's first forecast (0-3, 3-6, 6-12, 12-24),
+with counts, across periods. The weather differs between buckets, so it
+means something only over many periods. It is for the deployer, who decides
+how often to run, so it goes on the accuracy page and in an `olw` verb, not
+in the forecaster's prompt.
+
+**One basis, switched at once.** Every consumer listed above moves to the
+per-period window series on one date, so the forecaster, the review and the
+page never read two bases. The calendar series stops being computed; its
+history is frozen in its own file and shown as "calendar day, before
+<date>", never averaged in. Two fixes ride along: the gust calibration gates
+on wind checks rather than rain checks, and Brier, computed and dropped
+today, reaches the track record.
+
+**What `olw_core` owes.** The app scores and reviews in Dart from one run
+per local day. It needs the window extraction, the hourly bucketing, window
+scoring and the per-period aggregation, each with a vector file; the
+invariance case is the one that matters. Then Ensemble's store reads every
+run per period. Python first, then vectors, Dart, and the re-pin.
+
+**Stages.**
+1. The per-period aggregation, with invariance vectors, read by the
+   analysis verbs only. Nothing published changes; it is read against the
+   record first.
+2. The blend's window claim, after the low is settled, and scoring on any
+   run.
+3. The switch: track record, prompt blocks, review, calibration, code blend,
+   coverage, pages, on one date, with the calendar history frozen.
+4. The re-run figure.
+5. `olw_core` and Ensemble.
+
+**Open, the operator's:**
+1. The period: the local date issued (above), or another 24-hour bucket.
+2. The blend: its own call as its window claim, with the low checked.
+3. The start: the new series from the switch date, or from 09-15, when the
+   five models' windows began (the blend has no windows before stage 2).
+4. PRE-COMPUTED VERIFICATION RESULTS: keep it as the latest period's
+   scores, or drop it now that the track record carries the same basis.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
