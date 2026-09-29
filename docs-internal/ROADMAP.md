@@ -58,8 +58,8 @@ not read, which the 09-21 health check had already flagged as recurring.
    this check.
 2. **Item 139: stage 2 two thirds built.** Scoring on any run and every
    forecast's Day+3/Day+7 are in. The forecaster's call becomes a
-   next-24-hours claim, the operator's decision; its design is written and
-   awaits approval, and lands with the switch. See the item.
+   next-24-hours claim; design approved 2026-09-29, built toward the
+   switch (stage 3), with which it lands. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20679,7 +20679,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built; the next-24-hours design awaits approval**
+## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built; the next-24-hours design approved, builds toward the switch**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -21068,6 +21068,10 @@ the window's high than today's calendar high, now 3 of 10.
    tomorrow with yesterday), the 24 hours before the issue, or none on the temperature tile when the
    window's high is not today's. HKKI reports no cloud percentage and has
    never filed a gust.
+
+**Answered, 2026-09-29:** design approved; the tile keeps "High / Low";
+the temperature modifier is silent when the window's high is not today's.
+Built toward the switch.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
