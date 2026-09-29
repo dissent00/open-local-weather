@@ -56,8 +56,9 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139's reporting decision is overdue.** It waited for ten paired
-   days, which arrived 09-26. Read them and bring the operator the choice.
+2. **Item 139: decided 2026-09-29, design next.** Score every forecast's
+   window; count each 24 hours once; a separate figure for whether newer
+   forecasts verify better. The design comes before the build.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20677,7 +20678,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Step 1 read 2026-09-17 and it found a scorer defect, fixed; the ten-day read done 2026-09-29, the reporting decision is the operator's**
+## 139. The window is scored and nobody reads it · **Decided 2026-09-29: score every forecast's window, count each 24 hours once; the build waits on a design**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20822,6 +20823,31 @@ published figures for a deployment whose first run is at 06:00, and removes
 the one way the calendar series is already wrong. What it changes is what
 the record can say: every issuance, late ones included, becomes the same
 kind of claim.
+
+### 2026-09-29: the operator's decision
+
+**No morning and evening.** A deployment, or an app user, may run 1, 2, 10
+or 100 forecasts in a day at any time; this deployment's two are its own.
+So the reporting must be invariant to how many forecasts run.
+
+**Decided:** every forecast is scored on its own next-24-hours window. The
+headline Day+0 counts each 24-hour period ONCE, averaging that period's
+scores, so running more forecasts cannot move it. A separate figure says
+whether a newer forecast verifies better, by hours between forecasts: the
+measure of whether re-running is worth the user's calls. The calendar
+history stays, marked, and is never averaged in.
+
+**Why more than one per 24 hours is worth recording:** every published
+forecast is one a reader may act on, so it should be checkable; and only a
+multi-forecast record can say whether re-running helps, which is what the
+fewest-calls priority needs. The hazard is overlap: forecasts in one day are
+scored against mostly the same weather, so counted separately they would
+weight the headline toward whoever runs most. Counting each period once is
+the fix.
+
+**Next: a design, before any build** — what a "24-hour period" is when
+forecasts start at arbitrary times, where the scores live, what
+`track_record.json` and the pages show, and what `olw_core` owes.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
