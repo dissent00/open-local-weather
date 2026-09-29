@@ -56,9 +56,9 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: decided 2026-09-29, design next.** Score every forecast's
-   window; count each 24 hours once; a separate figure for whether newer
-   forecasts verify better. The design comes before the build.
+2. **Item 139: design approved 2026-09-29; stage 1 next.** The per-period
+   aggregation with invariance vectors, read by the analysis verbs only,
+   then the blend's window claim, then the switch. See the item's design.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20678,7 +20678,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Decided 2026-09-29; design written 2026-09-29, waiting on the operator's four answers**
+## 139. The window is scored and nobody reads it · **Design approved 2026-09-29; stage 1 next**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20933,6 +20933,11 @@ run per period. Python first, then vectors, Dart, and the re-pin.
    five models' windows began (the blend has no windows before stage 2).
 4. PRE-COMPUTED VERIFICATION RESULTS: keep it as the latest period's
    scores, or drop it now that the track record carries the same basis.
+
+**Answered, 2026-09-29:** the period is the local date issued; the blend is
+scored on its own call, once its low is checked; the models' series starts
+09-15, the blend's when it gets a window claim; the results block becomes
+the latest scored period's. Stage 1 next.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
