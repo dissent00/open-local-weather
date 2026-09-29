@@ -64,7 +64,11 @@ not read, which the 09-21 health check had already flagged as recurring.
    would queue-first where direct is usually refused, or one direct retry,
    reach the forecast with fewer calls? The break-evens are in item 186
    (about 70% refusals, and about 2 in 5 rescued).
-4. **Item 2 from 10-01**, once the health check runs.
+4. **Item 2 from 10-01**, once the health check runs. Kenya Met's whole site
+   (meteo.go.ke, the CAP feed included) timed out on 09-29, so the check
+   cannot see the feed wake while that lasts; the 09-29 run reported it as
+   "did not answer", correctly. Next scheduled run 10-05: the first with the
+   gateway-first chain, and the test of whether the approval gate is gone.
 5. **Around 10-12:** item 123's count of write-ups naming a sky other than
    the tile's, and item 187's thunder-first question on the same write-ups.
 6. **Around 10-20:** re-run `tools/sky_lead_skill.py` at 30 target days and
