@@ -305,11 +305,12 @@ def test_the_health_check_polls_the_queue_on_its_own_schedule(monkeypatch, tmp_p
         "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
     }.items():
         monkeypatch.setenv(name, value)
-    seen = []
+    seen, asked = [], []
 
     def check(llm, model_name):
         seen.extend((type(link).__name__, link.poll_delays_s) for link in chain_links(llm)
                     if hasattr(link, "poll_delays_s"))
+        asked.append((model_name, [type(link).__name__ for link in chain_links(llm)]))
         return ModelDeprecationCheck(deprecated_or_scheduled=False, notes="Not listed.")
 
     monkeypatch.setattr(cli, "check_model_deprecation", check)
@@ -319,6 +320,11 @@ def test_the_health_check_polls_the_queue_on_its_own_schedule(monkeypatch, tmp_p
         pass
 
     assert seen == [("GeminiInteractionsProvider", (1800, 1800))], seen
+    # THE GATEWAY FIRST, THEN THE QUEUE, AND NO DIRECT GEMINI -- the
+    # operator, 2026-09-29: the check should spend none of the user's Gemini
+    # calls when it can help it. It still asks about the configured Gemini
+    # model, not the gateway's that now leads the chain.
+    assert asked == [("gemini-3.6-flash", ["OpenAICompatProvider", "GeminiInteractionsProvider"])], asked
 
 
 def _observed_at(offset_hours):
@@ -430,9 +436,15 @@ def test_the_live_config_is_what_we_think_it_is():
     # The weekly check has no reader waiting, so it asks late: +30 and +60
     # min. The operator's call, 2026-09-29.
     assert queue.health_check_poll_delays_s == [1800, 1800]
-    # The two Gemini ceilings together inside Google's 20: 8 direct at 1
-    # unit, 6 queued at about 2 (item 179).
-    assert direct.max_calls_per_24h + 2 * queue.max_calls_per_24h <= 20
+    # PER RUN, the operator's choice 2026-09-29: direct once per call, and
+    # the queue two submits plus the scored call's poll and the write-up's two.
+    assert direct.max_calls_per_run == 2
+    assert queue.max_calls_per_run == 2 + len(queue.poll_delays_s) + len(queue.write_up_poll_delays_s)
+    # The 24h ceilings are runaway guards, and this deployment runs twice a
+    # day: two runs' allowance must fit, or a run is refused for an earlier
+    # run's spending -- which the queue's old 6 did after one bad run.
+    assert direct.max_calls_per_24h >= 2 * direct.max_calls_per_run
+    assert queue.max_calls_per_24h >= 2 * queue.max_calls_per_run
     assert gateway == "openai"
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at
@@ -490,7 +502,7 @@ def test_a_queue_chain_carries_each_links_policy(monkeypatch):
         {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
          "max_attempts": 1, "max_calls_per_24h": 6,
          "poll_delays_s": [480, 480], "write_up_poll_delays_s": [480, 480, 840, 1800],
-         "health_check_poll_delays_s": [1800, 1800]},
+         "health_check_poll_delays_s": [1800, 1800], "max_calls_per_run": 5},
         "openai",
     ])
 
@@ -504,6 +516,7 @@ def test_a_queue_chain_carries_each_links_policy(monkeypatch):
     assert queue.poll_delays_s == (480, 480)
     assert queue.write_up_poll_delays_s == (480, 480, 840, 1800)
     assert queue.health_check_poll_delays_s == (1800, 1800)
+    assert queue.max_calls_per_run == 5
     assert [link.credential_family for link in (direct, queue, gateway)] == ["gemini", "gemini", "openai"]
 
 

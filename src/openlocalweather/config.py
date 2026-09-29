@@ -154,6 +154,11 @@ class LLMProviderEntry(BaseModel):
     # 2026-09-22 it did not: eight Gemini 503 retries left five of twenty for
     # the next morning while neither vendor's real quota had been touched.
     max_calls_per_24h: int | None = None
+    # What ONE RUN may spend on this link, polls included, whatever earlier
+    # runs spent — the operator's choice, 2026-09-29. Per run because the
+    # number of runs a day is each deployment's own; the 24h ceiling above is
+    # then only a runaway guard, sized to that many runs.
+    max_calls_per_run: int | None = None
 
     # THE QUEUE LINK — ROADMAP item 186. Gemini refused the scored call in 6
     # of the 7 15:01Z runs from 09-21 to 09-27, and the write-up every time it
@@ -184,6 +189,9 @@ class LLMProviderEntry(BaseModel):
     def _queue_settings_do_something(self) -> LLMProviderEntry:
         """Each queue setting refused where it would be silently ignored — a
         run that looks configured and behaves otherwise."""
+        if self.max_calls_per_run is not None and self.max_calls_per_run < 1:
+            raise ValueError(f"max_calls_per_run must be at least 1; got {self.max_calls_per_run}.")
+
         if self.max_attempts is not None:
             if self.kind not in GEMINI_KINDS:
                 raise ValueError(

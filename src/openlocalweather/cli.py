@@ -235,6 +235,8 @@ class _ProviderEntry:
     # number held both until a failing vendor's retries spent the budget its
     # fallback needed.
     max_calls_per_24h: int | None = None
+    # One run's allowance on this link — see LLMProviderEntry.
+    max_calls_per_run: int | None = None
 
     # The queue link's policy — ROADMAP item 186, see LLMProviderEntry.
     max_attempts: int | None = None
@@ -296,6 +298,7 @@ def _resolve_provider_entries(
                 # shape the field was written for.
                 fallback_models=tuple(own or ()),
                 max_calls_per_24h=entry.get("max_calls_per_24h"),
+                max_calls_per_run=entry.get("max_calls_per_run"),
                 max_attempts=entry.get("max_attempts"),
                 background=bool(entry.get("background")),
                 poll_delays_s=_delays(entry.get("poll_delays_s")),
@@ -327,6 +330,28 @@ def _mark_queue_policy(link, entry: _ProviderEntry) -> None:
         link.write_up_poll_delays_s = entry.write_up_poll_delays_s
     if entry.health_check_poll_delays_s is not None:
         link.health_check_poll_delays_s = entry.health_check_poll_delays_s
+
+
+# The vendor whose free-tier calls belong to the deployment's user.
+GEMINI_FAMILY = CREDENTIAL_FAMILIES["gemini"]
+
+
+def _health_check_chain(llm):
+    """The weekly check's chain: the gateway first, then Gemini's queue, and
+    direct Gemini not at all — the operator, 2026-09-29. The check is not the
+    forecast, so it should spend none of the user's Gemini calls when a
+    gateway can read the page, and when it cannot, the queue's late polls are
+    the fewest Gemini calls that still get an answer. A chain with neither
+    keeps its own order."""
+    links = chain_links(llm)
+    ordered = [
+        *(link for link in links if getattr(link, "credential_family", None) != GEMINI_FAMILY),
+        *(link for link in links if getattr(link, "background", False)),
+    ]
+    if not ordered:
+        return llm
+
+    return ordered[0] if len(ordered) == 1 else FallbackProvider(ordered)
 
 
 def _reject_colliding_entries(entries: list[_ProviderEntry]) -> None:
@@ -447,6 +472,8 @@ def _build_llm_provider(
             # ceiling is a deployment's concern rather than a provider's.
             if entry.max_calls_per_24h is not None:
                 link.max_calls_per_24h = entry.max_calls_per_24h
+            if entry.max_calls_per_run is not None:
+                link.max_calls_per_run = entry.max_calls_per_run
             _mark_queue_policy(link, entry)
             built.append(link)
         except SystemExit as e:
@@ -1067,6 +1094,12 @@ def _run_check_health(args: argparse.Namespace) -> int:
         providers=location.llm_providers,
         fallback_models=location.llm_fallback_models,
     )
+    # WHICH MODEL IS CHECKED is the configured primary's, taken before the
+    # chain is reordered below — the gateway leads it then, and its model is
+    # not on Gemini's deprecations page.
+    model_name = llm.model
+    llm = _health_check_chain(llm)
+
     # THE QUEUE ON THE CHECK'S OWN SCHEDULE — 2026-09-29. Built from the
     # forecast's chain, it polled the queue at +8 and +16 min, the wait a
     # reader needs. Nobody reads this check the moment it runs.
@@ -1091,7 +1124,6 @@ def _run_check_health(args: argparse.Namespace) -> int:
         max_calls=location.max_llm_calls_per_24h,
         purpose="health-check",
     )
-    model_name = llm.model
 
     ok = True
 

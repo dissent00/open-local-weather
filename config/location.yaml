@@ -182,6 +182,10 @@ location:
     # 20 on retries. `generateContent` counts 1:1 on the console (item 179).
     - kind: gemini
       max_attempts: 1
+      # PER RUN (the operator's choice, 2026-09-29): one attempt for each of
+      # the run's two calls. The 24h ceiling is a runaway guard for a
+      # deployment running twice a day, with room for a re-issue.
+      max_calls_per_run: 2
       max_calls_per_24h: 8
     # GEMINI QUEUED — the same key and model through the Interactions API with
     # `background`. One submit (about 2 units on the console, item 179), then
@@ -191,12 +195,15 @@ location:
     # too: about 07:20 / 19:20 local at worst. Polls are API calls but not
     # model calls on the console (Pacific 09-28), and API calls may be capped
     # at 20 too, so each is spent sparingly (the operator's call, 2026-09-29).
-    # The ceilings count every ledger row, polls included.
+    # PER RUN: 2 submits + the scored call's poll + the write-up's two = 5,
+    # polls included and never refused. The 24h guard is two runs' worth, so
+    # a run is not refused for an earlier run's spending, which 6 did.
     - kind: gemini-interactions
       name: gemini-queue
       background: true
       max_attempts: 1
-      max_calls_per_24h: 6
+      max_calls_per_run: 5
+      max_calls_per_24h: 10
       poll_delays_s: [960]
       write_up_poll_delays_s: [1800, 1800]
       # The weekly health check's deprecation read: no reader waits on it, so

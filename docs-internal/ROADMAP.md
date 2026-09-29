@@ -58,9 +58,12 @@ not read, which the 09-21 health check had already flagged as recurring.
    this check.
 2. **Item 139's reporting decision is overdue.** It waited for ten paired
    days, which arrived 09-26. Read them and bring the operator the choice.
-3. **Read item 186's trial around 10-01.** Polls are answered; two questions
-   remain. Is a submit accepted while direct calls are refused? Does the
-   queue serve the scored call inside its 16 minutes?
+3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
+   not model calls). Is a submit accepted while direct calls are refused?
+   Does the queue serve inside its waits? Then, per run and in API calls:
+   would queue-first where direct is usually refused, or one direct retry,
+   reach the forecast with fewer calls? The break-evens are in item 186
+   (about 70% refusals, and about 2 in 5 rescued).
 4. **Item 2 from 10-01**, once the health check runs.
 5. **Around 10-12:** item 123's count of write-ups naming a sky other than
    the tile's, and item 187's thunder-first question on the same write-ups.
@@ -26909,10 +26912,38 @@ min, and the write-up at +30 and +60. A bad run (direct refused for both
 calls, the queue serving both) now spends 2 direct + 2 submits + 3 polls = 7
 API calls and 6 model units, down from 10 API calls.
 
-**Open, the operator's:** the ceilings. The queue's 6 counts polls, so one
-bad run's 5 rows plus the morning's leave the next run refused. And whether
-the 15:01Z slot should go to the queue first: direct served its scored call
-1 of 7 times from 09-21 to 09-27, against 6 of 8 at 03:01Z.
+### 2026-09-29: per-run allowances, and the check leaves the user's calls alone
+
+**The operator's priority, stated for good:** reliability first, then the
+fewest Gemini API calls, because the free tier's 20 a day belong to the
+deployment's user. Reasoned per run, since two runs a day is this
+deployment's own schedule.
+
+**What a run costs** in Gemini API calls, with a direct refusal barring
+direct from that run's write-up: 2 when direct serves both calls; 4-5 when
+direct serves the scored call and the queue the write-up; 5-6 when direct is
+refused and the queue serves both.
+
+**Per-run allowances.** `max_calls_per_run` on a link is what one run may
+spend on it, polls included, enforced within the run whatever earlier runs
+spent; polls count and are never refused. Direct 2, queue 5 (2 submits + 1 +
+2 polls). The 24h ceilings are runaway guards sized to two runs: direct 8,
+queue 10 (was 6, which one bad run could fill for the next). A test drives a
+bad run through the live config: 1 refused direct call, 2 submits, 3 polls,
+the write-up served; with the queue's allowance cut to 2 it is refused.
+
+**The health check spends none of the user's Gemini calls when it can:** its
+chain is the gateway first, then the queue on its +30/+60 min schedule, and
+no direct Gemini. It still checks the configured Gemini model, taken before
+the reorder.
+
+**Order within a run: measured at 10-01, the operator's call.** Queue-first
+saves the one refused direct call on a run whose direct call would fail, and
+costs 2-3 more on a run where direct would answer, so it pays only when
+direct is refused on more than about 70% of such runs; every call then also
+waits for its first poll. One direct retry after about a minute costs 1 call
+and pays if it rescues more than about 2 refusals in 5. Direct served the
+15:01Z scored call 1 of 7 times from 09-21 to 09-27, against 6 of 8 at 03:01Z.
 
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,

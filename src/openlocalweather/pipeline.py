@@ -182,6 +182,7 @@ from openlocalweather.review import WeeklyReview, build_weekly_review
 from openlocalweather import solar
 from openlocalweather.spend import (
     LLM_CALLS_PER_FORECAST,
+    ProviderCapExceeded,
     assert_capacity,
     complete_attempt,
     record_attempt,
@@ -844,6 +845,11 @@ def attach_spend_cap(
     # returned through the hook so `before_attempt` keeps the signature every
     # third-party provider already implements.
     pending: dict[str, datetime | None] = {"at": None}
+    # THIS RUN'S CALLS PER LINK, polls included — the operator's choice,
+    # 2026-09-29. A link's `max_calls_per_run` is what one run may spend on it
+    # whatever earlier runs spent; the 24h ceiling is only a runaway guard.
+    # Per run because the number of runs a day is each deployment's own.
+    run_calls: Counter[tuple[str, str]] = Counter()
 
     def _record() -> None:
         # Cleared first, so a refusal below cannot leave the PREVIOUS row
@@ -858,6 +864,14 @@ def attach_spend_cap(
         # naming vendors would answer the reliability question by destroying
         # the evidence for it. See `provider_identity`.
         name, model = provider_identity(provider)
+        per_run = getattr(resolve_active(provider), "max_calls_per_run", None)
+        if per_run is not None and run_calls[(name, model)] >= per_run:
+            raise ProviderCapExceeded(
+                f"LLM call refused: {name} ({model}) has made {run_calls[(name, model)]} "
+                f"of its {per_run} allowed calls in this run (max_calls_per_run in "
+                "config/location.yaml)."
+            )
+
         # THIS LINK'S CEILING, NOT THE DEPLOYMENT'S — ROADMAP item 170. A cap
         # belongs to an account, and a chain's accounts are different ones:
         # 20 is Google's free calendar-day allowance, OpenRouter's free tier
@@ -875,6 +889,7 @@ def attach_spend_cap(
             now=at,
         )
         pending["at"] = at
+        run_calls[(name, model)] += 1
         recorded.append(used)
         print(f"LLM call {used}/{limit} for {name} in the last 24h")
 
@@ -920,12 +935,10 @@ def attach_spend_cap(
     # being rediscovered per caller.
     if hasattr(provider, "on_poll"):
         def _poll():
-            at = record_poll(
-                data_dir,
-                provider=provider_identity(provider)[0],
-                model=provider_identity(provider)[1],
-                purpose=purpose,
-            )
+            name, model = provider_identity(provider)
+            at = record_poll(data_dir, provider=name, model=model, purpose=purpose)
+            # Counted toward the run's allowance, never refused by it.
+            run_calls[(name, model)] += 1
             # What the poll got back, into its own row — item 186.
             return lambda outcome, elapsed_s: complete_attempt(
                 data_dir, at=at, outcome=outcome, elapsed_s=elapsed_s

@@ -512,6 +512,31 @@ def test_a_poll_row_carries_what_the_poll_got_back(tmp_path):
     assert (poll.purpose, poll.outcome) == ("forecast-poll", "http_503")
 
 
+def test_a_links_per_run_budget_is_enforced_within_the_run_and_resets_with_the_next(tmp_path):
+    """The operator's choice, 2026-09-29: a run may spend its own allowance
+    on a link whatever earlier runs spent, and no more. Polls count toward it
+    and are never refused -- a refused poll abandons a job already paid for."""
+    import pytest
+
+    from openlocalweather.pipeline import attach_spend_cap
+    from openlocalweather.spend import ProviderCapExceeded
+
+    provider = _PollingProvider(polls=1)
+    provider.max_calls_per_run = 3
+    attach_spend_cap(provider, tmp_path, max_calls=20, purpose="forecast")
+
+    provider.generate("sys", "user", None)  # a submit and a poll: 2 of 3
+    provider.before_attempt()               # 3 of 3
+    with pytest.raises(ProviderCapExceeded, match="this run"):
+        provider.before_attempt()
+    provider.on_poll()                      # over budget, and still never refused
+
+    # THE NEXT RUN starts with its own allowance, though the ledger now holds
+    # five rows for this link.
+    attach_spend_cap(provider, tmp_path, max_calls=20, purpose="forecast")
+    provider.before_attempt()
+
+
 def test_a_poll_is_never_refused_even_with_the_window_full(tmp_path):
     """THE FAILURE THIS PREVENTS is abandoning work already paid for.
 

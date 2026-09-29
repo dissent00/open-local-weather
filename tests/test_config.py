@@ -267,11 +267,12 @@ def test_a_queue_link_is_accepted():
     entry = LLMProviderEntry(
         kind="gemini-interactions", name="gemini-queue", background=True, max_attempts=1,
         poll_delays_s=[480, 480], write_up_poll_delays_s=[480, 480, 840, 1800],
-        health_check_poll_delays_s=[1800, 1800],
+        health_check_poll_delays_s=[1800, 1800], max_calls_per_run=5,
     )
     assert entry.poll_delays_s == [480, 480]
     assert entry.write_up_poll_delays_s == [480, 480, 840, 1800]
     assert entry.health_check_poll_delays_s == [1800, 1800]
+    assert entry.max_calls_per_run == 5
 
 
 @pytest.mark.parametrize("fields, why", [
@@ -290,6 +291,7 @@ def test_a_queue_link_is_accepted():
     ({"kind": "openai", "max_attempts": 1}, "max_attempts"),
     ({"kind": "gemini-interactions", "background": True, "poll_delays_s": []}, "poll"),
     ({"kind": "gemini-interactions", "background": True, "poll_delays_s": [0]}, "poll"),
+    ({"kind": "gemini", "max_calls_per_run": 0}, "max_calls_per_run"),
 ])
 def test_a_queue_setting_that_would_do_nothing_is_rejected(fields, why):
     """A setting that is silently ignored makes a run look configured and

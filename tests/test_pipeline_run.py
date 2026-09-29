@@ -3754,6 +3754,80 @@ def test_the_15_01z_shape_end_to_end_through_the_real_providers(tmp_path, monkey
     assert polls == ["http_503", "http_503", "http_200", "http_200"]
 
 
+def test_the_live_config_carries_a_bad_run_to_its_write_up(tmp_path, monkeypatch):
+    """The deployment's OWN chain and allowances through a bad run, 2026-09-29:
+    direct refused, the queue's scored poll refused, the gateway serving the
+    scored call, the queue writing up. A run needing its whole per-run budget
+    must not be refused by it, and must spend no more than it."""
+    import dataclasses
+    import json
+    import re
+
+    import requests_mock
+
+    import openlocalweather.llm.gemini_interactions as gi
+    from openlocalweather.cli import _build_llm_provider
+    from openlocalweather.config import load_location_config
+    from openlocalweather.spend import read_ledger
+
+    for name, value in {
+        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
+        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
+    }.items():
+        monkeypatch.setenv(name, value)
+    live = load_location_config("config/location.yaml")
+    chain = _build_llm_provider(providers=live.llm_providers, fallback_models=live.llm_fallback_models)
+
+    answer = FakeLLMProvider().response.model_dump()
+    judgment = json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json"))
+    write_up = json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json"))
+    slept = []
+    monkeypatch.setattr(gi.time, "sleep", slept.append)
+    monkeypatch.setattr(requests, "post", requests.api.post)
+    monkeypatch.setattr(requests, "get", requests.api.get)
+
+    with requests_mock.Mocker() as m:
+        m.post(re.compile("generateContent"), status_code=503,
+               json={"error": {"code": 503, "message": "high demand"}})
+        m.post(gi.INTERACTIONS_URL, [
+            {"json": {"id": "job-scored", "status": "in_progress"}},
+            {"json": {"id": "job-write-up", "status": "in_progress"}},
+        ])
+        m.get(gi.INTERACTION_URL.format(id="job-scored"), status_code=503, text="event: error")
+        m.get(gi.INTERACTION_URL.format(id="job-write-up"), [
+            {"json": {"id": "job-write-up", "status": "in_progress"}},
+            {"json": {"id": "job-write-up", "status": "completed",
+                      "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
+                      "steps": [{"type": "model_output",
+                                 "content": [{"type": "text", "text": write_up}]}]}},
+        ])
+        m.post(re.compile("openrouter.ai/api/v1/chat/completions"), json={
+            "model": "dots-studio/dots-3-note-preview:free",
+            "choices": [{"message": {"role": "assistant", "content": judgment},
+                         "finish_reason": "stop"}],
+        })
+
+        # The test location, with only the live LLM settings: the rest of the
+        # live config names a station whose archive this test does not fake.
+        location = LOCATION.model_copy(update={
+            "llm_providers": live.llm_providers,
+            "llm_fallback_calls": live.llm_fallback_calls,
+        })
+        deps = dataclasses.replace(make_deps(tmp_path, llm=chain), location=location)
+        issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
+    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    assert slept == [960, 1800, 1800]
+
+    rows = read_ledger(tmp_path)
+    gemini = [r for r in rows if r.provider.startswith("Gemini")]
+    # 1 refused direct call + 2 submits + 3 polls: the whole bad-run cost.
+    assert len(gemini) == 6, [(r.provider, r.purpose, r.outcome) for r in gemini]
+    assert sum(r.provider == "GeminiInteractionsProvider" for r in gemini) == 5
+
+
 def test_the_gateway_still_takes_the_scored_call_when_the_queue_cannot(tmp_path):
     """And the queue, slow rather than refused, still writes the write-up.
     Until item 186's fix on 2026-09-28 it was barred, and that day's 15:01Z
