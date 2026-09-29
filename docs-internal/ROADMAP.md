@@ -58,8 +58,8 @@ not read, which the 09-21 health check had already flagged as recurring.
    this check.
 2. **Item 139: stage 2 two thirds built.** Scoring on any run and every
    forecast's Day+3/Day+7 are in. The forecaster's call becomes a
-   next-24-hours claim, the operator's decision; its design comes next and
-   lands with the switch. See the item.
+   next-24-hours claim, the operator's decision; its design is written and
+   awaits approval, and lands with the switch. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20679,7 +20679,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built, the blend's claim waits on a design**
+## 139. The window is scored and nobody reads it · **Stage 1 SHIPPED 2026-09-29; stage 2 two thirds built; the next-24-hours design awaits approval**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -21003,6 +21003,71 @@ quantity until the switch.
   stored -4 h, now +20 h), corrected in place from the stored call and
   error. Nothing published read them. The calendar day never crosses
   midnight, so its onsets stand.
+
+### Design, 2026-09-29: the forecaster's call means the next 24 hours
+
+**The claim.** Every scored `today_properties` field describes the 24 hours
+from the window's opening (the issue hour, floored), as each model's window
+claim already does: `rain` and `rain_probability_pct` (measurable rain in
+those hours), `onset_hour` (the first wet hour, read from the opening, so
+"02:00" at an 18:00 issuance is tomorrow's), `precip_mm` (their total),
+`peak_wind_primary_kmh` (their peak gust), `temp_high_c` and `temp_low_c`
+(their maximum and minimum). At 06:00 the high is usually today's; at
+18:00 the low is usually tonight's and the high tomorrow's. The blend's prediction
+goes into `window_predictions` and is scored by the existing window
+scorer.
+
+**Unchanged:** Day+3 and Day+7 (named days); UV and AQI (unscored, and UV
+is code's, for the horizon's day); `mslp_trend_24h` (already 24 h); the
+secondary point, whose wind is unscored.
+
+**What the forecaster is given.** The five models' window claims are
+already extracted every run and stored, never shown. EXTRACTED PER-MODEL
+PREDICTIONS' `day0` rows become those claims, under a lead named for the
+next 24 hours, since "these exact values get scored" must stay true. HOURS
+AHEAD already runs 30 h. A run whose forward fetch failed has no 24-hour
+guidance; like the models, its blend makes no window claim and is not
+scored (the tile still shows its numbers).
+
+**Surfaces that change, all in one release:**
+1. Prompts, both languages. The judgment prompt's field list and "rain
+   ... during the day"; the narrative's "ONE VALUE PER QUANTITY PER DAY"
+   (the high is the next 24 hours', and names its day when that is not
+   today) and "THE CALL YOU WERE GIVEN describes the WHOLE calendar day",
+   which is reversed. `rain_expected` and `onset_window` name the day when
+   the onset is after midnight ("Tomorrow Afternoon Showers").
+2. CALIBRATED PEAK GUST: the window consensus with window-measured biases,
+   so it waits on the window track record (stage 3).
+3. The disagreement tests and the observation footnotes (items 121, 142,
+   143, 145). They compare an earlier issuance's call with the station so
+   far today, and they DECIDE WHETHER A RUN EARNS AN LLM CALL. Against a
+   window call, today's pre-dawn low (before a 06:00 window opened) can
+   read as "colder than called" and buy a call falsely. So the station is
+   reduced over the call's own hours, opening to now
+   (`station_weather_within` exists), and the warmer-low gate becomes
+   "the window's night is over".
+4. The High/Low tile and its day-over-day modifier, which compares the
+   models' calendar-today consensus with yesterday's observation. Both are
+   the operator's (below).
+5. `olw_core`: the prompt text, the tile, and the window extraction the
+   prompt now needs, with vectors; then Ensemble's re-pin. The window
+   scoring and aggregation stay stage 5.
+
+**When.** With the switch (stage 3), on one date: once the call means the
+window, the calendar series would score it against the wrong quantity. The
+blend's calendar history is frozen with the rest; its window series starts
+on the switch date.
+
+**Checked before the switch.** A harness run on archived late issuances,
+old prompt against new: the measure is how many returned highs sit nearer
+the window's high than today's calendar high, now 3 of 10.
+
+**Open, the operator's:**
+1. The tile label: "High / Low" as now, or one that says 24 hours.
+2. The modifier's baseline: yesterday as now (at 18:00 that compares
+   tomorrow with yesterday), the 24 hours before the issue, or none on the temperature tile when the
+   window's high is not today's. HKKI reports no cloud percentage and has
+   never filed a gust.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
