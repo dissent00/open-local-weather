@@ -3215,13 +3215,19 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     )
 
     own_windows = bulletin_windows(deps.bulletin_fetcher, location.local_bulletin_model_id)
+    # Never without the station a window was scored with: that would strip
+    # thunder the airport reported rather than add what arrived late.
+    recheck = station_reports is not None or not location.metar_station_icao
 
     changed: list[date] = []
     for entry in entries:
+        # A fetch made for a due window also RECHECKS the ones scored before,
+        # since the station's archive can fill a day in late. A row is
+        # rewritten only when its scores moved.
         scored_window = archive is not None and verify_closed_windows(
             entry, archive, today=today,
             station_reports=station_reports, timezone_name=location.timezone,
-            own_windows=own_windows,
+            own_windows=own_windows, force=recheck,
         )
         # ROADMAP item 6, in the same pass and from the cache rather than a
         # fetch: the secondary actuals are already stored by every run. TWO

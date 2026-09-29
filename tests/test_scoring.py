@@ -729,6 +729,31 @@ def _row_with_a_bulletin_claim():
     )
 
 
+def test_a_recheck_takes_later_evidence_and_leaves_an_unchanged_window_alone():
+    """Item 139. A station's archive can fill a day in late: the 18:00
+    windows of 09-18 and 09-25 were scored before HKKI's afternoon thunder
+    reports arrived. A recheck rescores a stamped window, and rewrites it
+    only when the evidence moved its scores."""
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+    verify_closed_windows(entry, _archive_from_the_10th(rain_at=0), today=date(2026, 8, 13))
+    stamped = row.window_verified_at
+
+    assert verify_closed_windows(
+        entry, _archive_from_the_10th(rain_at=0), today=date(2026, 8, 13), force=True
+    ) is False
+    assert row.window_verified_at == stamped, "same evidence, same row"
+
+    # Rain at 12:00 on the 11th, inside the window, arrives late.
+    assert verify_closed_windows(
+        entry, _archive_from_the_10th(rain_at=36), today=date(2026, 8, 13), force=True
+    ) is True
+    assert row.window_scores["gfs_seamless"].rain_correct is False
+
+
 def test_a_bulletin_is_scored_on_the_24_hours_it_claims():
     """Item 139, operator's decision 2026-09-29. KMD's daily bulletin runs
     "From 9:00 p.m. Tonight to 9:00 p.m. Tomorrow", so its claim for the

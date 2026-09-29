@@ -95,10 +95,11 @@ def verify_closed_windows(
     floor is the calendar rather than the 24-hour clock.
 
     IDEMPOTENT BY STAMP, not by recomputation. A row already carrying
-    `window_verified_at` is left exactly as it is: the archive is stable for
-    finished days so a rescore would agree, but row 0's stored numbers are
-    what the record rests on and nothing here should be able to move them.
-    `rebuild-record` is where a deliberate re-derivation belongs.
+    `window_verified_at` is left exactly as it is unless `force` is given.
+    FORCE RECHECKS, and rewrites a row only when its scores moved: the
+    archive is stable for finished days, but the station's is not — HKKI's
+    afternoon thunder reports for 09-19 and 09-26 arrived after the windows
+    that held them were scored (item 139, found 2026-09-29).
 
     `own_windows` maps a source whose claim names its OWN 24 hours to where
     they open, given the date the claim is valid for. KMD's daily bulletin
@@ -136,6 +137,9 @@ def verify_closed_windows(
             score = _score_on_window(claim, seen, opened) if seen is not None else None
             if score is not None:
                 scores[model] = score
+
+        if row.window_verified_at is not None and scores == row.window_scores:
+            continue
 
         row.window_scores = scores
         row.window_verified_at = datetime.now(timezone.utc)

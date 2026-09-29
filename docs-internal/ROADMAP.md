@@ -21104,7 +21104,10 @@ b. **A window claim from every Day+0 source.** The baselines' is their
    09-19 file changed on 09-21, after the 09-20 scoring). Rescored, every
    model's thunder verdict on both flipped. A window is stamped once and
    never revisited, so a late station fill never reaches it, while the
-   calendar series re-derives every run. Fixed next.
+   calendar series re-derives every run. **Fixed:** the pass rechecks every
+   window in its lookback whenever it fetches for a due one (no extra
+   request), rewrites a row only when its scores moved, and never rechecks
+   without the station's reports, which would strip evidence.
 c. **The review on periods.**
 d. **The gust calibration** from window-basis errors, gated on wind checks.
 e. **The next-24-hours call**, per its design above. Harness run first.

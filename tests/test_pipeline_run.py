@@ -739,6 +739,65 @@ def test_the_window_pass_asks_the_archive_only_when_a_window_is_due(tmp_path, mo
     assert calls == [1], "a window ending today has not finished"
 
 
+def test_the_window_pass_rechecks_scored_windows_whenever_it_fetches(tmp_path, monkeypatch):
+    """A window scored before the evidence was complete is rescored the next
+    time the pass fetches, which costs no extra request: it fetches only
+    when a new window is due."""
+    from openlocalweather.models import VerificationScore
+
+    times = [f"2026-08-{8 + i // 24:02d}T{i % 24:02d}:00" for i in range(72)]
+    archive = {"hourly": {
+        "time": times, "temperature_2m": [20.0] * 72,
+        # Rain at 12:00 on the 8th, inside the 8th's window.
+        "precipitation": [2.0 if i == 12 else 0.0 for i in range(72)],
+        "cloud_cover": [50.0] * 72, "wind_gusts_10m": [20.0] * 72, "pressure_msl": [1010.0] * 72,
+    }}
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: archive)
+    deps = make_deps(tmp_path)
+    stale = _entry_with_window(date(2026, 8, 8), scored=True)
+    stale.prediction_rows[0].window_scores = {"gfs_seamless": VerificationScore(rain_correct=True)}
+    log_store.write_log_entry(tmp_path, stale)
+    log_store.write_log_entry(tmp_path, _entry_with_window(date(2026, 8, 9), scored=False))
+
+    pipeline._verify_recent_windows(deps, date(2026, 8, 11))
+
+    rechecked = log_store.read_log_entry(tmp_path, date(2026, 8, 8)).prediction_rows[0]
+    assert rechecked.window_scores["gfs_seamless"].rain_correct is False, "it called dry; it rained"
+
+
+def test_a_recheck_without_the_stations_reports_leaves_scored_windows_alone(tmp_path, monkeypatch):
+    """Rescoring a window without the station it was scored with would strip
+    evidence rather than add it: thunder the airport reported would vanish
+    from the verdict."""
+    from openlocalweather.models import VerificationScore
+
+    def unreachable(*a, **k):
+        raise RuntimeError("station archive down")
+
+    times = [f"2026-08-{8 + i // 24:02d}T{i % 24:02d}:00" for i in range(72)]
+    archive = {"hourly": {
+        "time": times, "temperature_2m": [20.0] * 72,
+        "precipitation": [2.0 if i == 12 else 0.0 for i in range(72)],
+        "cloud_cover": [50.0] * 72, "wind_gusts_10m": [20.0] * 72, "pressure_msl": [1010.0] * 72,
+    }}
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: archive)
+    monkeypatch.setattr(metar_fetch, "station_reports", unreachable)
+    deps = make_deps(tmp_path)
+    deps.location = LOCATION.model_copy(update={"metar_station_icao": "HKKI"})
+    stale = _entry_with_window(date(2026, 8, 8), scored=True)
+    stale.prediction_rows[0].window_scores = {"gfs_seamless": VerificationScore(rain_correct=True)}
+    log_store.write_log_entry(tmp_path, stale)
+    log_store.write_log_entry(tmp_path, _entry_with_window(date(2026, 8, 9), scored=False))
+
+    pipeline._verify_recent_windows(deps, date(2026, 8, 11))
+
+    kept = log_store.read_log_entry(tmp_path, date(2026, 8, 8)).prediction_rows[0]
+    assert kept.window_scores["gfs_seamless"].rain_correct is True
+    assert log_store.read_log_entry(tmp_path, date(2026, 8, 9)).prediction_rows[0].window_verified_at is not None, (
+        "a due window is still scored, as before"
+    )
+
+
 def test_the_met_service_is_scored_on_the_window_its_fetcher_names(tmp_path, monkeypatch):
     """Item 139, operator's decision 2026-09-29: the bulletin's Day+0 is
     scored on the 24 hours it claims, which the fetcher states. Rain at
