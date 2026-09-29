@@ -722,7 +722,38 @@
           "precip_error_mm": null
         }
       },
-      "window_verified_at": "2026-09-29T11:14:39.877010Z",
+      "window_verified_at": "2026-09-29T12:07:07.647949Z",
+      "window_observed": {
+        "rain": false,
+        "high_c": 32.5,
+        "low_c": 18.4,
+        "peak_wind_kmh": 37.4,
+        "sustained_wind_kmh": 19.0,
+        "mslp_trend": -3.800000000000068,
+        "onset_hour": null,
+        "precip_mm": 0.1,
+        "thunder": false,
+        "precipitation": false,
+        "precipitation_onset": null,
+        "station_high_c": null,
+        "station_low_c": null,
+        "station_peak_wind_kmh": null,
+        "station_peak_gust_kmh": null,
+        "station_wind_direction_deg": null,
+        "cloud_cover_pct": 35.9,
+        "station_cloud_oktas": null,
+        "lightning": null,
+        "provenance": {
+          "rain": "era5_archive",
+          "high_c": "era5_archive",
+          "low_c": "era5_archive",
+          "peak_wind_kmh": "era5_archive",
+          "sustained_wind_kmh": "era5_archive",
+          "mslp_trend": "era5_archive",
+          "precip_mm": "era5_archive",
+          "cloud_cover_pct": "era5_archive"
+        }
+      },
       "day_over_day": {
         "yesterday_high_c": 29.9,
         "yesterday_low_c": 18.5,
