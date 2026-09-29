@@ -1190,7 +1190,7 @@
         "ecmwf_ifs025": {
           "rain_correct": true,
           "rain_brier": 0.012099999999999998,
-          "onset_error_hrs": 9.0,
+          "onset_error_hrs": -15.0,
           "wind_error_kmh": 15.5,
           "high_error_c": 1.5999999999999979,
           "low_error_c": -0.8999999999999986,

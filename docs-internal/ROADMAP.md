@@ -20994,7 +20994,15 @@ quantity until the switch.
 - **Every forecast's Day+3 and Day+7** are scored against the named day and
   grouped by the date issued (`calendar_scores_by_period`), legacy entries
   included; `olw window-record` shows them beside the published first-forecast
-  figures. They differ little: rain within 5-10 points, highs within 0.3 C.
+  figures. They differ little: rain within 10 points, highs within 0.3 C.
+- **A window's onset was scored on the clock.** Every window but a midnight
+  one crosses midnight, so an 18:00 window's "02:00" is tomorrow's; read as
+  clock times, 02:00 against rain at 23:00 scored +21 h for rain 3 h early.
+  Now measured from the window's opening. 6 of 29 stored window onsets
+  moved, all in 18:00 windows (09-22: called 20:00, rain 16:00 the next day,
+  stored -4 h, now +20 h), corrected in place from the stored call and
+  error. Nothing published read them. The calendar day never crosses
+  midnight, so its onsets stand.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.

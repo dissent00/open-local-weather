@@ -200,13 +200,38 @@ def score_window_row(
     if observed is None or not row.window_predictions:
         return {}
 
+    opened = row.window_opened_local
     scores: dict[str, VerificationScore] = {}
     for predicted in row.window_predictions:
         score = score_prediction(predicted, observed, 0)
-        if score is not None:
-            scores[predicted.model] = score
+        if score is None:
+            continue
+
+        # ONSET IS MEASURED FROM THE WINDOW'S OPENING, NOT ON THE CLOCK. A
+        # window opened at 18:00 holds tomorrow's 02:00 and tonight's 23:00;
+        # as clock times those are 21 hours apart when the rain came 3 hours
+        # early. Every window but a midnight one crosses midnight. A clock
+        # time occurs once in 24 hours, so its offset from the opening is
+        # unambiguous.
+        if score.onset_error_hrs is not None and opened is not None:
+            score = score.model_copy(update={
+                "onset_error_hrs": _window_hour_diff(predicted.onset, observed.onset_hour, opened),
+            })
+        scores[predicted.model] = score
 
     return scores
+
+
+HOURS_PER_DAY = 24
+
+
+def _window_hour_diff(predicted_hhmm: str, actual_hhmm: str, opened: datetime) -> float:
+    """actual - predicted in hours, each read as the first time at or after
+    `opened` that the clock shows it."""
+    def since_opened(hhmm: str) -> float:
+        return _hour_diff(f"{opened:%H:%M}", hhmm) % HOURS_PER_DAY
+
+    return since_opened(actual_hhmm) - since_opened(predicted_hhmm)
 
 
 def scored_predictions(entry: DailyLogEntry) -> ModelPredictionsByLead:

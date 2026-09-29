@@ -560,6 +560,25 @@ def test_a_window_is_scored_per_model_against_its_own_observation():
     assert scores["gfs_seamless"].onset_error_hrs == pytest.approx(-1.0)
 
 
+def test_a_window_onset_is_measured_across_midnight():
+    """A window opened at 18:00 runs to 17:00 the next day, so "02:00" is
+    tomorrow's and "23:00" is tonight's: rain came three hours EARLY. Read
+    as clock times the two are 21 hours apart the other way."""
+    from datetime import datetime
+    from openlocalweather.models import IssuancePredictions, ModelPrediction
+    from openlocalweather.verify.scoring import score_window_row
+
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 8, 11, 15, 0),
+        window_opened_local=datetime(2026, 8, 11, 18, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=True, onset="02:00")],
+    )
+
+    scores = score_window_row(row, actual(rain=True, onset_hour="23:00"))
+
+    assert scores["gfs_seamless"].onset_error_hrs == pytest.approx(-3.0)
+
+
 def test_a_window_with_no_observation_scores_nothing():
     """An absent observation is not a wrong forecast. The window bucketer
     returns None when the archive cannot cover the period, and that has to
