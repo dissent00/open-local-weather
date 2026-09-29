@@ -699,6 +699,38 @@
           "peak_cape_jkg": 1630.0,
           "wind_direction_deg": 260.0,
           "mslp_trend": -0.10000000000002274
+        },
+        {
+          "model": "persistence",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.2,
+          "rain_probability_pct": null,
+          "wind_kmh": 33.8,
+          "sustained_wind_kmh": null,
+          "high_c": 31.1,
+          "low_c": 19.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": 0.2999999999999545
+        },
+        {
+          "model": "climatology",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 1.569767441860465,
+          "rain_probability_pct": 37,
+          "wind_kmh": 39.7093023255814,
+          "sustained_wind_kmh": null,
+          "high_c": 30.70232558139535,
+          "low_c": 18.3953488372093,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
         }
       ],
       "secondary_predictions": [
@@ -907,9 +939,45 @@
           "cloud_error_pct": 1.5,
           "convective_correct": true,
           "precip_error_mm": 6.5
+        },
+        "persistence": {
+          "rain_correct": false,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": 2.200000000000003,
+          "high_error_c": -1.6000000000000014,
+          "low_error_c": 0.10000000000000142,
+          "mslp_error_hpa": 0.10000000000002274,
+          "cloud_error_pct": null,
+          "convective_correct": null,
+          "precip_error_mm": 8.700000000000001
+        },
+        "climatology": {
+          "rain_correct": false,
+          "rain_brier": 0.39690000000000003,
+          "onset_error_hrs": null,
+          "wind_error_kmh": -3.7093023255813975,
+          "high_error_c": -1.2023255813953497,
+          "low_error_c": 0.7046511627907002,
+          "mslp_error_hpa": null,
+          "cloud_error_pct": null,
+          "convective_correct": null,
+          "precip_error_mm": 7.330232558139535
+        },
+        "kenya_met": {
+          "rain_correct": true,
+          "rain_brier": null,
+          "onset_error_hrs": null,
+          "wind_error_kmh": null,
+          "high_error_c": 1.5,
+          "low_error_c": 0.5,
+          "mslp_error_hpa": null,
+          "cloud_error_pct": null,
+          "convective_correct": null,
+          "precip_error_mm": null
         }
       },
-      "window_verified_at": "2026-09-25T03:01:34.651535Z",
+      "window_verified_at": "2026-09-29T11:14:39.880563Z",
       "day_over_day": {
         "yesterday_high_c": 31.1,
         "yesterday_low_c": 19.0,

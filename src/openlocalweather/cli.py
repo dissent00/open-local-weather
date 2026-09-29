@@ -94,6 +94,7 @@ from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.pipeline import (
     ForecastSkipped,
     _station_reports,
+    bulletin_windows,
     forecast_horizons_of,
     ObservationsRefreshed,
     attach_spend_cap,
@@ -114,7 +115,7 @@ from openlocalweather.store.actuals_cache import (
     write_actuals_cache,
 )
 from openlocalweather import replay
-from openlocalweather.backfill import backfill_entry_baselines, backfill_entry_code_blend
+from openlocalweather.backfill import backfill_entry_baselines, backfill_entry_code_blend, backfill_entry_window_claims
 from openlocalweather.code_blend import blend_inputs
 from openlocalweather.divergence import compare_sources
 from openlocalweather.pipeline import apply_station_readings
@@ -1789,6 +1790,45 @@ def _run_backfill_code_blend(args) -> int:
     return 0
 
 
+def _run_backfill_window_claims(args) -> int:
+    """Add the yardsticks' and the code blend's window claims to rows stored
+    before they were made, then rescore those rows — item 139, stage 3b.
+
+    The met service needs no claim added: its Day+0 is scored on its own
+    window by the rescore. `--dry-run` prints the plan and stops.
+    """
+    data_dir = Path(args.data_dir)
+    location = load_location_config(args.config)
+    log_dates = list_log_dates(data_dir)
+    look = make_log_lookup(data_dir)
+
+    changed = []
+    for d in sorted(log_dates):
+        entry = read_log_entry(data_dir, d)
+        updated = backfill_entry_window_claims(entry, look, log_dates) if entry is not None else None
+        if updated is None:
+            continue
+
+        changed.append(d)
+        added = sorted(
+            {p.model for row in updated.prediction_rows for p in row.window_predictions}
+            - {p.model for row in entry.prediction_rows for p in row.window_predictions}
+        )
+        print(f"  {d}: {', '.join(added)}")
+        if not args.dry_run:
+            write_log_entry(data_dir, updated)
+
+    print(f"{'Would add' if args.dry_run else 'Added'} window claims on {len(changed)} day(s).")
+    if args.dry_run or not changed:
+        return 0
+
+    today = today_in_tz(location.timezone)
+    for entry in _rescore_windows(location, data_dir, changed, today, dry_run=False):
+        write_log_entry(data_dir, entry)
+
+    return 0
+
+
 def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> list:
     """Every scorable window on every entry, rescored; returns the entries
     that changed. Prints the per-model rain verdicts that moved, so a rescore
@@ -1804,6 +1844,7 @@ def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> 
         print(f"\nWindows not rescored: archive unavailable ({e}).", file=sys.stderr)
         return []
     station_reports = _station_reports(location, min(log_dates), add_days(today, -1), data_dir)
+    own_windows = bulletin_windows(_build_bulletin_fetcher(location), location.local_bulletin_model_id)
 
     changed = []
     lookup = make_log_lookup(data_dir)
@@ -1819,6 +1860,7 @@ def _rescore_windows(location, data_dir, log_dates, today, *, dry_run: bool) -> 
         if not verify_closed_windows(
             entry, archive, today=today,
             station_reports=station_reports, timezone_name=location.timezone, force=True,
+            own_windows=own_windows,
         ):
             continue
         after = {
@@ -2056,6 +2098,16 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Print the plan without writing anything."
     )
 
+    window_claims = sub.add_parser(
+        "backfill-window-claims",
+        help="Add the yardsticks' and code blend's window claims (item 139) to stored rows, and rescore them.",
+    )
+    window_claims.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    window_claims.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    window_claims.add_argument(
+        "--dry-run", action="store_true", help="Print the plan without writing anything."
+    )
+
     code_blend = sub.add_parser(
         "backfill-code-blend",
         help="Add the code blend (item 173) to days stored before it existed.",
@@ -2156,6 +2208,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "backfill-baselines":
         return _run_backfill_baselines(args)
+
+    if args.command == "backfill-window-claims":
+        return _run_backfill_window_claims(args)
 
     if args.command == "backfill-code-blend":
         return _run_backfill_code_blend(args)

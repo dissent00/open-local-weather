@@ -55,6 +55,8 @@ from openlocalweather.verify.scoring import (
     RollingWindowResult,
     mean,
     rescore_rolling_window,
+    summarize_periods,
+    window_scores_by_period,
 )
 
 # How many checks a rolling-30 hit rate needs before it carries a vote. THE
@@ -242,3 +244,42 @@ def code_blend_predictions(
         blends[lead] = [blend] if blend is not None else []
 
     return ModelPredictionsByLead(day0=blends[0], day3=blends[3], day7=blends[7])
+
+
+def period_windows_as_of(
+    models: list[str],
+    window_size: int,
+    issued: date,
+    log_lookup: LogLookup,
+    log_dates: list[date],
+) -> dict[str, RollingWindowResult]:
+    """Each model's window record, each period once, as it stood when
+    `issued` ran — ROADMAP item 139, stage 3b. Only windows scorable by
+    then, so the hours being forecast cannot enter."""
+    return {
+        m: summarize_periods(
+            [scores for _, scores in window_scores_by_period(log_lookup, log_dates, m, as_of=issued)],
+            window_size,
+        )
+        for m in models
+    }
+
+
+def window_code_blend(
+    window_predictions: list[ModelPrediction],
+    issued: date,
+    log_lookup: LogLookup,
+    log_dates: list[date],
+    inputs: list[str],
+) -> ModelPrediction | None:
+    """The code blend's claim about an issuance's own 24 hours — item 139.
+
+    The models' window claims, voted and corrected by the window record as
+    `code_blend_predictions` does by the calendar one. The caller passes
+    only sources whose claim covers these hours.
+    """
+    long = period_windows_as_of(inputs, ROLLING_WINDOW_LONG, issued, log_lookup, log_dates)
+    short = period_windows_as_of(inputs, ROLLING_WINDOW_SHORT, issued, log_lookup, log_dates)
+    highs, lows = temperature_corrections(short)
+
+    return code_blend_prediction(window_predictions, rain_weights(long), highs, lows)

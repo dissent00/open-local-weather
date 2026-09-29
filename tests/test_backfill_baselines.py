@@ -151,3 +151,35 @@ def test_a_gap_before_the_issuance_means_no_persistence():
     names = {p.model for p in scored_predictions(out).day0}
     assert "persistence" not in names
     assert "climatology" in names
+
+
+def test_window_claims_are_backfilled_from_each_rows_own_day0_once():
+    """Item 139 stage 3b, for the rows stored since 09-15. The yardsticks'
+    window claim is their Day+0 claim; the met service is scored on its own
+    window from its Day+0, so it gains no window claim here."""
+    from datetime import datetime, timezone
+
+    from openlocalweather.backfill import backfill_entry_window_claims
+    from openlocalweather.models import IssuancePredictions, ModelPrediction, ModelPredictionsByLead
+
+    day = date(2026, 9, 20)
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 9, 20, 3, 0, tzinfo=timezone.utc),
+        window_opened_local=datetime(2026, 9, 20, 6, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=True)],
+        predictions=ModelPredictionsByLead(day0=[
+            ModelPrediction(model="gfs_seamless", rain=True, target_date=day),
+            ModelPrediction(model="persistence", rain=False, onset=None, high_c=29.0, target_date=day),
+            ModelPrediction(model="climatology", rain=True, rain_probability_pct=55, target_date=day),
+            ModelPrediction(model="kenya_met", rain=True, target_date=day),
+        ]),
+    )
+    entry = DailyLogEntry.model_construct(date=day, prediction_rows=[row], model_predictions=None)
+
+    updated = backfill_entry_window_claims(entry, {}.get, [])
+
+    window = {p.model: p for p in updated.prediction_rows[0].window_predictions}
+    assert set(window) == {"gfs_seamless", "persistence", "climatology"}
+    assert window["persistence"].high_c == 29.0
+    assert window["climatology"].target_date is None, "a window claim names no calendar day"
+    assert backfill_entry_window_claims(updated, {}.get, []) is None, "once"

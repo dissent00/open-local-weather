@@ -705,6 +705,65 @@ def test_the_walker_does_not_rescore_a_row_it_already_stamped():
     assert row.window_verified_at == stamped, "row 0 of a scored window is not rewritten"
 
 
+def _archive_from_the_10th(rain_at: int):
+    """72 hours from 2026-08-10 00:00, temperature 10 + hour index, and
+    2 mm in one hour only."""
+    times = [f"2026-08-{10 + i // 24:02d}T{i % 24:02d}:00" for i in range(72)]
+    return {"hourly": {
+        "time": times, "temperature_2m": [10.0 + i for i in range(72)],
+        "precipitation": [2.0 if i == rain_at else 0.0 for i in range(72)],
+        "cloud_cover": [50.0] * 72, "wind_gusts_10m": [20.0] * 72, "pressure_msl": [1010.0] * 72,
+    }}
+
+
+def _row_with_a_bulletin_claim():
+    from openlocalweather.models import IssuancePredictions, ModelPrediction, ModelPredictionsByLead
+
+    return IssuancePredictions(
+        issued_at=datetime(2026, 8, 11, 3, 0, tzinfo=timezone.utc),
+        window_opened_local=datetime(2026, 8, 11, 6, 0),
+        window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=40.0)],
+        predictions=ModelPredictionsByLead(day0=[ModelPrediction(
+            model="kenya_met", rain=True, high_c=60.0, target_date=date(2026, 8, 11),
+        )]),
+    )
+
+
+def test_a_bulletin_is_scored_on_the_24_hours_it_claims():
+    """Item 139, operator's decision 2026-09-29. KMD's daily bulletin runs
+    "From 9:00 p.m. Tonight to 9:00 p.m. Tomorrow", so its claim for the
+    11th opens at 21:00 on the 10th. Rain at 22:00 on the 10th is inside
+    its window and outside the issuance's, which opened at 06:00."""
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+
+    verify_closed_windows(
+        entry, _archive_from_the_10th(rain_at=22), today=date(2026, 8, 13),
+        own_windows={"kenya_met": lambda valid_for: datetime(2026, 8, valid_for.day - 1, 21, 0)},
+    )
+
+    assert row.window_scores["kenya_met"].rain_correct is True
+    # 21:00 on the 10th (index 21) to 20:00 on the 11th (index 44).
+    assert row.window_scores["kenya_met"].high_error_c == pytest.approx(54.0 - 60.0)
+    assert row.window_scores["gfs_seamless"].rain_correct is True, "the issuance's window saw no rain"
+    assert row.window_scores["gfs_seamless"].high_error_c == pytest.approx(63.0 - 40.0)
+
+
+def test_a_bulletin_with_no_window_of_its_own_is_not_scored_on_a_windows_basis():
+    from openlocalweather.verify.scoring import verify_closed_windows
+
+    row = _row_with_a_bulletin_claim()
+    entry = log_entry(date(2026, 8, 11))
+    entry.prediction_rows = [row]
+
+    verify_closed_windows(entry, _archive_from_the_10th(rain_at=22), today=date(2026, 8, 13))
+
+    assert set(row.window_scores) == {"gfs_seamless"}
+
+
 # ---------------------------------------------------------------------------
 # The rain AMOUNT — ROADMAP item 157
 # ---------------------------------------------------------------------------

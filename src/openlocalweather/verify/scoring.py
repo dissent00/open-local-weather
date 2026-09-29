@@ -16,7 +16,7 @@ import math
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Callable
+from typing import Callable, Mapping
 
 from openlocalweather.dates import add_days, prediction_row_date_for_target
 from openlocalweather.instability import CONVECTIVE_CAPE_THRESHOLD_JKG
@@ -80,6 +80,7 @@ def verify_closed_windows(
     station_reports: list | None = None,
     timezone_name: str | None = None,
     force: bool = False,
+    own_windows: Mapping[str, Callable[[date], datetime]] | None = None,
 ) -> bool:
     """Score every window on this entry whose hours are all in finished days.
 
@@ -98,6 +99,11 @@ def verify_closed_windows(
     finished days so a rescore would agree, but row 0's stored numbers are
     what the record rests on and nothing here should be able to move them.
     `rebuild-record` is where a deliberate re-derivation belongs.
+
+    `own_windows` maps a source whose claim names its OWN 24 hours to where
+    they open, given the date the claim is valid for. KMD's daily bulletin
+    runs 21:00 to 21:00 (item 139, operator's decision 2026-09-29); its Day+0
+    claim is scored on those hours, beside the row's own window.
     """
     changed = False
 
@@ -109,23 +115,27 @@ def verify_closed_windows(
         if not window_is_scorable(row.window_opened_local, today=today):
             continue
 
-        observed = bucket_hourly_window(archive_hourly, start=row.window_opened_local)
-        if observed is not None and station_reports is not None and timezone_name is not None:
-            # THE STATION, OVER THE WINDOW'S OWN HOURS — ROADMAP item 139.
-            # The calendar path stamps the airport onto its day before scoring
-            # (`_apply_station_observations`); without the same here the two
-            # bases scored the same forecast against different evidence, and
-            # the first scored window called every model's rain wrong on a day
-            # the station had seen rain and the reanalysis held 0.4 mm.
-            _stamp_station(observed, station_weather_within(
-                station_reports, row.window_opened_local, ISSUANCE_WINDOW_HOURS, timezone_name
-            ))
+        observed = _observe_window(archive_hourly, row.window_opened_local, station_reports, timezone_name)
         scores = score_window_row(row, observed)
         if observed is None:
             # The archive could not cover a window whose days HAVE finished —
             # a hole rather than a wait. Left unstamped so a later run tries
             # again, because the alternative is a permanent silent gap.
             continue
+
+        for model, opens in (own_windows or {}).items():
+            claim = next((p for p in row.predictions.day0 if p.model == model), None)
+            if claim is None:
+                continue
+
+            opened = opens(claim.target_date or entry.date)
+            if not window_is_scorable(opened, today=today):
+                continue
+
+            seen = _observe_window(archive_hourly, opened, station_reports, timezone_name)
+            score = _score_on_window(claim, seen, opened) if seen is not None else None
+            if score is not None:
+                scores[model] = score
 
         row.window_scores = scores
         row.window_verified_at = datetime.now(timezone.utc)
@@ -200,26 +210,53 @@ def score_window_row(
     if observed is None or not row.window_predictions:
         return {}
 
-    opened = row.window_opened_local
     scores: dict[str, VerificationScore] = {}
     for predicted in row.window_predictions:
-        score = score_prediction(predicted, observed, 0)
-        if score is None:
-            continue
-
-        # ONSET IS MEASURED FROM THE WINDOW'S OPENING, NOT ON THE CLOCK. A
-        # window opened at 18:00 holds tomorrow's 02:00 and tonight's 23:00;
-        # as clock times those are 21 hours apart when the rain came 3 hours
-        # early. Every window but a midnight one crosses midnight. A clock
-        # time occurs once in 24 hours, so its offset from the opening is
-        # unambiguous.
-        if score.onset_error_hrs is not None and opened is not None:
-            score = score.model_copy(update={
-                "onset_error_hrs": _window_hour_diff(predicted.onset, observed.onset_hour, opened),
-            })
-        scores[predicted.model] = score
+        score = _score_on_window(predicted, observed, row.window_opened_local)
+        if score is not None:
+            scores[predicted.model] = score
 
     return scores
+
+
+def _observe_window(
+    archive_hourly: dict, opened: datetime, station_reports: list | None, timezone_name: str | None
+) -> DailyActual | None:
+    """The weather over the 24 hours from `opened`, or None where the
+    archive cannot cover them."""
+    observed = bucket_hourly_window(archive_hourly, start=opened)
+    if observed is not None and station_reports is not None and timezone_name is not None:
+        # THE STATION, OVER THE WINDOW'S OWN HOURS — ROADMAP item 139.
+        # The calendar path stamps the airport onto its day before scoring
+        # (`_apply_station_observations`); without the same here the two
+        # bases scored the same forecast against different evidence, and
+        # the first scored window called every model's rain wrong on a day
+        # the station had seen rain and the reanalysis held 0.4 mm.
+        _stamp_station(observed, station_weather_within(
+            station_reports, opened, ISSUANCE_WINDOW_HOURS, timezone_name
+        ))
+    return observed
+
+
+def _score_on_window(
+    predicted: ModelPrediction, observed: DailyActual, opened: datetime | None
+) -> VerificationScore | None:
+    """One claim about the 24 hours from `opened`, scored at lead 0."""
+    score = score_prediction(predicted, observed, 0)
+    if score is None:
+        return None
+
+    # ONSET IS MEASURED FROM THE WINDOW'S OPENING, NOT ON THE CLOCK. A
+    # window opened at 18:00 holds tomorrow's 02:00 and tonight's 23:00;
+    # as clock times those are 21 hours apart when the rain came 3 hours
+    # early. Every window but a midnight one crosses midnight. A clock
+    # time occurs once in 24 hours, so its offset from the opening is
+    # unambiguous.
+    if score.onset_error_hrs is not None and opened is not None:
+        score = score.model_copy(update={
+            "onset_error_hrs": _window_hour_diff(predicted.onset, observed.onset_hour, opened),
+        })
+    return score
 
 
 HOURS_PER_DAY = 24
@@ -532,13 +569,16 @@ def summarize_periods(
 
 
 def window_scores_by_period(
-    log_lookup: LogLookup, log_dates: list[date], model: str
+    log_lookup: LogLookup, log_dates: list[date], model: str, as_of: date | None = None
 ) -> list[tuple[date, list[VerificationScore]]]:
     """Every scored window for one model, grouped by the date its forecast
     was issued, newest period first — ROADMAP item 139.
 
     EVERY ROW, not row 0: each forecast is a claim a reader may have acted on.
     A date with no scored window for the model is no period at all.
+
+    `as_of` keeps only windows scorable on that date, so a forecast issued
+    then, or a backfill of one, reads the record as it stood.
     """
     periods: list[tuple[date, list[VerificationScore]]] = []
     for day in sorted(log_dates, reverse=True):
@@ -549,7 +589,9 @@ def window_scores_by_period(
         scores = [
             row.window_scores[model]
             for row in entry.prediction_rows
-            if row.window_verified_at is not None and model in row.window_scores
+            if row.window_verified_at is not None
+            and model in row.window_scores
+            and (as_of is None or window_is_scorable(row.window_opened_local, today=as_of))
         ]
         if scores:
             periods.append((day, scores))

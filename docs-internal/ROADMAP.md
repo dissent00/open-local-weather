@@ -21091,7 +21091,20 @@ b. **A window claim from every Day+0 source.** The baselines' is their
    Day+0 claim (persistence repeats yesterday; climatology is the base rate
    before the issuance). The code blend votes the models' window claims,
    weighted by (a). Kenya Met: the operator's question below. The
-   forecaster's from the switch date.
+   forecaster's from the switch date. **Built 2026-09-29**, and
+   `olw backfill-window-claims` added the yardsticks' and code blend's
+   claims to the rows since 09-15 and rescored them. The code blend votes
+   the models only (Kenya Met's claim covers other hours) and first has 10
+   window periods to vote with on 09-26, so it has 2 periods; persistence
+   and climatology 13; Kenya Met 12, on its own window.
+
+   **The rescore found window scores stamped on an incomplete station
+   day.** The 18:00 windows of 09-18 and 09-25 were scored before HKKI's
+   archive held the 12:30 and 13:30 thunder reports of the next day (the
+   09-19 file changed on 09-21, after the 09-20 scoring). Rescored, every
+   model's thunder verdict on both flipped. A window is stamped once and
+   never revisited, so a late station fill never reaches it, while the
+   calendar series re-derives every run. Fixed next.
 c. **The review on periods.**
 d. **The gust calibration** from window-basis errors, gated on wind checks.
 e. **The next-24-hours call**, per its design above. Harness run first.

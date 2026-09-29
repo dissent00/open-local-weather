@@ -161,3 +161,13 @@ def test_five_day_failure_does_not_cost_the_day0_prediction(monkeypatch):
     assert result.prediction.high_c == 30.0
     assert result.valid_for == date(2026, 8, 19)
     assert "light rains expected over few places" in result.text
+
+
+def test_the_bulletins_window_opens_at_nine_the_evening_before():
+    """"From 9:00 p.m. Tonight to 9:00 p.m. Tomorrow, 19th August": the claim
+    for the 19th opens at 21:00 on the 18th. Item 139 scores it there."""
+    from datetime import datetime
+
+    fetcher = KenyaKMDDailyFetcher("https://meteo.go.ke/our-products/daily-forecast")
+
+    assert fetcher.validity_window_opens(date(2026, 8, 19)) == datetime(2026, 8, 18, 21, 0)

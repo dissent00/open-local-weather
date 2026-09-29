@@ -33,7 +33,7 @@ from openlocalweather.baselines import (
     climatology_prediction,
     persistence_prediction,
 )
-from openlocalweather.code_blend import code_blend_predictions
+from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
 from openlocalweather.defaults import CODE_BLEND_MODEL_ID, LEAD_TIMES_DAYS
 from openlocalweather.models import DailyActual, DailyLogEntry
 from openlocalweather.verify.scoring import LogLookup, resolve_prediction_rows
@@ -151,3 +151,44 @@ def backfill_entry_code_blend(
             ],
         }
     )
+
+
+def backfill_entry_window_claims(
+    entry: DailyLogEntry,
+    log_lookup: LogLookup,
+    log_dates: list[date],
+) -> DailyLogEntry | None:
+    """`entry` with the yardsticks and the code blend added to each row's
+    window claims, or None when there is nothing to add — item 139, stage 3b.
+
+    Every row whose models made a window claim, as a live run now stores
+    them: the yardsticks copied from the row's own Day+0, the code blend
+    voted as of the entry's date. Idempotent. Scoring is left to a rescore.
+    """
+    rows = resolve_prediction_rows(entry)
+    updated_rows = []
+    changed = False
+    for row in rows:
+        # A row with no opening was never scorable, so it gains nothing.
+        if not row.window_predictions or row.window_opened_local is None:
+            updated_rows.append(row)
+            continue
+
+        claims = list(row.window_predictions)
+        have = {p.model for p in claims}
+        for p in row.predictions.day0:
+            if p.model in _BASELINE_IDS and p.model not in have:
+                claims.append(p.model_copy(update={"target_date": None}))
+
+        if CODE_BLEND_MODEL_ID not in have:
+            blend = window_code_blend(row.window_predictions, entry.date, log_lookup, log_dates, blend_inputs())
+            if blend is not None:
+                claims.append(blend)
+
+        changed = changed or len(claims) != len(row.window_predictions)
+        updated_rows.append(row.model_copy(update={"window_predictions": claims}))
+
+    if not changed:
+        return None
+
+    return entry.model_copy(update={"model_predictions": None, "prediction_rows": updated_rows})

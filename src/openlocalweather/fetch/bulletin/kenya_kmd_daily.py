@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from io import BytesIO
 from urllib.parse import urljoin
 
@@ -51,6 +51,10 @@ from openlocalweather.models import ModelPrediction
 
 SOURCE_NAME = "Kenya Meteorological Department (KMD)"
 REQUEST_TIMEOUT_S = 30
+
+# "VALIDITY: From 9:00 p.m. Tonight to 9:00 p.m. Tomorrow, 19th August" —
+# the bulletin's own 24 hours, local time, closing on the date it names.
+VALIDITY_OPENS_HOUR = 21
 
 _POST_LINK_RE = re.compile(r'href="(/our-products/daily-forecast/daily-weather-forecast[^"]*)"')
 _FIVE_DAY_POST_RE = re.compile(r'href="(/our-products/5-day-forecast/five-day-forecast[^"]*)"')
@@ -221,6 +225,11 @@ class KenyaKMDDailyFetcher:
         # in the pipeline, which already owns them.
         self.day3_target = day3_target
         self._cached: MetServiceForecast | None = None
+
+    def validity_window_opens(self, valid_for: date) -> datetime:
+        """Where the 24 hours a bulletin valid for `valid_for` claims begin:
+        21:00 local the evening before. Item 139 scores its Day+0 on them."""
+        return datetime.combine(valid_for - timedelta(days=1), time(VALIDITY_OPENS_HOUR))
 
     def _headers(self) -> dict:
         return {"User-Agent": "open-local-weather/1.0 (+https://github.com/dissent00/open-local-weather)"}

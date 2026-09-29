@@ -78,7 +78,7 @@ from openlocalweather.instability import (
 )
 from openlocalweather.wind import consensus_direction, describe_wind_shift, describe_wind_timeline
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
-from openlocalweather.code_blend import blend_inputs, code_blend_predictions
+from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -3143,6 +3143,14 @@ def _compose_log_entry(
     return _with_tiles(merged)
 
 
+def bulletin_windows(fetcher, model_id: str) -> dict | None:
+    """The met service's Day+0 scored on the 24 hours its bulletin claims,
+    where the fetcher says what they are — item 139, operator's decision
+    2026-09-29."""
+    opens = getattr(fetcher, "validity_window_opens", None)
+    return {model_id: opens} if opens and model_id else None
+
+
 def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
     """Score every stored issuance window whose days have finished.
 
@@ -3206,11 +3214,14 @@ def _verify_recent_windows(deps: PipelineDeps, today: date) -> list[date]:
         actuals_cache_store.read_actuals_cache(deps.data_dir).secondary
     )
 
+    own_windows = bulletin_windows(deps.bulletin_fetcher, location.local_bulletin_model_id)
+
     changed: list[date] = []
     for entry in entries:
         scored_window = archive is not None and verify_closed_windows(
             entry, archive, today=today,
             station_reports=station_reports, timezone_name=location.timezone,
+            own_windows=own_windows,
         )
         # ROADMAP item 6, in the same pass and from the cache rather than a
         # fetch: the secondary actuals are already stored by every run. TWO
@@ -4050,6 +4061,17 @@ def _issue_forecast(
         actuals_primary,
         blend_inputs(location.local_bulletin_model_id),
     )
+    # EVERY DAY+0 SOURCE'S CLAIM ABOUT THIS ISSUANCE'S 24 HOURS — item 139,
+    # stage 3b. The yardsticks say the same of any 24 hours. The code blend
+    # votes the models' window claims by their window record, and not the
+    # met service's, whose claim covers its own 21:00-21:00 and is scored
+    # there. Only beside the models' claim: without it there is no window.
+    window_claims: list[ModelPrediction] = []
+    if window_predictions:
+        window_blend = window_code_blend(
+            window_predictions, today, log_lookup, log_dates_for_retention, blend_inputs()
+        )
+        window_claims = [*window_predictions, *baselines, *([window_blend] if window_blend else [])]
     log_entry = _compose_log_entry(
         deps,
         guidance,
@@ -4058,7 +4080,7 @@ def _issue_forecast(
         llm_response,
         observed_so_far=observed_so_far,
         information_moved=information_moved,
-        window_predictions=window_predictions,
+        window_predictions=window_claims,
         # Item 127. The same object the prompt was built from, so the stored
         # copy and the sentence the forecaster read cannot be different ones.
         day_over_day=day_over_day,

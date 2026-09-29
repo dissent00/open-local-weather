@@ -739,6 +739,44 @@ def test_the_window_pass_asks_the_archive_only_when_a_window_is_due(tmp_path, mo
     assert calls == [1], "a window ending today has not finished"
 
 
+def test_the_met_service_is_scored_on_the_window_its_fetcher_names(tmp_path, monkeypatch):
+    """Item 139, operator's decision 2026-09-29: the bulletin's Day+0 is
+    scored on the 24 hours it claims, which the fetcher states. Rain at
+    22:00 on the 8th is inside the bulletin's window for the 9th and before
+    the forecast's own window opened."""
+    from openlocalweather.models import ModelPrediction
+
+    times = [f"2026-08-{8 + i // 24:02d}T{i % 24:02d}:00" for i in range(72)]
+    archive = {"hourly": {
+        "time": times, "temperature_2m": [20.0] * 72,
+        "precipitation": [2.0 if i == 22 else 0.0 for i in range(72)],
+        "cloud_cover": [50.0] * 72, "wind_gusts_10m": [20.0] * 72, "pressure_msl": [1010.0] * 72,
+    }}
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", lambda *a, **k: archive)
+
+    class Bulletin:
+        def fetch(self):
+            return ""
+
+        def validity_window_opens(self, valid_for):
+            return datetime(valid_for.year, valid_for.month, valid_for.day - 1, 21, 0)
+
+    deps = make_deps(tmp_path)
+    deps.bulletin_fetcher = Bulletin()
+    deps.location = deps.location.model_copy(update={"local_bulletin_model_id": "kenya_met"})
+    entry = _entry_with_window(date(2026, 8, 9), scored=False)
+    entry.prediction_rows[0].predictions.day0.append(
+        ModelPrediction(model="kenya_met", rain=True, target_date=date(2026, 8, 9))
+    )
+    log_store.write_log_entry(tmp_path, entry)
+
+    pipeline._verify_recent_windows(deps, date(2026, 8, 11))
+
+    scores = log_store.read_log_entry(tmp_path, date(2026, 8, 9)).prediction_rows[0].window_scores
+    assert scores["kenya_met"].rain_correct is True
+    assert scores["gfs_seamless"].rain_correct is True, "its own window was dry"
+
+
 def test_llm_receives_system_and_user_prompt(tmp_path):
     llm = FakeLLMProvider()
     deps = make_deps(tmp_path, llm=llm)
@@ -4225,6 +4263,25 @@ def test_the_row_carries_a_window_prediction_beside_day_zero(tmp_path, monkeypat
 
     assert row.window_predictions, "the window is the point of contract item 2"
     assert row.predictions.day0, "and Day+0 is still stored beside it"
+
+
+def test_the_yardsticks_make_the_same_claim_about_the_window(tmp_path, monkeypatch):
+    """Item 139 stage 3b. Persistence and climatology say the same of any
+    24 hours, so their window claim is their Day+0 claim."""
+    from openlocalweather.baselines import CLIMATOLOGY_MODEL_ID, PERSISTENCE_MODEL_ID
+
+    _clock_at(monkeypatch, datetime(2026, 8, 11, 6, 0))
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+
+    row = log_store.read_log_entry(tmp_path, date(2026, 8, 11)).prediction_rows[0]
+    yardsticks = {
+        p.model: p for p in row.predictions.day0 if p.model in (PERSISTENCE_MODEL_ID, CLIMATOLOGY_MODEL_ID)
+    }
+    window = {p.model: p for p in row.window_predictions}
+
+    assert yardsticks, "the fixture carries them, or this tests nothing"
+    for model, day0 in yardsticks.items():
+        assert window[model].model_dump(exclude={"target_date"}) == day0.model_dump(exclude={"target_date"})
 
 
 def test_the_window_cannot_reach_what_is_scored(tmp_path, monkeypatch):

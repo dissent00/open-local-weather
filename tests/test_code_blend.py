@@ -231,3 +231,53 @@ def test_the_backfill_leaves_a_day_with_no_record_alone():
     log, actuals = _record(issued, days=9)
 
     assert backfill_entry_code_blend(log[issued], log.get, actuals, ["gfs_seamless"]) is None
+
+
+# --- Item 139 stage 3b: the code blend's window claim ----------------------
+
+
+def _windowed(day: date, **rain_right_by_model) -> DailyLogEntry:
+    """One forecast issued at 06:00 on `day`, its window scored."""
+    from openlocalweather.models import IssuancePredictions, VerificationScore
+
+    stamp = datetime(2026, 9, 28, 3, 0)
+    return DailyLogEntry.model_construct(date=day, prediction_rows=[IssuancePredictions(
+        issued_at=stamp,
+        window_opened_local=datetime(day.year, day.month, day.day, 6, 0),
+        window_scores={m: VerificationScore(rain_correct=r) for m, r in rain_right_by_model.items()},
+        window_verified_at=stamp,
+    )])
+
+
+def test_the_window_record_as_of_an_issuance_holds_only_windows_closed_by_then():
+    """A window opened at 06:00 yesterday closes at 05:00 today, so an
+    issuance today cannot have seen it scored."""
+    from openlocalweather.code_blend import period_windows_as_of
+
+    issued = date(2026, 9, 20)
+    entries = {issued - timedelta(days=i): _windowed(issued - timedelta(days=i), gfs=(i % 10 < 7)) for i in range(2, 12)}
+    entries[issued - timedelta(days=1)] = _windowed(issued - timedelta(days=1), gfs=False)
+
+    got = period_windows_as_of(["gfs"], 30, issued, entries.get, sorted(entries))["gfs"]
+
+    assert got.checks_found == 10
+    assert got.rain_pct == 70.0
+
+
+def test_the_window_blend_votes_window_claims_by_the_window_record():
+    from openlocalweather.code_blend import window_code_blend
+
+    issued = date(2026, 9, 20)
+    entries = {}
+    for i in range(2, 12):
+        day = issued - timedelta(days=i)
+        # gfs right 8 of 10, icon 6 of 10: weights 30 and 10.
+        entries[day] = _windowed(day, gfs=(i < 10), icon=(i < 8))
+
+    got = window_code_blend(
+        [pred("gfs", True), pred("icon", False)], issued, entries.get, sorted(entries), ["gfs", "icon"],
+    )
+
+    assert got.model == CODE_BLEND_MODEL_ID
+    assert got.rain is True
+    assert got.rain_probability_pct == 75
