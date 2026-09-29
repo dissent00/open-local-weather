@@ -218,3 +218,125 @@ def test_the_written_summary_is_carried_and_a_shrinking_all_time_is_refused():
     assert got.skill_profile_summary == "At Day+0, runs warm."
     assert got.notes == "n"
     assert (got.all_time_checks, got.all_time_correct, got.all_time_rain_pct) == (5, 4, 80.0)
+
+
+# --- Stage 3c: the review over periods --------------------------------------
+
+
+def _forecast(model_scores: dict[str, VerificationScore], thunder: bool | None = None):
+    """One forecast whose window was scored and observed."""
+    from openlocalweather.models import DailyActual, ModelPrediction
+
+    stamp = datetime(2026, 9, 28, 3, 1, tzinfo=timezone.utc)
+    return IssuancePredictions(
+        issued_at=stamp,
+        window_opened_local=datetime(2026, 9, 20, 6, 0),
+        window_predictions=[ModelPrediction(model=m, rain=True) for m in model_scores],
+        window_scores=model_scores,
+        window_verified_at=stamp,
+        window_observed=DailyActual(rain=True, thunder=thunder),
+    )
+
+
+def _review(entries, actuals=None):
+    from openlocalweather.review import build_period_review
+
+    return build_period_review(entries.get, actuals or {}, sorted(entries), date(2026, 9, 29), models=["gfs", "climatology"])
+
+
+def _cell(review, model="gfs", lead=0):
+    return next(c for c in review.cells if c.model == model and c.lead_time_days == lead)
+
+
+def test_the_period_review_counts_a_busy_day_as_one():
+    d1, d2 = date(2026, 9, 20), date(2026, 9, 21)
+    entries = {
+        d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[_forecast({"gfs": _score(True, 1.0)})]),
+        d2: DailyLogEntry.model_construct(date=d2, prediction_rows=[
+            _forecast({"gfs": _score(True, 0.0)}), _forecast({"gfs": _score(False, 3.0)}),
+        ]),
+    }
+
+    got = _cell(_review(entries))
+
+    assert got.checks == 2
+    assert got.correct == pytest.approx(1.5)
+    assert got.rain_pct == pytest.approx(75.0)
+    assert got.mean_high_error_c == pytest.approx((1.0 + 1.5) / 2)
+
+
+def test_more_forecasts_in_a_day_move_no_cell_of_the_review():
+    from dataclasses import asdict
+
+    d1, d2 = date(2026, 9, 20), date(2026, 9, 21)
+
+    def entries(copies):
+        return {
+            d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[
+                _forecast({"gfs": _score(True, 1.0, 20.0, 0.1), "climatology": _score(False, 0.5, None, 0.3)}, thunder=True)
+            ] * copies),
+            d2: DailyLogEntry.model_construct(date=d2, prediction_rows=[
+                _forecast({"gfs": _score(False, -2.0, None, 0.6), "climatology": _score(True, 1.0, None, 0.2)})
+            ] * copies),
+        }
+
+    one, many = _review(entries(1)), _review(entries(9))
+
+    assert [asdict(c) for c in many.cells] == [asdict(c) for c in one.cells]
+
+
+def test_a_storm_day_is_each_window_its_own_thunder():
+    """Two forecasts on one day: the first window held a storm the model did
+    not call, the second none. Half a storm day, none called."""
+    d1 = date(2026, 9, 20)
+    missed = VerificationScore(rain_correct=True, convective_correct=False)
+    quiet = VerificationScore(rain_correct=True, convective_correct=True)
+    entries = {d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[
+        _forecast({"gfs": missed}, thunder=True), _forecast({"gfs": quiet}, thunder=False),
+    ])}
+
+    got = _cell(_review(entries))
+
+    assert got.storm_days == pytest.approx(0.5)
+    assert got.storms_called == pytest.approx(0.0)
+
+
+def test_brier_skill_pairs_a_model_and_climatology_by_day():
+    d1, d2 = date(2026, 9, 20), date(2026, 9, 21)
+    entries = {
+        d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[
+            _forecast({"gfs": _score(True, brier=0.1), "climatology": _score(True, brier=0.2)}),
+        ]),
+        # Climatology has no probability here, so the day is not paired.
+        d2: DailyLogEntry.model_construct(date=d2, prediction_rows=[_forecast({"gfs": _score(True, brier=0.9)})]),
+    }
+
+    got = _cell(_review(entries))
+
+    assert got.brier_skill_checks == 1
+    assert got.rain_brier_skill == pytest.approx(1 - 0.1 / 0.2)
+
+
+def test_the_day3_review_is_every_forecasts_claim_dated_by_the_day_it_named():
+    from openlocalweather.models import DailyActual, ModelPrediction, ModelPredictionsByLead
+
+    d1 = date(2026, 9, 20)
+    row = IssuancePredictions(
+        issued_at=datetime(2026, 9, 20, 3, 0, tzinfo=timezone.utc),
+        predictions=ModelPredictionsByLead(day3=[ModelPrediction(model="gfs", rain=True)]),
+    )
+    entries = {d1: DailyLogEntry.model_construct(date=d1, prediction_rows=[row])}
+    actuals = {date(2026, 9, 23): DailyActual(rain=True, thunder=True)}
+
+    got = _cell(_review(entries, actuals), lead=3)
+
+    assert got.checks == 1
+    assert got.earliest == date(2026, 9, 23), "dated by the day it named"
+
+
+def test_a_count_prints_whole_when_it_is_whole():
+    from openlocalweather.review import _count
+
+    assert _count(7) == "7"
+    assert _count(7.0) == "7"
+    assert _count(7.5) == "7.5"

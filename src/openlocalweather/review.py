@@ -51,7 +51,14 @@ from openlocalweather.defaults import (
 )
 from openlocalweather.models import DailyActual, VerificationScore
 from openlocalweather.verify.brier import brier_skill_score, mean_brier
-from openlocalweather.verify.scoring import LogLookup, collect_scores, mean, sample_sd
+from openlocalweather.verify.scoring import (
+    LogLookup,
+    calendar_scores_by_period,
+    collect_scores,
+    mean,
+    sample_sd,
+    window_observations_by_period,
+)
 
 
 def _standard_errors_from_zero(value: float, spread: float | None, n: int) -> float | None:
@@ -328,6 +335,164 @@ def build_weekly_review(
     return review
 
 
+def build_period_review(
+    log_lookup: LogLookup,
+    actuals: dict[date, DailyActual],
+    all_log_dates: list[date],
+    today: date,
+    models: list[str] = MODELS,
+    lead_times_days: list[int] = LEAD_TIMES_DAYS,
+    forecast_horizons: dict[str, int] | None = None,
+) -> WeeklyReview:
+    """`build_weekly_review` over PERIODS — ROADMAP item 139, stage 3c.
+
+    Every forecast is scored and each period (the local date issued) counts
+    once: a period's forecasts are averaged first, then the periods. Day+0
+    is each forecast's own 24 hours, its thunder the window's own; Day+3 and
+    Day+7 are every forecast's claim about the day it named. `checks` count
+    periods, and `correct` and the storm counts sum each period's share, so
+    they are whole numbers only while every period holds one forecast.
+
+    READ BY NOTHING PUBLISHED until the switch, stage 3f.
+    """
+    horizons = forecast_horizons or {}
+    yesterday = add_days(today, -1)
+    earliest = min(all_log_dates) if all_log_dates else yesterday
+
+    cells: list[SkillCell] = []
+    for k in lead_times_days:
+        summaries = {
+            model: [(d, _summarize_period(pairs)) for d, pairs in _periods_with_weather(
+                log_lookup, all_log_dates, actuals, model, k
+            )]
+            for model in models
+        }
+        # Paired by period, for `build_weekly_review`'s reason: a skill score
+        # compares two forecasts of the same weather or it compares nothing.
+        reference_by_date = {
+            d: p.rain_brier for d, p in summaries.get(CLIMATOLOGY_MODEL_ID, []) if p.rain_brier is not None
+        }
+        for model in models:
+            cells.append(_period_cell(model, k, summaries[model], reference_by_date))
+
+    review = WeeklyReview(
+        period_start=earliest,
+        period_end=yesterday,
+        days_with_predictions=len(all_log_dates),
+        days_verified=len({d for d in actuals if earliest <= d <= yesterday}),
+        cells=cells,
+    )
+    review.findings = _derive_findings(cells, lead_times_days, horizons)
+    review.data_sufficiency = _describe_sufficiency(review, cells, lead_times_days, horizons)
+    return review
+
+
+@dataclass
+class _Period:
+    """One period's forecasts for one model, averaged. The error means and
+    Brier skip a forecast without the figure, as the per-check means do."""
+
+    rain: float
+    rain_brier: float | None
+    high: float | None
+    low: float | None
+    wind: float | None
+    onset: float | None
+    mslp: float | None
+    cloud: float | None
+    precip: float | None
+    storm: float
+    storm_called: float
+
+
+def _periods_with_weather(
+    log_lookup: LogLookup, log_dates: list[date], actuals: dict[date, DailyActual], model: str, lead: int
+) -> list[tuple[date, list[tuple[VerificationScore, DailyActual | None]]]]:
+    """Each period's scores beside the weather each was scored against."""
+    if lead == 0:
+        return window_observations_by_period(log_lookup, log_dates, model)
+
+    return [
+        (d, [(s, actuals.get(add_days(d, lead))) for s in scores])
+        for d, scores in calendar_scores_by_period(log_lookup, log_dates, actuals, model, lead)
+    ]
+
+
+def _summarize_period(pairs: list[tuple[VerificationScore, DailyActual | None]]) -> _Period:
+    scores = [s for s, _ in pairs]
+
+    def storm(called: bool | None) -> float:
+        # `build_weekly_review`'s storm day: a thunder verdict, and thunder
+        # observed where this forecast was scored. An unknown observation is
+        # no storm, never a missed one.
+        hits = [
+            s for s, seen in pairs
+            if s.convective_correct is not None and seen is not None and seen.thunder
+            and (called is None or s.convective_correct is called)
+        ]
+        return len(hits) / len(pairs)
+
+    return _Period(
+        rain=mean([1.0 if s.rain_correct else 0.0 for s in scores]),
+        rain_brier=mean_brier([s.rain_brier for s in scores]),
+        high=mean([s.high_error_c for s in scores]),
+        low=mean([s.low_error_c for s in scores]),
+        wind=mean([s.wind_error_kmh for s in scores]),
+        onset=mean([s.onset_error_hrs for s in scores]),
+        mslp=mean([s.mslp_error_hpa for s in scores]),
+        cloud=mean([s.cloud_error_pct for s in scores]),
+        precip=mean([s.precip_error_mm for s in scores]),
+        storm=storm(None),
+        storm_called=storm(True),
+    )
+
+
+def _period_cell(
+    model: str, lead: int, periods: list[tuple[date, _Period]], reference_by_date: dict[date, float]
+) -> SkillCell:
+    """A `SkillCell` over periods, newest first, dated by the day each names."""
+    checks = len(periods)
+    correct = sum(p.rain for _, p in periods)
+
+    def values(field: str) -> list[float | None]:
+        return [getattr(p, field) for _, p in periods]
+
+    return SkillCell(
+        model=model,
+        lead_time_days=lead,
+        checks=checks,
+        correct=correct,
+        rain_pct=(100 * correct / checks) if checks else None,
+        confidence=confidence_for(checks),
+        mean_high_error_c=mean(values("high")),
+        mean_low_error_c=mean(values("low")),
+        mean_wind_error_kmh=mean(values("wind")),
+        mean_onset_error_hrs=mean(values("onset")),
+        mean_mslp_error_hpa=mean(values("mslp")),
+        mean_cloud_error_pct=mean(values("cloud")),
+        mean_precip_error_mm=mean(values("precip")),
+        sd_high_error_c=sample_sd(values("high")),
+        sd_low_error_c=sample_sd(values("low")),
+        sd_wind_error_kmh=sample_sd(values("wind")),
+        sd_cloud_error_pct=sample_sd(values("cloud")),
+        earliest=add_days(periods[-1][0], lead) if periods else None,
+        latest=add_days(periods[0][0], lead) if periods else None,
+        mean_rain_brier=mean_brier(values("rain_brier")),
+        duplicate_of=duplicate_of(model),
+        brier_checks=sum(1 for b in values("rain_brier") if b is not None),
+        cloud_checks=sum(1 for c in values("cloud") if c is not None),
+        storm_days=sum(p.storm for _, p in periods),
+        storms_called=sum(p.storm_called for _, p in periods),
+        **_paired_skill(periods, reference_by_date),
+    )
+
+
+def _count(n: float) -> str:
+    """A count as a finding prints it: whole where it is whole, which it is
+    unless a period holds forecasts that disagree (item 139)."""
+    return str(int(n)) if float(n).is_integer() else f"{n:.1f}"
+
+
 def beyond_reach(model: str, lead_time_days: int, horizons: dict[str, int]) -> bool:
     """Whether this lead lies past the furthest the source has ever forecast
     here. Unknown horizon means not beyond — the claim needs evidence."""
@@ -376,8 +541,8 @@ def _derive_findings(
                         f"and {worst.model} the weakest."
                     ),
                     evidence=(
-                        f"{best.model} {best.correct}/{best.checks} ({best.rain_pct:.0f}%) "
-                        f"vs {worst.model} {worst.correct}/{worst.checks} ({worst.rain_pct:.0f}%); "
+                        f"{best.model} {_count(best.correct)}/{best.checks} ({best.rain_pct:.0f}%) "
+                        f"vs {worst.model} {_count(worst.correct)}/{worst.checks} ({worst.rain_pct:.0f}%); "
                         f"a {gap:.0f}-point gap, above the {REVIEW_COMPARISON_MIN_GAP_PCT:.0f}-point noise floor."
                     ),
                     confidence=min(best.confidence, worst.confidence, key=_confidence_rank),
@@ -478,7 +643,7 @@ def _derive_findings(
                 ),
                 evidence=(
                     f"Its CAPE stayed below the convective threshold on "
-                    f"{missed} of {c.storm_days} days the station observed "
+                    f"{_count(missed)} of {_count(c.storm_days)} days the station observed "
                     f"thunder."
                 ),
                 # From the STORM days, not the cell's total: a model judged on
@@ -509,7 +674,7 @@ def _derive_findings(
                 key=lambda c: -c.rain_pct,
             )
             bar_evidence = (
-                f"{bar.model} {bar.correct}/{bar.checks} ({bar.rain_pct:.0f}%), the best of "
+                f"{bar.model} {_count(bar.correct)}/{bar.checks} ({bar.rain_pct:.0f}%), the best of "
                 f"{len(eligible_baselines)} trivial baseline(s); a model has to clear it by "
                 f"more than the {REVIEW_COMPARISON_MIN_GAP_PCT:.0f}-point noise floor to count."
             )

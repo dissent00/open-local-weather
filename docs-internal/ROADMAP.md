@@ -56,10 +56,10 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: stage 3, steps a and b built.** The period record and a
-   window claim from every Day+0 source exist, read by nothing published.
-   Next: (c) the review on periods, then the calibration, the
-   next-24-hours call, and the switch. See the item.
+2. **Item 139: stage 3, steps a-c built.** The period record, a window
+   claim from every Day+0 source and the period review exist, read by
+   nothing published. Next: (d) the calibration, (e) the next-24-hours
+   call, (f) the switch. See the item.
 3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
    not model calls). Is a submit accepted while direct calls are refused?
    Does the queue serve inside its waits? Then, per run and in API calls:
@@ -20679,7 +20679,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Stages 1-2 SHIPPED 2026-09-29; stage 3 (the switch) in progress, steps a-b built**
+## 139. The window is scored and nobody reads it · **Stages 1-2 SHIPPED 2026-09-29; stage 3 (the switch) in progress, steps a-c built**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -21130,6 +21130,18 @@ c. **The review on periods.** Counts become periods and means go
    thunder from `convective_correct` and the claim's CAPE (exact, but
    indirect, and blank for a source with no CAPE). Storing is the
    recommendation.
+   **Built 2026-09-29.** Each scored row keeps `window_observed`, the
+   weather its window was scored against (the row's window only; the met
+   service's own 21:00-21:00 gets none), filled on the 23 stored rows by a
+   rescore that moved no score. `build_period_review` builds the cells from
+   one summary per period; counts are periods, and `correct` and the storm
+   counts sum each period's share, printed whole where whole ("persistence
+   7.5/13"). On the record it gives 42 findings to the calendar's 43, at
+   "usable" rather than "established" confidence: Day+0 rests on 13
+   periods, not 49 checks. **For the operator:** the Day+0 ranking now sets
+   Kenya Met's hit rate on its own 21:00-21:00 beside the models' on each
+   run's window, "icon_seamless 10.5/13 (81%) vs kenya_met 6/13 (46%)".
+   Each is scored on what it claimed; the hours differ.
 d. **The gust calibration** from window-basis errors, gated on wind checks.
 e. **The next-24-hours call**, per its design above. Harness run first.
    Python, vectors, Dart, re-pin.
