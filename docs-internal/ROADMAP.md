@@ -15,6 +15,68 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-09-29
+
+The 09-28 block below is kept for its reasoning. Its first pick is one third
+answered, below; the rest carry forward.
+
+### What changed, 2026-09-28 to 09-29
+
+**Item 187's prompt fixes shipped and read well once.** The write-up is
+handed the sky tile's words and, through SKY BY DAY, a word per day beyond
+today; the weighting notes no longer narrate the call's reasoning; three
+stale lines went. The 09-29 03:01Z write-up, the first in production, used
+every sky word as given and narrated no weighting. SKY BY DAY runs a band
+clear beyond today on ten days (`tools/sky_lead_skill.py`), and the operator
+chose to wait for 30.
+
+**Item 186's queue wrote its first write-up**, after two fixes to what the
+09-28 15:01Z run exposed: a poll now records its outcome, and a queued job
+that is merely slow no longer bars the queue from the write-up. On 09-29
+03:01Z the direct write-up got a 503; the queue accepted it in 0.7 s and it
+was done at the first poll.
+
+**Polls do not count as model calls**, on the first day read. For Pacific
+09-28 the console showed 6 model calls and 9 API calls. The ledger holds 2
+direct calls, 2 submits and 3 polls, so model calls are 2 + 2 x 2 exactly;
+with polls they would be 9. The API count is one over the 8 known requests,
+the ledger's 7 and the operator's fetch.
+
+**Two feeds are down.** Kenya Met's bulletin timed out on 09-29 and the
+operator confirms the site is down. HKKI answered with rows the run could
+not read, which the 09-21 health check had already flagged as recurring.
+
+### What is next, and why
+
+1. **The weekly health check has not passed since 09-14.** The 09-21 run
+   exited 1; its log carries warnings, among them station readings
+   unavailable across recent issuances and a job without the gateway's
+   `LLM_BASE_URL` and `LLM_MODEL`. The 09-28 run stopped at
+   `action_required` with no job started: the approval gate the 09-22 block
+   below records, back. It matters beyond itself, because item 2's October
+   gate is announced only by this check. Find what exits 1; the approval
+   setting is GitHub's, not the repo's, so it is the operator's to check.
+2. **Item 139's reporting decision is overdue.** It waited for ten paired
+   days, which arrived 09-26. Read them and bring the operator the choice.
+3. **Read item 186's trial around 10-01.** Polls are answered; two questions
+   remain. Is a submit accepted while direct calls are refused? Does the
+   queue serve the scored call inside its 16 minutes?
+4. **Item 2 from 10-01**, once the health check runs.
+5. **Around 10-12:** item 123's count of write-ups naming a sky other than
+   the tile's, and item 187's thunder-first question on the same write-ups.
+6. **Around 10-20:** re-run `tools/sky_lead_skill.py` at 30 target days and
+   decide on a correction.
+7. **The operator's:** item 167 (which agency and source for UV) and item
+   173 point 1 (the code's numbers as the app's forecast when the LLM fails).
+
+Lower, and why: item 174 (prompt size) is about money. Items 181 and 182
+matter only before a paid model is recommended. Item 155 is an audit, 164
+and 165 are tidy-ups, and item 175's ten unset defaults are listed debt. One
+lead: none of 15 Haiku write-ups named Kenya Met's declining rain trend;
+check production write-ups before changing a rule.
+
+---
+
 ## Working order, as of 2026-09-28
 
 The 2026-09-22 block below is kept for its reasoning. Its first pick is
@@ -26634,6 +26696,15 @@ correction no help at Day+0. Re-run the tool at about 30 target days.
 **Operator's decision, 2026-09-28: wait for 30 target days**, around
 10-20, and decide then. Nothing is corrected until that re-run.
 
+### 2026-09-29 03:01Z: the first production write-up under these rules
+
+Today's Forecast used the tile's words in order ("mostly cloudy skies early,
+turning overcast by midday and back to mostly cloudy by evening") and named
+no model. The Extended Outlook used all seven SKY BY DAY words, grouping only
+days that share one ("partly cloudy conditions prevail Saturday to Monday").
+The Confidence Notes stated the review's findings and yesterday's result and
+narrated no weighting. One write-up, by Gemini through the queue.
+
 ---
 
 ## 186. Queue Gemini when it refuses · **Trial started 2026-09-28**
@@ -26765,6 +26836,20 @@ providers do, or the rule could not see it.
 503 poll is overload rather than something else, and the unit cost: a bad
 day now spends one more submit and up to four more polls, inside the queue
 link's ceiling of 6.
+
+### 2026-09-29 03:01Z: the queue's first write-up, and the first console day
+
+The scored call went direct (HTTP 200, 18.2 s). The direct write-up got a
+503; the queue accepted the job in 0.7 s and it was complete at the first
+poll, +8 min, whose ledger row reads `http_200`. No degradation but HKKI's.
+
+**Polls are not model calls**, per the console for Pacific 09-28 (07:00Z
+09-28 to 07:00Z 09-29): 6 model calls and 9 API calls. The ledger's Gemini
+rows in that window are 2 direct calls, 2 submits and 3 polls: 2 + 2 x 2 =
+6, and 9 had polls counted. The API count is one above the 8 requests known
+(the ledger's 7 and the operator's keyed fetch); the operator's first,
+keyless attempt is the likeliest extra, unconfirmed. One day; read again at
+10-01.
 
 **Built and tested.** Ten new test functions were watched failing before the
 code existed. One end-to-end test, written after, drives the real providers,
