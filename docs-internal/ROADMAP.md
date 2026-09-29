@@ -20677,7 +20677,7 @@ and contract item 8.
 
 ---
 
-## 139. The window is scored and nobody reads it · **Step 1 read 2026-09-17 and it found a scorer defect, fixed; the reporting decision waits for ten paired days (2026-09-26)**
+## 139. The window is scored and nobody reads it · **Step 1 read 2026-09-17 and it found a scorer defect, fixed; the ten-day read done 2026-09-29, the reporting decision is the operator's**
 
 > **Decide nothing before reading the first scorable window**, operator's call
 > 2026-09-16. It lands 2026-09-17 — the 09-15 row's 24 hours finish when 09-16
@@ -20796,6 +20796,32 @@ already the operator's and is now recorded here rather than argued again:
 the two series are never merged into one figure, and a reader is never shown
 a number whose basis changed without a mark. When the page changes it gains
 a basis beside the lead, not a new number under the old heading.
+
+### 2026-09-29: the ten-day read
+
+**Calendar against window, same first issuance** (`olw window-vs-day`, 13
+paired days): rain right 10/10, 12/11, 11/12, 9/10 and 8/8 for GFS, ECMWF,
+ICON, UKMO and best_match; the high error identical to a tenth for every
+model; cloud within 4 points. At 06:01 the two bases say the same thing,
+which is what item 104's 06:00 measurement predicted.
+
+**Early against late, both as windows** (`olw early-vs-late`, 9 days): rain
+right 31/45 for the day's first call and 27/45 for its last; highs within a
+degree either way; cloud mixed. Scored as windows, the later call gets no
+credit for starting later. That is the property the reframe is for.
+
+**The calendar series has already met the hindcast once.** Of 40 days with
+prediction rows, one had its first scored row after noon: 2026-09-12, issued
+18:03 local after the morning run failed (item 117's day). Its calendar
+verification reads "all models successfully verified the rain occurrence",
+with highs off by 0.0 and -0.2 C: a run that already held the day's rain and
+high in its guidance, scored as a forecast of it.
+
+**So:** switching Day+0 to the window changes almost nothing in the
+published figures for a deployment whose first run is at 06:00, and removes
+the one way the calendar series is already wrong. What it changes is what
+the record can say: every issuance, late ones included, becomes the same
+kind of claim.
 
 Related: items 104 (contract item 2, which specified this), 140, 141, 131,
 122, 157.
