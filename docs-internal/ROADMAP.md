@@ -27400,6 +27400,27 @@ served 1 of 7 scored calls 09-21 to 09-27 and none on 09-28 or 09-29.
 polls are refused. The two job IDs are in the run log (36586947628); one
 GET each, after the fact, says `completed` or not.
 
+### 2026-09-30: the queue failed the morning too, and the evening run goes
+
+The 03:01Z run: direct served the scored call; the write-up's direct call,
+13 s later, got 503; the queue accepted it and both polls (+30, +60 min) got
+HTTP 429 "Your project has exceeded a quota". Ten of our Gemini requests
+fell in the quota day before it (from 08:00Z, item 179): the 15:01Z run's 1
+direct, 2 submits and 3 polls, and this run's 2 direct and 1 submit. The
+page published at 04:02Z without a write-up, the figures held an hour.
+
+**The queue read 1 of its 6 jobs**, costs about 2 quota units a submit, and
+its polls count; the free fallback served the scored call four times in a
+week and the prose never. **The operator's decision:** one run a day, off
+peak; the 15:01Z cron is removed (by the operator); make the 03:01Z run
+reliable; stop the rest of the roadmap's build work and clean up the
+documentation instead.
+
+The 03:01Z record since the revert to `generateContent` (09-26): the scored
+call served on the first try 3 of 5 days; the write-up failed 13-21 s after
+a served scored call on 3 of 4 days, and a wait of minutes rescued it 2
+times in 3 (09-26 after 32 s, 09-27 after 7 min; 09-28 not in 9 min).
+
 ---
 
 ## 184. OpenRouter served one model and the record named another · **SHIPPED 2026-09-27**
