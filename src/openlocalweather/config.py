@@ -169,6 +169,11 @@ class LLMProviderEntry(BaseModel):
     # `health_check_poll_delays_s` is the weekly check's: no reader is waiting
     # on it, so it asks late and seldom (2026-09-29).
     max_attempts: int | None = None
+    # The gaps before a Gemini link's retries, in seconds; `max_attempts` may
+    # be at most one more than their count. One run a day (2026-09-30): at
+    # 03:01Z a refusal cleared after 32 s once and 7 min once, and three
+    # tries inside a minute all failed, so the live link waits 3 and 10 min.
+    retry_delays_s: list[int] | None = None
     background: bool = False
     poll_delays_s: list[int] | None = None
     write_up_poll_delays_s: list[int] | None = None
@@ -202,6 +207,19 @@ class LLMProviderEntry(BaseModel):
                 raise ValueError(
                     f"max_attempts must be 1..{GEMINI_MAX_ATTEMPTS}, the length of "
                     f"Gemini's retry schedule; got {self.max_attempts}."
+                )
+
+        if self.retry_delays_s is not None:
+            if self.kind not in GEMINI_KINDS:
+                raise ValueError(f"retry_delays_s is for {', '.join(sorted(GEMINI_KINDS))}.")
+            if not self.retry_delays_s or any(d < 0 for d in self.retry_delays_s):
+                raise ValueError("retry_delays_s must be a non-empty list of delays in seconds, none negative.")
+            # Unset, max_attempts is the default schedule's length.
+            attempts = self.max_attempts or GEMINI_MAX_ATTEMPTS
+            if attempts > len(self.retry_delays_s) + 1:
+                raise ValueError(
+                    f"retry_delays_s holds {len(self.retry_delays_s)} gap(s), too few for "
+                    f"{attempts} attempts: each retry waits one. Set max_attempts."
                 )
 
         schedules = {
@@ -321,6 +339,11 @@ class LocationConfig(BaseModel):
     # WHICH CALLS the chain's later links may serve — see FallbackCalls. The
     # default is the behaviour every deployment had before 2026-09-25.
     llm_fallback_calls: FallbackCalls = FallbackCalls.BOTH_CALLS
+
+    # Seconds between the scored call returning and the write-up call. At
+    # 03:01Z the write-up drew a 503 13-21 s after a served scored call on 3
+    # of 4 days (09-27 to 09-30); a pause costs no request. 0 is none.
+    llm_write_up_delay_s: int = Field(default=0, ge=0)
 
     @field_validator("llm_providers")
     @classmethod

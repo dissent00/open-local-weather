@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+import time
 from collections import Counter
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
@@ -735,6 +736,7 @@ def _generate_forecast(
     holder: dict,
     *,
     fallback_calls: FallbackCalls = FallbackCalls.BOTH_CALLS,
+    write_up_delay_s: int = 0,
 ) -> tuple[forecast_call.ForecastCall, ResponseMeta, dict[str, tuple[str, str]]]:
     """The two-call forecast, plus one meta describing both calls.
 
@@ -761,6 +763,9 @@ def _generate_forecast(
         served[name] = served_identity(provider)
         if name == forecast_call.JUDGMENT:
             routing.judgment_returned()
+            # See LocationConfig.llm_write_up_delay_s.
+            if write_up_delay_s:
+                time.sleep(write_up_delay_s)
 
     routing.install()
     try:
@@ -4029,6 +4034,7 @@ def _issue_forecast(
         user_prompt,
         _last_response,
         fallback_calls=deps.location.llm_fallback_calls,
+        write_up_delay_s=deps.location.llm_write_up_delay_s,
     )
     _verify_spend()
     llm_response = _call.response

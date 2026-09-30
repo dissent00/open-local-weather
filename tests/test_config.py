@@ -302,3 +302,63 @@ def test_a_queue_setting_that_would_do_nothing_is_rejected(fields, why):
 
     with pytest.raises(ValidationError, match=why):
         LLMProviderEntry(**fields)
+
+
+# ---------------------------------------------------------------------------
+# One run a day — the operator's decision, 2026-09-30
+# ---------------------------------------------------------------------------
+
+
+def test_a_gemini_link_may_space_its_retries():
+    from openlocalweather.config import LLMProviderEntry
+
+    entry = LLMProviderEntry(kind="gemini", max_attempts=3, retry_delays_s=[180, 420])
+
+    assert entry.retry_delays_s == [180, 420]
+
+
+@pytest.mark.parametrize("fields, why", [
+    ({"kind": "openai", "retry_delays_s": [180]}, "retry_delays_s"),
+    # Each attempt after the first waits one gap, so the gaps bound the attempts.
+    ({"kind": "gemini", "max_attempts": 3, "retry_delays_s": [180]}, "retry_delays_s"),
+    # Unset, max_attempts is the default schedule's four: the third retry
+    # would look for a gap that is not there, mid-run.
+    ({"kind": "gemini", "retry_delays_s": [180, 420]}, "retry_delays_s"),
+    ({"kind": "gemini", "retry_delays_s": []}, "retry_delays_s"),
+    ({"kind": "gemini", "retry_delays_s": [-1]}, "retry_delays_s"),
+])
+def test_a_retry_schedule_that_cannot_hold_is_rejected(fields, why):
+    from pydantic import ValidationError
+
+    from openlocalweather.config import LLMProviderEntry
+
+    with pytest.raises(ValidationError, match=why):
+        LLMProviderEntry(**fields)
+
+
+def test_the_write_up_may_wait_after_the_scored_call():
+    from openlocalweather.config import load_location_config
+
+    assert load_location_config("config/location.yaml").llm_write_up_delay_s == 120
+
+
+def test_the_live_config_spends_under_ten_gemini_calls_a_day():
+    """The operator's target, 2026-09-30: one reliable forecast a day for
+    fewer than 10 Gemini calls. A run makes two calls (the scored call and
+    the write-up), each up to `max_attempts`; the write-up's second chance
+    makes one more call on the same link. Derived from the live config so
+    a change to either fails here."""
+    from openlocalweather.config import load_location_config
+    from openlocalweather.spend import LLM_CALLS_PER_FORECAST
+
+    location = load_location_config("config/location.yaml")
+    gemini = [e for e in location.llm_providers if not isinstance(e, str) and e.kind == "gemini"]
+    [direct] = gemini
+    second_chance_calls = 1
+
+    worst_case = (LLM_CALLS_PER_FORECAST + second_chance_calls) * direct.max_attempts
+
+    assert worst_case < 10
+    assert not any(not isinstance(e, str) and e.kind == "gemini-interactions" for e in location.llm_providers), (
+        "the queue left the chain on 2026-09-30"
+    )

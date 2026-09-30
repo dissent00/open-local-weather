@@ -1,0 +1,173 @@
+"""The write-up's second chance — `olw write-up`, 2026-09-30.
+
+One run a day (the operator's decision). When its write-up was refused, the
+same job tries once more about an hour later, for the prose alone: the
+scored call is stored and immutable, so a repair is one request, not two.
+"""
+
+import hashlib
+import json
+from datetime import datetime, timezone
+
+import pytest
+
+from openlocalweather import cli
+from openlocalweather.config import load_location_config
+from openlocalweather.dates import today_in_tz
+from openlocalweather.llm.errors import LLMUnavailableError
+from openlocalweather.llm.prompt import build_narrative_prompt
+from openlocalweather.llm.schema import GeminiNarrativeResponse
+from openlocalweather.models import (
+    DEGRADATION_NARRATIVE,
+    DailyLogEntry,
+    IssuancePredictions,
+    LogEntryMeta,
+    ModelPrediction,
+    ModelPredictionsByLead,
+    RunDegradation,
+)
+from openlocalweather.store import log_store
+
+CONFIG = "config/location.yaml"
+PLACEHOLDER = "## Write-up unavailable"
+
+
+class FakeWriter:
+    model = "gemini-3.6-flash"
+    before_attempt = None
+    after_attempt = None
+    after_response = None
+
+    def __init__(self, refuse: bool = False):
+        self.refuse = refuse
+        self.calls = []
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        if self.before_attempt is not None:
+            self.before_attempt()
+        self.calls.append((system_prompt, user_prompt, response_schema.__name__))
+        if self.refuse:
+            raise LLMUnavailableError("Gemini request failed after 3 attempts: Gemini returned HTTP 503")
+        return GeminiNarrativeResponse(yesterday_verification="Checked.", today_narrative="## Today's Forecast\nDry.")
+
+
+def _day():
+    return today_in_tz(load_location_config(CONFIG).timezone)
+
+
+def _store(tmp_path, *, missing: bool):
+    day = _day()
+    entry = DailyLogEntry(
+        date=day, rain_expected="Dry / No Rain", temp_high_c=31.0, temp_low_c=19.0,
+        temp_high_low_display="31/19", mslp_trend_24h="steady", synoptic_pattern="weak gradient",
+        narrative_markdown=PLACEHOLDER if missing else "## Today's Forecast\nWritten.",
+        meta=LogEntryMeta(
+            generated_at_utc=datetime.now(timezone.utc), llm_provider="test", llm_model="test",
+            pipeline_version="0",
+            degradations=[RunDegradation(code=DEGRADATION_NARRATIVE, summary="s", detail="d")] if missing else [],
+        ),
+        prediction_rows=[IssuancePredictions(
+            issued_at=datetime.now(timezone.utc),
+            predictions=ModelPredictionsByLead(
+                day0=[ModelPrediction(model="olw_blend", rain=False, rain_probability_pct=10)],
+            ),
+        )],
+    )
+    log_store.write_log_entry(tmp_path, entry)
+
+    flags = dict(verification_already_written=False, ground_stations_configured=True, local_bulletin_configured=True)
+    sha = hashlib.sha256(build_narrative_prompt(load_location_config(CONFIG), **flags).encode()).hexdigest()
+    (tmp_path / "prompts").mkdir(exist_ok=True)
+    (tmp_path / "prompts" / f"{day}.json").write_text(json.dumps({
+        "date": str(day), "note": "",
+        "issuances": [{"issued_at": "x", "llm_model": "x", "system_prompt_sha256": "",
+                       "judgment_prompt_sha256": "", "narrative_prompt_sha256": sha,
+                       "user_prompt": "THE ARCHIVED USER PROMPT"}],
+    }))
+    return day
+
+
+@pytest.fixture
+def wired(monkeypatch, tmp_path):
+    """The command with its model, pages and clock faked; returns what each saw."""
+    seen = {"slept": [], "providers": [], "published": []}
+    writer = FakeWriter()
+
+    def build(**kwargs):
+        seen["providers"].append(kwargs.get("providers"))
+        return writer
+
+    class Publisher:
+        def publish(self, entry):
+            seen["published"].append(entry.narrative_markdown)
+
+    monkeypatch.setattr(cli, "_build_llm_provider", build)
+    monkeypatch.setattr(cli, "_build_pages_publisher", lambda *a, **k: Publisher())
+    monkeypatch.setattr(cli.time, "sleep", seen["slept"].append)
+    seen["writer"] = writer
+    return seen
+
+
+def _run(tmp_path):
+    return cli.main([
+        "write-up", "--config", CONFIG, "--data-dir", str(tmp_path), "--docs-dir", str(tmp_path / "docs"),
+        "--public-url", "https://example.test/", "--wait-s", "3600",
+    ])
+
+
+def test_a_day_with_its_write_up_spends_nothing_and_waits_for_nothing(tmp_path, wired):
+    _store(tmp_path, missing=False)
+
+    assert _run(tmp_path) == 0
+    assert wired["providers"] == [], "no provider built, so no request"
+    assert wired["slept"] == []
+
+
+def test_a_missing_write_up_is_written_after_the_wait_and_republished(tmp_path, wired):
+    day = _store(tmp_path, missing=True)
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert wired["slept"] == [3600]
+    assert entry.narrative_markdown == "## Today's Forecast\nDry."
+    assert not [d for d in entry.meta.degradations or [] if d.code == DEGRADATION_NARRATIVE]
+    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
+    assert wired["published"] == ["## Today's Forecast\nDry."]
+    [(_, user_prompt, schema)] = wired["writer"].calls
+    assert schema == "GeminiNarrativeResponse"
+    assert user_prompt.startswith("THE ARCHIVED USER PROMPT"), "the archived prompt, with the call appended"
+
+
+def test_only_the_links_that_may_write_are_asked(tmp_path, wired):
+    """`llm_fallback_calls: scored_call` keeps the gateway off the write-up
+    (item 180: the free model finished 1 narrative in 5)."""
+    _store(tmp_path, missing=True)
+
+    _run(tmp_path)
+
+    [providers] = wired["providers"]
+    assert [getattr(p, "kind", p) for p in providers] == ["gemini"]
+
+
+def test_a_refused_second_chance_leaves_the_day_as_it_was(tmp_path, wired):
+    day = _store(tmp_path, missing=True)
+    wired["writer"].refuse = True
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert entry.narrative_markdown == PLACEHOLDER
+    assert [d for d in entry.meta.degradations or [] if d.code == DEGRADATION_NARRATIVE]
+    assert wired["published"] == []
+
+
+def test_a_prompt_that_cannot_be_rebuilt_is_refused_before_the_wait(tmp_path, wired):
+    """An hour does not fix a prompt that changed since the issuance."""
+    day = _store(tmp_path, missing=True)
+    archive = tmp_path / "prompts" / f"{day}.json"
+    archive.write_text(archive.read_text().replace('"narrative_prompt_sha256": "', '"narrative_prompt_sha256": "x'))
+
+    assert _run(tmp_path) == 1
+    assert wired["slept"] == []
+    assert wired["providers"] == []

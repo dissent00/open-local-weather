@@ -176,6 +176,29 @@ def test_a_link_can_be_limited_to_one_attempt():
     assert m.call_count == 1
 
 
+def test_a_link_waits_on_its_own_schedule(monkeypatch):
+    """One run a day (the operator, 2026-09-30). At 03:01Z a refusal cleared
+    after 32 s once and after 7 min once, and three tries inside a minute
+    all failed, so a link may set its own gaps: +3 and +10 minutes."""
+    import openlocalweather.llm.gemini as gemini_mod
+
+    waited = []
+    monkeypatch.setattr(gemini_mod.time, "sleep", waited.append)
+    with requests_mock.Mocker() as m:
+        m.post(URL, [
+            {"status_code": 503, "json": {"error": {"code": 503, "message": "high demand"}}},
+            {"status_code": 503, "json": {"error": {"code": 503, "message": "high demand"}}},
+            {"json": gemini_envelope(VALID_PAYLOAD)},
+        ])
+        provider = GeminiProvider(api_key="key", model=MODEL)
+        provider.max_attempts = 3
+        provider.retry_delays_s = (180, 420)
+        provider.generate("s", "u", GeminiForecastResponse)
+
+    assert waited == [180, 420]
+    assert m.call_count == 3
+
+
 def test_non_retryable_error_fails_fast_without_retrying():
     # identically on retry — burning quota and time for nothing.
     import openlocalweather.llm.gemini as gemini_mod

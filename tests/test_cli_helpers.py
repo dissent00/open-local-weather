@@ -286,7 +286,7 @@ def _stub_the_other_health_checks(monkeypatch):
     monkeypatch.setattr(cli.requests, "get", lambda *args, **kwargs: QuietFeed())
 
 
-def test_the_health_check_polls_the_queue_on_its_own_schedule(monkeypatch, tmp_path):
+def test_the_health_check_spends_no_gemini_call(monkeypatch, tmp_path):
     """2026-09-29: the weekly check built the forecast's chain and, with
     Gemini refusing, waited on the queue at +8 and +16 min. Nobody reads the
     check the moment it runs, so it polls late on its own schedule, and the
@@ -319,12 +319,12 @@ def test_the_health_check_polls_the_queue_on_its_own_schedule(monkeypatch, tmp_p
     except SystemExit:
         pass
 
-    assert seen == [("GeminiInteractionsProvider", (1800, 1800))], seen
-    # THE GATEWAY FIRST, THEN THE QUEUE, AND NO DIRECT GEMINI -- the
-    # operator, 2026-09-29: the check should spend none of the user's Gemini
-    # calls when it can help it. It still asks about the configured Gemini
-    # model, not the gateway's that now leads the chain.
-    assert asked == [("gemini-3.6-flash", ["OpenAICompatProvider", "GeminiInteractionsProvider"])], asked
+    assert seen == [], seen
+    # THE GATEWAY ALONE since the queue left the chain (2026-09-30), and no
+    # direct Gemini (the operator, 2026-09-29): the check spends none of the
+    # user's Gemini calls. It still asks about the configured Gemini model,
+    # not the gateway's that now leads the chain.
+    assert asked == [("gemini-3.6-flash", ["OpenAICompatProvider"])], asked
 
 
 def _observed_at(offset_hours):
@@ -423,28 +423,17 @@ def test_the_live_config_is_what_we_think_it_is():
 
     live = load_location_config("config/location.yaml")
     # THE ORDER IS THE CHANGE — ROADMAP item 81, 2026-09-21. Gemini answers
-    # when it can and the gateway takes what it sheds. Item 186, 2026-09-28:
-    # Gemini direct once, then Gemini's queue, then the gateway.
-    direct, queue, gateway = live.llm_providers
-    assert (direct.kind, direct.max_attempts) == ("gemini", 1)
-    assert (queue.kind, queue.background, queue.max_attempts) == ("gemini-interactions", True, 1)
-    # The operator's waits: 16 minutes for the scored call, which has the
-    # gateway behind it, and 60 for the write-up, which has nothing. Polled
-    # once and twice (2026-09-29): polls count as API calls on the console.
-    assert queue.poll_delays_s == [960]
-    assert queue.write_up_poll_delays_s == [1800, 1800]
-    # The weekly check has no reader waiting, so it asks late: +30 and +60
-    # min. The operator's call, 2026-09-29.
-    assert queue.health_check_poll_delays_s == [1800, 1800]
-    # PER RUN, the operator's choice 2026-09-29: direct once per call, and
-    # the queue two submits plus the scored call's poll and the write-up's two.
-    assert direct.max_calls_per_run == 2
-    assert queue.max_calls_per_run == 2 + len(queue.poll_delays_s) + len(queue.write_up_poll_delays_s)
-    # The 24h ceilings are runaway guards, and this deployment runs twice a
-    # day: two runs' allowance must fit, or a run is refused for an earlier
-    # run's spending -- which the queue's old 6 did after one bad run.
+    # when it can and the gateway takes what it sheds. Item 186, 2026-09-30:
+    # one run a day, the queue gone, Gemini direct three times per call, 3
+    # and 10 minutes apart.
+    direct, gateway = live.llm_providers
+    assert (direct.kind, direct.max_attempts, direct.retry_delays_s) == ("gemini", 3, [180, 420])
+    # PER RUN: three tries for each of the run's two calls.
+    assert direct.max_calls_per_run == 2 * direct.max_attempts
+    # The 24h ceiling is a runaway guard: two mornings can fall in one
+    # rolling 24 hours, and a run refused for yesterday's spending is the
+    # failure the guard exists to prevent.
     assert direct.max_calls_per_24h >= 2 * direct.max_calls_per_run
-    assert queue.max_calls_per_24h >= 2 * queue.max_calls_per_run
     assert gateway == "openai"
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at

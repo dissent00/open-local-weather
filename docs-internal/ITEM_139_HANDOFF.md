@@ -1,5 +1,9 @@
 # Item 139 stage 3: handoff, 2026-09-29
 
+**PARKED 2026-09-30.** The operator stopped the build work: one run a day,
+made reliable (item 186), and a documentation cleanup instead. Everything
+below stands as the state to resume from.
+
 For the next session. The reasoning lives in ROADMAP item 139 ("Design,
 2026-09-29: the forecaster's call means the next 24 hours" and "Stage 3,
 the build order") and item 188; this file is the working state and the

@@ -165,6 +165,9 @@ class GeminiProvider:
     # one of the day's 20 where the queue is the better bet. Never above
     # MAX_ATTEMPTS: config refuses it, and the budget guard assumes it.
     max_attempts = MAX_ATTEMPTS
+    # The gap before each retry. A link may set its own (location.yaml): one
+    # run a day has room for longer waits than two did (2026-09-30).
+    retry_delays_s: tuple[int, ...] = RETRY_DELAYS_S
 
     def __init__(
         self,
@@ -231,7 +234,7 @@ class GeminiProvider:
                 last_exc = e
 
             if attempt < self.max_attempts:
-                delay = RETRY_DELAYS_S[attempt - 1]
+                delay = self.retry_delays_s[attempt - 1]
                 print(
                     f"Gemini call failed ({last_exc}); retrying in {delay}s "
                     f"(attempt {attempt}/{self.max_attempts}).",

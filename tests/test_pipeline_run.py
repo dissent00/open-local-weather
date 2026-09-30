@@ -875,6 +875,28 @@ def test_the_window_pass_fetches_the_evening_before_its_oldest_entry(tmp_path, m
     assert "kenya_met" in log_store.read_log_entry(tmp_path, oldest).prediction_rows[0].window_scores
 
 
+def test_the_write_up_waits_after_the_scored_call(tmp_path, monkeypatch):
+    """One run a day (2026-09-30). At 03:01Z the write-up drew a 503 13-21 s
+    after a served scored call on 3 of 4 days; a pause spends no request."""
+    events = []
+    llm = FakeLLMProvider()
+    real = llm.generate
+
+    def generate(system_prompt, user_prompt, response_schema):
+        events.append(response_schema.__name__)
+        return real(system_prompt, user_prompt, response_schema)
+
+    llm.generate = generate
+    monkeypatch.setattr(pipeline.time, "sleep", lambda s: events.append(("sleep", s)))
+    deps = make_deps(tmp_path, llm=llm)
+    deps.location = deps.location.model_copy(update={"llm_write_up_delay_s": 120})
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    judgment, narrative = events.index("GeminiJudgmentResponse"), events.index("GeminiNarrativeResponse")
+    assert events[judgment + 1:narrative] == [("sleep", 120)]
+
+
 def test_llm_receives_system_and_user_prompt(tmp_path):
     llm = FakeLLMProvider()
     deps = make_deps(tmp_path, llm=llm)
@@ -3950,18 +3972,18 @@ def test_the_15_01z_shape_end_to_end_through_the_real_providers(tmp_path, monkey
     assert polls == ["http_503", "http_503", "http_200", "http_200"]
 
 
-def test_the_live_config_carries_a_bad_run_to_its_write_up(tmp_path, monkeypatch):
-    """The deployment's OWN chain and allowances through a bad run, 2026-09-29:
-    direct refused, the queue's scored poll refused, the gateway serving the
-    scored call, the queue writing up. A run needing its whole per-run budget
-    must not be refused by it, and must spend no more than it."""
-    import dataclasses
+def _live_bad_morning(tmp_path, monkeypatch, gemini_answers):
+    """The deployment's OWN chain, allowances and waits through a morning
+    whose Gemini answers are `gemini_answers` in order: 503 or a JSON text.
+    Returns the entry, the waits taken, and the ledger's Gemini rows."""
     import json
+
+    import dataclasses
     import re
 
     import requests_mock
 
-    import openlocalweather.llm.gemini_interactions as gi
+    import openlocalweather.llm.gemini as gm
     from openlocalweather.cli import _build_llm_provider
     from openlocalweather.config import load_location_config
     from openlocalweather.spend import read_ledger
@@ -3974,54 +3996,69 @@ def test_the_live_config_carries_a_bad_run_to_its_write_up(tmp_path, monkeypatch
     live = load_location_config("config/location.yaml")
     chain = _build_llm_provider(providers=live.llm_providers, fallback_models=live.llm_fallback_models)
 
-    answer = FakeLLMProvider().response.model_dump()
-    judgment = json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json"))
-    write_up = json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json"))
     slept = []
-    monkeypatch.setattr(gi.time, "sleep", slept.append)
+    monkeypatch.setattr(gm.time, "sleep", slept.append)
     monkeypatch.setattr(requests, "post", requests.api.post)
-    monkeypatch.setattr(requests, "get", requests.api.get)
 
+    def served(text):
+        return {"json": {"candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": "STOP"}]}}
+
+    refused = {"status_code": 503, "json": {"error": {"code": 503, "message": "high demand"}}}
+    judgment = json.dumps(GeminiJudgmentResponse.model_validate(FakeLLMProvider().response.model_dump()).model_dump(mode="json"))
     with requests_mock.Mocker() as m:
-        m.post(re.compile("generateContent"), status_code=503,
-               json={"error": {"code": 503, "message": "high demand"}})
-        m.post(gi.INTERACTIONS_URL, [
-            {"json": {"id": "job-scored", "status": "in_progress"}},
-            {"json": {"id": "job-write-up", "status": "in_progress"}},
-        ])
-        m.get(gi.INTERACTION_URL.format(id="job-scored"), status_code=503, text="event: error")
-        m.get(gi.INTERACTION_URL.format(id="job-write-up"), [
-            {"json": {"id": "job-write-up", "status": "in_progress"}},
-            {"json": {"id": "job-write-up", "status": "completed",
-                      "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
-                      "steps": [{"type": "model_output",
-                                 "content": [{"type": "text", "text": write_up}]}]}},
-        ])
+        m.post(re.compile("generateContent"), [refused if a == 503 else served(a) for a in gemini_answers])
         m.post(re.compile("openrouter.ai/api/v1/chat/completions"), json={
             "model": "dots-studio/dots-3-note-preview:free",
-            "choices": [{"message": {"role": "assistant", "content": judgment},
-                         "finish_reason": "stop"}],
+            "choices": [{"message": {"role": "assistant", "content": judgment}, "finish_reason": "stop"}],
         })
-
         # The test location, with only the live LLM settings: the rest of the
         # live config names a station whose archive this test does not fake.
         location = LOCATION.model_copy(update={
             "llm_providers": live.llm_providers,
             "llm_fallback_calls": live.llm_fallback_calls,
+            "llm_write_up_delay_s": live.llm_write_up_delay_s,
         })
         deps = dataclasses.replace(make_deps(tmp_path, llm=chain), location=location)
         issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    return entry, slept, [r for r in read_ledger(tmp_path) if r.provider.startswith("Gemini")]
+
+
+def _answers():
+    import json
+
+    answer = FakeLLMProvider().response.model_dump()
+    return (
+        json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json")),
+        json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json")),
+    )
+
+
+def test_the_live_config_waits_out_a_bad_morning(tmp_path, monkeypatch):
+    """One run a day, 2026-09-30: each call tries again after 3 minutes, and
+    the write-up waits 2 minutes after the scored call before it starts."""
+    judgment, write_up = _answers()
+
+    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503, judgment, 503, write_up])
+
+    assert slept == [180, 120, 180]
     assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
     assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-    assert slept == [960, 1800, 1800]
+    assert len(gemini) == 4
 
-    rows = read_ledger(tmp_path)
-    gemini = [r for r in rows if r.provider.startswith("Gemini")]
-    # 1 refused direct call + 2 submits + 3 polls: the whole bad-run cost.
-    assert len(gemini) == 6, [(r.provider, r.purpose, r.outcome) for r in gemini]
-    assert sum(r.provider == "GeminiInteractionsProvider" for r in gemini) == 5
+
+def test_the_live_config_leaves_a_refused_morning_to_the_second_chance(tmp_path, monkeypatch):
+    """Three refusals over ten minutes: the gateway takes the scored call and
+    the write-up is not asked of a Gemini that just refused, which leaves it
+    to `olw write-up` an hour later. Three Gemini calls, not six."""
+    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503, 503, 503])
+
+    # The write-up's pause is still taken, though no link will be asked:
+    # two minutes, and no request.
+    assert slept == [180, 420, 120]
+    assert [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    assert len(gemini) == 3
 
 
 def test_the_gateway_still_takes_the_scored_call_when_the_queue_cannot(tmp_path):

@@ -13,9 +13,11 @@ why.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
@@ -249,6 +251,7 @@ class _ProviderEntry:
 
     # The queue link's policy — ROADMAP item 186, see LLMProviderEntry.
     max_attempts: int | None = None
+    retry_delays_s: tuple[int, ...] | None = None
     background: bool = False
     poll_delays_s: tuple[int, ...] | None = None
     write_up_poll_delays_s: tuple[int, ...] | None = None
@@ -309,6 +312,7 @@ def _resolve_provider_entries(
                 max_calls_per_24h=entry.get("max_calls_per_24h"),
                 max_calls_per_run=entry.get("max_calls_per_run"),
                 max_attempts=entry.get("max_attempts"),
+                retry_delays_s=_delays(entry.get("retry_delays_s")),
                 background=bool(entry.get("background")),
                 poll_delays_s=_delays(entry.get("poll_delays_s")),
                 write_up_poll_delays_s=_delays(entry.get("write_up_poll_delays_s")),
@@ -331,6 +335,8 @@ def _mark_queue_policy(link, entry: _ProviderEntry) -> None:
     link.credential_family = CREDENTIAL_FAMILIES.get(entry.kind, entry.kind)
     if entry.max_attempts is not None:
         link.max_attempts = entry.max_attempts
+    if entry.retry_delays_s is not None:
+        link.retry_delays_s = entry.retry_delays_s
     if entry.background:
         link.background = True
     if entry.poll_delays_s is not None:
@@ -1794,6 +1800,82 @@ def _run_backfill_code_blend(args) -> int:
     return 0
 
 
+def _run_write_up(args) -> int:
+    """The write-up's second chance — the operator's decision, 2026-09-30.
+
+    One run a day. When its write-up was refused, the forecast job runs this
+    after its own commit: it waits `--wait-s`, then asks for the prose alone,
+    on the links allowed to write it, and republishes the day. A day that
+    has its write-up returns at once, without waiting or spending.
+
+    A refusal is not a failure of the job: the forecast is already published
+    and the day stays as it was. A prompt that no longer reproduces the
+    archived hash is, and exits 1, because nothing will fix it by waiting.
+    """
+    from openlocalweather.llm.errors import LLMResponseError
+    from openlocalweather.llm.provider import FallbackCalls, served_identity
+    from openlocalweather.llm.schema import GeminiNarrativeResponse
+    from openlocalweather.spend import SpendCapExceeded
+    from openlocalweather.write_up import CannotRewrite, apply_write_up, needs_write_up, write_up_prompts
+
+    location = load_location_config(args.config)
+    data_dir = Path(args.data_dir)
+    day = today_in_tz(location.timezone)
+    entry = read_log_entry(data_dir, day)
+    if entry is None or not needs_write_up(entry):
+        print(f"No write-up missing for {day}; nothing to do.")
+        return 0
+
+    # Rebuilt BEFORE the wait: a prompt that cannot be rebuilt now will not
+    # be rebuildable in an hour, and the job should say so at once.
+    archive_path = data_dir / "prompts" / f"{day}.json"
+    if not archive_path.exists():
+        print(f"Write-up not attempted: no prompt archive for {day}.", file=sys.stderr)
+        return 1
+    try:
+        issuance = json.loads(archive_path.read_text())["issuances"][-1]
+        system_prompt, user_prompt = write_up_prompts(entry, issuance, location)
+    except CannotRewrite as e:
+        print(f"Write-up not attempted: {e}", file=sys.stderr)
+        return 1
+
+    if args.wait_s:
+        print(f"The write-up for {day} is missing; asking again in {args.wait_s} s.")
+        time.sleep(args.wait_s)
+
+    # The links that may write, as the forecast's own routing allows: item
+    # 180 keeps the free gateway off the write-up.
+    links = location.llm_providers
+    if location.llm_fallback_calls == FallbackCalls.SCORED_CALL:
+        links = links[:1]
+    provider = _build_llm_provider(
+        thinking_level=_env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None,
+        providers=links,
+        fallback_models=location.llm_fallback_models,
+    )
+    verify_spend, _ = attach_spend_cap(
+        provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="write-up"
+    )
+    try:
+        narrative = provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse)
+    except (LLMResponseError, SpendCapExceeded) as e:
+        print(f"The second chance was refused too ({e}); the day keeps its placeholder.", file=sys.stderr)
+        return 0
+    verify_spend()
+
+    apply_write_up(entry, narrative, served_identity(provider)[1])
+    write_log_entry(data_dir, entry)
+    print(f"Wrote {len(narrative.today_narrative):,} characters of write-up for {day}.")
+
+    publisher = _build_pages_publisher(location, data_dir, args.docs_dir, args.public_url)
+    if publisher is None:
+        print("Not republished: no --public-url.", file=sys.stderr)
+        return 0
+
+    publisher.publish(entry)
+    return 0
+
+
 def _run_backfill_window_claims(args) -> int:
     """Add the yardsticks' and the code blend's window claims to rows stored
     before they were made, then rescore those rows — item 139, stage 3b.
@@ -2102,6 +2184,18 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run", action="store_true", help="Print the plan without writing anything."
     )
 
+    write_up = sub.add_parser(
+        "write-up",
+        help="The write-up's second chance: if today's was refused, wait, then write the prose alone.",
+    )
+    write_up.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    write_up.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    write_up.add_argument("--docs-dir", default="docs", help="Path to the docs/ (GitHub Pages) directory")
+    write_up.add_argument("--public-url", default="", help="Public site URL, for the republished page's links")
+    write_up.add_argument(
+        "--wait-s", type=int, default=0, help="Seconds to wait first, when a write-up is missing."
+    )
+
     window_claims = sub.add_parser(
         "backfill-window-claims",
         help="Add the yardsticks' and code blend's window claims (item 139) to stored rows, and rescore them.",
@@ -2212,6 +2306,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "backfill-baselines":
         return _run_backfill_baselines(args)
+
+    if args.command == "write-up":
+        return _run_write_up(args)
 
     if args.command == "backfill-window-claims":
         return _run_backfill_window_claims(args)

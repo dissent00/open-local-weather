@@ -71,8 +71,6 @@ a prompt production never used and quietly test the wrong thing.
 from __future__ import annotations
 
 import argparse
-import hashlib
-import itertools
 import json
 import os
 import sys
@@ -89,106 +87,25 @@ from openlocalweather.llm.prompt import (  # noqa: E402
 from openlocalweather.llm.schema import GeminiNarrativeResponse  # noqa: E402
 from openlocalweather.pipeline import attach_spend_cap  # noqa: E402
 from openlocalweather.store import log_store  # noqa: E402
-from openlocalweather.verify.scoring import scored_predictions  # noqa: E402
-from openlocalweather.defaults import BLEND_MODEL_ID  # noqa: E402
 
-# `today_properties`, split by WHERE each field survives.
-#
-# Nine are published on the entry; the other four live only on the blend's own
-# Day+0 scored row, because they are the numbers the record grades rather than
-# the ones the page prints. Both halves are needed: production sends all
-# fourteen, and a renderer told nothing about `rain` or `onset_hour` is being
-# asked to agree with a call it cannot see.
-#
-# `uv_index_max` LEFT THIS LIST 2026-09-22 with item 161, because it left
-# `TodayProperties`: code now takes the UV index from the daily block for the
-# day the horizon points at, and no longer asks the forecaster for it. The
-# entry still carries a `uv_index_max` DISPLAY STRING, which is why this is
-# worth stating — reading the entry's field of that name back into the call
-# would rebuild a field the schema no longer has.
-CALL_FIELDS_ON_ENTRY = (
-    "rain_expected", "onset_window", "peak_wind_primary_kmh",
-    "peak_wind_secondary_kmh", "temp_high_c", "temp_low_c",
-    "mslp_trend_24h", "synoptic_pattern", "air_quality_aqi",
-)
-# (TodayProperties name, attribute on the scored blend row)
-CALL_FIELDS_ON_BLEND = (
-    ("rain", "rain"),
-    ("onset_hour", "onset"),
-    ("precip_mm", "precip_mm"),
-    ("rain_probability_pct", "rain_probability_pct"),
-)
+from openlocalweather import write_up  # noqa: E402
 
-
-def _blend_row(entry, lead: str):
-    """The blend's own scored row at this lead, or None.
-
-    `olw_blend` is the call the record grades. Any other model here would be
-    an input to the call rather than the call itself.
-    """
-    rows = getattr(scored_predictions(entry), lead, []) or []
-    return next((p for p in rows if p.model == BLEND_MODEL_ID), None)
+# The rebuild moved into the package on 2026-09-30, for `olw write-up`, the
+# write-up's second chance. These keep this tool's refusals: it exits.
 
 
 def _rebuild_judgment(entry) -> dict:
-    """`GeminiJudgmentResponse` as the narrative call receives it.
-
-    SHAPE FIRST, VALUES SECOND. The renderer is handed
-    `judgment.model_dump()`, which is two keys — `today_properties` and
-    `extended_properties`. Handing it a flat dict of the same numbers is not
-    the same document: rules addressing `today_properties.temp_high_c` by
-    path have no referent, and a prompt that says the prose must agree with
-    `extended_properties` is arguing about something absent.
-
-    `extended_properties` carries only what `ExtendedDayProperties` holds —
-    lead time, rain, probability — so it rebuilds exactly from the blend's
-    Day+3 and Day+7 rows with nothing invented.
-    """
-    today = {f: getattr(entry, f, None) for f in CALL_FIELDS_ON_ENTRY}
-
-    day0 = _blend_row(entry, "day0")
-    if day0 is None:
-        # REFUSE RATHER THAN SEND A NARROWER CALL. `rain` is non-nullable on
-        # TodayProperties, so without the blend row the rebuilt object does
-        # not even validate — and the failure this tool exists to avoid is
-        # exactly handing the model a call that is not the one production
-        # sends. A day with no blend row cannot be re-rendered faithfully, so
-        # it is not re-rendered.
-        raise SystemExit(
-            f"no {BLEND_MODEL_ID} Day+0 row on {entry.date}: the forecaster's call "
-            "cannot be rebuilt, and a partial one would render a prompt production "
-            "never sent. Refusing rather than guessing."
-        )
-
-    for name, attr in CALL_FIELDS_ON_BLEND:
-        today[name] = getattr(day0, attr, None)
-
-    extended = []
-    for lead_days, lead in ((3, "day3"), (7, "day7")):
-        row = _blend_row(entry, lead)
-        if row is None:
-            continue
-        extended.append({
-            "lead_time_days": lead_days,
-            "rain": row.rain,
-            "rain_probability_pct": row.rain_probability_pct,
-        })
-
-    return {"today_properties": today, "extended_properties": extended}
+    try:
+        return write_up.rebuild_judgment(entry)
+    except write_up.CannotRewrite as e:
+        raise SystemExit(str(e)) from e
 
 
 def matching_flags(location, target_sha: str) -> dict:
-    for ground, bulletin, reissue in itertools.product((True, False), repeat=3):
-        flags = dict(verification_already_written=reissue, ground_stations_configured=ground,
-                     local_bulletin_configured=bulletin)
-        built = build_narrative_prompt(location, **flags)
-        if hashlib.sha256(built.encode()).hexdigest() == target_sha:
-            return flags
-    raise SystemExit(
-        "no flag combination reproduces the archived narrative prompt hash — the "
-        "prompt has changed since that issuance, so a re-render would send a "
-        "different prompt than the one that failed. Refusing rather than guessing."
-    )
+    try:
+        return write_up.matching_flags(location, target_sha)
+    except write_up.CannotRewrite as e:
+        raise SystemExit(str(e)) from e
 
 
 def main() -> int:

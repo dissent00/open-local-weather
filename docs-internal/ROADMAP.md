@@ -56,18 +56,17 @@ not read, which the 09-21 health check had already flagged as recurring.
    the approval gate, back; the reason is shown only on the run page, so it
    is the operator's to read. Item 2's October gate is announced only by
    this check.
-2. **Item 139: stage 3, steps a-d built.** The period record, a window
-   claim from every Day+0 source, the period review and the window gust
-   correction exist, read by nothing published. Next: (e) the
-   next-24-hours call, (f) the switch. See the item, and the working
-   state in `docs-internal/ITEM_139_HANDOFF.md`. Then item 188, local met services on
-   their own terms (operator-approved 2026-09-29).
-3. **Read item 186's trial around 10-01.** Polls are answered (API calls,
-   not model calls). Is a submit accepted while direct calls are refused?
-   Does the queue serve inside its waits? Then, per run and in API calls:
-   would queue-first where direct is usually refused, or one direct retry,
-   reach the forecast with fewer calls? The break-evens are in item 186
-   (about 70% refusals, and about 2 in 5 rescued).
+2. **One reliable run a day (item 186, built 2026-09-30).** The operator
+   runs one cron, 03:01Z. The target: a forecast with its write-up every
+   day for under 10 Gemini calls. Read each morning's ledger: calls spent,
+   and whether the write-up came first time, from the second chance, or
+   not at all.
+3. **Item 139 is PARKED at stage 3, steps a-d** (the operator, 2026-09-30:
+   stop the build work, clean up instead). Built and read by nothing
+   published; the working state is in `docs-internal/ITEM_139_HANDOFF.md`.
+   With one run at 06:01 local the calendar and window records agree, so
+   the switch matters to the app and to deployments at other hours. Item
+   188 is parked with it.
 4. **Item 2 from 10-01**, once the health check runs. Kenya Met's whole site
    (meteo.go.ke, the CAP feed included) timed out on 09-29, so the check
    cannot see the feed wake while that lasts; the 09-29 run reported it as
@@ -27420,6 +27419,36 @@ The 03:01Z record since the revert to `generateContent` (09-26): the scored
 call served on the first try 3 of 5 days; the write-up failed 13-21 s after
 a served scored call on 3 of 4 days, and a wait of minutes rescued it 2
 times in 3 (09-26 after 32 s, 09-27 after 7 min; 09-28 not in 9 min).
+
+### 2026-09-30: one run a day, built for reliability
+
+The operator's target: a forecast with its write-up every day for fewer
+than 10 Gemini calls, from one cron at 03:01Z.
+
+- **The queue is out of the chain.** The health check uses the gateway
+  alone and spends no Gemini call.
+- **Three tries per call, 3 and 10 minutes apart** (`retry_delays_s` on the
+  link): at 03:01Z a refusal cleared after 32 s once and after 7 min once,
+  and three tries inside a minute all failed.
+- **The write-up waits 2 minutes after the scored call**
+  (`llm_write_up_delay_s`): 3 of 4 write-up refusals came 13-21 s after a
+  served scored call. The pause is taken even when no link will write; it
+  costs time, not requests.
+- **The write-up's second chance.** `olw write-up`, a workflow step after
+  the forecast's commit, waits an hour and asks for the prose alone, on
+  Gemini only (the gateway stays off the write-up, item 180), then
+  republishes. A day with its write-up returns at once. No second email.
+  The rebuild moved from `tools/rerender_narrative.py` into
+  `openlocalweather/write_up.py`, now reading the day's latest issuance.
+- **At most 9 Gemini calls a day**, 3 tries for each of two calls and 3
+  for the second chance, pinned by `tests/test_config.py`. A clean
+  morning spends 2. The 24h guard is 18: two mornings can fall in one
+  rolling window.
+
+Checked on the real record: the 09-29 and 09-30 prompts rebuild with their
+archived hashes, so a second chance would have worked on both. **Not
+checked:** the schedule against a live refusal, and the approval gate (item
+180): the first dispatch after this workflow edit may wait for approval.
 
 ---
 
