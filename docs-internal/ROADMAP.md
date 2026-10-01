@@ -15,6 +15,68 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-10-01
+
+The 09-29 block below is kept for its reasoning. Its item 2, one reliable
+run a day under ten Gemini calls, stays live as the deployment's schedule
+and is no longer the plan: on 2026-10-01 the operator reopened build work to
+take the LLM off the critical path. The design, its evidence and the
+operator's decisions are in `ARCHITECTURE_OPTIONS_2026-09-30.md` beside the
+brief; items 189 to 195 are that document as work.
+
+### What changed, 2026-09-30 to 10-01
+
+**The write-up failure was re-measured from all 85 ledger versions.** At
+03Z since the two-call split, the scored call was served on 18 of 18 runs
+(16 by Gemini) and the write-up on 13 of 17 asked, 5 of 8 since 09-22. The
+"seven days without a write-up" were four with none and three (09-26, 27,
+29) where the 03Z run wrote one and the 15Z placeholder replaced it at the
+top of the entry. The evening run is gone, so that class is gone with it.
+
+**The LLM's irreplaceable contribution is prose, and the delivered prose was
+not analysis.** Of the 61 sentences in the 09-23 write-up, 25 restate a
+composed phrase or a stored field, 32 follow from stored fields by a rule,
+and 4 need a language model, 3 of them now forbidden by the prompt. The code
+blend beats the LLM's scored call on rain (item 173). And the day's entry is
+written after the LLM calls (pipeline.py: `_generate_forecast` at line
+4030, `write_log_entry` at 4156), so a judgment refused everywhere leaves no
+entry; the app discards its extraction the same way.
+
+**The outside was read on 2026-09-30.** GitHub Models was retired on
+2026-07-30, so there is no keyless LLM inside Actions. Nothing free takes
+the 56K-token call as built; almost everything free takes a ~4K-token one.
+The only route with no key at all is the public-repo runner.
+
+**The operator's intent is three LLM jobs, not two.** The code call and a
+code-written floor make the forecast; a writer turns a small brief into
+prose; an interpreter makes synoptic claims the record scores. Item 103's
+layer cannot show a system yet, and nothing scores insight, so the
+interpreter is unproven rather than unrealistic and comes last.
+
+### What is next, and why
+
+1. **Item 189, publish before asking.** The code blend becomes the served
+   call, the LLM's call a hidden scored row made with one attempt, and the
+   entry is written and published before any prose is asked for. Closes the
+   no-entry hole in both repositories. Python, vectors, Dart, re-pin.
+2. **Item 190, the floor.** A code-written write-up from the composers that
+   exist replaces "Write-up unavailable". The operator reads it over the
+   eight placeholder days before it ships; nothing after it moves until
+   that read.
+3. **Item 191, the writer.** A ~10K-character brief stored on the entry, a
+   writer-only prompt, Markdown out, an audit in code. The brief's size over
+   the 27 archived issuances decides which free routes exist.
+4. **Items 192 and 194**, the routes and the patient hourly job, in either
+   order; 193, the local model on the runner, once the operator has read
+   the Actions clause and a bench has run.
+5. **Item 195, the interpreter**, after item 103 point 5 (persist the ring)
+   and item 71's reference measurement.
+
+Not reopened: the 15:01Z run, the Interactions queue (item 186), the free
+gateway on the write-up (item 180). Item 139 stays parked.
+
+---
+
 ## Working order, as of 2026-09-29
 
 The 09-28 block below is kept for its reasoning. Its first pick is one third
@@ -26851,6 +26913,407 @@ extended trend and the calibrated gust all average that list.
 
 Not done: item 173 point 1.
 
+**Point 1 is item 189 (2026-10-01):** the code blend as the served call,
+the required path rather than the fallback, with the LLM's call kept as a
+hidden scored row.
+
+---
+
+## 195. The interpreter: synoptic claims the record scores · **Planned — after item 103 point 5 and item 71's reference; raised 2026-10-01**
+
+The operator's intent, 2026-09-30: the arithmetic sees wind and rain at
+Day+5; the LLM should see the system behind them, and that insight should
+feed the learning. The Area Forecast Discussion's job: rules write the
+what, something writes the why.
+
+**Why it does not happen today.** Item 103 measured the synoptic layer: nine
+points at ±12°, daily means, `best_match` only, three days, never stored,
+never scored. A Day+5 surge reaches the model as the same per-model daily
+numbers the arithmetic reads; `prompt.py:236` forbids naming a centred low,
+correctly at that sampling. The prompt removed interpretation one measured
+rule at a time, and the one classified write-up holds one inference
+sentence in 61. Nothing scores insight: the LLM's only scored output is its
+Day+0 call (item 72), where it trails arithmetic.
+
+**The design.** A third LLM job, separate from the served call (item 189)
+and the writer (item 191), optional and asynchronous:
+
+- **Inputs built for the question, in item 103's order.** Persist the ring
+  (point 5; a few hundred bytes a day). Widen it: more points, per model,
+  several days, and the wind field, since surface pressure carries little
+  near the equator (point 4). Hand it the per-model Day+1 to Day+7 series
+  side by side, where a track disagreement shows as two models bringing a
+  system and one keeping it away. A few thousand tokens by nature, so the
+  reasoning models the free tiers serve at that size are reachable
+  (gpt-oss-120b on Groq or Cloudflare, DeepSeek on SambaNova; see the
+  options document, section 2).
+- **Output is a claim, not a paragraph.** Schema: system, direction from a
+  fixed vocabulary, impact window inside the fetched horizon, magnitudes
+  with units, the models that agree, and a "beyond the models" flag when
+  the magnitude exceeds every model's number. That flag is allowed, because
+  it is the point, and marked.
+- **A gate in code.** Window inside the horizon; models named exist in the
+  run; a window already closed is refused. Nothing from the claim reaches
+  the served call or the code blend. `prompt.py:236`'s bound survives in
+  the vocabulary: "toward", never "centred over".
+- **Scored at window close** against the station and the reanalysis: hit,
+  false alarm, miss. A miss is scoreable too: a window where observed gust
+  or rain exceeded every extended model by a margin, with no claim.
+- **A claims table on the accuracy page**, beside the model rows. That
+  table is where "the LLM aids the learning" becomes visible, or does not.
+- The writer's brief carries a validated claim as one line; the reader's
+  prose is written from the claim.
+
+**Measure first.** Item 71's reference: a frontier model over the archived
+days, in a subprocess handed the prompt alone, recorded as a dated ceiling.
+It decides whether a Flash-class model can interpret at all before any
+route question is asked. Then: persist the ring for a month and check
+whether cross-point pattern separates translation from intensification
+(103, point 2). Stop if the reference cannot name a system from the widened
+inputs on the days the models' extended numbers moved; go if it can and the
+claims verify better than the extended numbers alone.
+
+**What stays true under either outcome.** Kisumu will not produce the test
+case: fifty days of lake convection hold no synoptic system. The interpreter
+earns or loses its place on a fork with a coast or a winter.
+
+Related: items 103, 71, 72, 82, 62, 135, 182; options document section 5.
+
+---
+
+## 194. Patient enrichment: the hourly tick and the mailer hold · **Planned — after item 191; raised 2026-10-01**
+
+Item 186's second chance is one route, one try, an hour later, holding a
+runner for the hour. The record has zero rows of it. This replaces it with
+a job that asks patiently across the morning and spends nothing when done.
+
+**The design.**
+- `write_up.yml` on `schedule:`, hourly from 04:07Z to a local closing hour
+  (config). GitHub's scheduler is late and drops jobs (ops/README); that is
+  acceptable here because nothing in this job is time-critical: a dropped
+  tick is the next tick. Same `concurrency: daily-forecast` group.
+- `olw write-up --tick`: state derived from the entry and the day's
+  `purpose=write-up` ledger rows, never stored. ABSENT (no entry): exit.
+  SERVED (`narrative_source` names a model): exit. PENDING: one call on the
+  first route with allowance left today; served → apply, republish, commit;
+  refused → a ledger row, exit 0. CLOSED (allowances spent, window ended, or
+  the brief missing): `meta.write_up = {state, reason, attempts}` written
+  once so the archive says why.
+- Routes carry a per-day write-up allowance (`per_day` on the chain entry,
+  item 192). The sum is the day's ceiling; today's 9-call pin on Gemini is
+  unchanged.
+- The writer closes by mid-morning: prose about a morning already past is
+  worth less by noon. The interpreter (item 195) may stay open longer; its
+  window is its own.
+- The mailer holds a configurable number of hours for enrichment, then
+  sends what exists; the sent-key stays the issuance id, so a write-up
+  landing later sends no second email (item 186's decision stands).
+- The page carries "Written HH:MM" when `narrative_source` is set; the
+  archive keeps both the floor and the write-up.
+- Ensemble: viewer mode re-fetches a followed entry on resume while it is
+  pending and under 12 h old (Ensemble item 22's "refreshing a followed
+  source"); own-key mode retries on resume up to a per-day allowance the
+  reader sets, counted against their cap before it is sent.
+
+**Measure first.** Fourteen days of ticks on Gemini alone, outcomes per hour:
+go if 12 of 14 days end SERVED with a median served-at before the mailer's
+hold expires; if 9 or fewer, refusals correlate across the morning and item
+192's second route is required. This also produces the 04 to 12Z refusal
+table nobody has.
+
+Related: items 186, 180, 179, 137, 104; Ensemble item 22.
+
+---
+
+## 193. A local model on the runner: the writer that cannot be refused · **Planned — gated on the operator's read of the Actions clause and a bench run; raised 2026-10-01**
+
+The public-repo runner is 4 vCPU, 16 GB, unlimited minutes, a 10 GB cache
+(read 2026-09-30). A ~2.5 GB Q4 GGUF restored from `actions/cache`, a
+pinned `llama-server` release binary, `OpenAICompatProvider` pointed at
+`http://127.0.0.1:8080/v1` with `json_schema` enforced by grammar: no key,
+no quota, no 503, as many issuances a day as the runner will run.
+
+**Why last in every chain and never first.** Prose quality of a 4B model on
+this job is unmeasured; the audit (item 191) bounds numbers and shape, not
+meteorology. It is the link that cannot refuse, so it sits after the free
+routes (item 192) and before the floor (item 190).
+
+**Shape.** Six section calls of ~200 tokens each under a grammar, not one
+narrative: item 180's free-model failures were on LONG OUTPUT. Each section
+gets 1 to 5K characters of composed facts; a section that fails the audit
+three times is printed as its facts. Headings are code's. Provenance:
+`narrative_author {kind: local, model, quant, sha256, llama_cpp_version,
+sections}`. The spend cap counts metered providers only.
+
+**Terms.** GitHub's Actions terms restrict hosted runners to "the
+production, testing, deployment, or publication of the software project
+associated with the repository" and to burdens proportionate to benefit
+(github-terms-for-additional-products-and-features, read 2026-09-30). The
+daily forecast is the repository's publication and ten CPU-minutes is
+small. The operator reads the clause before this is relied on; the wording
+goes here when read.
+
+**Measure first, in order.**
+- M1, one sandbox workflow run: `llama-bench -t 4 -p 2048 -n 256` on
+  `ubuntu-latest` for Qwen3-4B-Instruct Q4_K_M and Q6_K, Gemma-3-4B-it
+  Q4_K_M, Phi-4-mini Q4_K_M; chars per token over `kisumu-lite.txt`; cache
+  restore time; the CPU model. Go at ≥30 tokens/s prompt and ≥6 tokens/s
+  generation (≤15 minutes an issuance); below that, a 1.7B model; below
+  that, the runner is not the place.
+- M2, a laptop: six section briefs from the 27 archived days, three seeds,
+  the audit. Go at ≥80% of sections passing by the third try; 50 to 80%
+  with the weakest sections fixed to the floor; below 50%, do not build.
+- M3, the operator: the local narrative beside the Gemini one, blind, on
+  the days that hold a served Gemini narrative; "which would you publish"
+  and any sentence that is meteorologically wrong.
+- Private forks: 2 vCPU, 8 GB, 2,000 minutes a month; one run a day fits,
+  two do not. Say so in QUICKSTART.
+
+Related: items 17a, 132, 180, 182, 191, 192; options document section 4 C.
+
+---
+
+## 192. Writer routes: a chain per job, one attempt per link, the floor last · **Planned — after item 191; raised 2026-10-01**
+
+Item 81's chain exists: `FallbackProvider` with `env_prefix`, per-link
+ceilings (170), a credential family map, and the workflow's allowlist that
+forwards any `*_API_KEY`. What it lacks is written here.
+
+**Changes to the chain.**
+- A link is chosen per job: `calls: [write_up]`, `[judgment]`,
+  `[interpretation]` on the entry. `llm_fallback_calls: scored_call` and
+  the 180/420 s retry delays retire with item 189.
+- One attempt per link: item 186 measured 15 of 24 Gemini calls failing all
+  four attempts; the call count moves across vendors instead.
+- A failed audit (item 191) falls through like a refusal, for the write-up
+  only, and spends one call.
+- A per-day allowance per link (`per_day`), read by item 194's tick.
+- Ordering re-ranked monthly from the ledger's served rate and audit pass
+  rate per route and job; fixed order, not round-robin: at one or two calls
+  a day no link is near its ceiling, and rotation would only spread voice
+  variance across days (item 14's concern) for no gain.
+
+**Routes, from the survey read 2026-09-30** (options document, section 2):
+Gemini Flash first, the best free writer on the record; Groq gpt-oss-120b
+(8K TPM, so only a brief fits); Gemini Flash-Lite (its own RPD, unverified);
+Mistral free mode (limits unpublished; training on by default, opt out);
+SambaNova (card status contested); OpenRouter free (50 RPD unfunded; item
+180's long-output failure no longer applies at under 1K tokens out).
+Cloudflare Workers AI is documented as optional for a forker who holds a
+Cloudflare account; it is not "fork a repo". Cohere's trial terms forbid
+production use. GitHub Models is retired. How many accounts a deployment
+may lean on is the operator's decision; the chain is account-agnostic and
+a keyless fork gets the floor every day.
+
+**Measure first.** `health_check.yml` sends the brief to every keyed route
+daily at 03:01Z for 14 days and logs the outcome per vendor. Go if the
+joint all-refuse rate over two sweeps is ≤5% of days; if refusals
+correlate above 20%, the pool buys less than modelled and item 193 carries
+the guarantee instead.
+
+Related: items 81, 170, 178, 179, 180, 172, 14; Ensemble item 24.
+
+---
+
+## 191. The writer: a brief, a writer prompt, and an audit · **Next after item 190; raised 2026-10-01**
+
+The narrative call sends ~146K characters (~56K tokens at the measured 2.5
+characters per token; item 174's ~4 understated the bill by 1.6×) and asks
+for thousands of words. That shape is what every free route refuses: Gemini
+sheds it, OpenRouter's free models finish it 1 time in 5 (item 180), Groq's
+8K TPM cannot accept it. Once the served call is code's (item 189), the
+writer never needs raw model arrays, and half the 39K-character narrative
+prompt, the rules that exist to stop the model contradicting code, goes.
+
+**The brief.** `openlocalweather/brief.py`, descended from
+`tools/prompt_provider.py`'s lite renderer (24.6K chars, item 182). Keeps,
+verbatim, the blocks the write-up quotes: ISSUED, CALENDAR compressed,
+FORECAST WINDOWS, CONVECTIVE INSTABILITY, NEXT THREE DAYS, SKY AT EACH
+ANCHOR, SKY BY DAY, WIND DIRECTION, WIND SHIFT, SECONDARY POINT WIND, PEAK
+UV, OBSERVED SO FAR, GROUND AQI summary and last known, LOCAL BULLETIN,
+GUIDANCE RECENCY, the synoptic statements, THE CALL as a table, the
+established review findings as sentences, the Day+3 per-model highs. Drops
+the raw hourly and daily arrays, MODEL TRACK RECORD, PRE-COMPUTED
+VERIFICATION RESULTS, the secondary daily, CAMS, METAR, the comparison.
+Two composers to build, both small: a basin-pressure line reducing
+`regional_pressure` the way `synoptic.py` reduces the ring, and a per-model
+rain-timing row from HOURS AHEAD. `describe_day_over_day` (item 164) gets
+its first reader. Target: ≈10K characters, ≈3 to 4K tokens. Refuses to
+render if the served call appears in a record block (the lite renderer's
+guard, prompt_provider.py:277). Stored on the entry with its hash, so any
+later attempt reads the same input; this is item 186's two-step blocker
+answered.
+
+**The writer prompt.** ~5K characters: the seven headings; the style and
+content rules the compact-brief classification keeps (options document,
+compact-brief map §7); none of the firewall rules. Output is Markdown, not
+JSON, capped near 600 words; `yesterday_verification` and the skill
+summaries are rendered by code from the verification table and
+`review.Finding.claim` (item 147 already found the review does the job).
+
+**The audit, in code.** Headings present and in order; every number in the
+output present in the brief after unit normalisation; the locked phrases
+verbatim (timing, NEXT THREE DAYS, WIND SHIFT, the Gulf timeline); no
+forbidden vocabulary per section; `phrase_defect` per paragraph. Sweep the
+number check over the 27 archived days and 50 hand-mutated numbers before
+trusting it: 0 false rejects, 0 false accepts (AGENTS.md: a threshold is
+measured against the record). A failed audit is a bad answer and falls
+through (item 192).
+
+**Provenance.** `narrative_source` on the entry: `code` for the floor, the
+vendor and model otherwise; `narrative_llm_model` stays as item 171 left it
+and null for the floor.
+
+**Measure first.**
+- Brief size: render for the 27 archived issuances in `data/prompts/`;
+  count tokens. Go if p95 ≤ 4.5K with the writer prompt; above 6K Groq
+  drops out and the angle weakens to Gemini plus the runner.
+- Writer backtest: `tools/probe_models.py` extended to take the brief; each
+  candidate route on 10 archived days; audit pass rates; the operator reads
+  three beside the 09-23 narrative. Go per route at ≥80% pass.
+- Size-blindness: on 10 mornings, the brief and the full prompt to Gemini
+  at the same minute, alternating order. Says whether a small call lowers
+  Gemini's own refusals or only opens other routes.
+
+Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186; Ensemble item 1.
+
+---
+
+## 190. The floor: a code-written write-up replaces the placeholder · **Next after item 189; raised 2026-10-01**
+
+Since 09-24 the page has shown a 385-character "Write-up unavailable"
+notice under tiles that already say most of what a bulletin would. Of the
+61 sentences in the 09-23 write-up, 25 are composed phrases or field values
+restated and 32 follow from stored fields by a rule. Environment Canada's
+SCRIBE has produced public forecast text from numbers since 1995 and still
+does; SumTime's readers preferred rule text to forecasters' for the
+sublanguage it covered; NWS text products are formatter output. This repo
+has content determination and micro-planning for rain, wind, cloud,
+temperature change and trend, and no realiser.
+
+**The floor, v1.** `narrative.compose_floor(entry)` in Python, mirrored in
+`olw_core`, vectored. Only phrases that exist verbatim, joined by fixed
+frames, every sentence through `phrase_defect` (item 158):
+
+    ## Today's Forecast
+    {describe_day_over_day}  High {high} °C / {°F}, low {low}.
+    {describe_day_rain}  {describe_convective_timing}  {describe_wind_shift}
+    Sky: {sky_by_day[0]}. Peak gust {gust} km/h ({kt} kt). UV {uv} ({band});
+    air quality {aqi} ({band}).
+    ## Extended Outlook
+    {describe_extended_trend}  Day+3: {call, probability, high as a range
+    when spread > 2 °C}.
+    ## Winam Gulf — Conditions for Boaters      (secondary point only)
+    {describe_wind_timeline}  Peak gust {gust}.  [storm-gust sentence, gated
+    on convective]
+
+    Figures issued {HH:MM}. Written by code; a discussion follows when a
+    model answers.
+
+About 700 to 1,100 characters. `narrative_llm_model` stays null and
+`narrative_source` reads `code`, so the record never mistakes code text for
+model text. The same string is the narrative in the JSON, the page, the
+email and the app. `DEGRADATION_NARRATIVE` stays as the pending marker for
+item 194's tick; the reader-facing summary says "discussion to follow",
+not that something failed.
+
+**What it cannot say.** Why the models disagree. That is item 195's job.
+
+**Measure first, zero calls.** Render the floor for the eight placeholder
+days and five served days; `phrase_defect` on every sentence; the operator
+reads them beside the 09-23 write-up (item 75's reading test). Go if they
+would publish it under "Today's Forecast" with zero defects. If not, the
+joins are fixed before anything else, and item 37's day-characters (wind
+hour, cloud shape) are the growth path.
+
+**Risks, from the precedents.** It reads as a template, and it will (SumTime
+forecasters deleted 25,235 words from 2,728 drafts; 65% of edits were
+ellipsis). A narrow vocabulary, speaking only on a band change, and the
+shape check are the mitigations; repetition across days is inherent.
+Multilingual output is a realiser per language, not a translation. Two
+implementations, as for every composed phrase.
+
+Related: items 37, 75, 158, 159, 164, 173, 187; Ensemble item 23.
+
+---
+
+## 189. Publish before asking: the code blend is the served call · **Next — item 173 point 1 as the required path; raised 2026-10-01**
+
+**Two holes, one cause.** The day's entry is written after the LLM calls:
+`_generate_forecast` at pipeline.py:4030, `write_log_entry` at 4156, and
+`cli.py:1042` returns 1 on an LLM failure. A morning where every route
+refuses the scored call leaves no entry, no model rows, no code-blend row,
+though extraction, calibration and the comparison have already run. The
+app has the same hole: a refused judgment throws out of `generateForecast`
+and `ForecastRunner` stores nothing (forecast_runner.dart:337) after
+extraction already ran (forecast.dart:497-499). The record at 03Z: 18 of 18
+scored calls served, 2 of them only because OpenRouter rescued Gemini.
+
+**The evidence that the served call can be code's.** Item 173 stage 1: on
+29 shared days the code blend called Day+0 rain 26/29 to the LLM's 23/29,
+Brier 0.129 to 0.149, the code better on 17 of 22 days; parity at Day+3 and
+Day+7; the LLM ahead on temperature by 0.14 °C on the high and 0.22 °C on
+the low. The brief: "The LLM's real contribution is prose."
+
+**The design.**
+1. **The served call is `olw_code_blend`.** `today_properties` and
+   `extended_properties` are built in code from the blend rows plus
+   arithmetic the run already does: the calibrated gust (item 126) for the
+   primary point, the secondary consensus gust, the consensus onset
+   (`comparison._consensus_onset`), the record-weighted amount, the
+   per-model median `mslp_trend`, `day_uv_index` and the CAMS AQI, the
+   display strings through the same formatters the tiles use.
+   `synoptic_pattern` is composed from the ring's gradient and lowest
+   direction, or reads "not assessed" when the ring is absent.
+2. **The code blend's Day+0 row gains onset, amount and wind**, from the
+   same arithmetic, so the numbers the reader is shown are the numbers
+   tomorrow scores (the reason `olw_blend` was ever scored). The switch
+   date is recorded in this item when it ships: rows before it carry
+   `None` there, which the record reads as absent, never wrong. Vectors
+   first, then Dart.
+3. **The LLM's own call is optional and hidden.** When a route is
+   configured, the judgment call is made with ONE attempt after the code
+   call and before the write; its row joins Day+0 as `olw_blend`, hidden
+   from the forecaster as today, so item 173's question keeps being
+   answered. A refusal, a timeout, a cap refusal or a schema failure adds
+   no row and changes nothing else. `llm_providers: []` becomes valid: a
+   keyless fork publishes every day.
+4. **The entry is written and published, then the prose is asked for.** The
+   narrative call leaves `_issue_forecast`; `narrative_markdown` holds the
+   floor (item 190; until it lands, the placeholder) and the entry carries
+   `DEGRADATION_NARRATIVE` as the pending marker. The workflow runs
+   `olw forecast`, commits and pushes, then `olw write-up` at once, then
+   the second chance; item 194 replaces that with the tick. The entry gains
+   `served_call` (the call as built, so a write-up reads it rather than
+   rebuilding it from published fields) and `call_source`.
+5. **Verification notes are code's.** `yesterday_verification` is rendered
+   from the verification table; skill summaries are not written (item 147).
+   `_write_back_verification` reads the code-rendered text.
+6. **The app.** `olw_core.generateForecast` splits extraction from the LLM
+   call and returns a run built from the code call when no provider is
+   given or the judgment is refused; `ForecastRunner` stores it;
+   `isConfigured` no longer requires a key; the first screen is a forecast
+   and the key is the upgrade (Ensemble item 1). Owed in the Ensemble table.
+
+**What this reverses.** Item 59's split made the scored call the LLM's and
+protected it from the narrative. This makes the scored call code's and
+demotes the LLM's call to a hidden row. Everything 59 protected is
+protected better.
+
+**Measure first.** Build the code call for the 29 backtested days and diff
+the tiles rendered from it against the tiles rendered from the LLM's call;
+list every tile that goes blank. Go if the only losses are ones code fills
+by rule; stop and fix if a tile the operator needs cannot be filled.
+
+**Order.** Python: the call builder, the row's new fields, the reordered
+issuance, config, cli, the write-up reading `served_call`, tests at the run
+level that read the value back off disk. Vectors for the row and the call.
+Dart: `codeBlendPrediction`'s new fields, the split in `generateForecast`.
+Re-pin; Ensemble's runner and empty state. Workflow: the write-up step runs
+immediately after the push, then the hour later.
+
+Related: items 173, 59, 126, 147, 171, 186; Ensemble items 1, 22, 24.
+
 ---
 
 ## 188. A local met service is not a global model · **Designed and approved 2026-09-29; after item 139's switch**
@@ -27449,6 +27912,11 @@ Checked on the real record: the 09-29 and 09-30 prompts rebuild with their
 archived hashes, so a second chance would have worked on both. **Not
 checked:** the schedule against a live refusal, and the approval gate (item
 180): the first dispatch after this workflow edit may wait for approval.
+
+**Superseded in design, 2026-10-01, by items 189 to 194** (options
+document, sections 3 and 6): the write-up leaves the run, reads a stored
+brief, and is asked patiently across routes. The one-run schedule and the
+9-call pin stay until item 194 measures its ticks.
 
 ---
 
