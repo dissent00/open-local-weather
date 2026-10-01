@@ -1075,7 +1075,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
