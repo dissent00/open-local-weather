@@ -222,6 +222,39 @@ sendForecastEmail();
 assert.ok(sentEmails.length > beforeReissue, 'a re-issued forecast must be sent, not suppressed as a duplicate');
 console.log('PASS: a later issuance of the same day is delivered');
 
+// --- The write-up arrives after the forecast (upstream item 189) ---
+//
+// A fresh issuance still carrying the pending marker is not sent: a landed
+// write-up does not re-stamp the issuance, so sending now would deliver the
+// placeholder and never the discussion. Past the grace the day goes out as
+// it stands, and a fresh issuance whose write-up has landed goes at once.
+const minutesAgo = (m) => new Date(Date.now() - m * 60 * 1000).toISOString();
+const pendingMarker = { code: 'narrative_unavailable', summary: 'Figures decided; discussion to follow.', detail: 'pending' };
+const withMeta = (entry, meta) => ({ ...entry, meta: { ...entry.meta, ...meta } });
+
+reset();
+servedEntry = withMeta(sampleEntryRaw, { generated_at_utc: minutesAgo(5), degradations: [pendingMarker] });
+sendForecastEmail();
+assert.strictEqual(sentEmails.length, 0, 'a fresh issuance whose write-up is pending must wait');
+assert.strictEqual(sleepCalls.length, 0, 'waiting is the next check, never a sleep');
+
+servedEntry = withMeta(sampleEntryRaw, { generated_at_utc: minutesAgo(5), degradations: [] });
+sendForecastEmail();
+assert.strictEqual(sentEmails.length, 2, 'the landed write-up on the same issuance goes out at once');
+console.log('PASS: a pending write-up waits, a landed one goes');
+
+reset();
+servedEntry = withMeta(sampleEntryRaw, { generated_at_utc: minutesAgo(95), degradations: [pendingMarker] });
+sendForecastEmail();
+assert.strictEqual(sentEmails.length, 2, 'past the grace the day goes out, placeholder and all');
+console.log('PASS: a write-up still pending after the grace does not hold the day');
+
+reset();
+servedEntry = withMeta(sampleEntryRaw, { generated_at_utc: 'not a date', degradations: [pendingMarker] });
+sendForecastEmail();
+assert.strictEqual(sentEmails.length, 2, 'an unreadable stamp is not a reason to withhold');
+console.log('PASS: an unreadable issuance stamp does not withhold the day');
+
 // --- No subscribers configured — should not even attempt a fetch ---
 reset();
 scriptProps.SUBSCRIBER_EMAILS = '';

@@ -180,6 +180,24 @@ const SENT_ISSUANCES_KEY = 'SENT_ISSUANCES';
 // property is cleared, yesterday's forecast should not arrive as news.
 const YESTERDAY_GRACE_HOURS = 3;
 
+// THE WRITE-UP ARRIVES AFTER THE FORECAST — upstream ROADMAP item 189,
+// 2026-10-01. The pipeline commits and publishes the day's figures first and
+// asks a model for the written discussion afterwards: once straight away and
+// once more an hour later when the first ask was refused. Until the prose
+// lands the entry carries the `narrative_unavailable` degradation as a
+// pending marker, and a landed write-up does NOT re-stamp the issuance. So a
+// check that found the entry in that window would send the placeholder and,
+// keyed on the unchanged timestamp, never send the discussion.
+//
+// So a fresh issuance whose write-up is still pending waits. Ninety minutes
+// covers both asks: the push at about 03:04Z, the first ask's three tries
+// over about twelve minutes, the second an hour later over the same. Past
+// that the day goes out as it stands, placeholder and all, because nothing
+// in the pipeline asks again and a forecast withheld for prose that will
+// not come is worse than one without it.
+const PENDING_WRITE_UP_CODE = 'narrative_unavailable';
+const PENDING_WRITE_UP_GRACE_MINUTES = 90;
+
 /** The sent-issuance map, pruned to the last few days so a Script Property
  * does not grow without limit. */
 function readSentIssuances() {
@@ -256,14 +274,14 @@ function sendForecastEmail() {
 
   const sent = readSentIssuances();
   for (const dateStr of candidates) {
-    if (trySendFor(config, dateStr, sent)) return;
+    if (trySendFor(config, dateStr, sent, now)) return;
   }
   Logger.log(`Nothing new to send (checked ${candidates.join(', ')}). Expected on most checks.`);
 }
 
 /** Sends the given day's issuance if it is one we have not sent. Returns
  * true if an email went out. */
-function trySendFor(config, dateStr, sent) {
+function trySendFor(config, dateStr, sent, now) {
   const entry = fetchForecastEntry(config, dateStr);
   if (!entry) return false;
 
@@ -273,6 +291,12 @@ function trySendFor(config, dateStr, sent) {
     return false;
   }
   if (sent[dateStr] === issuance) return false;
+
+  // See PENDING_WRITE_UP_GRACE_MINUTES. The next check is the retry.
+  if (writeUpPending(entry) && issuanceAgeMinutes(issuance, now) < PENDING_WRITE_UP_GRACE_MINUTES) {
+    Logger.log(`Entry for ${dateStr} (issuance ${issuance}) is waiting for its write-up — not sending yet.`);
+    return false;
+  }
 
   // A re-issue is announced as an update so a reader knows it supersedes what
   // they already have, rather than looking like a duplicate of it.
@@ -310,6 +334,19 @@ function issuanceClock(entry, timezone) {
 
 function isRefreshedEntry(entry) {
   return !!(entry && entry.meta && entry.meta.refreshed_at);
+}
+
+/** Whether the pipeline has yet to land the day's written discussion. */
+function writeUpPending(entry) {
+  return degradationsOf(entry).some(d => d && d.code === PENDING_WRITE_UP_CODE);
+}
+
+/** Minutes since the issuance was written. Infinity when the stamp cannot
+ * be read: an unreadable age is not a reason to withhold an email. */
+function issuanceAgeMinutes(issuance, now) {
+  const written = new Date(issuance);
+  if (isNaN(written.getTime())) return Infinity;
+  return (now.getTime() - written.getTime()) / 60000;
 }
 
 /** Per-recipient send loop. */
